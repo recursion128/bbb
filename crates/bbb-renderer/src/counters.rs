@@ -128,6 +128,7 @@ pub struct RendererCounters {
     pub particle_missing_definitions: u64,
     pub particle_missing_sprites: u64,
     pub particle_unknown_types: u64,
+    pub particle_unsupported_options: u64,
     pub last_particle_spawn_count: usize,
     pub pending_particle_spawns: usize,
     pub dropped_particle_spawns: u64,

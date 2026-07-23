@@ -320,6 +320,8 @@ pub struct ParticleSpawnBatch {
     pub missing_sprite_count: usize,
     #[serde(default)]
     pub unknown_particle_type_count: usize,
+    #[serde(default)]
+    pub unsupported_particle_option_count: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -615,6 +617,7 @@ pub(crate) struct ParticleSubmitSummary {
     pub(crate) missing_definition_count: usize,
     pub(crate) missing_sprite_count: usize,
     pub(crate) unknown_particle_type_count: usize,
+    pub(crate) unsupported_particle_option_count: usize,
     pub(crate) pending_spawns: usize,
     pub(crate) total_dropped_spawns: u64,
 }
@@ -671,6 +674,7 @@ impl ParticleSpawnBatch {
             && self.missing_definition_count == 0
             && self.missing_sprite_count == 0
             && self.unknown_particle_type_count == 0
+            && self.unsupported_particle_option_count == 0
     }
 }
 
@@ -803,6 +807,7 @@ impl ParticleRuntimeState {
             missing_definition_count: batch.missing_definition_count,
             missing_sprite_count: batch.missing_sprite_count,
             unknown_particle_type_count: batch.unknown_particle_type_count,
+            unsupported_particle_option_count: batch.unsupported_particle_option_count,
             pending_spawns: self.pending_spawns.len(),
             total_dropped_spawns: self.dropped_spawns,
         }

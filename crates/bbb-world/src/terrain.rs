@@ -18,8 +18,8 @@ use generated_26_1::{
     VANILLA_HANGING_SIGN_BLOCKS, VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS,
     VANILLA_IRON_BARS_CLASS_BLOCKS, VANILLA_LANTERN_BLOCKS, VANILLA_LEAVES_BLOCKS,
     VANILLA_LIGHTNING_ROD_BLOCKS, VANILLA_LOG_BLOCKS, VANILLA_NO_COLLISION_BLOCKS,
-    VANILLA_NO_TERRAIN_PARTICLE_BLOCKS, VANILLA_ORE_BLOCKS, VANILLA_PLANK_BLOCKS,
-    VANILLA_PRESSURE_PLATE_BLOCKS, VANILLA_RAIL_BLOCKS,
+    VANILLA_NO_TERRAIN_PARTICLE_BLOCKS, VANILLA_ORE_BLOCKS, VANILLA_PALE_OAK_LOG_BLOCKS,
+    VANILLA_PLANK_BLOCKS, VANILLA_PRESSURE_PLATE_BLOCKS, VANILLA_RAIL_BLOCKS,
     VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS,
     VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS, VANILLA_SAPLING_BLOCKS,
     VANILLA_SHELF_BLOCKS, VANILLA_SHULKER_BOX_BLOCKS, VANILLA_SLAB_BLOCKS, VANILLA_STAIR_BLOCKS,
@@ -565,6 +565,10 @@ pub fn block_name_is_log(name: &str) -> bool {
     VANILLA_LOG_BLOCKS.contains(&name)
 }
 
+pub fn block_name_is_pale_oak_log(name: &str) -> bool {
+    VANILLA_PALE_OAK_LOG_BLOCKS.contains(&name)
+}
+
 pub fn block_name_is_planks(name: &str) -> bool {
     VANILLA_PLANK_BLOCKS.contains(&name)
 }
@@ -812,6 +816,15 @@ mod tests {
         ] {
             assert!(block_name_is_log(block_name), "{block_name}");
         }
+        for block_name in [
+            "minecraft:pale_oak_log",
+            "minecraft:pale_oak_wood",
+            "minecraft:stripped_pale_oak_log",
+            "minecraft:stripped_pale_oak_wood",
+        ] {
+            assert!(block_name_is_pale_oak_log(block_name), "{block_name}");
+        }
+        assert!(!block_name_is_pale_oak_log("minecraft:oak_log"));
         assert!(block_name_is_planks("minecraft:bamboo_planks"));
         assert!(!block_name_is_log("minecraft:custom_log"));
         assert!(!block_name_is_planks("minecraft:custom_planks"));

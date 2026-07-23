@@ -3,7 +3,7 @@ use bbb_pack::{
     BiomeColorCatalog, BiomeColorProfile, BiomeTemperatureModifier, GrassColorModifier,
     SpriteAnimation, SpriteAnimationFrame,
 };
-use bbb_protocol::packets::ParticlePayload;
+use bbb_protocol::{packets::ParticlePayload, NbtSummaryEntry, NbtSummaryValue};
 use std::{
     path::{Path, PathBuf},
     sync::atomic::{AtomicU64, Ordering},
@@ -7087,6 +7087,45 @@ fn missing_definition_records_diagnostic_without_spawn_commands() {
 }
 
 #[test]
+fn environment_particle_bridge_preserves_provider_diagnostics_and_rejects_complex_options() {
+    let mut runtime = test_native_particle_runtime(0, ClientParticleStatus::All);
+    let spawns = [
+        environment_particle_spawn("minecraft:cloud", Vec::new()),
+        EnvironmentParticleSpawn {
+            particle: ClientParticleOptions {
+                resource_id: "minecraft:cloud".to_string(),
+                fields: vec![NbtSummaryEntry {
+                    name: "type".to_string(),
+                    value: NbtSummaryValue::String("cloud".to_string()),
+                }],
+            },
+            position: [1.0, 64.0, 0.0],
+        },
+        environment_particle_spawn("minecraft:enchanted_hit", Vec::new()),
+        environment_particle_spawn(
+            "minecraft:block",
+            vec![NbtSummaryEntry {
+                name: "block_state".to_string(),
+                value: NbtSummaryValue::String("minecraft:stone".to_string()),
+            }],
+        ),
+        environment_particle_spawn("example:unknown", Vec::new()),
+    ];
+
+    let batch =
+        runtime.spawn_environment_particles(&spawns, LevelParticleSpawnContext::default(), None);
+
+    assert_eq!(batch.commands.len(), 2);
+    assert!(batch
+        .commands
+        .iter()
+        .all(|command| command.particle_id == "minecraft:cloud"));
+    assert_eq!(batch.missing_definition_count, 1);
+    assert_eq!(batch.unsupported_particle_option_count, 1);
+    assert_eq!(batch.unknown_particle_type_count, 1);
+}
+
+#[test]
 fn unknown_particle_type_records_diagnostic_without_spawn_commands() {
     let mut resolver = test_resolver(0);
     let unknown_particle_type_id = i32::try_from(VANILLA_PARTICLE_TYPES.len()).unwrap();
@@ -7096,6 +7135,24 @@ fn unknown_particle_type_records_diagnostic_without_spawn_commands() {
     assert!(batch.commands.is_empty());
     assert_eq!(batch.missing_definition_count, 0);
     assert_eq!(batch.unknown_particle_type_count, 1);
+}
+
+fn environment_particle_spawn(
+    resource_id: &str,
+    mut extra_fields: Vec<NbtSummaryEntry>,
+) -> EnvironmentParticleSpawn {
+    let mut fields = vec![NbtSummaryEntry {
+        name: "type".to_string(),
+        value: NbtSummaryValue::String(resource_id.to_string()),
+    }];
+    fields.append(&mut extra_fields);
+    EnvironmentParticleSpawn {
+        particle: ClientParticleOptions {
+            resource_id: resource_id.to_string(),
+            fields,
+        },
+        position: [0.0, 64.0, 0.0],
+    }
 }
 
 #[test]

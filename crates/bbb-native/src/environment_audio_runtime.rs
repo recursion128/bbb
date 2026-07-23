@@ -279,7 +279,10 @@ impl LoopSound {
     }
 }
 
-fn sound_holder_state(world: &WorldStore, sound: &ClientSoundEventHolder) -> SoundHolderState {
+pub(crate) fn sound_holder_state(
+    world: &WorldStore,
+    sound: &ClientSoundEventHolder,
+) -> SoundHolderState {
     let registry_id = match sound {
         ClientSoundEventHolder::Reference { resource_id } => world
             .resolved_registry_entry_by_resource_id(SOUND_EVENT_REGISTRY, resource_id)

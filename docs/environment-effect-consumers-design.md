@@ -97,6 +97,8 @@ below one clamp to zero. Missing loaded light/chunk data skips that tick's mood
 sample without fabricating darkness.
 
 `ClientLevel.animateTick` performs 667 iterations, sampling radius 16 then 32.
+It creates one fresh `animateRandom` per tick and shares it across all 1,334
+block/fluid calls in that tick.
 Each coordinate is center plus `nextInt(radius) - nextInt(radius)`.
 `AMBIENT_PARTICLES` is directly sampled at that block position only when the
 known collision shape is not a full block; ordered entries test
@@ -106,7 +108,9 @@ random, a one-in-30 check, direct `FIREFLY_BUSH_SOUNDS`, and
 `MOTION_BLOCKING_NO_LEAVES <= y`. Its firefly spawn uses maximum local raw
 brightness 13, probability 0.7, horizontal range 10, and vertical range 5.
 Creaking-heart idle sound requires direct `CREAKING_ACTIVE`, a non-uprooted
-state, a one-in-16 check, and matching-axis pale-oak logs on both sides.
+state, a one-in-16 check, and pale-oak logs in all six adjacent positions.
+Successful firefly and creaking local sounds consume their seed from the shared
+client-level random stream at the Vanilla `playLocalSound` call point.
 Unknown block states or unavailable height/light/collision samples suppress
 only the affected local effect.
 

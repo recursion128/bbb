@@ -63,6 +63,7 @@ BLOCK_TAG_CATALOGS = (
     ("VANILLA_CAMPFIRE_BLOCKS", "minecraft:campfires", 2),
     ("VANILLA_CAULDRON_BLOCKS", "minecraft:cauldrons", 4),
     ("VANILLA_LOG_BLOCKS", "minecraft:logs", 44),
+    ("VANILLA_PALE_OAK_LOG_BLOCKS", "minecraft:pale_oak_logs", 4),
     ("VANILLA_PLANK_BLOCKS", "minecraft:planks", 12),
     ("VANILLA_DOOR_BLOCKS", "minecraft:doors", 21),
     ("VANILLA_TRAPDOOR_BLOCKS", "minecraft:trapdoors", 21),

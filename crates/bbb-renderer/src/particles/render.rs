@@ -65,6 +65,10 @@ impl Renderer {
             .counters
             .particle_unknown_types
             .saturating_add(summary.unknown_particle_type_count as u64);
+        self.counters.particle_unsupported_options = self
+            .counters
+            .particle_unsupported_options
+            .saturating_add(summary.unsupported_particle_option_count as u64);
         self.counters.last_particle_spawn_count = summary.queued_spawns;
         self.counters.pending_particle_spawns = summary.pending_spawns;
         self.counters.dropped_particle_spawns = summary.total_dropped_spawns;

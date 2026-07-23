@@ -2097,7 +2097,7 @@ fn apply_weather_lightmap_layer(
 /// Vanilla `Level.skyDarken`, sourced from the gameplay sky-light-level attribute rather than
 /// the visual lightmap factor. Built-in timeline/weather layers are applied when registry data
 /// does not provide the dimension timeline, matching `EnvironmentAttributeSystem` ordering.
-fn entity_shadow_sky_darken(world: &WorldStore) -> u8 {
+pub(crate) fn entity_shadow_sky_darken(world: &WorldStore) -> u8 {
     let Some(level) = world.level_info() else {
         return 0;
     };
@@ -2318,6 +2318,7 @@ pub(crate) fn advance_simulation(
     lightmap_ticks: &mut LightmapTickState,
     level_event_sound_random: &mut LevelEventSoundRandomState,
     environment_audio: &mut crate::environment_audio_runtime::EnvironmentAudioRuntime,
+    environment_animate: &mut crate::environment_animate_runtime::EnvironmentAnimateRuntime,
     music: &mut MusicRuntime,
     terrain_textures: &mut TerrainTextureState,
     item_runtime: &mut Option<NativeItemRuntime>,
@@ -2533,15 +2534,27 @@ pub(crate) fn advance_simulation(
     );
     if let Some(audio_events) = audio_events.as_deref_mut() {
         // `LocalPlayer.tick` advances biome ambient handlers after player
-        // movement and before `Minecraft.tick` advances `MusicManager`. The
-        // local handler follows running player ticks while music follows every
-        // raw client tick.
+        // movement. The local handler follows running player ticks.
         environment_audio.advance_for_ticks(
             world,
             net_counters.connection_generation,
             running_ticks,
             audio_events,
         );
+    }
+    environment_animate.advance_for_ticks(
+        world,
+        net_counters.connection_generation,
+        running_ticks,
+        particle_runtime
+            .as_mut()
+            .map(|runtime| runtime as &mut dyn ParticleEventSink),
+        particle_batches,
+        &mut audio_events,
+    );
+    if let Some(audio_events) = audio_events.as_deref_mut() {
+        // `Minecraft.tick` advances `MusicManager` on every raw client tick
+        // after the running-level animate loop.
         music.advance_for_ticks(
             world,
             net_counters.connection_generation,
@@ -15727,6 +15740,7 @@ pub(crate) fn control_renderer_counters(
         particle_missing_definitions: counters.particle_missing_definitions,
         particle_missing_sprites: counters.particle_missing_sprites,
         particle_unknown_types: counters.particle_unknown_types,
+        particle_unsupported_options: counters.particle_unsupported_options,
         last_particle_spawn_count: counters.last_particle_spawn_count,
         pending_particle_spawns: counters.pending_particle_spawns,
         dropped_particle_spawns: counters.dropped_particle_spawns,

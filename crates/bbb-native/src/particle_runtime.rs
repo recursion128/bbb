@@ -26,8 +26,8 @@ use bbb_world::{
     block_name_has_invisible_render_shape, block_name_is_air,
     block_name_should_spawn_terrain_particles, vanilla_air_block_state_id,
     AllayDuplicationParticleState, AnimalLoveParticleState, ArrowEffectParticleState,
-    BlazeAmbientParticleState, BlockPos as WorldBlockPos, DolphinHappyParticleState,
-    EnderAmbientParticleState, EntityClientMovementParticleState,
+    BlazeAmbientParticleState, BlockPos as WorldBlockPos, ClientParticleOptions,
+    DolphinHappyParticleState, EnderAmbientParticleState, EntityClientMovementParticleState,
     EntityClientMovementSimpleParticleKind, EntityClientMovementSimpleParticleState,
     EntityTamingParticleState, ExplosionEventState, EyeOfEnderTrailParticleState,
     FireworkRocketExplosionParticleState, FireworkRocketTrailParticleState, FoxEatParticleState,
@@ -86,6 +86,14 @@ pub(crate) trait ParticleEventSink {
         biome_sampler: Option<&dyn ParticleBiomeSampler>,
         item_runtime: Option<&NativeItemRuntime>,
     ) -> ParticleSpawnBatch;
+    fn spawn_environment_particles(
+        &mut self,
+        _spawns: &[EnvironmentParticleSpawn],
+        _context: LevelParticleSpawnContext,
+        _biome_sampler: Option<&dyn ParticleBiomeSampler>,
+    ) -> ParticleSpawnBatch {
+        ParticleSpawnBatch::default()
+    }
     fn spawn_explosion_particles(
         &mut self,
         state: &ExplosionEventState,
@@ -202,6 +210,12 @@ pub(crate) trait ParticleEventSink {
         &mut self,
         state: RabbitSprintParticleState,
     ) -> ParticleSpawnBatch;
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct EnvironmentParticleSpawn {
+    pub(crate) particle: ClientParticleOptions,
+    pub(crate) position: [f64; 3],
 }
 
 pub(crate) trait ParticleBiomeSampler {
@@ -473,6 +487,16 @@ impl ParticleEventSink for NativeParticleRuntime {
             biome_sampler,
             item_runtime,
         )
+    }
+
+    fn spawn_environment_particles(
+        &mut self,
+        spawns: &[EnvironmentParticleSpawn],
+        context: LevelParticleSpawnContext,
+        biome_sampler: Option<&dyn ParticleBiomeSampler>,
+    ) -> ParticleSpawnBatch {
+        self.resolver
+            .resolve_environment_particles(spawns, context, biome_sampler)
     }
 
     fn spawn_explosion_particles(
@@ -1179,6 +1203,7 @@ fn append_particle_batch(batch: &mut ParticleSpawnBatch, mut other: ParticleSpaw
     batch.missing_definition_count += other.missing_definition_count;
     batch.missing_sprite_count += other.missing_sprite_count;
     batch.unknown_particle_type_count += other.unknown_particle_type_count;
+    batch.unsupported_particle_option_count += other.unsupported_particle_option_count;
 }
 
 fn direction_normal_from_3d_data_value(data: i32) -> (i32, i32, i32) {
@@ -1561,6 +1586,7 @@ impl LegacyRandom {
 
 mod atlas;
 mod block_map_color;
+mod environment;
 mod explosion;
 mod ids;
 mod resolver_block_events;

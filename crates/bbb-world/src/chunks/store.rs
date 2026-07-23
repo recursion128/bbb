@@ -614,6 +614,18 @@ impl WorldStore {
         })
     }
 
+    /// Samples Vanilla `BlockState.isCollisionShapeFullBlock` for a loaded block.
+    ///
+    /// Returns `None` when the block or its registry state is unavailable so
+    /// local visual consumers can suppress only the affected effect.
+    pub fn sample_block_collision_shape_is_full_block(&self, pos: BlockPos) -> Option<bool> {
+        let probe = self.probe_block(pos)?;
+        probe
+            .block_name
+            .as_ref()
+            .map(|_| crate::client::block_collision_shape_is_full_block(&probe, pos))
+    }
+
     /// Mirrors `ChunkAccess.getNoiseBiome`: horizontal quart coordinates
     /// select a loaded chunk and 4x4x4 biome cell, while the vertical quart
     /// coordinate is clamped to the chunk's build-height range.

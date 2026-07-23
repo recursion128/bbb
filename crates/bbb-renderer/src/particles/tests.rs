@@ -22,6 +22,11 @@ fn particle_spawn_batch_empty_tracks_diagnostics() {
         ..ParticleSpawnBatch::default()
     }
     .is_empty());
+    assert!(!ParticleSpawnBatch {
+        unsupported_particle_option_count: 1,
+        ..ParticleSpawnBatch::default()
+    }
+    .is_empty());
     let sound_only = ParticleSpawnBatch {
         sound_events: vec![ParticleSoundEvent {
             sound_event_id: "minecraft:test.sound".to_string(),
@@ -193,6 +198,7 @@ fn particle_runtime_zero_capacity_counts_drops_without_queueing() {
         commands: vec![spawn_command("minecraft:cloud", 1.0)],
         missing_definition_count: 2,
         missing_sprite_count: 3,
+        unsupported_particle_option_count: 4,
         ..ParticleSpawnBatch::default()
     });
 
@@ -201,6 +207,7 @@ fn particle_runtime_zero_capacity_counts_drops_without_queueing() {
     assert_eq!(summary.dropped_spawns, 1);
     assert_eq!(summary.missing_definition_count, 2);
     assert_eq!(summary.missing_sprite_count, 3);
+    assert_eq!(summary.unsupported_particle_option_count, 4);
     assert_eq!(summary.pending_spawns, 0);
     assert!(particles.pending_spawns().is_empty());
 }

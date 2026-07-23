@@ -945,6 +945,13 @@ pub(super) const VANILLA_LOG_BLOCKS: &[&str] = &[
     "minecraft:stripped_warped_hyphae",
 ];
 
+pub(super) const VANILLA_PALE_OAK_LOG_BLOCKS: &[&str] = &[
+    "minecraft:pale_oak_log",
+    "minecraft:pale_oak_wood",
+    "minecraft:stripped_pale_oak_log",
+    "minecraft:stripped_pale_oak_wood",
+];
+
 pub(super) const VANILLA_PLANK_BLOCKS: &[&str] = &[
     "minecraft:oak_planks",
     "minecraft:spruce_planks",
@@ -1271,6 +1278,7 @@ mod tests {
                         "VANILLA_CAMPFIRE_BLOCKS",
                         "VANILLA_CAULDRON_BLOCKS",
                         "VANILLA_LOG_BLOCKS",
+                        "VANILLA_PALE_OAK_LOG_BLOCKS",
                         "VANILLA_PLANK_BLOCKS",
                         "VANILLA_DOOR_BLOCKS",
                         "VANILLA_TRAPDOOR_BLOCKS",
@@ -1364,6 +1372,7 @@ mod tests {
                         ("VANILLA_CAMPFIRE_BLOCKS", VANILLA_CAMPFIRE_BLOCKS),
                         ("VANILLA_CAULDRON_BLOCKS", VANILLA_CAULDRON_BLOCKS),
                         ("VANILLA_LOG_BLOCKS", VANILLA_LOG_BLOCKS),
+                        ("VANILLA_PALE_OAK_LOG_BLOCKS", VANILLA_PALE_OAK_LOG_BLOCKS),
                         ("VANILLA_PLANK_BLOCKS", VANILLA_PLANK_BLOCKS),
                         ("VANILLA_DOOR_BLOCKS", VANILLA_DOOR_BLOCKS),
                         ("VANILLA_TRAPDOOR_BLOCKS", VANILLA_TRAPDOOR_BLOCKS),
