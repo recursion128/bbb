@@ -111,6 +111,7 @@ impl WorldStore {
         let Some(data) = self.command_block_data_at(pos).cloned() else {
             return false;
         };
+        self.client_ui.replace_screen();
         self.client_ui.command_block_editor_open_count += 1;
         self.client_ui.current_command_block_editor = Some(CommandBlockEditorState {
             pos,

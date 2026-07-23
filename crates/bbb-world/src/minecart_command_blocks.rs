@@ -58,6 +58,7 @@ impl WorldStore {
         let Some(data) = self.minecart_command_block_data(entity_id) else {
             return false;
         };
+        self.client_ui.replace_screen();
         self.client_ui.minecart_command_block_editor_open_count = self
             .client_ui
             .minecart_command_block_editor_open_count

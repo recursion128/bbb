@@ -75,6 +75,7 @@ impl WorldStore {
         let Some(data) = self.test_block_data_at(pos).cloned() else {
             return false;
         };
+        self.client_ui.replace_screen();
         self.client_ui.test_block_editor_open_count = self
             .client_ui
             .test_block_editor_open_count

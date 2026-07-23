@@ -8,6 +8,7 @@ mod dialog;
 mod effects;
 mod entity_block_effects;
 mod features;
+mod game_rules;
 mod hud;
 mod inventory;
 mod local_player;

@@ -102,6 +102,10 @@ pub struct ClientUiState {
     pub current_stats_screen: bool,
     #[serde(default)]
     pub stats_screen_loading: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub current_game_rules_screen: Option<crate::GameRulesScreenState>,
+    #[serde(default)]
+    pub game_rules_screen_generation: u64,
     #[serde(default)]
     pub last_code_of_conduct: Option<CodeOfConductState>,
     #[serde(default)]
@@ -191,6 +195,7 @@ impl ClientUiState {
     }
 
     fn show_dialog(&mut self, dialog: DialogState) {
+        self.current_game_rules_screen = None;
         if self.dialog_link_confirmation.is_some() {
             self.suspend_dialog_link_confirmation();
             self.show_dialog_above_link_confirmation(dialog);
@@ -392,6 +397,20 @@ impl ClientUiState {
         self.dialog_waiting_ticks = None;
         self.dialog_previous_screen = None;
         self.advance_dialog_screen_revision();
+    }
+
+    pub(crate) fn replace_screen(&mut self) {
+        self.replace_dialog();
+        self.current_book = None;
+        self.current_advancements_screen = false;
+        self.current_stats_screen = false;
+        self.current_game_rules_screen = None;
+        self.current_command_block_editor = None;
+        self.current_minecart_command_block_editor = None;
+        self.current_structure_block_editor = None;
+        self.current_jigsaw_block_editor = None;
+        self.current_test_block_editor = None;
+        self.current_test_instance_block_editor = None;
     }
 }
 
@@ -734,9 +753,7 @@ impl WorldStore {
         let hand = interaction_hand_name(packet.hand).to_string();
         self.client_ui.last_open_book = Some(OpenBookState { hand: hand.clone() });
         if let Some(pages) = self.open_book_pages_from_hand(packet.hand) {
-            self.client_ui.replace_dialog();
-            self.client_ui.current_advancements_screen = false;
-            self.client_ui.current_stats_screen = false;
+            self.client_ui.replace_screen();
             self.client_ui.current_book = Some(BookScreenState {
                 hand,
                 pages,
@@ -760,10 +777,7 @@ impl WorldStore {
             })
             .unwrap_or_default();
         self.counters.open_sign_editor_updates_applied += 1;
-        self.client_ui.replace_dialog();
-        self.client_ui.current_book = None;
-        self.client_ui.current_advancements_screen = false;
-        self.client_ui.current_stats_screen = false;
+        self.client_ui.replace_screen();
         self.client_ui.last_open_sign_editor = Some(OpenSignEditorState {
             pos,
             is_front_text: packet.is_front_text,
@@ -1419,9 +1433,7 @@ impl WorldStore {
 
     pub fn open_advancements_screen(&mut self) -> bool {
         let was_open = self.client_ui.current_advancements_screen;
-        self.client_ui.replace_dialog();
-        self.client_ui.current_book = None;
-        self.client_ui.current_stats_screen = false;
+        self.client_ui.replace_screen();
         self.client_ui.current_advancements_screen = true;
         !was_open
     }
@@ -1438,9 +1450,7 @@ impl WorldStore {
 
     pub fn open_stats_screen(&mut self) -> bool {
         let was_open = self.client_ui.current_stats_screen;
-        self.client_ui.replace_dialog();
-        self.client_ui.current_book = None;
-        self.client_ui.current_advancements_screen = false;
+        self.client_ui.replace_screen();
         self.client_ui.current_stats_screen = true;
         self.client_ui.stats_screen_loading = true;
         !was_open

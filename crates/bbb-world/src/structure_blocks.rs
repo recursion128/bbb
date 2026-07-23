@@ -169,6 +169,7 @@ impl WorldStore {
         let Some(data) = self.structure_block_data_at(pos).cloned() else {
             return false;
         };
+        self.client_ui.replace_screen();
         self.client_ui.structure_block_editor_open_count += 1;
         self.client_ui.current_structure_block_editor = Some(StructureBlockEditorState {
             pos,

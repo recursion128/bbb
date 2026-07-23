@@ -121,6 +121,7 @@ impl WorldStore {
             return false;
         };
         let joint_editable = self.jigsaw_joint_editable_at(pos);
+        self.client_ui.replace_screen();
         self.client_ui.jigsaw_block_editor_open_count += 1;
         self.client_ui.current_jigsaw_block_editor = Some(JigsawBlockEditorState {
             pos,

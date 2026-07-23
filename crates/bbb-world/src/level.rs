@@ -381,6 +381,7 @@ impl WorldStore {
 
     pub fn apply_respawn(&mut self, respawn: &ProtocolRespawn) -> RespawnApplyResult {
         self.counters.respawns_received += 1;
+        self.close_game_rules_screen();
         self.advance_client_level_generation();
         self.reset_advancement_toasts_for_new_level();
         let dimension_changed = self
@@ -905,6 +906,7 @@ impl WorldStore {
     }
 
     fn clear_level_bound_state(&mut self) {
+        self.close_game_rules_screen();
         self.close_command_block_editor();
         self.close_minecart_command_block_editor();
         self.close_structure_block_editor();

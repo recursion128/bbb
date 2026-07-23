@@ -24,8 +24,8 @@ pub use crate::client::debug_game::{
     DebugEntityValueState, DebugEventState, DebugGameEventInfoState, DebugHiveInfoState,
     DebugPoiInfoState, DebugSampleState, DebugStructureInfoState, DebugStructurePieceState,
     DebugSubscriptionValueState, DebugSubscriptionValuesState, DebugTimedValueState, DebugValueMap,
-    DebugVec3iState, GameRuleValueState, GameRuleValuesState, GameTestHighlightPosState,
-    InvalidDebugSubscriptionId, TestInstanceBlockStatusState,
+    DebugVec3iState, GameTestHighlightPosState, InvalidDebugSubscriptionId,
+    TestInstanceBlockStatusState,
 };
 pub use crate::client::debug_query::{ClientDebugQueryState, TagQueryResponseState};
 pub use crate::client::dialog::{
@@ -40,6 +40,10 @@ pub use crate::client::effects::{
     ClientEffectsState, ExplosionEventState, LevelParticlesEventState,
 };
 pub use crate::client::features::{ClientFeatureState, ClientKnownPacksState, KnownPackState};
+pub use crate::client::game_rules::{
+    GameRuleEditState, GameRuleEditValueState, GameRuleValueState, GameRuleValuesState,
+    GameRulesScreenState,
+};
 pub use crate::client::hud::{
     ActionBarState, BossBarState, ClientHudState, DifficultyState, HudTitleState,
     SystemChatLineState, TabListState,

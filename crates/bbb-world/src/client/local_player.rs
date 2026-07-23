@@ -346,6 +346,9 @@ impl WorldStore {
             return false;
         };
         self.local_player.permission_level = permission_level;
+        if !permission_level.has_gamemaster_permission() {
+            self.close_game_rules_screen();
+        }
         true
     }
 

@@ -24,13 +24,15 @@ use bbb_protocol::packets::{
     DebugSample as ProtocolDebugSample, DebugStructureInfo,
     DebugSubscriptionUpdate as ProtocolDebugSubscriptionUpdate,
     DebugSubscriptionValue as ProtocolDebugSubscriptionValue,
-    GameRuleValues as ProtocolGameRuleValues, GameTestHighlightPos as ProtocolGameTestHighlightPos,
+    GameTestHighlightPos as ProtocolGameTestHighlightPos,
     TestInstanceBlockStatus as ProtocolTestInstanceBlockStatus, Vec3i as ProtocolVec3i,
 };
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use uuid::Uuid;
 
 use crate::{protocol_block_pos, BlockPos, ChunkPos, WorldStore};
+
+use super::game_rules::GameRuleValuesState;
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct ClientDebugGameState {
@@ -222,28 +224,6 @@ pub struct DebugSampleState {
     pub sample_type: String,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct GameRuleValuesState {
-    #[serde(default)]
-    pub values: Vec<GameRuleValueState>,
-}
-
-impl GameRuleValuesState {
-    pub fn len(&self) -> usize {
-        self.values.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.values.is_empty()
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct GameRuleValueState {
-    pub rule: String,
-    pub value: String,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GameTestHighlightPosState {
     pub absolute_pos: BlockPos,
@@ -430,20 +410,6 @@ impl WorldStore {
         });
     }
 
-    pub fn apply_game_rule_values(&mut self, packet: ProtocolGameRuleValues) {
-        self.counters.game_rule_value_packets += 1;
-        self.client_debug_game.last_game_rule_values = Some(GameRuleValuesState {
-            values: packet
-                .values
-                .into_iter()
-                .map(|value| GameRuleValueState {
-                    rule: value.rule,
-                    value: value.value,
-                })
-                .collect(),
-        });
-    }
-
     pub fn apply_game_test_highlight_pos(&mut self, packet: ProtocolGameTestHighlightPos) {
         self.counters.game_test_highlight_pos_packets += 1;
         self.client_debug_game.last_game_test_highlight_pos = Some(GameTestHighlightPosState {
@@ -484,10 +450,6 @@ impl WorldStore {
 
     pub fn last_debug_sample(&self) -> Option<&DebugSampleState> {
         self.client_debug_game.last_debug_sample.as_ref()
-    }
-
-    pub fn last_game_rule_values(&self) -> Option<&GameRuleValuesState> {
-        self.client_debug_game.last_game_rule_values.as_ref()
     }
 
     pub fn last_game_test_highlight_pos(&self) -> Option<&GameTestHighlightPosState> {
@@ -747,6 +709,7 @@ fn debug_vec3i_state(pos: ProtocolVec3i) -> DebugVec3iState {
 
 #[cfg(test)]
 mod tests {
+    use super::super::game_rules::GameRuleValueState;
     use super::*;
     use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_BEE_ID;
     use bbb_protocol::packets::{
