@@ -1539,10 +1539,13 @@ fn parse_ambient_addition(fields: &[NbtSummaryEntry]) -> Option<ClientAmbientAdd
 }
 
 fn parse_sound_holder(value: &NbtSummaryValue) -> Option<ClientSoundEventHolder> {
+    if let NbtSummaryValue::String(raw) = value {
+        return Some(ClientSoundEventHolder::Reference {
+            resource_id: normalize_codec_identifier(raw)?,
+        });
+    }
     Some(match decode_persistent_sound_event(value, None).ok()? {
-        PersistentSoundEvent::Named { resource_id, .. } => {
-            ClientSoundEventHolder::Reference { resource_id }
-        }
+        PersistentSoundEvent::Named { .. } => return None,
         PersistentSoundEvent::Direct {
             resource_id,
             fixed_range,
@@ -1899,6 +1902,8 @@ fn argb_to_rgba_bytes(value: u32) -> [u8; 4] {
 
 #[cfg(test)]
 mod tests {
+    use crate::{RegistryPacketEntry, WorldStore};
+
     use super::*;
 
     #[test]
@@ -2027,6 +2032,43 @@ mod tests {
                 .map(|music| (music.min_delay, music.max_delay)),
             Some((10, 20))
         );
+    }
+
+    #[test]
+    fn preserves_custom_sound_references_for_frozen_registry_validation() {
+        let entries = vec![entry(
+            "minecraft:audio/ambient_sounds",
+            compound(vec![entry(
+                "loop",
+                NbtSummaryValue::String("example:ambient_loop".to_string()),
+            )]),
+        )];
+        let projection = decode_client_environment_attributes(&entries).unwrap();
+        assert_eq!(
+            projection
+                .ambient_sounds
+                .as_ref()
+                .and_then(|ambient| ambient.loop_sound.as_ref()),
+            Some(&ClientSoundEventHolder::Reference {
+                resource_id: "example:ambient_loop".to_string(),
+            })
+        );
+
+        let missing = WorldStore::default();
+        assert!(validate_client_environment_references(
+            &projection,
+            missing.frozen_registry_access()
+        )
+        .is_err());
+
+        let mut synchronized = WorldStore::default();
+        synchronized.record_registry_entries(
+            "minecraft:sound_event",
+            0,
+            vec![RegistryPacketEntry::stub("example:ambient_loop")],
+        );
+        validate_client_environment_references(&projection, synchronized.frozen_registry_access())
+            .unwrap();
     }
 
     #[test]

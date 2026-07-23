@@ -2317,6 +2317,7 @@ pub(crate) fn advance_simulation(
     hud_debug_tps_sampler: &mut HudDebugTpsSampler,
     lightmap_ticks: &mut LightmapTickState,
     level_event_sound_random: &mut LevelEventSoundRandomState,
+    environment_audio: &mut crate::environment_audio_runtime::EnvironmentAudioRuntime,
     music: &mut MusicRuntime,
     terrain_textures: &mut TerrainTextureState,
     item_runtime: &mut Option<NativeItemRuntime>,
@@ -2438,18 +2439,8 @@ pub(crate) fn advance_simulation(
             client_animation_ticks.last_entity_tick_work,
         );
     }
-    if let Some(audio_events) = audio_events.as_deref_mut() {
-        // `Minecraft.tick` advances `MusicManager` once per raw client tick,
-        // after `GameRenderer.tick` and before level/particle sound ticks.
-        music.advance_for_ticks(
-            world,
-            net_counters.connection_generation,
-            advanced_ticks,
-            audio_events,
-        );
-    }
-    let entity_partial_tick = client_animation_ticks.entity_partial_tick();
     let running_ticks = client_animation_ticks.last_running_level_ticks;
+    let entity_partial_tick = client_animation_ticks.entity_partial_tick();
     world.advance_tickable_entity_sounds(advanced_ticks, running_ticks);
     // Vanilla `Minecraft.tick` calls `Gui.tick` once per client tick (Gui.java:
     // 1145-1166), outside the tick-rate manager's freeze gate, so the action
@@ -2540,6 +2531,24 @@ pub(crate) fn advance_simulation(
         now,
         advanced_ticks,
     );
+    if let Some(audio_events) = audio_events.as_deref_mut() {
+        // `LocalPlayer.tick` advances biome ambient handlers after player
+        // movement and before `Minecraft.tick` advances `MusicManager`. The
+        // local handler follows running player ticks while music follows every
+        // raw client tick.
+        environment_audio.advance_for_ticks(
+            world,
+            net_counters.connection_generation,
+            running_ticks,
+            audio_events,
+        );
+        music.advance_for_ticks(
+            world,
+            net_counters.connection_generation,
+            advanced_ticks,
+            audio_events,
+        );
+    }
     // Vanilla Minecraft.tick handles keybinds before GameRenderer.tick, whose
     // Camera.tickFov eases the current camera's target once per client tick.
     camera_fov_ticks.advance_for_world(advanced_ticks, world);

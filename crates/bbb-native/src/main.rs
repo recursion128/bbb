@@ -32,6 +32,7 @@ mod entity_features;
 mod entity_name_tags;
 mod entity_scene;
 mod entity_variant_textures;
+mod environment_audio_runtime;
 mod hud_assets;
 mod input;
 mod item_entities;
@@ -672,6 +673,7 @@ fn main() -> Result<()> {
         hud_debug_tps_sampler,
         lightmap_ticks,
         level_event_sound_random,
+        environment_audio: environment_audio_runtime::EnvironmentAudioRuntime::default(),
         music: MusicRuntime::default(),
         particle_runtime,
         terrain_textures: terrain_textures.clone(),
