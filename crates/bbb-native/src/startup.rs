@@ -102,6 +102,8 @@ pub(crate) struct Args {
         value_parser = parse_client_chat_delay
     )]
     pub(crate) client_chat_delay_seconds: f64,
+    #[arg(long = "client-blocked-player", value_name = "UUID")]
+    pub(crate) client_blocked_players: Vec<Uuid>,
     #[arg(
         long = "client-chat-colors",
         default_value_t = true,
@@ -690,6 +692,25 @@ mod tests {
         assert_eq!(
             args.resource_pack_dirs,
             vec![PathBuf::from("packs/base"), PathBuf::from("packs/overlay")]
+        );
+    }
+
+    #[test]
+    fn social_interactions_blocked_players_are_startup_uuid_inputs() {
+        let first = Uuid::from_u128(0x11111111111141118111111111111111);
+        let second = Uuid::from_u128(0x22222222222242228222222222222222);
+        let args = Args::try_parse_from([
+            "bbb-native",
+            "--client-blocked-player",
+            &first.to_string(),
+            "--client-blocked-player",
+            &second.to_string(),
+        ])
+        .unwrap();
+
+        assert_eq!(args.client_blocked_players, vec![first, second]);
+        assert!(
+            Args::try_parse_from(["bbb-native", "--client-blocked-player", "not-a-uuid",]).is_err()
         );
     }
 

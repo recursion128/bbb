@@ -183,6 +183,7 @@ mod jigsaw_block;
 mod minecart_command_block;
 mod mouse;
 mod movement;
+pub(crate) mod social;
 pub(crate) mod spectator_menu;
 mod structure_block;
 mod test_block;
@@ -699,6 +700,7 @@ pub(crate) struct ClientInputState {
     spectator_gui: spectator_menu::SpectatorGuiInputState,
     death_screen: death_screen::DeathScreenInputState,
     game_event_screen: game_event_screen::GameEventScreenInputState,
+    social_interactions: social::SocialInteractionsInputState,
 }
 
 /// Immutable input projection consumed by render and event-loop readers.
@@ -776,7 +778,7 @@ struct CommandBlockEditorInputState {
     controls_enabled: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 enum NativeDialogPreviousScreenState {
     Chat(ChatEntryState),
     DebugOptions(DebugOptionsScreenState),
@@ -785,6 +787,7 @@ enum NativeDialogPreviousScreenState {
         disconnect_requested: bool,
     },
     Sign(SignEditorInputState),
+    Social(social::SocialInteractionsRuntime),
 }
 
 const COMMAND_SUGGESTION_LINE_HEIGHT: i32 = 12;
@@ -1123,6 +1126,7 @@ impl ClientInputState {
             || world.current_book().is_some()
             || world.advancements_screen_is_open()
             || world.stats_screen_is_open()
+            || world.social_interactions_screen().is_some()
             || world.game_rules_screen().is_some()
             || world.death_screen().is_some()
             || world.game_event_screen().is_some()
@@ -1628,6 +1632,7 @@ impl ClientInputState {
             || world.current_book().is_some()
             || world.advancements_screen_is_open()
             || world.stats_screen_is_open()
+            || world.social_interactions_screen().is_some()
             || world.game_rules_screen().is_some()
             || world.structure_block_editor().is_some()
             || world.jigsaw_block_editor().is_some()
@@ -2132,6 +2137,10 @@ impl ClientInputState {
                 self.dialog_native_previous_screen = self
                     .take_debug_screen_for_dialog()
                     .or_else(|| {
+                        self.take_social_interactions_for_dialog()
+                            .map(NativeDialogPreviousScreenState::Social)
+                    })
+                    .or_else(|| {
                         self.take_sign_editor_for_dialog(world).map(|editor| {
                             queue_sign_editor_removed(counters, net_commands, &editor);
                             NativeDialogPreviousScreenState::Sign(editor)
@@ -2177,6 +2186,11 @@ impl ClientInputState {
                         {
                             self.dismissed_sign_editor = None;
                             self.sign_editor = Some(editor);
+                        }
+                        Some(NativeDialogPreviousScreenState::Social(state))
+                            if self.social_interactions_runtime().is_none() =>
+                        {
+                            self.restore_social_interactions_after_dialog(world, state);
                         }
                         _ => {}
                     }
@@ -2229,6 +2243,13 @@ impl ClientInputState {
             || world.current_book().is_some()
             || world.advancements_screen_is_open()
             || world.stats_screen_is_open()
+            || world.social_interactions_screen().is_some_and(|screen| {
+                !matches!(
+                    self.dialog_native_previous_screen.as_ref(),
+                    Some(NativeDialogPreviousScreenState::Social(state))
+                        if state.generation() == screen.generation
+                )
+            })
             || world.game_rules_screen().is_some()
             || world.death_screen().is_some()
             || world.game_event_screen().is_some()
@@ -3033,6 +3054,10 @@ impl ClientInputState {
             } else if pause_screen_stats_button_contains(cursor_position, surface_size) {
                 self.close_debug_pause_screen();
                 open_stats_screen(self, counters, world, net_commands);
+            } else if pause_screen_player_reporting_button_contains(cursor_position, surface_size)
+                && pause_screen_player_reporting_button_enabled()
+            {
+                open_social_interactions_screen(self, counters, world, net_commands, true);
             } else if pause_screen_send_feedback_button_contains(cursor_position, surface_size) {
                 self.pause_screen_link_requests
                     .push(PauseScreenLinkRequest::SendFeedback {
@@ -4120,6 +4145,7 @@ impl ClientInputState {
             || world.current_book().is_some()
             || world.advancements_screen_is_open()
             || world.stats_screen_is_open()
+            || world.social_interactions_screen().is_some()
             || world.game_rules_screen().is_some()
     }
 
@@ -4750,7 +4776,7 @@ pub(crate) fn pause_screen_player_reporting_button_contains(
 }
 
 pub(crate) fn pause_screen_player_reporting_button_enabled() -> bool {
-    false
+    true
 }
 
 pub(crate) fn pause_screen_disconnect_button_contains(
@@ -10211,6 +10237,18 @@ fn open_stats_screen(
     }
 }
 
+fn open_social_interactions_screen(
+    input: &mut ClientInputState,
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    return_to_pause: bool,
+) {
+    if input.open_social_interactions_screen(world, return_to_pause) {
+        release_active_input(input, world, counters, net_commands);
+    }
+}
+
 fn close_stats_screen(
     input: &mut ClientInputState,
     counters: &mut NetCounters,
@@ -10567,6 +10605,10 @@ pub(crate) fn handle_key_input_with_item_runtime(
         return;
     }
 
+    if input.handle_social_interactions_key(world, code, just_pressed) {
+        return;
+    }
+
     if input.handle_debug_pause_screen_key(physical_key, state) {
         return;
     }
@@ -10776,6 +10818,10 @@ pub(crate) fn handle_key_input_with_item_runtime(
                 open_advancements_screen(input, counters, world, net_commands);
                 return;
             }
+            KeyCode::KeyP => {
+                open_social_interactions_screen(input, counters, world, net_commands, false);
+                return;
+            }
             KeyCode::KeyT => {
                 open_chat_entry(input, world, counters, net_commands, true);
                 return;
@@ -10956,6 +11002,10 @@ pub(crate) fn handle_text_input_with_item_runtime(
         return;
     }
 
+    if input.handle_social_interactions_text(world, text) {
+        return;
+    }
+
     if input.handle_game_rules_screen_text(world, text) {
         return;
     }
@@ -10989,6 +11039,7 @@ pub(crate) fn handle_text_input_with_item_runtime(
         || world.game_event_screen().is_some()
         || world.advancements_screen_is_open()
         || world.stats_screen_is_open()
+        || world.social_interactions_screen().is_some()
         || world.game_rules_screen().is_some()
     {
         return;

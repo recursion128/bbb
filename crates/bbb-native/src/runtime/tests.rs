@@ -9490,7 +9490,7 @@ fn hud_pause_screen_projects_no_menu_title() {
     assert!(!screen.options_hovered);
     assert!(!screen.options_enabled);
     assert!(!screen.player_reporting_hovered);
-    assert!(!screen.player_reporting_enabled);
+    assert!(screen.player_reporting_enabled);
     assert!(!screen.disconnect_hovered);
     assert!(screen.disconnect_enabled);
 }
@@ -9513,7 +9513,7 @@ fn hud_pause_screen_projects_menu_title() {
     assert!(!screen.options_hovered);
     assert!(!screen.options_enabled);
     assert!(!screen.player_reporting_hovered);
-    assert!(!screen.player_reporting_enabled);
+    assert!(screen.player_reporting_enabled);
     assert!(!screen.disconnect_hovered);
     assert!(screen.disconnect_enabled);
 }
@@ -9651,7 +9651,27 @@ fn hud_pause_screen_projects_disabled_options_row_shell() {
     assert!(!screen.options_hovered);
     assert!(!screen.options_enabled);
     assert!(!screen.player_reporting_hovered);
-    assert!(!screen.player_reporting_enabled);
+    assert!(screen.player_reporting_enabled);
+    assert!(!screen.disconnect_hovered);
+}
+
+#[test]
+fn social_interactions_pause_screen_projects_player_reporting_hover() {
+    let mut input = ClientInputState::new(true);
+    let surface = winit::dpi::PhysicalSize::new(320, 240);
+    input.open_debug_pause_screen_with_menu();
+
+    assert!(
+        input.handle_debug_pause_screen_cursor_moved(Some(winit::dpi::PhysicalPosition::new(
+            170.0, 150.0
+        )))
+    );
+
+    let screen = hud_pause_screen(&input, surface).expect("pause screen");
+    assert!(screen.show_pause_menu);
+    assert!(!screen.options_hovered);
+    assert!(screen.player_reporting_hovered);
+    assert!(screen.player_reporting_enabled);
     assert!(!screen.disconnect_hovered);
 }
 

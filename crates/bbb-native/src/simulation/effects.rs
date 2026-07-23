@@ -39,6 +39,7 @@ pub(crate) enum PlatformEffect {
         digits: Vec<u8>,
     },
     StatsScreenInput(ScreenNarrationScheduleInput),
+    SocialInteractionsInput(ScreenNarrationScheduleInput),
     GameEventScreenInput(ScreenNarrationScheduleInput),
     DeathScreenInput(ScreenNarrationScheduleInput),
     ChatNarration {

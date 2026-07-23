@@ -206,6 +206,7 @@ struct NativeRenderEffectSink<'a> {
     terrain_upload: &'a mut TerrainUploadState,
     debug_profiler: &'a mut DebugProfiler,
     stats_screen_narration: &'a mut ScreenNarrationRuntime,
+    social_interactions_narration: &'a mut ScreenNarrationRuntime,
     death_screen_narration: &'a mut ScreenNarrationRuntime,
     game_event_screen_narration: &'a mut ScreenNarrationRuntime,
     narrator: Option<&'a mut dyn narrator_runtime::SystemNarrator>,
@@ -306,6 +307,17 @@ impl PlatformEffectSink for NativeRenderEffectSink<'_> {
                 self.stats_screen_narration
                     .after_input(input, Instant::now());
             }
+            PlatformEffect::SocialInteractionsInput(input) => {
+                let input = match input {
+                    ScreenNarrationScheduleInput::MouseMove => ScreenNarrationInput::MouseMove,
+                    ScreenNarrationScheduleInput::MouseAction => ScreenNarrationInput::MouseAction,
+                    ScreenNarrationScheduleInput::KeyboardAction => {
+                        ScreenNarrationInput::KeyboardAction
+                    }
+                };
+                self.social_interactions_narration
+                    .after_input(input, Instant::now());
+            }
             PlatformEffect::GameEventScreenInput(input) => {
                 let input = match input {
                     ScreenNarrationScheduleInput::MouseMove => ScreenNarrationInput::MouseMove,
@@ -366,6 +378,7 @@ fn main() -> Result<()> {
         .requests
         .install_sink(std::sync::Arc::new(simulation_mailbox.clone()));
     let mut world = WorldStore::new();
+    world.set_social_server_label(args.server.clone());
     world.set_dialog_link_options(args.client_chat_links, args.client_chat_links_prompt);
     world.set_chat_presentation_config(ChatPresentationConfig {
         visibility: ChatVisibilityState::from(bbb_protocol::packets::ClientChatVisibility::from(
@@ -375,7 +388,7 @@ fn main() -> Result<()> {
         hide_matched_names: args.client_hide_matched_names,
         message_delay_millis: (args.client_chat_delay_seconds * 1_000.0) as u64,
         hidden_players: Vec::new(),
-        blocked_players: Vec::new(),
+        blocked_players: args.client_blocked_players.clone(),
     });
     let mut net_counters = NetCounters::default();
     net_counters.client_resources =
@@ -665,6 +678,7 @@ fn main() -> Result<()> {
     let mut next_redraw_at = Instant::now();
     let mut last_command_suggestion_narration = None;
     let mut stats_screen_narration = ScreenNarrationRuntime::default();
+    let mut social_interactions_narration = ScreenNarrationRuntime::default();
     let mut death_screen_narration = ScreenNarrationRuntime::default();
     let mut game_event_screen_narration = ScreenNarrationRuntime::default();
     let mut pending_control_screenshots = std::collections::VecDeque::new();
@@ -775,6 +789,7 @@ fn main() -> Result<()> {
                     terrain_upload: &mut terrain_upload,
                     debug_profiler: &mut debug_profiler,
                     stats_screen_narration: &mut stats_screen_narration,
+                    social_interactions_narration: &mut social_interactions_narration,
                     death_screen_narration: &mut death_screen_narration,
                     game_event_screen_narration: &mut game_event_screen_narration,
                     narrator: narrator_runtime
@@ -1294,6 +1309,7 @@ fn world_wants_cursor(world: &WorldStore) -> bool {
         || world.current_book().is_some()
         || world.advancements_screen_is_open()
         || world.stats_screen_is_open()
+        || world.social_interactions_screen().is_some()
         || world.game_rules_screen().is_some()
         || world.command_block_editor().is_some()
         || world.minecart_command_block_editor().is_some()
@@ -1446,6 +1462,16 @@ mod tests {
 
         assert!(!runtime_wants_cursor(&input, &world));
         assert!(world.open_stats_screen());
+        assert!(runtime_wants_cursor(&input, &world));
+    }
+
+    #[test]
+    fn social_interactions_runtime_wants_cursor() {
+        let input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+
+        assert!(!runtime_wants_cursor(&input, &world));
+        world.open_social_interactions_screen();
         assert!(runtime_wants_cursor(&input, &world));
     }
 

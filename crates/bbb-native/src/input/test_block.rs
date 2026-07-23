@@ -91,6 +91,7 @@ impl ClientInputState {
             || world.current_book().is_some()
             || world.advancements_screen_is_open()
             || world.stats_screen_is_open()
+            || world.social_interactions_screen().is_some()
             || world.game_rules_screen().is_some()
             || self.sign_editor_is_active_or_pending(world)
             || self.debug_options_screen_is_open()

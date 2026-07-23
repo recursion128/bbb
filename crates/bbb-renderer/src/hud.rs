@@ -22,6 +22,7 @@ mod gpu;
 mod layout;
 mod player_list;
 mod scoreboard;
+mod social;
 mod spectator;
 
 pub use self::book::{
@@ -74,6 +75,10 @@ use self::layout::{
 pub use self::player_list::{HudPlayerList, HudPlayerListEntry, HudPlayerListScore};
 pub(crate) use self::player_list::{HudPlayerListHeartSprites, HudPlayerListRuntime};
 pub use self::scoreboard::{HudScoreboardSidebar, HudScoreboardSidebarEntry};
+pub use self::social::{
+    HudSocialInteractionsFocus, HudSocialInteractionsHitTarget, HudSocialInteractionsHitTargetKind,
+    HudSocialInteractionsPage, HudSocialInteractionsPlayerAction,
+};
 pub use self::spectator::{HudHotbarMode, HudSpectatorGui, HudSpectatorGuiSlot, HudSpectatorIcon};
 
 pub use bbb_render_types::{

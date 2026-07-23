@@ -36,9 +36,9 @@ use crate::{
         handle_key_input_with_item_runtime, handle_mouse_input_at_partial_tick,
         handle_mouse_motion, handle_mouse_wheel, handle_text_input_with_item_runtime,
         queue_chat_command, queue_debug_recreate_server_query_request, release_active_input,
-        CommandSuggestionTextMeasurer, DebugClipboard, DebugFeatureCountRequest,
-        DebugFrustumRequest, DebugOptionsSearchTextMeasurer, DebugProfilingToggleRequest,
-        PauseScreenLinkRequest, TerrainReloadRequestSink,
+        social::SocialInteractionsPlatformRequest, CommandSuggestionTextMeasurer, DebugClipboard,
+        DebugFeatureCountRequest, DebugFrustumRequest, DebugOptionsSearchTextMeasurer,
+        DebugProfilingToggleRequest, PauseScreenLinkRequest, TerrainReloadRequestSink,
     },
     resource_pack_runtime::ServerResourcePackRuntime,
     runtime::{
@@ -350,6 +350,20 @@ impl SimulationInputRuntime {
                 .update_screen_cursor_position(self.cursor_position);
             return;
         }
+        if context.world.social_interactions_screen().is_some() {
+            context
+                .input
+                .handle_social_interactions_hover(context.world, None);
+            context
+                .platform
+                .submit(PlatformEffect::SocialInteractionsInput(
+                    ScreenNarrationScheduleInput::MouseMove,
+                ));
+            context
+                .input
+                .update_screen_cursor_position(self.cursor_position);
+            return;
+        }
         if context.world.dialog_screen_is_open() {
             context
                 .input
@@ -510,6 +524,34 @@ impl SimulationInputRuntime {
             return;
         }
 
+        if context.world.social_interactions_screen().is_some() {
+            self.request_cursor_capture(false, context.platform);
+            handle_key_input_with_item_runtime(
+                context.input,
+                context.net_counters,
+                context.world,
+                context.net_commands,
+                context.item_runtime.as_ref(),
+                physical_key,
+                state,
+                self.surface_size,
+                &self.text_measurements,
+                None,
+            );
+            collect_social_interactions_platform_effects(context.input, context.platform);
+            if matches!(state, ElementState::Pressed) {
+                context
+                    .platform
+                    .submit(PlatformEffect::SocialInteractionsInput(
+                        ScreenNarrationScheduleInput::KeyboardAction,
+                    ));
+            }
+            if !simulation_wants_cursor(context.input, context.world) {
+                self.request_cursor_capture(true, context.platform);
+            }
+            return;
+        }
+
         let pause_was_open = context.input.debug_pause_screen_is_open();
         if context
             .input
@@ -573,6 +615,7 @@ impl SimulationInputRuntime {
         let book_open = context.world.current_book().is_some();
         let advancements_open = context.world.advancements_screen_is_open();
         let stats_open = context.world.stats_screen_is_open();
+        let social_interactions_open = context.world.social_interactions_screen().is_some();
         let game_rules_open = context.world.game_rules_screen().is_some();
         let debug_options_open = context.input.debug_options_screen_is_open();
         let pause_open = context.input.debug_pause_screen_is_open();
@@ -613,6 +656,7 @@ impl SimulationInputRuntime {
             && !book_open
             && !advancements_open
             && !stats_open
+            && !social_interactions_open
             && !game_rules_open
             && !debug_options_open
             && !pause_open
@@ -630,6 +674,7 @@ impl SimulationInputRuntime {
             || book_open
             || advancements_open
             || stats_open
+            || social_interactions_open
             || game_rules_open
             || debug_options_open
             || pause_open
@@ -652,6 +697,7 @@ impl SimulationInputRuntime {
             && !book_open
             && !advancements_open
             && !stats_open
+            && !social_interactions_open
             && !game_rules_open
             && !debug_options_open
             && !pause_open
@@ -677,6 +723,17 @@ impl SimulationInputRuntime {
             Some(&mut clipboard),
         );
         flush_platform_effects(&queued_effects, context.platform);
+        if !social_interactions_open
+            && context.world.social_interactions_screen().is_some()
+            && matches!(state, ElementState::Pressed)
+        {
+            self.request_cursor_capture(false, context.platform);
+            context
+                .platform
+                .submit(PlatformEffect::SocialInteractionsInput(
+                    ScreenNarrationScheduleInput::KeyboardAction,
+                ));
+        }
         if (command_entry_open
             || structure_block_editor_open
             || jigsaw_block_editor_open
@@ -879,6 +936,7 @@ impl SimulationInputRuntime {
         let book_open = context.world.current_book().is_some();
         let advancements_open = context.world.advancements_screen_is_open();
         let stats_open = context.world.stats_screen_is_open();
+        let social_interactions_open = context.world.social_interactions_screen().is_some();
         let game_rules_open = context.world.game_rules_screen().is_some();
         let command_entry_open = context.input.command_entry_is_active();
         let structure_block_editor_open = context.input.structure_block_editor_is_active();
@@ -893,6 +951,18 @@ impl SimulationInputRuntime {
         if context.world.dialog_screen_is_open() {
             self.request_cursor_capture(false, context.platform);
             handle_dialog_text_input_with_measurer(context.world, text, &self.text_measurements);
+            return;
+        }
+        if social_interactions_open {
+            self.request_cursor_capture(false, context.platform);
+            context
+                .input
+                .handle_social_interactions_text(context.world, text);
+            context
+                .platform
+                .submit(PlatformEffect::SocialInteractionsInput(
+                    ScreenNarrationScheduleInput::KeyboardAction,
+                ));
             return;
         }
         if advancements_open || stats_open {
@@ -1003,6 +1073,13 @@ impl SimulationInputRuntime {
             if context.input.pause_screen_disconnect_requested() {
                 request_net_disconnect(context.net_commands, &mut self.net_disconnect_requested);
             }
+            if context.world.social_interactions_screen().is_some() {
+                context
+                    .platform
+                    .submit(PlatformEffect::SocialInteractionsInput(
+                        ScreenNarrationScheduleInput::MouseAction,
+                    ));
+            }
             if !simulation_wants_cursor(context.input, context.world) {
                 self.request_cursor_capture(true, context.platform);
             }
@@ -1042,6 +1119,25 @@ impl SimulationInputRuntime {
                     ScreenNarrationScheduleInput::MouseAction,
                 ));
             if context.world.game_event_screen().is_none() {
+                self.request_cursor_capture(true, context.platform);
+            }
+            return;
+        }
+        if context.world.social_interactions_screen().is_some() {
+            self.request_cursor_capture(false, context.platform);
+            context.input.handle_social_interactions_mouse_input(
+                context.world,
+                button,
+                state,
+                None,
+            );
+            collect_social_interactions_platform_effects(context.input, context.platform);
+            context
+                .platform
+                .submit(PlatformEffect::SocialInteractionsInput(
+                    ScreenNarrationScheduleInput::MouseAction,
+                ));
+            if !simulation_wants_cursor(context.input, context.world) {
                 self.request_cursor_capture(true, context.platform);
             }
             return;
@@ -1420,6 +1516,18 @@ impl SimulationInputRuntime {
             self.request_cursor_capture(false, context.platform);
             return;
         }
+        if context.world.social_interactions_screen().is_some() {
+            self.request_cursor_capture(false, context.platform);
+            context
+                .input
+                .handle_social_interactions_mouse_wheel(context.world, delta);
+            context
+                .platform
+                .submit(PlatformEffect::SocialInteractionsInput(
+                    ScreenNarrationScheduleInput::MouseAction,
+                ));
+            return;
+        }
         if context.world.dialog_screen_is_open() {
             self.request_cursor_capture(false, context.platform);
             handle_dialog_mouse_wheel(
@@ -1691,6 +1799,7 @@ fn world_wants_cursor(world: &WorldStore) -> bool {
         || world.current_book().is_some()
         || world.advancements_screen_is_open()
         || world.stats_screen_is_open()
+        || world.social_interactions_screen().is_some()
         || world.game_rules_screen().is_some()
         || world.command_block_editor().is_some()
         || world.minecart_command_block_editor().is_some()
@@ -1791,6 +1900,20 @@ fn collect_game_event_screen_platform_effects(
         platform.submit(match request {
             GameEventScreenPlatformRequest::OpenUri(url) => PlatformEffect::OpenUri(url),
             GameEventScreenPlatformRequest::ClipboardWrite(text) => {
+                PlatformEffect::ClipboardWrite(text)
+            }
+        });
+    }
+}
+
+fn collect_social_interactions_platform_effects(
+    input: &mut crate::input::ClientInputState,
+    platform: &mut PlatformEffectCollector<'_>,
+) {
+    for request in input.take_social_interactions_platform_requests() {
+        platform.submit(match request {
+            SocialInteractionsPlatformRequest::OpenUri(url) => PlatformEffect::OpenUri(url),
+            SocialInteractionsPlatformRequest::ClipboardWrite(text) => {
                 PlatformEffect::ClipboardWrite(text)
             }
         });

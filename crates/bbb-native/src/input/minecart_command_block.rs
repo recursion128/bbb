@@ -64,6 +64,7 @@ impl ClientInputState {
             || world.current_book().is_some()
             || world.advancements_screen_is_open()
             || world.stats_screen_is_open()
+            || world.social_interactions_screen().is_some()
             || world.game_rules_screen().is_some()
             || world.command_block_editor().is_some()
             || world.structure_block_editor().is_some()

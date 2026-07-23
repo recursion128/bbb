@@ -16180,6 +16180,33 @@ fn debug_pause_screen_stats_button_opens_stats_screen_and_requests_stats() {
 }
 
 #[test]
+fn social_interactions_pause_player_reporting_button_opens_with_pause_return() {
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    let surface = PhysicalSize::new(320, 240);
+    input.open_debug_pause_screen_with_menu();
+
+    assert!(pause_screen_player_reporting_button_enabled());
+    assert!(input.handle_debug_pause_screen_mouse_input(
+        &mut counters,
+        &mut world,
+        &None,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(170.0, 150.0)),
+        surface,
+    ));
+
+    assert!(!input.debug_pause_screen_is_open());
+    assert!(world.social_interactions_screen().is_some());
+    assert!(input.social_interactions_runtime().is_some());
+    assert!(input.handle_social_interactions_key(&mut world, KeyCode::Escape, true));
+    assert!(world.social_interactions_screen().is_none());
+    assert!(input.debug_pause_screen_is_open());
+}
+
+#[test]
 fn debug_pause_screen_send_feedback_button_records_link_request() {
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();

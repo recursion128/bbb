@@ -2348,6 +2348,7 @@ pub(crate) fn advance_simulation(
     input.sync_dialog_native_previous_screen(world, net_counters, net_commands);
     input.sync_game_event_screen(world, net_counters, net_commands);
     input.sync_death_screen(world, net_counters, net_commands);
+    input.sync_social_interactions_screen(world);
     input.sync_sign_editor(world, net_counters, net_commands);
     input.sync_book_screen(world);
     input.sync_command_block_editor(world, net_counters, net_commands);
@@ -4323,6 +4324,7 @@ fn input_screen_is_open(input: &ClientInputState, world: &WorldStore) -> bool {
         || world.current_book().is_some()
         || world.advancements_screen_is_open()
         || world.stats_screen_is_open()
+        || world.social_interactions_screen().is_some()
         || world.game_rules_screen().is_some()
         || world.command_block_editor().is_some()
         || world.minecart_command_block_editor().is_some()
