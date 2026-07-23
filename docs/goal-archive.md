@@ -327,3 +327,7 @@
   复现距离/yaw/pitch、UUID entity follow、Java tint 与 far-first overlap；selected-pack
   style/sprite、missingno、contextual priority 和事务 reload 完成像素级闭环，五类 coverage
   全部 complete，合同见 `docs/archive/waypoint-locator-bar-closure-design.md`。
+- **2026-07-23（World-border vignette 六包族闭环）**：camera-local lightmap 亮度平滑与
+  边界静态/移动 warning 阈值驱动原版 tint；selected-pack vignette、精确 destination
+  multiply blend 和事务 reload 完成像素级闭环，六行 coverage 全部 complete，合同见
+  `docs/archive/world-border-vignette-closure-design.md`。

@@ -1111,10 +1111,6 @@ back into a todo. Do not delete these.
 
 ## HUD and debug overlay
 
-- Render the world-border warning vignette from camera distance,
-  `warningBlocks`, `warningTime`, lerp speed and lerp target/size delta, matching
-  `Gui.extractVignette`. Canonical border fields, tick lerp and forcefield render
-  extraction are covered; storing warning fields alone is not their HUD consumer.
 - **Heart damage/heal blink flash.** Needs the untracked
   `player.invulnerableTime` (no client-side sync) and the wall-clock
   `displayHealth` / `lastHealthTime` hold, neither reproducible

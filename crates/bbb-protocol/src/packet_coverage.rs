@@ -2549,7 +2549,7 @@ mod tests {
     }
 
     #[test]
-    fn play_initialize_border_keeps_warning_vignette_open() {
+    fn play_initialize_border_is_closed() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -2558,14 +2558,14 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "CLIENTBOUND_INITIALIZE_BORDER"
             })
             .expect("play initialize border coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
+        assert!(entry.coverage["runtime_side_effect"]
+            .evidence
             .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(partial, BTreeSet::from(["runtime_side_effect", "tests"]));
+            .any(|evidence| evidence.contains("VignetteRuntime")));
     }
 
     #[test]
@@ -2884,7 +2884,7 @@ mod tests {
     }
 
     #[test]
-    fn play_incremental_world_border_family_keeps_warning_vignette_open() {
+    fn play_incremental_world_border_family_is_closed() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         for packet in [
             "CLIENTBOUND_SET_BORDER_CENTER",
@@ -2898,16 +2898,18 @@ mod tests {
                 .iter()
                 .find(|entry| entry.state == "play" && entry.constant_name == packet)
                 .expect("play incremental world border coverage row");
-            let partial: BTreeSet<_> = entry
-                .coverage
-                .iter()
-                .filter_map(|(dimension, cell)| {
-                    (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-                })
-                .collect();
-            assert_eq!(
-                partial,
-                BTreeSet::from(["runtime_side_effect", "tests"]),
+            assert!(
+                entry
+                    .coverage
+                    .values()
+                    .all(|cell| cell.status == PacketCoverageStatus::Complete),
+                "{packet}"
+            );
+            assert!(
+                entry.coverage["runtime_side_effect"]
+                    .evidence
+                    .iter()
+                    .any(|evidence| evidence.contains("vignette")),
                 "{packet}"
             );
         }

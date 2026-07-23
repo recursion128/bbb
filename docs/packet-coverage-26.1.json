@@ -9213,11 +9213,13 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-native/src/runtime/render_extract.rs#world_border_render_state_for_world",
-            "crates/bbb-native/src/runtime/tests.rs#renderer_frame_world_border_extracts_after_border_tick_and_weather",
+            "crates/bbb-native/src/runtime/vignette.rs#VignetteRuntime",
+            "crates/bbb-renderer/src/vignette.rs#HudVignette",
+            "crates/bbb-renderer/src/render.rs#vignette_pass",
             "vanilla:net/minecraft/client/gui/Gui.java#extractVignette"
           ],
-          "gap": "docs/unsupported-features.md#hud-and-debug-overlay",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -9226,10 +9228,14 @@
             "crates/bbb-net/src/probe/play.rs#probe_applies_world_border_packets_to_world",
             "crates/bbb-world/src/client/world_border.rs#initialize_border_with_lerp_records_old_new_and_time",
             "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#border_events_update_world_and_world_counters",
-            "crates/bbb-native/src/runtime/tests.rs#renderer_frame_world_border_extracts_after_border_tick_and_weather"
+            "crates/bbb-native/src/runtime/vignette.rs#vignette_brightness_curve_and_tick_smoothing_match_vanilla",
+            "crates/bbb-native/src/runtime/vignette.rs#vignette_border_warning_uses_static_distance_and_tint_formula",
+            "crates/bbb-native/src/runtime/vignette.rs#vignette_moving_threshold_uses_speed_time_and_remaining_delta",
+            "crates/bbb-renderer/src/offscreen.rs#offscreen_frame_applies_vignette_before_ordinary_hud",
+            "crates/bbb-renderer/src/resource_reload.rs#failed_vignette_reload_restores_the_previous_pixel_owner"
           ],
-          "gap": "docs/unsupported-features.md#hud-and-debug-overlay",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",
@@ -11807,10 +11813,12 @@
           "evidence": [
             "crates/bbb-native/src/runtime/render_extract.rs#world_border_render_state_for_world",
             "crates/bbb-native/src/input/mouse.rs#block_target_within_world_border",
+            "crates/bbb-native/src/runtime/vignette.rs#VignetteRuntime",
+            "crates/bbb-renderer/src/render.rs#vignette_pass",
             "vanilla:net/minecraft/client/gui/Gui.java#extractVignette"
           ],
-          "gap": "docs/unsupported-features.md#hud-and-debug-overlay",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -11819,10 +11827,11 @@
             "crates/bbb-net/src/probe/play.rs#probe_applies_world_border_packets_to_world",
             "crates/bbb-world/src/client/world_border.rs#border_incremental_updates_mutate_only_expected_fields",
             "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#border_events_update_world_and_world_counters",
-            "crates/bbb-native/src/runtime/tests.rs#world_border_render_state_matches_vanilla_extract_alpha_and_tint"
+            "crates/bbb-native/src/runtime/vignette.rs#vignette_border_warning_uses_static_distance_and_tint_formula",
+            "crates/bbb-renderer/src/offscreen.rs#offscreen_frame_applies_vignette_before_ordinary_hud"
           ],
-          "gap": "docs/unsupported-features.md#hud-and-debug-overlay",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",
@@ -11862,11 +11871,12 @@
           "evidence": [
             "crates/bbb-world/src/client/world_border.rs#advance_world_border",
             "crates/bbb-native/src/runtime/render_extract.rs#world_border_render_state_for_world",
-            "crates/bbb-native/src/runtime/tests.rs#world_border_render_state_interpolates_lerping_bounds_and_uses_shrinking_tint",
+            "crates/bbb-native/src/runtime/vignette.rs#VignetteRuntime",
+            "crates/bbb-renderer/src/render.rs#vignette_pass",
             "vanilla:net/minecraft/client/gui/Gui.java#extractVignette"
           ],
-          "gap": "docs/unsupported-features.md#hud-and-debug-overlay",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -11875,10 +11885,11 @@
             "crates/bbb-net/src/probe/play.rs#probe_applies_world_border_packets_to_world",
             "crates/bbb-world/src/client/world_border.rs#world_border_tick_follows_vanilla_moving_extent_update",
             "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#border_events_update_world_and_world_counters",
-            "crates/bbb-native/src/runtime/tests.rs#world_border_render_state_interpolates_lerping_bounds_and_uses_shrinking_tint"
+            "crates/bbb-native/src/runtime/vignette.rs#vignette_moving_threshold_uses_speed_time_and_remaining_delta",
+            "crates/bbb-renderer/src/offscreen.rs#offscreen_frame_applies_vignette_before_ordinary_hud"
           ],
-          "gap": "docs/unsupported-features.md#hud-and-debug-overlay",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",
@@ -11918,10 +11929,12 @@
           "evidence": [
             "crates/bbb-native/src/runtime/render_extract.rs#world_border_render_state_for_world",
             "crates/bbb-native/src/input/mouse.rs#block_target_within_world_border",
+            "crates/bbb-native/src/runtime/vignette.rs#VignetteRuntime",
+            "crates/bbb-renderer/src/render.rs#vignette_pass",
             "vanilla:net/minecraft/client/gui/Gui.java#extractVignette"
           ],
-          "gap": "docs/unsupported-features.md#hud-and-debug-overlay",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -11930,10 +11943,11 @@
             "crates/bbb-net/src/probe/play.rs#probe_applies_world_border_packets_to_world",
             "crates/bbb-world/src/client/world_border.rs#border_incremental_updates_mutate_only_expected_fields",
             "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#border_events_update_world_and_world_counters",
-            "crates/bbb-native/src/runtime/tests.rs#world_border_render_state_matches_vanilla_extract_alpha_and_tint"
+            "crates/bbb-native/src/runtime/vignette.rs#vignette_border_warning_uses_static_distance_and_tint_formula",
+            "crates/bbb-renderer/src/offscreen.rs#offscreen_frame_applies_vignette_before_ordinary_hud"
           ],
-          "gap": "docs/unsupported-features.md#hud-and-debug-overlay",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",
@@ -11972,10 +11986,12 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-world/src/client/world_border.rs#apply_set_border_warning_delay",
+            "crates/bbb-native/src/runtime/vignette.rs#VignetteRuntime",
+            "crates/bbb-renderer/src/render.rs#vignette_pass",
             "vanilla:net/minecraft/client/gui/Gui.java#extractVignette"
           ],
-          "gap": "docs/unsupported-features.md#hud-and-debug-overlay",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -11983,10 +11999,12 @@
             "crates/bbb-net/src/event_stream.rs#play_border_and_scoreboard_packets_emit_matching_events_without_responses",
             "crates/bbb-net/src/probe/play.rs#probe_applies_world_border_packets_to_world",
             "crates/bbb-world/src/client/world_border.rs#border_incremental_updates_mutate_only_expected_fields",
-            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#border_events_update_world_and_world_counters"
+            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#border_events_update_world_and_world_counters",
+            "crates/bbb-native/src/runtime/vignette.rs#vignette_moving_threshold_uses_speed_time_and_remaining_delta",
+            "crates/bbb-renderer/src/offscreen.rs#offscreen_frame_applies_vignette_before_ordinary_hud"
           ],
-          "gap": "docs/unsupported-features.md#hud-and-debug-overlay",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",
@@ -12025,10 +12043,12 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-world/src/client/world_border.rs#apply_set_border_warning_distance",
+            "crates/bbb-native/src/runtime/vignette.rs#VignetteRuntime",
+            "crates/bbb-renderer/src/render.rs#vignette_pass",
             "vanilla:net/minecraft/client/gui/Gui.java#extractVignette"
           ],
-          "gap": "docs/unsupported-features.md#hud-and-debug-overlay",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -12036,10 +12056,12 @@
             "crates/bbb-net/src/event_stream.rs#play_border_and_scoreboard_packets_emit_matching_events_without_responses",
             "crates/bbb-net/src/probe/play.rs#probe_applies_world_border_packets_to_world",
             "crates/bbb-world/src/client/world_border.rs#border_incremental_updates_mutate_only_expected_fields",
-            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#border_events_update_world_and_world_counters"
+            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#border_events_update_world_and_world_counters",
+            "crates/bbb-native/src/runtime/vignette.rs#vignette_border_warning_uses_static_distance_and_tint_formula",
+            "crates/bbb-renderer/src/offscreen.rs#offscreen_frame_applies_vignette_before_ordinary_hud"
           ],
-          "gap": "docs/unsupported-features.md#hud-and-debug-overlay",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",
