@@ -3100,7 +3100,12 @@ fn environment_position_rejects_malformed_biome_sound_atomically() {
 
     assert_eq!(error.registry, "minecraft:worldgen/biome");
     assert_eq!(error.validator, "Biome.NETWORK_CODEC");
-    assert!(error.message.contains("invalid background music"));
+    assert!(
+        error
+            .message
+            .contains("missing minecraft:sound_event resource example:missing_music"),
+        "{error:?}"
+    );
     assert_eq!(store.registry_access_revision(), committed_revision);
     assert_eq!(
         store.registry_resource_id_by_holder_id("minecraft:worldgen/biome", 0),
@@ -3145,7 +3150,12 @@ fn unknown_environment_sound_reference_rejects_candidate_atomically() {
 
     assert_eq!(error.registry, "minecraft:dimension_type");
     assert_eq!(error.validator, "DimensionType.CLIENT_PROJECTION");
-    assert!(error.message.contains("invalid background music"));
+    assert!(
+        error
+            .message
+            .contains("missing minecraft:sound_event resource example:missing_sound"),
+        "{error:?}"
+    );
     assert_eq!(store.registry_access_revision(), committed_revision);
     assert_eq!(
         store.registry_resource_id_by_holder_id("minecraft:dimension_type", 0),
