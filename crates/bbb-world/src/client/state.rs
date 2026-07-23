@@ -60,8 +60,8 @@ pub use crate::client::local_player_collision::{
     ParticleBlockFluidSurfaceSample, WorldCollisionBox,
 };
 pub use crate::client::local_player_destroy::{
-    LocalDestroyBlockFinished, WorldBlockDestroyProfile, WorldItemMiningProfile,
-    WorldItemMiningRule,
+    LocalBlockAttackEffect, LocalDestroyBlockFinished, WorldBlockDestroyProfile,
+    WorldItemMiningProfile, WorldItemMiningRule,
 };
 pub use crate::client::player_info::{
     PlayerInfoEntryState, PlayerInfoProfileState, PlayerInfoState,

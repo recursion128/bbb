@@ -1036,8 +1036,21 @@ impl WorldStore {
             self.counters.local_block_predictions_failed += 1;
             return false;
         };
-        let server_block_state_id = block.block_state_id;
         let predicted_block_state_id = self.local_destroy_legacy_block_state_id(&block);
+        self.predict_local_block_state(pos, predicted_block_state_id, sequence)
+    }
+
+    pub fn predict_local_block_state(
+        &mut self,
+        pos: BlockPos,
+        predicted_block_state_id: i32,
+        sequence: i32,
+    ) -> bool {
+        let Some(block) = self.probe_block(pos) else {
+            self.counters.local_block_predictions_failed += 1;
+            return false;
+        };
+        let server_block_state_id = block.block_state_id;
         if server_block_state_id == predicted_block_state_id {
             return true;
         }

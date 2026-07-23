@@ -1532,6 +1532,105 @@ fn local_destroy_prediction_defers_server_block_update_until_ack() {
 }
 
 #[test]
+fn repeated_local_predictions_retain_first_server_state_and_player_position() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+    let pos = BlockPos {
+        x: 34,
+        y: 1,
+        z: -45,
+    };
+    let first_position = ProtocolVec3d {
+        x: 34.5,
+        y: 2.0,
+        z: -44.5,
+    };
+    store.set_local_player_pose(LocalPlayerPoseState {
+        position: first_position,
+        ..LocalPlayerPoseState::default()
+    });
+
+    assert!(store.predict_local_block_state(pos, 1, 7));
+    store.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 36.5,
+            y: 2.0,
+            z: -44.5,
+        },
+        ..LocalPlayerPoseState::default()
+    });
+    assert!(store.predict_local_block_state(pos, 0, 8));
+
+    assert_eq!(store.local_block_predictions().len(), 1);
+    assert_eq!(store.counters().local_block_predictions_created, 1);
+    assert_eq!(store.local_block_predictions()[0].sequence, 8);
+    assert_eq!(store.local_block_predictions()[0].server_block_state_id, 9);
+    assert_eq!(
+        store.local_block_predictions()[0].predicted_block_state_id,
+        0
+    );
+    assert_eq!(
+        store.local_block_predictions()[0].player_position,
+        Some(first_position)
+    );
+
+    store.apply_block_changed_ack(ProtocolBlockChangedAck { sequence: 7 });
+    assert_eq!(store.probe_block(pos).unwrap().block_state_id, 0);
+    assert_eq!(store.local_block_predictions().len(), 1);
+
+    store.apply_block_changed_ack(ProtocolBlockChangedAck { sequence: 8 });
+    assert_eq!(store.probe_block(pos).unwrap().block_state_id, 9);
+    assert!(store.local_block_predictions().is_empty());
+}
+
+#[test]
+fn one_prediction_sequence_tracks_each_changed_position() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+    let grass = BlockPos {
+        x: 34,
+        y: 1,
+        z: -45,
+    };
+    let granite = BlockPos {
+        x: 35,
+        y: 1,
+        z: -45,
+    };
+
+    assert!(store.predict_local_block_state(grass, 0, 7));
+    assert!(store.predict_local_block_state(granite, 1, 7));
+
+    assert_eq!(store.local_block_predictions().len(), 2);
+    assert_eq!(store.counters().local_block_predictions_created, 2);
+    assert!(store.local_block_predictions().iter().any(|prediction| {
+        prediction.pos == grass
+            && prediction.server_block_state_id == 9
+            && prediction.predicted_block_state_id == 0
+    }));
+    assert!(store.local_block_predictions().iter().any(|prediction| {
+        prediction.pos == granite
+            && prediction.server_block_state_id == 5
+            && prediction.predicted_block_state_id == 1
+    }));
+
+    store.apply_block_changed_ack(ProtocolBlockChangedAck { sequence: 7 });
+    assert_eq!(store.probe_block(grass).unwrap().block_state_id, 9);
+    assert_eq!(store.probe_block(granite).unwrap().block_state_id, 5);
+    assert!(store.local_block_predictions().is_empty());
+}
+
+#[test]
 fn local_destroy_prediction_rejected_ack_snaps_colliding_player_to_prediction_position() {
     let mut store = WorldStore::with_dimension(WorldDimension {
         min_y: 0,

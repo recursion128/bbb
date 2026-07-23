@@ -24,6 +24,12 @@ pub struct LocalDestroyBlockFinished {
     pub sequence: i32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LocalBlockAttackEffect {
+    RedstoneOre { pos: BlockPos },
+    DragonEgg { pos: BlockPos },
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorldBlockDestroyProfile {
     pub destroy_time_tenths: Option<u32>,
@@ -44,6 +50,34 @@ pub struct WorldItemMiningProfile {
 }
 
 impl WorldStore {
+    pub fn apply_local_block_attack(
+        &mut self,
+        pos: BlockPos,
+        sequence: i32,
+    ) -> Option<LocalBlockAttackEffect> {
+        let block = self.probe_block(pos)?;
+        let block_name = block.block_name?;
+        match block_name.as_str() {
+            "minecraft:redstone_ore" | "minecraft:deepslate_redstone_ore" => {
+                if block.block_properties.get("lit").map(String::as_str) == Some("false") {
+                    let mut lit_properties = block.block_properties;
+                    lit_properties.insert("lit".to_string(), "true".to_string());
+                    if let Some(lit_block_state_id) = self
+                        .registries
+                        .block_state_id_by_name_and_properties(&block_name, &lit_properties)
+                    {
+                        self.predict_local_block_state(pos, lit_block_state_id, sequence);
+                    }
+                }
+                Some(LocalBlockAttackEffect::RedstoneOre { pos })
+            }
+            "minecraft:dragon_egg" => Some(LocalBlockAttackEffect::DragonEgg { pos }),
+            // NoteBlock.attack is server-only; every other Vanilla block uses
+            // BlockBehaviour's empty implementation.
+            _ => None,
+        }
+    }
+
     pub fn set_default_block_destroy_profiles(
         &mut self,
         profiles: std::collections::BTreeMap<String, WorldBlockDestroyProfile>,
@@ -396,6 +430,83 @@ mod tests {
 
     const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
     const FLOWING_WATER_LEVEL_3_BLOCK_STATE_ID: i32 = 89;
+
+    #[test]
+    fn local_block_attack_predicts_both_redstone_ore_families_lit() {
+        let pos = BlockPos { x: 0, y: 1, z: 3 };
+        for block_name in ["minecraft:redstone_ore", "minecraft:deepslate_redstone_ore"] {
+            let unlit = block_state_id(block_name, &[("lit", "false")]);
+            let lit = block_state_id(block_name, &[("lit", "true")]);
+            let mut world = world_with_block(pos, unlit);
+
+            assert_eq!(
+                world.apply_local_block_attack(pos, 7),
+                Some(LocalBlockAttackEffect::RedstoneOre { pos })
+            );
+            assert_eq!(world.probe_block(pos).unwrap().block_state_id, lit);
+            assert_eq!(world.local_block_predictions().len(), 1);
+            assert_eq!(world.local_block_predictions()[0].sequence, 7);
+            assert_eq!(
+                world.local_block_predictions()[0].server_block_state_id,
+                unlit
+            );
+            assert_eq!(
+                world.local_block_predictions()[0].predicted_block_state_id,
+                lit
+            );
+
+            world.apply_block_changed_ack(bbb_protocol::packets::BlockChangedAck { sequence: 7 });
+            assert_eq!(world.probe_block(pos).unwrap().block_state_id, unlit);
+        }
+    }
+
+    #[test]
+    fn local_block_attack_preserves_lit_redstone_ore_while_requesting_particles() {
+        let pos = BlockPos { x: 0, y: 1, z: 3 };
+        let lit = block_state_id("minecraft:redstone_ore", &[("lit", "true")]);
+        let mut world = world_with_block(pos, lit);
+
+        assert_eq!(
+            world.apply_local_block_attack(pos, 7),
+            Some(LocalBlockAttackEffect::RedstoneOre { pos })
+        );
+        assert_eq!(world.probe_block(pos).unwrap().block_state_id, lit);
+        assert!(world.local_block_predictions().is_empty());
+    }
+
+    #[test]
+    fn local_block_attack_dispatches_only_client_observable_overrides() {
+        let pos = BlockPos { x: 0, y: 1, z: 3 };
+        let dragon_egg = block_state_id("minecraft:dragon_egg", &[]);
+        let mut dragon_world = world_with_block(pos, dragon_egg);
+        assert_eq!(
+            dragon_world.apply_local_block_attack(pos, 7),
+            Some(LocalBlockAttackEffect::DragonEgg { pos })
+        );
+        assert_eq!(
+            dragon_world.probe_block(pos).unwrap().block_state_id,
+            dragon_egg
+        );
+        assert!(dragon_world.local_block_predictions().is_empty());
+
+        let note_block = block_state_id(
+            "minecraft:note_block",
+            &[("instrument", "harp"), ("note", "0"), ("powered", "false")],
+        );
+        let mut note_world = world_with_block(pos, note_block);
+        assert_eq!(note_world.apply_local_block_attack(pos, 7), None);
+        assert_eq!(
+            note_world.probe_block(pos).unwrap().block_state_id,
+            note_block
+        );
+        assert!(note_world.local_block_predictions().is_empty());
+
+        let mut stone_world = world_with_block(pos, 1);
+        assert_eq!(stone_world.apply_local_block_attack(pos, 7), None);
+        assert_eq!(stone_world.probe_block(pos).unwrap().block_state_id, 1);
+        assert!(stone_world.local_block_predictions().is_empty());
+    }
+
     #[test]
     fn fallback_destroy_profile_uses_exact_leaves_membership() {
         let leaves = fallback_local_block_destroy_profile("minecraft:oak_leaves")
@@ -981,6 +1092,15 @@ mod tests {
             destroy_time_tenths,
             requires_correct_tool,
         }
+    }
+
+    fn block_state_id(name: &str, properties: &[(&str, &str)]) -> i32 {
+        let properties = properties
+            .iter()
+            .map(|(name, value)| (name.to_string(), value.to_string()))
+            .collect();
+        crate::vanilla_block_state_id(name, &properties)
+            .unwrap_or_else(|| panic!("missing Vanilla block state {name} {properties:?}"))
     }
 
     fn single_value_container(

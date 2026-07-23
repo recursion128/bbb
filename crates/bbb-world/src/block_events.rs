@@ -250,8 +250,17 @@ impl WorldStore {
         predicted_block_state_id: i32,
         player_position: Option<ProtocolVec3d>,
     ) {
-        self.local_block_predictions
-            .retain(|prediction| prediction.sequence != sequence && prediction.pos != pos);
+        if let Some(prediction) = self
+            .local_block_predictions
+            .iter_mut()
+            .find(|prediction| prediction.pos == pos)
+        {
+            prediction.sequence = sequence;
+            prediction.predicted_block_state_id = predicted_block_state_id;
+            self.local_block_predictions
+                .sort_by_key(|prediction| prediction.sequence);
+            return;
+        }
         self.local_block_predictions
             .push(LocalBlockPredictionState {
                 sequence,
