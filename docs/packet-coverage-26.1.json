@@ -6110,7 +6110,7 @@
           "evidence": [
             "crates/bbb-protocol/src/packets/test_blocks.rs#set_test_block_enforces_editor_utf16_boundary",
             "crates/bbb-net/src/driver/commands/tests.rs#send_set_test_block_encodes_editor_packet",
-            "crates/bbb-world/src/test_blocks.rs#decodes_modes_defaults_and_malformed_field_fallbacks",
+            "crates/bbb-world/src/test_blocks.rs#decodes_modes_defaults_and_malformed_fields",
             "crates/bbb-native/src/input/tests.rs#test_block_editor_preserves_hidden_message_cycles_modes_and_done_sends_once",
             "crates/bbb-native/src/input/tests.rs#test_block_editor_right_click_cancel_and_escape_never_send_editor_packet",
             "crates/bbb-renderer/src/hud.rs#test_block_editor_layout_matches_vanilla_absolute_geometry"
