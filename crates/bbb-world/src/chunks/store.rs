@@ -614,6 +614,40 @@ impl WorldStore {
         })
     }
 
+    /// Mirrors `ChunkAccess.getNoiseBiome`: horizontal quart coordinates
+    /// select a loaded chunk and 4x4x4 biome cell, while the vertical quart
+    /// coordinate is clamped to the chunk's build-height range.
+    pub(crate) fn noise_biome_holder_id_at_quart(
+        &self,
+        quart_x: i32,
+        quart_y: i32,
+        quart_z: i32,
+    ) -> Option<i32> {
+        let quart_height = self.dimension.height.div_euclid(4);
+        if quart_height <= 0 {
+            return None;
+        }
+        let min_quart_y = self.dimension.min_y.div_euclid(4);
+        let max_quart_y = min_quart_y.checked_add(quart_height - 1)?;
+        let clamped_quart_y = quart_y.clamp(min_quart_y, max_quart_y);
+        let chunk = self.probe_chunk(ChunkPos {
+            x: quart_x.div_euclid(4),
+            z: quart_z.div_euclid(4),
+        })?;
+        let section_y = clamped_quart_y.div_euclid(4);
+        let section_index = usize::try_from(section_y - self.dimension.min_section_y()).ok()?;
+        let section = chunk.sections.get(section_index)?;
+        let biome_index = section_biome_index(
+            quart_x.rem_euclid(4) as u8,
+            clamped_quart_y.rem_euclid(4) as u8,
+            quart_z.rem_euclid(4) as u8,
+        );
+        section
+            .biomes
+            .value_at(biome_index)
+            .map(|value| value.global_id)
+    }
+
     /// Samples the stored block+sky light at a world block position, mirroring
     /// vanilla `LevelReader.getBrightness(LightLayer, BlockPos)` (the raw stored
     /// nibble per layer). Returns `None` for out-of-world heights and unloaded

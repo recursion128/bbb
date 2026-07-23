@@ -261,10 +261,14 @@ fn build_registered_typed_projections(
         candidate,
         "minecraft:worldgen/biome",
         "Biome.NETWORK_CODEC",
-        |entry, _, _| {
-            decode_biome_client_projection(entry)
+        |entry, _, access| {
+            let projection = decode_biome_client_projection(entry)
                 .map_err(|error| format!("{}: {}", error.field, error.reason))?
-                .ok_or_else(|| "<root>: typed payload unavailable".to_string())
+                .ok_or_else(|| "<root>: typed payload unavailable".to_string())?;
+            projection
+                .environment_attribute_modifiers
+                .validate_references(access)?;
+            Ok(projection)
         },
     )?;
     candidate.typed.chat_types = materialize_typed_registry(

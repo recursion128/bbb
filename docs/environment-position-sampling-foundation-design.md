@@ -39,7 +39,7 @@ correct positional or dimension-only query.
 
 The frozen public integration surface is
 `EnvironmentBiomeSampling::{Direct, Gaussian}` and
-`WorldStore::sampled_client_environment_attributes_at(position,
+`WorldStore::sampled_client_environment_attributes_at(position: [f64; 3],
 sampling) -> Result<ClientEnvironmentAttributes, TimelineProjectionError>`.
 The existing zero-position
 `sampled_client_environment_attributes()` remains the dimension/timeline

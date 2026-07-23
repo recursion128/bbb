@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 use std::fmt;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 use serde::{Deserialize, Serialize};
@@ -168,7 +168,7 @@ pub(super) enum EnvironmentTrackArgument {
     FilteredNonSyncable,
 }
 
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct ClientEnvironmentAttributeMap {
     entries: Arc<[ClientEnvironmentAttributeMapEntry]>,
 }
@@ -178,6 +178,15 @@ struct ClientEnvironmentAttributeMapEntry {
     field: &'static str,
     modifier: EnvironmentModifier,
     argument: EnvironmentTrackArgument,
+}
+
+impl Default for ClientEnvironmentAttributeMap {
+    fn default() -> Self {
+        static EMPTY: OnceLock<Arc<[ClientEnvironmentAttributeMapEntry]>> = OnceLock::new();
+        Self {
+            entries: Arc::clone(EMPTY.get_or_init(|| Arc::from([]))),
+        }
+    }
 }
 
 impl ClientEnvironmentAttributeMap {
@@ -195,6 +204,121 @@ impl ClientEnvironmentAttributeMap {
         }
         Ok(())
     }
+
+    pub(crate) fn apply_non_spatial_to(
+        &self,
+        attributes: &mut ClientEnvironmentAttributes,
+    ) -> Result<(), EnvironmentAttributeProjectionError> {
+        for entry in self.entries.iter() {
+            if vanilla_environment_attribute(entry.field)
+                .is_some_and(|descriptor| !descriptor.spatially_interpolated)
+            {
+                apply_environment_argument(
+                    attributes,
+                    entry.field,
+                    entry.modifier,
+                    entry.argument.clone(),
+                )?;
+            }
+        }
+        Ok(())
+    }
+
+    pub(crate) fn same_source(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.entries, &other.entries)
+    }
+
+    pub(crate) fn validate_references(
+        &self,
+        registry_access: FrozenRegistryAccess<'_>,
+    ) -> Result<(), String> {
+        for entry in self.entries.iter() {
+            validate_timeline_argument_references(&entry.argument, registry_access)?;
+        }
+        Ok(())
+    }
+
+    fn contains(&self, field: &str) -> bool {
+        self.entries.iter().any(|entry| entry.field == field)
+    }
+
+    fn spatial_value(
+        &self,
+        descriptor: &VanillaEnvironmentAttribute,
+        base: &ClientEnvironmentAttributes,
+    ) -> Result<SpatialEnvironmentValue, EnvironmentAttributeProjectionError> {
+        let base_value = spatial_environment_value(base, descriptor.resource_id)
+            .ok_or_else(|| error("attributes", "attribute has no spatial value"))?;
+        let Some(entry) = self
+            .entries
+            .iter()
+            .find(|entry| entry.field == descriptor.resource_id)
+        else {
+            return Ok(base_value);
+        };
+        match base_value {
+            SpatialEnvironmentValue::Float(value) => {
+                apply_float_modifier(value, entry.modifier, entry.argument.clone(), entry.field)
+                    .map(SpatialEnvironmentValue::Float)
+            }
+            SpatialEnvironmentValue::Rgb(value) => {
+                apply_color_modifier(value, entry.modifier, entry.argument.clone(), entry.field)
+                    .map(SpatialEnvironmentValue::Rgb)
+            }
+            SpatialEnvironmentValue::Argb(value) => {
+                apply_color_modifier(value, entry.modifier, entry.argument.clone(), entry.field)
+                    .map(SpatialEnvironmentValue::Argb)
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum SpatialEnvironmentValue {
+    Float(f32),
+    Rgb(u32),
+    Argb(u32),
+}
+
+pub(crate) fn apply_spatial_environment_attribute_maps(
+    attributes: &mut ClientEnvironmentAttributes,
+    weighted_sources: &[(ClientEnvironmentAttributeMap, f64)],
+) -> Result<(), EnvironmentAttributeProjectionError> {
+    if weighted_sources.is_empty() {
+        return Ok(());
+    }
+    let base = attributes.clone();
+    for descriptor in super::environment_attribute_catalog::VANILLA_ENVIRONMENT_ATTRIBUTES
+        .iter()
+        .filter(|descriptor| {
+            descriptor.syncable
+                && descriptor.positional
+                && descriptor.spatially_interpolated
+                && weighted_sources
+                    .iter()
+                    .any(|(source, _)| source.contains(descriptor.resource_id))
+        })
+    {
+        let mut result = None;
+        let mut accumulated_weight = 0.0;
+        for (source, source_weight) in weighted_sources {
+            let source_value = source.spatial_value(descriptor, &base)?;
+            accumulated_weight += source_weight;
+            result = Some(match result {
+                None => source_value,
+                Some(result) => lerp_spatial_environment_value(
+                    descriptor,
+                    (*source_weight / accumulated_weight) as f32,
+                    result,
+                    source_value,
+                )?,
+            });
+        }
+        if let Some(result) = result {
+            set_spatial_environment_value(attributes, descriptor.resource_id, result)?;
+        }
+    }
+    Ok(())
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -766,6 +890,219 @@ fn apply_color_modifier(
             srgb_lerp(factor, base, scale_rgb(gray, brightness))
         }
         _ => return Err(error(field, "color modifier argument type mismatch")),
+    })
+}
+
+fn spatial_environment_value(
+    attributes: &ClientEnvironmentAttributes,
+    field: &str,
+) -> Option<SpatialEnvironmentValue> {
+    Some(match field {
+        "minecraft:visual/fog_color" => SpatialEnvironmentValue::Rgb(
+            attributes
+                .fog_color
+                .map(rgb_bytes_to_argb)
+                .unwrap_or(0xff00_0000),
+        ),
+        "minecraft:visual/fog_start_distance" => {
+            SpatialEnvironmentValue::Float(attributes.fog_start_distance.unwrap_or(0.0))
+        }
+        "minecraft:visual/fog_end_distance" => {
+            SpatialEnvironmentValue::Float(attributes.fog_end_distance.unwrap_or(1024.0))
+        }
+        "minecraft:visual/sky_fog_end_distance" => {
+            SpatialEnvironmentValue::Float(attributes.sky_fog_end_distance.unwrap_or(512.0))
+        }
+        "minecraft:visual/cloud_fog_end_distance" => {
+            SpatialEnvironmentValue::Float(attributes.cloud_fog_end_distance.unwrap_or(2048.0))
+        }
+        "minecraft:visual/water_fog_color" => SpatialEnvironmentValue::Rgb(
+            attributes
+                .water_fog_color
+                .map(rgb_bytes_to_argb)
+                .unwrap_or(0xff05_0533),
+        ),
+        "minecraft:visual/water_fog_start_distance" => {
+            SpatialEnvironmentValue::Float(attributes.water_fog_start_distance.unwrap_or(-8.0))
+        }
+        "minecraft:visual/water_fog_end_distance" => {
+            SpatialEnvironmentValue::Float(attributes.water_fog_end_distance.unwrap_or(96.0))
+        }
+        "minecraft:visual/sky_color" => SpatialEnvironmentValue::Rgb(
+            attributes
+                .sky_color
+                .map(rgb_bytes_to_argb)
+                .unwrap_or(0xff00_0000),
+        ),
+        "minecraft:visual/sunrise_sunset_color" => SpatialEnvironmentValue::Argb(
+            attributes
+                .sunrise_sunset_color
+                .map(rgba_bytes_to_argb)
+                .unwrap_or(0),
+        ),
+        "minecraft:visual/cloud_color" => SpatialEnvironmentValue::Argb(
+            attributes.cloud_color.map(rgba_bytes_to_argb).unwrap_or(0),
+        ),
+        "minecraft:visual/cloud_height" => {
+            SpatialEnvironmentValue::Float(attributes.cloud_height.unwrap_or(192.33))
+        }
+        "minecraft:visual/sun_angle" => {
+            SpatialEnvironmentValue::Float(attributes.sun_angle_degrees.unwrap_or(0.0))
+        }
+        "minecraft:visual/moon_angle" => {
+            SpatialEnvironmentValue::Float(attributes.moon_angle_degrees.unwrap_or(0.0))
+        }
+        "minecraft:visual/star_angle" => {
+            SpatialEnvironmentValue::Float(attributes.star_angle_degrees.unwrap_or(0.0))
+        }
+        "minecraft:visual/star_brightness" => {
+            SpatialEnvironmentValue::Float(attributes.star_brightness.unwrap_or(0.0))
+        }
+        "minecraft:visual/block_light_tint" => SpatialEnvironmentValue::Rgb(
+            attributes
+                .block_light_tint
+                .map(rgb_bytes_to_argb)
+                .unwrap_or(0xffff_d88c),
+        ),
+        "minecraft:visual/sky_light_color" => SpatialEnvironmentValue::Rgb(
+            attributes
+                .sky_light_color
+                .map(rgb_bytes_to_argb)
+                .unwrap_or(0xffff_ffff),
+        ),
+        "minecraft:visual/sky_light_factor" => {
+            SpatialEnvironmentValue::Float(attributes.sky_light_factor.unwrap_or(1.0))
+        }
+        "minecraft:visual/night_vision_color" => SpatialEnvironmentValue::Rgb(
+            attributes
+                .night_vision_color
+                .map(rgb_bytes_to_argb)
+                .unwrap_or(0xff99_9999),
+        ),
+        "minecraft:visual/ambient_light_color" => SpatialEnvironmentValue::Rgb(
+            attributes
+                .ambient_light_color
+                .map(rgb_bytes_to_argb)
+                .unwrap_or(0xff00_0000),
+        ),
+        _ => return None,
+    })
+}
+
+fn set_spatial_environment_value(
+    attributes: &mut ClientEnvironmentAttributes,
+    field: &'static str,
+    value: SpatialEnvironmentValue,
+) -> Result<(), EnvironmentAttributeProjectionError> {
+    match (field, value) {
+        ("minecraft:visual/fog_color", SpatialEnvironmentValue::Rgb(value)) => {
+            attributes.fog_color = Some(argb_to_rgb_bytes(value))
+        }
+        ("minecraft:visual/fog_start_distance", SpatialEnvironmentValue::Float(value)) => {
+            attributes.fog_start_distance = Some(value)
+        }
+        ("minecraft:visual/fog_end_distance", SpatialEnvironmentValue::Float(value)) => {
+            attributes.fog_end_distance = Some(value)
+        }
+        ("minecraft:visual/sky_fog_end_distance", SpatialEnvironmentValue::Float(value)) => {
+            attributes.sky_fog_end_distance = Some(value)
+        }
+        ("minecraft:visual/cloud_fog_end_distance", SpatialEnvironmentValue::Float(value)) => {
+            attributes.cloud_fog_end_distance = Some(value)
+        }
+        ("minecraft:visual/water_fog_color", SpatialEnvironmentValue::Rgb(value)) => {
+            attributes.water_fog_color = Some(argb_to_rgb_bytes(value))
+        }
+        ("minecraft:visual/water_fog_start_distance", SpatialEnvironmentValue::Float(value)) => {
+            attributes.water_fog_start_distance = Some(value)
+        }
+        ("minecraft:visual/water_fog_end_distance", SpatialEnvironmentValue::Float(value)) => {
+            attributes.water_fog_end_distance = Some(value)
+        }
+        ("minecraft:visual/sky_color", SpatialEnvironmentValue::Rgb(value)) => {
+            attributes.sky_color = Some(argb_to_rgb_bytes(value))
+        }
+        ("minecraft:visual/sunrise_sunset_color", SpatialEnvironmentValue::Argb(value)) => {
+            attributes.sunrise_sunset_color = Some(argb_to_rgba_bytes(value))
+        }
+        ("minecraft:visual/cloud_color", SpatialEnvironmentValue::Argb(value)) => {
+            attributes.cloud_color = Some(argb_to_rgba_bytes(value))
+        }
+        ("minecraft:visual/cloud_height", SpatialEnvironmentValue::Float(value)) => {
+            attributes.cloud_height = Some(value)
+        }
+        ("minecraft:visual/sun_angle", SpatialEnvironmentValue::Float(value)) => {
+            attributes.sun_angle_degrees = Some(value)
+        }
+        ("minecraft:visual/moon_angle", SpatialEnvironmentValue::Float(value)) => {
+            attributes.moon_angle_degrees = Some(value)
+        }
+        ("minecraft:visual/star_angle", SpatialEnvironmentValue::Float(value)) => {
+            attributes.star_angle_degrees = Some(value)
+        }
+        ("minecraft:visual/star_brightness", SpatialEnvironmentValue::Float(value)) => {
+            attributes.star_brightness = Some(value)
+        }
+        ("minecraft:visual/block_light_tint", SpatialEnvironmentValue::Rgb(value)) => {
+            attributes.block_light_tint = Some(argb_to_rgb_bytes(value))
+        }
+        ("minecraft:visual/sky_light_color", SpatialEnvironmentValue::Rgb(value)) => {
+            attributes.sky_light_color = Some(argb_to_rgb_bytes(value))
+        }
+        ("minecraft:visual/sky_light_factor", SpatialEnvironmentValue::Float(value)) => {
+            attributes.sky_light_factor = Some(value)
+        }
+        ("minecraft:visual/night_vision_color", SpatialEnvironmentValue::Rgb(value)) => {
+            attributes.night_vision_color = Some(argb_to_rgb_bytes(value))
+        }
+        ("minecraft:visual/ambient_light_color", SpatialEnvironmentValue::Rgb(value)) => {
+            attributes.ambient_light_color = Some(argb_to_rgb_bytes(value))
+        }
+        _ => return Err(error(field, "spatial attribute value type mismatch")),
+    }
+    Ok(())
+}
+
+fn lerp_spatial_environment_value(
+    descriptor: &VanillaEnvironmentAttribute,
+    alpha: f32,
+    from: SpatialEnvironmentValue,
+    to: SpatialEnvironmentValue,
+) -> Result<SpatialEnvironmentValue, EnvironmentAttributeProjectionError> {
+    Ok(match (descriptor.value_type, from, to) {
+        (
+            VanillaEnvironmentAttributeType::Float,
+            SpatialEnvironmentValue::Float(from),
+            SpatialEnvironmentValue::Float(to),
+        ) => SpatialEnvironmentValue::Float(from + alpha * (to - from)),
+        (
+            VanillaEnvironmentAttributeType::AngleDegrees,
+            SpatialEnvironmentValue::Float(from),
+            SpatialEnvironmentValue::Float(to),
+        ) => {
+            let delta = wrap_degrees(to - from);
+            SpatialEnvironmentValue::Float(if delta.abs() >= 90.0 {
+                to
+            } else {
+                from + alpha * delta
+            })
+        }
+        (
+            VanillaEnvironmentAttributeType::RgbColor,
+            SpatialEnvironmentValue::Rgb(from),
+            SpatialEnvironmentValue::Rgb(to),
+        ) => SpatialEnvironmentValue::Rgb(srgb_lerp(alpha, from, to)),
+        (
+            VanillaEnvironmentAttributeType::ArgbColor,
+            SpatialEnvironmentValue::Argb(from),
+            SpatialEnvironmentValue::Argb(to),
+        ) => SpatialEnvironmentValue::Argb(srgb_lerp(alpha, from, to)),
+        _ => {
+            return Err(error(
+                descriptor.resource_id,
+                "spatial attribute value type mismatch",
+            ))
+        }
     })
 }
 

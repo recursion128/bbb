@@ -7,8 +7,8 @@ use crate::{ClientEnvironmentAttributes, RegistryElementSource, RegistryEntrySou
 use super::{
     environment_attributes::{
         apply_timeline_argument, decode_timeline_argument, interpolate_timeline_argument,
-        is_syncable_environment_attribute, sanitize_environment_attributes,
-        validate_timeline_argument_references, EnvironmentModifier, EnvironmentTrackArgument,
+        is_syncable_environment_attribute, validate_timeline_argument_references,
+        EnvironmentModifier, EnvironmentTrackArgument,
     },
     normalize_codec_identifier,
 };
@@ -160,28 +160,6 @@ impl WorldStore {
             .map(Some)
     }
 
-    pub fn sampled_client_environment_attributes(
-        &self,
-    ) -> Result<ClientEnvironmentAttributes, TimelineProjectionError> {
-        let Some(level) = self.level_info() else {
-            return Ok(ClientEnvironmentAttributes::default());
-        };
-        let dimension = self
-            .registries
-            .dimension_type_client_projection(level.dimension_type_id);
-        let mut attributes = dimension
-            .as_ref()
-            .map(|projection| projection.environment_attributes.clone())
-            .unwrap_or_else(|| level.environment_attributes());
-        for (timeline, total_ticks) in self.resolved_dimension_timelines()? {
-            for track in &timeline.tracks {
-                apply_environment_track(&mut attributes, &timeline, track, total_ticks)?;
-            }
-        }
-        sanitize_environment_attributes(&mut attributes);
-        Ok(attributes)
-    }
-
     pub fn sampled_timeline_sky_light_factor(
         &self,
     ) -> Result<Option<f32>, TimelineProjectionError> {
@@ -221,7 +199,7 @@ impl WorldStore {
         Ok(applied.then(|| value.clamp(0.0, 1.0)))
     }
 
-    fn resolved_dimension_timelines(
+    pub(super) fn resolved_dimension_timelines(
         &self,
     ) -> Result<Vec<(TimelineDefinition, i64)>, TimelineProjectionError> {
         let Some(level) = self.level_info() else {
@@ -285,7 +263,7 @@ pub(super) fn validate_world_clock_value(
     }
 }
 
-fn apply_environment_track(
+pub(super) fn apply_environment_track(
     attributes: &mut ClientEnvironmentAttributes,
     timeline: &TimelineDefinition,
     track: &TimelineTrackDefinition,

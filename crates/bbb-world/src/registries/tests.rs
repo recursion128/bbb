@@ -3021,6 +3021,94 @@ fn malformed_timeline_candidate_keeps_previous_typed_generation() {
 }
 
 #[test]
+fn environment_position_rejects_non_positional_biome_attribute_atomically() {
+    let mut store = WorldStore::new();
+    store.record_registry_entries(
+        "minecraft:worldgen/biome",
+        0,
+        vec![RegistryPacketEntry::stub("example:old_biome")],
+    );
+    let committed_revision = store.registry_access_revision();
+
+    store.begin_registry_configuration();
+    record_minimal_non_empty_synchronized_registries(&mut store, None);
+    store.record_registry_entries(
+        "minecraft:worldgen/biome",
+        0,
+        vec![RegistryPacketEntry::with_known_pack_data_for_test(
+            "example:invalid_biome",
+            br##"{
+                "has_precipitation":true,
+                "temperature":0.5,
+                "downfall":0.5,
+                "effects":{"water_color":"#3f76e4"},
+                "attributes":{"minecraft:gameplay/sky_light_level":12.0}
+            }"##
+            .to_vec(),
+        )],
+    );
+
+    let error = store.finish_registry_configuration().unwrap_err();
+
+    assert_eq!(error.registry, "minecraft:worldgen/biome");
+    assert_eq!(error.validator, "Biome.NETWORK_CODEC");
+    assert!(error.message.contains("attribute is not positional"));
+    assert_eq!(store.registry_access_revision(), committed_revision);
+    assert_eq!(
+        store.registry_resource_id_by_holder_id("minecraft:worldgen/biome", 0),
+        Some("example:old_biome")
+    );
+}
+
+#[test]
+fn environment_position_rejects_malformed_biome_sound_atomically() {
+    let mut store = WorldStore::new();
+    store.record_registry_entries(
+        "minecraft:worldgen/biome",
+        0,
+        vec![RegistryPacketEntry::stub("example:old_biome")],
+    );
+    let committed_revision = store.registry_access_revision();
+
+    store.begin_registry_configuration();
+    record_minimal_non_empty_synchronized_registries(&mut store, None);
+    store.record_registry_entries(
+        "minecraft:worldgen/biome",
+        0,
+        vec![RegistryPacketEntry::with_known_pack_data_for_test(
+            "example:invalid_biome",
+            br##"{
+                "has_precipitation":true,
+                "temperature":0.5,
+                "downfall":0.5,
+                "effects":{"water_color":"#3f76e4"},
+                "attributes":{
+                    "minecraft:audio/background_music":{
+                        "default":{
+                            "sound":"example:missing_music",
+                            "min_delay":10,
+                            "max_delay":20
+                        }
+                    }
+                }
+            }"##
+            .to_vec(),
+        )],
+    );
+
+    let error = store.finish_registry_configuration().unwrap_err();
+
+    assert_eq!(error.registry, "minecraft:worldgen/biome");
+    assert_eq!(error.validator, "Biome.NETWORK_CODEC");
+    assert!(error.message.contains("invalid background music"));
+    assert_eq!(store.registry_access_revision(), committed_revision);
+    assert_eq!(
+        store.registry_resource_id_by_holder_id("minecraft:worldgen/biome", 0),
+        Some("example:old_biome")
+    );
+}
+
+#[test]
 fn unknown_environment_sound_reference_rejects_candidate_atomically() {
     let mut store = WorldStore::new();
     store.record_registry_entries(

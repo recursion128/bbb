@@ -10,6 +10,7 @@ mod element_value;
 mod enchantments;
 mod environment_attribute_catalog;
 mod environment_attributes;
+mod environment_sampling;
 mod game_tests;
 mod instrument_values;
 mod instruments;
@@ -76,6 +77,7 @@ pub use environment_attributes::{
     ClientBackgroundMusic, ClientEnvironmentAttributes, ClientMoonPhase, ClientMusic,
     ClientParticleOptions, ClientSoundEventHolder,
 };
+pub use environment_sampling::EnvironmentBiomeSampling;
 pub use game_tests::{
     GameTestInstanceDefinition, GameTestInstanceKind, GameTestRegistryProjectionError,
     TestEnvironmentDefinition, TestEnvironmentHolder, TestEnvironmentKind, TestGameRuleTypedValue,

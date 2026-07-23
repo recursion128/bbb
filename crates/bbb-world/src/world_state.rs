@@ -15,6 +15,7 @@ pub use crate::level::{
 pub use crate::registries::{
     ClientAmbientAddition, ClientAmbientMood, ClientAmbientParticle, ClientAmbientSounds,
     ClientBackgroundMusic, ClientEnvironmentAttributes, ClientMoonPhase, ClientMusic,
-    ClientParticleOptions, ClientSoundEventHolder, WorldIntProvider, WorldWeightedIntProvider,
+    ClientParticleOptions, ClientSoundEventHolder, EnvironmentBiomeSampling, WorldIntProvider,
+    WorldWeightedIntProvider,
 };
 pub use crate::store::WorldStore;
