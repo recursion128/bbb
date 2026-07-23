@@ -12,7 +12,6 @@ use bbb_item_model::{
 };
 use bbb_net::{NetCommand, NetEvent};
 use bbb_protocol::{
-    codec::Decoder,
     data_component_types::VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID,
     heightmap_types::{
         vanilla_heightmap_type, VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID,
@@ -21,16 +20,13 @@ use bbb_protocol::{
     },
     packets::{
         AdvancementFrameType, CommandBlockMode, GameType, ItemCostSummary, ItemStackSummary,
-        JigsawJoint, MapPostProcessingSummary, RemoteDebugSampleType, SlotDisplaySummary,
-        StructureBlockMirror, StructureBlockMode, StructureBlockRotation, TestBlockMode,
-        TestInstanceBlockRotation, Vec3d,
+        JigsawJoint, MapPostProcessingSummary, RemoteDebugSampleType, StructureBlockMirror,
+        StructureBlockMode, StructureBlockRotation, TestBlockMode, TestInstanceBlockRotation,
+        Vec3d,
     },
     particle_types::{
         VANILLA_PARTICLE_TYPE_CRIT_ID, VANILLA_PARTICLE_TYPE_ENTITY_EFFECT_ID,
         VANILLA_PARTICLE_TYPE_SMOKE_ID,
-    },
-    recipe_wire_types::{
-        VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID, VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID,
     },
     RichTextComponent, MC_VERSION,
 };
@@ -8381,17 +8377,27 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
         local_state.advanced_item_tooltips,
         world.gameplay().game_type == GameType::Creative.id(),
     );
-    let tooltip = if layout.background == InventoryScreenBackground::Merchant {
-        hud_merchant_trade_tooltip(
+    let tooltip = match layout.background {
+        InventoryScreenBackground::Merchant => hud_merchant_trade_tooltip(
             world,
             item_runtime,
             local_state.cursor_position,
             local_state.advanced_item_tooltips,
             world.gameplay().game_type == GameType::Creative.id(),
         )
-        .or(inventory_tooltip)
-    } else {
-        inventory_tooltip
+        .or(inventory_tooltip),
+        InventoryScreenBackground::Stonecutter => hud_stonecutter_recipe_tooltip(
+            world,
+            item_runtime,
+            local_state.cursor_position,
+            local_state
+                .stonecutter_recipe_scroll_row
+                .unwrap_or_default(),
+            local_state.advanced_item_tooltips,
+            world.gameplay().game_type == GameType::Creative.id(),
+        )
+        .or(inventory_tooltip),
+        _ => inventory_tooltip,
     };
 
     Some(HudInventoryScreen {
@@ -11951,6 +11957,31 @@ fn hud_merchant_trade_tooltip(
     })
 }
 
+fn hud_stonecutter_recipe_tooltip(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    cursor_position: Option<(i32, i32)>,
+    scroll_row: i32,
+    advanced: bool,
+    creative: bool,
+) -> Option<HudInventoryTooltip> {
+    let (cursor_x, cursor_y) = cursor_position?;
+    let option = stonecutter_visible_recipe_option_stacks(world, scroll_row)
+        .into_iter()
+        .find(|option| {
+            cursor_x >= option.x
+                && cursor_x < option.x + STONECUTTER_RECIPE_BUTTON_WIDTH
+                && cursor_y >= option.y
+                && cursor_y < option.y + STONECUTTER_RECIPE_BUTTON_HEIGHT
+        })?;
+    Some(HudInventoryTooltip {
+        slot_id: u16::MAX,
+        x: cursor_x,
+        y: cursor_y,
+        lines: hud_item_tooltip_lines(world, item_runtime, &option.stack, advanced, creative)?,
+    })
+}
+
 fn hud_item_tooltip_lines(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
@@ -13011,7 +13042,10 @@ fn stonecutter_visible_recipe_option_stacks(
         .take(STONECUTTER_VISIBLE_RECIPE_BUTTON_COUNT)
         .enumerate()
         .filter_map(|(position, recipe)| {
-            let stack = stonecutter_slot_display_item_stack(&recipe.option_display)?;
+            let stack = world
+                .resolve_slot_display_first_stack(&recipe.option_display)
+                .ok()
+                .flatten()?;
             let column = position as i32 % STONECUTTER_RECIPE_BUTTON_COLUMNS;
             let row = position as i32 / STONECUTTER_RECIPE_BUTTON_COLUMNS;
             Some(StonecutterRecipeOptionStack {
@@ -13141,37 +13175,6 @@ fn stonecutter_scroller_offset(visible_recipe_count: usize, scroll_row: i32) -> 
         as f32
         / max_scroll_row as f32;
     (STONECUTTER_SCROLLER_MAX_OFFSET as f32 * scroll_offs) as i32
-}
-
-fn stonecutter_slot_display_item_stack(display: &SlotDisplaySummary) -> Option<ItemStackSummary> {
-    let mut decoder = Decoder::new(&display.raw_payload);
-    let display_type_id = decoder.read_var_i32().ok()?;
-    if display_type_id != display.display_type_id {
-        return None;
-    }
-    match display_type_id {
-        VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID => {
-            let item_id = decoder.read_var_i32().ok()?;
-            (item_id >= 0).then_some(ItemStackSummary {
-                item_id: Some(item_id),
-                count: 1,
-                component_patch: Default::default(),
-            })
-        }
-        VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID => {
-            let item_id = decoder.read_var_i32().ok()?;
-            let count = decoder.read_var_i32().ok()?;
-            if item_id < 0 || count <= 0 {
-                return None;
-            }
-            Some(ItemStackSummary {
-                item_id: Some(item_id),
-                count,
-                component_patch: Default::default(),
-            })
-        }
-        _ => None,
-    }
 }
 
 fn push_merchant_trade_layers(

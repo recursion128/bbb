@@ -1,6 +1,6 @@
 use super::*;
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
     path::{Path, PathBuf},
     sync::Arc,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
@@ -23,10 +23,13 @@ fn jigsaw_priority_tooltip_hit_testing_matches_priority_fields() {
 use bbb_pack::{
     BiomeColorCatalog, BiomeColorProfile, BiomeTemperatureModifier, EquipmentAssetCatalog,
     FloatAttributeModifier, FloatAttributeModifierKind, GrassColorModifier, ItemRegistryCatalog,
+    RegistryDependentItemComponentInitializer,
 };
 use bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_COMMAND_BLOCK_ID;
+use bbb_protocol::builtin_enum_component_values::VANILLA_DYE_COLOR_RED_ID;
 use bbb_protocol::data_component_types::{
-    VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID,
+    VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID,
     VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
 };
 use bbb_protocol::entity_types::{
@@ -58,10 +61,12 @@ use bbb_protocol::packets::{
     ShowDialog, StatUpdate, UpdateAdvancements, UpdateMobEffect, WrittenBookContentSummary,
 };
 use bbb_protocol::recipe_wire_types::{
-    VANILLA_RECIPE_BOOK_CATEGORY_CRAFTING_MISC_ID, VANILLA_SLOT_DISPLAY_TYPE_COMPOSITE_ID,
+    VANILLA_RECIPE_BOOK_CATEGORY_CRAFTING_MISC_ID, VANILLA_SLOT_DISPLAY_TYPE_ANY_FUEL_ID,
+    VANILLA_SLOT_DISPLAY_TYPE_COMPOSITE_ID, VANILLA_SLOT_DISPLAY_TYPE_DYED_ID,
     VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID, VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID,
-    VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID, VANILLA_SLOT_DISPLAY_TYPE_TAG_ID,
-    VANILLA_SLOT_DISPLAY_TYPE_WITH_REMAINDER_ID,
+    VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID, VANILLA_SLOT_DISPLAY_TYPE_ONLY_WITH_COMPONENT_ID,
+    VANILLA_SLOT_DISPLAY_TYPE_SMITHING_TRIM_ID, VANILLA_SLOT_DISPLAY_TYPE_TAG_ID,
+    VANILLA_SLOT_DISPLAY_TYPE_WITH_ANY_POTION_ID, VANILLA_SLOT_DISPLAY_TYPE_WITH_REMAINDER_ID,
 };
 
 use bbb_protocol::stat_types::{
@@ -73,7 +78,7 @@ use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 use bbb_world::{
     BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState, HeightmapData, LightData,
     LocalPlayerPoseState, PaletteDomain, PaletteKind, PalettedContainerData, RegistryPacketEntry,
-    WorldBlockDestroyProfile, WorldDimension,
+    WorldBlockDestroyProfile, WorldDimension, TRIM_MATERIAL_REGISTRY, TRIM_PATTERN_REGISTRY,
 };
 use tokio::sync::mpsc;
 use winit::{
@@ -18627,24 +18632,196 @@ fn hud_inventory_screen_projects_stonecutter_recipe_buttons_and_scroller() {
 }
 
 #[test]
-fn stonecutter_slot_display_item_stack_projects_direct_item_displays() {
+fn stonecutter_buttons_and_tooltips_resolve_all_builtin_slot_displays() {
+    let root = unique_runtime_temp_dir("stonecutter-slot-displays");
+    write_stonecutter_slot_display_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let world = stonecutter_world_with_builtin_slot_displays(1);
+
+    let option_stacks = stonecutter_visible_recipe_option_stacks(&world, 0);
+    assert_eq!(option_stacks.len(), 10);
+    let stack_at = |position: i32| {
+        let x = STONECUTTER_RECIPE_BUTTON_X
+            + position % STONECUTTER_RECIPE_BUTTON_COLUMNS * STONECUTTER_RECIPE_BUTTON_WIDTH;
+        let y = STONECUTTER_RECIPE_ITEM_Y
+            + position / STONECUTTER_RECIPE_BUTTON_COLUMNS * STONECUTTER_RECIPE_BUTTON_HEIGHT;
+        option_stacks
+            .iter()
+            .find(|option| (option.x, option.y) == (x, y))
+            .map(|option| &option.stack)
+    };
+
+    assert_eq!(stack_at(0), None);
+    for position in 1..=10 {
+        assert_eq!(stack_at(position).unwrap().item_id, Some(1));
+    }
+    assert_eq!(stack_at(2).unwrap().component_patch.potion_id, Some(0));
+    assert!(world.item_stack_has_effective_component(
+        stack_at(3).unwrap(),
+        VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID,
+    ));
+    assert_eq!(stack_at(5).unwrap().count, 3);
     assert_eq!(
-        stonecutter_slot_display_item_stack(&stonecutter_item_display(77)),
-        Some(item_stack(77, 1))
+        stack_at(7).unwrap().component_patch.dyed_color,
+        Some(0xB0_2E_26)
     );
     assert_eq!(
-        stonecutter_slot_display_item_stack(&stonecutter_item_stack_display(78, 3)),
-        Some(item_stack(78, 3))
+        stack_at(8).unwrap().component_patch.armor_trim_material_id,
+        Some(0)
     );
     assert_eq!(
-        stonecutter_slot_display_item_stack(&bbb_protocol::packets::SlotDisplaySummary {
-            display_type_id: VANILLA_SLOT_DISPLAY_TYPE_TAG_ID,
-            raw_payload: vec![6, 4, b't', b'e', b's', b't'],
-            item_stack: None,
-            tag: Some("minecraft:test".to_string()),
-        }),
-        None
+        stack_at(8).unwrap().component_patch.armor_trim_pattern_id,
+        Some(0)
     );
+
+    for position in 0..=10 {
+        let cursor = (
+            STONECUTTER_RECIPE_BUTTON_X
+                + position % STONECUTTER_RECIPE_BUTTON_COLUMNS * STONECUTTER_RECIPE_BUTTON_WIDTH,
+            STONECUTTER_RECIPE_ITEM_Y
+                + position / STONECUTTER_RECIPE_BUTTON_COLUMNS * STONECUTTER_RECIPE_BUTTON_HEIGHT,
+        );
+        let screen = hud_inventory_screen_with_local_state(
+            &world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            None,
+            InventoryHudLocalState {
+                cursor_position: Some(cursor),
+                ..InventoryHudLocalState::default()
+            },
+            0.0,
+        )
+        .unwrap();
+        assert_eq!(screen.floating_items.len(), 10);
+        if position == 0 {
+            assert_eq!(screen.tooltip, None);
+        } else {
+            let tooltip = screen.tooltip.unwrap();
+            assert_eq!(tooltip.slot_id, u16::MAX);
+            assert_eq!((tooltip.x, tooltip.y), cursor);
+            assert_eq!(tooltip.lines[0].text, "Test Sword");
+        }
+    }
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn stonecutter_buttons_and_tooltips_follow_current_tag_and_trim_context() {
+    let root = unique_runtime_temp_dir("stonecutter-slot-display-context");
+    write_stonecutter_slot_display_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let mut world = stonecutter_world_with_builtin_slot_displays(1);
+
+    set_stonecutter_item_tag(&mut world, vec![2]);
+    let tag_option = stonecutter_visible_recipe_option_stacks(&world, 0)
+        .into_iter()
+        .find(|option| (option.x, option.y) == stonecutter_recipe_item_position(6))
+        .unwrap();
+    assert_eq!(tag_option.stack.item_id, Some(2));
+    let tag_tooltip =
+        stonecutter_recipe_tooltip_at(&world, &item_runtime, stonecutter_recipe_item_position(6));
+    assert_eq!(tag_tooltip.lines[0].text, "Command Block");
+
+    clear_stonecutter_item_tags(&mut world);
+    assert!(stonecutter_visible_recipe_option_stacks(&world, 0)
+        .into_iter()
+        .all(|option| (option.x, option.y) != stonecutter_recipe_item_position(6)));
+    let removed_tag_screen = hud_inventory_screen_with_local_state(
+        &world,
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        None,
+        InventoryHudLocalState {
+            cursor_position: Some(stonecutter_recipe_item_position(6)),
+            ..InventoryHudLocalState::default()
+        },
+        0.0,
+    )
+    .unwrap();
+    assert_eq!(removed_tag_screen.tooltip, None);
+
+    let initial_trim_tooltip =
+        stonecutter_recipe_tooltip_at(&world, &item_runtime, stonecutter_recipe_item_position(8));
+    assert!(
+        initial_trim_tooltip
+            .lines
+            .iter()
+            .any(|line| line.text.trim() == "Spiral"),
+        "{:#?}",
+        initial_trim_tooltip.lines
+    );
+    assert!(
+        initial_trim_tooltip
+            .lines
+            .iter()
+            .any(|line| line.text.trim() == "Copper"),
+        "{:#?}",
+        initial_trim_tooltip.lines
+    );
+
+    world.record_registry_entries(
+        TRIM_MATERIAL_REGISTRY,
+        0,
+        vec![RegistryPacketEntry::with_raw_data(
+            "example:opal",
+            stonecutter_trim_material_nbt("opal", "Opal"),
+        )],
+    );
+    world.record_registry_entries(
+        TRIM_PATTERN_REGISTRY,
+        0,
+        vec![RegistryPacketEntry::with_raw_data(
+            "example:wave",
+            stonecutter_trim_pattern_nbt("example:wave", "Wave", false),
+        )],
+    );
+    world.set_registry_dependent_item_component_initializers(BTreeMap::from([(
+        3,
+        vec![
+            RegistryDependentItemComponentInitializer::ProvidesTrimMaterial {
+                material: "example:opal".to_string(),
+            },
+        ],
+    )]));
+    world.rebuild_registry_dependent_item_defaults().unwrap();
+    world.apply_update_recipes(stonecutter_builtin_update_recipes(2));
+
+    let trim_option = stonecutter_visible_recipe_option_stacks(&world, 0)
+        .into_iter()
+        .find(|option| (option.x, option.y) == stonecutter_recipe_item_position(8))
+        .unwrap();
+    assert_eq!(
+        trim_option.stack.component_patch.armor_trim_material_id,
+        Some(1)
+    );
+    assert_eq!(
+        trim_option.stack.component_patch.armor_trim_pattern_id,
+        Some(1)
+    );
+    let changed_trim_tooltip =
+        stonecutter_recipe_tooltip_at(&world, &item_runtime, stonecutter_recipe_item_position(8));
+    assert!(
+        changed_trim_tooltip
+            .lines
+            .iter()
+            .any(|line| line.text.trim() == "Wave"),
+        "{:#?}",
+        changed_trim_tooltip.lines
+    );
+    assert!(
+        changed_trim_tooltip
+            .lines
+            .iter()
+            .any(|line| line.text.trim() == "Opal"),
+        "{:#?}",
+        changed_trim_tooltip.lines
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
 }
 
 #[test]
@@ -19661,6 +19838,232 @@ fn item_cost(item_id: i32, count: i32) -> ItemCostSummary {
     }
 }
 
+fn stonecutter_world_with_builtin_slot_displays(encoded_pattern_holder_id: i32) -> WorldStore {
+    let mut world = WorldStore::new();
+    world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_STONECUTTER_ID,
+        title: "Stonecutter".to_string(),
+        title_styled: Vec::new(),
+    });
+    let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 38];
+    items[0] = item_stack(3, 1);
+    world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+        container_id: 7,
+        state_id: 12,
+        items,
+        carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+    });
+    world.set_furnace_fuel_item_ids(BTreeSet::from([1]));
+    world.set_default_item_component_type_ids(BTreeMap::from([
+        (1, BTreeSet::from([VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID])),
+        (2, BTreeSet::from([VANILLA_DATA_COMPONENT_DYE_TYPE_ID])),
+    ]));
+    world.set_default_item_dye_color_ids(BTreeMap::from([(2, VANILLA_DYE_COLOR_RED_ID)]));
+    set_stonecutter_item_tag(&mut world, vec![1]);
+    world.record_registry_entries(
+        TRIM_MATERIAL_REGISTRY,
+        0,
+        vec![RegistryPacketEntry::with_raw_data(
+            "example:copper",
+            stonecutter_trim_material_nbt("copper", "Copper"),
+        )],
+    );
+    world.record_registry_entries(
+        TRIM_PATTERN_REGISTRY,
+        0,
+        vec![RegistryPacketEntry::with_raw_data(
+            "example:spiral",
+            stonecutter_trim_pattern_nbt("example:spiral", "Spiral", true),
+        )],
+    );
+    world.set_registry_dependent_item_component_initializers(BTreeMap::from([(
+        3,
+        vec![
+            RegistryDependentItemComponentInitializer::ProvidesTrimMaterial {
+                material: "example:copper".to_string(),
+            },
+        ],
+    )]));
+    world.rebuild_registry_dependent_item_defaults().unwrap();
+    let packet = stonecutter_builtin_update_recipes(encoded_pattern_holder_id);
+    for recipe in &packet.stonecutter_recipes {
+        world
+            .resolve_slot_display_first_stack(&recipe.option_display)
+            .unwrap();
+    }
+    world.apply_update_recipes(packet);
+    assert_eq!(world.recipes().stonecutter_recipes.len(), 11);
+    world
+}
+
+fn stonecutter_builtin_update_recipes(
+    encoded_pattern_holder_id: i32,
+) -> bbb_protocol::packets::UpdateRecipes {
+    let item = stonecutter_item_display(1);
+    let item_stack = stonecutter_item_stack_display(1, 3);
+    let displays = vec![
+        slot_display_type(VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID),
+        slot_display_type(VANILLA_SLOT_DISPLAY_TYPE_ANY_FUEL_ID),
+        slot_display_unary(VANILLA_SLOT_DISPLAY_TYPE_WITH_ANY_POTION_ID, item.clone()),
+        slot_display_only_with_component(item.clone(), VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID),
+        item.clone(),
+        item_stack,
+        slot_display_tag("example:choices"),
+        slot_display_binary(
+            VANILLA_SLOT_DISPLAY_TYPE_DYED_ID,
+            stonecutter_item_display(2),
+            item.clone(),
+        ),
+        slot_display_smithing_trim(
+            item.clone(),
+            stonecutter_item_display(3),
+            encoded_pattern_holder_id,
+        ),
+        slot_display_with_remainder(item.clone(), stonecutter_item_display(2)),
+        slot_display_composite(vec![
+            slot_display_type(VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID),
+            item,
+        ]),
+    ];
+    bbb_protocol::packets::UpdateRecipes {
+        property_sets: Vec::new(),
+        stonecutter_recipes: displays
+            .into_iter()
+            .map(
+                |option_display| bbb_protocol::packets::StonecutterSelectableRecipeSummary {
+                    input: bbb_protocol::packets::IngredientSummary {
+                        tag: None,
+                        item_ids: vec![3],
+                    },
+                    option_display,
+                },
+            )
+            .collect(),
+    }
+}
+
+fn stonecutter_recipe_item_position(position: i32) -> (i32, i32) {
+    (
+        STONECUTTER_RECIPE_BUTTON_X
+            + position % STONECUTTER_RECIPE_BUTTON_COLUMNS * STONECUTTER_RECIPE_BUTTON_WIDTH,
+        STONECUTTER_RECIPE_ITEM_Y
+            + position / STONECUTTER_RECIPE_BUTTON_COLUMNS * STONECUTTER_RECIPE_BUTTON_HEIGHT,
+    )
+}
+
+fn stonecutter_recipe_tooltip_at(
+    world: &WorldStore,
+    item_runtime: &NativeItemRuntime,
+    cursor_position: (i32, i32),
+) -> HudInventoryTooltip {
+    hud_inventory_screen_with_local_state(
+        world,
+        Some(item_runtime),
+        &TerrainTextureState::default(),
+        None,
+        InventoryHudLocalState {
+            cursor_position: Some(cursor_position),
+            ..InventoryHudLocalState::default()
+        },
+        0.0,
+    )
+    .unwrap()
+    .tooltip
+    .unwrap()
+}
+
+fn set_stonecutter_item_tag(world: &mut WorldStore, entries: Vec<i32>) {
+    world.apply_update_tags(bbb_protocol::packets::UpdateTags {
+        registries: vec![bbb_protocol::packets::RegistryTags {
+            registry: "minecraft:item".to_string(),
+            tags: vec![bbb_protocol::packets::TagNetworkPayload {
+                tag: "example:choices".to_string(),
+                entries,
+            }],
+        }],
+    });
+}
+
+fn clear_stonecutter_item_tags(world: &mut WorldStore) {
+    world.apply_update_tags(bbb_protocol::packets::UpdateTags {
+        registries: vec![bbb_protocol::packets::RegistryTags {
+            registry: "minecraft:item".to_string(),
+            tags: Vec::new(),
+        }],
+    });
+}
+
+fn slot_display_type(display_type_id: i32) -> bbb_protocol::packets::SlotDisplaySummary {
+    let mut payload = bbb_protocol::codec::Encoder::new();
+    payload.write_var_i32(display_type_id);
+    slot_display_summary(display_type_id, payload.into_inner())
+}
+
+fn slot_display_unary(
+    display_type_id: i32,
+    display: bbb_protocol::packets::SlotDisplaySummary,
+) -> bbb_protocol::packets::SlotDisplaySummary {
+    let mut payload = bbb_protocol::codec::Encoder::new();
+    payload.write_var_i32(display_type_id);
+    payload.write_bytes(&display.raw_payload);
+    slot_display_summary(display_type_id, payload.into_inner())
+}
+
+fn slot_display_binary(
+    display_type_id: i32,
+    first: bbb_protocol::packets::SlotDisplaySummary,
+    second: bbb_protocol::packets::SlotDisplaySummary,
+) -> bbb_protocol::packets::SlotDisplaySummary {
+    let mut payload = bbb_protocol::codec::Encoder::new();
+    payload.write_var_i32(display_type_id);
+    payload.write_bytes(&first.raw_payload);
+    payload.write_bytes(&second.raw_payload);
+    slot_display_summary(display_type_id, payload.into_inner())
+}
+
+fn slot_display_only_with_component(
+    source: bbb_protocol::packets::SlotDisplaySummary,
+    component_type_id: i32,
+) -> bbb_protocol::packets::SlotDisplaySummary {
+    let mut payload = bbb_protocol::codec::Encoder::new();
+    payload.write_var_i32(VANILLA_SLOT_DISPLAY_TYPE_ONLY_WITH_COMPONENT_ID);
+    payload.write_bytes(&source.raw_payload);
+    payload.write_var_i32(component_type_id);
+    slot_display_summary(
+        VANILLA_SLOT_DISPLAY_TYPE_ONLY_WITH_COMPONENT_ID,
+        payload.into_inner(),
+    )
+}
+
+fn slot_display_smithing_trim(
+    base: bbb_protocol::packets::SlotDisplaySummary,
+    material: bbb_protocol::packets::SlotDisplaySummary,
+    encoded_pattern_holder_id: i32,
+) -> bbb_protocol::packets::SlotDisplaySummary {
+    let mut payload = bbb_protocol::codec::Encoder::new();
+    payload.write_var_i32(VANILLA_SLOT_DISPLAY_TYPE_SMITHING_TRIM_ID);
+    payload.write_bytes(&base.raw_payload);
+    payload.write_bytes(&material.raw_payload);
+    payload.write_var_i32(encoded_pattern_holder_id);
+    slot_display_summary(
+        VANILLA_SLOT_DISPLAY_TYPE_SMITHING_TRIM_ID,
+        payload.into_inner(),
+    )
+}
+
+fn slot_display_summary(
+    display_type_id: i32,
+    raw_payload: Vec<u8>,
+) -> bbb_protocol::packets::SlotDisplaySummary {
+    bbb_protocol::packets::SlotDisplaySummary {
+        display_type_id,
+        raw_payload,
+        item_stack: None,
+        tag: None,
+    }
+}
+
 fn stonecutter_recipe_display(
     input_item_id: i32,
     result_item_id: i32,
@@ -20203,6 +20606,65 @@ fn item_stack_with_damage(
     item.component_patch.damage = Some(damage);
     item.component_patch.unbreakable = unbreakable;
     item
+}
+
+fn write_stonecutter_slot_display_item_assets(root: &Path) {
+    write_runtime_tooltip_item_assets(root);
+    let assets = runtime_assets_dir(root);
+    for (item, color) in [
+        ("test_sword", [180, 180, 190, 255]),
+        ("command_block", [180, 140, 100, 255]),
+    ] {
+        write_runtime_json(
+            &assets.join("items").join(format!("{item}.json")),
+            &format!(
+                r#"{{
+                    "model": {{
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/{item}"
+                    }}
+                }}"#
+            ),
+        );
+        write_flat_runtime_item_model_and_texture(&assets, item, &color);
+    }
+}
+
+fn stonecutter_trim_material_nbt(asset_name: &str, description: &str) -> Vec<u8> {
+    let mut out = vec![10];
+    write_stonecutter_nbt_string_field(&mut out, "asset_name", asset_name);
+    write_stonecutter_trim_description(&mut out, description);
+    out.push(0);
+    out
+}
+
+fn stonecutter_trim_pattern_nbt(asset_id: &str, description: &str, decal: bool) -> Vec<u8> {
+    let mut out = vec![10];
+    write_stonecutter_nbt_string_field(&mut out, "asset_id", asset_id);
+    write_stonecutter_trim_description(&mut out, description);
+    out.push(1);
+    write_stonecutter_nbt_string(&mut out, "decal");
+    out.push(u8::from(decal));
+    out.push(0);
+    out
+}
+
+fn write_stonecutter_trim_description(out: &mut Vec<u8>, text: &str) {
+    out.push(10);
+    write_stonecutter_nbt_string(out, "description");
+    write_stonecutter_nbt_string_field(out, "text", text);
+    out.push(0);
+}
+
+fn write_stonecutter_nbt_string_field(out: &mut Vec<u8>, name: &str, value: &str) {
+    out.push(8);
+    write_stonecutter_nbt_string(out, name);
+    write_stonecutter_nbt_string(out, value);
+}
+
+fn write_stonecutter_nbt_string(out: &mut Vec<u8>, value: &str) {
+    out.extend_from_slice(&(value.len() as u16).to_be_bytes());
+    out.extend_from_slice(value.as_bytes());
 }
 
 fn write_runtime_tooltip_item_assets(root: &Path) {

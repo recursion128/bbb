@@ -693,9 +693,9 @@ Inventory:
 - Implement the rich-tooltip `space` font provider, the remaining text styles,
   italic/complex component styles, and component-specific detail lines from
   `font/default.json`.
-- Implement the remaining recipe-book presentation variants (including
-  RecipeToast, hover/tooltips, focus, and narration) and creative inventory
-  variants.
+- Implement the remaining RecipeBookAdd / RecipeBookRemove presentation variants
+  (including RecipeToast, hover/tooltips, focus, and narration) and creative
+  inventory variants.
 - When a highlighted recipe first becomes visible in a native recipe button,
   remove its local highlight and send `RecipeBookSeenRecipe` exactly once like
   vanilla `RecipeButton.init`/`RecipeBookComponent.recipeShown`. The generic
@@ -1072,8 +1072,6 @@ back into a todo. Do not delete these.
 
 ## Container menu presentation parity
 
-- UpdateRecipes property sets and stonecutter replacement are covered; remaining
-  SlotDisplay/component variants and recipe/menu presentation stay open.
 - ContainerButtonClick reaches all four vanilla 26.1 menu owners (lectern,
   enchantment, loom, and stonecutter), with menu-specific hit testing and ordinary
   server container updates remaining authoritative. Finish the client-side

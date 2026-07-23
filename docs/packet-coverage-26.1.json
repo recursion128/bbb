@@ -14192,20 +14192,24 @@
         "canonical_apply": {
           "evidence": [
             "crates/bbb-world/src/recipes.rs#apply_update_recipes",
+            "crates/bbb-world/src/recipes/slot_display.rs#resolve_slot_display_first_stack",
             "crates/bbb-world/src/recipes.rs#update_recipes_replaces_client_recipe_access_state",
+            "crates/bbb-world/src/recipes/slot_display/tests.rs#packet_application_rejects_unresolved_trim_holders_atomically_but_allows_missing_display_tags",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleUpdateRecipes"
           ],
-          "gap": "docs/unsupported-features.md#container-menu-presentation-parity",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
             "crates/bbb-protocol/src/packets/client_features/tests.rs#decodes_update_recipes_packet_wire_order",
-            "crates/bbb-protocol/src/packets/client_features/tests.rs#decodes_update_recipes_with_direct_trim_pattern_slot_display",
+            "crates/bbb-protocol/src/packets/client_features/tests.rs#decodes_all_builtin_slot_display_values_and_preserves_exact_raw_payloads",
+            "crates/bbb-protocol/src/packets/client_features/tests.rs#slot_display_decode_enforces_recursive_depth_count_and_byte_budgets",
+            "crates/bbb-protocol/src/packets/client_features/tests.rs#slot_display_decode_rejects_invalid_types_holders_components_and_summaries",
             "vanilla:net/minecraft/network/protocol/game/ClientboundUpdateRecipesPacket.java#STREAM_CODEC"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
           "evidence": [
@@ -14217,19 +14221,27 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-world/src/client/inventory/tests.rs#apply_local_stonecutter_quick_move_routes_valid_recipe_input_to_input_slot",
+            "crates/bbb-world/src/recipes/slot_display.rs#resolve_slot_display_first_stack",
+            "crates/bbb-native/src/runtime.rs#stonecutter_visible_recipe_option_stacks",
+            "crates/bbb-native/src/runtime.rs#hud_stonecutter_recipe_tooltip",
             "crates/bbb-native/src/runtime/events/tests/entity_and_inventory_counters.rs#update_recipes_event_replaces_world_recipe_access_state_and_world_counters",
-            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleUpdateRecipes"
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleUpdateRecipes",
+            "vanilla:net/minecraft/client/gui/screens/inventory/StonecutterScreen.java#extractRecipes"
           ],
-          "gap": "docs/unsupported-features.md#container-menu-presentation-parity",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
-            "crates/bbb-protocol/src/packets/client_features/tests.rs#decodes_update_recipes_packet_wire_order",
+            "crates/bbb-protocol/src/packets/client_features/tests.rs#decodes_all_builtin_slot_display_values_and_preserves_exact_raw_payloads",
+            "crates/bbb-protocol/src/packet_coverage.rs#play_update_recipes_is_complete_across_all_coverage_dimensions",
             "crates/bbb-net/src/event_stream.rs#play_passive_world_apply_packets_emit_matching_events",
             "crates/bbb-net/src/probe/play.rs#probe_applies_update_recipes_to_world",
             "crates/bbb-world/src/recipes.rs#update_recipes_replaces_client_recipe_access_state",
-            "crates/bbb-native/src/runtime/events/tests/entity_and_inventory_counters.rs#update_recipes_event_replaces_world_recipe_access_state_and_world_counters"
+            "crates/bbb-world/src/recipes/slot_display/tests.rs#basic_displays_follow_current_tag_fuel_and_source_order",
+            "crates/bbb-world/src/recipes/slot_display/tests.rs#smithing_trim_uses_reordered_dynamic_holders_and_stable_sampling",
+            "crates/bbb-native/src/runtime/tests.rs#stonecutter_buttons_and_tooltips_resolve_all_builtin_slot_displays",
+            "crates/bbb-native/src/runtime/tests.rs#stonecutter_buttons_and_tooltips_follow_current_tag_and_trim_context"
           ],
           "gap": null,
           "status": "complete"

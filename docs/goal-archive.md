@@ -288,3 +288,7 @@
   与 88 个声明 owner，补齐 sound-before-state、first-death lifecycle/睡眠起身及
   92 类型 native 音频穷举；五类 packet coverage 全部 complete，合同见
   `docs/archive/entity-event-packet-closure-design.md`。
+- **2026-07-23（UpdateRecipes 包闭环）**：11 种内建 SlotDisplay 完成有界 typed decode、
+  当前 tag/fuel/potion/component/dye/trim 上下文解析和原子代次替换；Stonecutter 按钮与
+  tooltip 共用 world 首栈解析，五类 coverage 全部 complete，合同见
+  `docs/archive/update-recipes-packet-closure-design.md`。

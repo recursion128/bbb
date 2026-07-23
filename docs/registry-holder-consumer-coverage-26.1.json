@@ -2620,16 +2620,18 @@
     {
       "call_site": "net/minecraft/world/item/crafting/display/SlotDisplay.java:355:10:TagKey.streamCodec",
       "column": 10,
-      "consumer": "crates/bbb-native/src/recipe_book_ui.rs#fn push_slot_display_item_stack_candidates",
-      "decision": "Vanilla TagSlotDisplay.STREAM_CODEC sends one item TagKey through recipe display packets and resolves it against the current item registry lookup. Protocol retains the normalized tag identity, while ghost-recipe and recipe-book presentation resolve ordered members from the current UpdateTags revision on every read. Replacement changes the selected candidate, removal yields no candidate, and neither path substitutes a bootstrap item ordinal.",
+      "consumer": "crates/bbb-world/src/recipes/slot_display.rs#pub fn resolve_slot_display_first_stack",
+      "decision": "Vanilla TagSlotDisplay.STREAM_CODEC sends one item TagKey through recipe display packets and resolves it against the current item registry lookup. Protocol retains the normalized tag identity. The world-owned UpdateRecipes resolver and the separate ghost-recipe/recipe-book presentation path both read ordered members from the current UpdateTags revision on every presentation. Replacement changes the selected Stonecutter button and tooltip candidate, removal yields no candidate, and no path substitutes a bootstrap item ordinal.",
       "evidence": [
         "vanilla:net/minecraft/world/item/crafting/display/SlotDisplay.java#record TagSlotDisplay(TagKey<Item> tag)",
         "vanilla:net/minecraft/tags/TagKey.java#public static <T> StreamCodec<ByteBuf, TagKey<T>> streamCodec",
         "crates/bbb-protocol/src/packets/client_features/recipes.rs#fn decode_slot_display_value",
         "crates/bbb-protocol/src/packets/client_features/tests.rs#fn decodes_update_recipes_with_tag_slot_display",
         "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+        "crates/bbb-world/src/recipes/slot_display.rs#pub fn resolve_slot_display_first_stack",
         "crates/bbb-native/src/recipe_book_ui.rs#fn push_slot_display_item_stack_candidates",
-        "crates/bbb-native/src/runtime/tests.rs#fn hud_inventory_screen_reads_replaced_and_removed_tag_ghost_members"
+        "crates/bbb-native/src/runtime/tests.rs#fn hud_inventory_screen_reads_replaced_and_removed_tag_ghost_members",
+        "crates/bbb-native/src/runtime/tests.rs#fn stonecutter_buttons_and_tooltips_follow_current_tag_and_trim_context"
       ],
       "factory": "TagKey.streamCodec",
       "family": "network-tag-slot-display",
