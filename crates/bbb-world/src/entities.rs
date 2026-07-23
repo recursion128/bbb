@@ -61,8 +61,9 @@ pub(crate) use client_movement::calculate_view_vector;
 pub(crate) use components::{
     EntityAttributes, EntityClientAnimations, EntityDamage, EntityEquipment,
     EntityHurtingProjectile, EntityIdentity, EntityInterpolationCollisionInput, EntityLeash,
-    EntityMetadata, EntityMinecartCommandBlock, EntityMinecartLerp, EntityMobEffects, EntityMount,
-    EntityProjectileLifecycle, EntitySupportingBlock, EntityTransform, EntityTransientEvents,
+    EntityLivingLifecycle, EntityMetadata, EntityMinecartCommandBlock, EntityMinecartLerp,
+    EntityMobEffects, EntityMount, EntityProjectileLifecycle, EntitySupportingBlock,
+    EntityTransform, EntityTransientEvents, LivingDeathWakeTransition,
 };
 pub use dimensions::EntityPickBoundsState;
 pub(crate) use dimensions::{
@@ -975,6 +976,10 @@ pub struct EntityState {
     /// DamageEvent and decremented by scheduled living client ticks.
     #[serde(default)]
     pub damage_invulnerable_time: i32,
+    /// Client-side `LivingEntity.dead`. Unlike synchronized health, this becomes
+    /// true only after the guarded base `die` transition has run.
+    #[serde(default, skip_serializing_if = "bool_is_false")]
+    pub living_dead: bool,
     #[serde(default)]
     pub minecart_lerp_pending_steps: Vec<ProtocolMinecartStep>,
     #[serde(default)]

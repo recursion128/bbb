@@ -78,7 +78,7 @@ pub enum BedModelFacing {
 }
 
 impl BedModelFacing {
-    fn parse(value: &str) -> Option<Self> {
+    pub(crate) fn parse(value: &str) -> Option<Self> {
         match value {
             "north" => Some(Self::North),
             "south" => Some(Self::South),
@@ -89,7 +89,7 @@ impl BedModelFacing {
     }
 
     /// Vanilla `Direction.getOpposite()`.
-    fn opposite(self) -> Self {
+    pub(crate) fn opposite(self) -> Self {
         match self {
             Self::North => Self::South,
             Self::South => Self::North,
@@ -98,12 +98,21 @@ impl BedModelFacing {
         }
     }
 
-    fn step(self) -> (i32, i32) {
+    pub(crate) fn step(self) -> (i32, i32) {
         match self {
             Self::North => (0, -1),
             Self::South => (0, 1),
             Self::West => (-1, 0),
             Self::East => (1, 0),
+        }
+    }
+
+    pub(crate) fn clockwise(self) -> Self {
+        match self {
+            Self::North => Self::East,
+            Self::East => Self::South,
+            Self::South => Self::West,
+            Self::West => Self::North,
         }
     }
 

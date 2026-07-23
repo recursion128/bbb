@@ -134,13 +134,15 @@ zero with no distance delay. Missing entity, non-living dispatch, unknown
 registry identity, or unresolved dynamic state consumes no samples.
 
 After sound submission, non-Player state applies in Vanilla order. Health
-becomes zero. If the incarnation has not already run `die`, Wolf/Sniffer
-pre-super hooks run first, then the base sleeping transition and modeled
-item-use stop, the lifecycle flag becomes dead, and pose becomes `DYING`;
-post-super hooks run afterwards where bbb has a canonical consumer. A repeated
-event still plays the death sound and writes health zero, but does not rerun
-first-death hooks. Player event 3 plays sound only. Same-id recreation and
-session/level reset start a fresh non-dead incarnation.
+becomes zero. Wolf/Sniffer pre-super hooks run on every virtual `die` call
+because their overrides sit outside `LivingEntity.die`'s `dead` guard. On the
+first call for an incarnation, the guarded base path then performs the sleeping
+transition and modeled item-use stop, marks the lifecycle dead, and sets pose
+`DYING`; post-super hooks run afterwards where bbb has a canonical consumer. A
+repeated event still plays the death sound, writes health zero, and reruns the
+two pre-super overrides, but does not rerun the guarded base transition. Player
+event 3 plays sound only. Same-id recreation and session/level reset start a
+fresh non-dead incarnation.
 
 ## Serial Stages, Tests, and Gates
 

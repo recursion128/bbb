@@ -12,12 +12,13 @@ use bbb_protocol::attribute_types::{vanilla_attribute_type, VANILLA_ATTRIBUTE_MO
 use bbb_protocol::entity_data_serializers::{
     VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID, VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
     VANILLA_ENTITY_DATA_SERIALIZER_INT_ID, VANILLA_ENTITY_DATA_SERIALIZER_LONG_ID,
-    VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
+    VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID, VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
+    VANILLA_ENTITY_DATA_SERIALIZER_SNIFFER_STATE_ID,
 };
 use bbb_protocol::entity_poses::{
-    VANILLA_ENTITY_POSE_CROUCHING_ID, VANILLA_ENTITY_POSE_FALL_FLYING_ID,
-    VANILLA_ENTITY_POSE_SLEEPING_ID, VANILLA_ENTITY_POSE_STANDING_ID,
-    VANILLA_ENTITY_POSE_SWIMMING_ID,
+    VANILLA_ENTITY_POSE_CROUCHING_ID, VANILLA_ENTITY_POSE_DYING_ID,
+    VANILLA_ENTITY_POSE_FALL_FLYING_ID, VANILLA_ENTITY_POSE_SLEEPING_ID,
+    VANILLA_ENTITY_POSE_STANDING_ID, VANILLA_ENTITY_POSE_SWIMMING_ID,
 };
 use bbb_protocol::packets::{
     AttributeModifier as ProtocolAttributeModifier, AttributeSnapshot as ProtocolAttributeSnapshot,
@@ -40,7 +41,7 @@ use bbb_protocol::item_types::{
 use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
 use bbb_protocol::packets::ItemStackSummary;
 use bbb_protocol::packets::{
-    EntityDataRegistryHolder, EntityDataRegistryReference,
+    EntityDataEnumSerializer, EntityDataRegistryHolder, EntityDataRegistryReference,
     EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
 };
 
@@ -102,26 +103,27 @@ use super::{
     EntityClientMovementParticleState, EntityClientMovementSimpleParticleKind,
     EntityClientMovementSimpleParticleState, EntityDamage, EntityDamageEventState, EntityEquipment,
     EntityHurtingProjectile, EntityIdentity, EntityInterpolationCollisionInput, EntityLeash,
-    EntityMetadata, EntityMinecartCommandBlock, EntityMinecartLerp, EntityMobEffects,
-    EntityModelSourceState, EntityMount, EntityProjectileLifecycle, EntityState,
+    EntityLivingLifecycle, EntityMetadata, EntityMinecartCommandBlock, EntityMinecartLerp,
+    EntityMobEffects, EntityModelSourceState, EntityMount, EntityProjectileLifecycle, EntityState,
     EntitySupportingBlock, EntityTransform, EntityTransformState, EntityTransientEvents,
     EntityVec3, EvokerFangsCritParticleState, FallingBlockModelState,
     FireworkRocketExplosionParticleState, FireworkRocketItemState, FishingHookRenderSourceState,
     FoxEatParticleState, GuardianAmbientParticleState, GuardianAttackParticleState,
-    HappyGhastHarnessColor, ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor,
-    LocalPlayerAttackSwingState, MinecartDisplayBlockState, OminousItemSpawnerItemState,
-    OminousItemSpawnerParticleState, PowderSnowFlakeParticleState, RavagerRoarParticleState,
-    RavagerStunParticleState, SlimeLandingParticleState, VanillaEntityBlockEffectTickPolicy,
-    WolfArmorCrackiness, VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID,
-    VANILLA_ABSTRACT_NAUTILUS_DEFAULT_DASH, VANILLA_COMMAND_BLOCK_MINECART_COMMAND_DATA_ID,
+    HappyGhastHarnessColor, ItemEntityStackState, ItemFrameRenderState, LivingDeathWakeTransition,
+    LlamaBodyDecorColor, LocalPlayerAttackSwingState, MinecartDisplayBlockState,
+    OminousItemSpawnerItemState, OminousItemSpawnerParticleState, PowderSnowFlakeParticleState,
+    RavagerRoarParticleState, RavagerStunParticleState, SlimeLandingParticleState,
+    VanillaEntityBlockEffectTickPolicy, WolfArmorCrackiness,
+    VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID, VANILLA_ABSTRACT_NAUTILUS_DEFAULT_DASH,
+    VANILLA_COMMAND_BLOCK_MINECART_COMMAND_DATA_ID,
     VANILLA_COMMAND_BLOCK_MINECART_LAST_OUTPUT_DATA_ID, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
     VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
     VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
     VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
     VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
-    VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
-    VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
-    VANILLA_MAX_AIR_SUPPLY_TICKS,
+    VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SNIFFER_ID,
+    VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
+    VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_MAX_AIR_SUPPLY_TICKS,
 };
 use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, bat_is_resting, boat_bubble_time,
@@ -168,6 +170,7 @@ use crate::entities::schema::{
     vanilla_entity_metadata_living_entity_accessors_for_entity_type,
     vanilla_entity_metadata_mob_accessors_for_entity_type,
     vanilla_entity_metadata_rope_hold_position_owner,
+    vanilla_entity_metadata_sniffer_state_accessor_for_entity_type,
     vanilla_entity_metadata_type_interpolation_steps,
     vanilla_entity_metadata_type_is_abstract_piglin, vanilla_entity_metadata_type_is_living,
     vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer,
@@ -175,7 +178,7 @@ use crate::entities::schema::{
     VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID,
     VANILLA_AVATAR_MODEL_PART_CAPE as VANILLA_AVATAR_CAPE_PART_MASK, VANILLA_HUMANOID_ARM_LEFT_ID,
     VANILLA_HUMANOID_ARM_RIGHT_ID, VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID,
-    VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID,
+    VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID, VANILLA_SNIFFER_STATE_IDLING_ID,
 };
 use crate::registries::{armor_trim_sprite, ArmorTrimLayer, RegistrySet};
 use crate::ItemEquipmentSlot;
@@ -762,6 +765,14 @@ impl EntityStore {
                 *existing = fresh_client_animations;
             }
             reset::<EntityDamage>(&mut self.ecs, entity);
+            sync_derived_marker::<EntityLivingLifecycle>(
+                &mut self.ecs,
+                entity,
+                vanilla_living_entity_type(entity_type_id),
+            );
+            if let Ok(mut lifecycle) = self.ecs.get::<&mut EntityLivingLifecycle>(entity) {
+                *lifecycle = EntityLivingLifecycle::default();
+            }
             reset::<EntitySupportingBlock>(&mut self.ecs, entity);
             reset::<EntityClientMovementCollisionFacts>(&mut self.ecs, entity);
             if is_vanilla_minecart_type(entity_type_id) {
@@ -925,6 +936,11 @@ impl EntityStore {
         if let Some(movement) = fresh_fishing_hook_movement {
             let _ = self.ecs.insert_one(entity, movement);
         }
+        sync_derived_marker::<EntityLivingLifecycle>(
+            &mut self.ecs,
+            entity,
+            vanilla_living_entity_type(entity_type_id),
+        );
         sync_derived_marker::<EntityClientMovementCollisionFacts>(
             &mut self.ecs,
             entity,
@@ -1005,6 +1021,11 @@ impl EntityStore {
                 entity,
                 super::client_movement::fishing_hook_movement_from_uuid(uuid, spawn_owner_uuid),
             );
+        }
+        if vanilla_living_entity_type(entity_type_id) {
+            let _ = self
+                .ecs
+                .insert_one(entity, EntityLivingLifecycle::from(&state));
         }
         sync_derived_marker::<EntityClientMovementCollisionFacts>(
             &mut self.ecs,
@@ -1633,6 +1654,14 @@ impl EntityStore {
         let accessors =
             vanilla_entity_metadata_living_entity_accessors_for_entity_type(entity_type_id)?;
         self.metadata_float(id, accessors.health_data_id, accessors.health_default)
+    }
+
+    pub(crate) fn living_entity_dead(&self, id: i32) -> Option<bool> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        self.ecs
+            .get::<&EntityLivingLifecycle>(entity)
+            .ok()
+            .map(|lifecycle| lifecycle.dead)
     }
 
     pub(crate) fn is_baby(&self, id: i32) -> Option<bool> {
@@ -5660,6 +5689,9 @@ impl EntityStore {
         if let Ok(mut damage) = self.ecs.get::<&mut EntityDamage>(entity) {
             *damage = EntityDamage::default();
         }
+        if let Ok(mut lifecycle) = self.ecs.get::<&mut EntityLivingLifecycle>(entity) {
+            *lifecycle = EntityLivingLifecycle::default();
+        }
         if let Ok(mut support) = self.ecs.get::<&mut EntitySupportingBlock>(entity) {
             *support = EntitySupportingBlock::default();
         }
@@ -5806,7 +5838,11 @@ impl EntityStore {
     /// Vanilla plays the death sound for Players too, but deliberately skips `setHealth(0)` and
     /// `die(generic)` for every `Player` instance. The caller owns the sound side effect; this
     /// method owns only the non-Player health/death-state transition.
-    pub(crate) fn apply_client_living_death_entity_event(&mut self, id: i32) -> Option<()> {
+    pub(crate) fn apply_client_living_death_entity_event(
+        &mut self,
+        id: i32,
+        wake: Option<LivingDeathWakeTransition>,
+    ) -> Option<()> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let entity_type_id = self.ecs.get::<&EntityIdentity>(entity).ok()?.entity_type_id;
         let accessors =
@@ -5817,21 +5853,88 @@ impl EntityStore {
 
         {
             let mut metadata = self.ecs.get::<&mut EntityMetadata>(entity).ok()?;
-            let health = ProtocolEntityDataValue {
-                data_id: accessors.health_data_id,
-                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
-                value: EntityDataValueKind::Float(0.0),
+            upsert_metadata_value(
+                &mut metadata,
+                ProtocolEntityDataValue {
+                    data_id: accessors.health_data_id,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
+                    value: EntityDataValueKind::Float(0.0),
+                },
+            );
+        }
+
+        // These virtual overrides execute before `LivingEntity.die`, so they
+        // run on repeated event-3 calls even after the base `dead` guard closes.
+        if entity_type_id == VANILLA_ENTITY_TYPE_WOLF_ID {
+            let mut animations = self.ecs.get::<&mut EntityClientAnimations>(entity).ok()?;
+            animations.animations.clear_wolf_wet_on_death();
+        }
+        if entity_type_id == VANILLA_ENTITY_TYPE_SNIFFER_ID {
+            let (state_data_id, _) =
+                vanilla_entity_metadata_sniffer_state_accessor_for_entity_type(entity_type_id)?;
+            let mut metadata = self.ecs.get::<&mut EntityMetadata>(entity).ok()?;
+            upsert_metadata_value(
+                &mut metadata,
+                ProtocolEntityDataValue {
+                    data_id: state_data_id,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_SNIFFER_STATE_ID,
+                    value: EntityDataValueKind::EnumId {
+                        serializer: EntityDataEnumSerializer::SnifferState,
+                        id: VANILLA_SNIFFER_STATE_IDLING_ID,
+                    },
+                },
+            );
+        }
+
+        let already_dead = self.ecs.get::<&EntityLivingLifecycle>(entity).ok()?.dead;
+        if !already_dead {
+            let sleeping = {
+                let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+                metadata.data_values.iter().any(|value| {
+                    value.data_id == accessors.sleeping_pos_data_id
+                        && matches!(value.value, EntityDataValueKind::OptionalBlockPos(Some(_)))
+                })
             };
-            if let Some(existing) = metadata
-                .data_values
-                .iter_mut()
-                .find(|value| value.data_id == accessors.health_data_id)
-            {
-                *existing = health;
-            } else {
-                metadata.data_values.push(health);
-                metadata.data_values.sort_by_key(|value| value.data_id);
+            if sleeping {
+                if let Some(wake) = wake {
+                    let mut transform = self.ecs.get::<&mut EntityTransform>(entity).ok()?;
+                    transform.position = wake.position;
+                    transform.set_y_rot(wake.y_rot);
+                    transform.set_x_rot(0.0);
+                }
+                let mut metadata = self.ecs.get::<&mut EntityMetadata>(entity).ok()?;
+                upsert_metadata_value(
+                    &mut metadata,
+                    ProtocolEntityDataValue {
+                        data_id: accessors.sleeping_pos_data_id,
+                        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
+                        value: EntityDataValueKind::OptionalBlockPos(None),
+                    },
+                );
             }
+
+            // `stopSleeping` temporarily writes STANDING. The immediately
+            // following base `die` write is the only retained packet-boundary
+            // state, so publish the final DYING pose directly.
+            let entity_accessors = vanilla_entity_metadata_entity_accessors()?;
+            let mut metadata = self.ecs.get::<&mut EntityMetadata>(entity).ok()?;
+            upsert_metadata_value(
+                &mut metadata,
+                ProtocolEntityDataValue {
+                    data_id: entity_accessors.pose_data_id,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
+                    value: EntityDataValueKind::Pose(VANILLA_ENTITY_POSE_DYING_ID),
+                },
+            );
+            drop(metadata);
+
+            // The client side of `stopUsingItem` clears only unsynchronized
+            // use-item payload/ticks. bbb has no parallel remote payload owner;
+            // the synchronized using flag remains server-owned, as in Vanilla.
+            self.ecs
+                .get::<&mut EntityLivingLifecycle>(entity)
+                .ok()?
+                .dead = true;
         }
 
         let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?.clone();
@@ -7724,6 +7827,19 @@ impl EntityStore {
         if let Ok(mut damage) = self.ecs.get::<&mut EntityDamage>(entity) {
             *damage = EntityDamage::from(state);
         }
+        if vanilla_living_entity_type(state.entity_type_id) {
+            let lifecycle = EntityLivingLifecycle::from(state);
+            let updated = self
+                .ecs
+                .get::<&mut EntityLivingLifecycle>(entity)
+                .map(|mut existing| *existing = lifecycle)
+                .is_ok();
+            if !updated {
+                let _ = self.ecs.insert_one(entity, lifecycle);
+            }
+        } else {
+            let _ = self.ecs.remove_one::<EntityLivingLifecycle>(entity);
+        }
         if let Ok(mut support) = self.ecs.get::<&mut EntitySupportingBlock>(entity) {
             *support = EntitySupportingBlock::from(state);
         }
@@ -7879,6 +7995,7 @@ impl EntityStore {
         let effects = self.ecs.get::<&EntityMobEffects>(entity).ok()?;
         let client_animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
         let damage = self.ecs.get::<&EntityDamage>(entity).ok()?;
+        let living_lifecycle = self.ecs.get::<&EntityLivingLifecycle>(entity).ok();
         let supporting_block = self.ecs.get::<&EntitySupportingBlock>(entity).ok()?;
         let minecart_lerp = self.ecs.get::<&EntityMinecartLerp>(entity).ok();
         let minecart_command_block = self.ecs.get::<&EntityMinecartCommandBlock>(entity).ok();
@@ -7914,6 +8031,7 @@ impl EntityStore {
             client_animations: Default::default(),
             last_damage: None,
             damage_invulnerable_time: 0,
+            living_dead: false,
             minecart_lerp_pending_steps: Vec::new(),
             minecart_lerp_steps: Vec::new(),
             minecart_lerp_old_step: None,
@@ -7932,6 +8050,9 @@ impl EntityStore {
         (*effects).clone().write_to_state(&mut state);
         (*client_animations).write_to_state(&mut state);
         (*damage).clone().write_to_state(&mut state);
+        if let Some(lifecycle) = living_lifecycle {
+            (*lifecycle).write_to_state(&mut state);
+        }
         (*supporting_block).write_to_state(&mut state);
         if let Some(minecart_lerp) = minecart_lerp {
             (*minecart_lerp).clone().write_to_state(&mut state);
@@ -8033,6 +8154,9 @@ impl Clone for EntityStore {
             }
             if let Ok(projectile) = self.ecs.get::<&EntityProjectileLifecycle>(entity) {
                 let _ = store.ecs.insert_one(cloned, *projectile);
+            }
+            if let Ok(lifecycle) = self.ecs.get::<&EntityLivingLifecycle>(entity) {
+                let _ = store.ecs.insert_one(cloned, *lifecycle);
             }
             if entity_type_id == VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID {
                 if let Ok(movement) = self.ecs.get::<&EntityExperienceOrbMovement>(entity) {

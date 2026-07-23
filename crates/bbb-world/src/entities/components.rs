@@ -134,6 +134,22 @@ pub(crate) struct EntityDamage {
     pub(crate) invulnerable_time: i32,
 }
 
+/// Client-owned `LivingEntity.dead`, scoped to one concrete entity incarnation.
+///
+/// Synchronized health can reach zero without invoking `die`, while
+/// `LivingEntity.die` uses this field to guard its sleeping/item-use/pose
+/// transition. Only living EntityTypes carry this component.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) struct EntityLivingLifecycle {
+    pub(crate) dead: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct LivingDeathWakeTransition {
+    pub(crate) position: EntityVec3,
+    pub(crate) y_rot: f32,
+}
+
 #[derive(Debug, Clone, PartialEq, Default)]
 pub(crate) struct EntityMinecartLerp {
     pub(crate) pending_steps: PublicationShared<Vec<ProtocolMinecartStep>>,
@@ -380,6 +396,14 @@ impl From<&EntityState> for EntityDamage {
         Self {
             last_damage: state.last_damage.clone().into(),
             invulnerable_time: state.damage_invulnerable_time,
+        }
+    }
+}
+
+impl From<&EntityState> for EntityLivingLifecycle {
+    fn from(state: &EntityState) -> Self {
+        Self {
+            dead: state.living_dead,
         }
     }
 }
@@ -889,6 +913,12 @@ impl EntityDamage {
     pub(crate) fn write_to_state(self, state: &mut EntityState) {
         state.last_damage = self.last_damage.into_value();
         state.damage_invulnerable_time = self.invulnerable_time;
+    }
+}
+
+impl EntityLivingLifecycle {
+    pub(crate) fn write_to_state(self, state: &mut EntityState) {
+        state.living_dead = self.dead;
     }
 }
 

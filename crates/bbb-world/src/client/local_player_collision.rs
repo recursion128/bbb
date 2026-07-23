@@ -2,12 +2,13 @@ use std::collections::BTreeMap;
 
 use bbb_protocol::entity_poses::{VANILLA_ENTITY_POSE_DIGGING_ID, VANILLA_ENTITY_POSE_EMERGING_ID};
 use bbb_protocol::entity_types::{
-    vanilla_entity_type_is_powder_snow_walkable, VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID,
-    VANILLA_ENTITY_TYPE_BLOCK_DISPLAY_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
-    VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
-    VANILLA_ENTITY_TYPE_ITEM_DISPLAY_ID, VANILLA_ENTITY_TYPE_MARKER_ID,
-    VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-    VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TEXT_DISPLAY_ID,
+    vanilla_entity_type, vanilla_entity_type_is_powder_snow_walkable,
+    VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID, VANILLA_ENTITY_TYPE_BLOCK_DISPLAY_ID,
+    VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+    VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_ITEM_DISPLAY_ID,
+    VANILLA_ENTITY_TYPE_MARKER_ID, VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
+    VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
+    VANILLA_ENTITY_TYPE_TEXT_DISPLAY_ID,
 };
 use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
 
@@ -221,6 +222,128 @@ fn find_supporting_block(
 
 pub(crate) fn block_collision_shape_is_full_block(block: &BlockProbe, pos: BlockPos) -> bool {
     block_collision_shape(block, pos).is_some_and(BlockCollisionShape::is_full_block)
+}
+
+/// Geometry half of Vanilla `DismountHelper.findSafeDismountLocation`.
+///
+/// The caller owns the EntityType-specific dangerous-block predicates. This
+/// helper resolves the non-climbable floor, fixed EntityType bounds, empty
+/// collision-context block shapes, and exact world-border containment.
+pub(crate) fn entity_type_safe_dismount_geometry(
+    world: &WorldStore,
+    entity_type_id: i32,
+    block_pos: BlockPos,
+) -> Option<[f64; 3]> {
+    let floor_height = non_climbable_floor_height(world, block_pos);
+    if !floor_height.is_finite() || floor_height >= 1.0 {
+        return None;
+    }
+    let position = [
+        f64::from(block_pos.x) + 0.5,
+        f64::from(block_pos.y) + floor_height,
+        f64::from(block_pos.z) + 0.5,
+    ];
+    let entity_type = vanilla_entity_type(entity_type_id)?;
+    let half_width = f64::from(entity_type.width) * 0.5;
+    let bounds = LocalPlayerBounds::from_min_max(
+        [
+            position[0] - half_width,
+            position[1],
+            position[2] - half_width,
+        ],
+        [
+            position[0] + half_width,
+            position[1] + f64::from(entity_type.height),
+            position[2] + half_width,
+        ],
+    );
+    if empty_context_block_collision(world, bounds) {
+        return None;
+    }
+    let border = world.world_border();
+    let max_epsilon = 1.0e-5_f64;
+    (bounds.min_x >= border.min_x_at(0.0)
+        && bounds.max_x - max_epsilon < border.max_x_at(0.0)
+        && bounds.min_z >= border.min_z_at(0.0)
+        && bounds.max_z - max_epsilon < border.max_z_at(0.0))
+    .then_some(position)
+}
+
+fn non_climbable_floor_height(world: &WorldStore, pos: BlockPos) -> f64 {
+    let shape_max_y = |probe: Option<BlockProbe>| {
+        let probe = probe?;
+        let name = probe.block_name.as_deref()?;
+        if matches!(
+            name,
+            "minecraft:ladder"
+                | "minecraft:vine"
+                | "minecraft:scaffolding"
+                | "minecraft:weeping_vines"
+                | "minecraft:weeping_vines_plant"
+                | "minecraft:twisting_vines"
+                | "minecraft:twisting_vines_plant"
+                | "minecraft:cave_vines"
+                | "minecraft:cave_vines_plant"
+        ) || (block_name_is_trapdoor(name)
+            && probe.block_properties.get("open").map(String::as_str) == Some("true"))
+        {
+            return None;
+        }
+        block_collision_shape_empty_context(&probe, probe.pos).and_then(|shape| {
+            shape
+                .boxes()
+                .map(|shape_box| shape_box.max_y)
+                .reduce(f64::max)
+        })
+    };
+    if let Some(max_y) = shape_max_y(world.probe_block(pos)) {
+        return max_y;
+    }
+    let below = BlockPos {
+        y: pos.y.saturating_sub(1),
+        ..pos
+    };
+    shape_max_y(world.probe_block(below)).map_or(f64::NEG_INFINITY, |max_y| {
+        if max_y >= 1.0 {
+            max_y - 1.0
+        } else {
+            f64::NEG_INFINITY
+        }
+    })
+}
+
+fn empty_context_block_collision(world: &WorldStore, bounds: LocalPlayerBounds) -> bool {
+    let min_x = block_floor(bounds.min_x + COLLISION_EPSILON) - 1;
+    let max_x = block_floor(bounds.max_x - COLLISION_EPSILON) + 1;
+    let min_y = block_floor(bounds.min_y + COLLISION_EPSILON) - 1;
+    let max_y = block_floor(bounds.max_y - COLLISION_EPSILON) + 1;
+    let min_z = block_floor(bounds.min_z + COLLISION_EPSILON) - 1;
+    let max_z = block_floor(bounds.max_z - COLLISION_EPSILON) + 1;
+    for y in min_y..=max_y {
+        for z in min_z..=max_z {
+            for x in min_x..=max_x {
+                let pos = BlockPos { x, y, z };
+                let Some(block) = world.probe_block(pos) else {
+                    continue;
+                };
+                let shape = if block.block_name.as_deref() == Some("minecraft:moving_piston") {
+                    moving_piston_collision_shape(
+                        world,
+                        &block,
+                        pos,
+                        LocalPlayerCollisionContext::for_bounds(bounds),
+                        false,
+                    )
+                } else {
+                    block_collision_shape_empty_context(&block, pos)
+                };
+                if shape.is_some_and(|shape| bounds_intersects_block_shape(bounds, pos, shape)) {
+                    return true;
+                }
+            }
+        }
+    }
+    false
 }
 
 impl WorldStore {

@@ -8,8 +8,9 @@ use crate::entities::{
     VANILLA_COPPER_GOLEM_STATE_IDLE_ID as COPPER_GOLEM_STATE_IDLE_ID,
 };
 use bbb_protocol::entity_poses::{
-    VANILLA_ENTITY_POSE_INHALING_ID, VANILLA_ENTITY_POSE_LONG_JUMPING_ID,
-    VANILLA_ENTITY_POSE_SHOOTING_ID, VANILLA_ENTITY_POSE_SLIDING_ID,
+    VANILLA_ENTITY_POSE_DYING_ID, VANILLA_ENTITY_POSE_INHALING_ID,
+    VANILLA_ENTITY_POSE_LONG_JUMPING_ID, VANILLA_ENTITY_POSE_SHOOTING_ID,
+    VANILLA_ENTITY_POSE_SLEEPING_ID, VANILLA_ENTITY_POSE_SLIDING_ID,
     VANILLA_ENTITY_POSE_STANDING_ID,
 };
 use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_AXOLOTL_ID;
@@ -33,6 +34,58 @@ fn living_entity_using_item_data(entity_type_id: i32, using: bool) -> ProtocolEn
             accessors.flags_default
         },
     )
+}
+
+fn entity_pose(store: &WorldStore, entity_id: i32) -> i32 {
+    let accessors = vanilla_entity_metadata_entity_accessors()
+        .expect("generated base Entity metadata accessors must resolve");
+    store
+        .probe_entity(entity_id)
+        .expect("entity state")
+        .data_values
+        .iter()
+        .find(|value| value.data_id == accessors.pose_data_id)
+        .map_or(accessors.pose_default, |value| match value.value {
+            EntityDataValueKind::Pose(pose) => pose,
+            ref value => panic!("unexpected pose metadata value {value:?}"),
+        })
+}
+
+fn living_sleeping_pos_data(
+    entity_type_id: i32,
+    pos: Option<ProtocolBlockPos>,
+) -> ProtocolEntityDataValue {
+    let accessors = vanilla_entity_metadata_living_entity_accessors_for_entity_type(entity_type_id)
+        .expect("generated inherited LivingEntity metadata accessors must resolve");
+    ProtocolEntityDataValue {
+        data_id: accessors.sleeping_pos_data_id,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
+        value: EntityDataValueKind::OptionalBlockPos(pos),
+    }
+}
+
+fn living_sleeping_pos(store: &WorldStore, entity_id: i32) -> Option<ProtocolBlockPos> {
+    let entity_type_id = store.entity_type_id(entity_id).expect("entity type");
+    let accessors = vanilla_entity_metadata_living_entity_accessors_for_entity_type(entity_type_id)
+        .expect("generated inherited LivingEntity metadata accessors must resolve");
+    store
+        .probe_entity(entity_id)
+        .expect("entity state")
+        .data_values
+        .iter()
+        .find(|value| value.data_id == accessors.sleeping_pos_data_id)
+        .and_then(|value| match value.value {
+            EntityDataValueKind::OptionalBlockPos(pos) => pos,
+            ref value => panic!("unexpected sleeping-position metadata value {value:?}"),
+        })
+}
+
+fn sniffer_state_data(state_id: i32) -> ProtocolEntityDataValue {
+    let (data_id, _) = vanilla_entity_metadata_sniffer_state_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_SNIFFER_ID,
+    )
+    .expect("generated Sniffer state accessor must resolve");
+    protocol_enum_data(data_id, EntityDataEnumSerializer::SnifferState, state_id)
 }
 
 fn copper_golem_state_data_id() -> u8 {
@@ -247,6 +300,7 @@ fn living_death_event_sets_non_player_health_and_starts_death_animation() {
         70,
         VANILLA_ENTITY_TYPE_SNOWBALL_ID,
     ));
+    let alive_generation = store.publication_snapshot();
 
     let death_time = |store: &WorldStore, id: i32| {
         store
@@ -266,9 +320,27 @@ fn living_death_event_sets_non_player_health_and_starts_death_animation() {
         event_id: 3,
     }));
     assert_eq!(store.entities.living_entity_health(68), Some(0.0));
+    assert_eq!(store.entities.living_entity_dead(68), Some(true));
+    assert!(store.probe_entity(68).unwrap().living_dead);
+    assert_eq!(entity_pose(&store, 68), VANILLA_ENTITY_POSE_DYING_ID);
     assert_eq!(death_time(&store, 68), 0.0);
     store.advance_entity_client_animations(1);
     assert_eq!(death_time(&store, 68), 1.0);
+    assert_eq!(
+        alive_generation.entities.living_entity_dead(68),
+        Some(false),
+        "retained publications keep the pre-event lifecycle generation"
+    );
+    assert_eq!(
+        entity_pose(&alive_generation, 68),
+        VANILLA_ENTITY_POSE_STANDING_ID
+    );
+
+    let encoded = serde_json::to_vec(&store).unwrap();
+    let restored: WorldStore = serde_json::from_slice(&encoded).unwrap();
+    assert_eq!(restored.entities.living_entity_dead(68), Some(true));
+    assert!(restored.probe_entity(68).unwrap().living_dead);
+    assert_eq!(entity_pose(&restored, 68), VANILLA_ENTITY_POSE_DYING_ID);
 
     // The sound half of event 3 still applies to a Player, but vanilla deliberately skips its
     // health/death mutation. Non-living event-3 owners such as Snowball are unaffected too.
@@ -277,13 +349,221 @@ fn living_death_event_sets_non_player_health_and_starts_death_animation() {
         event_id: 3,
     }));
     assert_eq!(store.entities.living_entity_health(69), Some(1.0));
+    assert_eq!(store.entities.living_entity_dead(69), Some(false));
+    assert_eq!(entity_pose(&store, 69), VANILLA_ENTITY_POSE_STANDING_ID);
     assert_eq!(death_time(&store, 69), 0.0);
     assert!(store.apply_entity_event(ProtocolEntityEvent {
         entity_id: 70,
         event_id: 3,
     }));
     assert_eq!(store.entities.living_entity_health(70), None);
+    assert_eq!(store.entities.living_entity_dead(70), None);
     assert_eq!(death_time(&store, 70), 0.0);
+
+    // The base `LivingEntity.die` guard runs once. A later synchronized pose therefore survives a
+    // repeated event while the unguarded health assignment still runs.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 68,
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_STANDING_ID)],
+    }));
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 68,
+        event_id: 3,
+    }));
+    assert_eq!(store.entities.living_entity_health(68), Some(0.0));
+    assert_eq!(store.entities.living_entity_dead(68), Some(true));
+    assert_eq!(entity_pose(&store, 68), VANILLA_ENTITY_POSE_STANDING_ID);
+
+    // A same-id packet recreation is a fresh object incarnation and resets the private guard.
+    store.apply_add_entity(protocol_add_entity_with_type(
+        68,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    assert_eq!(store.entities.living_entity_health(68), Some(1.0));
+    assert_eq!(store.entities.living_entity_dead(68), Some(false));
+    assert!(!store.probe_entity(68).unwrap().living_dead);
+    assert_eq!(entity_pose(&store, 68), VANILLA_ENTITY_POSE_STANDING_ID);
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 68,
+        event_id: 3,
+    }));
+    assert_eq!(store.entities.living_entity_dead(68), Some(true));
+
+    // Re-entering configuration destroys the client level and cannot leak the guard into the next
+    // listener/session generation.
+    store.clear_client_level();
+    assert!(store.probe_entity(68).is_none());
+    store.apply_add_entity(protocol_add_entity_with_type(
+        68,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    assert_eq!(store.entities.living_entity_dead(68), Some(false));
+}
+
+#[test]
+fn living_death_event_repeats_virtual_prehooks_outside_the_base_guard() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        71,
+        VANILLA_ENTITY_TYPE_WOLF_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        72,
+        VANILLA_ENTITY_TYPE_SNIFFER_ID,
+    ));
+
+    let sniffer_animation_id = |store: &WorldStore| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == 72)
+            .expect("Sniffer model source")
+            .sniffer_animation_id
+    };
+
+    // Wolf.die clears the wet/shaking fields before the base `dead` guard.
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 71,
+        event_id: 8,
+    }));
+    assert!(store
+        .probe_entity(71)
+        .unwrap()
+        .client_animations
+        .wolf_wet
+        .is_some());
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 71,
+        event_id: 3,
+    }));
+    assert!(store
+        .probe_entity(71)
+        .unwrap()
+        .client_animations
+        .wolf_wet
+        .is_none());
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 71,
+        event_id: 8,
+    }));
+    assert!(store
+        .probe_entity(71)
+        .unwrap()
+        .client_animations
+        .wolf_wet
+        .is_some());
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 71,
+        event_id: 3,
+    }));
+    assert!(store
+        .probe_entity(71)
+        .unwrap()
+        .client_animations
+        .wolf_wet
+        .is_none());
+    assert_eq!(store.entities.living_entity_dead(71), Some(true));
+
+    // Sniffer.die transitions DATA_STATE to IDLING before the same base guard, including on repeat.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 72,
+        values: vec![sniffer_state_data(VANILLA_SNIFFER_STATE_DIGGING_ID)],
+    }));
+    assert_eq!(
+        sniffer_animation_id(&store),
+        VANILLA_SNIFFER_STATE_DIGGING_ID
+    );
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 72,
+        event_id: 3,
+    }));
+    assert_eq!(sniffer_animation_id(&store), -1);
+    assert_eq!(store.entities.living_entity_dead(72), Some(true));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 72,
+        values: vec![sniffer_state_data(VANILLA_SNIFFER_STATE_DIGGING_ID)],
+    }));
+    assert_eq!(
+        sniffer_animation_id(&store),
+        VANILLA_SNIFFER_STATE_DIGGING_ID
+    );
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 72,
+        event_id: 3,
+    }));
+    assert_eq!(sniffer_animation_id(&store), -1);
+    assert_eq!(entity_pose(&store, 72), VANILLA_ENTITY_POSE_DYING_ID);
+}
+
+#[test]
+fn living_death_event_stops_sleeping_at_vanilla_bed_position() {
+    let mut store = WorldStore::with_dimension(crate::WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store.insert_decoded_chunk(empty_test_chunk());
+
+    let mut bed_properties = std::collections::BTreeMap::new();
+    bed_properties.insert("facing".to_string(), "north".to_string());
+    bed_properties.insert("occupied".to_string(), "true".to_string());
+    bed_properties.insert("part".to_string(), "foot".to_string());
+    let registry = crate::registries::BlockStateRegistry::vanilla_26_1();
+    let bed_state_id = registry
+        .find_by_name_and_properties("minecraft:white_bed", &bed_properties)
+        .expect("occupied north white-bed state")
+        .id;
+    let stone_state_id = registry
+        .find_by_name_and_properties("minecraft:stone", &std::collections::BTreeMap::new())
+        .expect("stone default state")
+        .id;
+    let bed_pos = ProtocolBlockPos { x: 2, y: 1, z: 2 };
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: bed_pos,
+        block_state_id: bed_state_id,
+    }));
+    // Facing NORTH and yaw 20 selects EAST first. A full stone floor below that air cell makes it
+    // the first safe `DismountHelper.findSafeDismountLocation` result.
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos { x: 3, y: 0, z: 2 },
+        block_state_id: stone_state_id,
+    }));
+
+    store.apply_add_entity(protocol_add_entity_with_type(
+        73,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 73,
+        values: vec![
+            entity_pose_data(VANILLA_ENTITY_POSE_SLEEPING_ID),
+            living_sleeping_pos_data(VANILLA_ENTITY_TYPE_CHICKEN_ID, Some(bed_pos)),
+        ],
+    }));
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 73,
+        event_id: 3,
+    }));
+
+    let entity = store.probe_entity(73).unwrap();
+    assert_eq!(
+        entity.position,
+        EntityVec3 {
+            x: 3.5,
+            y: 1.0,
+            z: 2.5,
+        }
+    );
+    assert_eq!(entity.y_rot, 90.0);
+    assert_eq!(entity.x_rot, 0.0);
+    assert_eq!(living_sleeping_pos(&store, 73), None);
+    assert_eq!(entity_pose(&store, 73), VANILLA_ENTITY_POSE_DYING_ID);
+    assert!(entity.living_dead);
+
+    let bed = store.probe_block(BlockPos { x: 2, y: 1, z: 2 }).unwrap();
+    assert_eq!(
+        bed.block_properties.get("occupied").map(String::as_str),
+        Some("false")
+    );
 }
 
 #[test]

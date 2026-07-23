@@ -5912,6 +5912,12 @@ impl EntityClientAnimationState {
             .map_or(0.0, |state| state.shake_anim(partial_tick))
     }
 
+    /// Vanilla `Wolf.die`: clear the client-only wet/shaking interpolation
+    /// before delegating to `LivingEntity.die`.
+    pub(crate) fn clear_wolf_wet_on_death(&mut self) {
+        self.wolf_wet = None;
+    }
+
     /// Vanilla `WolfRenderState.headRollAngle` (`Wolf.getHeadRollAngle(partialTick)`):
     /// the lerped interested-angle accumulator scaled by `0.15π`. Returns `0.0`
     /// when the wolf is not begging/interested and every non-wolf entity.
