@@ -86,6 +86,9 @@
 ^crates/bbb-native/src/particle_runtime(/.*)?[.]rs$	fallback
 ^crates/bbb-native/src/(runtime|input|item_frames|banner_scene|debug_entries|main)[.]rs$	fallback
 ^crates/bbb-native/src/input/.*[.]rs$	fallback
+# Player-head scene tests name the exact Vanilla owner-specific skin fallback
+# and its render-state field; the skull model remains present in every branch.
+^crates/bbb-native/src/skull_scene[.]rs$	profiled_player_head_projects_owner_fallback_and_ready_dynamic_skin|let fallback = skull_model_instances|fallback\[0\][.]kind|fallback: EntityDefaultPlayerSkin::SlimAlex
 # Environment extraction uses this flag only to preserve checked-in vanilla
 # defaults when no synchronized dimension registry exists; remote registries use
 # their typed revision and never enter the built-in fallback branch.
