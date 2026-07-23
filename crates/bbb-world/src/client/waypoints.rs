@@ -6,8 +6,9 @@ use bbb_protocol::packets::{
     WaypointOperation as ProtocolWaypointOperation, WaypointVec3i as ProtocolWaypointVec3i,
 };
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
-use crate::{ChunkPos, WorldStore};
+use crate::{ChunkPos, EntityVec3, WorldStore};
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct ClientWaypointsState {
@@ -92,6 +93,63 @@ impl WorldStore {
         self.waypoints.last_event.as_ref()
     }
 
+    /// Resolves Vanilla `TrackedWaypoint.Vec3iWaypoint.position`'s optional
+    /// entity-follow branch without exposing the UUID entity index. The
+    /// transmitted vector remains the distance owner; this query supplies only
+    /// the interpolated eye position used for yaw and pitch while the current
+    /// entity block stays within Manhattan distance three.
+    pub fn probe_waypoint_entity_eye_position_at_partial_tick(
+        &self,
+        uuid: Uuid,
+        vector: WaypointVec3iState,
+        partial_ticks: f32,
+    ) -> Option<EntityVec3> {
+        let (current_position, pose_position, eye_height) = if self.local_player_profile_id()
+            == Some(uuid)
+        {
+            let current = self.local_player().pose?;
+            let pose = self.local_player_pose_at_partial_tick(partial_ticks)?;
+            (
+                EntityVec3 {
+                    x: current.position.x,
+                    y: current.position.y,
+                    z: current.position.z,
+                },
+                EntityVec3 {
+                    x: pose.position.x,
+                    y: pose.position.y,
+                    z: pose.position.z,
+                },
+                pose.eye_height(),
+            )
+        } else {
+            let entity_id = self.entities.protocol_id_for_uuid(uuid)?;
+            let transform = self.probe_entity_transform(entity_id)?;
+            let pose = self.probe_entity_camera_pose_at_partial_tick(entity_id, partial_ticks)?;
+            (
+                transform.position,
+                pose.position,
+                f64::from(pose.eye_height),
+            )
+        };
+        let block_x = current_position.x.floor() as i32;
+        let block_y = current_position.y.floor() as i32;
+        let block_z = current_position.z.floor() as i32;
+        let distance = block_x
+            .abs_diff(vector.x)
+            .saturating_add(block_y.abs_diff(vector.y))
+            .saturating_add(block_z.abs_diff(vector.z));
+        if distance > 3 {
+            return None;
+        }
+
+        Some(EntityVec3 {
+            x: pose_position.x,
+            y: pose_position.y + eye_height,
+            z: pose_position.z,
+        })
+    }
+
     fn apply_waypoint_update(&mut self, key: &str, waypoint: &WaypointState) -> bool {
         let Some(existing) = self.waypoints.tracked.get_mut(key) else {
             self.counters.waypoint_updates_ignored += 1;
@@ -168,8 +226,10 @@ impl WaypointVec3iState {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_COW_ID;
     use bbb_protocol::packets::{
-        ChunkPos as ProtocolChunkPos, WaypointIdentifier, WaypointOperation, WaypointVec3i,
+        AddEntity as ProtocolAddEntity, ChunkPos as ProtocolChunkPos, Vec3d as ProtocolVec3d,
+        WaypointIdentifier, WaypointOperation, WaypointVec3i,
     };
     use uuid::Uuid;
 
@@ -306,6 +366,97 @@ mod tests {
         assert_eq!(store.client_waypoints(), &ClientWaypointsState::default());
         assert_eq!(store.counters().waypoint_packets, 1);
         assert_eq!(store.counters().waypoints_tracked, 0);
+    }
+
+    #[test]
+    fn waypoint_entity_eye_query_applies_uuid_and_manhattan_gate() {
+        let mut store = WorldStore::new();
+        let uuid = Uuid::from_u128(0x00112233445566778899aabbccddeeff);
+        store.apply_add_entity(ProtocolAddEntity {
+            id: 41,
+            uuid,
+            entity_type_id: VANILLA_ENTITY_TYPE_COW_ID,
+            position: ProtocolVec3d {
+                x: 10.75,
+                y: 64.0,
+                z: -2.25,
+            },
+            delta_movement: ProtocolVec3d {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        });
+
+        let pose = store.probe_entity_camera_pose(41).unwrap();
+        assert_eq!(
+            store.probe_waypoint_entity_eye_position_at_partial_tick(
+                uuid,
+                WaypointVec3iState {
+                    x: 12,
+                    y: 64,
+                    z: -2,
+                },
+                0.5,
+            ),
+            Some(EntityVec3 {
+                x: pose.position.x,
+                y: pose.position.y + f64::from(pose.eye_height),
+                z: pose.position.z,
+            })
+        );
+        assert_eq!(
+            store.probe_waypoint_entity_eye_position_at_partial_tick(
+                uuid,
+                WaypointVec3iState {
+                    x: 13,
+                    y: 64,
+                    z: -2,
+                },
+                0.5,
+            ),
+            None
+        );
+        assert_eq!(
+            store.probe_waypoint_entity_eye_position_at_partial_tick(
+                Uuid::nil(),
+                WaypointVec3iState {
+                    x: 10,
+                    y: 64,
+                    z: -3,
+                },
+                0.5,
+            ),
+            None
+        );
+
+        let local_uuid = Uuid::from_u128(0x1234);
+        store.set_local_player_profile_id(local_uuid);
+        store.set_local_player_pose(crate::LocalPlayerPoseState {
+            position: ProtocolVec3d {
+                x: -4.25,
+                y: 70.0,
+                z: 8.75,
+            },
+            ..crate::LocalPlayerPoseState::default()
+        });
+        let local_pose = store.local_player_pose_at_partial_tick(0.5).unwrap();
+        assert_eq!(
+            store.probe_waypoint_entity_eye_position_at_partial_tick(
+                local_uuid,
+                WaypointVec3iState { x: -5, y: 70, z: 8 },
+                0.5,
+            ),
+            Some(EntityVec3 {
+                x: local_pose.position.x,
+                y: local_pose.position.y + local_pose.eye_height(),
+                z: local_pose.position.z,
+            })
+        );
     }
 
     #[test]

@@ -173,6 +173,12 @@ pub struct WorldStore {
     pub(crate) last_map_color_patch: Option<LastMapColorPatchState>,
     #[serde(default)]
     pub(crate) local_player: LocalPlayerState,
+    /// Startup/login identity of the native local client. The play protocol
+    /// does not repeat this UUID, but `ClientLevel.getEntity(UUID)` includes
+    /// the LocalPlayer for waypoint following and self-marker suppression.
+    /// It is process configuration rather than server-owned snapshot state.
+    #[serde(skip)]
+    pub(crate) local_player_profile_id: Option<uuid::Uuid>,
     /// Previous local-player pose endpoint used by render interpolation. It is
     /// runtime client state rather than serialized canonical wire state.
     #[serde(skip)]

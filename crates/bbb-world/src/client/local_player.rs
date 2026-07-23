@@ -13,6 +13,7 @@ use bbb_protocol::packets::{
     SetSimulationDistance as ProtocolSetSimulationDistance, Vec3d as ProtocolVec3d,
 };
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use super::local_player_fluid::local_player_eye_in_water;
 use super::local_player_movement::{
@@ -299,6 +300,14 @@ impl Default for CameraState {
 }
 
 impl WorldStore {
+    pub fn set_local_player_profile_id(&mut self, profile_id: Uuid) {
+        self.local_player_profile_id = Some(profile_id);
+    }
+
+    pub fn local_player_profile_id(&self) -> Option<Uuid> {
+        self.local_player_profile_id
+    }
+
     pub fn apply_player_abilities(&mut self, packet: ProtocolPlayerAbilities) {
         self.counters.player_abilities_packets += 1;
         self.local_player.abilities = Some(LocalPlayerAbilitiesState {

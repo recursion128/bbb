@@ -52,11 +52,11 @@ use bbb_renderer::{
     HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground,
     HudInventoryTextInputDecoration, HudInventoryTextLabel, HudInventoryTooltip,
     HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
-    HudJigsawBlockEditorScreen, HudJigsawBlockEditorTextField, HudJumpBar, HudPauseScreen,
-    HudPlayerHealth, HudSignEditorKind, HudSignEditorPreedit, HudSignEditorScreen, HudStatsItemRow,
-    HudStatsRow, HudStatsScreen, HudStructureBlockEditorScreen, HudStructureBlockEditorTextField,
-    HudStructureBlockMode, HudStyledTextRun, HudSystemToast, HudTestBlockEditorScreen,
-    HudTestBlockEditorTextField, HudTestInstanceBlockEditorScreen,
+    HudJigsawBlockEditorScreen, HudJigsawBlockEditorTextField, HudJumpBar, HudLocatorBar,
+    HudPauseScreen, HudPlayerHealth, HudSignEditorKind, HudSignEditorPreedit, HudSignEditorScreen,
+    HudStatsItemRow, HudStatsRow, HudStatsScreen, HudStructureBlockEditorScreen,
+    HudStructureBlockEditorTextField, HudStructureBlockMode, HudStyledTextRun, HudSystemToast,
+    HudTestBlockEditorScreen, HudTestBlockEditorTextField, HudTestInstanceBlockEditorScreen,
     HudTestInstanceBlockEditorTextField, HudTextStyle, HudUvRect, HudVehicleHealth,
     ItemModelAssetIdentity, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
     ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext, ParticleFluidKind,
@@ -226,6 +226,7 @@ mod game_rules_screen;
 mod render_extract;
 pub(crate) use render_extract::*;
 mod events;
+mod waypoint_locator;
 #[cfg(test)]
 pub(crate) use events::minimal_non_empty_synchronized_registry_data;
 pub(crate) use events::queue_chat_acknowledgement;
@@ -243,6 +244,7 @@ use dialog_screen::{
     hud_waiting_response_screen,
 };
 use game_rules_screen::hud_game_rules_screen;
+use waypoint_locator::hud_locator_bar_from_world;
 
 const VANILLA_CLIENT_TICK_INTERVAL: Duration = Duration::from_millis(50);
 const VANILLA_MAX_CLIENT_TICKS_PER_STEP: u32 = 10;
@@ -3127,6 +3129,8 @@ pub(crate) fn update_renderer_from_publication(
     let camera_hurt_effect =
         camera_hurt_effect_from_world(world, entity_partial_tick, damage_tilt_strength);
     let camera_fov_degrees = camera_fov_ticks.fov_degrees(entity_partial_tick);
+    let hud_locator_bar =
+        hud_locator_bar_from_world(world, camera_pose, camera_fov_degrees, entity_partial_tick);
     // Vanilla `GameRenderer.checkEntityPostEffect` stores this independently from the
     // post-chain active toggle. bbb is currently first-person-only, so the current camera
     // entity is the complete input to the same-frame renderer mirror.
@@ -3570,6 +3574,7 @@ pub(crate) fn update_renderer_from_publication(
             hud_armor,
             hud_air,
             hud_vehicle_health,
+            hud_locator_bar,
             hud_jump_bar,
             hud_experience_progress,
             hud_experience_level,

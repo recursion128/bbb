@@ -899,6 +899,33 @@ pub struct HudJumpBar {
     pub cooldown: bool,
 }
 
+/// One pitch cue beside a locator-bar waypoint dot
+/// (`TrackedWaypoint.PitchDirection`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HudLocatorPitch {
+    None,
+    Up,
+    Down,
+}
+
+/// One visible tracked-waypoint projection. Native extraction owns camera and
+/// canonical-world math; the renderer owns style/sprite selection and exact
+/// pixel geometry.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HudLocatorMarker {
+    pub angle_degrees: f32,
+    pub pitch: HudLocatorPitch,
+    pub distance: f32,
+    pub style_id: String,
+    pub color_argb: u32,
+}
+
+/// The farthest-first visible marker list for Vanilla's locator contextual bar.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct HudLocatorBar {
+    pub markers: Vec<HudLocatorMarker>,
+}
+
 /// Vanilla `Gui.HeartType` (Gui.java:1333-1452): the heart sprite family a
 /// container/overlay draws. `Container` is the always-drawn background;
 /// `Normal`/`Poisoned`/`Withered`/`Frozen` are the mutually exclusive base
@@ -4698,6 +4725,13 @@ impl Renderer {
     pub fn set_hud_vehicle_health(&mut self, vehicle: Option<HudVehicleHealth>) {
         self.hud_vehicle_health =
             vehicle.filter(|vehicle| vehicle.health.is_finite() && vehicle.max_health.is_finite());
+    }
+
+    /// Retains the native camera projection for the locator contextual bar.
+    /// Stage-two contextual selection and resource-backed drawing consume this
+    /// same farthest-first value; canonical waypoint state remains in world.
+    pub fn set_hud_locator_bar(&mut self, locator_bar: Option<HudLocatorBar>) {
+        self.hud_locator_bar = locator_bar;
     }
 
     /// Projects `JumpableVehicleBarRenderer`'s state. A present value selects

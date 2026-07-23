@@ -275,7 +275,7 @@ impl EntityStore {
         outside
     }
 
-    fn protocol_id_for_uuid(&self, uuid: Uuid) -> Option<i32> {
+    pub(crate) fn protocol_id_for_uuid(&self, uuid: Uuid) -> Option<i32> {
         self.protocol_id_by_uuid.get(&uuid).copied()
     }
 

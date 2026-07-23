@@ -380,6 +380,7 @@ fn main() -> Result<()> {
     let profile_id = args
         .profile_id
         .unwrap_or_else(|| bbb_protocol::codec::offline_player_uuid(&args.username));
+    world.set_local_player_profile_id(profile_id);
     let server_resource_pack_runtime = ServerResourcePackRuntime::new(
         runtime.handle().clone(),
         args.server_resource_pack_cache_dir
