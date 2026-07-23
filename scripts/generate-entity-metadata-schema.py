@@ -3399,7 +3399,7 @@ def class_hurt_sound_policy(
             )
         value = (
             "VanillaEntityHurtSoundPolicy::Conditional { "
-            f"condition: VanillaEntityHurtSoundCondition::{condition}, "
+            f"condition: VanillaEntitySoundCondition::{condition}, "
             f"when_true: {sound(when_true)}, when_false: {sound(when_false)} "
             "}"
         )
@@ -3436,7 +3436,7 @@ def class_hurt_sound_policy(
             )
         value = (
             "VanillaEntityHurtSoundPolicy::Conditional { "
-            "condition: VanillaEntityHurtSoundCondition::CreakingHeartBound, "
+            "condition: VanillaEntitySoundCondition::CreakingHeartBound, "
             f"when_true: {sound('CREAKING_SWAY')}, "
             f"when_false: {sound('HOSTILE_HURT')} "
             "}"
@@ -3541,6 +3541,211 @@ def class_hurt_sound_policy(
 
     raise ExtractionError(
         f"{method_owner}.getHurtSound: unsupported body {canonical!r}"
+    )
+
+
+def class_death_sound_policy(
+    result: ExtractionResult,
+    class_map: dict[str, JavaType],
+    owner: str,
+    sound_events: dict[str, str],
+    method_owner_cache: dict[str, str],
+    policy_cache: dict[str, str],
+) -> str:
+    """Interpret the nearest Vanilla ``LivingEntity.getDeathSound`` body.
+
+    Fixed ``SoundEvents`` returns are open-ended and source-derived. Dynamic
+    bodies are matched exactly so a changed predicate, branch order, registry
+    accessor, or sound constant fails generation.
+    """
+    if owner in policy_cache:
+        return policy_cache[owner]
+    method_owner = class_nearest_method_owner(
+        result, class_map, owner, "getDeathSound", 0, method_owner_cache
+    )
+    source, method = method_for(result, method_owner, "getDeathSound", 0)
+    body = method.node.child_by_field_name("body")
+    if body is None:
+        raise ExtractionError(f"{method_owner}.getDeathSound: method lacks body")
+    canonical = source.expression(body).canonical
+
+    def sound(constant_name: str) -> str:
+        resource_id = sound_events.get(constant_name)
+        if resource_id is None:
+            raise ExtractionError(
+                f"{method_owner}.getDeathSound: unknown SoundEvents.{constant_name}"
+            )
+        return rust_string(resource_id)
+
+    fixed = re.fullmatch(r"\{return SoundEvents\.([A-Z0-9_]+);\}", canonical)
+    if fixed is not None:
+        value = f"VanillaEntityDeathSoundPolicy::Fixed({sound(fixed.group(1))})"
+        policy_cache[owner] = value
+        return value
+
+    variant_owners = {
+        "net.minecraft.world.entity.animal.feline.Cat": "Cat",
+        "net.minecraft.world.entity.animal.chicken.Chicken": "Chicken",
+        "net.minecraft.world.entity.animal.cow.AbstractCow": "Cow",
+        "net.minecraft.world.entity.animal.pig.Pig": "Pig",
+        "net.minecraft.world.entity.animal.wolf.Wolf": "Wolf",
+    }
+    variant_body = "{return this.getSoundSet ().deathSound ().value ();}"
+    if method_owner in variant_owners and canonical == variant_body:
+        value = (
+            "VanillaEntityDeathSoundPolicy::SoundVariant("
+            f"VanillaEntitySoundVariantFamily::{variant_owners[method_owner]})"
+        )
+        policy_cache[owner] = value
+        return value
+
+    conditional_specs = {
+        "net.minecraft.world.entity.animal.equine.Horse": (
+            "{return this.isBaby () ? SoundEvents.HORSE_DEATH_BABY : SoundEvents.HORSE_DEATH;}",
+            "Baby",
+            "HORSE_DEATH_BABY",
+            "HORSE_DEATH",
+        ),
+        "net.minecraft.world.entity.animal.goat.Goat": (
+            "{return this.isScreamingGoat () ? SoundEvents.GOAT_SCREAMING_DEATH : SoundEvents.GOAT_DEATH;}",
+            "GoatScreaming",
+            "GOAT_SCREAMING_DEATH",
+            "GOAT_DEATH",
+        ),
+        "net.minecraft.world.entity.animal.happyghast.HappyGhast": (
+            "{return this.isBaby () ? SoundEvents.GHASTLING_DEATH : SoundEvents.HAPPY_GHAST_DEATH;}",
+            "Baby",
+            "GHASTLING_DEATH",
+            "HAPPY_GHAST_DEATH",
+        ),
+        "net.minecraft.world.entity.animal.turtle.Turtle": (
+            "{return this.isBaby () ? SoundEvents.TURTLE_DEATH_BABY : SoundEvents.TURTLE_DEATH;}",
+            "Baby",
+            "TURTLE_DEATH_BABY",
+            "TURTLE_DEATH",
+        ),
+        "net.minecraft.world.entity.monster.MagmaCube": (
+            "{return this.isTiny () ? SoundEvents.MAGMA_CUBE_DEATH_SMALL : SoundEvents.MAGMA_CUBE_DEATH;}",
+            "Tiny",
+            "MAGMA_CUBE_DEATH_SMALL",
+            "MAGMA_CUBE_DEATH",
+        ),
+        "net.minecraft.world.entity.monster.Slime": (
+            "{return this.isTiny () ? SoundEvents.SLIME_DEATH_SMALL : SoundEvents.SLIME_DEATH;}",
+            "Tiny",
+            "SLIME_DEATH_SMALL",
+            "SLIME_DEATH",
+        ),
+        "net.minecraft.world.entity.monster.zombie.Drowned": (
+            "{return this.isInWater () ? SoundEvents.DROWNED_DEATH_WATER : SoundEvents.DROWNED_DEATH;}",
+            "InWater",
+            "DROWNED_DEATH_WATER",
+            "DROWNED_DEATH",
+        ),
+        "net.minecraft.world.entity.monster.ElderGuardian": (
+            "{return this.isInWater () ? SoundEvents.ELDER_GUARDIAN_DEATH : SoundEvents.ELDER_GUARDIAN_DEATH_LAND;}",
+            "InWater",
+            "ELDER_GUARDIAN_DEATH",
+            "ELDER_GUARDIAN_DEATH_LAND",
+        ),
+        "net.minecraft.world.entity.monster.Guardian": (
+            "{return this.isInWater () ? SoundEvents.GUARDIAN_DEATH : SoundEvents.GUARDIAN_DEATH_LAND;}",
+            "InWater",
+            "GUARDIAN_DEATH",
+            "GUARDIAN_DEATH_LAND",
+        ),
+        "net.minecraft.world.entity.animal.nautilus.ZombieNautilus": (
+            "{return this.isUnderWater () ? SoundEvents.ZOMBIE_NAUTILUS_DEATH : SoundEvents.ZOMBIE_NAUTILUS_DEATH_ON_LAND;}",
+            "UnderWater",
+            "ZOMBIE_NAUTILUS_DEATH",
+            "ZOMBIE_NAUTILUS_DEATH_ON_LAND",
+        ),
+    }
+    if method_owner in conditional_specs:
+        expected, condition, when_true, when_false = conditional_specs[method_owner]
+        if canonical != expected:
+            raise ExtractionError(
+                f"{method_owner}.getDeathSound: unsupported body {canonical!r}"
+            )
+        value = (
+            "VanillaEntityDeathSoundPolicy::Conditional { "
+            f"condition: VanillaEntitySoundCondition::{condition}, "
+            f"when_true: {sound(when_true)}, when_false: {sound(when_false)} "
+            "}"
+        )
+        policy_cache[owner] = value
+        return value
+
+    if method_owner == "net.minecraft.world.entity.animal.nautilus.Nautilus":
+        expected = (
+            "{if (this.isBaby ()) {return this.isUnderWater () ? "
+            "SoundEvents.BABY_NAUTILUS_DEATH : "
+            "SoundEvents.BABY_NAUTILUS_DEATH_ON_LAND;} else {return "
+            "this.isUnderWater () ? SoundEvents.NAUTILUS_DEATH : "
+            "SoundEvents.NAUTILUS_DEATH_ON_LAND;}}"
+        )
+        if canonical != expected:
+            raise ExtractionError(
+                f"{method_owner}.getDeathSound: unsupported body {canonical!r}"
+            )
+        value = (
+            "VanillaEntityDeathSoundPolicy::NautilusAgeWater { "
+            f"baby_underwater: {sound('BABY_NAUTILUS_DEATH')}, "
+            f"baby_land: {sound('BABY_NAUTILUS_DEATH_ON_LAND')}, "
+            f"adult_underwater: {sound('NAUTILUS_DEATH')}, "
+            f"adult_land: {sound('NAUTILUS_DEATH_ON_LAND')} "
+            "}"
+        )
+        policy_cache[owner] = value
+        return value
+
+    if method_owner == "net.minecraft.world.entity.animal.golem.CopperGolem":
+        expected = (
+            "{return CopperGolemOxidationLevels.getOxidationLevel "
+            "(this.getWeatherState ()).deathSound ();}"
+        )
+        if canonical != expected:
+            raise ExtractionError(
+                f"{method_owner}.getDeathSound: unsupported body {canonical!r}"
+            )
+        oxidation_owner = (
+            "net.minecraft.world.entity.animal.golem.CopperGolemOxidationLevels"
+        )
+        oxidation_source = source_for_owner(result, oxidation_owner)
+        resources = []
+        for state in ("UNAFFECTED", "EXPOSED", "WEATHERED", "OXIDIZED"):
+            field = next(
+                (
+                    item
+                    for item in oxidation_source.fields_for(oxidation_owner)
+                    if item.name == state
+                ),
+                None,
+            )
+            if field is None or field.initializer is None:
+                raise ExtractionError(f"{oxidation_owner}.{state}: missing initializer")
+            match = re.fullmatch(
+                r"new CopperGolemOxidationLevel \(SoundEvents\.[A-Z0-9_]+, "
+                r"SoundEvents\.[A-Z0-9_]+, SoundEvents\.([A-Z0-9_]+), .*\)",
+                field.initializer.canonical,
+            )
+            if match is None:
+                raise ExtractionError(
+                    f"{oxidation_owner}.{state}: unsupported initializer "
+                    f"{field.initializer.canonical!r}"
+                )
+            resources.append(sound(match.group(1)))
+        value = (
+            "VanillaEntityDeathSoundPolicy::CopperGolemOxidation { "
+            f"unaffected: {resources[0]}, exposed: {resources[1]}, "
+            f"weathered: {resources[2]}, oxidized: {resources[3]} "
+            "}"
+        )
+        policy_cache[owner] = value
+        return value
+
+    raise ExtractionError(
+        f"{method_owner}.getDeathSound: unsupported body {canonical!r}"
     )
 
 
@@ -3974,6 +4179,8 @@ def render(result: ExtractionResult) -> str:
     pushability_cache: dict[str, str] = {}
     collidability_cache: dict[str, str] = {}
     sound_source_cache: dict[str, str] = {}
+    death_sound_owner_cache: dict[str, str] = {}
+    death_sound_policy_cache: dict[str, str] = {}
     hurt_sound_owner_cache: dict[str, str] = {}
     hurt_sound_policy_cache: dict[str, str] = {}
     sound_volume_owner_cache: dict[str, str] = {}
@@ -4696,6 +4903,8 @@ def render(result: ExtractionResult) -> str:
                 f"        baby_age_scale_bits: {class_baby_age_scale_bits(result, class_map, item.runtime_class, baby_age_scale_cache) if extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity') else '1.0_f32.to_bits()'},",
                 f"        is_pickable_by_class: {str(class_is_pickable_without_type_tag(result, class_map, item.runtime_class, pickable_cache)).lower()},",
                 f"        sound_source_kind: VanillaEntitySoundSourceKind::{class_sound_source_kind(result, class_map, item.runtime_class, sound_source_cache)},",
+                f"        death_sound_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'getDeathSound', 0, death_sound_owner_cache) if extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity') else None)},",
+                f"        death_sound_policy: {class_death_sound_policy(result, class_map, item.runtime_class, sound_events, death_sound_owner_cache, death_sound_policy_cache) if extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity') else 'VanillaEntityDeathSoundPolicy::NonLiving'},",
                 f"        hurt_sound_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'getHurtSound', 1, hurt_sound_owner_cache) if extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity') else None)},",
                 f"        hurt_sound_policy: {class_hurt_sound_policy(result, class_map, item.runtime_class, sound_events, hurt_sound_owner_cache, hurt_sound_policy_cache) if extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity') else 'VanillaEntityHurtSoundPolicy::NonLiving'},",
                 f"        sound_volume_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'getSoundVolume', 0, sound_volume_owner_cache) if extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity') else None)},",

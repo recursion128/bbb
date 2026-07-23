@@ -31,7 +31,7 @@ use crate::entities::{
     vanilla_entity_metadata_type_sound_volume_policy, CatSoundVariantIdentity,
     ChickenSoundVariantIdentity, CowSoundVariantIdentity, EntityClientMovementSoundKind,
     EntityClientMovementSoundState, LivingEntityItemBreakState, PigSoundVariantIdentity,
-    VanillaEntityEventKind, VanillaEntityHurtSoundCondition, VanillaEntityHurtSoundPolicy,
+    VanillaEntityEventKind, VanillaEntityHurtSoundPolicy, VanillaEntitySoundCondition,
     VanillaEntitySoundSourceKind, VanillaEntitySoundVariantFamily, VanillaEntitySoundVolumePolicy,
     WolfSoundVariantIdentity, VANILLA_ARMADILLO_STATE_IDLE_ID,
     VANILLA_COPPER_GOLEM_WEATHER_STATE_EXPOSED_ID, VANILLA_COPPER_GOLEM_WEATHER_STATE_OXIDIZED_ID,
@@ -1038,6 +1038,9 @@ impl WorldStore {
                     RegistrySoundKind::Hurt,
                 )
             }
+            VanillaEntitySoundVariantFamily::Wolf => {
+                self.living_damage_wolf_sound_variant(entity_id, entity_type_id)
+            }
         }
     }
 
@@ -1065,11 +1068,11 @@ impl WorldStore {
     fn living_damage_hurt_sound_condition(
         &self,
         entity_id: i32,
-        condition: VanillaEntityHurtSoundCondition,
+        condition: VanillaEntitySoundCondition,
     ) -> Option<bool> {
         let entity_type_id = self.entities.entity_type_id(entity_id)?;
         match condition {
-            VanillaEntityHurtSoundCondition::ArmadilloScared => {
+            VanillaEntitySoundCondition::ArmadilloScared => {
                 let (data_id, default) =
                     vanilla_entity_metadata_armadillo_state_accessor_for_entity_type(
                         entity_type_id,
@@ -1080,14 +1083,14 @@ impl WorldStore {
                         != VANILLA_ARMADILLO_STATE_IDLE_ID,
                 )
             }
-            VanillaEntityHurtSoundCondition::InWater => {
+            VanillaEntitySoundCondition::InWater => {
                 Some(self.living_damage_fluid_state(entity_id).0)
             }
-            VanillaEntityHurtSoundCondition::UnderWater => {
+            VanillaEntitySoundCondition::UnderWater => {
                 Some(self.living_damage_fluid_state(entity_id).1)
             }
-            VanillaEntityHurtSoundCondition::Baby => self.entities.is_baby(entity_id),
-            VanillaEntityHurtSoundCondition::GoatScreaming => {
+            VanillaEntitySoundCondition::Baby => self.entities.is_baby(entity_id),
+            VanillaEntitySoundCondition::GoatScreaming => {
                 let accessors =
                     vanilla_entity_metadata_goat_accessors_for_entity_type(entity_type_id)?;
                 self.entities.metadata_bool_for_entity(
@@ -1096,7 +1099,7 @@ impl WorldStore {
                     accessors.screaming_default,
                 )
             }
-            VanillaEntityHurtSoundCondition::Tiny => {
+            VanillaEntitySoundCondition::Tiny => {
                 let (data_id, default) =
                     vanilla_entity_metadata_slime_size_accessor_for_entity_type(entity_type_id)?;
                 Some(
@@ -1105,7 +1108,7 @@ impl WorldStore {
                         <= 1,
                 )
             }
-            VanillaEntityHurtSoundCondition::ShulkerClosed => {
+            VanillaEntitySoundCondition::ShulkerClosed => {
                 let accessors =
                     vanilla_entity_metadata_shulker_accessors_for_entity_type(entity_type_id)?;
                 Some(
@@ -1116,7 +1119,7 @@ impl WorldStore {
                     )? == 0,
                 )
             }
-            VanillaEntityHurtSoundCondition::CreakingHeartBound => {
+            VanillaEntitySoundCondition::CreakingHeartBound => {
                 self.entities.creaking_is_heart_bound(entity_id)
             }
         }

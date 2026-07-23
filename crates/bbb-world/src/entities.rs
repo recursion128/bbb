@@ -320,11 +320,13 @@ pub use schema::{
 };
 pub use schema::{
     vanilla_entity_metadata_type_collidability_kind,
+    vanilla_entity_metadata_type_death_sound_policy,
     vanilla_entity_metadata_type_hurt_sound_policy, vanilla_entity_metadata_type_pushability_kind,
     vanilla_entity_metadata_type_sound_source_kind,
     vanilla_entity_metadata_type_sound_volume_policy, VanillaEntityCollidabilityKind,
-    VanillaEntityHurtSoundCondition, VanillaEntityHurtSoundPolicy, VanillaEntityPushabilityKind,
-    VanillaEntitySoundSourceKind, VanillaEntitySoundVariantFamily, VanillaEntitySoundVolumePolicy,
+    VanillaEntityDeathSoundPolicy, VanillaEntityHurtSoundPolicy, VanillaEntityPushabilityKind,
+    VanillaEntitySoundCondition, VanillaEntitySoundSourceKind, VanillaEntitySoundVariantFamily,
+    VanillaEntitySoundVolumePolicy,
 };
 pub use schema::{
     vanilla_entity_metadata_wolf_accessors_for_entity_type, VanillaWolfMetadataAccessors,

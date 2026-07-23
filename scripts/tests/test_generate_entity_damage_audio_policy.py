@@ -27,7 +27,7 @@ def load_generator():
     return module
 
 
-class GeneratedEntityDamageAudioPolicyTests(unittest.TestCase):
+class GeneratedEntityLivingEventAudioPolicyTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.generator = load_generator()
@@ -47,17 +47,30 @@ class GeneratedEntityDamageAudioPolicyTests(unittest.TestCase):
         return False
 
     def test_all_fixed_living_types_have_closed_source_policies(self) -> None:
+        death_owner_cache: dict[str, str] = {}
+        death_policy_cache: dict[str, str] = {}
         hurt_owner_cache: dict[str, str] = {}
         hurt_policy_cache: dict[str, str] = {}
         volume_owner_cache: dict[str, str] = {}
         volume_policy_cache: dict[str, str] = {}
         living = []
+        death_owners = set()
         hurt_owners = set()
         volume_owners = set()
         for entry in self.result.entity_types:
             if not self.is_living(entry.runtime_class):
                 continue
             living.append(entry.resource_id)
+            death_owners.add(
+                self.generator.class_nearest_method_owner(
+                    self.result,
+                    self.class_map,
+                    entry.runtime_class,
+                    "getDeathSound",
+                    0,
+                    death_owner_cache,
+                )
+            )
             hurt_owners.add(
                 self.generator.class_nearest_method_owner(
                     self.result,
@@ -78,6 +91,14 @@ class GeneratedEntityDamageAudioPolicyTests(unittest.TestCase):
                     volume_owner_cache,
                 )
             )
+            death = self.generator.class_death_sound_policy(
+                self.result,
+                self.class_map,
+                entry.runtime_class,
+                self.sound_events,
+                death_owner_cache,
+                death_policy_cache,
+            )
             hurt = self.generator.class_hurt_sound_policy(
                 self.result,
                 self.class_map,
@@ -93,10 +114,12 @@ class GeneratedEntityDamageAudioPolicyTests(unittest.TestCase):
                 volume_owner_cache,
                 volume_policy_cache,
             )
+            self.assertNotIn("NonLiving", death, entry.resource_id)
             self.assertNotIn("NonLiving", hurt, entry.resource_id)
             self.assertNotIn("NonLiving", volume, entry.resource_id)
 
         self.assertEqual(len(living), 92)
+        self.assertEqual(len(death_owners), 88)
         self.assertEqual(len(hurt_owners), 89)
         self.assertEqual(len(volume_owners), 13)
 
@@ -104,10 +127,22 @@ class GeneratedEntityDamageAudioPolicyTests(unittest.TestCase):
         by_resource = {
             item.resource_id: item.runtime_class for item in self.result.entity_types
         }
+        death_owner_cache: dict[str, str] = {}
+        death_policy_cache: dict[str, str] = {}
         hurt_owner_cache: dict[str, str] = {}
         hurt_policy_cache: dict[str, str] = {}
         volume_owner_cache: dict[str, str] = {}
         volume_policy_cache: dict[str, str] = {}
+
+        def death(resource_id: str) -> str:
+            return self.generator.class_death_sound_policy(
+                self.result,
+                self.class_map,
+                by_resource[resource_id],
+                self.sound_events,
+                death_owner_cache,
+                death_policy_cache,
+            )
 
         def hurt(resource_id: str) -> str:
             return self.generator.class_hurt_sound_policy(
@@ -128,6 +163,13 @@ class GeneratedEntityDamageAudioPolicyTests(unittest.TestCase):
                 volume_policy_cache,
             )
 
+        self.assertIn("SoundVariantFamily::Wolf", death("minecraft:wolf"))
+        self.assertIn("SoundVariantFamily::Cow", death("minecraft:mooshroom"))
+        self.assertIn("UnderWater", death("minecraft:zombie_nautilus"))
+        self.assertIn("NautilusAgeWater", death("minecraft:nautilus"))
+        self.assertIn("CopperGolemOxidation", death("minecraft:copper_golem"))
+        self.assertIn("GoatScreaming", death("minecraft:goat"))
+        self.assertIn("Tiny", death("minecraft:slime"))
         self.assertIn("PlayerDamageType", hurt("minecraft:player"))
         self.assertIn("SoundVariantFamily::Cow", hurt("minecraft:cow"))
         self.assertIn("WolfVariant", hurt("minecraft:wolf"))
@@ -169,6 +211,34 @@ class Slime {
             self.generator.ExtractionError, "unsupported body"
         ):
             self.generator.class_hurt_sound_policy(
+                changed,
+                self.class_map,
+                owner,
+                self.sound_events,
+                {},
+                {},
+            )
+
+    def test_unrecognized_dynamic_death_body_fails_closed(self) -> None:
+        owner = "net.minecraft.world.entity.monster.Slime"
+        original = self.generator.source_for_owner(self.result, owner)
+        changed_sources = dict(self.result.sources)
+        changed_sources[original.relative_path] = parse_source(
+            original.relative_path,
+            b"""
+package net.minecraft.world.entity.monster;
+class Slime {
+  SoundEvent getDeathSound() {
+    return chooseUnknownDeathSound();
+  }
+}
+""",
+        )
+        changed = replace(self.result, sources=changed_sources)
+        with self.assertRaisesRegex(
+            self.generator.ExtractionError, "unsupported body"
+        ):
+            self.generator.class_death_sound_policy(
                 changed,
                 self.class_map,
                 owner,
