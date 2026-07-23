@@ -111,6 +111,10 @@ pub struct ClientUiState {
     pub current_game_event_screen: Option<ClientGameEventScreenState>,
     #[serde(default)]
     pub game_event_screen_generation: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub current_death_screen: Option<crate::ClientDeathScreenState>,
+    #[serde(default)]
+    pub death_screen_generation: u64,
     #[serde(default)]
     pub last_code_of_conduct: Option<CodeOfConductState>,
     #[serde(default)]
@@ -426,6 +430,7 @@ impl ClientUiState {
         self.current_stats_screen = false;
         self.current_game_rules_screen = None;
         self.current_game_event_screen = None;
+        self.current_death_screen = None;
         self.current_command_block_editor = None;
         self.current_minecart_command_block_editor = None;
         self.current_structure_block_editor = None;

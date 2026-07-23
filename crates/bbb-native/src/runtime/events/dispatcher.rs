@@ -26,7 +26,10 @@ use bbb_world::{
 use tokio::sync::mpsc;
 
 use crate::audio_runtime::AudioEventSink;
-use crate::input::{queue_container_close_request_command, queue_vehicle_move_command};
+use crate::input::{
+    queue_container_close_request_command, queue_perform_respawn_command,
+    queue_vehicle_move_command,
+};
 use crate::particle_runtime::{
     vibration_entity_position_source_from_options, LevelEventDripstoneDripParticle,
     LevelEventGrowthParticleContext, LevelEventGrowthParticleMode, LevelEventGrowthParticleSupport,
@@ -400,6 +403,10 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
         if let Some(audio_events) = self.audio_events.as_deref_mut() {
             audio_events.stop_music();
         }
+    }
+
+    fn perform_respawn(&mut self) {
+        queue_perform_respawn_command(self.counters, self.net_commands);
     }
 
     fn jukebox_level_event(&mut self, state: &bbb_world::JukeboxLevelEventState) {

@@ -2480,7 +2480,7 @@ mod tests {
 
         let combat_kill = packets::PlayerCombatKill {
             player_id: 123,
-            message: "You died".to_string(),
+            message: bbb_protocol::RichTextComponent::plain("You died"),
         };
         assert_matching_event!(
             PlayClientbound::PlayerCombatKill(combat_kill.clone()),

@@ -203,6 +203,7 @@ pub use schema::{
     vanilla_entity_metadata_piglin_dancing_accessor_for_entity_type,
     vanilla_entity_metadata_pillager_charging_crossbow_accessor_for_entity_type,
     vanilla_entity_metadata_player_absorption_accessor_for_entity_type,
+    vanilla_entity_metadata_player_score_accessor_for_entity_type,
     vanilla_entity_metadata_polar_bear_standing_accessor_for_entity_type,
     vanilla_entity_metadata_pufferfish_puff_state_accessor_for_entity_type,
     vanilla_entity_metadata_rabbit_type_accessor_for_entity_type,

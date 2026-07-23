@@ -19,7 +19,9 @@ pub use crate::client::chat::{
     ChatValidationState, ChatVisibilityState, ClientChatState, DelayedChatMessageState,
     DeletedChatState, OutboundLastSeenMessages,
 };
-pub use crate::client::combat::{ClientCombatState, PlayerCombatEventState};
+pub use crate::client::combat::{
+    ClientCombatState, ClientDeathScreenState, PlayerCombatEventState, PlayerCombatKillApplyOutcome,
+};
 pub use crate::client::command_suggestions::{
     CommandSuggestionRequestState, CommandSuggestionState, CommandSuggestionsResultState,
     CommandSuggestionsState, CustomChatCompletionUpdateState,

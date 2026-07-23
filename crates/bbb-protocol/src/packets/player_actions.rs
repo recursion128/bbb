@@ -3,7 +3,8 @@ use serde::{Deserialize, Serialize};
 pub use crate::entity_anchors::EntityAnchor;
 use crate::{
     codec::{Decoder, ProtocolError, Result},
-    component::decode_component_summary_from_decoder,
+    component::decode_rich_text_component_from_decoder,
+    RichTextComponent,
 };
 
 use super::Vec3d;
@@ -16,7 +17,7 @@ pub struct PlayerCombatEnd {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PlayerCombatKill {
     pub player_id: i32,
-    pub message: String,
+    pub message: RichTextComponent,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -56,7 +57,7 @@ pub(crate) fn decode_player_combat_end(decoder: &mut Decoder<'_>) -> Result<Play
 pub(crate) fn decode_player_combat_kill(decoder: &mut Decoder<'_>) -> Result<PlayerCombatKill> {
     let update = PlayerCombatKill {
         player_id: decoder.read_var_i32()?,
-        message: decode_component_summary_from_decoder(decoder)?,
+        message: decode_rich_text_component_from_decoder(decoder)?,
     };
     if !decoder.is_empty() {
         return Err(ProtocolError::InvalidData(

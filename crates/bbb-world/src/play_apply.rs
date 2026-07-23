@@ -107,6 +107,7 @@ pub trait PlayApplyEffects {
     }
     fn chat_disconnect(&mut self, _reason: ChatDisconnectReason) {}
     fn container_close(&mut self, _container_id: i32) {}
+    fn perform_respawn(&mut self) {}
     fn vehicle_move_report(&mut self, _report: VehicleMoveReport) {}
     fn removed_player_vehicle_teleport(&mut self, _recovery: RemovedPlayerVehicleTeleportRecovery) {
     }
@@ -854,7 +855,11 @@ impl WorldStore {
                 self.apply_player_combat_enter();
             }
             PlayClientbound::PlayerCombatKill(update) => {
-                self.apply_player_combat_kill(update);
+                if self.apply_player_combat_kill(update)
+                    == crate::PlayerCombatKillApplyOutcome::PerformRespawn
+                {
+                    effects.perform_respawn();
+                }
             }
             PlayClientbound::PlayerLookAt(update) => {
                 self.apply_player_look_at(update);
@@ -1795,9 +1800,9 @@ mod tests {
         EntityAnimation, EntityDataRegistryHolder, EntityDataValue, EntityDataValueKind,
         EntityEvent, EntityPositionSync, EquipmentSlot, EquipmentSlotUpdate, Explosion, GameEvent,
         ItemStackSummary, LevelEvent, PackedMessageSignature, ParticlePayload, PlayTime,
-        PlayerHealth, RemoveEntities, SetEntityData, SetEquipment, SetPassengers, SoundEvent,
-        SoundEventHolder, SoundEventSummary, SoundSource, TakeItemEntity, TeleportEntity, Vec3d,
-        WeightedExplosionParticle,
+        PlayerCombatKill, PlayerHealth, RemoveEntities, SetEntityData, SetEquipment, SetPassengers,
+        SoundEvent, SoundEventHolder, SoundEventSummary, SoundSource, TakeItemEntity,
+        TeleportEntity, Vec3d, WeightedExplosionParticle,
     };
     use uuid::Uuid;
 
@@ -1846,6 +1851,7 @@ mod tests {
         vehicle_move_reports: Vec<VehicleMoveReport>,
         removed_vehicle_teleports: Vec<RemovedPlayerVehicleTeleportRecovery>,
         chat_disconnects: Vec<ChatDisconnectReason>,
+        perform_respawns: usize,
     }
 
     impl PlayApplyEffects for RecordingEffects {
@@ -1887,6 +1893,10 @@ mod tests {
 
         fn chat_disconnect(&mut self, reason: ChatDisconnectReason) {
             self.chat_disconnects.push(reason);
+        }
+
+        fn perform_respawn(&mut self) {
+            self.perform_respawns += 1;
         }
 
         fn elder_guardian_effect_particles(&mut self, _world: &WorldStore, position: Vec3d) {
@@ -2012,6 +2022,55 @@ mod tests {
             self.tracking_emitters
                 .push((entity_id, kind, lifetime_ticks));
         }
+    }
+
+    #[test]
+    fn player_combat_kill_routes_immediate_respawn_effect_once() {
+        let mut store = WorldStore::new();
+        store.local_player_id = Some(7);
+        store.gameplay.show_death_screen = false;
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut effects = RecordingEffects::default();
+
+        assert!(store
+            .apply_play_packet(
+                PlayClientbound::PlayerCombatKill(PlayerCombatKill {
+                    player_id: 8,
+                    message: bbb_protocol::RichTextComponent::plain("Remote"),
+                }),
+                &mut random,
+                &mut effects,
+            )
+            .is_none());
+        assert_eq!(effects.perform_respawns, 0);
+
+        assert!(store
+            .apply_play_packet(
+                PlayClientbound::PlayerCombatKill(PlayerCombatKill {
+                    player_id: 7,
+                    message: bbb_protocol::RichTextComponent::plain("Local"),
+                }),
+                &mut random,
+                &mut effects,
+            )
+            .is_none());
+        assert_eq!(effects.perform_respawns, 1);
+
+        let mut no_effects_store = WorldStore::new();
+        no_effects_store.local_player_id = Some(7);
+        no_effects_store.gameplay.show_death_screen = false;
+        let mut no_effects = NoPlayApplyEffects;
+        assert!(no_effects_store
+            .apply_play_packet(
+                PlayClientbound::PlayerCombatKill(PlayerCombatKill {
+                    player_id: 7,
+                    message: bbb_protocol::RichTextComponent::plain("State only"),
+                }),
+                &mut random,
+                &mut no_effects,
+            )
+            .is_none());
+        assert_eq!(no_effects_store.death_screen(), None);
     }
 
     fn level_event(event_type: i32, data: i32) -> LevelEvent {

@@ -1033,6 +1033,26 @@ pub fn vanilla_entity_metadata_player_absorption_accessor_for_entity_type(
     }
 }
 
+/// Resolves the generated Player score accessor and its typed default.
+pub fn vanilla_entity_metadata_player_score_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, i32)> {
+    let accessor =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_SCORE_ID")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.player.Player",
+            "INT",
+            Some(VanillaEntityMetadataDefault::Int(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
 /// Resolves the nearest generated `DATA_VILLAGER_DATA` accessor for an entity type.
 ///
 /// Villager and ZombieVillager declare the same semantic field at different wire indices. The
@@ -7893,6 +7913,35 @@ mod tests {
         ] {
             assert_eq!(
                 vanilla_entity_metadata_player_absorption_accessor_for_entity_type(entity_type_id),
+                None
+            );
+        }
+    }
+
+    #[test]
+    fn generated_player_score_accessor_owns_membership_index_and_default() {
+        let player = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Player);
+        let score = player
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DATA_SCORE_ID")
+            .expect("generated Player score field");
+        let VanillaEntityMetadataDefault::Int(default) = score.default else {
+            panic!("generated Player score default must be INT");
+        };
+        assert_eq!(
+            vanilla_entity_metadata_player_score_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_PLAYER_ID
+            ),
+            Some((score.data_id, default))
+        );
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+            VANILLA_ENTITY_TYPE_COW_ID,
+            -1,
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_player_score_accessor_for_entity_type(entity_type_id),
                 None
             );
         }

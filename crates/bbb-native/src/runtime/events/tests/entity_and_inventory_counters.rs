@@ -602,7 +602,7 @@ fn player_action_events_update_snapshot_counters() {
     tx.try_send(NetEvent::Play(PlayClientbound::PlayerCombatKill(
         PlayerCombatKill {
             player_id: 123,
-            message: "You died".to_string(),
+            message: bbb_protocol::RichTextComponent::plain("You died"),
         },
     )))
     .unwrap();
@@ -638,7 +638,7 @@ fn player_action_events_update_snapshot_counters() {
             kind: "kill".to_string(),
             duration: None,
             player_id: Some(123),
-            message: Some("You died".to_string()),
+            message: Some(bbb_protocol::RichTextComponent::plain("You died")),
         })
     );
     assert_eq!(world.counters().player_look_at_packets, 1);
@@ -654,5 +654,63 @@ fn player_action_events_update_snapshot_counters() {
             target_entity_id: Some(456),
             to_anchor: Some(EntityAnchor::Feet),
         })
+    );
+}
+
+#[test]
+fn player_combat_kill_queues_immediate_respawn_when_death_screen_is_disabled() {
+    let (event_tx, mut event_rx) = mpsc::channel(1);
+    event_tx
+        .try_send(NetEvent::Play(PlayClientbound::PlayerCombatKill(
+            PlayerCombatKill {
+                player_id: 7,
+                message: bbb_protocol::RichTextComponent::plain("You died"),
+            },
+        )))
+        .unwrap();
+    let (command_tx, mut command_rx) = mpsc::channel(1);
+    let mut login = protocol_play_login(7);
+    login.show_death_screen = false;
+    let mut world = WorldStore::new();
+    world.apply_login(&login);
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut event_rx, &mut world, &mut counters, &Some(command_tx)),
+        1
+    );
+    assert_eq!(command_rx.try_recv(), Ok(NetCommand::PerformRespawn));
+    assert_eq!(counters.perform_respawn_commands_queued, 1);
+    assert_eq!(world.death_screen(), None);
+
+    let (event_tx, mut event_rx) = mpsc::channel(1);
+    event_tx
+        .try_send(NetEvent::Play(PlayClientbound::PlayerCombatKill(
+            PlayerCombatKill {
+                player_id: 7,
+                message: bbb_protocol::RichTextComponent::plain("You died again"),
+            },
+        )))
+        .unwrap();
+    let (command_tx, mut command_rx) = mpsc::channel(1);
+    let mut world = WorldStore::new();
+    world.apply_login(&protocol_play_login(7));
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut event_rx, &mut world, &mut counters, &Some(command_tx)),
+        1
+    );
+    assert!(matches!(
+        command_rx.try_recv(),
+        Err(tokio::sync::mpsc::error::TryRecvError::Empty
+            | tokio::sync::mpsc::error::TryRecvError::Disconnected)
+    ));
+    assert_eq!(counters.perform_respawn_commands_queued, 0);
+    assert_eq!(
+        world
+            .death_screen()
+            .map(|screen| screen.cause_of_death.text()),
+        Some("You died again")
     );
 }

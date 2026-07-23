@@ -4209,7 +4209,7 @@ mod tests {
         probe
             .handle_play_packet(PlayClientbound::PlayerCombatKill(PlayerCombatKill {
                 player_id: 123,
-                message: "You died".to_string(),
+                message: bbb_protocol::RichTextComponent::plain("You died"),
             }))
             .await
             .unwrap();
@@ -4225,7 +4225,7 @@ mod tests {
                 kind: "kill".to_string(),
                 duration: None,
                 player_id: Some(123),
-                message: Some("You died".to_string()),
+                message: Some(bbb_protocol::RichTextComponent::plain("You died")),
             })
         );
     }

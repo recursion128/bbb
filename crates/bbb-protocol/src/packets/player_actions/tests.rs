@@ -52,7 +52,7 @@ fn decodes_player_combat_kill_message() {
         packet,
         PlayClientbound::PlayerCombatKill(PlayerCombatKill {
             player_id: 123,
-            message: "You died".to_string(),
+            message: crate::RichTextComponent::plain("You died"),
         })
     );
     bytes.push(0);
@@ -61,6 +61,33 @@ fn decodes_player_combat_kill_message() {
     assert!(error
         .to_string()
         .contains("trailing bytes after player combat kill packet"));
+}
+
+#[test]
+fn player_combat_kill_preserves_exact_trusted_component() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(123);
+    payload.write_bytes(&rich_death_component_root());
+
+    let PlayClientbound::PlayerCombatKill(packet) = decode_play_clientbound(
+        ids::play::CLIENTBOUND_PLAYER_COMBAT_KILL,
+        &payload.into_inner(),
+    )
+    .unwrap() else {
+        panic!("expected player combat kill packet");
+    };
+
+    assert_eq!(packet.message.text(), "Fell from a high place");
+    assert!(matches!(
+        packet.message.styled()[0].style.click_event,
+        Some(crate::ComponentClickEvent::OpenUrl { ref url })
+            if url == "https://example.invalid/death"
+    ));
+    assert!(matches!(
+        packet.message.component(),
+        crate::NbtSummaryValue::Compound(entries)
+            if entries.iter().any(|entry| entry.name == "click_event")
+    ));
 }
 
 #[test]
@@ -147,4 +174,36 @@ fn nbt_string_root(text: &str) -> Vec<u8> {
     out.extend_from_slice(&(text.len() as u16).to_be_bytes());
     out.extend_from_slice(text.as_bytes());
     out
+}
+
+fn rich_death_component_root() -> Vec<u8> {
+    let mut payload = vec![10];
+    write_named_nbt_string(&mut payload, "text", "Fell from a high place");
+    write_named_nbt_string(&mut payload, "color", "red");
+    write_named_nbt_compound(&mut payload, "click_event", |payload| {
+        write_named_nbt_string(payload, "action", "open_url");
+        write_named_nbt_string(payload, "url", "https://example.invalid/death");
+    });
+    payload.push(0);
+    payload
+}
+
+fn write_named_nbt_compound(
+    payload: &mut Vec<u8>,
+    name: &str,
+    write_body: impl FnOnce(&mut Vec<u8>),
+) {
+    payload.push(10);
+    payload.extend_from_slice(&(name.len() as u16).to_be_bytes());
+    payload.extend_from_slice(name.as_bytes());
+    write_body(payload);
+    payload.push(0);
+}
+
+fn write_named_nbt_string(payload: &mut Vec<u8>, name: &str, value: &str) {
+    payload.push(8);
+    payload.extend_from_slice(&(name.len() as u16).to_be_bytes());
+    payload.extend_from_slice(name.as_bytes());
+    payload.extend_from_slice(&(value.len() as u16).to_be_bytes());
+    payload.extend_from_slice(value.as_bytes());
 }

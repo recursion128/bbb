@@ -2670,7 +2670,7 @@ fn client_combat_reads_canonical_world_state() {
         let mut store = WorldStore::new();
         store.apply_player_combat_kill(PlayerCombatKill {
             player_id: 123,
-            message: "You died".to_string(),
+            message: bbb_protocol::RichTextComponent::plain("You died"),
         });
         publish_test_world(&state, store);
     }
@@ -2688,7 +2688,7 @@ fn client_combat_reads_canonical_world_state() {
     assert_eq!(combat["last_combat"]["kind"], "kill");
     assert_eq!(combat["last_combat"]["duration"], serde_json::Value::Null);
     assert_eq!(combat["last_combat"]["player_id"], 123);
-    assert_eq!(combat["last_combat"]["message"], "You died");
+    assert_eq!(combat["last_combat"]["message"]["text"], "You died");
 }
 
 #[test]

@@ -73,6 +73,7 @@ use super::schema::{
     vanilla_entity_metadata_item_frame_accessors_for_entity_type,
     vanilla_entity_metadata_ominous_item_spawner_item_accessor_for_entity_type,
     vanilla_entity_metadata_player_absorption_accessor_for_entity_type,
+    vanilla_entity_metadata_player_score_accessor_for_entity_type,
     vanilla_entity_metadata_primed_tnt_accessors_for_entity_type,
     vanilla_entity_metadata_shulker_accessors_for_entity_type,
     vanilla_entity_metadata_slime_size_accessor_for_entity_type,
@@ -1724,6 +1725,15 @@ impl EntityStore {
         let (data_id, default) =
             vanilla_entity_metadata_player_absorption_accessor_for_entity_type(entity_type_id)?;
         self.metadata_float(id, data_id, default)
+    }
+
+    /// Vanilla `Player.getScore()`: the synced `DATA_SCORE_ID` int, defaulting
+    /// to the define-time `0` (Player.java).
+    pub(crate) fn player_score(&self, id: i32) -> Option<i32> {
+        let entity_type_id = self.entity_type_id(id)?;
+        let (data_id, default) =
+            vanilla_entity_metadata_player_score_accessor_for_entity_type(entity_type_id)?;
+        self.metadata_int(id, data_id, default)
     }
 
     pub(crate) fn metadata_int_for_entity(

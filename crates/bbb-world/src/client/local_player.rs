@@ -677,6 +677,15 @@ impl WorldStore {
             .unwrap_or(0.0)
     }
 
+    /// Vanilla `Player.getScore()` read by `DeathScreen`: the synced
+    /// `Player.DATA_SCORE_ID` int, defaulting to the define-time zero while
+    /// the local entity has not been spawned or synchronized.
+    pub fn local_player_score(&self) -> i32 {
+        self.local_player_id
+            .and_then(|id| self.entities.player_score(id))
+            .unwrap_or(0)
+    }
+
     pub fn advance_local_player_look_input(
         &mut self,
         input: LocalPlayerInputState,

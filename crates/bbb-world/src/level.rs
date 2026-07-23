@@ -383,6 +383,7 @@ impl WorldStore {
 
     pub fn apply_respawn(&mut self, respawn: &ProtocolRespawn) -> RespawnApplyResult {
         self.counters.respawns_received += 1;
+        self.clear_death_screen();
         self.close_game_rules_screen();
         self.advance_client_level_generation();
         self.reset_advancement_toasts_for_new_level();
@@ -934,6 +935,7 @@ impl WorldStore {
     }
 
     fn clear_level_bound_state(&mut self) {
+        self.clear_death_screen();
         self.clear_game_event_screen();
         self.close_game_rules_screen();
         self.close_command_block_editor();
@@ -2382,6 +2384,28 @@ mod tests {
         store.clear_client_level();
 
         assert_eq!(store.game_event_screen(), None);
+    }
+
+    #[test]
+    fn respawn_and_level_clear_close_death_screen() {
+        let mut store = WorldStore::new();
+        store.apply_login(&login_packet(0, "minecraft:overworld"));
+        store.apply_player_combat_kill(bbb_protocol::packets::PlayerCombatKill {
+            player_id: 42,
+            message: bbb_protocol::RichTextComponent::plain("First death"),
+        });
+        assert!(store.death_screen().is_some());
+
+        store.apply_respawn(&respawn_packet(0));
+        assert_eq!(store.death_screen(), None);
+
+        store.apply_player_combat_kill(bbb_protocol::packets::PlayerCombatKill {
+            player_id: 42,
+            message: bbb_protocol::RichTextComponent::plain("Second death"),
+        });
+        assert!(store.death_screen().is_some());
+        store.clear_client_level();
+        assert_eq!(store.death_screen(), None);
     }
 
     #[test]
