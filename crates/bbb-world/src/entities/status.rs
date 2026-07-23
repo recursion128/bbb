@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use bbb_protocol::mob_effect_types::vanilla_mob_effect_type;
 use bbb_protocol::packets::{
     Cooldown as ProtocolCooldown, DamageEvent as ProtocolDamageEvent,
     RemoveMobEffect as ProtocolRemoveMobEffect, UpdateMobEffect as ProtocolUpdateMobEffect,
@@ -38,10 +39,23 @@ pub struct MobEffectState {
     pub visible: bool,
     pub show_icon: bool,
     pub blend: bool,
+    #[serde(default)]
+    blend_factor_bits: u32,
+    #[serde(default)]
+    blend_factor_previous_frame_bits: u32,
 }
 
 impl From<ProtocolUpdateMobEffect> for MobEffectState {
     fn from(packet: ProtocolUpdateMobEffect) -> Self {
+        let descriptor = vanilla_mob_effect_type(packet.effect_id)
+            .expect("protocol validates mob-effect holder ids before world apply");
+        let immediate_factor = if packet.flags.blend
+            || mob_effect_ends_within(packet.duration_ticks, descriptor.blend_out_advance_ticks)
+        {
+            0.0_f32
+        } else {
+            1.0_f32
+        };
         Self {
             effect_id: packet.effect_id,
             amplifier: packet.amplifier,
@@ -50,8 +64,65 @@ impl From<ProtocolUpdateMobEffect> for MobEffectState {
             visible: packet.flags.visible,
             show_icon: packet.flags.show_icon,
             blend: packet.flags.blend,
+            blend_factor_bits: immediate_factor.to_bits(),
+            blend_factor_previous_frame_bits: immediate_factor.to_bits(),
         }
     }
+}
+
+impl MobEffectState {
+    pub fn blend_factor(self, partial_tick: f32) -> f32 {
+        let partial_tick = if partial_tick.is_finite() {
+            partial_tick.clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        let previous = f32::from_bits(self.blend_factor_previous_frame_bits);
+        let current = f32::from_bits(self.blend_factor_bits);
+        previous + (current - previous) * partial_tick
+    }
+
+    pub fn ends_within(self, ticks: i32) -> bool {
+        mob_effect_ends_within(self.duration_ticks, ticks)
+    }
+
+    pub(crate) fn copy_blend_state_from(&mut self, previous: Self) {
+        self.blend_factor_bits = previous.blend_factor_bits;
+        self.blend_factor_previous_frame_bits = previous.blend_factor_previous_frame_bits;
+    }
+
+    pub(crate) fn advance_client_tick(&mut self) {
+        if self.duration_ticks > 0 {
+            self.duration_ticks -= 1;
+        }
+
+        let Some(descriptor) = vanilla_mob_effect_type(self.effect_id) else {
+            return;
+        };
+        let current = f32::from_bits(self.blend_factor_bits);
+        self.blend_factor_previous_frame_bits = current.to_bits();
+        let active =
+            !mob_effect_ends_within(self.duration_ticks, descriptor.blend_out_advance_ticks);
+        let target = if active { 1.0 } else { 0.0 };
+        let blend_duration = if active {
+            descriptor.blend_in_duration_ticks
+        } else {
+            descriptor.blend_out_duration_ticks
+        };
+        let factor = if current == target {
+            current
+        } else if blend_duration == 0 {
+            target
+        } else {
+            let max_delta = 1.0 / blend_duration as f32;
+            current + (target - current).clamp(-max_delta, max_delta)
+        };
+        self.blend_factor_bits = factor.to_bits();
+    }
+}
+
+fn mob_effect_ends_within(duration_ticks: i32, ticks: i32) -> bool {
+    duration_ticks != -1 && duration_ticks <= ticks
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -134,8 +205,11 @@ impl WorldStore {
             self.counters.update_mob_effects_ignored += 1;
             return false;
         }
-        let effect = MobEffectState::from(packet);
+        let mut effect = MobEffectState::from(packet);
         let Some(()) = self.entities.with_mob_effects_mut(entity_id, |effects| {
+            if let Some(previous) = effects.effects.get(&effect.effect_id).copied() {
+                effect.copy_blend_state_from(previous);
+            }
             effects.effects.insert(effect.effect_id, effect);
         }) else {
             self.counters.update_mob_effects_ignored += 1;
@@ -267,7 +341,8 @@ mod tests {
     use super::*;
     use crate::RegistryPacketEntry;
     use bbb_protocol::mob_effect_types::{
-        VANILLA_MOB_EFFECT_MINING_FATIGUE_ID, VANILLA_MOB_EFFECT_STRENGTH_ID,
+        VANILLA_MOB_EFFECT_DARKNESS_ID, VANILLA_MOB_EFFECT_MINING_FATIGUE_ID,
+        VANILLA_MOB_EFFECT_STRENGTH_ID,
     };
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, Cooldown as ProtocolCooldown,
@@ -440,6 +515,79 @@ mod tests {
         assert_eq!(store.counters().remove_mob_effect_packets, 2);
         assert_eq!(store.counters().remove_mob_effects_ignored, 1);
         assert_eq!(store.counters().active_mob_effects_tracked, 0);
+    }
+
+    #[test]
+    fn mob_effect_client_ticks_preserve_vanilla_duration_and_blend_lifecycle() {
+        let packet = |duration_ticks, blend| UpdateMobEffect {
+            entity_id: 7,
+            effect_id: VANILLA_MOB_EFFECT_DARKNESS_ID,
+            amplifier: 0,
+            duration_ticks,
+            flags: MobEffectFlags {
+                raw: if blend { 0b1000 } else { 0 },
+                blend,
+                ..MobEffectFlags::default()
+            },
+        };
+
+        let mut blending = MobEffectState::from(packet(100, true));
+        assert_eq!(blending.blend_factor(0.0), 0.0);
+        blending.advance_client_tick();
+        assert_eq!(blending.duration_ticks, 99);
+        assert!((blending.blend_factor(1.0) - 1.0 / 22.0).abs() < 1.0e-6);
+        assert_eq!(blending.blend_factor(0.0), 0.0);
+        for _ in 1..22 {
+            blending.advance_client_tick();
+        }
+        assert!((blending.blend_factor(1.0) - 1.0).abs() < 1.0e-6);
+
+        let mut replacement = MobEffectState::from(packet(200, false));
+        assert_eq!(replacement.blend_factor(1.0), 1.0);
+        replacement.copy_blend_state_from(blending);
+        assert_eq!(
+            replacement.blend_factor(0.5),
+            blending.blend_factor(0.5),
+            "forceAddEffect copies the old instance blend state over the packet's skip flag"
+        );
+
+        let mut ending = MobEffectState::from(packet(23, false));
+        assert_eq!(ending.blend_factor(1.0), 1.0);
+        ending.advance_client_tick();
+        assert_eq!(ending.duration_ticks, 22);
+        assert!((ending.blend_factor(1.0) - 21.0 / 22.0).abs() < 1.0e-6);
+
+        let mut infinite = MobEffectState::from(packet(-1, false));
+        infinite.advance_client_tick();
+        assert_eq!(infinite.duration_ticks, -1);
+        assert_eq!(infinite.blend_factor(1.0), 1.0);
+    }
+
+    #[test]
+    fn scheduled_living_entity_ticks_effects_without_removing_zero_duration_entries() {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(protocol_add_entity(7));
+        assert!(store.apply_update_mob_effect(UpdateMobEffect {
+            entity_id: 7,
+            effect_id: VANILLA_MOB_EFFECT_STRENGTH_ID,
+            amplifier: 0,
+            duration_ticks: 1,
+            flags: MobEffectFlags::default(),
+        }));
+
+        store.advance_entity_client_animations(1);
+
+        let effect = store
+            .entity_effect(7, VANILLA_MOB_EFFECT_STRENGTH_ID)
+            .unwrap();
+        assert_eq!(effect.duration_ticks, 0);
+        assert!(
+            store
+                .entity_effects(7)
+                .unwrap()
+                .contains_key(&VANILLA_MOB_EFFECT_STRENGTH_ID),
+            "tickClient leaves expired instances until the server remove packet"
+        );
     }
 
     #[test]

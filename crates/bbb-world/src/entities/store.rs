@@ -7172,6 +7172,7 @@ impl EntityStore {
                     metadata,
                     attributes,
                     equipment,
+                    mob_effects,
                     damage,
                     animations,
                 )) = self.ecs.query_one_mut::<(
@@ -7181,6 +7182,7 @@ impl EntityStore {
                     &EntityMetadata,
                     &EntityAttributes,
                     Option<&EntityEquipment>,
+                    &mut EntityMobEffects,
                     &mut EntityDamage,
                     &mut EntityClientAnimations,
                 )>(entity)
@@ -7213,6 +7215,11 @@ impl EntityStore {
                     // Vanilla `LivingEntity.baseTick` decrements this for every
                     // client living instance (`ServerPlayer` is server-only).
                     damage.invulnerable_time -= 1;
+                }
+                if is_living {
+                    for effect in mob_effects.effects.values_mut() {
+                        effect.advance_client_tick();
+                    }
                 }
                 let is_baby = is_living && vanilla_is_baby(entity_type_id, &metadata.data_values);
                 let pose = is_living.then(|| entity_data_pose(&metadata.data_values));

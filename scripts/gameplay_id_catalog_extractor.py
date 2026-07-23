@@ -37,6 +37,10 @@ class MobEffectEntry:
     constant_name: str
     resource_id: str
     category: str
+    color: int
+    blend_in_duration_ticks: int
+    blend_out_duration_ticks: int
+    blend_out_advance_ticks: int
     attribute_modifiers: tuple["MobEffectAttributeModifierEntry", ...]
 
 
@@ -588,6 +592,10 @@ def mob_effect_entries(
         arguments = _register_arguments(source, field)
         if len(arguments) != 2:
             _fail(source, field.initializer, "mob effect register must have two arguments")
+        constructor = _object_arguments(source, arguments[1])
+        if len(constructor) < 2:
+            _fail(source, arguments[1], "mob effect constructor must have category and color")
+        color = _integer(source, constructor[1])
         categories = [
             source.expression(node).canonical.rsplit(".", 1)[-1]
             for node in descendants(arguments[1].node)
@@ -596,6 +604,28 @@ def mob_effect_entries(
         ]
         if len(categories) != 1 or categories[0] not in {"BENEFICIAL", "HARMFUL", "NEUTRAL"}:
             _fail(source, arguments[1], f"expected one mob effect category, found {categories}")
+        blend_calls = _calls(source, arguments[1], "setBlendDuration")
+        if len(blend_calls) > 1:
+            _fail(source, arguments[1], "mob effect has multiple blend-duration calls")
+        blend_in_duration_ticks = 0
+        blend_out_duration_ticks = 0
+        blend_out_advance_ticks = 0
+        if blend_calls:
+            blend_arguments = blend_calls[0].arguments
+            if len(blend_arguments) == 1:
+                blend_in_duration_ticks = _integer(source, blend_arguments[0])
+                blend_out_duration_ticks = blend_in_duration_ticks
+                blend_out_advance_ticks = blend_in_duration_ticks
+            elif len(blend_arguments) == 3:
+                blend_in_duration_ticks = _integer(source, blend_arguments[0])
+                blend_out_duration_ticks = _integer(source, blend_arguments[1])
+                blend_out_advance_ticks = _integer(source, blend_arguments[2])
+            else:
+                _fail(
+                    source,
+                    source.expression(blend_calls[0].node),
+                    "mob effect blend duration must have one or three arguments",
+                )
         modifiers = []
         for call in source.calls:
             if (
@@ -647,6 +677,10 @@ def mob_effect_entries(
                 field.name,
                 "minecraft:" + _string(source, arguments[0]),
                 categories[0],
+                color,
+                blend_in_duration_ticks,
+                blend_out_duration_ticks,
+                blend_out_advance_ticks,
                 tuple(modifiers),
             )
         )

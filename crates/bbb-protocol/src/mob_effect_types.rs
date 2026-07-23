@@ -37,6 +37,10 @@ pub struct MobEffectTypeCatalogEntry {
     pub constant_name: &'static str,
     pub resource_id: &'static str,
     pub category: MobEffectCategory,
+    pub color: u32,
+    pub blend_in_duration_ticks: i32,
+    pub blend_out_duration_ticks: i32,
+    pub blend_out_advance_ticks: i32,
     pub attribute_modifiers: &'static [MobEffectAttributeModifierDescriptor],
 }
 
@@ -97,6 +101,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "SPEED",
         resource_id: "minecraft:speed",
         category: MobEffectCategory::Beneficial,
+        color: 3402751,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[MobEffectAttributeModifierDescriptor {
             attribute_id: VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
             modifier_id: "minecraft:effect.speed",
@@ -109,6 +117,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "SLOWNESS",
         resource_id: "minecraft:slowness",
         category: MobEffectCategory::Harmful,
+        color: 9154528,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[MobEffectAttributeModifierDescriptor {
             attribute_id: VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
             modifier_id: "minecraft:effect.slowness",
@@ -121,6 +133,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "HASTE",
         resource_id: "minecraft:haste",
         category: MobEffectCategory::Beneficial,
+        color: 14270531,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[MobEffectAttributeModifierDescriptor {
             attribute_id: VANILLA_ATTRIBUTE_ATTACK_SPEED_ID,
             modifier_id: "minecraft:effect.haste",
@@ -133,6 +149,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "MINING_FATIGUE",
         resource_id: "minecraft:mining_fatigue",
         category: MobEffectCategory::Harmful,
+        color: 4866583,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[MobEffectAttributeModifierDescriptor {
             attribute_id: VANILLA_ATTRIBUTE_ATTACK_SPEED_ID,
             modifier_id: "minecraft:effect.mining_fatigue",
@@ -145,6 +165,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "STRENGTH",
         resource_id: "minecraft:strength",
         category: MobEffectCategory::Beneficial,
+        color: 16762624,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[MobEffectAttributeModifierDescriptor {
             attribute_id: VANILLA_ATTRIBUTE_ATTACK_DAMAGE_ID,
             modifier_id: "minecraft:effect.strength",
@@ -157,6 +181,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "INSTANT_HEALTH",
         resource_id: "minecraft:instant_health",
         category: MobEffectCategory::Beneficial,
+        color: 16262179,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
@@ -164,6 +192,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "INSTANT_DAMAGE",
         resource_id: "minecraft:instant_damage",
         category: MobEffectCategory::Harmful,
+        color: 11101546,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
@@ -171,6 +203,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "JUMP_BOOST",
         resource_id: "minecraft:jump_boost",
         category: MobEffectCategory::Beneficial,
+        color: 16646020,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[MobEffectAttributeModifierDescriptor {
             attribute_id: VANILLA_ATTRIBUTE_SAFE_FALL_DISTANCE_ID,
             modifier_id: "minecraft:effect.jump_boost",
@@ -183,6 +219,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "NAUSEA",
         resource_id: "minecraft:nausea",
         category: MobEffectCategory::Harmful,
+        color: 5578058,
+        blend_in_duration_ticks: 150,
+        blend_out_duration_ticks: 20,
+        blend_out_advance_ticks: 60,
         attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
@@ -190,6 +230,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "REGENERATION",
         resource_id: "minecraft:regeneration",
         category: MobEffectCategory::Beneficial,
+        color: 13458603,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
@@ -197,6 +241,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "RESISTANCE",
         resource_id: "minecraft:resistance",
         category: MobEffectCategory::Beneficial,
+        color: 9520880,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
@@ -204,6 +252,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "FIRE_RESISTANCE",
         resource_id: "minecraft:fire_resistance",
         category: MobEffectCategory::Beneficial,
+        color: 16750848,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
@@ -211,6 +263,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "WATER_BREATHING",
         resource_id: "minecraft:water_breathing",
         category: MobEffectCategory::Beneficial,
+        color: 10017472,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
@@ -218,6 +274,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "INVISIBILITY",
         resource_id: "minecraft:invisibility",
         category: MobEffectCategory::Beneficial,
+        color: 16185078,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[MobEffectAttributeModifierDescriptor {
             attribute_id: VANILLA_ATTRIBUTE_WAYPOINT_TRANSMIT_RANGE_ID,
             modifier_id: "minecraft:effect.waypoint_transmit_range_hide",
@@ -230,6 +290,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "BLINDNESS",
         resource_id: "minecraft:blindness",
         category: MobEffectCategory::Harmful,
+        color: 2039587,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
@@ -237,6 +301,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "NIGHT_VISION",
         resource_id: "minecraft:night_vision",
         category: MobEffectCategory::Beneficial,
+        color: 12779366,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
@@ -244,6 +312,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "HUNGER",
         resource_id: "minecraft:hunger",
         category: MobEffectCategory::Harmful,
+        color: 5797459,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
@@ -251,6 +323,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "WEAKNESS",
         resource_id: "minecraft:weakness",
         category: MobEffectCategory::Harmful,
+        color: 4738376,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[MobEffectAttributeModifierDescriptor {
             attribute_id: VANILLA_ATTRIBUTE_ATTACK_DAMAGE_ID,
             modifier_id: "minecraft:effect.weakness",
@@ -263,6 +339,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "POISON",
         resource_id: "minecraft:poison",
         category: MobEffectCategory::Harmful,
+        color: 8889187,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
@@ -270,6 +350,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "WITHER",
         resource_id: "minecraft:wither",
         category: MobEffectCategory::Harmful,
+        color: 7561558,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
@@ -277,6 +361,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "HEALTH_BOOST",
         resource_id: "minecraft:health_boost",
         category: MobEffectCategory::Beneficial,
+        color: 16284963,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[MobEffectAttributeModifierDescriptor {
             attribute_id: VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
             modifier_id: "minecraft:effect.health_boost",
@@ -289,6 +377,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "ABSORPTION",
         resource_id: "minecraft:absorption",
         category: MobEffectCategory::Beneficial,
+        color: 2445989,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[MobEffectAttributeModifierDescriptor {
             attribute_id: VANILLA_ATTRIBUTE_MAX_ABSORPTION_ID,
             modifier_id: "minecraft:effect.absorption",
@@ -301,6 +393,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "SATURATION",
         resource_id: "minecraft:saturation",
         category: MobEffectCategory::Beneficial,
+        color: 16262179,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
@@ -308,6 +404,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "GLOWING",
         resource_id: "minecraft:glowing",
         category: MobEffectCategory::Neutral,
+        color: 9740385,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
@@ -315,6 +415,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "LEVITATION",
         resource_id: "minecraft:levitation",
         category: MobEffectCategory::Harmful,
+        color: 13565951,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
@@ -322,6 +426,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "LUCK",
         resource_id: "minecraft:luck",
         category: MobEffectCategory::Beneficial,
+        color: 5882118,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[MobEffectAttributeModifierDescriptor {
             attribute_id: VANILLA_ATTRIBUTE_LUCK_ID,
             modifier_id: "minecraft:effect.luck",
@@ -334,6 +442,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "UNLUCK",
         resource_id: "minecraft:unluck",
         category: MobEffectCategory::Harmful,
+        color: 12624973,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[MobEffectAttributeModifierDescriptor {
             attribute_id: VANILLA_ATTRIBUTE_LUCK_ID,
             modifier_id: "minecraft:effect.unluck",
@@ -346,6 +458,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "SLOW_FALLING",
         resource_id: "minecraft:slow_falling",
         category: MobEffectCategory::Beneficial,
+        color: 15978425,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
@@ -353,6 +469,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "CONDUIT_POWER",
         resource_id: "minecraft:conduit_power",
         category: MobEffectCategory::Beneficial,
+        color: 1950417,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
@@ -360,6 +480,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "DOLPHINS_GRACE",
         resource_id: "minecraft:dolphins_grace",
         category: MobEffectCategory::Beneficial,
+        color: 8954814,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
@@ -367,6 +491,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "BAD_OMEN",
         resource_id: "minecraft:bad_omen",
         category: MobEffectCategory::Neutral,
+        color: 745784,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
@@ -374,6 +502,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "HERO_OF_THE_VILLAGE",
         resource_id: "minecraft:hero_of_the_village",
         category: MobEffectCategory::Beneficial,
+        color: 4521796,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
@@ -381,6 +513,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "DARKNESS",
         resource_id: "minecraft:darkness",
         category: MobEffectCategory::Harmful,
+        color: 2696993,
+        blend_in_duration_ticks: 22,
+        blend_out_duration_ticks: 22,
+        blend_out_advance_ticks: 22,
         attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
@@ -388,6 +524,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "TRIAL_OMEN",
         resource_id: "minecraft:trial_omen",
         category: MobEffectCategory::Neutral,
+        color: 1484454,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
@@ -395,6 +535,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "RAID_OMEN",
         resource_id: "minecraft:raid_omen",
         category: MobEffectCategory::Neutral,
+        color: 14565464,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
@@ -402,6 +546,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "WIND_CHARGED",
         resource_id: "minecraft:wind_charged",
         category: MobEffectCategory::Harmful,
+        color: 12438015,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
@@ -409,6 +557,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "WEAVING",
         resource_id: "minecraft:weaving",
         category: MobEffectCategory::Harmful,
+        color: 7891290,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
@@ -416,6 +568,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "OOZING",
         resource_id: "minecraft:oozing",
         category: MobEffectCategory::Harmful,
+        color: 10092451,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
@@ -423,6 +579,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "INFESTED",
         resource_id: "minecraft:infested",
         category: MobEffectCategory::Harmful,
+        color: 9214860,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[],
     },
     MobEffectTypeCatalogEntry {
@@ -430,6 +590,10 @@ pub const VANILLA_MOB_EFFECT_TYPES: &[MobEffectTypeCatalogEntry] = &[
         constant_name: "BREATH_OF_THE_NAUTILUS",
         resource_id: "minecraft:breath_of_the_nautilus",
         category: MobEffectCategory::Beneficial,
+        color: 65518,
+        blend_in_duration_ticks: 0,
+        blend_out_duration_ticks: 0,
+        blend_out_advance_ticks: 0,
         attribute_modifiers: &[],
     },
 ];
@@ -496,6 +660,36 @@ mod tests {
                 .attribute_modifiers[0]
                 .modifier_id,
             "minecraft:effect.speed"
+        );
+        assert_eq!(
+            vanilla_mob_effect_type(VANILLA_MOB_EFFECT_SPEED_ID)
+                .unwrap()
+                .color,
+            3_402_751
+        );
+        assert_eq!(
+            vanilla_mob_effect_type(VANILLA_MOB_EFFECT_NAUSEA_ID)
+                .unwrap()
+                .blend_in_duration_ticks,
+            150
+        );
+        assert_eq!(
+            vanilla_mob_effect_type(VANILLA_MOB_EFFECT_NAUSEA_ID)
+                .unwrap()
+                .blend_out_duration_ticks,
+            20
+        );
+        assert_eq!(
+            vanilla_mob_effect_type(VANILLA_MOB_EFFECT_NAUSEA_ID)
+                .unwrap()
+                .blend_out_advance_ticks,
+            60
+        );
+        assert_eq!(
+            vanilla_mob_effect_type(VANILLA_MOB_EFFECT_DARKNESS_ID)
+                .unwrap()
+                .blend_in_duration_ticks,
+            22
         );
     }
 

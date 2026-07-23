@@ -303,6 +303,7 @@ package fixture;
 public class MobEffects {
   public static final Holder<MobEffect> ONE = register(
       "one", new MobEffect(MobEffectCategory.HARMFUL, 0)
+          .setBlendDuration(150, 20, 60)
           .addAttributeModifier(Attributes.ONE, Identifier.withDefaultNamespace("effect.one"),
               0.2F, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
 }
@@ -332,6 +333,15 @@ public class MobEffects {
         )
         effect = mob_effect_entries(effects, 1, 1)[0]
         self.assertEqual(effect.category, "HARMFUL")
+        self.assertEqual(effect.color, 0)
+        self.assertEqual(
+            (
+                effect.blend_in_duration_ticks,
+                effect.blend_out_duration_ticks,
+                effect.blend_out_advance_ticks,
+            ),
+            (150, 20, 60),
+        )
         self.assertEqual(effect.attribute_modifiers[0].attribute_constant_name, "ONE")
         self.assertEqual(effect.attribute_modifiers[0].modifier_id, "minecraft:effect.one")
         self.assertEqual(
