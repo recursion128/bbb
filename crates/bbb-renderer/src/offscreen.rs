@@ -110,7 +110,7 @@ impl Renderer {
 }
 
 mod tests {
-    use crate::{ClearColor, Renderer};
+    use crate::{ClearColor, HudVignette, Renderer};
 
     const WIDTH: u32 = 320;
     const HEIGHT: u32 = 240;
@@ -166,5 +166,38 @@ mod tests {
             renderer.counters.draw_calls
         );
         assert_eq!(renderer.counters.screenshots_written, 0);
+    }
+
+    #[test]
+    fn offscreen_frame_applies_vignette_before_ordinary_hud() {
+        let Some(mut renderer) = Renderer::new_offscreen(32, 32) else {
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 1.0,
+            g: 1.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer
+            .upload_hud_vignette_texture(1, 1, &[255, 255, 255, 255], true, false)
+            .expect("upload vignette");
+        renderer.set_hud_vignette(Some(HudVignette {
+            brightness: 0.5,
+            border_warning_strength: 0.5,
+            color: [0.25, 0.5, 0.75],
+        }));
+
+        let pixels = renderer.render_offscreen_frame().expect("offscreen frame");
+        let corner = pixels.pixel(4, 4);
+
+        // ZERO / ONE_MINUS_SRC_COLOR over white produces
+        // (0.75, 0.5, 0.25), encoded to the sRGB surface in the same order.
+        assert!(
+            corner[0] > corner[1] && corner[1] > corner[2],
+            "vignette should destination-multiply each RGB channel, got {corner:?}"
+        );
+        assert_eq!(corner[3], 255, "vignette must preserve destination alpha");
+        assert_eq!(renderer.counters.hud_draw_calls, 1);
     }
 }

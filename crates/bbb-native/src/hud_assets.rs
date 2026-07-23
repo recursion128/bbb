@@ -6,6 +6,7 @@ use bbb_renderer::{
     HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite, HudAdvancementTabSprite,
     HudAdvancementWidgetFrameSprite, HudBossBarColor, HudBossBarOverlay, HudHeartKind,
     HudLocatorStyle, HudNineSliceScaling, HudStatsScrollbarSprite, HudStatsSprite,
+    VIGNETTE_TEXTURE_PATH,
 };
 use bbb_world::vanilla_sign_wood_kinds;
 
@@ -30,6 +31,14 @@ pub(crate) fn try_load_hud_textures(
     roots: &PackRoots,
 ) -> Result<()> {
     let sprites = load_gui_sprites(roots)?;
+    let vignette = load_vignette_image(roots)?;
+    renderer.upload_hud_vignette_texture(
+        vignette.width,
+        vignette.height,
+        &vignette.rgba,
+        vignette.texture_metadata.blur,
+        vignette.texture_metadata.clamp,
+    )?;
     let crosshair = hud_sprite(&sprites, "hud/crosshair")?;
     renderer.upload_hud_crosshair(crosshair.width, crosshair.height, &crosshair.rgba)?;
     let hotbar = hud_sprite(&sprites, "hud/hotbar")?;
@@ -1414,6 +1423,7 @@ pub(crate) fn try_load_hud_textures(
         food = ?(food_full.width, food_full.height),
         digits = ?(digit_atlas.width, digit_atlas.height),
         font = ?(font_atlas.width, font_atlas.height),
+        vignette = ?(vignette.width, vignette.height),
         "loaded vanilla HUD sprites"
     );
     Ok(())
@@ -1444,6 +1454,14 @@ fn load_gui_sprites(roots: &PackRoots) -> Result<HashMap<String, SpriteImage>> {
         .into_iter()
         .map(|image| (image.id.clone(), image))
         .collect())
+}
+
+fn load_vignette_image(roots: &PackRoots) -> Result<SpriteImage> {
+    gui_texture(
+        roots,
+        VIGNETTE_TEXTURE_PATH,
+        "minecraft:textures/misc/vignette",
+    )
 }
 
 fn hud_sprite<'a>(
@@ -1604,6 +1622,35 @@ mod tests {
     }
 
     #[test]
+    fn vignette_texture_loads_from_the_selected_resource_stack() {
+        let temp = unique_temp_dir("bbb-vignette-texture");
+        let sources = temp.join("sources").join("26.1");
+        let texture_path = sources
+            .join("assets")
+            .join("minecraft")
+            .join(VIGNETTE_TEXTURE_PATH);
+        std::fs::create_dir_all(texture_path.parent().unwrap()).unwrap();
+        image::RgbaImage::from_pixel(8, 4, image::Rgba([7, 11, 13, 255]))
+            .save(&texture_path)
+            .unwrap();
+        std::fs::write(
+            texture_path.with_extension("png.mcmeta"),
+            r#"{"texture":{"blur":true,"clamp":false}}"#,
+        )
+        .unwrap();
+        let roots = PackRoots::from_paths(temp.clone(), sources, temp.join("unused-assets"), None);
+
+        let image = load_vignette_image(&roots).unwrap();
+
+        assert_eq!(image.id, "minecraft:textures/misc/vignette");
+        assert_eq!((image.width, image.height), (8, 4));
+        assert_eq!(image.rgba.len(), 8 * 4 * 4);
+        assert!(image.texture_metadata.blur);
+        assert!(!image.texture_metadata.clamp);
+        std::fs::remove_dir_all(temp).unwrap();
+    }
+
+    #[test]
     fn stats_sprite_catalog_resolves_through_gui_atlas_ids() {
         let mut sprites = HashMap::new();
         for sprite in HudStatsSprite::ALL {
@@ -1670,5 +1717,13 @@ mod tests {
     fn set_pixel(rgba: &mut [u8], width: u32, x: u32, y: u32, pixel: [u8; 4]) {
         let offset = rgba_offset(width, x, y).unwrap();
         rgba[offset..offset + 4].copy_from_slice(&pixel);
+    }
+
+    fn unique_temp_dir(prefix: &str) -> std::path::PathBuf {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        std::env::temp_dir().join(format!("{prefix}-{}-{nanos}", std::process::id()))
     }
 }

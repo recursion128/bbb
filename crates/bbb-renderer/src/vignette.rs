@@ -4,7 +4,79 @@
 //! because vanilla's `RenderPipelines.VIGNETTE` uses a destination-multiplying
 //! blend that cannot share the ordinary alpha-blended HUD pipeline.
 
-use crate::Renderer;
+use anyhow::{anyhow, bail, Result};
+use bytemuck::{Pod, Zeroable};
+
+use crate::{pipeline_builder::RenderPipelineBuilder, Renderer};
+
+/// Vanilla `Gui.VIGNETTE_LOCATION`.
+pub const VIGNETTE_TEXTURE_PATH: &str = "textures/misc/vignette.png";
+
+pub(crate) const VIGNETTE_BLEND: wgpu::BlendState = wgpu::BlendState {
+    color: wgpu::BlendComponent {
+        src_factor: wgpu::BlendFactor::Zero,
+        dst_factor: wgpu::BlendFactor::OneMinusSrc,
+        operation: wgpu::BlendOperation::Add,
+    },
+    alpha: wgpu::BlendComponent {
+        src_factor: wgpu::BlendFactor::Zero,
+        dst_factor: wgpu::BlendFactor::One,
+        operation: wgpu::BlendOperation::Add,
+    },
+};
+
+pub(crate) const VIGNETTE_SHADER: &str = r#"
+@group(0) @binding(0)
+var vignette_texture: texture_2d<f32>;
+
+@group(0) @binding(1)
+var vignette_sampler: sampler;
+
+struct VignetteUniform {
+    color: vec4<f32>,
+};
+
+@group(0) @binding(2)
+var<uniform> vignette: VignetteUniform;
+
+struct VertexOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+};
+
+@vertex
+fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOut {
+    var position = vec2<f32>(-1.0, -1.0);
+    if (vertex_index == 1u) {
+        position = vec2<f32>(3.0, -1.0);
+    } else if (vertex_index == 2u) {
+        position = vec2<f32>(-1.0, 3.0);
+    }
+    var out: VertexOut;
+    out.position = vec4<f32>(position, 0.0, 1.0);
+    out.uv = vec2<f32>(position.x * 0.5 + 0.5, 0.5 - position.y * 0.5);
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    return textureSample(vignette_texture, vignette_sampler, input.uv) * vignette.color;
+}
+"#;
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+pub(crate) struct VignetteUniform {
+    pub(crate) color: [f32; 4],
+}
+
+pub(crate) struct VignetteTextureGpu {
+    _texture: wgpu::Texture,
+    _view: wgpu::TextureView,
+    _sampler: wgpu::Sampler,
+    pub(crate) uniform_buffer: wgpu::Buffer,
+    pub(crate) bind_group: wgpu::BindGroup,
+}
 
 /// One frame's vanilla `Gui.extractVignette` projection.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -43,6 +115,195 @@ impl Renderer {
     pub fn hud_vignette(&self) -> Option<HudVignette> {
         self.hud_vignette
     }
+
+    /// Uploads the selected pack generation's
+    /// `textures/misc/vignette.png`.
+    pub fn upload_hud_vignette_texture(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+        blur: bool,
+        clamp: bool,
+    ) -> Result<()> {
+        self.hud_vignette_texture = Some(create_vignette_texture_gpu(
+            &self.device,
+            &self.queue,
+            &self.vignette_bind_group_layout,
+            width,
+            height,
+            rgba,
+            blur,
+            clamp,
+        )?);
+        Ok(())
+    }
+}
+
+pub(crate) fn create_vignette_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+    device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("bbb-vignette-bind-group-layout"),
+        entries: &[
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    multisampled: false,
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 2,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            },
+        ],
+    })
+}
+
+pub(crate) fn create_vignette_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    RenderPipelineBuilder::new(device, "bbb-vignette-pipeline")
+        .shader("bbb-vignette-shader", VIGNETTE_SHADER)
+        .layout("bbb-vignette-pipeline-layout", &[bind_group_layout])
+        .color_target(format, Some(VIGNETTE_BLEND))
+        .build()
+}
+
+fn create_vignette_texture_gpu(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    layout: &wgpu::BindGroupLayout,
+    width: u32,
+    height: u32,
+    rgba: &[u8],
+    blur: bool,
+    clamp: bool,
+) -> Result<VignetteTextureGpu> {
+    if width == 0 || height == 0 {
+        bail!("vignette texture must have non-zero dimensions");
+    }
+    let expected_len = usize::try_from(width)
+        .ok()
+        .and_then(|width| {
+            usize::try_from(height)
+                .ok()
+                .and_then(|height| width.checked_mul(height))
+        })
+        .and_then(|pixels| pixels.checked_mul(4))
+        .ok_or_else(|| anyhow!("vignette texture size overflow"))?;
+    if rgba.len() != expected_len {
+        bail!(
+            "vignette texture rgba length {} does not match {}x{}",
+            rgba.len(),
+            width,
+            height
+        );
+    }
+    let texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("bbb-vignette-texture"),
+        size: wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba8UnormSrgb,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
+    });
+    let bytes_per_row = width
+        .checked_mul(4)
+        .ok_or_else(|| anyhow!("vignette texture row size overflow"))?;
+    queue.write_texture(
+        wgpu::ImageCopyTexture {
+            texture: &texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        rgba,
+        wgpu::ImageDataLayout {
+            offset: 0,
+            bytes_per_row: Some(bytes_per_row),
+            rows_per_image: Some(height),
+        },
+        wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
+    );
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+    let address_mode = if clamp {
+        wgpu::AddressMode::ClampToEdge
+    } else {
+        wgpu::AddressMode::Repeat
+    };
+    let filter_mode = if blur {
+        wgpu::FilterMode::Linear
+    } else {
+        wgpu::FilterMode::Nearest
+    };
+    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+        label: Some("bbb-vignette-sampler"),
+        address_mode_u: address_mode,
+        address_mode_v: address_mode,
+        address_mode_w: address_mode,
+        mag_filter: filter_mode,
+        min_filter: filter_mode,
+        mipmap_filter: filter_mode,
+        ..Default::default()
+    });
+    let uniform_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("bbb-vignette-uniform"),
+        size: std::mem::size_of::<VignetteUniform>() as u64,
+        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    });
+    let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("bbb-vignette-bind-group"),
+        layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(&view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::Sampler(&sampler),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: uniform_buffer.as_entire_binding(),
+            },
+        ],
+    });
+    Ok(VignetteTextureGpu {
+        _texture: texture,
+        _view: view,
+        _sampler: sampler,
+        uniform_buffer,
+        bind_group,
+    })
 }
 
 #[cfg(test)]
@@ -73,5 +334,18 @@ mod tests {
             .sanitized(),
             None
         );
+    }
+
+    #[test]
+    fn vignette_pipeline_matches_vanilla_blend_and_blurred_texture_sampling() {
+        assert_eq!(VIGNETTE_BLEND.color.src_factor, wgpu::BlendFactor::Zero);
+        assert_eq!(
+            VIGNETTE_BLEND.color.dst_factor,
+            wgpu::BlendFactor::OneMinusSrc
+        );
+        assert_eq!(VIGNETTE_BLEND.alpha.src_factor, wgpu::BlendFactor::Zero);
+        assert_eq!(VIGNETTE_BLEND.alpha.dst_factor, wgpu::BlendFactor::One);
+        assert!(VIGNETTE_SHADER.contains("textureSample(vignette_texture, vignette_sampler"));
+        assert!(VIGNETTE_SHADER.contains("* vignette.color"));
     }
 }

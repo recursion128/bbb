@@ -198,6 +198,7 @@ impl Renderer {
 // a second restore assignment.
 macro_rules! take_hud_resource_owners {
     ($take_owner:ident) => {
+        $take_owner!(hud_vignette_texture);
         $take_owner!(hud_crosshair);
         $take_owner!(hud_hotbar);
         $take_owner!(hud_hotbar_selection);
@@ -414,9 +415,9 @@ mod tests {
     use anyhow::{anyhow, Result};
 
     use crate::{
-        entity_model_texture_refs, EntityModelTextureImage, HudAsciiGlyph, HudChatMessage,
-        HudFontGlyphBook, HudFontGlyphMap, HudStyledTextRun, ParticleSpriteUv, ParticleUvRect,
-        Renderer,
+        entity_model_texture_refs, ClearColor, EntityModelTextureImage, HudAsciiGlyph,
+        HudChatMessage, HudFontGlyphBook, HudFontGlyphMap, HudStyledTextRun, HudVignette,
+        ParticleSpriteUv, ParticleUvRect, Renderer,
     };
 
     #[test]
@@ -514,6 +515,44 @@ mod tests {
             center[2] > 128 && center[0] < 128,
             "commit should expose the new blue HUD owner, got {center:?}"
         );
+    }
+
+    #[test]
+    fn failed_vignette_reload_restores_the_previous_pixel_owner() {
+        let Some(mut renderer) = Renderer::new_offscreen(16, 16) else {
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 1.0,
+            g: 1.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer.set_hud_vignette(Some(HudVignette {
+            brightness: 0.5,
+            border_warning_strength: 0.5,
+            color: [0.25, 0.5, 0.75],
+        }));
+        renderer
+            .upload_hud_vignette_texture(1, 1, &[255, 255, 255, 255], true, false)
+            .expect("old vignette");
+        let before = renderer
+            .render_offscreen_frame()
+            .expect("frame before reload")
+            .pixel(2, 2);
+
+        renderer
+            .transactional_resource_reload(|renderer| -> Result<()> {
+                renderer.upload_hud_vignette_texture(1, 1, &[0, 0, 0, 255], true, false)?;
+                Err(anyhow!("injected vignette failure"))
+            })
+            .expect_err("injected reload failure");
+
+        let after = renderer
+            .render_offscreen_frame()
+            .expect("frame after rollback")
+            .pixel(2, 2);
+        assert_eq!(after, before);
     }
 
     #[test]

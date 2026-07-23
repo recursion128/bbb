@@ -25,6 +25,7 @@ use crate::{
         ParticleVertexBatches,
     },
     selection::{debug_line_vertex_batches, selection_lines_vertices},
+    vignette::VignetteUniform,
     weather::{build_lightning_mesh, build_weather_mesh},
     world_border::build_world_border_mesh,
     Renderer,
@@ -65,6 +66,7 @@ const OPAQUE_PARTICLE_MAIN_PASS_LABEL: &str = "bbb-native-opaque-particle-main-p
 const PARTICLE_TARGET_PASS_LABEL: &str = "bbb-native-particle-target-pass";
 const WEATHER_TARGET_PASS_LABEL: &str = "bbb-native-weather-target-pass";
 const FIRST_PERSON_ITEM_PASS_LABEL: &str = "bbb-native-first-person-item-pass";
+const VIGNETTE_PASS_LABEL: &str = "bbb-native-vignette-pass";
 const LIGHTMAP_PASS_LABEL: &str = "bbb-native-lightmap-pass";
 const TRANSPARENCY_COMBINE_PASS_LABEL: &str = "bbb-native-transparency-combine-pass";
 const TRANSPARENCY_BLIT_PASS_LABEL: &str = "bbb-native-transparency-blit-pass";
@@ -145,6 +147,7 @@ impl Renderer {
         self.transparency_blit_pass(&frame, &mut encoder, &mut stats);
         self.first_person_item_pass(&frame, &mut encoder, &mut stats);
         self.entity_preview_pip_passes(&mut encoder, &mut stats);
+        self.vignette_pass(&frame, &mut encoder, &mut stats);
         self.hud_passes(&frame, &mut encoder, &mut stats);
         self.finish_frame(encoder, frame, screenshot, stats)
     }
@@ -2581,6 +2584,48 @@ impl Renderer {
         self.hud_entity_preview_pip_targets = targets;
     }
 
+    fn vignette_pass(
+        &self,
+        frame: &FrameTarget,
+        encoder: &mut wgpu::CommandEncoder,
+        stats: &mut FrameDrawStats,
+    ) {
+        let (Some(vignette), Some(texture)) =
+            (self.hud_vignette, self.hud_vignette_texture.as_ref())
+        else {
+            return;
+        };
+        self.queue.write_buffer(
+            &texture.uniform_buffer,
+            0,
+            bytemuck::bytes_of(&VignetteUniform {
+                color: [vignette.color[0], vignette.color[1], vignette.color[2], 1.0],
+            }),
+        );
+        let surface_view = frame
+            .texture()
+            .create_view(&wgpu::TextureViewDescriptor::default());
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some(VIGNETTE_PASS_LABEL),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &surface_view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+        pass.set_pipeline(&self.vignette_pipeline);
+        stats.pipeline_switches += 1;
+        pass.set_bind_group(0, &texture.bind_group, &[]);
+        pass.draw(0..3, 0..1);
+        stats.hud_draw_calls += 1;
+    }
+
     fn hud_passes(
         &mut self,
         frame: &FrameTarget,
@@ -4286,6 +4331,7 @@ mod tests {
         "transparency_blit_pass",
         "first_person_item_pass",
         "entity_preview_pip_passes",
+        "vignette_pass",
         "hud_passes",
         "finish_frame",
     ];
@@ -4512,6 +4558,9 @@ mod tests {
         let hud = source
             .find("self.hud_passes(&frame, &mut encoder, &mut stats);")
             .expect("HUD passes are scheduled");
+        let vignette = source
+            .find("self.vignette_pass(&frame, &mut encoder, &mut stats);")
+            .expect("vignette pass is scheduled");
         let pass = source
             .find("label: Some(FIRST_PERSON_ITEM_PASS_LABEL)")
             .expect("first-person item pass label is used");
@@ -4520,8 +4569,29 @@ mod tests {
             .map(|index| pass + index)
             .expect("first-person item pass clears depth");
 
-        assert!(blit < first_person && first_person < hud);
+        assert!(blit < first_person && first_person < vignette && vignette < hud);
         assert!(first_person < pass && pass < depth_clear);
+    }
+
+    #[test]
+    fn vignette_pass_loads_the_surface_before_ordinary_hud() {
+        let source = include_str!("render.rs");
+        let vignette_call = source
+            .find("self.vignette_pass(&frame, &mut encoder, &mut stats);")
+            .expect("vignette pass is scheduled");
+        let hud_call = source
+            .find("self.hud_passes(&frame, &mut encoder, &mut stats);")
+            .expect("HUD passes are scheduled");
+        let vignette_pass = source
+            .find("label: Some(VIGNETTE_PASS_LABEL)")
+            .expect("vignette pass label is used");
+        let vignette_end = source[vignette_pass..]
+            .find("\n    }")
+            .map(|index| vignette_pass + index)
+            .expect("vignette pass ends");
+        assert!(vignette_call < hud_call);
+        assert!(source[vignette_pass..vignette_end].contains("load: wgpu::LoadOp::Load"));
+        assert!(source[vignette_pass..vignette_end].contains("pass.draw(0..3, 0..1)"));
     }
 
     #[test]

@@ -127,6 +127,7 @@ use crate::{
         ParticleTarget, TranslucentTarget, TransparencyCombineBindGroup, TransparencyFinalTarget,
         WeatherTarget,
     },
+    vignette::{create_vignette_bind_group_layout, create_vignette_pipeline, VignetteTextureGpu},
     weather::{
         create_lightning_pipeline, create_weather_pipeline, create_weather_texture_gpu,
         WeatherRenderState, WeatherTextureGpu, WeatherTextureImage, WeatherTextureKind,
@@ -351,6 +352,8 @@ pub struct Renderer {
     pub(super) cloud_uniform_buffer: wgpu::Buffer,
     pub(super) hud_pipeline: wgpu::RenderPipeline,
     pub(super) hud_bind_group_layout: wgpu::BindGroupLayout,
+    pub(super) vignette_pipeline: wgpu::RenderPipeline,
+    pub(super) vignette_bind_group_layout: wgpu::BindGroupLayout,
     pub(super) hud_white_pixel: HudSpriteGpu,
     pub(super) hud_black_pixel: HudSpriteGpu,
     pub(super) terrain_bind_group_layout: wgpu::BindGroupLayout,
@@ -763,6 +766,7 @@ pub struct Renderer {
     pub(super) hud_air: Option<crate::hud::HudAirSupply>,
     pub(super) hud_vehicle_health: Option<crate::hud::HudVehicleHealth>,
     pub(super) hud_vignette: Option<crate::vignette::HudVignette>,
+    pub(super) hud_vignette_texture: Option<VignetteTextureGpu>,
     pub(super) hud_contextual_bar: crate::hud::HudContextualBar,
     pub(super) hud_experience_level: Option<i32>,
     pub(super) hud_selected_slot: u8,
@@ -1478,6 +1482,9 @@ impl Renderer {
             CloudShape::Fancy,
         );
         let hud_pipeline = create_hud_pipeline(&device, format, &hud_bind_group_layout);
+        let vignette_bind_group_layout = create_vignette_bind_group_layout(&device);
+        let vignette_pipeline =
+            create_vignette_pipeline(&device, format, &vignette_bind_group_layout);
         let map_surface_residency = MapSurfaceResidency::new(
             &device,
             format,
@@ -1670,6 +1677,8 @@ impl Renderer {
             cloud_uniform_buffer,
             hud_pipeline,
             hud_bind_group_layout,
+            vignette_pipeline,
+            vignette_bind_group_layout,
             hud_white_pixel,
             hud_black_pixel,
             terrain_bind_group_layout,
@@ -2052,6 +2061,7 @@ impl Renderer {
             hud_air: None,
             hud_vehicle_health: None,
             hud_vignette: None,
+            hud_vignette_texture: None,
             hud_contextual_bar: crate::hud::HudContextualBar::Empty,
             hud_experience_level: None,
             hud_selected_slot: 0,
