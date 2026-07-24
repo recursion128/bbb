@@ -24,6 +24,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_BEES_TYPE_ID, VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID, VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
         VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID,
@@ -1371,6 +1372,9 @@ fn validate_encodable_data_component_patch_summary(
             }
             VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID => {
                 expected.cow_sound_variant_id = patch.cow_sound_variant_id;
+            }
+            VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID => {
+                expected.chicken_variant_id = patch.chicken_variant_id;
             }
             VANILLA_DATA_COMPONENT_OMINOUS_BOTTLE_AMPLIFIER_TYPE_ID => {
                 expected.ominous_bottle_amplifier = patch.ominous_bottle_amplifier;

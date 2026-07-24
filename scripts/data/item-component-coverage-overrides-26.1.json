@@ -5292,6 +5292,79 @@
         "status": "complete"
       }
     },
+    "CHICKEN_VARIANT": {
+      "canonical_retention": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#CHICKEN_VARIANT",
+          "vanilla:net/minecraft/world/entity/animal/chicken/ChickenVariant.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<ChickenVariant>> STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub chicken_variant_id",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_chicken_variant",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_chicken_variant_and_sound_holder_registry_ids",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_all_synchronized_registry_fixed_variant_components"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#CHICKEN_VARIANT",
+          "vanilla:net/minecraft/world/entity/animal/chicken/ChickenVariant.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<ChickenVariant>> STREAM_CODEC",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#holderRegistry",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#registry",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_chicken_variant",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#chicken_variant_descriptor_round_trips_ids_and_rejects_invalid_values_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_chicken_variant_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/entity/EntityType.java#appendComponentsConfig",
+          "vanilla:net/minecraft/world/entity/Entity.java#applyComponentsFromItemStack",
+          "vanilla:net/minecraft/world/entity/animal/chicken/Chicken.java#protected void applyImplicitComponents",
+          "crates/bbb-world/src/registries/animal_variants.rs#decodes_all_farm_animal_network_codec_shapes",
+          "crates/bbb-native/src/entity_scene/tests.rs#entity_model_instances_project_chicken_variants_from_world_registry_order"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/world/entity/animal/chicken/ChickenVariant.java#public static final Codec<Holder<ChickenVariant>> CODEC",
+          "crates/bbb-native/src/input/component_patch.rs#encode_named_variant",
+          "crates/bbb-native/src/input/component_patch.rs#named_variant_encoders_use_session_order_or_fixed_catalog",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#projects_holder_backed_component_values_into_protocol_summary"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_chicken_variant_and_sound_holder_registry_ids",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#chicken_variant_descriptor_round_trips_ids_and_rejects_invalid_values_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_chicken_variant_component",
+          "crates/bbb-native/src/input/component_patch.rs#named_variant_encoders_use_session_order_or_fixed_catalog",
+          "crates/bbb-world/src/registries/animal_variants.rs#decodes_all_farm_animal_network_codec_shapes",
+          "crates/bbb-native/src/entity_scene/tests.rs#entity_model_instances_project_chicken_variants_from_world_registry_order"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#CHICKEN_VARIANT",
+          "vanilla:net/minecraft/world/entity/animal/chicken/ChickenVariant.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<ChickenVariant>> STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub chicken_variant_id",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_chicken_variant",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_chicken_variant_and_sound_holder_registry_ids",
+          "crates/bbb-world/src/registries/animal_variants.rs#decodes_all_farm_animal_network_codec_shapes"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "TOOLTIP_STYLE": {
       "canonical_retention": {
         "evidence": [
