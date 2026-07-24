@@ -3,8 +3,9 @@ use crate::{
     codec::{offline_player_uuid, Decoder, Encoder, ProtocolError},
     data_component_types::{
         VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
-        VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
-        VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+        VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
         VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
@@ -1598,6 +1599,55 @@ fn encodes_set_creative_mode_slot_attribute_modifiers_component() {
             0, // any slot group
             2, // override display
             8, 0, 8, b'O', b'v', b'e', b'r', b'r', b'i', b'd', b'e', // component NBT
+        ]
+    );
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_consume_effect_family_components() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 2,
+                added_type_ids: vec![
+                    VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
+                    VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID,
+                ],
+                consumable: Some(ConsumableSummary {
+                    consume_seconds: 1.0,
+                    animation: ItemUseAnimationSummary::Eat,
+                }),
+                consumable_sound: Some(SoundEventSummary {
+                    registry_id: Some(0),
+                    sound_id: None,
+                    fixed_range_bits: None,
+                }),
+                consumable_has_consume_particles: Some(true),
+                consumable_effect_count: Some(0),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            2, 0, // patch counts
+            24, 8, // consumable type and delimited value length
+            0x3f, 0x80, 0, 0, // consume seconds = 1.0
+            1, // eat animation
+            1, // sound registry holder 0
+            1, // has consume particles
+            0, // no consume effects
+            36, 1, // death_protection type and delimited value length
+            0, // no death effects
         ]
     );
 }

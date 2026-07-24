@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use bbb_pack::{
     ItemCuboidModelCatalog, ItemModelDefinition, ItemModelProperty, ItemModelPropertyKind,
@@ -733,6 +733,72 @@ mod tests {
     }
 
     #[test]
+    fn consume_effect_family_component_presence_drives_item_models() {
+        let consumable_id = component_id::VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID;
+        let death_protection_id = component_id::VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID;
+        assert_eq!(
+            data_component_type_id("minecraft:consumable"),
+            Some(consumable_id)
+        );
+        assert_eq!(
+            data_component_type_id("minecraft:death_protection"),
+            Some(death_protection_id)
+        );
+
+        let patch = DataComponentPatchSummary {
+            added_type_ids: vec![consumable_id, death_protection_id],
+            ..DataComponentPatchSummary::default()
+        };
+        assert!(item_stack_has_component_id(
+            consumable_id,
+            Some(&patch),
+            None,
+            None,
+            None,
+            false,
+        ));
+        assert!(item_stack_has_component_id(
+            death_protection_id,
+            Some(&patch),
+            None,
+            None,
+            None,
+            false,
+        ));
+
+        let default_type_ids = BTreeSet::from([consumable_id, death_protection_id]);
+        assert!(item_stack_has_component_id(
+            consumable_id,
+            None,
+            Some(&default_type_ids),
+            None,
+            None,
+            false,
+        ));
+
+        let removed = DataComponentPatchSummary {
+            removed_type_ids: vec![consumable_id, death_protection_id],
+            ..patch
+        };
+        assert!(!item_stack_has_component_id(
+            consumable_id,
+            Some(&removed),
+            Some(&default_type_ids),
+            None,
+            None,
+            false,
+        ));
+        assert!(!item_stack_has_component_id(
+            death_protection_id,
+            Some(&removed),
+            Some(&default_type_ids),
+            None,
+            None,
+            false,
+        ));
+    }
+
+    #[test]
     fn exact_sound_event_matches_registry_and_direct_holders() {
         let registry_value = Value::String("minecraft:entity.cat.ambient".to_string());
         let registry_expected = exact_sound_event_value(&registry_value).unwrap();
@@ -1307,6 +1373,10 @@ pub(super) enum ItemIconModel {
 #[derive(Clone, Copy)]
 pub(super) struct IconResolveContext<'a> {
     pub component_patch: Option<&'a DataComponentPatchSummary>,
+    /// Component types supplied by the item's registry prototype. Vanilla
+    /// applies the stack patch over this prototype before evaluating item
+    /// model component conditions.
+    pub default_component_type_ids: Option<&'a BTreeSet<i32>>,
     pub stack_count: i32,
     pub default_max_stack_size: Option<i32>,
     pub default_max_damage: Option<i32>,
@@ -2319,6 +2389,7 @@ impl ItemIconModel {
                         if item_stack_has_component(
                             property,
                             ctx.component_patch,
+                            ctx.default_component_type_ids,
                             ctx.default_max_damage,
                             ctx.default_item_model_id,
                         ) =>
@@ -2772,6 +2843,7 @@ fn item_stack_is_damaged(
 fn item_stack_has_component(
     property: &ItemModelProperty,
     component_patch: Option<&DataComponentPatchSummary>,
+    default_component_type_ids: Option<&BTreeSet<i32>>,
     default_max_damage: Option<i32>,
     default_item_model_id: &str,
 ) -> bool {
@@ -2793,6 +2865,7 @@ fn item_stack_has_component(
     item_stack_has_component_id(
         component_id,
         component_patch,
+        default_component_type_ids,
         default_max_damage,
         Some(default_item_model_id),
         ignore_default,
@@ -2874,6 +2947,7 @@ fn item_stack_matches_component_predicate(
         return item_stack_has_component_id(
             component_id,
             ctx.component_patch,
+            ctx.default_component_type_ids,
             ctx.default_max_damage,
             Some(ctx.default_item_model_id),
             false,
@@ -2888,6 +2962,7 @@ fn item_stack_matches_component_predicate(
     item_stack_has_component_id(
         component_id,
         ctx.component_patch,
+        ctx.default_component_type_ids,
         ctx.default_max_damage,
         Some(ctx.default_item_model_id),
         false,
@@ -3309,6 +3384,7 @@ fn item_stack_matches_bundle_contents_predicate(
     if !item_stack_has_component_id(
         component_id::VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID,
         ctx.component_patch,
+        ctx.default_component_type_ids,
         None,
         Some(ctx.default_item_model_id),
         false,
@@ -3375,6 +3451,7 @@ fn item_stack_matches_container_predicate(
     if !item_stack_has_component_id(
         component_id::VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID,
         ctx.component_patch,
+        ctx.default_component_type_ids,
         None,
         Some(ctx.default_item_model_id),
         false,
@@ -5323,6 +5400,7 @@ fn item_partial_component_predicate_match(
                 && item_stack_has_component_id(
                     component_id,
                     component_patch,
+                    None,
                     default_max_damage,
                     Some(default_item_model_id),
                     false,
@@ -7295,6 +7373,7 @@ fn json_i32(value: &Value) -> Option<i32> {
 fn item_stack_has_component_id(
     component_id: i32,
     component_patch: Option<&DataComponentPatchSummary>,
+    default_component_type_ids: Option<&BTreeSet<i32>>,
     default_max_damage: Option<i32>,
     default_item_model_id: Option<&str>,
     ignore_default: bool,
@@ -7310,7 +7389,12 @@ fn item_stack_has_component_id(
         return false;
     }
     non_default
-        || item_default_has_component(component_id, default_max_damage, default_item_model_id)
+        || item_default_has_component(
+            component_id,
+            default_component_type_ids,
+            default_max_damage,
+            default_item_model_id,
+        )
 }
 
 fn data_component_predicate_type_is_complex(predicate: &str) -> bool {
@@ -7373,6 +7457,10 @@ fn data_component_type_id(component: &str) -> Option<i32> {
         "minecraft:written_book_content" => {
             Some(component_id::VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID)
         }
+        "minecraft:consumable" => Some(component_id::VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID),
+        "minecraft:death_protection" => {
+            Some(component_id::VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID)
+        }
         "minecraft:trim" => Some(component_id::VANILLA_DATA_COMPONENT_TRIM_TYPE_ID),
         "minecraft:jukebox_playable" => {
             Some(component_id::VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID)
@@ -7394,20 +7482,24 @@ fn data_component_type_id(component: &str) -> Option<i32> {
 
 fn item_default_has_component(
     component_id: i32,
+    default_component_type_ids: Option<&BTreeSet<i32>>,
     default_max_damage: Option<i32>,
     default_item_model_id: Option<&str>,
 ) -> bool {
-    matches!(
-        component_id,
-        component_id::VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID
-            | component_id::VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID
-            | component_id::VANILLA_DATA_COMPONENT_RARITY_TYPE_ID
-            | component_id::VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID
-    ) || (matches!(
-        component_id,
-        component_id::VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID
-            | component_id::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID
-    ) && default_max_damage.is_some())
+    default_component_type_ids
+        .is_some_and(|component_type_ids| component_type_ids.contains(&component_id))
+        || matches!(
+            component_id,
+            component_id::VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID
+                | component_id::VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID
+                | component_id::VANILLA_DATA_COMPONENT_RARITY_TYPE_ID
+                | component_id::VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID
+        )
+        || (matches!(
+            component_id,
+            component_id::VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID
+                | component_id::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID
+        ) && default_max_damage.is_some())
         || (component_id == component_id::VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID
             && default_item_model_id == Some("minecraft:enchanted_book"))
 }

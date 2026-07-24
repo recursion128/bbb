@@ -1290,34 +1290,71 @@
       "constant_name": "CONSUMABLE",
       "coverage": {
         "canonical_retention": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components.rs#pub consumable",
+            "crates/bbb-protocol/src/packets/data_components.rs#pub consumable_effects",
+            "crates/bbb-protocol/src/packets/data_components.rs#decode_consumable_component_summary",
+            "crates/bbb-world/src/client/dialog/body/component_value/consume_effect/tests.rs#decodes_all_consume_effect_variants_for_both_components"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "network_encode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/Consumable.java#public static final StreamCodec<RegistryFriendlyByteBuf, Consumable> STREAM_CODEC",
+            "vanilla:net/minecraft/world/item/consume_effects/ConsumeEffect.java#StreamCodec<RegistryFriendlyByteBuf, ConsumeEffect> STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_consumable",
+            "crates/bbb-protocol/src/packets/data_components.rs#encodes_consume_effect_family_patch_with_independent_delimiters",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_consume_effect_family_components"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "observable_consumers": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/Item.java#public ItemUseAnimation getUseAnimation",
+            "crates/bbb-native/src/item_models/tests.rs#first_person_item_models_apply_consumable_eat_and_drink_use_pose",
+            "crates/bbb-native/src/item_models/tests.rs#first_person_item_models_apply_default_consumable_use_pose",
+            "crates/bbb-native/src/item_models/tests.rs#first_person_item_models_apply_custom_consumable_non_eat_use_animations",
+            "crates/bbb-item-model/src/item_runtime/icon_model.rs#consume_effect_family_component_presence_drives_item_models"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "persistent_projection": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/Consumable.java#public static final Codec<Consumable> CODEC",
+            "crates/bbb-native/src/input/component_patch.rs#encode_consumable",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_preserves_vanilla_consume_effects",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_preserves_effect_free_consumables_and_omits_defaults",
+            "crates/bbb-world/src/client/dialog/body/component_value/consume_effect/tests.rs#rejects_malformed_consume_effect_records_and_codec_ranges"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#consumable_descriptor_round_trips_all_effect_branches_in_wire_order",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#consume_effect_descriptors_enforce_bounds_and_canonical_values_atomically",
+            "crates/bbb-protocol/src/packets/data_components.rs#encodes_consume_effect_family_patch_with_independent_delimiters",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_consume_effect_family_components",
+            "crates/bbb-world/src/client/dialog/body/component_value/consume_effect/tests.rs#decodes_all_consume_effect_variants_for_both_components",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_preserves_vanilla_consume_effects"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "typed_decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#CONSUMABLE",
+            "vanilla:net/minecraft/world/item/component/Consumable.java#public record Consumable",
+            "vanilla:net/minecraft/world/item/consume_effects/ConsumeEffect.java#public interface ConsumeEffect",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_consumable_component",
+            "crates/bbb-protocol/src/packets/data_components.rs#decode_consumable_component_summary",
+            "crates/bbb-world/src/client/dialog/body/component_value/consume_effect/tests.rs#decodes_all_consume_effect_variants_for_both_components"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "resource_id": "minecraft:consumable",
@@ -1853,34 +1890,68 @@
       "constant_name": "DEATH_PROTECTION",
       "coverage": {
         "canonical_retention": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components.rs#pub death_protection_effects",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_death_protection_component",
+            "crates/bbb-world/src/client/dialog/body/component_value/consume_effect/tests.rs#decodes_all_consume_effect_variants_for_both_components"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "network_encode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/DeathProtection.java#public static final StreamCodec<RegistryFriendlyByteBuf, DeathProtection> STREAM_CODEC",
+            "vanilla:net/minecraft/world/item/consume_effects/ConsumeEffect.java#StreamCodec<RegistryFriendlyByteBuf, ConsumeEffect> STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_death_protection",
+            "crates/bbb-protocol/src/packets/data_components.rs#encodes_consume_effect_family_patch_with_independent_delimiters",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_consume_effect_family_components"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "observable_consumers": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#findTotem",
+            "crates/bbb-item-model/src/item_runtime/icon_model.rs#data_component_type_id",
+            "crates/bbb-item-model/src/item_runtime/icon_model.rs#item_stack_has_component_id",
+            "crates/bbb-item-model/src/item_runtime/icon_model.rs#consume_effect_family_component_presence_drives_item_models",
+            "crates/bbb-world/src/play_apply.rs#totem_entity_event_forwards_positioned_use_sound_with_entity_source"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "persistent_projection": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/DeathProtection.java#public static final Codec<DeathProtection> CODEC",
+            "crates/bbb-native/src/input/component_patch.rs#encode_death_protection",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_preserves_vanilla_consume_effects",
+            "crates/bbb-world/src/client/dialog/body/component_value/consume_effect/tests.rs#rejects_malformed_consume_effect_records_and_codec_ranges"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#death_protection_descriptor_round_trips_direct_holders_and_empty_lists",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#consume_effect_descriptors_enforce_bounds_and_canonical_values_atomically",
+            "crates/bbb-protocol/src/packets/data_components.rs#encodes_consume_effect_family_patch_with_independent_delimiters",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_consume_effect_family_components",
+            "crates/bbb-world/src/client/dialog/body/component_value/consume_effect/tests.rs#decodes_all_consume_effect_variants_for_both_components",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_preserves_vanilla_consume_effects"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "typed_decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#DEATH_PROTECTION",
+            "vanilla:net/minecraft/world/item/component/DeathProtection.java#public record DeathProtection",
+            "vanilla:net/minecraft/world/item/consume_effects/ConsumeEffect.java#public interface ConsumeEffect",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_death_protection_component",
+            "crates/bbb-world/src/client/dialog/body/component_value/consume_effect/tests.rs#decodes_all_consume_effect_variants_for_both_components"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "resource_id": "minecraft:death_protection",

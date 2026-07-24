@@ -631,6 +631,7 @@ impl NativeItemRuntime {
             |item_id| self.default_attribute_modifiers_for_protocol_id(item_id, None);
         let context = IconResolveContext {
             component_patch: None,
+            default_component_type_ids: self.default_component_type_ids_for_resource_id(item_id),
             stack_count: 1,
             default_max_stack_size: self
                 .registry
@@ -720,6 +721,7 @@ impl NativeItemRuntime {
             |item_id| self.default_attribute_modifiers_for_protocol_id(item_id, None);
         let context = IconResolveContext {
             component_patch: Some(&stack.component_patch),
+            default_component_type_ids: self.default_component_type_ids_for_resource_id(item_id),
             stack_count: stack.count,
             default_max_stack_size: self
                 .registry
@@ -1665,6 +1667,7 @@ impl NativeItemRuntime {
         };
         let context = IconResolveContext {
             component_patch,
+            default_component_type_ids: self.default_component_type_ids_for_resource_id(item_id),
             stack_count,
             default_max_stack_size,
             default_max_damage,
@@ -1982,6 +1985,7 @@ impl NativeItemRuntime {
             .unwrap_or_default();
         let context = IconResolveContext {
             component_patch: Some(&template.component_patch),
+            default_component_type_ids: self.default_component_type_ids_for_resource_id(item_id),
             stack_count: template.count,
             default_max_stack_size,
             default_max_damage,

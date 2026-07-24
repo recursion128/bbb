@@ -6,8 +6,9 @@ use crate::data_component_types::{
     DataComponentTypeCatalogEntry, VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
     VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
     VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
-    VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
-    VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
+    VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID, VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
     VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID, VANILLA_DATA_COMPONENT_TYPES,
     VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
@@ -219,6 +220,8 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID => Some(encode_damage),
         VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID => Some(encode_unbreakable),
         VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID => Some(encode_attribute_modifiers),
+        VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID => Some(encode_consumable),
+        VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID => Some(encode_death_protection),
         VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID => Some(encode_blocks_attacks),
         VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID => Some(encode_written_book_content),
         VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID => Some(encode_entity_data),
@@ -353,6 +356,176 @@ fn encode_attribute_modifier_display(
                 "invalid attribute modifier display id {display_id}"
             )));
         }
+    }
+    Ok(())
+}
+
+fn encode_consumable(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let consumable = summary.consumable.ok_or_else(|| {
+        ProtocolError::InvalidData("missing consumable component value".to_string())
+    })?;
+    let sound = summary.consumable_sound.as_ref().ok_or_else(|| {
+        ProtocolError::InvalidData("consumable component is missing sound holder".to_string())
+    })?;
+    let has_consume_particles = summary.consumable_has_consume_particles.ok_or_else(|| {
+        ProtocolError::InvalidData("consumable component is missing particle flag".to_string())
+    })?;
+    let effect_count = summary.consumable_effect_count.ok_or_else(|| {
+        ProtocolError::InvalidData("consumable component is missing effect count".to_string())
+    })?;
+    if effect_count != summary.consumable_effects.len() {
+        return Err(ProtocolError::InvalidData(format!(
+            "consumable effect count {effect_count} does not match {} effects",
+            summary.consumable_effects.len()
+        )));
+    }
+
+    let mut encoded = Encoder::new();
+    encoded.write_f32(f32::from_bits(consumable.consume_seconds.to_bits()));
+    encoded.write_var_i32(consumable.animation.id());
+    encode_sound_event_holder_summary(&mut encoded, sound)?;
+    encoded.write_bool(has_consume_particles);
+    encode_consume_effect_list(&mut encoded, &summary.consumable_effects)?;
+    out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
+fn encode_death_protection(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let mut encoded = Encoder::new();
+    encode_consume_effect_list(&mut encoded, &summary.death_protection_effects)?;
+    out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
+fn encode_consume_effect_list(out: &mut Encoder, effects: &[ConsumeEffectSummary]) -> Result<()> {
+    if effects.len() > MAX_DATA_COMPONENT_LIST_ITEMS {
+        return Err(ProtocolError::PacketTooLarge(
+            effects.len(),
+            MAX_DATA_COMPONENT_LIST_ITEMS,
+        ));
+    }
+    out.write_var_i32(effects.len() as i32);
+    for effect in effects {
+        encode_consume_effect(out, effect)?;
+    }
+    Ok(())
+}
+
+fn encode_consume_effect(out: &mut Encoder, effect: &ConsumeEffectSummary) -> Result<()> {
+    use crate::consume_effect_types::{
+        VANILLA_CONSUME_EFFECT_TYPE_APPLY_EFFECTS_ID,
+        VANILLA_CONSUME_EFFECT_TYPE_CLEAR_ALL_EFFECTS_ID,
+        VANILLA_CONSUME_EFFECT_TYPE_PLAY_SOUND_ID, VANILLA_CONSUME_EFFECT_TYPE_REMOVE_EFFECTS_ID,
+        VANILLA_CONSUME_EFFECT_TYPE_TELEPORT_RANDOMLY_ID,
+    };
+
+    match effect {
+        ConsumeEffectSummary::ApplyEffects {
+            effects,
+            probability_bits,
+        } => {
+            out.write_var_i32(VANILLA_CONSUME_EFFECT_TYPE_APPLY_EFFECTS_ID);
+            if effects.len() > MAX_DATA_COMPONENT_LIST_ITEMS {
+                return Err(ProtocolError::PacketTooLarge(
+                    effects.len(),
+                    MAX_DATA_COMPONENT_LIST_ITEMS,
+                ));
+            }
+            out.write_var_i32(effects.len() as i32);
+            for effect in effects {
+                encode_mob_effect_instance(out, effect)?;
+            }
+            out.write_f32(f32::from_bits(*probability_bits));
+        }
+        ConsumeEffectSummary::RemoveEffects {
+            effect_registry_ids,
+            effect_tag,
+        } => {
+            out.write_var_i32(VANILLA_CONSUME_EFFECT_TYPE_REMOVE_EFFECTS_ID);
+            encode_holder_set_summary(
+                out,
+                effect_registry_ids,
+                effect_tag.as_deref(),
+                NetworkHolderSetRegistry::MobEffect,
+                "remove consume effect",
+            )?;
+        }
+        ConsumeEffectSummary::ClearAllEffects => {
+            out.write_var_i32(VANILLA_CONSUME_EFFECT_TYPE_CLEAR_ALL_EFFECTS_ID);
+        }
+        ConsumeEffectSummary::TeleportRandomly { diameter_bits } => {
+            out.write_var_i32(VANILLA_CONSUME_EFFECT_TYPE_TELEPORT_RANDOMLY_ID);
+            out.write_f32(f32::from_bits(*diameter_bits));
+        }
+        ConsumeEffectSummary::PlaySound { sound } => {
+            out.write_var_i32(VANILLA_CONSUME_EFFECT_TYPE_PLAY_SOUND_ID);
+            encode_sound_event_holder_summary(out, sound)?;
+        }
+    }
+    Ok(())
+}
+
+fn encode_mob_effect_instance(out: &mut Encoder, effect: &MobEffectInstanceSummary) -> Result<()> {
+    client_state::validate_mob_effect_holder_id(effect.effect_id)?;
+    out.write_var_i32(effect.effect_id);
+    encode_mob_effect_details(
+        out,
+        effect.amplifier,
+        effect.duration,
+        effect.ambient,
+        effect.show_particles,
+        effect.show_icon,
+        effect.hidden_effect.as_deref(),
+        0,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn encode_mob_effect_details(
+    out: &mut Encoder,
+    amplifier: i32,
+    duration: i32,
+    ambient: bool,
+    show_particles: bool,
+    show_icon: bool,
+    hidden_effect: Option<&MobEffectDetailsSummary>,
+    depth: usize,
+) -> Result<()> {
+    if depth > MAX_MOB_EFFECT_DETAILS_DEPTH {
+        return Err(ProtocolError::InvalidData(
+            "mob effect details exceeded max depth".to_string(),
+        ));
+    }
+    if !(0..=255).contains(&amplifier) {
+        return Err(ProtocolError::InvalidData(format!(
+            "mob effect amplifier {amplifier} is outside 0..=255"
+        )));
+    }
+    out.write_var_i32(amplifier);
+    out.write_var_i32(duration);
+    out.write_bool(ambient);
+    out.write_bool(show_particles);
+    out.write_bool(show_icon);
+    out.write_bool(hidden_effect.is_some());
+    if let Some(hidden_effect) = hidden_effect {
+        encode_mob_effect_details(
+            out,
+            hidden_effect.amplifier,
+            hidden_effect.duration,
+            hidden_effect.ambient,
+            hidden_effect.show_particles,
+            hidden_effect.show_icon,
+            hidden_effect.hidden_effect.as_deref(),
+            depth + 1,
+        )?;
     }
     Ok(())
 }
@@ -1847,7 +2020,7 @@ mod tests {
                 .filter(|descriptor| descriptor.can_encode())
                 .map(|descriptor| descriptor.type_id())
                 .collect::<Vec<_>>(),
-            vec![0, 1, 2, 3, 4, 16, 37, 55, 58, 59, 60, 70]
+            vec![0, 1, 2, 3, 4, 16, 24, 36, 37, 55, 58, 59, 60, 70]
         );
     }
 
@@ -2101,6 +2274,388 @@ mod tests {
         assert!(matches!(
             error,
             ProtocolError::PacketTooLarge(actual, max)
+                if actual == MAX_DATA_COMPONENT_LIST_ITEMS + 1
+                    && max == MAX_DATA_COMPONENT_LIST_ITEMS
+        ));
+        assert_eq!(encoded.into_inner(), [0xaa]);
+    }
+
+    #[test]
+    fn consumable_descriptor_round_trips_all_effect_branches_in_wire_order() {
+        let nan_bits = 0x7fc0_1234;
+        let summary = DataComponentPatchSummary {
+            consumable: Some(ConsumableSummary {
+                consume_seconds: f32::from_bits(nan_bits),
+                animation: ItemUseAnimationSummary::Spear,
+            }),
+            consumable_sound: Some(SoundEventSummary {
+                registry_id: Some(8),
+                sound_id: None,
+                fixed_range_bits: None,
+            }),
+            consumable_has_consume_particles: Some(false),
+            consumable_effect_count: Some(5),
+            consumable_effects: vec![
+                ConsumeEffectSummary::ApplyEffects {
+                    effects: vec![MobEffectInstanceSummary {
+                        effect_id: 1,
+                        amplifier: 255,
+                        duration: -5,
+                        ambient: true,
+                        show_particles: false,
+                        show_icon: true,
+                        hidden_effect: Some(Box::new(MobEffectDetailsSummary {
+                            amplifier: 0,
+                            duration: 10,
+                            ambient: false,
+                            show_particles: true,
+                            show_icon: false,
+                            hidden_effect: None,
+                        })),
+                    }],
+                    probability_bits: nan_bits,
+                },
+                ConsumeEffectSummary::RemoveEffects {
+                    effect_registry_ids: Vec::new(),
+                    effect_tag: Some("minecraft:beneficial".to_string()),
+                },
+                ConsumeEffectSummary::ClearAllEffects,
+                ConsumeEffectSummary::TeleportRandomly {
+                    diameter_bits: (-0.0_f32).to_bits(),
+                },
+                ConsumeEffectSummary::PlaySound {
+                    sound: SoundEventSummary {
+                        registry_id: None,
+                        sound_id: Some("example:consume".to_string()),
+                        fixed_range_bits: Some(f32::INFINITY.to_bits()),
+                    },
+                },
+            ],
+            ..DataComponentPatchSummary::default()
+        };
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID).unwrap();
+        let mut encoded = Encoder::new();
+        descriptor.encode(&summary, &mut encoded).unwrap();
+        let encoded = encoded.into_inner();
+
+        let mut expected = Encoder::new();
+        expected.write_f32(f32::from_bits(nan_bits));
+        expected.write_var_i32(ItemUseAnimationSummary::Spear.id());
+        expected.write_var_i32(9);
+        expected.write_bool(false);
+        expected.write_var_i32(5);
+        expected.write_var_i32(
+            crate::consume_effect_types::VANILLA_CONSUME_EFFECT_TYPE_APPLY_EFFECTS_ID,
+        );
+        expected.write_var_i32(1);
+        expected.write_var_i32(1);
+        expected.write_var_i32(255);
+        expected.write_var_i32(-5);
+        expected.write_bool(true);
+        expected.write_bool(false);
+        expected.write_bool(true);
+        expected.write_bool(true);
+        expected.write_var_i32(0);
+        expected.write_var_i32(10);
+        expected.write_bool(false);
+        expected.write_bool(true);
+        expected.write_bool(false);
+        expected.write_bool(false);
+        expected.write_f32(f32::from_bits(nan_bits));
+        expected.write_var_i32(
+            crate::consume_effect_types::VANILLA_CONSUME_EFFECT_TYPE_REMOVE_EFFECTS_ID,
+        );
+        expected.write_var_i32(0);
+        expected.write_string("minecraft:beneficial");
+        expected.write_var_i32(
+            crate::consume_effect_types::VANILLA_CONSUME_EFFECT_TYPE_CLEAR_ALL_EFFECTS_ID,
+        );
+        expected.write_var_i32(
+            crate::consume_effect_types::VANILLA_CONSUME_EFFECT_TYPE_TELEPORT_RANDOMLY_ID,
+        );
+        expected.write_f32(-0.0);
+        expected
+            .write_var_i32(crate::consume_effect_types::VANILLA_CONSUME_EFFECT_TYPE_PLAY_SOUND_ID);
+        expected.write_var_i32(0);
+        expected.write_string("example:consume");
+        expected.write_bool(true);
+        expected.write_f32(f32::INFINITY);
+        assert_eq!(encoded, expected.into_inner());
+
+        let mut decoded = DataComponentPatchSummary::default();
+        let mut decoder = Decoder::new(&encoded);
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded.consumable, summary.consumable);
+        assert_eq!(decoded.consumable_sound, summary.consumable_sound);
+        assert_eq!(
+            decoded.consumable_has_consume_particles,
+            summary.consumable_has_consume_particles
+        );
+        assert_eq!(
+            decoded.consumable_effect_count,
+            summary.consumable_effect_count
+        );
+        assert_eq!(decoded.consumable_effects, summary.consumable_effects);
+    }
+
+    #[test]
+    fn death_protection_descriptor_round_trips_direct_holders_and_empty_lists() {
+        let summary = DataComponentPatchSummary {
+            death_protection_effects: vec![
+                ConsumeEffectSummary::RemoveEffects {
+                    effect_registry_ids: vec![0, 3],
+                    effect_tag: None,
+                },
+                ConsumeEffectSummary::PlaySound {
+                    sound: SoundEventSummary {
+                        registry_id: Some(12),
+                        sound_id: None,
+                        fixed_range_bits: None,
+                    },
+                },
+            ],
+            ..DataComponentPatchSummary::default()
+        };
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID)
+                .unwrap();
+        let mut encoded = Encoder::new();
+        descriptor.encode(&summary, &mut encoded).unwrap();
+        let encoded = encoded.into_inner();
+
+        let mut expected = Encoder::new();
+        expected.write_var_i32(2);
+        expected.write_var_i32(
+            crate::consume_effect_types::VANILLA_CONSUME_EFFECT_TYPE_REMOVE_EFFECTS_ID,
+        );
+        expected.write_var_i32(3);
+        expected.write_var_i32(0);
+        expected.write_var_i32(3);
+        expected
+            .write_var_i32(crate::consume_effect_types::VANILLA_CONSUME_EFFECT_TYPE_PLAY_SOUND_ID);
+        expected.write_var_i32(13);
+        assert_eq!(encoded, expected.into_inner());
+
+        let mut decoded = DataComponentPatchSummary::default();
+        let mut decoder = Decoder::new(&encoded);
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(
+            decoded.death_protection_effects,
+            summary.death_protection_effects
+        );
+
+        let mut empty = Encoder::new();
+        descriptor
+            .encode(&DataComponentPatchSummary::default(), &mut empty)
+            .unwrap();
+        assert_eq!(empty.into_inner(), [0]);
+    }
+
+    #[test]
+    fn consume_effect_descriptors_enforce_bounds_and_canonical_values_atomically() {
+        fn mob_effect() -> MobEffectInstanceSummary {
+            MobEffectInstanceSummary {
+                effect_id: 0,
+                amplifier: 0,
+                duration: 20,
+                ambient: false,
+                show_particles: true,
+                show_icon: true,
+                hidden_effect: None,
+            }
+        }
+
+        fn valid_consumable() -> DataComponentPatchSummary {
+            DataComponentPatchSummary {
+                consumable: Some(ConsumableSummary {
+                    consume_seconds: 1.6,
+                    animation: ItemUseAnimationSummary::Eat,
+                }),
+                consumable_sound: Some(SoundEventSummary {
+                    registry_id: Some(0),
+                    sound_id: None,
+                    fixed_range_bits: None,
+                }),
+                consumable_has_consume_particles: Some(true),
+                consumable_effect_count: Some(1),
+                consumable_effects: vec![ConsumeEffectSummary::ClearAllEffects],
+                ..DataComponentPatchSummary::default()
+            }
+        }
+
+        let consumable_descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID).unwrap();
+        let death_descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID)
+                .unwrap();
+        let mut cases = Vec::new();
+        cases.push((
+            DataComponentPatchSummary::default(),
+            "missing consumable component value",
+        ));
+        let mut missing_sound = valid_consumable();
+        missing_sound.consumable_sound = None;
+        cases.push((missing_sound, "missing sound holder"));
+        let mut missing_particles = valid_consumable();
+        missing_particles.consumable_has_consume_particles = None;
+        cases.push((missing_particles, "missing particle flag"));
+        let mut missing_count = valid_consumable();
+        missing_count.consumable_effect_count = None;
+        cases.push((missing_count, "missing effect count"));
+        let mut stale_count = valid_consumable();
+        stale_count.consumable_effect_count = Some(0);
+        cases.push((stale_count, "does not match 1 effects"));
+        let mut malformed_sound = valid_consumable();
+        malformed_sound.consumable_sound = Some(SoundEventSummary {
+            registry_id: Some(0),
+            sound_id: Some("minecraft:entity.generic.eat".to_string()),
+            fixed_range_bits: None,
+        });
+        cases.push((malformed_sound, "sound event holder projections"));
+        let mut invalid_effect_id = valid_consumable();
+        invalid_effect_id.consumable_effects = vec![ConsumeEffectSummary::ApplyEffects {
+            effects: vec![MobEffectInstanceSummary {
+                effect_id: i32::try_from(crate::mob_effect_types::VANILLA_MOB_EFFECT_TYPES.len())
+                    .unwrap(),
+                ..mob_effect()
+            }],
+            probability_bits: 1.0_f32.to_bits(),
+        }];
+        cases.push((invalid_effect_id, "invalid vanilla mob effect holder"));
+        let mut invalid_amplifier = valid_consumable();
+        invalid_amplifier.consumable_effects = vec![ConsumeEffectSummary::ApplyEffects {
+            effects: vec![MobEffectInstanceSummary {
+                amplifier: 256,
+                ..mob_effect()
+            }],
+            probability_bits: 1.0_f32.to_bits(),
+        }];
+        cases.push((invalid_amplifier, "amplifier 256 is outside"));
+        let mut hidden_effect = None;
+        for _ in 0..=MAX_MOB_EFFECT_DETAILS_DEPTH {
+            hidden_effect = Some(Box::new(MobEffectDetailsSummary {
+                amplifier: 0,
+                duration: 1,
+                ambient: false,
+                show_particles: true,
+                show_icon: true,
+                hidden_effect,
+            }));
+        }
+        let mut excessive_depth = valid_consumable();
+        excessive_depth.consumable_effects = vec![ConsumeEffectSummary::ApplyEffects {
+            effects: vec![MobEffectInstanceSummary {
+                hidden_effect,
+                ..mob_effect()
+            }],
+            probability_bits: 1.0_f32.to_bits(),
+        }];
+        cases.push((excessive_depth, "exceeded max depth"));
+        let mut mixed_holder_set = valid_consumable();
+        mixed_holder_set.consumable_effects = vec![ConsumeEffectSummary::RemoveEffects {
+            effect_registry_ids: vec![0],
+            effect_tag: Some("minecraft:beneficial".to_string()),
+        }];
+        cases.push((mixed_holder_set, "both holder ids and a tag"));
+        let mut noncanonical_tag = valid_consumable();
+        noncanonical_tag.consumable_effects = vec![ConsumeEffectSummary::RemoveEffects {
+            effect_registry_ids: Vec::new(),
+            effect_tag: Some("beneficial".to_string()),
+        }];
+        cases.push((noncanonical_tag, "noncanonical tag resource location"));
+        let mut negative_holder = valid_consumable();
+        negative_holder.consumable_effects = vec![ConsumeEffectSummary::RemoveEffects {
+            effect_registry_ids: vec![-1],
+            effect_tag: None,
+        }];
+        cases.push((negative_holder, "invalid mob effect holder id -1"));
+
+        for (summary, expected_error) in cases {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            let error = consumable_descriptor
+                .encode(&summary, &mut encoded)
+                .unwrap_err();
+            assert!(error.to_string().contains(expected_error), "{error}");
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
+
+        let mut maximal_outer = valid_consumable();
+        maximal_outer.consumable_effect_count = Some(MAX_DATA_COMPONENT_LIST_ITEMS);
+        maximal_outer.consumable_effects =
+            vec![ConsumeEffectSummary::ClearAllEffects; MAX_DATA_COMPONENT_LIST_ITEMS];
+        consumable_descriptor
+            .encode(&maximal_outer, &mut Encoder::new())
+            .unwrap();
+        let mut maximal_apply = valid_consumable();
+        maximal_apply.consumable_effects = vec![ConsumeEffectSummary::ApplyEffects {
+            effects: vec![mob_effect(); MAX_DATA_COMPONENT_LIST_ITEMS],
+            probability_bits: 1.0_f32.to_bits(),
+        }];
+        consumable_descriptor
+            .encode(&maximal_apply, &mut Encoder::new())
+            .unwrap();
+        let mut maximal_holder_set = valid_consumable();
+        maximal_holder_set.consumable_effects = vec![ConsumeEffectSummary::RemoveEffects {
+            effect_registry_ids: vec![0; MAX_DATA_COMPONENT_LIST_ITEMS],
+            effect_tag: None,
+        }];
+        consumable_descriptor
+            .encode(&maximal_holder_set, &mut Encoder::new())
+            .unwrap();
+
+        for mut oversized in [
+            {
+                let mut value = valid_consumable();
+                value.consumable_effect_count = Some(MAX_DATA_COMPONENT_LIST_ITEMS + 1);
+                value.consumable_effects =
+                    vec![ConsumeEffectSummary::ClearAllEffects; MAX_DATA_COMPONENT_LIST_ITEMS + 1];
+                value
+            },
+            {
+                let mut value = valid_consumable();
+                value.consumable_effects = vec![ConsumeEffectSummary::ApplyEffects {
+                    effects: vec![mob_effect(); MAX_DATA_COMPONENT_LIST_ITEMS + 1],
+                    probability_bits: 1.0_f32.to_bits(),
+                }];
+                value
+            },
+            {
+                let mut value = valid_consumable();
+                value.consumable_effects = vec![ConsumeEffectSummary::RemoveEffects {
+                    effect_registry_ids: vec![0; MAX_DATA_COMPONENT_LIST_ITEMS + 1],
+                    effect_tag: None,
+                }];
+                value
+            },
+        ] {
+            oversized.consumable_effect_count = Some(oversized.consumable_effects.len());
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            assert!(matches!(
+                consumable_descriptor.encode(&oversized, &mut encoded),
+                Err(ProtocolError::PacketTooLarge(actual, max))
+                    if actual == MAX_DATA_COMPONENT_LIST_ITEMS + 1
+                        && max == MAX_DATA_COMPONENT_LIST_ITEMS
+            ));
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
+
+        let oversized_death = DataComponentPatchSummary {
+            death_protection_effects: vec![
+                ConsumeEffectSummary::ClearAllEffects;
+                MAX_DATA_COMPONENT_LIST_ITEMS + 1
+            ],
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        encoded.write_u8(0xaa);
+        assert!(matches!(
+            death_descriptor.encode(&oversized_death, &mut encoded),
+            Err(ProtocolError::PacketTooLarge(actual, max))
                 if actual == MAX_DATA_COMPONENT_LIST_ITEMS + 1
                     && max == MAX_DATA_COMPONENT_LIST_ITEMS
         ));

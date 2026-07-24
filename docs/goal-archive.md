@@ -411,3 +411,9 @@
   sound-holder union；creative framing、持久化 Codec/SNBT、动态 shield 默认值
   及第一/第三人称格挡姿势证据齐备，合同见
   `docs/archive/blocks-attacks-component-roundtrip-design.md`。
+- **2026-07-23（Consume-effect component 家族六维闭环）**：
+  `CONSUMABLE` 与 `DEATH_PROTECTION` 现按内建 effect registry 精确重编码
+  apply/remove/clear/teleport/sound 五类分支、递归 mob-effect、holder-set 与
+  sound-holder union；creative framing、持久化 Codec/SNBT、默认组件感知的
+  item-model condition 与第一人称使用姿势证据齐备，合同见
+  `docs/archive/consume-effects-component-roundtrip-design.md`。

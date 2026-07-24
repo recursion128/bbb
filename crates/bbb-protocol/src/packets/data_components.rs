@@ -1032,6 +1032,16 @@ fn validate_encodable_data_component_patch_summary(
             crate::data_component_types::VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID => {
                 expected.attribute_modifiers = patch.attribute_modifiers.clone();
             }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID => {
+                expected.consumable = patch.consumable;
+                expected.consumable_sound = patch.consumable_sound.clone();
+                expected.consumable_has_consume_particles = patch.consumable_has_consume_particles;
+                expected.consumable_effect_count = patch.consumable_effect_count;
+                expected.consumable_effects = patch.consumable_effects.clone();
+            }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID => {
+                expected.death_protection_effects = patch.death_protection_effects.clone();
+            }
             crate::data_component_types::VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID => {
                 expected.blocks_attacks = patch.blocks_attacks.clone();
             }
@@ -3044,6 +3054,89 @@ mod tests {
         );
         assert!(decoder.is_empty());
         assert_eq!(decoded.blocks_attacks, patch.blocks_attacks);
+    }
+
+    #[test]
+    fn encodes_consume_effect_family_patch_with_independent_delimiters() {
+        let patch = DataComponentPatchSummary {
+            added: 2,
+            added_type_ids: vec![
+                crate::data_component_types::VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
+                crate::data_component_types::VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID,
+            ],
+            removed_type_ids: vec![VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID],
+            consumable: Some(ConsumableSummary {
+                consume_seconds: 0.5,
+                animation: ItemUseAnimationSummary::Drink,
+            }),
+            consumable_sound: Some(SoundEventSummary {
+                registry_id: None,
+                sound_id: Some("minecraft:entity.generic.drink".to_string()),
+                fixed_range_bits: None,
+            }),
+            consumable_has_consume_particles: Some(false),
+            consumable_effect_count: Some(1),
+            consumable_effects: vec![ConsumeEffectSummary::TeleportRandomly {
+                diameter_bits: 8.0_f32.to_bits(),
+            }],
+            death_protection_effects: vec![
+                ConsumeEffectSummary::ClearAllEffects,
+                ConsumeEffectSummary::PlaySound {
+                    sound: SoundEventSummary {
+                        registry_id: Some(5),
+                        sound_id: None,
+                        fixed_range_bits: None,
+                    },
+                },
+            ],
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        encode_delimited_data_component_patch_summary(&mut encoded, &patch).unwrap();
+        let encoded = encoded.into_inner();
+
+        let mut decoder = Decoder::new(&encoded);
+        assert_eq!(decoder.read_len().unwrap(), 2);
+        assert_eq!(decoder.read_len().unwrap(), 1);
+        let mut decoded = DataComponentPatchSummary::default();
+        for expected_type_id in [
+            crate::data_component_types::VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
+            crate::data_component_types::VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID,
+        ] {
+            let type_id = decoder.read_var_i32().unwrap();
+            assert_eq!(type_id, expected_type_id);
+            let value_len = decoder.read_len().unwrap();
+            let mut value_decoder = Decoder::new(
+                decoder
+                    .read_exact(value_len, "consume effect value")
+                    .unwrap(),
+            );
+            data_component_descriptor_or_error(type_id)
+                .unwrap()
+                .decode(&mut value_decoder, &mut decoded)
+                .unwrap();
+            assert!(value_decoder.is_empty());
+        }
+        assert_eq!(
+            decoder.read_var_i32().unwrap(),
+            VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID
+        );
+        assert!(decoder.is_empty());
+        assert_eq!(decoded.consumable, patch.consumable);
+        assert_eq!(decoded.consumable_sound, patch.consumable_sound);
+        assert_eq!(
+            decoded.consumable_has_consume_particles,
+            patch.consumable_has_consume_particles
+        );
+        assert_eq!(
+            decoded.consumable_effect_count,
+            patch.consumable_effect_count
+        );
+        assert_eq!(decoded.consumable_effects, patch.consumable_effects);
+        assert_eq!(
+            decoded.death_protection_effects,
+            patch.death_protection_effects
+        );
     }
 
     #[test]
