@@ -42,6 +42,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
         VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
         VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID,
     },
     entity_types::vanilla_entity_type,
@@ -1352,6 +1353,9 @@ fn validate_encodable_data_component_patch_summary(
             }
             VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID => {
                 expected.wolf_variant_id = patch.wolf_variant_id;
+            }
+            VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID => {
+                expected.wolf_sound_variant_id = patch.wolf_sound_variant_id;
             }
             VANILLA_DATA_COMPONENT_OMINOUS_BOTTLE_AMPLIFIER_TYPE_ID => {
                 expected.ominous_bottle_amplifier = patch.ominous_bottle_amplifier;

@@ -4921,6 +4921,81 @@
         "status": "complete"
       }
     },
+    "WOLF_SOUND_VARIANT": {
+      "canonical_retention": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#WOLF_SOUND_VARIANT",
+          "vanilla:net/minecraft/world/entity/animal/wolf/WolfSoundVariant.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<WolfSoundVariant>> STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub wolf_sound_variant_id",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_wolf_sound_variant",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_wolf_sound_variant_holder_registry_id",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_all_synchronized_registry_fixed_variant_components"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#WOLF_SOUND_VARIANT",
+          "vanilla:net/minecraft/world/entity/animal/wolf/WolfSoundVariant.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<WolfSoundVariant>> STREAM_CODEC",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#holderRegistry",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#registry",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_wolf_sound_variant",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#wolf_sound_variant_descriptor_round_trips_ids_and_rejects_invalid_values_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_wolf_sound_variant_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/entity/EntityType.java#appendComponentsConfig",
+          "vanilla:net/minecraft/world/entity/Entity.java#applyComponentsFromItemStack",
+          "vanilla:net/minecraft/world/entity/animal/wolf/Wolf.java#protected void applyImplicitComponents",
+          "vanilla:net/minecraft/world/entity/animal/wolf/Wolf.java#private WolfSoundVariant.WolfSoundSet getSoundSet",
+          "crates/bbb-world/src/registries/sound_variants.rs#world_queries_use_server_holder_order_for_every_sound_variant_shape",
+          "crates/bbb-world/src/client/audio.rs#built_in_animal_sound_variants_drive_adult_and_baby_consumed_sounds"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/world/entity/animal/wolf/WolfSoundVariant.java#public static final Codec<Holder<WolfSoundVariant>> CODEC",
+          "crates/bbb-native/src/input/component_patch.rs#encode_named_variant",
+          "crates/bbb-native/src/input/component_patch.rs#named_variant_encoders_use_session_order_or_fixed_catalog",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#projects_holder_backed_component_values_into_protocol_summary"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_wolf_sound_variant_holder_registry_id",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#wolf_sound_variant_descriptor_round_trips_ids_and_rejects_invalid_values_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_wolf_sound_variant_component",
+          "crates/bbb-native/src/input/component_patch.rs#named_variant_encoders_use_session_order_or_fixed_catalog",
+          "crates/bbb-world/src/registries/sound_variants.rs#decodes_all_synchronized_sound_variant_shapes_and_holder_forms",
+          "crates/bbb-world/src/registries/sound_variants.rs#world_queries_use_server_holder_order_for_every_sound_variant_shape",
+          "crates/bbb-world/src/client/audio.rs#built_in_animal_sound_variants_drive_adult_and_baby_consumed_sounds"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#WOLF_SOUND_VARIANT",
+          "vanilla:net/minecraft/world/entity/animal/wolf/WolfSoundVariant.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<WolfSoundVariant>> STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub wolf_sound_variant_id",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_wolf_sound_variant",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_wolf_sound_variant_holder_registry_id",
+          "crates/bbb-world/src/registries/sound_variants.rs#decodes_all_synchronized_sound_variant_shapes_and_holder_forms"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "TOOLTIP_STYLE": {
       "canonical_retention": {
         "evidence": [
