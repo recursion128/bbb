@@ -11,13 +11,13 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID,
     VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
     VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
-    VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID, VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID,
-    VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID, VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
-    VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID, VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
-    VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
-    VANILLA_DATA_COMPONENT_LORE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+    VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
+    VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
     VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
     VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
@@ -247,6 +247,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
             Some(encode_adventure_mode_predicate)
         }
         VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID => Some(encode_attribute_modifiers),
+        VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID => Some(encode_custom_model_data),
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID => Some(encode_consumable),
         VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID => Some(encode_use_remainder),
         VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID => Some(encode_death_protection),
@@ -408,6 +409,46 @@ fn encode_item_enchantments(
         }
         encoded.write_var_i32(entry.holder_id);
         encoded.write_var_i32(entry.level);
+    }
+    out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
+fn encode_custom_model_data(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    for (what, len) in [
+        ("floats", summary.custom_model_data_floats.len()),
+        ("flags", summary.custom_model_data_flags.len()),
+        ("strings", summary.custom_model_data_strings.len()),
+        ("colors", summary.custom_model_data_colors.len()),
+    ] {
+        if len > MAX_DATA_COMPONENT_LIST_ITEMS {
+            return Err(ProtocolError::InvalidData(format!(
+                "custom_model_data {what} list has {len} entries, maximum is \
+                 {MAX_DATA_COMPONENT_LIST_ITEMS}"
+            )));
+        }
+    }
+
+    let mut encoded = Encoder::new();
+    encoded.write_var_i32(summary.custom_model_data_floats.len() as i32);
+    for value in summary.custom_model_data_floats.iter().copied() {
+        encoded.write_f32(value);
+    }
+    encoded.write_var_i32(summary.custom_model_data_flags.len() as i32);
+    for value in &summary.custom_model_data_flags {
+        encoded.write_bool(*value);
+    }
+    encoded.write_var_i32(summary.custom_model_data_strings.len() as i32);
+    for value in &summary.custom_model_data_strings {
+        encode_java_string(&mut encoded, value, MAX_STRING_CHARS)?;
+    }
+    encoded.write_var_i32(summary.custom_model_data_colors.len() as i32);
+    for value in &summary.custom_model_data_colors {
+        encoded.write_i32(*value);
     }
     out.write_bytes(&encoded.into_inner());
     Ok(())
@@ -2949,10 +2990,145 @@ mod tests {
                 .map(|descriptor| descriptor.type_id())
                 .collect::<Vec<_>>(),
             vec![
-                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 13, 14, 15, 16, 24, 25, 36, 37, 38, 39, 40, 42,
-                49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 68, 69, 70, 75,
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 13, 14, 15, 16, 17, 24, 25, 36, 37, 38, 39, 40,
+                42, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 68, 69, 70, 75,
             ]
         );
+    }
+
+    #[test]
+    fn custom_model_data_descriptor_round_trips_all_stream_lists_bit_exactly() {
+        let summary = DataComponentPatchSummary {
+            custom_model_data_floats: vec![f32::from_bits(1), -0.0, f32::from_bits(0x7fc0_0001)]
+                .into(),
+            custom_model_data_flags: vec![true, false],
+            custom_model_data_strings: vec!["variant".to_string(), "😀".to_string()],
+            custom_model_data_colors: vec![-1, 0x11_22_33],
+            ..DataComponentPatchSummary::default()
+        };
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID)
+                .unwrap();
+        let mut encoded = Encoder::new();
+        descriptor.encode(&summary, &mut encoded).unwrap();
+
+        let mut expected = Encoder::new();
+        expected.write_var_i32(3);
+        expected.write_f32(f32::from_bits(1));
+        expected.write_f32(-0.0);
+        expected.write_f32(f32::from_bits(0x7fc0_0001));
+        expected.write_var_i32(2);
+        expected.write_bool(true);
+        expected.write_bool(false);
+        expected.write_var_i32(2);
+        expected.write_string("variant");
+        expected.write_string("😀");
+        expected.write_var_i32(2);
+        expected.write_i32(-1);
+        expected.write_i32(0x11_22_33);
+        assert_eq!(encoded.clone().into_inner(), expected.into_inner());
+
+        let wire = encoded.into_inner();
+        let mut decoder = Decoder::new(&wire);
+        let mut decoded = DataComponentPatchSummary::default();
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(
+            decoded.custom_model_data_floats,
+            summary.custom_model_data_floats
+        );
+        assert_eq!(
+            decoded.custom_model_data_flags,
+            summary.custom_model_data_flags
+        );
+        assert_eq!(
+            decoded.custom_model_data_strings,
+            summary.custom_model_data_strings
+        );
+        assert_eq!(
+            decoded.custom_model_data_colors,
+            summary.custom_model_data_colors
+        );
+    }
+
+    #[test]
+    fn custom_model_data_descriptor_enforces_collection_and_utf16_bounds_atomically() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID)
+                .unwrap();
+        let oversized_string = "😀".repeat(MAX_STRING_CHARS / 2 + 1);
+        let cases = [
+            DataComponentPatchSummary {
+                custom_model_data_floats: vec![0.0; MAX_DATA_COMPONENT_LIST_ITEMS + 1].into(),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                custom_model_data_flags: vec![false; MAX_DATA_COMPONENT_LIST_ITEMS + 1],
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                custom_model_data_strings: vec![String::new(); MAX_DATA_COMPONENT_LIST_ITEMS + 1],
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                custom_model_data_colors: vec![0; MAX_DATA_COMPONENT_LIST_ITEMS + 1],
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                custom_model_data_strings: vec![oversized_string.clone()],
+                ..DataComponentPatchSummary::default()
+            },
+        ];
+        for summary in cases {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0x7f);
+            assert!(descriptor.encode(&summary, &mut encoded).is_err());
+            assert_eq!(encoded.into_inner(), vec![0x7f]);
+        }
+
+        let maximal_string = format!("{}a", "😀".repeat((MAX_STRING_CHARS.saturating_sub(1)) / 2));
+        assert_eq!(maximal_string.encode_utf16().count(), MAX_STRING_CHARS);
+        let maximal = DataComponentPatchSummary {
+            custom_model_data_floats: vec![0.0; MAX_DATA_COMPONENT_LIST_ITEMS].into(),
+            custom_model_data_strings: vec![maximal_string],
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        descriptor.encode(&maximal, &mut encoded).unwrap();
+        let wire = encoded.into_inner();
+        let mut decoded = DataComponentPatchSummary::default();
+        descriptor
+            .decode(&mut Decoder::new(&wire), &mut decoded)
+            .unwrap();
+        assert_eq!(
+            decoded.custom_model_data_floats.len(),
+            MAX_DATA_COMPONENT_LIST_ITEMS
+        );
+        assert_eq!(
+            decoded.custom_model_data_strings[0].encode_utf16().count(),
+            MAX_STRING_CHARS
+        );
+
+        let mut invalid_wire = Encoder::new();
+        invalid_wire.write_var_i32(0);
+        invalid_wire.write_var_i32(0);
+        invalid_wire.write_var_i32(1);
+        invalid_wire.write_string(&oversized_string);
+        invalid_wire.write_var_i32(0);
+        let wire = invalid_wire.into_inner();
+        let error = descriptor
+            .decode(
+                &mut Decoder::new(&wire),
+                &mut DataComponentPatchSummary::default(),
+            )
+            .unwrap_err();
+        assert!(matches!(
+            error,
+            ProtocolError::StringTooLong {
+                actual,
+                max: MAX_STRING_CHARS
+            } if actual == MAX_STRING_CHARS + 1
+        ));
     }
 
     #[test]

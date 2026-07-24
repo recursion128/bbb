@@ -1167,6 +1167,12 @@ fn validate_encodable_data_component_patch_summary(
             crate::data_component_types::VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID => {
                 expected.stored_enchantments = patch.stored_enchantments.clone();
             }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID => {
+                expected.custom_model_data_floats = patch.custom_model_data_floats.clone();
+                expected.custom_model_data_flags = patch.custom_model_data_flags.clone();
+                expected.custom_model_data_strings = patch.custom_model_data_strings.clone();
+                expected.custom_model_data_colors = patch.custom_model_data_colors.clone();
+            }
             crate::data_component_types::VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID => {
                 expected.potion_id = patch.potion_id;
                 expected.potion_custom_color = patch.potion_custom_color;
@@ -1690,7 +1696,7 @@ fn decode_custom_model_data(
     let strings = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
     let mut string_values = Vec::with_capacity(strings);
     for _ in 0..strings {
-        string_values.push(decoder.read_string(MAX_STRING_CHARS)?);
+        string_values.push(decode_java_string(decoder, MAX_STRING_CHARS)?);
     }
 
     let colors = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;

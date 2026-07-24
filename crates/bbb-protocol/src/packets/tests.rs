@@ -1521,6 +1521,62 @@ fn encodes_set_creative_mode_slot_custom_data_component() {
 }
 
 #[test]
+fn encodes_set_creative_mode_slot_custom_model_data_component() {
+    let nan = f32::from_bits(0x7fc0_0001);
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![
+                    crate::data_component_types::VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID,
+                ],
+                custom_model_data_floats: vec![-0.0, nan].into(),
+                custom_model_data_flags: vec![true, false],
+                custom_model_data_strings: vec!["variant".to_string(), "😀".to_string()],
+                custom_model_data_colors: vec![-1, 0x11_22_33],
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_i16().unwrap(), 36);
+    assert_eq!(decoder.read_var_i32().unwrap(), 1);
+    assert_eq!(decoder.read_var_i32().unwrap(), 42);
+    assert_eq!(decoder.read_len().unwrap(), 1);
+    assert_eq!(decoder.read_len().unwrap(), 0);
+    assert_eq!(
+        decoder.read_var_i32().unwrap(),
+        crate::data_component_types::VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID
+    );
+    let value_len = decoder.read_len().unwrap();
+    let mut value = Decoder::new(
+        decoder
+            .read_exact(value_len, "custom_model_data value")
+            .unwrap(),
+    );
+    assert_eq!(value.read_len().unwrap(), 2);
+    assert_eq!(value.read_f32().unwrap().to_bits(), (-0.0_f32).to_bits());
+    assert_eq!(value.read_f32().unwrap().to_bits(), nan.to_bits());
+    assert_eq!(value.read_len().unwrap(), 2);
+    assert!(value.read_bool().unwrap());
+    assert!(!value.read_bool().unwrap());
+    assert_eq!(value.read_len().unwrap(), 2);
+    assert_eq!(value.read_string(32_767).unwrap(), "variant");
+    assert_eq!(value.read_string(32_767).unwrap(), "😀");
+    assert_eq!(value.read_len().unwrap(), 2);
+    assert_eq!(value.read_i32().unwrap(), -1);
+    assert_eq!(value.read_i32().unwrap(), 0x11_22_33);
+    assert!(value.is_empty());
+    assert!(decoder.is_empty());
+}
+
+#[test]
 fn encodes_set_creative_mode_slot_entity_data_components() {
     let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
         slot_num: 36,

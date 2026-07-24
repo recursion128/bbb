@@ -2515,6 +2515,73 @@
         "gap": null,
         "status": "complete"
       }
+    },
+    "CUSTOM_MODEL_DATA": {
+      "canonical_retention": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#pub custom_model_data_floats",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub custom_model_data_flags",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub custom_model_data_strings",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub custom_model_data_colors",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_rgb_alternatives_and_custom_model_data_lists"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/component/CustomModelData.java#STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_custom_model_data",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#custom_model_data_descriptor_round_trips_all_stream_lists_bit_exactly",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_custom_model_data_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/client/renderer/item/properties/numeric/CustomModelDataProperty.java#get",
+          "vanilla:net/minecraft/client/renderer/item/properties/select/CustomModelDataProperty.java#get",
+          "vanilla:net/minecraft/client/renderer/item/properties/conditional/CustomModelDataProperty.java#get",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_value_aware_range_dispatch",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_stack_string_select_properties",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_custom_model_data_condition_flags",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#item_tint_sources_use_stack_component_colors_when_available"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/component/CustomModelData.java#CODEC",
+          "crates/bbb-native/src/input/component_patch.rs#encode_custom_model_data",
+          "crates/bbb-native/src/input.rs#debug_custom_model_data_component_snbt",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#custom_model_data_descriptor_round_trips_all_stream_lists_bit_exactly",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#custom_model_data_descriptor_enforces_collection_and_utf16_bounds_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_custom_model_data_component",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_rgb_alternatives_and_custom_model_data_lists",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_value_aware_range_dispatch"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#CUSTOM_MODEL_DATA",
+          "vanilla:net/minecraft/world/item/component/CustomModelData.java#STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_custom_model_data_component",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_common_complex_data_components"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
     }
   },
   "schema_version": 1
