@@ -3685,6 +3685,77 @@
         "status": "complete"
       }
     },
+    "DYE": {
+      "canonical_retention": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#pub dye_color_id",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_dye",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_float_and_dye_data_component_values",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#dye_descriptor_round_trips_all_canonical_wire_ids"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/DyeColor.java#public static final StreamCodec<ByteBuf, DyeColor> STREAM_CODEC",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<ByteBuf, T> idMapper",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_dye",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#dye_descriptor_round_trips_all_canonical_wire_ids",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#dye_descriptor_rejects_missing_and_noncanonical_ids_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_dye_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/crafting/display/SlotDisplay.java#DataComponents.DYE",
+          "vanilla:net/minecraft/world/inventory/LoomMenu.java#DataComponents.DYE",
+          "crates/bbb-world/src/recipes/slot_display.rs#fn dye_color_id",
+          "crates/bbb-world/src/recipes/slot_display/tests.rs#dyed_display_uses_generated_diffuse_colors_dye_outer_order_and_limit",
+          "crates/bbb-native/src/resource_reload.rs#item_runtime_projects_complete_component_scalar_and_trim_defaults_into_world"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/DyeColor.java#public static final StringRepresentable.EnumCodec<DyeColor> CODEC",
+          "crates/bbb-native/src/input/component_patch.rs#fn encode_dye",
+          "crates/bbb-native/src/input/component_patch.rs#dye_encoder_preserves_all_names_and_rejects_noncanonical_ids",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_all_string_enum_component_value_codecs"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#dye_descriptor_round_trips_all_canonical_wire_ids",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#dye_descriptor_rejects_missing_and_noncanonical_ids_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_dye_component",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_float_and_dye_data_component_values",
+          "crates/bbb-native/src/input/component_patch.rs#dye_encoder_preserves_all_names_and_rejects_noncanonical_ids",
+          "crates/bbb-world/src/recipes/slot_display/tests.rs#dyed_display_uses_generated_diffuse_colors_dye_outer_order_and_limit",
+          "crates/bbb-native/src/resource_reload.rs#item_runtime_projects_complete_component_scalar_and_trim_defaults_into_world"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#DYE",
+          "vanilla:net/minecraft/world/item/DyeColor.java#public static final StreamCodec<ByteBuf, DyeColor> STREAM_CODEC",
+          "vanilla:net/minecraft/util/ByIdMap.java#case ZERO",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_dye",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_float_and_dye_data_component_values",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_all_string_enum_component_value_codecs"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "BREAK_SOUND": {
       "canonical_retention": {
         "evidence": [

@@ -5,7 +5,7 @@ use bbb_protocol::attribute_modifier_types::{
     VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID,
 };
 use bbb_protocol::builtin_enum_component_values::{
-    builtin_enum_component_value_name, vanilla_dye_color_name,
+    builtin_enum_component_value_name, normalize_vanilla_dye_color_id, vanilla_dye_color_name,
 };
 use bbb_protocol::data_component_types as component_id;
 use bbb_protocol::equipment_slots::{
@@ -1374,9 +1374,11 @@ fn encode_dye(
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
     _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
-    Some(debug_snbt_string(vanilla_dye_color_name(
-        patch.dye_color_id?,
-    )))
+    let color_id = patch.dye_color_id?;
+    if normalize_vanilla_dye_color_id(color_id) != color_id {
+        return None;
+    }
+    Some(debug_snbt_string(vanilla_dye_color_name(color_id)))
 }
 
 fn encode_dyed_color(
@@ -2078,7 +2080,7 @@ mod tests {
 
     use super::*;
     use bbb_protocol::builtin_enum_component_values::{
-        VANILLA_DYE_COLOR_LIGHT_BLUE_ID, VANILLA_DYE_COLOR_RED_ID,
+        VANILLA_DYE_COLOR_LIGHT_BLUE_ID, VANILLA_DYE_COLOR_RED_ID, VANILLA_DYE_COLOR_VALUES,
     };
     use bbb_protocol::mob_effect_types::{
         VANILLA_MOB_EFFECT_POISON_ID, VANILLA_MOB_EFFECT_SPEED_ID, VANILLA_MOB_EFFECT_TYPES,
@@ -3386,6 +3388,40 @@ mod tests {
                     None,
                 ),
                 Some(map_id.to_string())
+            );
+        }
+    }
+
+    #[test]
+    fn dye_encoder_preserves_all_names_and_rejects_noncanonical_ids() {
+        for value in VANILLA_DYE_COLOR_VALUES {
+            let patch = bbb_protocol::packets::DataComponentPatchSummary {
+                dye_color_id: Some(value.id),
+                ..Default::default()
+            };
+            assert_eq!(
+                encode_added_component_value_snbt(
+                    component_id::VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
+                    &patch,
+                    None,
+                ),
+                Some(debug_snbt_string(value.serialized_name))
+            );
+        }
+
+        let past_end = i32::try_from(VANILLA_DYE_COLOR_VALUES.len()).unwrap();
+        for dye_color_id in [-1, past_end] {
+            let patch = bbb_protocol::packets::DataComponentPatchSummary {
+                dye_color_id: Some(dye_color_id),
+                ..Default::default()
+            };
+            assert_eq!(
+                encode_added_component_value_snbt(
+                    component_id::VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
+                    &patch,
+                    None,
+                ),
+                None
             );
         }
     }
