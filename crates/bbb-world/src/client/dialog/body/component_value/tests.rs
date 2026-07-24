@@ -19,6 +19,7 @@ use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
     VANILLA_DATA_COMPONENT_RABBIT_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_SHEEP_COLOR_TYPE_ID,
     VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID, VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
     VANILLA_DATA_COMPONENT_TROPICAL_FISH_BASE_COLOR_TYPE_ID,
     VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_COLOR_TYPE_ID,
@@ -391,6 +392,26 @@ fn axolotl_variant_string_enum_projects_to_builtin_enum_patch_map() {
         BTreeMap::from([(
             VANILLA_DATA_COMPONENT_AXOLOTL_VARIANT_TYPE_ID,
             VANILLA_AXOLOTL_VARIANT_BLUE_ID,
+        )])
+    );
+}
+
+#[test]
+fn sheep_color_string_enum_projects_to_builtin_enum_patch_map() {
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_SHEEP_COLOR_TYPE_ID,
+        &DialogDataComponentValueState::StringEnum {
+            value_id: VANILLA_DYE_COLOR_RED_ID,
+            serialized_name: "red".to_string(),
+        },
+        &mut patch,
+    ));
+    assert_eq!(
+        patch.builtin_enum_component_ids,
+        BTreeMap::from([(
+            VANILLA_DATA_COMPONENT_SHEEP_COLOR_TYPE_ID,
+            VANILLA_DYE_COLOR_RED_ID,
         )])
     );
 }

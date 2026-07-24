@@ -6411,6 +6411,95 @@
         "status": "complete"
       }
     },
+    "SHEEP_COLOR": {
+      "canonical_retention": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#SHEEP_COLOR",
+          "vanilla:net/minecraft/world/item/DyeColor.java#public static final StreamCodec<ByteBuf, DyeColor> STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub builtin_enum_component_ids",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_builtin_enum",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_animal_variant_data_components",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#sheep_color_string_enum_projects_to_builtin_enum_patch_map"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#SHEEP_COLOR",
+          "vanilla:net/minecraft/world/item/DyeColor.java#public static final StreamCodec<ByteBuf, DyeColor> STREAM_CODEC",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#idMapper",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_builtin_enum",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#sheep_color_descriptor_round_trips_canonical_ids_normalizes_decode_zero_fallback_and_rejects_invalid_values_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_sheep_color_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/entity/EntityType.java#appendComponentsConfig",
+          "vanilla:net/minecraft/world/entity/Entity.java#applyComponentsFromItemStack",
+          "vanilla:net/minecraft/world/entity/animal/sheep/Sheep.java#public DyeColor getColor",
+          "vanilla:net/minecraft/world/entity/animal/sheep/Sheep.java#public void setColor",
+          "vanilla:net/minecraft/world/entity/animal/sheep/Sheep.java#protected void applyImplicitComponents",
+          "vanilla:net/minecraft/world/entity/animal/sheep/Sheep.java#protected <T> boolean applyImplicitComponent",
+          "vanilla:net/minecraft/world/entity/animal/sheep/Sheep.java#public void shear",
+          "vanilla:net/minecraft/world/entity/animal/sheep/Sheep.java#public @Nullable Sheep getBreedOffspring",
+          "vanilla:net/minecraft/client/renderer/entity/SheepRenderer.java#public void extractRenderState",
+          "vanilla:net/minecraft/client/renderer/entity/layers/SheepWoolLayer.java#public void submit",
+          "crates/bbb-native/src/entity_scene/tests.rs#entity_model_kind_uses_vanilla_sheep_wool_metadata",
+          "crates/bbb-native/src/entity_scene/tests.rs#entity_model_kind_projects_sheep_jeb_custom_name_and_age",
+          "crates/bbb-renderer/src/entity_models/tests/sheep.rs#sheep_wool_color_table_matches_vanilla_color_lerper",
+          "crates/bbb-renderer/src/entity_models/tests/sheep.rs#sheep_textured_layer_passes_match_vanilla_renderer_layers"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#SHEEP_COLOR",
+          "vanilla:net/minecraft/world/item/DyeColor.java#public static final StringRepresentable.EnumCodec<DyeColor> CODEC",
+          "crates/bbb-native/src/input/component_patch.rs#encode_builtin_enum",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_all_string_enum_component_value_codecs",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#sheep_color_string_enum_projects_to_builtin_enum_patch_map",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#rejects_invalid_string_enum_component_value_codecs"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/builtin_enum_component_values.rs#built_in_enum_component_values_preserve_vanilla_fallbacks_and_names",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_animal_variant_data_components",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#sheep_color_descriptor_round_trips_canonical_ids_normalizes_decode_zero_fallback_and_rejects_invalid_values_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_sheep_color_component",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#sheep_color_string_enum_projects_to_builtin_enum_patch_map",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-native/src/entity_scene/tests.rs#entity_model_kind_uses_vanilla_sheep_wool_metadata",
+          "crates/bbb-native/src/entity_scene/tests.rs#entity_model_kind_projects_sheep_jeb_custom_name_and_age",
+          "crates/bbb-renderer/src/entity_models/tests/sheep.rs#sheep_wool_color_table_matches_vanilla_color_lerper",
+          "crates/bbb-renderer/src/entity_models/tests/sheep.rs#sheep_textured_layer_passes_match_vanilla_renderer_layers"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#SHEEP_COLOR",
+          "vanilla:net/minecraft/world/item/DyeColor.java#private static final IntFunction<DyeColor> BY_ID",
+          "vanilla:net/minecraft/world/item/DyeColor.java#public static final StreamCodec<ByteBuf, DyeColor> STREAM_CODEC",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#idMapper",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub builtin_enum_component_ids",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_builtin_enum",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_animal_variant_data_components",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#sheep_color_descriptor_round_trips_canonical_ids_normalizes_decode_zero_fallback_and_rejects_invalid_values_atomically"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "TOOLTIP_STYLE": {
       "canonical_retention": {
         "evidence": [
