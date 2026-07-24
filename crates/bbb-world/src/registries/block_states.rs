@@ -5,7 +5,7 @@ use std::{
 };
 
 use bbb_protocol::{
-    block_state_types::VANILLA_BLOCK_STATES_26_1_JSON,
+    block_state_types::{vanilla_block_has_property, VANILLA_BLOCK_STATES_26_1_JSON},
     block_types::{vanilla_block_type, vanilla_block_type_for_resource_id, VANILLA_BLOCK_TYPES},
 };
 use serde::{Deserialize, Serialize};
@@ -74,10 +74,7 @@ impl BlockStateRegistry {
     }
 
     pub fn block_has_property(&self, name: &str, property: &str) -> bool {
-        self.states
-            .iter()
-            .flatten()
-            .any(|state| state.name == name && state.properties.contains_key(property))
+        vanilla_block_has_property(name, property)
     }
 
     pub fn block_matches_properties(
