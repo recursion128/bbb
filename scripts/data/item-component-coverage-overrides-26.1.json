@@ -3909,6 +3909,83 @@
         "status": "complete"
       }
     },
+    "ENCHANTABLE": {
+      "canonical_retention": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#ENCHANTABLE",
+          "vanilla:net/minecraft/world/item/enchantment/Enchantable.java#public record Enchantable",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub enchantable_value",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_enchantable",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#enchantable_descriptor_round_trips_positive_var_int_values",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#projects_sound_bearing_weapon_values_into_protocol_summary"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#ENCHANTABLE",
+          "vanilla:net/minecraft/world/item/enchantment/Enchantable.java#public static final StreamCodec<ByteBuf, Enchantable> STREAM_CODEC",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#StreamCodec<ByteBuf, Integer> VAR_INT",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_enchantable",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#enchantable_descriptor_round_trips_positive_var_int_values",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#enchantable_descriptor_rejects_nonpositive_values_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_enchantable_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/ItemStack.java#public boolean isEnchantable",
+          "vanilla:net/minecraft/world/item/enchantment/EnchantmentHelper.java#public static List<EnchantmentInstance> selectEnchantment",
+          "crates/bbb-world/src/client/dialog/body/component_value/canonical_json.rs#DialogDataComponentValueState::Enchantable",
+          "crates/bbb-world/src/client/dialog/body/component_value/canonical_json.rs#canonicalizes_flat_record_defaults_and_required_fields",
+          "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_projects_dialog_item_body_structured_patches"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#ENCHANTABLE",
+          "vanilla:net/minecraft/world/item/enchantment/Enchantable.java#public static final Codec<Enchantable> CODEC",
+          "vanilla:net/minecraft/util/ExtraCodecs.java#POSITIVE_INT",
+          "crates/bbb-native/src/input/component_patch.rs#encode_enchantable",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_omits_components_with_invalid_persistent_integer_ranges",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#rejects_invalid_numeric_item_behavior_records"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#enchantable_descriptor_round_trips_positive_var_int_values",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#enchantable_descriptor_rejects_nonpositive_values_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_enchantable_component",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_numeric_item_behavior_records",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#rejects_invalid_numeric_item_behavior_records",
+          "crates/bbb-world/src/client/dialog/body/component_value/canonical_json.rs#canonicalizes_flat_record_defaults_and_required_fields",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_omits_components_with_invalid_persistent_integer_ranges"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#ENCHANTABLE",
+          "vanilla:net/minecraft/world/item/enchantment/Enchantable.java#public static final StreamCodec<ByteBuf, Enchantable> STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub enchantable_value",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_enchantable",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#enchantable_descriptor_rejects_nonpositive_values_atomically"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "EQUIPPABLE": {
       "canonical_retention": {
         "evidence": [

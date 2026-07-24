@@ -1803,6 +1803,37 @@ fn encodes_set_creative_mode_slot_attack_range_component() {
 }
 
 #[test]
+fn encodes_set_creative_mode_slot_enchantable_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![
+                    crate::data_component_types::VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID,
+                ],
+                enchantable_value: Some(15),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            1, 0, // patch counts
+            31, 1, 15, // enchantable type, value length, and positive value
+        ]
+    );
+}
+
+#[test]
 fn encodes_set_creative_mode_slot_equippable_component() {
     let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
         slot_num: 36,

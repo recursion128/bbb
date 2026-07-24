@@ -24,7 +24,8 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID,
     VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
     VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID, VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID,
-    VANILLA_DATA_COMPONENT_DYE_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_DYE_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
     VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
     VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID, VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
@@ -307,6 +308,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_TOOL_TYPE_ID => Some(encode_tool),
         VANILLA_DATA_COMPONENT_WEAPON_TYPE_ID => Some(encode_weapon),
         VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID => Some(encode_attack_range),
+        VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID => Some(encode_enchantable),
         VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID => Some(encode_equippable),
         VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID => Some(encode_repairable),
         VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID => Some(encode_glider),
@@ -2859,9 +2861,23 @@ decode_var_i32_field!(decode_max_stack_size, max_stack_size);
 decode_var_i32_field!(decode_max_damage, max_damage);
 decode_var_i32_field!(decode_damage, damage);
 decode_var_i32_field!(decode_repair_cost, repair_cost);
-decode_var_i32_field!(decode_enchantable, enchantable_value);
 decode_var_i32_field!(decode_map_id, map_id);
 decode_var_i32_field!(decode_ominous_bottle_amplifier, ominous_bottle_amplifier);
+
+fn decode_enchantable(
+    _type_id: i32,
+    decoder: &mut Decoder<'_>,
+    summary: &mut DataComponentPatchSummary,
+) -> Result<()> {
+    let value = decoder.read_var_i32()?;
+    if value <= 0 {
+        return Err(ProtocolError::InvalidData(format!(
+            "enchantable value must be positive, got {value}"
+        )));
+    }
+    summary.enchantable_value = Some(value);
+    Ok(())
+}
 
 macro_rules! encode_var_i32_field {
     ($name:ident, $field:ident) => {
@@ -2885,6 +2901,23 @@ macro_rules! encode_var_i32_field {
 encode_var_i32_field!(encode_max_stack_size, max_stack_size);
 encode_var_i32_field!(encode_max_damage, max_damage);
 encode_var_i32_field!(encode_damage, damage);
+
+fn encode_enchantable(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let value = summary.enchantable_value.ok_or_else(|| {
+        ProtocolError::InvalidData("missing enchantable component value".to_string())
+    })?;
+    if value <= 0 {
+        return Err(ProtocolError::InvalidData(format!(
+            "enchantable value must be positive, got {value}"
+        )));
+    }
+    out.write_var_i32(value);
+    Ok(())
+}
 
 fn decode_unbreakable(
     _type_id: i32,
@@ -4605,10 +4638,11 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec![
                 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 22, 23, 24,
-                25, 26, 27, 28, 29, 30, 32, 33, 34, 35, 36, 37, 38, 39, 40, 42, 43, 44, 45, 46, 47,
-                48, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69,
-                70, 71, 72, 73, 74, 75, 76, 77, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91,
-                92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109,
+                25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 42, 43, 44, 45, 46,
+                47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68,
+                69, 70, 71, 72, 73, 74, 75, 76, 77, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90,
+                91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108,
+                109,
             ]
         );
     }
@@ -5393,6 +5427,67 @@ mod tests {
             encoded.write_u8(0x7f);
             assert!(descriptor.encode(&summary, &mut encoded).is_err());
             assert_eq!(encoded.into_inner(), [0x7f]);
+        }
+    }
+
+    #[test]
+    fn enchantable_descriptor_round_trips_positive_var_int_values() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID).unwrap();
+        for value in [1, i32::MAX] {
+            let summary = DataComponentPatchSummary {
+                enchantable_value: Some(value),
+                ..DataComponentPatchSummary::default()
+            };
+            let mut encoded = Encoder::new();
+            descriptor.encode(&summary, &mut encoded).unwrap();
+
+            let mut expected = Encoder::new();
+            expected.write_var_i32(value);
+            assert_eq!(encoded.clone().into_inner(), expected.into_inner());
+
+            let wire = encoded.into_inner();
+            let mut decoder = Decoder::new(&wire);
+            let mut decoded = DataComponentPatchSummary::default();
+            descriptor.decode(&mut decoder, &mut decoded).unwrap();
+            assert!(decoder.is_empty());
+            assert_eq!(decoded.enchantable_value, Some(value));
+        }
+    }
+
+    #[test]
+    fn enchantable_descriptor_rejects_nonpositive_values_atomically() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID).unwrap();
+        for summary in [
+            DataComponentPatchSummary::default(),
+            DataComponentPatchSummary {
+                enchantable_value: Some(0),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                enchantable_value: Some(-1),
+                ..DataComponentPatchSummary::default()
+            },
+        ] {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0x7f);
+            assert!(descriptor.encode(&summary, &mut encoded).is_err());
+            assert_eq!(encoded.into_inner(), [0x7f]);
+        }
+
+        for value in [0, -1] {
+            let mut encoded = Encoder::new();
+            encoded.write_var_i32(value);
+            let wire = encoded.into_inner();
+            let mut decoded = DataComponentPatchSummary {
+                enchantable_value: Some(7),
+                ..DataComponentPatchSummary::default()
+            };
+            assert!(descriptor
+                .decode(&mut Decoder::new(&wire), &mut decoded)
+                .is_err());
+            assert_eq!(decoded.enchantable_value, Some(7));
         }
     }
 
