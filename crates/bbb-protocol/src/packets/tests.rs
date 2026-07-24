@@ -12,6 +12,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
         VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
         VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
+        VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
         VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
         VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
         VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
@@ -1903,6 +1904,71 @@ fn encodes_set_creative_mode_slot_intangible_projectile_component() {
         .read_exact(value_len, "intangible_projectile component value")
         .unwrap();
     assert_eq!(value, [10, 0]);
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_direct_instrument_component() {
+    let styled = vec![crate::StyledTextRun {
+        text: "Custom horn".to_string(),
+        style: Default::default(),
+    }];
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID],
+                instrument_description: Some("Custom horn".to_string()),
+                instrument_description_styled: Some(styled.clone()),
+                instrument_direct: Some(Box::new(InstrumentSummary {
+                    sound_event: SoundEventSummary {
+                        registry_id: Some(7),
+                        sound_id: None,
+                        fixed_range_bits: None,
+                    },
+                    use_duration_bits: 3.25_f32.to_bits(),
+                    range_bits: 96.0_f32.to_bits(),
+                    description: "Custom horn".to_string(),
+                    description_styled: Some(styled.into_boxed_slice()),
+                    description_nbt: Some(Box::new(NbtSummaryValue::String(
+                        "Custom horn".to_string(),
+                    ))),
+                })),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_i16().unwrap(), 36);
+    assert_eq!(decoder.read_var_i32().unwrap(), 1);
+    assert_eq!(decoder.read_var_i32().unwrap(), 42);
+    assert_eq!(decoder.read_len().unwrap(), 1);
+    assert_eq!(decoder.read_len().unwrap(), 0);
+    assert_eq!(
+        decoder.read_var_i32().unwrap(),
+        VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID
+    );
+    let value_len = decoder.read_len().unwrap();
+    let mut value = Decoder::new(
+        decoder
+            .read_exact(value_len, "instrument component value")
+            .unwrap(),
+    );
+    assert_eq!(value.read_var_i32().unwrap(), 0);
+    assert_eq!(value.read_var_i32().unwrap(), 8);
+    assert_eq!(value.read_f32().unwrap(), 3.25);
+    assert_eq!(value.read_f32().unwrap(), 96.0);
+    assert_eq!(
+        decode_nbt_summary_from_decoder(&mut value).unwrap(),
+        Some(NbtSummaryValue::String("Custom horn".to_string()))
+    );
+    assert!(value.is_empty());
     assert!(decoder.is_empty());
 }
 

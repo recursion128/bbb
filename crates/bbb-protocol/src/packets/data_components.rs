@@ -24,7 +24,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
         VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
         VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
@@ -1229,6 +1229,13 @@ fn validate_encodable_data_component_patch_summary(
                 expected.block_entity_data_tag = patch.block_entity_data_tag.clone();
                 expected.block_entity_spawn_entity_type =
                     typed_entity_data_spawn_entity_type(patch.block_entity_data_tag.as_ref());
+            }
+            VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID => {
+                expected.instrument_id = patch.instrument_id;
+                expected.instrument_description = patch.instrument_description.clone();
+                expected.instrument_description_styled =
+                    patch.instrument_description_styled.clone();
+                expected.instrument_direct = patch.instrument_direct.clone();
             }
             VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID => {
                 expected.jukebox_song_id = patch.jukebox_song_id;

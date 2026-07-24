@@ -1923,6 +1923,88 @@
         "status": "complete"
       }
     },
+    "INSTRUMENT": {
+      "canonical_retention": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#pub instrument_id",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub instrument_description",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub instrument_direct",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_instrument",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_instrument_holder_id",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_inline_instrument_direct_sound_and_exact_component",
+          "crates/bbb-world/src/client/dialog/body/component_value/instrument/tests.rs#decodes_direct_instrument_with_named_sound_and_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#INSTRUMENT",
+          "vanilla:net/minecraft/world/item/component/InstrumentComponent.java#STREAM_CODEC",
+          "vanilla:net/minecraft/world/item/Instrument.java#DIRECT_STREAM_CODEC",
+          "vanilla:net/minecraft/world/item/Instrument.java#STREAM_CODEC",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#holder",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_instrument",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#instrument_descriptor_round_trips_reference_and_direct_holders",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_direct_instrument_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/component/InstrumentComponent.java#addToTooltip",
+          "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_instrument_tooltip_lines",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-world/src/registries/instrument_values.rs#synchronized_instrument_presentation",
+          "crates/bbb-world/src/registries/instrument_values.rs#projects_network_and_known_pack_instruments_in_session_order"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#INSTRUMENT",
+          "vanilla:net/minecraft/world/item/component/InstrumentComponent.java#CODEC",
+          "vanilla:net/minecraft/world/item/Instrument.java#DIRECT_CODEC",
+          "vanilla:net/minecraft/world/item/Instrument.java#CODEC",
+          "crates/bbb-native/src/input/component_patch.rs#encode_instrument",
+          "crates/bbb-native/src/input/component_patch.rs#instrument_encoder_uses_session_order_or_fixed_catalog",
+          "crates/bbb-world/src/client/dialog/body/component_value/instrument/tests.rs#decodes_direct_instrument_with_direct_lenient_sound",
+          "crates/bbb-world/src/client/dialog/body/component_value/instrument/tests.rs#rejects_malformed_direct_instrument_records_and_positive_floats"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#instrument_descriptor_round_trips_reference_and_direct_holders",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#instrument_descriptor_rejects_noncanonical_or_persistently_invalid_values_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_direct_instrument_component",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_inline_instrument_direct_sound_and_exact_component",
+          "crates/bbb-native/src/input/component_patch.rs#instrument_encoder_uses_session_order_or_fixed_catalog",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-world/src/registries/instrument_values.rs#projects_network_and_known_pack_instruments_in_session_order",
+          "crates/bbb-world/src/client/dialog/body/component_value/instrument/tests.rs#rejects_malformed_direct_instrument_records_and_positive_floats"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#INSTRUMENT",
+          "vanilla:net/minecraft/world/item/component/InstrumentComponent.java#STREAM_CODEC",
+          "vanilla:net/minecraft/world/item/Instrument.java#DIRECT_STREAM_CODEC",
+          "vanilla:net/minecraft/world/item/Instrument.java#STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_instrument",
+          "crates/bbb-protocol/src/packets/data_components.rs#decode_direct_instrument_summary",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_instrument_holder_id",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_inline_instrument_direct_sound_and_exact_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "JUKEBOX_PLAYABLE": {
       "canonical_retention": {
         "evidence": [
