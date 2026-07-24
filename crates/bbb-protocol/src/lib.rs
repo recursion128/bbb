@@ -51,6 +51,7 @@ pub mod game_types;
 pub mod heightmap_types;
 pub mod ids;
 pub mod interaction_hands;
+pub mod item_component_coverage;
 pub mod item_component_value_types;
 pub mod item_types;
 pub mod menu_types;

@@ -364,3 +364,8 @@
   Add/Remove 驱动 canonical 发现/移除状态及原生保留行；P 键、暂停入口、搜索/分页/
   隐藏/屏蔽、可信链接、旁白和 pack-backed renderer 全链闭合，`CLIENTBOUND_PLAYER_INFO_REMOVE`
   五类 coverage 全部 complete，合同见 `docs/archive/player-social-interactions-design.md`。
+- **2026-07-23（ItemStack component coverage foundation）**：110 项
+  `DataComponents` 的 value type、persistent/显式或回退 network Codec 与六类语义
+  单元改由 Tree-sitter 生成；稀疏 evidence overrides、Rust catalog 反向断言和
+  component-dependent packet closure guard 落地，合同见
+  `docs/archive/item-component-coverage-foundation-design.md`。

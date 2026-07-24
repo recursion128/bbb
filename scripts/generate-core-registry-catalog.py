@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -47,6 +48,12 @@ DEFAULT_BLOCK_ENTITY_TYPES_OUTPUT = (
 )
 DEFAULT_DATA_COMPONENT_TYPES_OUTPUT = (
     REPO_ROOT / "crates/bbb-protocol/src/data_component_types.rs"
+)
+DEFAULT_ITEM_COMPONENT_COVERAGE_OUTPUT = (
+    REPO_ROOT / "docs/item-component-coverage-26.1.json"
+)
+DEFAULT_ITEM_COMPONENT_COVERAGE_OVERRIDES = (
+    REPO_ROOT / "scripts/data/item-component-coverage-overrides-26.1.json"
 )
 DEFAULT_PARTICLE_TYPES_OUTPUT = REPO_ROOT / "crates/bbb-protocol/src/particle_types.rs"
 DEFAULT_NUMBER_FORMAT_TYPES_OUTPUT = (
@@ -88,6 +95,16 @@ def parse_args() -> argparse.Namespace:
         "--data-component-types-output",
         type=Path,
         default=DEFAULT_DATA_COMPONENT_TYPES_OUTPUT,
+    )
+    parser.add_argument(
+        "--item-component-coverage-output",
+        type=Path,
+        default=DEFAULT_ITEM_COMPONENT_COVERAGE_OUTPUT,
+    )
+    parser.add_argument(
+        "--item-component-coverage-overrides",
+        type=Path,
+        default=DEFAULT_ITEM_COMPONENT_COVERAGE_OVERRIDES,
     )
     parser.add_argument(
         "--particle-types-output", type=Path, default=DEFAULT_PARTICLE_TYPES_OUTPUT
@@ -1571,6 +1588,212 @@ def render_data_component_types(
     return "\n".join(lines)
 
 
+def render_item_component_coverage(
+    component_entries: list[DataComponentTypeEntry],
+    overrides: dict[str, dict[str, dict[str, object]]] | None = None,
+) -> str:
+    protocol_gap = (
+        "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families"
+    )
+    item_gap = (
+        "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows"
+    )
+    persistent_gap = (
+        "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces"
+    )
+
+    def coverage(status: str, gap: str | None) -> dict[str, object]:
+        return {"status": status, "evidence": [], "gap": gap}
+
+    overrides = overrides or {}
+    used_overrides: set[str] = set()
+    allowed_statuses = {
+        "complete",
+        "partial",
+        "deferred",
+        "not-applicable",
+    }
+    dimensions = {
+        "typed_decode": coverage("partial", protocol_gap),
+        "canonical_retention": coverage("partial", item_gap),
+        "network_encode": coverage("partial", protocol_gap),
+        "persistent_projection": coverage("partial", persistent_gap),
+        "observable_consumers": coverage("partial", item_gap),
+        "tests": coverage("partial", protocol_gap),
+    }
+    entries: list[dict[str, object]] = []
+    for type_id, entry in enumerate(component_entries):
+        component_coverage = {
+            name: dict(cell) for name, cell in dimensions.items()
+        }
+        if not entry.persistent:
+            component_coverage["persistent_projection"] = {
+                "status": "not-applicable",
+                "evidence": [
+                    "vanilla:net/minecraft/core/component/DataComponents.java"
+                    f"#{entry.constant_name}"
+                ],
+                "gap": None,
+            }
+        component_overrides = overrides.get(entry.constant_name, {})
+        if not isinstance(component_overrides, dict):
+            raise ValueError(f"{entry.constant_name}: override must be an object")
+        if entry.constant_name in overrides:
+            used_overrides.add(entry.constant_name)
+        unknown_dimensions = set(component_overrides) - set(dimensions)
+        if unknown_dimensions:
+            raise ValueError(
+                f"{entry.constant_name}: unknown coverage dimensions "
+                f"{sorted(unknown_dimensions)}"
+            )
+        for dimension, cell in component_overrides.items():
+            if not isinstance(cell, dict):
+                raise ValueError(
+                    f"{entry.constant_name}/{dimension}: cell must be an object"
+                )
+            unknown_cell_keys = set(cell) - {"status", "evidence", "gap"}
+            if unknown_cell_keys:
+                raise ValueError(
+                    f"{entry.constant_name}/{dimension}: unknown keys "
+                    f"{sorted(unknown_cell_keys)}"
+                )
+            status = cell.get("status")
+            evidence = cell.get("evidence", [])
+            gap = cell.get("gap")
+            if status not in allowed_statuses:
+                raise ValueError(
+                    f"{entry.constant_name}/{dimension}: invalid status {status!r}"
+                )
+            if not isinstance(evidence, list) or not all(
+                isinstance(item, str) and item for item in evidence
+            ):
+                raise ValueError(
+                    f"{entry.constant_name}/{dimension}: evidence must be non-empty strings"
+                )
+            if status in {"complete", "deferred", "not-applicable"} and not evidence:
+                raise ValueError(
+                    f"{entry.constant_name}/{dimension}: {status} cell lacks evidence"
+                )
+            if status in {"complete", "not-applicable"} and gap is not None:
+                raise ValueError(
+                    f"{entry.constant_name}/{dimension}: {status} cell retains a gap"
+                )
+            if status != "complete" and status != "not-applicable" and not (
+                isinstance(gap, str)
+                and gap.startswith("docs/unsupported-features.md#")
+            ):
+                raise ValueError(
+                    f"{entry.constant_name}/{dimension}: non-complete cell lacks gap"
+                )
+            component_coverage[dimension] = {
+                "status": status,
+                "evidence": evidence,
+                "gap": gap,
+            }
+        entries.append(
+            {
+                "type_id": type_id,
+                "constant_name": entry.constant_name,
+                "resource_id": entry.resource_id,
+                "value_type": entry.value_type,
+                "vanilla_codec": {
+                    "persistent": entry.persistent,
+                    "persistent_codec": entry.persistent_codec,
+                    "network_codec": entry.network_codec,
+                    "network_codec_source": entry.network_codec_source,
+                    "cache_encoding": entry.cache_encoding,
+                    "ignore_swap_animation": entry.ignore_swap_animation,
+                },
+                "coverage": component_coverage,
+            }
+        )
+    unused_overrides = set(overrides) - used_overrides
+    if unused_overrides:
+        raise ValueError(
+            f"unknown item component coverage overrides: {sorted(unused_overrides)}"
+        )
+    value = {
+        "schema_version": 1,
+        "vanilla_version": "26.1",
+        "generated_by": "scripts/generate-core-registry-catalog.py",
+        "update_command": (
+            "scripts/vanilla-source-tools.sh scripts/generate-core-registry-catalog.py"
+        ),
+        "check_command": (
+            "scripts/vanilla-source-tools.sh scripts/generate-core-registry-catalog.py --check"
+        ),
+        "coverage_overrides": (
+            "scripts/data/item-component-coverage-overrides-26.1.json"
+        ),
+        "allowed_statuses": sorted(allowed_statuses),
+        "baseline_policy": (
+            "Every semantic cell remains partial until the component carries exact "
+            "Vanilla codec, canonical retention, encode/projection, consumer, and test "
+            "evidence. Consuming the right byte count or retaining only a type id is not "
+            "completion."
+        ),
+        "entries": entries,
+    }
+    return json.dumps(value, indent=2, sort_keys=True) + "\n"
+
+
+def load_item_component_coverage_overrides(
+    path: Path,
+) -> dict[str, dict[str, dict[str, object]]]:
+    def strict_object(pairs):
+        value = {}
+        for key, item in pairs:
+            if key in value:
+                raise ValueError(f"{path}: duplicate JSON key {key!r}")
+            value[key] = item
+        return value
+
+    value = json.loads(path.read_text(), object_pairs_hook=strict_object)
+    if value.get("schema_version") != 1 or not isinstance(value.get("entries"), dict):
+        raise ValueError(f"{path}: invalid item component coverage override schema")
+    return value["entries"]
+
+
+def validate_item_component_coverage_evidence(
+    overrides: dict[str, dict[str, dict[str, object]]], source_root: Path
+) -> None:
+    for component_name, dimensions in overrides.items():
+        for dimension, cell in dimensions.items():
+            for evidence in cell.get("evidence", []):
+                if "#" not in evidence:
+                    raise ValueError(
+                        f"{component_name}/{dimension}: malformed evidence {evidence!r}"
+                    )
+                locator, symbol = evidence.split("#", 1)
+                if not symbol:
+                    raise ValueError(
+                        f"{component_name}/{dimension}: evidence lacks symbol {evidence!r}"
+                    )
+                if locator.startswith("vanilla:"):
+                    relative_path = locator.removeprefix("vanilla:")
+                    root = source_root
+                else:
+                    relative_path = locator
+                    root = REPO_ROOT
+                path = Path(relative_path)
+                if path.is_absolute() or ".." in path.parts:
+                    raise ValueError(
+                        f"{component_name}/{dimension}: evidence path must be relative "
+                        f"{evidence!r}"
+                    )
+                source_path = root / path
+                if not source_path.is_file():
+                    raise ValueError(
+                        f"{component_name}/{dimension}: evidence file does not exist: "
+                        f"{evidence}"
+                    )
+                if symbol not in source_path.read_text():
+                    raise ValueError(
+                        f"{component_name}/{dimension}: evidence symbol not found: "
+                        f"{evidence}"
+                    )
+
+
 def render_particle_types(entries: list[ParticleTypeEntry]) -> str:
     lines = [
         "// @generated by scripts/generate-core-registry-catalog.py; do not edit manually.",
@@ -1784,6 +2007,8 @@ def generated_files(
     entity_types_output: Path,
     block_entity_types_output: Path,
     data_component_types_output: Path,
+    item_component_coverage_output: Path,
+    item_component_coverage_overrides: Path,
     particle_types_output: Path,
     number_format_types_output: Path,
 ) -> dict[Path, str]:
@@ -1896,6 +2121,10 @@ def generated_files(
     component_types_source = parse(DATA_COMPONENT_TYPES_SOURCE)
     registries_source = parse(REGISTRIES_SOURCE)
     component_types = data_component_type_entries(component_types_source)
+    coverage_overrides = load_item_component_coverage_overrides(
+        item_component_coverage_overrides
+    )
+    validate_item_component_coverage_evidence(coverage_overrides, source_root)
     animal_variant_registries = animal_variant_component_registry_entries(
         component_types_source, registries_source
     )
@@ -1940,6 +2169,9 @@ def generated_files(
                 animal_texture_variant_registries,
             )
         ),
+        item_component_coverage_output: render_item_component_coverage(
+            component_types, coverage_overrides
+        ),
         particle_types_output: format_rust(
             render_particle_types(particle_type_entries(particle_types_source))
         ),
@@ -1974,6 +2206,8 @@ def main() -> int:
         args.entity_types_output,
         args.block_entity_types_output,
         args.data_component_types_output,
+        args.item_component_coverage_output,
+        args.item_component_coverage_overrides,
         args.particle_types_output,
         args.number_format_types_output,
     )

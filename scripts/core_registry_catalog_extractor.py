@@ -49,7 +49,13 @@ class BlockEntityTypeEntry:
 class DataComponentTypeEntry:
     constant_name: str
     resource_id: str
+    value_type: str
     persistent: bool
+    persistent_codec: str | None
+    network_codec: str
+    network_codec_source: str
+    cache_encoding: bool
+    ignore_swap_animation: bool
 
 
 @dataclass(frozen=True)
@@ -576,11 +582,58 @@ def data_component_type_entries(
         arguments = _register_arguments(source, field)
         if len(arguments) != 2:
             _fail(source, field.initializer, f"component register has {len(arguments)} arguments")
+        type_spelling = "".join(field.type_spelling.split())
+        type_prefix = "DataComponentType<"
+        if not type_spelling.startswith(type_prefix) or not type_spelling.endswith(">"):
+            _fail(source, field.initializer, "component field has an unsupported value type")
+        persistent_calls = _calls_in_expression(source, field.initializer, "persistent")
+        network_calls = _calls_in_expression(
+            source, field.initializer, "networkSynchronized"
+        )
+        cache_calls = _calls_in_expression(source, field.initializer, "cacheEncoding")
+        ignore_swap_calls = _calls_in_expression(
+            source, field.initializer, "ignoreSwapAnimation"
+        )
+        for name, calls, argument_count in (
+            ("persistent", persistent_calls, 1),
+            ("networkSynchronized", network_calls, 1),
+            ("cacheEncoding", cache_calls, 0),
+            ("ignoreSwapAnimation", ignore_swap_calls, 0),
+        ):
+            if len(calls) > 1:
+                _fail(source, field.initializer, f"component builder repeats {name}")
+            if calls and len(calls[0].arguments) != argument_count:
+                _fail(
+                    source,
+                    field.initializer,
+                    f"component builder {name} has {len(calls[0].arguments)} arguments",
+                )
+        persistent_codec = (
+            persistent_calls[0].arguments[0].canonical if persistent_calls else None
+        )
+        if network_calls:
+            network_codec = network_calls[0].arguments[0].canonical
+            network_codec_source = "explicit"
+        elif persistent_codec is not None:
+            network_codec = persistent_codec
+            network_codec_source = "persistent-fallback"
+        else:
+            _fail(
+                source,
+                field.initializer,
+                "component has neither a persistent nor explicit network codec",
+            )
         entries.append(
             DataComponentTypeEntry(
                 field.name,
                 _string_literal(source, arguments[0]),
-                bool(_calls_in_expression(source, field.initializer, "persistent")),
+                type_spelling[len(type_prefix) : -1],
+                persistent_codec is not None,
+                persistent_codec,
+                network_codec,
+                network_codec_source,
+                bool(cache_calls),
+                bool(ignore_swap_calls),
             )
         )
     if len(entries) != expected_count:

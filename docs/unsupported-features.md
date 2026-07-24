@@ -74,6 +74,11 @@ Owner: `bbb-protocol`
   remaining `partial` cell must carry implementation and semantic-test
   evidence through the checked-in sparse overrides; catalog presence or a
   generic dispatch arm alone is not completion.
+- Use `docs/item-component-coverage-26.1.json` as the complete 110-entry
+  ItemStack component semantic inventory. Each `partial` cell must close
+  through its sparse evidence override; consuming the right wire length or
+  retaining only a component type id does not establish typed decode,
+  canonical retention, re-encoding, persistent projection, or a consumer.
 - Thread the world/session owner into generic packet Components whose nested
   player, dialog-holder, or show-item payloads require registry context, while
   preserving an explicit unknown result in context-free callers.
@@ -681,8 +686,10 @@ Inventory:
   components in SetPlayerInventory/container broadcasts can still lose clone
   data and therefore keep the response family partial.
 - Complete the remaining ItemStack added-value component semantics consumed by
-  SetEquipment; wire-safe type presence is not sufficient for canonical item
-  state or component-driven held/armor rendering.
+  SetEquipment, following the per-component dispositions in
+  `docs/item-component-coverage-26.1.json`; wire-safe type presence is not
+  sufficient for canonical item state or component-driven held/armor
+  rendering.
 - Implement the rich-tooltip `space` font provider, the remaining text styles,
   italic/complex component styles, and component-specific detail lines from
   `font/default.json`.

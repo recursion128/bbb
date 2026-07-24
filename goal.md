@@ -309,7 +309,9 @@ decode/encode、world apply 和 runtime side effect 保持手写。
    serverbound 行，补齐 decode→唯一分发→canonical apply→side effect→tests
    或 encoder→sequence/state guard→ack 全路径；纯连接包和 vanilla no-op 写明
    owner/依据，不用 generic unsupported counter 冒充完成。优先随 playable
-   交互与 entity family 垂直 slice 顺带关闭。
+   交互与 entity family 垂直 slice 顺带关闭。ItemStack added-value 语义按
+   `docs/item-component-coverage-26.1.json` 的逐 component 单元收口，不以
+   packet 行或 type-id presence 替代。
 2. **边界与恶意输入**：为 string/list/NBT/component/chunk/plugin payload 的
    长度、深度、count、VarInt 与压缩边界增加 focused tests；合法边界
    round-trip，越界在分配前失败，malformed input 不污染 decoder/session state。

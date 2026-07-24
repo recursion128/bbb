@@ -364,9 +364,9 @@ public class DataComponentPredicates {
 package fixture;
 public class DataComponents {
   public static final DataComponentType<One> ONE = register(
-      "one", builder -> builder.persistent(One.CODEC));
+      "one", builder -> builder.persistent(One.CODEC).cacheEncoding());
   public static final DataComponentType<Two> TWO = register(
-      "two", builder -> builder.networkSynchronized(Two.CODEC));
+      "two", builder -> builder.networkSynchronized(Two.STREAM_CODEC).ignoreSwapAnimation());
   public static final DataComponentMap COMMON_ITEM_COMPONENTS = DataComponentMap.builder()
       .set(TWO, Two.DEFAULT)
       .set(ONE, One.DEFAULT)
@@ -398,9 +398,23 @@ public class ParticleTypes {
             ].constant_name,
             "ONE",
         )
+        components = data_component_type_entries(component_source, 2)
+        self.assertEqual([entry.value_type for entry in components], ["One", "Two"])
+        self.assertEqual([entry.persistent for entry in components], [True, False])
         self.assertEqual(
-            [entry.persistent for entry in data_component_type_entries(component_source, 2)],
-            [True, False],
+            [entry.persistent_codec for entry in components], ["One.CODEC", None]
+        )
+        self.assertEqual(
+            [entry.network_codec for entry in components],
+            ["One.CODEC", "Two.STREAM_CODEC"],
+        )
+        self.assertEqual(
+            [entry.network_codec_source for entry in components],
+            ["persistent-fallback", "explicit"],
+        )
+        self.assertEqual([entry.cache_encoding for entry in components], [True, False])
+        self.assertEqual(
+            [entry.ignore_swap_animation for entry in components], [False, True]
         )
         self.assertEqual(
             common_item_component_constant_names(component_source, 2),

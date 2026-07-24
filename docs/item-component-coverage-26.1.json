@@ -1,0 +1,5083 @@
+{
+  "allowed_statuses": [
+    "complete",
+    "deferred",
+    "not-applicable",
+    "partial"
+  ],
+  "baseline_policy": "Every semantic cell remains partial until the component carries exact Vanilla codec, canonical retention, encode/projection, consumer, and test evidence. Consuming the right byte count or retaining only a type id is not completion.",
+  "check_command": "scripts/vanilla-source-tools.sh scripts/generate-core-registry-catalog.py --check",
+  "coverage_overrides": "scripts/data/item-component-coverage-overrides-26.1.json",
+  "entries": [
+    {
+      "constant_name": "CUSTOM_DATA",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:custom_data",
+      "type_id": 0,
+      "value_type": "CustomData",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "CustomData.CODEC",
+        "network_codec_source": "persistent-fallback",
+        "persistent": true,
+        "persistent_codec": "CustomData.CODEC"
+      }
+    },
+    {
+      "constant_name": "MAX_STACK_SIZE",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:max_stack_size",
+      "type_id": 1,
+      "value_type": "Integer",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "ByteBufCodecs.VAR_INT",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "ExtraCodecs.intRange (1, 99)"
+      }
+    },
+    {
+      "constant_name": "MAX_DAMAGE",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:max_damage",
+      "type_id": 2,
+      "value_type": "Integer",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "ByteBufCodecs.VAR_INT",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "ExtraCodecs.POSITIVE_INT"
+      }
+    },
+    {
+      "constant_name": "DAMAGE",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:damage",
+      "type_id": 3,
+      "value_type": "Integer",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": true,
+        "network_codec": "ByteBufCodecs.VAR_INT",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "ExtraCodecs.NON_NEGATIVE_INT"
+      }
+    },
+    {
+      "constant_name": "UNBREAKABLE",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:unbreakable",
+      "type_id": 4,
+      "value_type": "Unit",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "Unit.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "Unit.CODEC"
+      }
+    },
+    {
+      "constant_name": "USE_EFFECTS",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:use_effects",
+      "type_id": 5,
+      "value_type": "UseEffects",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "UseEffects.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "UseEffects.CODEC"
+      }
+    },
+    {
+      "constant_name": "CUSTOM_NAME",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:custom_name",
+      "type_id": 6,
+      "value_type": "Component",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "ComponentSerialization.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "ComponentSerialization.CODEC"
+      }
+    },
+    {
+      "constant_name": "MINIMUM_ATTACK_CHARGE",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:minimum_attack_charge",
+      "type_id": 7,
+      "value_type": "Float",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "ByteBufCodecs.FLOAT",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "ExtraCodecs.floatRange (0.0F, 1.0F)"
+      }
+    },
+    {
+      "constant_name": "DAMAGE_TYPE",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:damage_type",
+      "type_id": 8,
+      "value_type": "Holder<DamageType>",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "DamageType.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "DamageType.CODEC"
+      }
+    },
+    {
+      "constant_name": "ITEM_NAME",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:item_name",
+      "type_id": 9,
+      "value_type": "Component",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "ComponentSerialization.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "ComponentSerialization.CODEC"
+      }
+    },
+    {
+      "constant_name": "ITEM_MODEL",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:item_model",
+      "type_id": 10,
+      "value_type": "Identifier",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "Identifier.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "Identifier.CODEC"
+      }
+    },
+    {
+      "constant_name": "LORE",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:lore",
+      "type_id": 11,
+      "value_type": "ItemLore",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "ItemLore.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "ItemLore.CODEC"
+      }
+    },
+    {
+      "constant_name": "RARITY",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:rarity",
+      "type_id": 12,
+      "value_type": "Rarity",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "Rarity.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "Rarity.CODEC"
+      }
+    },
+    {
+      "constant_name": "ENCHANTMENTS",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:enchantments",
+      "type_id": 13,
+      "value_type": "ItemEnchantments",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "ItemEnchantments.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "ItemEnchantments.CODEC"
+      }
+    },
+    {
+      "constant_name": "CAN_PLACE_ON",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:can_place_on",
+      "type_id": 14,
+      "value_type": "AdventureModePredicate",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "AdventureModePredicate.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "AdventureModePredicate.CODEC"
+      }
+    },
+    {
+      "constant_name": "CAN_BREAK",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:can_break",
+      "type_id": 15,
+      "value_type": "AdventureModePredicate",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "AdventureModePredicate.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "AdventureModePredicate.CODEC"
+      }
+    },
+    {
+      "constant_name": "ATTRIBUTE_MODIFIERS",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:attribute_modifiers",
+      "type_id": 16,
+      "value_type": "ItemAttributeModifiers",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "ItemAttributeModifiers.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "ItemAttributeModifiers.CODEC"
+      }
+    },
+    {
+      "constant_name": "CUSTOM_MODEL_DATA",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:custom_model_data",
+      "type_id": 17,
+      "value_type": "CustomModelData",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "CustomModelData.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "CustomModelData.CODEC"
+      }
+    },
+    {
+      "constant_name": "TOOLTIP_DISPLAY",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:tooltip_display",
+      "type_id": 18,
+      "value_type": "TooltipDisplay",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "TooltipDisplay.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "TooltipDisplay.CODEC"
+      }
+    },
+    {
+      "constant_name": "REPAIR_COST",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:repair_cost",
+      "type_id": 19,
+      "value_type": "Integer",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "ByteBufCodecs.VAR_INT",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "ExtraCodecs.NON_NEGATIVE_INT"
+      }
+    },
+    {
+      "constant_name": "CREATIVE_SLOT_LOCK",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#CREATIVE_SLOT_LOCK"
+          ],
+          "gap": null,
+          "status": "not-applicable"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:creative_slot_lock",
+      "type_id": 20,
+      "value_type": "Unit",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "Unit.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": false,
+        "persistent_codec": null
+      }
+    },
+    {
+      "constant_name": "ENCHANTMENT_GLINT_OVERRIDE",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:enchantment_glint_override",
+      "type_id": 21,
+      "value_type": "Boolean",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "ByteBufCodecs.BOOL",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "Codec.BOOL"
+      }
+    },
+    {
+      "constant_name": "INTANGIBLE_PROJECTILE",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:intangible_projectile",
+      "type_id": 22,
+      "value_type": "Unit",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "Unit.CODEC",
+        "network_codec_source": "persistent-fallback",
+        "persistent": true,
+        "persistent_codec": "Unit.CODEC"
+      }
+    },
+    {
+      "constant_name": "FOOD",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:food",
+      "type_id": 23,
+      "value_type": "FoodProperties",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "FoodProperties.DIRECT_STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "FoodProperties.DIRECT_CODEC"
+      }
+    },
+    {
+      "constant_name": "CONSUMABLE",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:consumable",
+      "type_id": 24,
+      "value_type": "Consumable",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "Consumable.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "Consumable.CODEC"
+      }
+    },
+    {
+      "constant_name": "USE_REMAINDER",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:use_remainder",
+      "type_id": 25,
+      "value_type": "UseRemainder",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "UseRemainder.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "UseRemainder.CODEC"
+      }
+    },
+    {
+      "constant_name": "USE_COOLDOWN",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:use_cooldown",
+      "type_id": 26,
+      "value_type": "UseCooldown",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "UseCooldown.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "UseCooldown.CODEC"
+      }
+    },
+    {
+      "constant_name": "DAMAGE_RESISTANT",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:damage_resistant",
+      "type_id": 27,
+      "value_type": "DamageResistant",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "DamageResistant.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "DamageResistant.CODEC"
+      }
+    },
+    {
+      "constant_name": "TOOL",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:tool",
+      "type_id": 28,
+      "value_type": "Tool",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "Tool.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "Tool.CODEC"
+      }
+    },
+    {
+      "constant_name": "WEAPON",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:weapon",
+      "type_id": 29,
+      "value_type": "Weapon",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "Weapon.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "Weapon.CODEC"
+      }
+    },
+    {
+      "constant_name": "ATTACK_RANGE",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:attack_range",
+      "type_id": 30,
+      "value_type": "AttackRange",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "AttackRange.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "AttackRange.CODEC"
+      }
+    },
+    {
+      "constant_name": "ENCHANTABLE",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:enchantable",
+      "type_id": 31,
+      "value_type": "Enchantable",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "Enchantable.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "Enchantable.CODEC"
+      }
+    },
+    {
+      "constant_name": "EQUIPPABLE",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:equippable",
+      "type_id": 32,
+      "value_type": "Equippable",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "Equippable.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "Equippable.CODEC"
+      }
+    },
+    {
+      "constant_name": "REPAIRABLE",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:repairable",
+      "type_id": 33,
+      "value_type": "Repairable",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "Repairable.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "Repairable.CODEC"
+      }
+    },
+    {
+      "constant_name": "GLIDER",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:glider",
+      "type_id": 34,
+      "value_type": "Unit",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "Unit.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "Unit.CODEC"
+      }
+    },
+    {
+      "constant_name": "TOOLTIP_STYLE",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:tooltip_style",
+      "type_id": 35,
+      "value_type": "Identifier",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "Identifier.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "Identifier.CODEC"
+      }
+    },
+    {
+      "constant_name": "DEATH_PROTECTION",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:death_protection",
+      "type_id": 36,
+      "value_type": "DeathProtection",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "DeathProtection.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "DeathProtection.CODEC"
+      }
+    },
+    {
+      "constant_name": "BLOCKS_ATTACKS",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:blocks_attacks",
+      "type_id": 37,
+      "value_type": "BlocksAttacks",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "BlocksAttacks.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "BlocksAttacks.CODEC"
+      }
+    },
+    {
+      "constant_name": "PIERCING_WEAPON",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:piercing_weapon",
+      "type_id": 38,
+      "value_type": "PiercingWeapon",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "PiercingWeapon.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "PiercingWeapon.CODEC"
+      }
+    },
+    {
+      "constant_name": "KINETIC_WEAPON",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:kinetic_weapon",
+      "type_id": 39,
+      "value_type": "KineticWeapon",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "KineticWeapon.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "KineticWeapon.CODEC"
+      }
+    },
+    {
+      "constant_name": "SWING_ANIMATION",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:swing_animation",
+      "type_id": 40,
+      "value_type": "SwingAnimation",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "SwingAnimation.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "SwingAnimation.CODEC"
+      }
+    },
+    {
+      "constant_name": "ADDITIONAL_TRADE_COST",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#ADDITIONAL_TRADE_COST"
+          ],
+          "gap": null,
+          "status": "not-applicable"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:additional_trade_cost",
+      "type_id": 41,
+      "value_type": "Integer",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "ByteBufCodecs.VAR_INT",
+        "network_codec_source": "explicit",
+        "persistent": false,
+        "persistent_codec": null
+      }
+    },
+    {
+      "constant_name": "STORED_ENCHANTMENTS",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:stored_enchantments",
+      "type_id": 42,
+      "value_type": "ItemEnchantments",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "ItemEnchantments.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "ItemEnchantments.CODEC"
+      }
+    },
+    {
+      "constant_name": "DYE",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:dye",
+      "type_id": 43,
+      "value_type": "DyeColor",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "DyeColor.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "DyeColor.CODEC"
+      }
+    },
+    {
+      "constant_name": "DYED_COLOR",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:dyed_color",
+      "type_id": 44,
+      "value_type": "DyedItemColor",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "DyedItemColor.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "DyedItemColor.CODEC"
+      }
+    },
+    {
+      "constant_name": "MAP_COLOR",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:map_color",
+      "type_id": 45,
+      "value_type": "MapItemColor",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "MapItemColor.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "MapItemColor.CODEC"
+      }
+    },
+    {
+      "constant_name": "MAP_ID",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:map_id",
+      "type_id": 46,
+      "value_type": "MapId",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "MapId.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "MapId.CODEC"
+      }
+    },
+    {
+      "constant_name": "MAP_DECORATIONS",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:map_decorations",
+      "type_id": 47,
+      "value_type": "MapDecorations",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "MapDecorations.CODEC",
+        "network_codec_source": "persistent-fallback",
+        "persistent": true,
+        "persistent_codec": "MapDecorations.CODEC"
+      }
+    },
+    {
+      "constant_name": "MAP_POST_PROCESSING",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#MAP_POST_PROCESSING"
+          ],
+          "gap": null,
+          "status": "not-applicable"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:map_post_processing",
+      "type_id": 48,
+      "value_type": "MapPostProcessing",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "MapPostProcessing.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": false,
+        "persistent_codec": null
+      }
+    },
+    {
+      "constant_name": "CHARGED_PROJECTILES",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:charged_projectiles",
+      "type_id": 49,
+      "value_type": "ChargedProjectiles",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "ChargedProjectiles.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "ChargedProjectiles.CODEC"
+      }
+    },
+    {
+      "constant_name": "BUNDLE_CONTENTS",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:bundle_contents",
+      "type_id": 50,
+      "value_type": "BundleContents",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "BundleContents.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "BundleContents.CODEC"
+      }
+    },
+    {
+      "constant_name": "POTION_CONTENTS",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:potion_contents",
+      "type_id": 51,
+      "value_type": "PotionContents",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "PotionContents.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "PotionContents.CODEC"
+      }
+    },
+    {
+      "constant_name": "POTION_DURATION_SCALE",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:potion_duration_scale",
+      "type_id": 52,
+      "value_type": "Float",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "ByteBufCodecs.FLOAT",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "ExtraCodecs.NON_NEGATIVE_FLOAT"
+      }
+    },
+    {
+      "constant_name": "SUSPICIOUS_STEW_EFFECTS",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:suspicious_stew_effects",
+      "type_id": 53,
+      "value_type": "SuspiciousStewEffects",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "SuspiciousStewEffects.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "SuspiciousStewEffects.CODEC"
+      }
+    },
+    {
+      "constant_name": "WRITABLE_BOOK_CONTENT",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:writable_book_content",
+      "type_id": 54,
+      "value_type": "WritableBookContent",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "WritableBookContent.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "WritableBookContent.CODEC"
+      }
+    },
+    {
+      "constant_name": "WRITTEN_BOOK_CONTENT",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:written_book_content",
+      "type_id": 55,
+      "value_type": "WrittenBookContent",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "WrittenBookContent.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "WrittenBookContent.CODEC"
+      }
+    },
+    {
+      "constant_name": "TRIM",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:trim",
+      "type_id": 56,
+      "value_type": "ArmorTrim",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "ArmorTrim.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "ArmorTrim.CODEC"
+      }
+    },
+    {
+      "constant_name": "DEBUG_STICK_STATE",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:debug_stick_state",
+      "type_id": 57,
+      "value_type": "DebugStickState",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "DebugStickState.CODEC",
+        "network_codec_source": "persistent-fallback",
+        "persistent": true,
+        "persistent_codec": "DebugStickState.CODEC"
+      }
+    },
+    {
+      "constant_name": "ENTITY_DATA",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:entity_data",
+      "type_id": 58,
+      "value_type": "TypedEntityData<EntityType<?>>",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "TypedEntityData.streamCodec (EntityType.STREAM_CODEC)",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "TypedEntityData.codec (EntityType.CODEC)"
+      }
+    },
+    {
+      "constant_name": "BUCKET_ENTITY_DATA",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:bucket_entity_data",
+      "type_id": 59,
+      "value_type": "CustomData",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "CustomData.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "CustomData.CODEC"
+      }
+    },
+    {
+      "constant_name": "BLOCK_ENTITY_DATA",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:block_entity_data",
+      "type_id": 60,
+      "value_type": "TypedEntityData<BlockEntityType<?>>",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "TypedEntityData.streamCodec (ByteBufCodecs.registry (Registries.BLOCK_ENTITY_TYPE))",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "TypedEntityData.codec (BuiltInRegistries.BLOCK_ENTITY_TYPE.byNameCodec ())"
+      }
+    },
+    {
+      "constant_name": "INSTRUMENT",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:instrument",
+      "type_id": 61,
+      "value_type": "InstrumentComponent",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "InstrumentComponent.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "InstrumentComponent.CODEC"
+      }
+    },
+    {
+      "constant_name": "PROVIDES_TRIM_MATERIAL",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:provides_trim_material",
+      "type_id": 62,
+      "value_type": "Holder<TrimMaterial>",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "TrimMaterial.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "TrimMaterial.CODEC"
+      }
+    },
+    {
+      "constant_name": "OMINOUS_BOTTLE_AMPLIFIER",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:ominous_bottle_amplifier",
+      "type_id": 63,
+      "value_type": "OminousBottleAmplifier",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "OminousBottleAmplifier.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "OminousBottleAmplifier.CODEC"
+      }
+    },
+    {
+      "constant_name": "JUKEBOX_PLAYABLE",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:jukebox_playable",
+      "type_id": 64,
+      "value_type": "JukeboxPlayable",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "JukeboxPlayable.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "JukeboxPlayable.CODEC"
+      }
+    },
+    {
+      "constant_name": "PROVIDES_BANNER_PATTERNS",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:provides_banner_patterns",
+      "type_id": 65,
+      "value_type": "HolderSet<BannerPattern>",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "ByteBufCodecs.holderSet (Registries.BANNER_PATTERN)",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "RegistryCodecs.homogeneousList (Registries.BANNER_PATTERN)"
+      }
+    },
+    {
+      "constant_name": "RECIPES",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:recipes",
+      "type_id": 66,
+      "value_type": "List<ResourceKey<Recipe<?>>>",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "Recipe.KEY_CODEC.listOf ()",
+        "network_codec_source": "persistent-fallback",
+        "persistent": true,
+        "persistent_codec": "Recipe.KEY_CODEC.listOf ()"
+      }
+    },
+    {
+      "constant_name": "LODESTONE_TRACKER",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:lodestone_tracker",
+      "type_id": 67,
+      "value_type": "LodestoneTracker",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "LodestoneTracker.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "LodestoneTracker.CODEC"
+      }
+    },
+    {
+      "constant_name": "FIREWORK_EXPLOSION",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:firework_explosion",
+      "type_id": 68,
+      "value_type": "FireworkExplosion",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "FireworkExplosion.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "FireworkExplosion.CODEC"
+      }
+    },
+    {
+      "constant_name": "FIREWORKS",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:fireworks",
+      "type_id": 69,
+      "value_type": "Fireworks",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "Fireworks.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "Fireworks.CODEC"
+      }
+    },
+    {
+      "constant_name": "PROFILE",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:profile",
+      "type_id": 70,
+      "value_type": "ResolvableProfile",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "ResolvableProfile.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "ResolvableProfile.CODEC"
+      }
+    },
+    {
+      "constant_name": "NOTE_BLOCK_SOUND",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:note_block_sound",
+      "type_id": 71,
+      "value_type": "Identifier",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "Identifier.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "Identifier.CODEC"
+      }
+    },
+    {
+      "constant_name": "BANNER_PATTERNS",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:banner_patterns",
+      "type_id": 72,
+      "value_type": "BannerPatternLayers",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "BannerPatternLayers.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "BannerPatternLayers.CODEC"
+      }
+    },
+    {
+      "constant_name": "BASE_COLOR",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:base_color",
+      "type_id": 73,
+      "value_type": "DyeColor",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "DyeColor.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "DyeColor.CODEC"
+      }
+    },
+    {
+      "constant_name": "POT_DECORATIONS",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:pot_decorations",
+      "type_id": 74,
+      "value_type": "PotDecorations",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "PotDecorations.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "PotDecorations.CODEC"
+      }
+    },
+    {
+      "constant_name": "CONTAINER",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:container",
+      "type_id": 75,
+      "value_type": "ItemContainerContents",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "ItemContainerContents.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "ItemContainerContents.CODEC"
+      }
+    },
+    {
+      "constant_name": "BLOCK_STATE",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:block_state",
+      "type_id": 76,
+      "value_type": "BlockItemStateProperties",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "BlockItemStateProperties.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "BlockItemStateProperties.CODEC"
+      }
+    },
+    {
+      "constant_name": "BEES",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:bees",
+      "type_id": 77,
+      "value_type": "Bees",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "Bees.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "Bees.CODEC"
+      }
+    },
+    {
+      "constant_name": "LOCK",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:lock",
+      "type_id": 78,
+      "value_type": "LockCode",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "LockCode.CODEC",
+        "network_codec_source": "persistent-fallback",
+        "persistent": true,
+        "persistent_codec": "LockCode.CODEC"
+      }
+    },
+    {
+      "constant_name": "CONTAINER_LOOT",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:container_loot",
+      "type_id": 79,
+      "value_type": "SeededContainerLoot",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "SeededContainerLoot.CODEC",
+        "network_codec_source": "persistent-fallback",
+        "persistent": true,
+        "persistent_codec": "SeededContainerLoot.CODEC"
+      }
+    },
+    {
+      "constant_name": "BREAK_SOUND",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:break_sound",
+      "type_id": 80,
+      "value_type": "Holder<SoundEvent>",
+      "vanilla_codec": {
+        "cache_encoding": true,
+        "ignore_swap_animation": false,
+        "network_codec": "SoundEvent.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "SoundEvent.CODEC"
+      }
+    },
+    {
+      "constant_name": "VILLAGER_VARIANT",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:villager/variant",
+      "type_id": 81,
+      "value_type": "Holder<VillagerType>",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "VillagerType.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "VillagerType.CODEC"
+      }
+    },
+    {
+      "constant_name": "WOLF_VARIANT",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:wolf/variant",
+      "type_id": 82,
+      "value_type": "Holder<WolfVariant>",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "WolfVariant.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "WolfVariant.CODEC"
+      }
+    },
+    {
+      "constant_name": "WOLF_SOUND_VARIANT",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:wolf/sound_variant",
+      "type_id": 83,
+      "value_type": "Holder<WolfSoundVariant>",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "WolfSoundVariant.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "WolfSoundVariant.CODEC"
+      }
+    },
+    {
+      "constant_name": "WOLF_COLLAR",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:wolf/collar",
+      "type_id": 84,
+      "value_type": "DyeColor",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "DyeColor.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "DyeColor.CODEC"
+      }
+    },
+    {
+      "constant_name": "FOX_VARIANT",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:fox/variant",
+      "type_id": 85,
+      "value_type": "Fox.Variant",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "Fox.Variant.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "Fox.Variant.CODEC"
+      }
+    },
+    {
+      "constant_name": "SALMON_SIZE",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:salmon/size",
+      "type_id": 86,
+      "value_type": "Salmon.Variant",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "Salmon.Variant.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "Salmon.Variant.CODEC"
+      }
+    },
+    {
+      "constant_name": "PARROT_VARIANT",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:parrot/variant",
+      "type_id": 87,
+      "value_type": "Parrot.Variant",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "Parrot.Variant.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "Parrot.Variant.CODEC"
+      }
+    },
+    {
+      "constant_name": "TROPICAL_FISH_PATTERN",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:tropical_fish/pattern",
+      "type_id": 88,
+      "value_type": "TropicalFish.Pattern",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "TropicalFish.Pattern.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "TropicalFish.Pattern.CODEC"
+      }
+    },
+    {
+      "constant_name": "TROPICAL_FISH_BASE_COLOR",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:tropical_fish/base_color",
+      "type_id": 89,
+      "value_type": "DyeColor",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "DyeColor.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "DyeColor.CODEC"
+      }
+    },
+    {
+      "constant_name": "TROPICAL_FISH_PATTERN_COLOR",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:tropical_fish/pattern_color",
+      "type_id": 90,
+      "value_type": "DyeColor",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "DyeColor.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "DyeColor.CODEC"
+      }
+    },
+    {
+      "constant_name": "MOOSHROOM_VARIANT",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:mooshroom/variant",
+      "type_id": 91,
+      "value_type": "MushroomCow.Variant",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "MushroomCow.Variant.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "MushroomCow.Variant.CODEC"
+      }
+    },
+    {
+      "constant_name": "RABBIT_VARIANT",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:rabbit/variant",
+      "type_id": 92,
+      "value_type": "Rabbit.Variant",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "Rabbit.Variant.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "Rabbit.Variant.CODEC"
+      }
+    },
+    {
+      "constant_name": "PIG_VARIANT",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:pig/variant",
+      "type_id": 93,
+      "value_type": "Holder<PigVariant>",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "PigVariant.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "PigVariant.CODEC"
+      }
+    },
+    {
+      "constant_name": "PIG_SOUND_VARIANT",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:pig/sound_variant",
+      "type_id": 94,
+      "value_type": "Holder<PigSoundVariant>",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "PigSoundVariant.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "PigSoundVariant.CODEC"
+      }
+    },
+    {
+      "constant_name": "COW_VARIANT",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:cow/variant",
+      "type_id": 95,
+      "value_type": "Holder<CowVariant>",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "CowVariant.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "CowVariant.CODEC"
+      }
+    },
+    {
+      "constant_name": "COW_SOUND_VARIANT",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:cow/sound_variant",
+      "type_id": 96,
+      "value_type": "Holder<CowSoundVariant>",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "CowSoundVariant.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "CowSoundVariant.CODEC"
+      }
+    },
+    {
+      "constant_name": "CHICKEN_VARIANT",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:chicken/variant",
+      "type_id": 97,
+      "value_type": "Holder<ChickenVariant>",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "ChickenVariant.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "ChickenVariant.CODEC"
+      }
+    },
+    {
+      "constant_name": "CHICKEN_SOUND_VARIANT",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:chicken/sound_variant",
+      "type_id": 98,
+      "value_type": "Holder<ChickenSoundVariant>",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "ChickenSoundVariant.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "ChickenSoundVariant.CODEC"
+      }
+    },
+    {
+      "constant_name": "ZOMBIE_NAUTILUS_VARIANT",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:zombie_nautilus/variant",
+      "type_id": 99,
+      "value_type": "Holder<ZombieNautilusVariant>",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "ZombieNautilusVariant.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "ZombieNautilusVariant.CODEC"
+      }
+    },
+    {
+      "constant_name": "FROG_VARIANT",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:frog/variant",
+      "type_id": 100,
+      "value_type": "Holder<FrogVariant>",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "FrogVariant.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "FrogVariant.CODEC"
+      }
+    },
+    {
+      "constant_name": "HORSE_VARIANT",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:horse/variant",
+      "type_id": 101,
+      "value_type": "Variant",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "Variant.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "Variant.CODEC"
+      }
+    },
+    {
+      "constant_name": "PAINTING_VARIANT",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:painting/variant",
+      "type_id": 102,
+      "value_type": "Holder<PaintingVariant>",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "PaintingVariant.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "PaintingVariant.CODEC"
+      }
+    },
+    {
+      "constant_name": "LLAMA_VARIANT",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:llama/variant",
+      "type_id": 103,
+      "value_type": "Llama.Variant",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "Llama.Variant.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "Llama.Variant.CODEC"
+      }
+    },
+    {
+      "constant_name": "AXOLOTL_VARIANT",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:axolotl/variant",
+      "type_id": 104,
+      "value_type": "Axolotl.Variant",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "Axolotl.Variant.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "Axolotl.Variant.CODEC"
+      }
+    },
+    {
+      "constant_name": "CAT_VARIANT",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:cat/variant",
+      "type_id": 105,
+      "value_type": "Holder<CatVariant>",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "CatVariant.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "CatVariant.CODEC"
+      }
+    },
+    {
+      "constant_name": "CAT_SOUND_VARIANT",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:cat/sound_variant",
+      "type_id": 106,
+      "value_type": "Holder<CatSoundVariant>",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "CatSoundVariant.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "CatSoundVariant.CODEC"
+      }
+    },
+    {
+      "constant_name": "CAT_COLLAR",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:cat/collar",
+      "type_id": 107,
+      "value_type": "DyeColor",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "DyeColor.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "DyeColor.CODEC"
+      }
+    },
+    {
+      "constant_name": "SHEEP_COLOR",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:sheep/color",
+      "type_id": 108,
+      "value_type": "DyeColor",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "DyeColor.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "DyeColor.CODEC"
+      }
+    },
+    {
+      "constant_name": "SHULKER_COLOR",
+      "coverage": {
+        "canonical_retention": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "network_encode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "observable_consumers": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+          "status": "partial"
+        },
+        "persistent_projection": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+          "status": "partial"
+        },
+        "tests": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        },
+        "typed_decode": {
+          "evidence": [],
+          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+          "status": "partial"
+        }
+      },
+      "resource_id": "minecraft:shulker/color",
+      "type_id": 109,
+      "value_type": "DyeColor",
+      "vanilla_codec": {
+        "cache_encoding": false,
+        "ignore_swap_animation": false,
+        "network_codec": "DyeColor.STREAM_CODEC",
+        "network_codec_source": "explicit",
+        "persistent": true,
+        "persistent_codec": "DyeColor.CODEC"
+      }
+    }
+  ],
+  "generated_by": "scripts/generate-core-registry-catalog.py",
+  "schema_version": 1,
+  "update_command": "scripts/vanilla-source-tools.sh scripts/generate-core-registry-catalog.py",
+  "vanilla_version": "26.1"
+}
