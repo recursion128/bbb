@@ -22,7 +22,8 @@ pub use crate::item_component_value_types::{
 const MAX_CONTAINER_ITEMS: usize = 1024;
 
 pub use data_components::{
-    decode_profile_textures_from_properties, AdventureModePredicateDataSummary,
+    decode_persistent_item_predicate_summary, decode_profile_textures_from_properties,
+    encode_persistent_item_predicate_summary, AdventureModePredicateDataSummary,
     AdventureModePredicateSummary, AttackRangeSummary, AttributeModifierSummary,
     BannerPatternLayerSummary, BeeOccupantSummary, BlockHolderSetSummary, BlockPredicateSummary,
     BlocksAttacksSummary, ConsumableSummary, ConsumeEffectSummary, CustomModelDataFloats,
@@ -30,10 +31,11 @@ pub use data_components::{
     DataComponentPredicateTypeSummary, DebugStickPropertySummary, EntityTypeHolderSetSummary,
     EquippableSummary, FireworkExplosionSummary, GameProfilePropertySummary, InstrumentSummary,
     ItemContainerSlotSummary, ItemDamageFunctionSummary, ItemEnchantmentSummary,
-    ItemMapDecorationSummary, ItemStackTemplateSummary, JukeboxSongSummary,
+    ItemHolderSetSummary, ItemMapDecorationSummary, ItemStackTemplateSummary, JukeboxSongSummary,
     KineticWeaponConditionSummary, KineticWeaponSummary, LodestoneTargetSummary,
     MobEffectDetailsSummary, MobEffectInstanceSummary, NbtSummaryEntry, NbtSummaryValue,
-    PaintingVariantSummary, PartialDataComponentPredicateSummary, PiercingWeaponSummary,
+    PaintingVariantSummary, PartialDataComponentPredicateSummary,
+    PersistentDataComponentValueSummary, PersistentItemPredicateSummary, PiercingWeaponSummary,
     PlayerModelTypeSummary, PlayerSkinPatchSummary, ProfileSkinTextureSummary,
     ProfileTextureSummary, ProfileTexturesSummary, ResolvableProfileKindSummary,
     ResolvableProfileSummary, ResourceTextureSummary, SoundEventSummary,

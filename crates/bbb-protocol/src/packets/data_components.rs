@@ -95,6 +95,12 @@ use uuid::Uuid;
 pub use crate::nbt_summary::{NbtSummaryEntry, NbtSummaryValue};
 
 pub(crate) mod catalog;
+mod item_predicate;
+
+pub use item_predicate::{
+    decode_persistent_item_predicate_summary, encode_persistent_item_predicate_summary,
+    ItemHolderSetSummary, PersistentDataComponentValueSummary, PersistentItemPredicateSummary,
+};
 
 pub(crate) const MAX_DATA_COMPONENT_PATCH_ENTRIES: usize = 1024;
 pub(crate) const MAX_DATA_COMPONENT_PREDICATE_ENTRIES: usize = 1024;
