@@ -15,6 +15,7 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
     VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
     VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
     VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
     VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID,
     VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
@@ -254,6 +255,9 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID => Some(encode_attribute_modifiers),
         VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID => Some(encode_custom_model_data),
         VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID => Some(encode_tooltip_display),
+        VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID => {
+            Some(encode_enchantment_glint_override)
+        }
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID => Some(encode_consumable),
         VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID => Some(encode_use_remainder),
         VANILLA_DATA_COMPONENT_TOOL_TYPE_ID => Some(encode_tool),
@@ -524,6 +528,18 @@ fn encode_tooltip_display(
         encoded.write_var_i32(*type_id);
     }
     out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
+fn encode_enchantment_glint_override(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let override_value = summary.enchantment_glint_override.ok_or_else(|| {
+        ProtocolError::InvalidData("missing enchantment_glint_override component value".to_string())
+    })?;
+    out.write_bool(override_value);
     Ok(())
 }
 
@@ -3157,8 +3173,9 @@ mod tests {
                 .map(|descriptor| descriptor.type_id())
                 .collect::<Vec<_>>(),
             vec![
-                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 24, 25, 28, 30,
-                36, 37, 38, 39, 40, 42, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 68, 69, 70, 75,
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 24, 25, 28,
+                30, 36, 37, 38, 39, 40, 42, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 68, 69, 70,
+                75,
             ]
         );
     }
@@ -6131,6 +6148,37 @@ mod tests {
             descriptor.decode(&mut decoder, &mut decoded).unwrap();
             assert!(decoder.is_empty());
             assert_eq!(decoded.rarity, Some(rarity));
+        }
+
+        let mut encoded = Encoder::new();
+        encoded.write_u8(0xaa);
+        assert!(descriptor
+            .encode(&DataComponentPatchSummary::default(), &mut encoded)
+            .is_err());
+        assert_eq!(encoded.into_inner(), [0xaa]);
+    }
+
+    #[test]
+    fn enchantment_glint_override_descriptor_round_trips_booleans_and_rejects_missing_atomically() {
+        let descriptor = vanilla_data_component_descriptor(
+            VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
+        )
+        .unwrap();
+        for override_value in [false, true] {
+            let summary = DataComponentPatchSummary {
+                enchantment_glint_override: Some(override_value),
+                ..DataComponentPatchSummary::default()
+            };
+            let mut encoded = Encoder::new();
+            descriptor.encode(&summary, &mut encoded).unwrap();
+            assert_eq!(encoded.clone().into_inner(), [u8::from(override_value)]);
+
+            let wire = encoded.into_inner();
+            let mut decoder = Decoder::new(&wire);
+            let mut decoded = DataComponentPatchSummary::default();
+            descriptor.decode(&mut decoder, &mut decoded).unwrap();
+            assert!(decoder.is_empty());
+            assert_eq!(decoded.enchantment_glint_override, Some(override_value));
         }
 
         let mut encoded = Encoder::new();

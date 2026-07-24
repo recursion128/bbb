@@ -1617,34 +1617,71 @@
       "constant_name": "ENCHANTMENT_GLINT_OVERRIDE",
       "coverage": {
         "canonical_retention": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components.rs#pub enchantment_glint_override",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_enchantment_glint_override",
+            "crates/bbb-protocol/src/packets/entities/tests.rs#metadata_item_stack_uses_the_shared_nested_component_decoder",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_primitive_component_value_codecs",
+            "crates/bbb-protocol/src/packets/inventory.rs#item_stack_has_foil_uses_glint_override_before_enchantments"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "network_encode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#ENCHANTMENT_GLINT_OVERRIDE",
+            "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#BOOL",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_enchantment_glint_override",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#enchantment_glint_override_descriptor_round_trips_booleans_and_rejects_missing_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_enchantment_glint_override_component"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "observable_consumers": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/ItemStack.java#hasFoil",
+            "crates/bbb-protocol/src/packets/inventory.rs#pub fn has_foil",
+            "crates/bbb-protocol/src/packets/inventory.rs#item_stack_has_foil_uses_glint_override_before_enchantments",
+            "crates/bbb-world/src/entities/tests/visibility_equipment_and_mount_projection.rs#entity_model_sources_project_worn_armor_materials",
+            "crates/bbb-native/src/item_models/tests.rs#item_stack_foil_mode_projects_vanilla_special_context_scale",
+            "crates/bbb-native/src/runtime/tests.rs#hud_item_foil_for_stack_projects_special_clock_and_compass_glint"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "persistent_projection": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#ENCHANTMENT_GLINT_OVERRIDE",
+            "crates/bbb-native/src/input/component_patch.rs#encode_enchantment_glint_override",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#rejects_invalid_primitive_component_value_codecs"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#enchantment_glint_override_descriptor_round_trips_booleans_and_rejects_missing_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_enchantment_glint_override_component",
+            "crates/bbb-protocol/src/packets/inventory.rs#item_stack_has_foil_uses_glint_override_before_enchantments",
+            "crates/bbb-world/src/entities/tests/visibility_equipment_and_mount_projection.rs#entity_model_sources_project_worn_armor_materials",
+            "crates/bbb-native/src/item_models/tests.rs#item_stack_foil_mode_projects_vanilla_special_context_scale",
+            "crates/bbb-native/src/runtime/tests.rs#hud_item_foil_for_stack_projects_special_clock_and_compass_glint"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "typed_decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#ENCHANTMENT_GLINT_OVERRIDE",
+            "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#BOOL",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_enchantment_glint_override",
+            "crates/bbb-protocol/src/packets/entities/tests.rs#metadata_item_stack_uses_the_shared_nested_component_decoder",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_primitive_component_value_codecs"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "resource_id": "minecraft:enchantment_glint_override",

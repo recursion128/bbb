@@ -5,6 +5,10 @@ use crate::{
     component::{
         decode_styled_component_summary_from_decoder, styled_runs_summary_text, StyledTextRun,
     },
+    data_component_types::{
+        VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
+    },
     item_types::{vanilla_item_type, VANILLA_ITEM_AIR_ID},
     menu_types::vanilla_menu_type,
     packets::data_components,
@@ -55,12 +59,23 @@ impl ItemStackSummary {
     }
 
     /// Component-summary equivalent of vanilla `ItemStack.hasFoil()` for the data retained by bbb:
-    /// `minecraft:enchantment_glint_override` wins when present, otherwise decoded enchantments make
-    /// the stack foiled.
+    /// Removed patch entries win over retained projections. Otherwise
+    /// `minecraft:enchantment_glint_override` wins when present, and decoded
+    /// enchantments provide the fallback.
     pub fn has_foil(&self) -> bool {
-        self.component_patch
-            .enchantment_glint_override
-            .unwrap_or(!self.component_patch.enchantments.is_empty())
+        let patch = &self.component_patch;
+        if !patch
+            .removed_type_ids
+            .contains(&VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID)
+        {
+            if let Some(override_value) = patch.enchantment_glint_override {
+                return override_value;
+            }
+        }
+        !patch
+            .removed_type_ids
+            .contains(&VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID)
+            && !patch.enchantments.is_empty()
     }
 }
 
@@ -308,6 +323,19 @@ mod tests {
         stack.component_patch.enchantment_glint_override = Some(false);
         assert!(!stack.has_foil());
 
+        stack
+            .component_patch
+            .removed_type_ids
+            .push(VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID);
+        assert!(stack.has_foil());
+
+        stack
+            .component_patch
+            .removed_type_ids
+            .push(VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID);
+        assert!(!stack.has_foil());
+
+        stack.component_patch.removed_type_ids.clear();
         stack.component_patch.enchantments.clear();
         stack.component_patch.enchantment_glint_override = Some(true);
         assert!(stack.has_foil());

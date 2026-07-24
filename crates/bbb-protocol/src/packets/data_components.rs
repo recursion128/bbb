@@ -1184,6 +1184,9 @@ fn validate_encodable_data_component_patch_summary(
                 expected.tooltip_hidden_component_type_ids =
                     patch.tooltip_hidden_component_type_ids.clone();
             }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID => {
+                expected.enchantment_glint_override = patch.enchantment_glint_override;
+            }
             crate::data_component_types::VANILLA_DATA_COMPONENT_TOOL_TYPE_ID => {
                 expected.tool = patch.tool.clone();
             }
