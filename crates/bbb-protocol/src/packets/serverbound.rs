@@ -1165,6 +1165,14 @@ fn validate_creative_item_component_ranges(patch: &DataComponentPatchSummary) ->
             "creative mode use_effects speed_multiplier must be in 0.0..=1.0".to_string(),
         ));
     }
+    if patch.minimum_attack_charge_bits.is_some_and(|bits| {
+        let value = f32::from_bits(bits);
+        value.total_cmp(&0.0).is_lt() || value.total_cmp(&1.0).is_gt()
+    }) {
+        return Err(ProtocolError::InvalidData(
+            "creative mode minimum_attack_charge must be in 0.0..=1.0".to_string(),
+        ));
+    }
     if patch
         .fireworks_flight_duration
         .is_some_and(|value| !(0..=u8::MAX.into()).contains(&value))

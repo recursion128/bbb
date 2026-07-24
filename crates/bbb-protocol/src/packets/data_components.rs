@@ -1033,6 +1033,9 @@ fn validate_encodable_data_component_patch_summary(
             crate::data_component_types::VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID => {
                 expected.use_effects = patch.use_effects;
             }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID => {
+                expected.minimum_attack_charge_bits = patch.minimum_attack_charge_bits;
+            }
             crate::data_component_types::VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID => {
                 expected.custom_name = patch.custom_name.clone();
                 expected.custom_name_styled = patch.custom_name_styled.clone();
@@ -3717,6 +3720,52 @@ mod tests {
         );
         assert!(decoder.is_empty());
         assert_eq!(decoded.use_effects, patch.use_effects);
+    }
+
+    #[test]
+    fn encodes_minimum_attack_charge_patch_with_delimited_float() {
+        let patch = DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![
+                crate::data_component_types::VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
+            ],
+            removed_type_ids: vec![VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID],
+            minimum_attack_charge_bits: Some(0.75_f32.to_bits()),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        encode_delimited_data_component_patch_summary(&mut encoded, &patch).unwrap();
+        let encoded = encoded.into_inner();
+
+        let mut decoder = Decoder::new(&encoded);
+        assert_eq!(decoder.read_len().unwrap(), 1);
+        assert_eq!(decoder.read_len().unwrap(), 1);
+        let type_id = decoder.read_var_i32().unwrap();
+        assert_eq!(
+            type_id,
+            crate::data_component_types::VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID
+        );
+        let value_len = decoder.read_len().unwrap();
+        let mut value_decoder = Decoder::new(
+            decoder
+                .read_exact(value_len, "minimum attack charge value")
+                .unwrap(),
+        );
+        let mut decoded = DataComponentPatchSummary::default();
+        data_component_descriptor_or_error(type_id)
+            .unwrap()
+            .decode(&mut value_decoder, &mut decoded)
+            .unwrap();
+        assert!(value_decoder.is_empty());
+        assert_eq!(
+            decoder.read_var_i32().unwrap(),
+            VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID
+        );
+        assert!(decoder.is_empty());
+        assert_eq!(
+            decoded.minimum_attack_charge_bits,
+            patch.minimum_attack_charge_bits
+        );
     }
 
     #[test]

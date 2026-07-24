@@ -13,6 +13,7 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
     VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
     VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
     VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
     VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
@@ -231,6 +232,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID | VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID => {
             Some(encode_name_component)
         }
+        VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID => Some(encode_minimum_attack_charge),
         VANILLA_DATA_COMPONENT_LORE_TYPE_ID => Some(encode_lore),
         VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID => Some(encode_attribute_modifiers),
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID => Some(encode_consumable),
@@ -312,6 +314,18 @@ fn encode_use_effects(
     out.write_bool(effects.can_sprint);
     out.write_bool(effects.interact_vibrations);
     out.write_f32(effects.speed_multiplier);
+    Ok(())
+}
+
+fn encode_minimum_attack_charge(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let bits = summary.minimum_attack_charge_bits.ok_or_else(|| {
+        ProtocolError::InvalidData("missing minimum_attack_charge component value".to_string())
+    })?;
+    out.write_f32(f32::from_bits(bits));
     Ok(())
 }
 
@@ -2549,8 +2563,8 @@ mod tests {
                 .map(|descriptor| descriptor.type_id())
                 .collect::<Vec<_>>(),
             vec![
-                0, 1, 2, 3, 4, 5, 6, 9, 11, 16, 24, 36, 37, 38, 39, 40, 51, 52, 53, 54, 55, 56, 58,
-                59, 60, 68, 69, 70,
+                0, 1, 2, 3, 4, 5, 6, 7, 9, 11, 16, 24, 36, 37, 38, 39, 40, 51, 52, 53, 54, 55, 56,
+                58, 59, 60, 68, 69, 70,
             ]
         );
     }
@@ -4622,6 +4636,45 @@ mod tests {
         assert!(error
             .to_string()
             .contains("missing use_effects component value"));
+        assert_eq!(encoded.into_inner(), [0xaa]);
+    }
+
+    #[test]
+    fn minimum_attack_charge_descriptor_round_trips_raw_float_bits() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID)
+                .unwrap();
+        for bits in [
+            0.0_f32.to_bits(),
+            (-0.0_f32).to_bits(),
+            1.0_f32.to_bits(),
+            f32::INFINITY.to_bits(),
+            f32::NAN.to_bits(),
+        ] {
+            let summary = DataComponentPatchSummary {
+                minimum_attack_charge_bits: Some(bits),
+                ..DataComponentPatchSummary::default()
+            };
+            let mut encoded = Encoder::new();
+            descriptor.encode(&summary, &mut encoded).unwrap();
+            let encoded = encoded.into_inner();
+            assert_eq!(encoded, bits.to_be_bytes());
+
+            let mut decoded = DataComponentPatchSummary::default();
+            let mut decoder = Decoder::new(&encoded);
+            descriptor.decode(&mut decoder, &mut decoded).unwrap();
+            assert!(decoder.is_empty());
+            assert_eq!(decoded.minimum_attack_charge_bits, Some(bits));
+        }
+
+        let mut encoded = Encoder::new();
+        encoded.write_u8(0xaa);
+        let error = descriptor
+            .encode(&DataComponentPatchSummary::default(), &mut encoded)
+            .unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("missing minimum_attack_charge component value"));
         assert_eq!(encoded.into_inner(), [0xaa]);
     }
 

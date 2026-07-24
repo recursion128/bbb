@@ -546,34 +546,70 @@
       "constant_name": "MINIMUM_ATTACK_CHARGE",
       "coverage": {
         "canonical_retention": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components.rs#pub minimum_attack_charge_bits",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_minimum_attack_charge",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#projects_nonrecursive_item_behavior_values_into_protocol_summary",
+            "crates/bbb-world/src/client/inventory/tests.rs#local_attack_minimum_charge_applies_default_patch_and_removal_precedence"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "network_encode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#MINIMUM_ATTACK_CHARGE",
+            "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#FLOAT",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_minimum_attack_charge",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#minimum_attack_charge_descriptor_round_trips_raw_float_bits",
+            "crates/bbb-protocol/src/packets/data_components.rs#encodes_minimum_attack_charge_patch_with_delimited_float",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_minimum_attack_charge_component"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "observable_consumers": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/entity/player/Player.java#cannotAttackWithItem",
+            "crates/bbb-world/src/client/inventory/slot_ops.rs#item_stack_minimum_attack_charge",
+            "crates/bbb-world/src/client/local_player.rs#local_player_cannot_attack_with_selected_item",
+            "crates/bbb-world/src/client/inventory/tests.rs#local_attack_minimum_charge_applies_default_patch_and_removal_precedence",
+            "crates/bbb-world/src/client/local_player.rs#local_attack_charge_uses_actual_attack_speed_and_inclusive_boundary"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "persistent_projection": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#MINIMUM_ATTACK_CHARGE",
+            "crates/bbb-native/src/input/component_patch.rs#encode_minimum_attack_charge",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+            "crates/bbb-protocol/src/packets/serverbound.rs#validate_creative_item_component_ranges",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#rejects_invalid_primitive_component_value_codecs"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#minimum_attack_charge_descriptor_round_trips_raw_float_bits",
+            "crates/bbb-protocol/src/packets/data_components.rs#encodes_minimum_attack_charge_patch_with_delimited_float",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_minimum_attack_charge_component",
+            "crates/bbb-protocol/src/packets/tests.rs#set_creative_mode_slot_rejects_values_rejected_by_the_untrusted_stack_codec",
+            "crates/bbb-world/src/client/inventory/tests.rs#local_attack_minimum_charge_applies_default_patch_and_removal_precedence",
+            "crates/bbb-world/src/client/local_player.rs#local_attack_charge_uses_actual_attack_speed_and_inclusive_boundary"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "typed_decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#MINIMUM_ATTACK_CHARGE",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_minimum_attack_charge",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_float_and_dye_data_component_values",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_scalar_wrappers_flat_records_and_string_map"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "resource_id": "minecraft:minimum_attack_charge",
