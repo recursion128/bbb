@@ -438,3 +438,9 @@
   holder、颜色、递归 mob-effect、名称及 stew effect/duration 列表；creative
   framing、SNBT、tint/tooltip、谓词与配方证据齐备，合同见
   `docs/archive/potion-effect-components-roundtrip-design.md`。
+- **2026-07-23（Potion duration scale component 六维闭环）**：
+  `POTION_DURATION_SCALE` 现保留并精确重编码 raw float 位型，creative
+  持久化入口执行 `NON_NEGATIVE_FLOAT` 范围；tipped-arrow/lingering-potion
+  原型倍率由 `Items.java` CST 派生，经资源重载进入 world 有效 patch，并按
+  Vanilla 顺序缩放 potion tooltip，合同见
+  `docs/archive/potion-duration-scale-roundtrip-design.md`。

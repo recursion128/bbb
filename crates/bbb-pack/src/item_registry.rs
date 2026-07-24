@@ -81,6 +81,9 @@ pub struct ItemRegistryCatalog {
     default_component_type_ids: BTreeMap<String, BTreeSet<i32>>,
     #[serde(default)]
     default_dye_color_ids: BTreeMap<String, i32>,
+    /// Source-derived `DataComponents.POTION_DURATION_SCALE` prototype float bits.
+    #[serde(default)]
+    default_potion_duration_scale_bits: BTreeMap<String, u32>,
     #[serde(default)]
     registry_dependent_component_initializers:
         BTreeMap<String, Vec<RegistryDependentItemComponentInitializer>>,
@@ -324,6 +327,7 @@ impl ItemRegistryCatalog {
         let mut default_item_name_translation_keys = BTreeMap::new();
         let mut default_component_type_ids = BTreeMap::new();
         let mut default_dye_color_ids = BTreeMap::new();
+        let mut default_potion_duration_scale_bits = BTreeMap::new();
         let mut registry_dependent_component_initializers = BTreeMap::new();
         let mut block_items = BTreeSet::new();
         let mut block_item_resource_ids = BTreeMap::new();
@@ -384,6 +388,9 @@ impl ItemRegistryCatalog {
                 .with_context(source_context)?;
             let default_dye_color =
                 default_dye_color_for_declaration(expression).with_context(source_context)?;
+            let default_potion_duration_scale =
+                default_potion_duration_scale_for_declaration(expression)
+                    .with_context(source_context)?;
             let registry_component_initializers =
                 registry_dependent_component_initializers_for_declaration(expression, &ids)
                     .with_context(source_context)?;
@@ -449,6 +456,10 @@ impl ItemRegistryCatalog {
                 default_component_type_ids.insert(resource_id.clone(), default_components.clone());
                 if let Some(dye_color_id) = default_dye_color {
                     default_dye_color_ids.insert(resource_id.clone(), dye_color_id);
+                }
+                if let Some(duration_scale) = default_potion_duration_scale {
+                    default_potion_duration_scale_bits
+                        .insert(resource_id.clone(), duration_scale.to_bits());
                 }
                 if !registry_component_initializers.is_empty() {
                     registry_dependent_component_initializers
@@ -598,6 +609,7 @@ impl ItemRegistryCatalog {
             default_item_name_translation_keys,
             default_component_type_ids,
             default_dye_color_ids,
+            default_potion_duration_scale_bits,
             registry_dependent_component_initializers,
             block_items,
             block_item_resource_ids,
@@ -712,6 +724,26 @@ impl ItemRegistryCatalog {
                     .get(resource_id)
                     .copied()
                     .map(|item_id| (item_id, *dye_color_id))
+            })
+            .collect()
+    }
+
+    pub fn default_potion_duration_scale(&self, resource_id: &str) -> Option<f32> {
+        let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
+        self.default_potion_duration_scale_bits
+            .get(&resource_id)
+            .copied()
+            .map(f32::from_bits)
+    }
+
+    pub fn default_potion_duration_scale_bits_by_protocol_id(&self) -> BTreeMap<i32, u32> {
+        self.default_potion_duration_scale_bits
+            .iter()
+            .filter_map(|(resource_id, bits)| {
+                self.protocol_ids
+                    .get(resource_id)
+                    .copied()
+                    .map(|item_id| (item_id, *bits))
             })
             .collect()
     }
@@ -1148,6 +1180,40 @@ fn default_dye_color_for_declaration(expression: &GeneratedJavaExpression) -> Re
         }
     }
     Ok(dye_color_id)
+}
+
+fn default_potion_duration_scale_for_declaration(
+    expression: &GeneratedJavaExpression,
+) -> Result<Option<f32>> {
+    let mut duration_scale = None;
+    for call in expression
+        .calls()
+        .filter(|call| call.name.as_deref() == Some("component"))
+    {
+        if call
+            .arguments
+            .first()
+            .and_then(|argument| argument.field_constant("DataComponents"))
+            != Some("POTION_DURATION_SCALE")
+        {
+            continue;
+        }
+        let value = call
+            .arguments
+            .get(1)
+            .ok_or_else(|| anyhow::anyhow!("POTION_DURATION_SCALE component requires a value"))?;
+        if value.kind != "decimal_floating_point_literal" {
+            bail!("POTION_DURATION_SCALE component requires a direct float literal");
+        }
+        let value = parse_java_float_literal(&value.canonical)?;
+        if !value.is_finite() || value.total_cmp(&0.0).is_lt() {
+            bail!("POTION_DURATION_SCALE must be a finite non-negative float");
+        }
+        if duration_scale.replace(value).is_some() {
+            bail!("item declaration contains duplicate POTION_DURATION_SCALE components");
+        }
+    }
+    Ok(duration_scale)
 }
 
 fn registry_dependent_component_initializers_for_declaration(
@@ -2383,18 +2449,22 @@ mod tests {
     }
 
     #[test]
-    fn extracts_complete_component_membership_and_dye_values_by_protocol_id() {
+    fn extracts_complete_component_membership_and_scalar_values_by_protocol_id() {
         let catalog = ItemRegistryCatalog::from_generated_source_catalog(None).unwrap();
         let components = catalog.default_component_type_ids_by_protocol_id();
         let dyes = catalog.default_dye_color_ids_by_protocol_id();
+        let duration_scales = catalog.default_potion_duration_scale_bits_by_protocol_id();
         let item = |resource_id| catalog.protocol_id(resource_id).unwrap();
 
         assert_eq!(components.len(), 1506);
         assert_eq!(dyes.len(), 16);
+        assert_eq!(duration_scales.len(), 2);
         assert!(components[&item("minecraft:white_dye")]
             .contains(&component_id::VANILLA_DATA_COMPONENT_DYE_TYPE_ID));
         assert!(components[&item("minecraft:diamond")]
             .contains(&component_id::VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID));
+        assert!(components[&item("minecraft:tipped_arrow")]
+            .contains(&component_id::VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID));
         assert_eq!(
             dyes[&item("minecraft:white_dye")],
             bbb_protocol::builtin_enum_component_values::VANILLA_DYE_COLOR_WHITE_ID
@@ -2403,6 +2473,95 @@ mod tests {
             dyes[&item("minecraft:red_dye")],
             bbb_protocol::builtin_enum_component_values::VANILLA_DYE_COLOR_RED_ID
         );
+        assert_eq!(
+            duration_scales[&item("minecraft:tipped_arrow")],
+            0.125_f32.to_bits()
+        );
+        assert_eq!(
+            duration_scales[&item("minecraft:lingering_potion")],
+            0.25_f32.to_bits()
+        );
+        assert_eq!(
+            catalog.default_potion_duration_scale("minecraft:splash_potion"),
+            None
+        );
+    }
+
+    #[test]
+    fn potion_duration_scale_defaults_require_one_direct_non_negative_float_literal() {
+        fn expression(values: &[(&str, &str)]) -> GeneratedJavaExpression {
+            let children = values
+                .iter()
+                .map(|(kind, canonical)| GeneratedJavaExpression {
+                    kind: "method_invocation".to_string(),
+                    canonical: format!(
+                        ".component(DataComponents.POTION_DURATION_SCALE, {canonical})"
+                    ),
+                    name: Some("component".to_string()),
+                    object: None,
+                    arguments: vec![
+                        GeneratedJavaExpression {
+                            kind: "field_access".to_string(),
+                            canonical: "DataComponents.POTION_DURATION_SCALE".to_string(),
+                            name: Some("POTION_DURATION_SCALE".to_string()),
+                            object: Some(Box::new(GeneratedJavaExpression {
+                                kind: "identifier".to_string(),
+                                canonical: "DataComponents".to_string(),
+                                name: Some("DataComponents".to_string()),
+                                object: None,
+                                arguments: Vec::new(),
+                                children: Vec::new(),
+                            })),
+                            arguments: Vec::new(),
+                            children: Vec::new(),
+                        },
+                        GeneratedJavaExpression {
+                            kind: (*kind).to_string(),
+                            canonical: (*canonical).to_string(),
+                            name: None,
+                            object: None,
+                            arguments: Vec::new(),
+                            children: Vec::new(),
+                        },
+                    ],
+                    children: Vec::new(),
+                })
+                .collect();
+            GeneratedJavaExpression {
+                kind: "test_root".to_string(),
+                canonical: "test".to_string(),
+                name: None,
+                object: None,
+                arguments: Vec::new(),
+                children,
+            }
+        }
+
+        assert_eq!(
+            default_potion_duration_scale_for_declaration(&expression(&[(
+                "decimal_floating_point_literal",
+                "0.125F"
+            )]))
+            .unwrap()
+            .map(f32::to_bits),
+            Some(0.125_f32.to_bits())
+        );
+        assert!(
+            default_potion_duration_scale_for_declaration(&expression(&[(
+                "identifier",
+                "DEFAULT_SCALE"
+            )]))
+            .unwrap_err()
+            .to_string()
+            .contains("direct float literal")
+        );
+        assert!(default_potion_duration_scale_for_declaration(&expression(&[
+            ("decimal_floating_point_literal", "0.125F"),
+            ("decimal_floating_point_literal", "0.25F"),
+        ]))
+        .unwrap_err()
+        .to_string()
+        .contains("duplicate"));
     }
 
     #[test]

@@ -1087,6 +1087,9 @@ fn validate_encodable_data_component_patch_summary(
                 expected.potion_custom_effects = patch.potion_custom_effects.clone();
                 expected.potion_custom_name = patch.potion_custom_name.clone();
             }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID => {
+                expected.potion_duration_scale_bits = patch.potion_duration_scale_bits;
+            }
             crate::data_component_types::VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID => {
                 expected.suspicious_stew_effects = patch.suspicious_stew_effects.clone();
             }
@@ -3415,9 +3418,10 @@ mod tests {
     #[test]
     fn encodes_potion_effect_family_patch_with_independent_delimiters() {
         let patch = DataComponentPatchSummary {
-            added: 2,
+            added: 3,
             added_type_ids: vec![
                 crate::data_component_types::VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
+                crate::data_component_types::VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
                 crate::data_component_types::VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
             ],
             removed_type_ids: vec![VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID],
@@ -3441,6 +3445,7 @@ mod tests {
                 })),
             }],
             potion_custom_name: Some("swift😀".to_string()),
+            potion_duration_scale_bits: Some((-0.0_f32).to_bits()),
             suspicious_stew_effects: vec![
                 SuspiciousStewEffectSummary {
                     effect_id: 0,
@@ -3458,11 +3463,12 @@ mod tests {
         let encoded = encoded.into_inner();
 
         let mut decoder = Decoder::new(&encoded);
-        assert_eq!(decoder.read_len().unwrap(), 2);
+        assert_eq!(decoder.read_len().unwrap(), 3);
         assert_eq!(decoder.read_len().unwrap(), 1);
         let mut decoded = DataComponentPatchSummary::default();
         for expected_type_id in [
             crate::data_component_types::VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
+            crate::data_component_types::VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
             crate::data_component_types::VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
         ] {
             let type_id = decoder.read_var_i32().unwrap();
@@ -3492,6 +3498,10 @@ mod tests {
         );
         assert_eq!(decoded.potion_custom_effects, patch.potion_custom_effects);
         assert_eq!(decoded.potion_custom_name, patch.potion_custom_name);
+        assert_eq!(
+            decoded.potion_duration_scale_bits,
+            patch.potion_duration_scale_bits
+        );
         assert_eq!(
             decoded.suspicious_stew_effects,
             patch.suspicious_stew_effects

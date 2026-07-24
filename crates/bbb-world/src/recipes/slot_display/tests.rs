@@ -6,6 +6,7 @@ use bbb_protocol::{
     data_component_types::{
         VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_DYE_TYPE_ID, VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID, VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
     },
     packets::{
@@ -369,9 +370,13 @@ fn default_component_tables_round_trip_and_publications_remain_isolated() {
     let generation_before = world.publication_snapshot();
     world.set_default_item_component_type_ids(BTreeMap::from([(
         80,
-        BTreeSet::from([VANILLA_DATA_COMPONENT_DYE_TYPE_ID]),
+        BTreeSet::from([
+            VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
+            VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
+        ]),
     )]));
     world.set_default_item_dye_color_ids(BTreeMap::from([(80, VANILLA_DYE_COLOR_RED_ID)]));
+    world.set_default_item_potion_duration_scale_bits(BTreeMap::from([(80, 0.125_f32.to_bits())]));
     let generation_after = world.publication_snapshot();
     let dye = item_display(80);
 
@@ -393,16 +398,24 @@ fn default_component_tables_round_trip_and_publications_remain_isolated() {
     let json: serde_json::Value = serde_json::from_slice(&serialized).unwrap();
     assert!(json["default_component_type_ids"].is_object());
     assert!(json["default_dye_color_ids"].is_object());
+    assert!(json["default_potion_duration_scale_bits"].is_object());
     let restored: WorldStore = serde_json::from_value(json).unwrap();
     assert_eq!(
         resolve(&restored, &dye)[0].component_patch.dye_color_id,
         Some(VANILLA_DYE_COLOR_RED_ID)
+    );
+    assert_eq!(
+        resolve(&restored, &dye)[0]
+            .component_patch
+            .potion_duration_scale_bits,
+        Some(0.125_f32.to_bits())
     );
 
     let mut legacy_json = serde_json::to_value(&world).unwrap();
     let legacy_object = legacy_json.as_object_mut().unwrap();
     legacy_object.remove("default_component_type_ids");
     legacy_object.remove("default_dye_color_ids");
+    legacy_object.remove("default_potion_duration_scale_bits");
     let restored_legacy: WorldStore = serde_json::from_value(legacy_json).unwrap();
     assert!(!restored_legacy
         .item_stack_has_effective_component(item_stack(&dye), VANILLA_DATA_COMPONENT_DYE_TYPE_ID));

@@ -1465,6 +1465,77 @@
         "status": "complete"
       }
     },
+    "POTION_DURATION_SCALE": {
+      "canonical_retention": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#pub potion_duration_scale_bits",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_potion_duration_scale",
+          "crates/bbb-pack/src/item_registry.rs#default_potion_duration_scale_for_declaration",
+          "crates/bbb-pack/src/item_registry.rs#extracts_complete_component_membership_and_scalar_values_by_protocol_id",
+          "crates/bbb-world/src/registries/item_component_initializers.rs#effective_stack_applies_potion_duration_scale_default_with_patch_precedence"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#POTION_DURATION_SCALE",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_potion_duration_scale",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#potion_duration_scale_descriptor_round_trips_all_raw_float_bits",
+          "crates/bbb-protocol/src/packets/data_components.rs#encodes_potion_effect_family_patch_with_independent_delimiters",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_potion_effect_family_components"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/alchemy/PotionContents.java#onConsume",
+          "vanilla:net/minecraft/world/item/alchemy/PotionContents.java#addToTooltip",
+          "vanilla:net/minecraft/world/effect/MobEffectUtil.java#formatDuration",
+          "crates/bbb-item-model/src/item_runtime/tooltip.rs#effective_potion_duration_scale",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#potion_tooltip_uses_prototype_explicit_and_removed_duration_scales",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#potion_tooltip_checks_the_unscaled_duration_before_formatting_the_scaled_value"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/util/ExtraCodecs.java#NON_NEGATIVE_FLOAT",
+          "crates/bbb-native/src/input/component_patch.rs#encode_potion_duration_scale",
+          "crates/bbb-native/src/input/tests.rs#range_checked_float_component_snbt_matches_vanilla_float_comparison",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-protocol/src/packets/serverbound.rs#validate_creative_item_component_ranges",
+          "crates/bbb-protocol/src/packets/tests.rs#set_creative_mode_slot_rejects_values_rejected_by_the_untrusted_stack_codec"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-pack/src/item_registry.rs#potion_duration_scale_defaults_require_one_direct_non_negative_float_literal",
+          "crates/bbb-world/src/registries/item_component_initializers.rs#effective_stack_applies_potion_duration_scale_default_with_patch_precedence",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#potion_tooltip_uses_prototype_explicit_and_removed_duration_scales",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#potion_duration_scale_descriptor_round_trips_all_raw_float_bits",
+          "crates/bbb-protocol/src/packets/data_components.rs#encodes_potion_effect_family_patch_with_independent_delimiters",
+          "crates/bbb-protocol/src/packets/tests.rs#set_creative_mode_slot_accepts_untrusted_stack_codec_boundaries"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#POTION_DURATION_SCALE",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#FLOAT",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_potion_duration_scale",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_float_and_dye_data_component_values",
+          "crates/bbb-world/src/client/dialog/body/component_value.rs#potion_duration_scale_bits"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "SUSPICIOUS_STEW_EFFECTS": {
       "canonical_retention": {
         "evidence": [

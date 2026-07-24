@@ -12,7 +12,8 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID, VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
     VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
     VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID, VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
-    VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
     VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID, VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
     VANILLA_DATA_COMPONENT_TYPES, VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
@@ -235,6 +236,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID => Some(encode_firework_explosion),
         VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID => Some(encode_fireworks),
         VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID => Some(encode_potion_contents),
+        VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID => Some(encode_potion_duration_scale),
         VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID => {
             Some(encode_suspicious_stew_effects)
         }
@@ -589,6 +591,18 @@ fn encode_potion_contents(
         MAX_STRING_CHARS,
     )?;
     out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
+fn encode_potion_duration_scale(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let bits = summary.potion_duration_scale_bits.ok_or_else(|| {
+        ProtocolError::InvalidData("missing potion_duration_scale component value".to_string())
+    })?;
+    out.write_f32(f32::from_bits(bits));
     Ok(())
 }
 
@@ -2418,7 +2432,8 @@ mod tests {
                 .map(|descriptor| descriptor.type_id())
                 .collect::<Vec<_>>(),
             vec![
-                0, 1, 2, 3, 4, 16, 24, 36, 37, 38, 39, 40, 51, 53, 55, 56, 58, 59, 60, 68, 69, 70,
+                0, 1, 2, 3, 4, 16, 24, 36, 37, 38, 39, 40, 51, 52, 53, 55, 56, 58, 59, 60, 68, 69,
+                70,
             ]
         );
     }
@@ -3975,6 +3990,44 @@ mod tests {
             decoded.suspicious_stew_effects,
             stew.suspicious_stew_effects
         );
+    }
+
+    #[test]
+    fn potion_duration_scale_descriptor_round_trips_all_raw_float_bits() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID)
+                .unwrap();
+        for bits in [
+            0.0_f32.to_bits(),
+            (-0.0_f32).to_bits(),
+            f32::INFINITY.to_bits(),
+            f32::NEG_INFINITY.to_bits(),
+            0x7fc1_2345,
+        ] {
+            let patch = DataComponentPatchSummary {
+                potion_duration_scale_bits: Some(bits),
+                ..DataComponentPatchSummary::default()
+            };
+            let mut encoded = Encoder::new();
+            descriptor.encode(&patch, &mut encoded).unwrap();
+            assert_eq!(encoded.into_inner(), bits.to_be_bytes());
+
+            let mut decoded = DataComponentPatchSummary::default();
+            let bytes = bits.to_be_bytes();
+            let mut decoder = Decoder::new(&bytes);
+            descriptor.decode(&mut decoder, &mut decoded).unwrap();
+            assert!(decoder.is_empty());
+            assert_eq!(decoded.potion_duration_scale_bits, Some(bits));
+        }
+
+        let mut encoded = Encoder::new();
+        let error = descriptor
+            .encode(&DataComponentPatchSummary::default(), &mut encoded)
+            .unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("missing potion_duration_scale component value"));
+        assert!(encoded.into_inner().is_empty());
     }
 
     #[test]

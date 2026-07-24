@@ -12,6 +12,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
         VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
         VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID, VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
@@ -1813,9 +1814,10 @@ fn encodes_set_creative_mode_slot_potion_effect_family_components() {
             item_id: Some(42),
             count: 1,
             component_patch: DataComponentPatchSummary {
-                added: 2,
+                added: 3,
                 added_type_ids: vec![
                     VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
+                    VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
                     VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
                 ],
                 potion_id: Some(3),
@@ -1831,6 +1833,7 @@ fn encodes_set_creative_mode_slot_potion_effect_family_components() {
                     hidden_effect: None,
                 }],
                 potion_custom_name: Some("swift".to_string()),
+                potion_duration_scale_bits: Some(0.125_f32.to_bits()),
                 suspicious_stew_effects: vec![
                     SuspiciousStewEffectSummary {
                         effect_id: 0,
@@ -1853,7 +1856,7 @@ fn encodes_set_creative_mode_slot_potion_effect_family_components() {
         [
             0, 36, // slot
             1, 42, // count and item holder
-            2, 0, // patch counts
+            3, 0, // patch counts
             51, 23, // potion_contents type and delimited value length
             1, 3, // present potion holder
             1, 0, 0x11, 0x22, 0x33, // present custom color
@@ -1861,6 +1864,7 @@ fn encodes_set_creative_mode_slot_potion_effect_family_components() {
             2, 1, 0xc8, 1, // effect holder, amplifier, duration
             0, 1, 0, 0, // ambient, particles, icon, no hidden effect
             1, 5, b's', b'w', b'i', b'f', b't', // present custom name
+            52, 4, 0x3e, 0, 0, 0, // potion duration scale = 0.125
             53, 10, // suspicious_stew_effects type and delimited value length
             2, 0, 0xa0, 1, // two entries, first holder and duration
             1, 0xff, 0xff, 0xff, 0xff, 0x0f, // second holder and -1 duration
@@ -2101,6 +2105,12 @@ fn set_creative_mode_slot_rejects_values_rejected_by_the_untrusted_stack_codec()
         fireworks_explosions_count: Some(0),
         ..DataComponentPatchSummary::default()
     };
+    let potion_duration_scale_patch = |bits| DataComponentPatchSummary {
+        added: 1,
+        added_type_ids: vec![VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID],
+        potion_duration_scale_bits: Some(bits),
+        ..DataComponentPatchSummary::default()
+    };
 
     for (packet, expected_error) in [
         (
@@ -2135,6 +2145,22 @@ fn set_creative_mode_slot_rejects_values_rejected_by_the_untrusted_stack_codec()
             stack_with_patch(1, fireworks_patch(256)),
             "fireworks flight_duration must be in 0..=255",
         ),
+        (
+            stack_with_patch(1, potion_duration_scale_patch((-0.0_f32).to_bits())),
+            "potion_duration_scale must be in 0.0..=Float.MAX_VALUE",
+        ),
+        (
+            stack_with_patch(1, potion_duration_scale_patch((-1.0_f32).to_bits())),
+            "potion_duration_scale must be in 0.0..=Float.MAX_VALUE",
+        ),
+        (
+            stack_with_patch(1, potion_duration_scale_patch(f32::INFINITY.to_bits())),
+            "potion_duration_scale must be in 0.0..=Float.MAX_VALUE",
+        ),
+        (
+            stack_with_patch(1, potion_duration_scale_patch(f32::NAN.to_bits())),
+            "potion_duration_scale must be in 0.0..=Float.MAX_VALUE",
+        ),
     ] {
         let error = encode_play_set_creative_mode_slot(&packet).unwrap_err();
         assert!(
@@ -2145,26 +2171,30 @@ fn set_creative_mode_slot_rejects_values_rejected_by_the_untrusted_stack_codec()
 }
 
 #[test]
-fn set_creative_mode_slot_accepts_untrusted_stack_codec_integer_boundaries() {
-    for flight_duration in [0, 255] {
+fn set_creative_mode_slot_accepts_untrusted_stack_codec_boundaries() {
+    for (flight_duration, duration_scale_bits) in
+        [(0, 0.0_f32.to_bits()), (255, f32::MAX.to_bits())]
+    {
         encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
             slot_num: 36,
             item: ItemStackSummary {
                 item_id: Some(42),
                 count: 99,
                 component_patch: DataComponentPatchSummary {
-                    added: 4,
+                    added: 5,
                     added_type_ids: vec![
                         VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
                         VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
                         VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
                         VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
+                        VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
                     ],
                     max_stack_size: Some(99),
                     max_damage: Some(1),
                     damage: Some(0),
                     fireworks_flight_duration: Some(flight_duration),
                     fireworks_explosions_count: Some(0),
+                    potion_duration_scale_bits: Some(duration_scale_bits),
                     ..DataComponentPatchSummary::default()
                 },
             },

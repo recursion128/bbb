@@ -13,6 +13,7 @@ use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID,
     VANILLA_DATA_COMPONENT_DYE_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
     VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
 };
@@ -44,6 +45,9 @@ pub struct ItemProfiles {
     /// Source-derived `DataComponents.DYE` prototype value by item protocol id.
     #[serde(default, with = "publication_i32_map")]
     pub(crate) default_dye_color_ids: PublicationShared<BTreeMap<i32, i32>>,
+    /// Source-derived `DataComponents.POTION_DURATION_SCALE` prototype float bits.
+    #[serde(default, with = "publication_i32_map")]
+    pub(crate) default_potion_duration_scale_bits: PublicationShared<BTreeMap<i32, u32>>,
     #[serde(default)]
     pub(crate) default_item_max_stack_sizes: PublicationShared<BTreeMap<i32, i32>>,
     #[serde(default)]
@@ -222,6 +226,17 @@ impl ItemProfiles {
             .into();
     }
 
+    pub(crate) fn set_default_potion_duration_scale_bits(&mut self, defaults: BTreeMap<i32, u32>) {
+        self.default_potion_duration_scale_bits = defaults
+            .into_iter()
+            .filter(|(item_id, bits)| {
+                let value = f32::from_bits(*bits);
+                *item_id >= 0 && value.is_finite() && !value.total_cmp(&0.0).is_lt()
+            })
+            .collect::<BTreeMap<_, _>>()
+            .into();
+    }
+
     pub(crate) fn effective_component_patch(
         &self,
         item_id: i32,
@@ -229,7 +244,14 @@ impl ItemProfiles {
     ) -> Option<DataComponentPatchSummary> {
         let registry_defaults = self.registry_dependent_item_defaults.get(&item_id);
         let default_dye_color_id = self.default_dye_color_ids.get(&item_id).copied();
-        if registry_defaults.is_none() && default_dye_color_id.is_none() {
+        let default_potion_duration_scale_bits = self
+            .default_potion_duration_scale_bits
+            .get(&item_id)
+            .copied();
+        if registry_defaults.is_none()
+            && default_dye_color_id.is_none()
+            && default_potion_duration_scale_bits.is_none()
+        {
             return None;
         }
         let mut effective = patch.clone();
@@ -281,6 +303,18 @@ impl ItemProfiles {
             {
                 effective.added_type_ids.push(dye_component_id);
                 effective.dye_color_id = Some(dye_color_id);
+                changed = true;
+            }
+        }
+        let duration_scale_component_id = VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID;
+        if let Some(bits) = default_potion_duration_scale_bits {
+            if !patch
+                .removed_type_ids
+                .contains(&duration_scale_component_id)
+                && !patch.added_type_ids.contains(&duration_scale_component_id)
+            {
+                effective.added_type_ids.push(duration_scale_component_id);
+                effective.potion_duration_scale_bits = Some(bits);
                 changed = true;
             }
         }

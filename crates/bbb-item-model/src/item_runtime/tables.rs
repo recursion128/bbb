@@ -237,6 +237,13 @@ impl NativeItemRuntime {
             .unwrap_or_default()
     }
 
+    pub fn default_potion_duration_scale_bits_by_protocol_id(&self) -> BTreeMap<i32, u32> {
+        self.registry
+            .as_ref()
+            .map(ItemRegistryCatalog::default_potion_duration_scale_bits_by_protocol_id)
+            .unwrap_or_default()
+    }
+
     pub fn registry_dependent_component_initializers_by_protocol_id(
         &self,
     ) -> BTreeMap<i32, Vec<bbb_pack::RegistryDependentItemComponentInitializer>> {
@@ -875,6 +882,15 @@ impl NativeItemRuntime {
         self.registry
             .as_ref()
             .and_then(|registry| registry.default_component_type_ids(resource_id))
+    }
+
+    pub(super) fn default_potion_duration_scale_for_resource_id(
+        &self,
+        resource_id: &str,
+    ) -> Option<f32> {
+        self.registry
+            .as_ref()
+            .and_then(|registry| registry.default_potion_duration_scale(resource_id))
     }
 
     pub(super) fn default_item_name_translation_key_for_resource_id(

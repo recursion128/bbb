@@ -1165,6 +1165,14 @@ fn validate_creative_item_component_ranges(patch: &DataComponentPatchSummary) ->
             "creative mode fireworks flight_duration must be in 0..=255".to_string(),
         ));
     }
+    if patch.potion_duration_scale_bits.is_some_and(|bits| {
+        let value = f32::from_bits(bits);
+        !value.is_finite() || value.total_cmp(&0.0).is_lt()
+    }) {
+        return Err(ProtocolError::InvalidData(
+            "creative mode potion_duration_scale must be in 0.0..=Float.MAX_VALUE".to_string(),
+        ));
+    }
     Ok(())
 }
 

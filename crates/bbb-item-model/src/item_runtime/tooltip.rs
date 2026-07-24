@@ -1805,6 +1805,7 @@ fn push_ominous_bottle_tooltip_lines(
             "minecraft:bad_omen",
             amplifier,
             OMINOUS_BOTTLE_BAD_OMEN_DURATION_TICKS,
+            1.0,
             tooltip_tick_rate,
         ),
         TOOLTIP_TEXT_BLUE,
@@ -1814,6 +1815,7 @@ fn push_ominous_bottle_tooltip_lines(
 fn push_potion_contents_tooltip_lines(
     language: &LanguageCatalog,
     component_patch: &DataComponentPatchSummary,
+    duration_scale: f32,
     tooltip_tick_rate: f32,
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
@@ -1828,6 +1830,7 @@ fn push_potion_contents_tooltip_lines(
                     effect.effect_id,
                     effect.amplifier,
                     effect.duration,
+                    duration_scale,
                     tooltip_tick_rate,
                     lines,
                 );
@@ -1846,6 +1849,7 @@ fn push_potion_contents_tooltip_lines(
             effect.effect_id,
             effect.amplifier,
             effect.duration,
+            duration_scale,
             tooltip_tick_rate,
             lines,
         );
@@ -1864,6 +1868,23 @@ fn push_potion_contents_tooltip_lines(
     push_potion_attribute_modifier_tooltip_lines(language, &attribute_modifiers, lines);
 }
 
+fn effective_potion_duration_scale(
+    component_patch: &DataComponentPatchSummary,
+    prototype_scale: Option<f32>,
+) -> f32 {
+    let type_id = component_id::VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID;
+    if component_patch.removed_type_ids.contains(&type_id) {
+        return 1.0;
+    }
+    if component_patch.added_type_ids.contains(&type_id) {
+        return component_patch
+            .potion_duration_scale_bits
+            .map(f32::from_bits)
+            .unwrap_or(1.0);
+    }
+    prototype_scale.unwrap_or(1.0)
+}
+
 fn potion_contents_component_present(component_patch: &DataComponentPatchSummary) -> bool {
     component_patch.potion_id.is_some()
         || component_patch.potion_custom_color.is_some()
@@ -1877,6 +1898,7 @@ fn push_potion_effect_tooltip_line(
     effect_id: i32,
     amplifier: i32,
     duration: i32,
+    duration_scale: f32,
     tooltip_tick_rate: f32,
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
@@ -1885,7 +1907,14 @@ fn push_potion_effect_tooltip_line(
         return;
     };
     lines.push(NativeItemTooltipLine::plain(
-        potion_effect_tooltip_text(language, effect_key, amplifier, duration, tooltip_tick_rate),
+        potion_effect_tooltip_text(
+            language,
+            effect_key,
+            amplifier,
+            duration,
+            duration_scale,
+            tooltip_tick_rate,
+        ),
         mob_effect_tooltip_tint_for_id(effect_id),
     ));
 }
@@ -2199,17 +2228,25 @@ fn push_suspicious_stew_tooltip_lines(
             continue;
         };
         lines.push(NativeItemTooltipLine::plain(
-            potion_effect_tooltip_text(language, effect_key, 0, effect.duration, tooltip_tick_rate),
+            potion_effect_tooltip_text(
+                language,
+                effect_key,
+                0,
+                effect.duration,
+                1.0,
+                tooltip_tick_rate,
+            ),
             mob_effect_tooltip_tint_for_id(effect.effect_id),
         ));
     }
 }
 
-fn potion_effect_tooltip_text(
+pub(super) fn potion_effect_tooltip_text(
     language: &LanguageCatalog,
     effect_key: &str,
     amplifier: i32,
     duration_ticks: i32,
+    duration_scale: f32,
     tooltip_tick_rate: f32,
 ) -> String {
     let mut effect = language
@@ -2226,7 +2263,10 @@ fn potion_effect_tooltip_text(
         let duration = if duration_ticks == -1 {
             language.get_or_key("effect.duration.infinite").to_string()
         } else {
-            format_tick_duration(duration_ticks, tooltip_tick_rate)
+            format_tick_duration(
+                ((duration_ticks as f32) * duration_scale).floor() as i32,
+                tooltip_tick_rate,
+            )
         };
         effect = translate_with_two_args(language, "potion.withDuration", &effect, &duration);
     }
@@ -3359,9 +3399,14 @@ impl NativeItemRuntime {
             push_firework_explosion_tooltip_lines(&self.language, component_patch, lines);
         }
         if shows(component_id::VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID) {
+            let duration_scale = effective_potion_duration_scale(
+                component_patch,
+                self.default_potion_duration_scale_for_resource_id(item_id),
+            );
             push_potion_contents_tooltip_lines(
                 &self.language,
                 component_patch,
+                duration_scale,
                 tooltip_tick_rate,
                 lines,
             );

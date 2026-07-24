@@ -823,8 +823,8 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   is a named-only `RegistryFixedCodec`. Keep the remaining dispatch
   owned by the protocol
   generated-metadata/handler descriptor catalog and native persistent SNBT encoder registry
-  beyond the supported custom-NBT/primitive (including repair-cost/enchantable/glider,
-  minimum-attack-charge/potion-duration-scale)/
+  beyond the supported custom-NBT/primitive (including repair-cost/enchantable/glider/
+  minimum-attack-charge)/
   enchantments/stored-enchantments/
   adventure-mode-predicate (block/state/NBT/exact/partial matchers; its 15
   predicate-type ids/resources are generated)/
@@ -1175,7 +1175,7 @@ back into a todo. Do not delete these.
 - **Full item component payload encoding for
   `ServerboundSetCreativeModeSlotPacket`.** Add descriptor-owned encoders for
   component value types 5 through 15, 17 through 23, 25 through 35, 41 through
-  50, 52, 54, 57, 61 through 67, and 71 through 109;
+  50, 54, 57, 61 through 67, and 71 through 109;
   preserve Vanilla's per-value length framing and persistent range checks, and
   keep unsupported additions rejected before any packet is sent.
 

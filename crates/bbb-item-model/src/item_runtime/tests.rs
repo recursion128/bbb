@@ -45,6 +45,95 @@ fn minimum_attack_charge_projects_vanilla_spear_defaults_by_protocol_id() {
 }
 
 #[test]
+fn potion_tooltip_uses_prototype_explicit_and_removed_duration_scales() {
+    let mut runtime = NativeItemRuntime::empty_for_test().with_vanilla_item_registry_for_test();
+    runtime.language = LanguageCatalog::from_json_bytes(
+        br#"{
+            "item.minecraft.tipped_arrow": "Tipped Arrow",
+            "effect.minecraft.night_vision": "Night Vision",
+            "potion.withDuration": "%s (%s)"
+        }"#,
+    )
+    .unwrap();
+    let tipped_arrow_id = runtime.item_protocol_id("minecraft:tipped_arrow").unwrap();
+    let defaults = runtime.default_potion_duration_scale_bits_by_protocol_id();
+    assert_eq!(defaults.len(), 2);
+    assert_eq!(defaults[&tipped_arrow_id], 0.125_f32.to_bits());
+
+    let stack = |component_patch| ItemStackSummary {
+        item_id: Some(tipped_arrow_id),
+        count: 1,
+        component_patch,
+    };
+    let potion = DataComponentPatchSummary {
+        added: 1,
+        added_type_ids: vec![
+            bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
+        ],
+        potion_id: Some(4),
+        ..DataComponentPatchSummary::default()
+    };
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&stack(potion.clone())),
+        Some(vec![
+            name_line("Tipped Arrow", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Night Vision (00:22)", TOOLTIP_TEXT_BLUE),
+        ])
+    );
+
+    let explicit = DataComponentPatchSummary {
+        added: 2,
+        added_type_ids: vec![
+            bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
+            bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
+        ],
+        potion_duration_scale_bits: Some(0.5_f32.to_bits()),
+        ..potion.clone()
+    };
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&stack(explicit)),
+        Some(vec![
+            name_line("Tipped Arrow", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Night Vision (01:30)", TOOLTIP_TEXT_BLUE),
+        ])
+    );
+
+    let removed = DataComponentPatchSummary {
+        removed_type_ids: vec![
+            bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
+        ],
+        ..potion
+    };
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&stack(removed)),
+        Some(vec![
+            name_line("Tipped Arrow", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Night Vision (03:00)", TOOLTIP_TEXT_BLUE),
+        ])
+    );
+}
+
+#[test]
+fn potion_tooltip_checks_the_unscaled_duration_before_formatting_the_scaled_value() {
+    let language = LanguageCatalog::from_json_bytes(
+        br#"{
+            "effect.minecraft.speed": "Speed",
+            "potion.withDuration": "%s (%s)"
+        }"#,
+    )
+    .unwrap();
+
+    assert_eq!(
+        potion_effect_tooltip_text(&language, "minecraft:speed", 0, 20, 2.0, 20.0),
+        "Speed"
+    );
+    assert_eq!(
+        potion_effect_tooltip_text(&language, "minecraft:speed", 0, 21, 0.125, 20.0),
+        "Speed (00:00)"
+    );
+}
+
+#[test]
 fn independent_simulation_projection_copies_catalogs_without_renderer_async_caches() {
     fn assert_send<T: Send>() {}
 
@@ -17193,6 +17282,7 @@ fn item_registry_override_value(item_ids: &[&str]) -> serde_json::Value {
         "max_stack_size",
         "default_item_name_translation_keys",
         "default_component_type_ids",
+        "default_potion_duration_scale_bits",
         "default_equipment_slots",
         "humanoid_armor_assets",
         "equippable_assets",
@@ -17222,6 +17312,10 @@ fn item_registry_override_value(item_ids: &[&str]) -> serde_json::Value {
                     resource_id.to_string(),
                     vanilla[field]["minecraft:stick"].clone(),
                 );
+            } else if field == "default_potion_duration_scale_bits" {
+                if let Some(value) = vanilla[field].get(resource_id) {
+                    values.insert(resource_id.to_string(), value.clone());
+                }
             } else if field == "default_kinetic_weapons" {
                 if let Some(value) = vanilla[field].get(resource_id) {
                     values.insert(resource_id.to_string(), value.clone());
@@ -17252,6 +17346,7 @@ fn copy_item_registry_profile(
         "max_damage",
         "max_stack_size",
         "default_component_type_ids",
+        "default_potion_duration_scale_bits",
         "default_equipment_slots",
         "humanoid_armor_assets",
         "equippable_assets",

@@ -193,6 +193,10 @@ impl WorldStore {
         self.items.set_default_dye_color_ids(defaults);
     }
 
+    pub fn set_default_item_potion_duration_scale_bits(&mut self, defaults: BTreeMap<i32, u32>) {
+        self.items.set_default_potion_duration_scale_bits(defaults);
+    }
+
     pub fn set_registry_dependent_item_component_initializers(
         &mut self,
         rules: BTreeMap<i32, Vec<RegistryDependentItemComponentInitializer>>,
@@ -261,10 +265,13 @@ impl WorldStore {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeSet;
+
     use bbb_pack::RegistryDependentItemComponentInitializer as Initializer;
     use bbb_protocol::data_component_types::{
         VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
         VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
     };
 
@@ -433,6 +440,65 @@ mod tests {
         assert!(!world.item_stack_has_effective_component(
             &removed,
             VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID
+        ));
+    }
+
+    #[test]
+    fn effective_stack_applies_potion_duration_scale_default_with_patch_precedence() {
+        let mut world = WorldStore::new();
+        world.set_default_item_component_type_ids(BTreeMap::from([(
+            7,
+            BTreeSet::from([VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID]),
+        )]));
+        world.set_default_item_potion_duration_scale_bits(BTreeMap::from([(
+            7,
+            0.125_f32.to_bits(),
+        )]));
+        let stack = ItemStackSummary {
+            item_id: Some(7),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+
+        let effective = world.effective_item_stack(&stack);
+        assert_eq!(
+            effective.component_patch.potion_duration_scale_bits,
+            Some(0.125_f32.to_bits())
+        );
+        assert!(effective
+            .component_patch
+            .added_type_ids
+            .contains(&VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID));
+
+        let explicit = ItemStackSummary {
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID],
+                potion_duration_scale_bits: Some(0.5_f32.to_bits()),
+                ..DataComponentPatchSummary::default()
+            },
+            ..stack.clone()
+        };
+        let effective = world.effective_item_stack(&explicit);
+        assert_eq!(
+            effective.component_patch.potion_duration_scale_bits,
+            Some(0.5_f32.to_bits())
+        );
+
+        let removed = ItemStackSummary {
+            component_patch: DataComponentPatchSummary {
+                removed_type_ids: vec![VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID],
+                ..DataComponentPatchSummary::default()
+            },
+            ..stack
+        };
+        assert!(matches!(
+            world.effective_item_stack(&removed),
+            Cow::Borrowed(_)
+        ));
+        assert!(!world.item_stack_has_effective_component(
+            &removed,
+            VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID
         ));
     }
 
