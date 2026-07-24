@@ -8,8 +8,9 @@ use crate::{
         VANILLA_DATA_COMPONENT_BEES_TYPE_ID, VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
         VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID, VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
         VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
-        VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
         VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID, VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_DYE_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
@@ -3304,6 +3305,36 @@ fn encodes_set_creative_mode_slot_pig_sound_variant_component() {
             1, 0, // patch counts
             94, 1, // pig/sound_variant type and delimited value length
             1, // BIG holder id in the vanilla fallback catalog
+        ]
+    );
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_cow_variant_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID],
+                cow_variant_id: Some(2),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            1, 0, // patch counts
+            95, 1, // cow/variant type and delimited value length
+            2, // COLD holder id in the vanilla fallback catalog
         ]
     );
 }
