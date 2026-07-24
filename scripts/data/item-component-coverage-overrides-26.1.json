@@ -1606,6 +1606,75 @@
         "status": "complete"
       }
     },
+    "WRITABLE_BOOK_CONTENT": {
+      "canonical_retention": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#pub writable_book_pages",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub writable_book_page_filters",
+          "crates/bbb-protocol/src/packets/data_components.rs#decode_writable_book_content",
+          "crates/bbb-world/src/client/dialog/body/component_value/writable_book/tests.rs#decodes_writable_book_defaults_and_filterable_page_alternatives"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/component/WritableBookContent.java#public static final StreamCodec<ByteBuf, WritableBookContent> STREAM_CODEC",
+          "vanilla:net/minecraft/server/network/Filterable.java#public static <B extends ByteBuf, T> StreamCodec<B, Filterable<T>> streamCodec",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_writable_book_content",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#writable_book_descriptor_round_trips_filterable_strings_in_wire_order",
+          "crates/bbb-protocol/src/packets/data_components.rs#encodes_writable_book_patch_with_delimited_filterable_strings",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_writable_book_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/component/WritableBookContent.java#getPages",
+          "crates/bbb-world/src/client/book.rs#open_writable_book_editor",
+          "crates/bbb-world/src/client/book.rs#book_screen_editor_selects_filtered_pages_and_retains_sign_title_on_cancel",
+          "crates/bbb-native/src/input/book/tests.rs#book_screen_editor_applies_text_rules_and_done_sends_unsigned_submission",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_component_condition_predicates"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/component/WritableBookContent.java#public static final Codec<WritableBookContent> CODEC",
+          "crates/bbb-native/src/input/component_patch.rs#encode_writable_book_content",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-world/src/client/dialog/body/component_value/writable_book/tests.rs#accepts_writable_book_codec_collection_and_utf16_boundaries",
+          "crates/bbb-world/src/client/dialog/body/component_value/writable_book/tests.rs#rejects_malformed_writable_book_records_pages_and_limits"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#writable_book_descriptor_round_trips_filterable_strings_in_wire_order",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#writable_book_descriptor_enforces_page_and_java_string_bounds_atomically",
+          "crates/bbb-protocol/src/packets/data_components.rs#encodes_writable_book_patch_with_delimited_filterable_strings",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_writable_book_component",
+          "crates/bbb-world/src/client/book.rs#book_screen_editor_initializes_empty_page_and_enforces_bounds",
+          "crates/bbb-native/src/input/book/tests.rs#book_screen_selection_and_wrapped_line_limit_match_editor_rules"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#WRITABLE_BOOK_CONTENT",
+          "vanilla:net/minecraft/world/item/component/WritableBookContent.java#public record WritableBookContent",
+          "crates/bbb-protocol/src/packets/data_components.rs#decode_writable_book_content",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_book_content_component_summaries",
+          "crates/bbb-world/src/client/dialog/body/component_value/writable_book/tests.rs#decodes_writable_book_defaults_and_filterable_page_alternatives"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "CONTAINER": {
       "canonical_retention": {
         "evidence": [

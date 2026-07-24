@@ -17,6 +17,7 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID, VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
     VANILLA_DATA_COMPONENT_TYPES, VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
     VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
 };
 use crate::nbt_summary::{encode_nbt_summary_bounded, MAX_NBT_DEPTH};
@@ -231,6 +232,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID => Some(encode_piercing_weapon),
         VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID => Some(encode_kinetic_weapon),
         VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID => Some(encode_swing_animation),
+        VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID => Some(encode_writable_book_content),
         VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID => Some(encode_written_book_content),
         VANILLA_DATA_COMPONENT_TRIM_TYPE_ID => Some(encode_trim),
         VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID => Some(encode_firework_explosion),
@@ -624,6 +626,39 @@ fn encode_suspicious_stew_effects(
         client_state::validate_mob_effect_holder_id(effect.effect_id)?;
         encoded.write_var_i32(effect.effect_id);
         encoded.write_var_i32(effect.duration);
+    }
+    out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
+fn encode_writable_book_content(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let page_count = summary.writable_book_pages.len();
+    if page_count > MAX_BOOK_PAGES {
+        return Err(ProtocolError::PacketTooLarge(page_count, MAX_BOOK_PAGES));
+    }
+    if summary.writable_book_page_filters.len() != page_count {
+        return Err(ProtocolError::InvalidData(
+            "writable book page projections are not aligned".to_string(),
+        ));
+    }
+
+    let mut encoded = Encoder::new();
+    encoded.write_var_i32(page_count as i32);
+    for (page, filtered) in summary
+        .writable_book_pages
+        .iter()
+        .zip(&summary.writable_book_page_filters)
+    {
+        encode_filterable_java_string(
+            &mut encoded,
+            page,
+            filtered.as_deref(),
+            MAX_WRITABLE_BOOK_PAGE_CHARS,
+        )?;
     }
     out.write_bytes(&encoded.into_inner());
     Ok(())
@@ -2432,8 +2467,8 @@ mod tests {
                 .map(|descriptor| descriptor.type_id())
                 .collect::<Vec<_>>(),
             vec![
-                0, 1, 2, 3, 4, 16, 24, 36, 37, 38, 39, 40, 51, 52, 53, 55, 56, 58, 59, 60, 68, 69,
-                70,
+                0, 1, 2, 3, 4, 16, 24, 36, 37, 38, 39, 40, 51, 52, 53, 54, 55, 56, 58, 59, 60, 68,
+                69, 70,
             ]
         );
     }
@@ -4463,6 +4498,111 @@ mod tests {
             ));
             assert_eq!(encoded.into_inner(), [0xaa]);
         }
+    }
+
+    #[test]
+    fn writable_book_descriptor_round_trips_filterable_strings_in_wire_order() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID)
+                .unwrap();
+        let summary = DataComponentPatchSummary {
+            writable_book_pages: vec!["raw page".to_string(), "😀".repeat(512)],
+            writable_book_page_filters: vec![Some("filtered page".to_string()), None],
+            ..DataComponentPatchSummary::default()
+        };
+
+        let mut encoded = Encoder::new();
+        descriptor.encode(&summary, &mut encoded).unwrap();
+        let encoded = encoded.into_inner();
+        let mut expected = Encoder::new();
+        expected.write_var_i32(2);
+        expected.write_string("raw page");
+        expected.write_bool(true);
+        expected.write_string("filtered page");
+        expected.write_string(&"😀".repeat(512));
+        expected.write_bool(false);
+        assert_eq!(encoded, expected.into_inner());
+
+        let mut decoded = DataComponentPatchSummary::default();
+        let mut decoder = Decoder::new(&encoded);
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded.writable_book_pages, summary.writable_book_pages);
+        assert_eq!(
+            decoded.writable_book_page_filters,
+            summary.writable_book_page_filters
+        );
+
+        let mut empty = Encoder::new();
+        descriptor
+            .encode(&DataComponentPatchSummary::default(), &mut empty)
+            .unwrap();
+        assert_eq!(empty.into_inner(), [0]);
+
+        let maximal = DataComponentPatchSummary {
+            writable_book_pages: vec![String::new(); MAX_BOOK_PAGES],
+            writable_book_page_filters: vec![None; MAX_BOOK_PAGES],
+            ..DataComponentPatchSummary::default()
+        };
+        descriptor.encode(&maximal, &mut Encoder::new()).unwrap();
+    }
+
+    #[test]
+    fn writable_book_descriptor_enforces_page_and_java_string_bounds_atomically() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID)
+                .unwrap();
+        let cases = [
+            (
+                DataComponentPatchSummary {
+                    writable_book_pages: vec![String::new()],
+                    ..DataComponentPatchSummary::default()
+                },
+                "projections are not aligned",
+            ),
+            (
+                DataComponentPatchSummary {
+                    writable_book_pages: vec!["x".repeat(MAX_WRITABLE_BOOK_PAGE_CHARS + 1)],
+                    writable_book_page_filters: vec![None],
+                    ..DataComponentPatchSummary::default()
+                },
+                "string has 1025 bytes, max is 1024",
+            ),
+            (
+                DataComponentPatchSummary {
+                    writable_book_pages: vec![String::new()],
+                    writable_book_page_filters: vec![Some(
+                        "😀".repeat(MAX_WRITABLE_BOOK_PAGE_CHARS / 2 + 1),
+                    )],
+                    ..DataComponentPatchSummary::default()
+                },
+                "string has 1026 bytes, max is 1024",
+            ),
+        ];
+        for (summary, expected_error) in cases {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            let error = descriptor.encode(&summary, &mut encoded).unwrap_err();
+            assert!(
+                error.to_string().contains(expected_error),
+                "{error} did not contain {expected_error:?}"
+            );
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
+
+        let oversized = DataComponentPatchSummary {
+            writable_book_pages: vec![String::new(); MAX_BOOK_PAGES + 1],
+            writable_book_page_filters: vec![None; MAX_BOOK_PAGES + 1],
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        encoded.write_u8(0xaa);
+        assert!(matches!(
+            descriptor.encode(&oversized, &mut encoded),
+            Err(ProtocolError::PacketTooLarge(count, max))
+                if count == MAX_BOOK_PAGES + 1 && max == MAX_BOOK_PAGES
+        ));
+        assert_eq!(encoded.into_inner(), [0xaa]);
     }
 
     #[test]

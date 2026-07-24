@@ -17,6 +17,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID, VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
         VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
         VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
     },
     ids,
@@ -1964,6 +1965,41 @@ fn encodes_set_creative_mode_slot_written_book_component() {
             8, 0, 3, b'R', b'a', b'w', // raw page Component NBT
             1, 8, 0, 4, b'S', b'a', b'f', b'e', // filtered page
             1,    // resolved
+        ]
+    );
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_writable_book_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID],
+                writable_book_pages: vec!["raw".to_string(), "second".to_string()],
+                writable_book_page_filters: vec![Some("safe".to_string()), None],
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            1, 0, // patch counts
+            54, 19, // writable_book_content type and delimited value length
+            2,  // page count
+            3, b'r', b'a', b'w', // raw first page
+            1, 4, b's', b'a', b'f', b'e', // filtered first page
+            6, b's', b'e', b'c', b'o', b'n', b'd', // raw second page
+            0,    // no filtered second page
         ]
     );
 }
