@@ -835,7 +835,7 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   food/consumable/death-protection/potion-contents/
   weapon/
   tool-block-holder-rules/
-  use-effects/use-remainder/
+  use-remainder/
   use-cooldown/tooltip-display/attack-range/
   swing-animation/resource/color (including dye/base-color)/map/ominous/firework/custom-model-data/
   codec-backed-NBT (flattened-SNBT alternatives for custom-data, entity-data,
@@ -1173,7 +1173,7 @@ back into a todo. Do not delete these.
   are added.
 - **Full item component payload encoding for
   `ServerboundSetCreativeModeSlotPacket`.** Add descriptor-owned encoders for
-  component value types 5, 7 through 8, 10, 12 through 15, 17 through 23, 25
+  component value types 7 through 8, 10, 12 through 15, 17 through 23, 25
   through 35, 41 through 50, 57, 61 through 67, and 71 through 109;
   preserve Vanilla's per-value length framing and persistent range checks, and
   keep unsupported additions rejected before any packet is sent.

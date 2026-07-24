@@ -18,6 +18,7 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID, VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
     VANILLA_DATA_COMPONENT_TYPES, VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
     VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
 };
@@ -226,6 +227,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID => Some(encode_max_damage),
         VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID => Some(encode_damage),
         VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID => Some(encode_unbreakable),
+        VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID => Some(encode_use_effects),
         VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID | VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID => {
             Some(encode_name_component)
         }
@@ -296,6 +298,20 @@ fn encode_name_component(
     out.write_bytes(&encode_canonical_component_projection(
         nbt, text, styled, what,
     )?);
+    Ok(())
+}
+
+fn encode_use_effects(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let effects = summary.use_effects.ok_or_else(|| {
+        ProtocolError::InvalidData("missing use_effects component value".to_string())
+    })?;
+    out.write_bool(effects.can_sprint);
+    out.write_bool(effects.interact_vibrations);
+    out.write_f32(effects.speed_multiplier);
     Ok(())
 }
 
@@ -2533,7 +2549,7 @@ mod tests {
                 .map(|descriptor| descriptor.type_id())
                 .collect::<Vec<_>>(),
             vec![
-                0, 1, 2, 3, 4, 6, 9, 11, 16, 24, 36, 37, 38, 39, 40, 51, 52, 53, 54, 55, 56, 58,
+                0, 1, 2, 3, 4, 5, 6, 9, 11, 16, 24, 36, 37, 38, 39, 40, 51, 52, 53, 54, 55, 56, 58,
                 59, 60, 68, 69, 70,
             ]
         );
@@ -4564,6 +4580,49 @@ mod tests {
             ));
             assert_eq!(encoded.into_inner(), [0xaa]);
         }
+    }
+
+    #[test]
+    fn use_effects_descriptor_round_trips_raw_float_bits_in_wire_order() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID).unwrap();
+        for bits in [
+            0.0_f32.to_bits(),
+            (-0.0_f32).to_bits(),
+            1.0_f32.to_bits(),
+            f32::INFINITY.to_bits(),
+            f32::NAN.to_bits(),
+        ] {
+            let summary = DataComponentPatchSummary {
+                use_effects: Some(UseEffectsSummary {
+                    can_sprint: true,
+                    interact_vibrations: false,
+                    speed_multiplier: f32::from_bits(bits),
+                }),
+                ..DataComponentPatchSummary::default()
+            };
+            let mut encoded = Encoder::new();
+            descriptor.encode(&summary, &mut encoded).unwrap();
+            let encoded = encoded.into_inner();
+            assert_eq!(&encoded[..2], &[1, 0]);
+            assert_eq!(&encoded[2..], &bits.to_be_bytes());
+
+            let mut decoded = DataComponentPatchSummary::default();
+            let mut decoder = Decoder::new(&encoded);
+            descriptor.decode(&mut decoder, &mut decoded).unwrap();
+            assert!(decoder.is_empty());
+            assert_eq!(decoded.use_effects, summary.use_effects);
+        }
+
+        let mut encoded = Encoder::new();
+        encoded.write_u8(0xaa);
+        let error = descriptor
+            .encode(&DataComponentPatchSummary::default(), &mut encoded)
+            .unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("missing use_effects component value"));
+        assert_eq!(encoded.into_inner(), [0xaa]);
     }
 
     #[test]

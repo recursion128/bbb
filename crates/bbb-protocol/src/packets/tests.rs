@@ -3,10 +3,10 @@ use crate::{
     codec::{offline_player_uuid, Decoder, Encoder, ProtocolError},
     data_component_types::{
         VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
-        VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
-        VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID,
-        VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID, VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
         VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
         VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
         VANILLA_DATA_COMPONENT_LORE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
@@ -2063,6 +2063,41 @@ fn encodes_set_creative_mode_slot_name_components() {
 }
 
 #[test]
+fn encodes_set_creative_mode_slot_use_effects_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID],
+                use_effects: Some(crate::packets::UseEffectsSummary {
+                    can_sprint: true,
+                    interact_vibrations: false,
+                    speed_multiplier: 0.25,
+                }),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            1, 0, // patch counts
+            5, 6, // use_effects type and delimited value length
+            1, 0, // can sprint; does not emit interaction vibrations
+            0x3e, 0x80, 0, 0, // speed multiplier = 0.25
+        ]
+    );
+}
+
+#[test]
 fn encodes_set_creative_mode_slot_writable_book_component() {
     let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
         slot_num: 36,
@@ -2185,7 +2220,7 @@ fn set_creative_mode_slot_rejects_unsupported_component_patch() {
             count: 1,
             component_patch: DataComponentPatchSummary {
                 added: 1,
-                added_type_ids: vec![VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID],
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID],
                 ..DataComponentPatchSummary::default()
             },
         },
@@ -2194,7 +2229,7 @@ fn set_creative_mode_slot_rejects_unsupported_component_patch() {
 
     assert!(matches!(err, ProtocolError::InvalidData(_)));
     assert!(err.to_string().contains(&format!(
-        "cannot encode unsupported data component minecraft:use_effects ({VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID})"
+        "cannot encode unsupported data component minecraft:can_place_on ({VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID})"
     )));
 }
 
@@ -2224,6 +2259,16 @@ fn set_creative_mode_slot_rejects_values_rejected_by_the_untrusted_stack_codec()
         added: 1,
         added_type_ids: vec![VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID],
         damage: Some(value),
+        ..DataComponentPatchSummary::default()
+    };
+    let use_effects_patch = |speed_multiplier| DataComponentPatchSummary {
+        added: 1,
+        added_type_ids: vec![VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID],
+        use_effects: Some(crate::packets::UseEffectsSummary {
+            can_sprint: false,
+            interact_vibrations: true,
+            speed_multiplier,
+        }),
         ..DataComponentPatchSummary::default()
     };
     let fireworks_patch = |value| DataComponentPatchSummary {
@@ -2266,6 +2311,26 @@ fn set_creative_mode_slot_rejects_values_rejected_by_the_untrusted_stack_codec()
             "damage must be non-negative",
         ),
         (
+            stack_with_patch(1, use_effects_patch(-0.0)),
+            "use_effects speed_multiplier must be in 0.0..=1.0",
+        ),
+        (
+            stack_with_patch(1, use_effects_patch(-1.0)),
+            "use_effects speed_multiplier must be in 0.0..=1.0",
+        ),
+        (
+            stack_with_patch(1, use_effects_patch(1.000_000_1)),
+            "use_effects speed_multiplier must be in 0.0..=1.0",
+        ),
+        (
+            stack_with_patch(1, use_effects_patch(f32::INFINITY)),
+            "use_effects speed_multiplier must be in 0.0..=1.0",
+        ),
+        (
+            stack_with_patch(1, use_effects_patch(f32::NAN)),
+            "use_effects speed_multiplier must be in 0.0..=1.0",
+        ),
+        (
             stack_with_patch(1, fireworks_patch(-1)),
             "fireworks flight_duration must be in 0..=255",
         ),
@@ -2300,8 +2365,8 @@ fn set_creative_mode_slot_rejects_values_rejected_by_the_untrusted_stack_codec()
 
 #[test]
 fn set_creative_mode_slot_accepts_untrusted_stack_codec_boundaries() {
-    for (flight_duration, duration_scale_bits) in
-        [(0, 0.0_f32.to_bits()), (255, f32::MAX.to_bits())]
+    for (flight_duration, duration_scale_bits, use_speed_multiplier) in
+        [(0, 0.0_f32.to_bits(), 0.0), (255, f32::MAX.to_bits(), 1.0)]
     {
         encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
             slot_num: 36,
@@ -2309,17 +2374,23 @@ fn set_creative_mode_slot_accepts_untrusted_stack_codec_boundaries() {
                 item_id: Some(42),
                 count: 99,
                 component_patch: DataComponentPatchSummary {
-                    added: 5,
+                    added: 6,
                     added_type_ids: vec![
                         VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
                         VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
                         VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+                        VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID,
                         VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
                         VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
                     ],
                     max_stack_size: Some(99),
                     max_damage: Some(1),
                     damage: Some(0),
+                    use_effects: Some(crate::packets::UseEffectsSummary {
+                        can_sprint: false,
+                        interact_vibrations: true,
+                        speed_multiplier: use_speed_multiplier,
+                    }),
                     fireworks_flight_duration: Some(flight_duration),
                     fireworks_explosions_count: Some(0),
                     potion_duration_scale_bits: Some(duration_scale_bits),
