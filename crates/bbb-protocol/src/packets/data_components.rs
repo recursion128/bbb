@@ -36,6 +36,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
         VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
     },
@@ -1287,6 +1288,12 @@ fn validate_encodable_data_component_patch_summary(
             }
             VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID => {
                 expected.pot_decorations_item_ids = patch.pot_decorations_item_ids.clone();
+            }
+            VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID => {
+                expected.provides_banner_pattern_registry_ids =
+                    patch.provides_banner_pattern_registry_ids.clone();
+                expected.provides_banner_pattern_tag =
+                    patch.provides_banner_pattern_tag.clone();
             }
             VANILLA_DATA_COMPONENT_DYE_TYPE_ID => {
                 expected.dye_color_id = patch.dye_color_id;

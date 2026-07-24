@@ -29,6 +29,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
         VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
         VANILLA_DATA_COMPONENT_RARITY_TYPE_ID, VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID,
@@ -2621,6 +2622,47 @@ fn encodes_set_creative_mode_slot_pot_decorations_component() {
     for _ in 0..3 {
         assert_eq!(value.read_var_i32().unwrap(), VANILLA_ITEM_BRICK_ID);
     }
+    assert!(value.is_empty());
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_provides_banner_patterns_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID],
+                provides_banner_pattern_registry_ids: vec![0, 42],
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_i16().unwrap(), 36);
+    assert_eq!(decoder.read_var_i32().unwrap(), 1);
+    assert_eq!(decoder.read_var_i32().unwrap(), 42);
+    assert_eq!(decoder.read_len().unwrap(), 1);
+    assert_eq!(decoder.read_len().unwrap(), 0);
+    assert_eq!(
+        decoder.read_var_i32().unwrap(),
+        VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID
+    );
+    let value_len = decoder.read_len().unwrap();
+    let mut value = Decoder::new(
+        decoder
+            .read_exact(value_len, "provides_banner_patterns component value")
+            .unwrap(),
+    );
+    assert_eq!(value.read_var_i32().unwrap(), 3);
+    assert_eq!(value.read_var_i32().unwrap(), 0);
+    assert_eq!(value.read_var_i32().unwrap(), 42);
     assert!(value.is_empty());
     assert!(decoder.is_empty());
 }
