@@ -3427,6 +3427,24 @@ mod tests {
     }
 
     #[test]
+    fn dyed_color_encoder_preserves_the_full_signed_domain() {
+        for color in [i32::MIN, -1, 0, 1, i32::MAX] {
+            let patch = bbb_protocol::packets::DataComponentPatchSummary {
+                dyed_color: Some(color),
+                ..Default::default()
+            };
+            assert_eq!(
+                encode_added_component_value_snbt(
+                    component_id::VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID,
+                    &patch,
+                    None,
+                ),
+                Some(color.to_string())
+            );
+        }
+    }
+
+    #[test]
     fn armor_trim_encoder_supports_named_direct_and_mixed_holders() {
         let mut patch = bbb_protocol::packets::DataComponentPatchSummary {
             armor_trim_material_id: Some(1),

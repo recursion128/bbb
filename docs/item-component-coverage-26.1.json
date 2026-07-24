@@ -3193,34 +3193,77 @@
       "constant_name": "DYED_COLOR",
       "coverage": {
         "canonical_retention": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components.rs#pub dyed_color",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_dyed_color",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_additional_item_data_components",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#dyed_color_descriptor_round_trips_the_full_signed_domain_in_wire_order"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "network_encode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/DyedItemColor.java#public static final StreamCodec<ByteBuf, DyedItemColor> STREAM_CODEC",
+            "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#StreamCodec<ByteBuf, Integer> INT",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_dyed_color",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#dyed_color_descriptor_round_trips_the_full_signed_domain_in_wire_order",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#dyed_color_descriptor_rejects_a_missing_value_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_dyed_color_component"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "observable_consumers": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/DyedItemColor.java#public void addToTooltip",
+            "vanilla:net/minecraft/world/item/component/DyedItemColor.java#public static int getOrDefault",
+            "vanilla:net/minecraft/world/item/component/DyedItemColor.java#public static DyedItemColor applyDyes",
+            "crates/bbb-item-model/src/item_runtime/tooltip.rs#fn push_dyed_color_tooltip_lines",
+            "crates/bbb-item-model/src/item_runtime/tooltip.rs#dyed_color_advanced_tooltip_keeps_java_int_hex_width",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_selects_has_component_icon_from_dyed_color",
+            "crates/bbb-world/src/entities/tests/visibility_equipment_and_mount_projection.rs#entity_model_sources_project_worn_armor_dye_colors",
+            "crates/bbb-world/src/recipes/slot_display/tests.rs#dyed_display_uses_generated_diffuse_colors_dye_outer_order_and_limit"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "persistent_projection": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/DyedItemColor.java#public static final Codec<DyedItemColor> CODEC",
+            "vanilla:net/minecraft/util/ExtraCodecs.java#public static final Codec<Integer> RGB_COLOR_CODEC",
+            "crates/bbb-native/src/input/component_patch.rs#fn encode_dyed_color",
+            "crates/bbb-native/src/input/component_patch.rs#dyed_color_encoder_preserves_the_full_signed_domain",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_rgb_alternatives_and_custom_model_data_lists"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#dyed_color_descriptor_round_trips_the_full_signed_domain_in_wire_order",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#dyed_color_descriptor_rejects_a_missing_value_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_dyed_color_component",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_additional_item_data_components",
+            "crates/bbb-native/src/input/component_patch.rs#dyed_color_encoder_preserves_the_full_signed_domain",
+            "crates/bbb-item-model/src/item_runtime/tooltip.rs#dyed_color_advanced_tooltip_keeps_java_int_hex_width",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_selects_has_component_icon_from_dyed_color",
+            "crates/bbb-world/src/entities/tests/visibility_equipment_and_mount_projection.rs#entity_model_sources_project_worn_armor_dye_colors"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "typed_decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#DYED_COLOR",
+            "vanilla:net/minecraft/world/item/component/DyedItemColor.java#public static final StreamCodec<ByteBuf, DyedItemColor> STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_dyed_color",
+            "crates/bbb-protocol/src/packets/data_components.rs#pub dyed_color",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_additional_item_data_components",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_rgb_alternatives_and_custom_model_data_lists"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "resource_id": "minecraft:dyed_color",

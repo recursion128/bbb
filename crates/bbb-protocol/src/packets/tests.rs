@@ -9,8 +9,8 @@ use crate::{
         VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
         VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID, VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID,
+        VANILLA_DATA_COMPONENT_DYE_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
         VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
         VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
@@ -2767,6 +2767,36 @@ fn encodes_set_creative_mode_slot_dye_component() {
             1, 0, // patch counts
             43, 1,  // dye type and delimited value length
             14, // RED
+        ]
+    );
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_dyed_color_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID],
+                dyed_color: Some(0x12_34_56),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            1, 0, // patch counts
+            44, 4, // dyed_color type and delimited value length
+            0, 0x12, 0x34, 0x56, // fixed-width RGB int
         ]
     );
 }

@@ -1146,6 +1146,14 @@ mod tests {
     }
 
     #[test]
+    fn dyed_color_advanced_tooltip_keeps_java_int_hex_width() {
+        assert_eq!(dyed_color_tooltip_hex(0), "#000000");
+        assert_eq!(dyed_color_tooltip_hex(0x12_3a_bc), "#123ABC");
+        assert_eq!(dyed_color_tooltip_hex(-1), "#FFFFFFFF");
+        assert_eq!(dyed_color_tooltip_hex(i32::MIN), "#80000000");
+    }
+
+    #[test]
     fn vanilla_instrument_keys_follow_26_1_goat_horn_registry_order() {
         assert_eq!(
             (0..8)
@@ -2305,9 +2313,8 @@ fn push_dyed_color_tooltip_lines(
         return;
     };
     if advanced {
-        let rgb = (dyed_color as u32) & 0x00FF_FFFF;
         lines.push(NativeItemTooltipLine::plain(
-            translate_with_first_arg(language, "item.color", &format!("#{rgb:06X}")),
+            translate_with_first_arg(language, "item.color", &dyed_color_tooltip_hex(dyed_color)),
             TOOLTIP_TEXT_GRAY,
         ));
     } else {
@@ -2325,6 +2332,10 @@ fn push_dyed_color_tooltip_lines(
             }],
         });
     }
+}
+
+fn dyed_color_tooltip_hex(dyed_color: i32) -> String {
+    format!("#{:06X}", dyed_color as u32)
 }
 
 fn push_fireworks_tooltip_lines(

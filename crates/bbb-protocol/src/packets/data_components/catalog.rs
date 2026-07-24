@@ -15,8 +15,8 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
     VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
     VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID, VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID,
+    VANILLA_DATA_COMPONENT_DYE_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
     VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
     VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
@@ -297,6 +297,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID => Some(encode_lodestone_tracker),
         VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID => Some(encode_profile),
         VANILLA_DATA_COMPONENT_DYE_TYPE_ID => Some(encode_dye),
+        VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID => Some(encode_dyed_color),
         VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID => Some(encode_map_id),
         VANILLA_DATA_COMPONENT_MAP_POST_PROCESSING_TYPE_ID => Some(encode_map_post_processing),
         VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID => Some(encode_banner_patterns),
@@ -2196,6 +2197,18 @@ fn encode_dye(_type_id: i32, summary: &DataComponentPatchSummary, out: &mut Enco
     Ok(())
 }
 
+fn encode_dyed_color(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let color = summary
+        .dyed_color
+        .ok_or_else(|| ProtocolError::InvalidData("missing dyed_color value".to_string()))?;
+    out.write_i32(color);
+    Ok(())
+}
+
 fn encode_map_post_processing(
     _type_id: i32,
     summary: &DataComponentPatchSummary,
@@ -3614,8 +3627,8 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec![
                 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 22, 24, 25,
-                26, 28, 30, 36, 37, 38, 39, 40, 42, 43, 46, 48, 49, 50, 51, 52, 53, 54, 55, 56, 58,
-                59, 60, 61, 62, 64, 67, 68, 69, 70, 72, 75, 77, 80, 102,
+                26, 28, 30, 36, 37, 38, 39, 40, 42, 43, 44, 46, 48, 49, 50, 51, 52, 53, 54, 55, 56,
+                58, 59, 60, 61, 62, 64, 67, 68, 69, 70, 72, 75, 77, 80, 102,
             ]
         );
     }
@@ -6885,6 +6898,42 @@ mod tests {
                 .is_err());
             assert_eq!(encoded.into_inner(), [0xaa]);
         }
+    }
+
+    #[test]
+    fn dyed_color_descriptor_round_trips_the_full_signed_domain_in_wire_order() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID).unwrap();
+        for color in [i32::MIN, -1, 0, 1, i32::MAX] {
+            let summary = DataComponentPatchSummary {
+                dyed_color: Some(color),
+                ..DataComponentPatchSummary::default()
+            };
+            let mut encoded = Encoder::new();
+            descriptor.encode(&summary, &mut encoded).unwrap();
+            let wire = encoded.into_inner();
+            let mut expected = Encoder::new();
+            expected.write_i32(color);
+            assert_eq!(wire, expected.into_inner());
+
+            let mut decoded = DataComponentPatchSummary::default();
+            let mut decoder = Decoder::new(&wire);
+            descriptor.decode(&mut decoder, &mut decoded).unwrap();
+            assert!(decoder.is_empty());
+            assert_eq!(decoded, summary);
+        }
+    }
+
+    #[test]
+    fn dyed_color_descriptor_rejects_a_missing_value_atomically() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID).unwrap();
+        let mut encoded = Encoder::new();
+        encoded.write_u8(0xaa);
+        assert!(descriptor
+            .encode(&DataComponentPatchSummary::default(), &mut encoded)
+            .is_err());
+        assert_eq!(encoded.into_inner(), [0xaa]);
     }
 
     #[test]
