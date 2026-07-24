@@ -1594,7 +1594,13 @@ fn encode_written_book_content(
     _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     let book = patch.written_book.as_ref()?;
-    if book.title.chars().count() > 32 || !(0..=3).contains(&book.generation) {
+    if book.title.encode_utf16().count() > 32
+        || book
+            .title_filter
+            .as_deref()
+            .is_some_and(|title| title.encode_utf16().count() > 32)
+        || !(0..=3).contains(&book.generation)
+    {
         return None;
     }
     let page_count = book.pages.len();
@@ -2917,6 +2923,12 @@ mod tests {
         patch.written_book.as_mut().unwrap().generation = 4;
         assert_eq!(encode_added_component_value_snbt(55, &patch, None), None);
         patch.written_book.as_mut().unwrap().generation = 0;
+        patch.written_book.as_mut().unwrap().title = "😀".repeat(17);
+        assert_eq!(encode_added_component_value_snbt(55, &patch, None), None);
+        patch.written_book.as_mut().unwrap().title = "Guide".to_string();
+        patch.written_book.as_mut().unwrap().title_filter = Some("😀".repeat(17));
+        assert_eq!(encode_added_component_value_snbt(55, &patch, None), None);
+        patch.written_book.as_mut().unwrap().title_filter = None;
         patch.written_book_pages_nbt[0] = None;
         assert_eq!(encode_added_component_value_snbt(55, &patch, None), None);
     }

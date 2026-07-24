@@ -10,6 +10,7 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID, VANILLA_DATA_COMPONENT_TYPES,
     VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
 };
 use crate::nbt_summary::{encode_nbt_summary_bounded, MAX_NBT_DEPTH};
 
@@ -217,6 +218,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID => Some(encode_damage),
         VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID => Some(encode_unbreakable),
         VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID => Some(encode_attribute_modifiers),
+        VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID => Some(encode_written_book_content),
         VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID => Some(encode_entity_data),
         VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID => Some(encode_bucket_entity_data),
         VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID => Some(encode_block_entity_data),
@@ -351,6 +353,113 @@ fn encode_attribute_modifier_display(
         }
     }
     Ok(())
+}
+
+fn encode_written_book_content(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let book = summary.written_book.as_ref().ok_or_else(|| {
+        ProtocolError::InvalidData("missing written_book_content component value".to_string())
+    })?;
+    if !(0..=3).contains(&book.generation) {
+        return Err(ProtocolError::InvalidData(format!(
+            "written book generation {} is outside 0..=3",
+            book.generation
+        )));
+    }
+    let page_count = book.pages.len();
+    if page_count > MAX_DATA_COMPONENT_LIST_ITEMS {
+        return Err(ProtocolError::PacketTooLarge(
+            page_count,
+            MAX_DATA_COMPONENT_LIST_ITEMS,
+        ));
+    }
+    if book.page_filters.len() != page_count
+        || summary.written_book_pages_nbt.len() != page_count
+        || summary.written_book_page_filters_nbt.len() != page_count
+    {
+        return Err(ProtocolError::InvalidData(
+            "written book page projections are not aligned".to_string(),
+        ));
+    }
+
+    let mut encoded = Encoder::new();
+    encode_filterable_java_string(
+        &mut encoded,
+        &book.title,
+        book.title_filter.as_deref(),
+        MAX_WRITTEN_BOOK_TITLE_CHARS,
+    )?;
+    encode_java_string(&mut encoded, &book.author, MAX_STRING_CHARS)?;
+    encoded.write_var_i32(book.generation);
+    encoded.write_var_i32(page_count as i32);
+    for index in 0..page_count {
+        let raw = summary.written_book_pages_nbt[index]
+            .as_ref()
+            .ok_or_else(|| {
+                ProtocolError::InvalidData(format!(
+                    "written book page {index} is missing raw component nbt"
+                ))
+            })?;
+        let raw = encode_canonical_written_book_page(
+            raw,
+            &book.pages[index],
+            &format!("written book page {index} raw"),
+        )?;
+        encoded.write_bytes(&raw);
+
+        match (
+            book.page_filters[index].as_deref(),
+            summary.written_book_page_filters_nbt[index].as_ref(),
+        ) {
+            (None, None) => encoded.write_bool(false),
+            (Some(text), Some(nbt)) => {
+                let filtered = encode_canonical_written_book_page(
+                    nbt,
+                    text,
+                    &format!("written book page {index} filtered"),
+                )?;
+                encoded.write_bool(true);
+                encoded.write_bytes(&filtered);
+            }
+            _ => {
+                return Err(ProtocolError::InvalidData(format!(
+                    "written book page {index} filtered projections are not aligned"
+                )));
+            }
+        }
+    }
+    encoded.write_bool(book.resolved);
+    out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
+fn encode_filterable_java_string(
+    out: &mut Encoder,
+    raw: &str,
+    filtered: Option<&str>,
+    max_utf16_units: usize,
+) -> Result<()> {
+    encode_java_string(out, raw, max_utf16_units)?;
+    encode_optional_java_string(out, filtered, max_utf16_units)
+}
+
+fn encode_canonical_written_book_page(
+    nbt: &NbtSummaryValue,
+    expected_text: &str,
+    what: &str,
+) -> Result<Vec<u8>> {
+    let encoded = encode_nbt_summary_bounded(Some(nbt), i32::MAX as usize, MAX_NBT_DEPTH)?;
+    let (runs, canonical_nbt) =
+        decode_styled_component_summary_with_nbt_from_decoder(&mut Decoder::new(&encoded))?;
+    if styled_runs_summary_text(&runs) != expected_text || canonical_nbt.as_ref() != Some(nbt) {
+        return Err(ProtocolError::InvalidData(format!(
+            "{what} contains noncanonical component projections"
+        )));
+    }
+    Ok(encoded)
 }
 
 pub(super) fn decode_required_compound_tag(
@@ -1585,7 +1694,7 @@ mod tests {
                 .filter(|descriptor| descriptor.can_encode())
                 .map(|descriptor| descriptor.type_id())
                 .collect::<Vec<_>>(),
-            vec![0, 1, 2, 3, 4, 16, 58, 59, 60, 70]
+            vec![0, 1, 2, 3, 4, 16, 55, 58, 59, 60, 70]
         );
     }
 
@@ -1843,6 +1952,232 @@ mod tests {
                     && max == MAX_DATA_COMPONENT_LIST_ITEMS
         ));
         assert_eq!(encoded.into_inner(), [0xaa]);
+    }
+
+    #[test]
+    fn written_book_descriptor_round_trips_filterable_components_in_wire_order() {
+        let raw_page = NbtSummaryValue::Compound(vec![
+            NbtSummaryEntry {
+                name: "text".to_string(),
+                value: NbtSummaryValue::String("Raw page".to_string()),
+            },
+            NbtSummaryEntry {
+                name: "italic".to_string(),
+                value: NbtSummaryValue::Byte(1),
+            },
+        ]);
+        let filtered_page = NbtSummaryValue::String("Filtered page".to_string());
+        let summary = DataComponentPatchSummary {
+            written_book: Some(WrittenBookContentSummary {
+                title: "Guide".to_string(),
+                title_filter: Some("Safe Guide".to_string()),
+                author: "Alex".to_string(),
+                generation: 2,
+                pages: vec!["Raw page".to_string(), "Second page".to_string()],
+                page_filters: vec![Some("Filtered page".to_string()), None],
+                resolved: true,
+            }),
+            written_book_pages_nbt: vec![
+                Some(raw_page.clone()),
+                Some(NbtSummaryValue::String("Second page".to_string())),
+            ],
+            written_book_page_filters_nbt: vec![Some(filtered_page.clone()), None],
+            ..DataComponentPatchSummary::default()
+        };
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID)
+                .unwrap();
+        let mut encoded = Encoder::new();
+        descriptor.encode(&summary, &mut encoded).unwrap();
+        let encoded = encoded.into_inner();
+
+        let mut expected = Encoder::new();
+        expected.write_string("Guide");
+        expected.write_bool(true);
+        expected.write_string("Safe Guide");
+        expected.write_string("Alex");
+        expected.write_var_i32(2);
+        expected.write_var_i32(2);
+        expected.write_bytes(
+            &encode_nbt_summary_bounded(Some(&raw_page), i32::MAX as usize, MAX_NBT_DEPTH).unwrap(),
+        );
+        expected.write_bool(true);
+        expected.write_bytes(
+            &encode_nbt_summary_bounded(Some(&filtered_page), i32::MAX as usize, MAX_NBT_DEPTH)
+                .unwrap(),
+        );
+        expected.write_bytes(
+            &encode_nbt_summary_bounded(
+                Some(&NbtSummaryValue::String("Second page".to_string())),
+                i32::MAX as usize,
+                MAX_NBT_DEPTH,
+            )
+            .unwrap(),
+        );
+        expected.write_bool(false);
+        expected.write_bool(true);
+        assert_eq!(encoded, expected.into_inner());
+
+        let mut decoded = DataComponentPatchSummary::default();
+        let mut decoder = Decoder::new(&encoded);
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded.written_book, summary.written_book);
+        assert_eq!(
+            decoded.written_book_pages_nbt,
+            summary.written_book_pages_nbt
+        );
+        assert_eq!(
+            decoded.written_book_page_filters_nbt,
+            summary.written_book_page_filters_nbt
+        );
+    }
+
+    #[test]
+    fn written_book_descriptor_enforces_java_bounds_and_canonical_alignment_atomically() {
+        let valid = DataComponentPatchSummary {
+            written_book: Some(WrittenBookContentSummary {
+                title: "😀".repeat(16),
+                title_filter: None,
+                author: "Author".to_string(),
+                generation: 0,
+                pages: vec!["Page".to_string()],
+                page_filters: vec![None],
+                resolved: false,
+            }),
+            written_book_pages_nbt: vec![Some(NbtSummaryValue::String("Page".to_string()))],
+            written_book_page_filters_nbt: vec![None],
+            ..DataComponentPatchSummary::default()
+        };
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID)
+                .unwrap();
+        let mut boundary = Encoder::new();
+        descriptor.encode(&valid, &mut boundary).unwrap();
+        let mut decoded = DataComponentPatchSummary::default();
+        descriptor
+            .decode(&mut Decoder::new(&boundary.into_inner()), &mut decoded)
+            .unwrap();
+        assert_eq!(decoded.written_book, valid.written_book);
+        let mut author_boundary = valid.clone();
+        author_boundary.written_book.as_mut().unwrap().author = format!("{}a", "😀".repeat(16_383));
+        descriptor
+            .encode(&author_boundary, &mut Encoder::new())
+            .unwrap();
+
+        let mut cases = Vec::new();
+        cases.push((
+            DataComponentPatchSummary::default(),
+            "missing written_book_content",
+        ));
+        let mut invalid_generation = valid.clone();
+        invalid_generation.written_book.as_mut().unwrap().generation = 4;
+        cases.push((invalid_generation, "outside 0..=3"));
+        let mut oversized_title = valid.clone();
+        oversized_title.written_book.as_mut().unwrap().title = "😀".repeat(17);
+        cases.push((oversized_title, "string has 34 bytes, max is 32"));
+        let mut oversized_filtered_title = valid.clone();
+        oversized_filtered_title
+            .written_book
+            .as_mut()
+            .unwrap()
+            .title_filter = Some("😀".repeat(17));
+        cases.push((oversized_filtered_title, "string has 34 bytes, max is 32"));
+        let mut oversized_author = valid.clone();
+        oversized_author.written_book.as_mut().unwrap().author = "😀".repeat(16_384);
+        cases.push((oversized_author, "string has 32768 bytes, max is 32767"));
+        let mut misaligned_pages = valid.clone();
+        misaligned_pages.written_book_pages_nbt.clear();
+        cases.push((misaligned_pages, "not aligned"));
+        let mut missing_raw_page = valid.clone();
+        missing_raw_page.written_book_pages_nbt[0] = None;
+        cases.push((missing_raw_page, "missing raw component nbt"));
+        let mut stale_page = valid.clone();
+        stale_page.written_book.as_mut().unwrap().pages[0] = "Stale".to_string();
+        cases.push((stale_page, "noncanonical component projections"));
+        let mut malformed_page = valid.clone();
+        malformed_page.written_book_pages_nbt[0] = Some(NbtSummaryValue::Int(1));
+        cases.push((malformed_page, "is not a component"));
+        let mut mismatched_filter = valid.clone();
+        mismatched_filter
+            .written_book
+            .as_mut()
+            .unwrap()
+            .page_filters[0] = Some("Filtered".to_string());
+        cases.push((mismatched_filter, "filtered projections are not aligned"));
+
+        for (summary, expected_error) in cases {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            let error = descriptor.encode(&summary, &mut encoded).unwrap_err();
+            assert!(error.to_string().contains(expected_error), "{error}");
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
+
+        let oversized_page_count = MAX_DATA_COMPONENT_LIST_ITEMS + 1;
+        let oversized = DataComponentPatchSummary {
+            written_book: Some(WrittenBookContentSummary {
+                title: "Title".to_string(),
+                title_filter: None,
+                author: "Author".to_string(),
+                generation: 0,
+                pages: vec!["Page".to_string(); oversized_page_count],
+                page_filters: vec![None; oversized_page_count],
+                resolved: false,
+            }),
+            written_book_pages_nbt: vec![
+                Some(NbtSummaryValue::String("Page".to_string()));
+                oversized_page_count
+            ],
+            written_book_page_filters_nbt: vec![None; oversized_page_count],
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        encoded.write_u8(0xaa);
+        let error = descriptor.encode(&oversized, &mut encoded).unwrap_err();
+        assert!(matches!(
+            error,
+            ProtocolError::PacketTooLarge(actual, max)
+                if actual == oversized_page_count && max == MAX_DATA_COMPONENT_LIST_ITEMS
+        ));
+        assert_eq!(encoded.into_inner(), [0xaa]);
+
+        for (wire, expected_error) in [
+            (
+                {
+                    let mut wire = Encoder::new();
+                    wire.write_string(&"😀".repeat(17));
+                    wire.write_bool(false);
+                    wire.write_string("Author");
+                    wire.write_var_i32(0);
+                    wire.write_var_i32(0);
+                    wire.write_bool(false);
+                    wire.into_inner()
+                },
+                "string has 34 bytes, max is 32",
+            ),
+            (
+                {
+                    let mut wire = Encoder::new();
+                    wire.write_string("Title");
+                    wire.write_bool(false);
+                    wire.write_string("Author");
+                    wire.write_var_i32(-1);
+                    wire.write_var_i32(0);
+                    wire.write_bool(false);
+                    wire.into_inner()
+                },
+                "outside 0..=3",
+            ),
+        ] {
+            let error = descriptor
+                .decode(
+                    &mut Decoder::new(&wire),
+                    &mut DataComponentPatchSummary::default(),
+                )
+                .unwrap_err();
+            assert!(error.to_string().contains(expected_error), "{error}");
+        }
     }
 
     #[test]

@@ -401,3 +401,8 @@
   holder、modifier、slot 与 display union 精确重编码；creative framing、持久化
   SNBT、tooltip 与 item-model predicate 证据齐备，合同见
   `docs/archive/attribute-modifiers-component-roundtrip-design.md`。
+- **2026-07-23（Written book content component 六维闭环）**：
+  `WRITTEN_BOOK_CONTENT` 现按 Java UTF-16/generation 边界保留并重编码 title、
+  author、raw/filtered Component pages 与 resolved；creative framing、持久化
+  SNBT、富页面屏幕、tooltip 与 predicate 证据齐备，合同见
+  `docs/archive/written-book-content-component-roundtrip-design.md`。

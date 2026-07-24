@@ -1032,6 +1032,12 @@ fn validate_encodable_data_component_patch_summary(
             crate::data_component_types::VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID => {
                 expected.attribute_modifiers = patch.attribute_modifiers.clone();
             }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID => {
+                expected.written_book = patch.written_book.clone();
+                expected.written_book_pages_nbt = patch.written_book_pages_nbt.clone();
+                expected.written_book_page_filters_nbt =
+                    patch.written_book_page_filters_nbt.clone();
+            }
             VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID => {
                 expected.entity_data_entity_type_id = patch.entity_data_entity_type_id;
                 expected.entity_data_tag = patch.entity_data_tag.clone();
@@ -2539,8 +2545,13 @@ struct DecodedWrittenBookContent {
 
 fn decode_written_book_content(decoder: &mut Decoder<'_>) -> Result<DecodedWrittenBookContent> {
     let title = decode_filterable_string_summary(decoder, MAX_WRITTEN_BOOK_TITLE_CHARS)?;
-    let author = decoder.read_string(MAX_STRING_CHARS)?;
+    let author = decode_java_string(decoder, MAX_STRING_CHARS)?;
     let generation = decoder.read_var_i32()?;
+    if !(0..=3).contains(&generation) {
+        return Err(ProtocolError::InvalidData(format!(
+            "written book generation {generation} is outside 0..=3"
+        )));
+    }
     let pages = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
     let mut page_values = Vec::with_capacity(pages);
     let mut page_filters = Vec::with_capacity(pages);
@@ -2578,8 +2589,8 @@ fn decode_filterable_string_summary(
     decoder: &mut Decoder<'_>,
     max_chars: usize,
 ) -> Result<FilterableStringSummary> {
-    let raw = decoder.read_string(max_chars)?;
-    let filtered = decode_optional_string_value(decoder, max_chars)?;
+    let raw = decode_java_string(decoder, max_chars)?;
+    let filtered = decode_optional_java_string(decoder, max_chars)?;
     Ok(FilterableStringSummary { raw, filtered })
 }
 
@@ -2959,6 +2970,61 @@ mod tests {
         );
         assert!(decoder.is_empty());
         assert_eq!(decoded.attribute_modifiers, patch.attribute_modifiers);
+    }
+
+    #[test]
+    fn encodes_written_book_patch_with_delimited_filterable_pages() {
+        let patch = DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![
+                crate::data_component_types::VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
+            ],
+            removed_type_ids: vec![VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID],
+            written_book: Some(WrittenBookContentSummary {
+                title: "Guide".to_string(),
+                title_filter: None,
+                author: "Alex".to_string(),
+                generation: 1,
+                pages: vec!["Raw".to_string()],
+                page_filters: vec![Some("Safe".to_string())],
+                resolved: true,
+            }),
+            written_book_pages_nbt: vec![Some(NbtSummaryValue::String("Raw".to_string()))],
+            written_book_page_filters_nbt: vec![Some(NbtSummaryValue::String("Safe".to_string()))],
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        encode_delimited_data_component_patch_summary(&mut encoded, &patch).unwrap();
+        let encoded = encoded.into_inner();
+
+        let mut decoder = Decoder::new(&encoded);
+        assert_eq!(decoder.read_len().unwrap(), 1);
+        assert_eq!(decoder.read_len().unwrap(), 1);
+        let type_id = decoder.read_var_i32().unwrap();
+        assert_eq!(
+            type_id,
+            crate::data_component_types::VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID
+        );
+        let value_len = decoder.read_len().unwrap();
+        let mut value_decoder =
+            Decoder::new(decoder.read_exact(value_len, "written book value").unwrap());
+        let mut decoded = DataComponentPatchSummary::default();
+        data_component_descriptor_or_error(type_id)
+            .unwrap()
+            .decode(&mut value_decoder, &mut decoded)
+            .unwrap();
+        assert!(value_decoder.is_empty());
+        assert_eq!(
+            decoder.read_var_i32().unwrap(),
+            VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID
+        );
+        assert!(decoder.is_empty());
+        assert_eq!(decoded.written_book, patch.written_book);
+        assert_eq!(decoded.written_book_pages_nbt, patch.written_book_pages_nbt);
+        assert_eq!(
+            decoded.written_book_page_filters_nbt,
+            patch.written_book_page_filters_nbt
+        );
     }
 
     #[test]

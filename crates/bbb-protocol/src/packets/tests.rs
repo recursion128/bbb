@@ -7,6 +7,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
         VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
     },
     ids,
     nbt_summary::decode_nbt_summary_from_decoder,
@@ -1597,6 +1598,54 @@ fn encodes_set_creative_mode_slot_attribute_modifiers_component() {
             0, // any slot group
             2, // override display
             8, 0, 8, b'O', b'v', b'e', b'r', b'r', b'i', b'd', b'e', // component NBT
+        ]
+    );
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_written_book_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID],
+                written_book: Some(WrittenBookContentSummary {
+                    title: "Guide".to_string(),
+                    title_filter: None,
+                    author: "Alex".to_string(),
+                    generation: 1,
+                    pages: vec!["Raw".to_string()],
+                    page_filters: vec![Some("Safe".to_string())],
+                    resolved: true,
+                }),
+                written_book_pages_nbt: vec![Some(NbtSummaryValue::String("Raw".to_string()))],
+                written_book_page_filters_nbt: vec![Some(NbtSummaryValue::String(
+                    "Safe".to_string(),
+                ))],
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            1, 0, // patch counts
+            55, 29, // written_book_content type and delimited value length
+            5, b'G', b'u', b'i', b'd', b'e', 0, // raw title, no filtered title
+            4, b'A', b'l', b'e', b'x', // author
+            1,    // generation
+            1,    // page count
+            8, 0, 3, b'R', b'a', b'w', // raw page Component NBT
+            1, 8, 0, 4, b'S', b'a', b'f', b'e', // filtered page
+            1,    // resolved
         ]
     );
 }
