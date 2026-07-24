@@ -3891,6 +3891,39 @@ fn encodes_set_creative_mode_slot_sheep_color_component() {
 }
 
 #[test]
+fn encodes_set_creative_mode_slot_shulker_color_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID],
+                builtin_enum_component_ids: BTreeMap::from([(
+                    VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID,
+                    VANILLA_DYE_COLOR_RED_ID,
+                )]),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            1, 0, // patch counts
+            109, 1,  // shulker color type and delimited value length
+            14, // RED id
+        ]
+    );
+}
+
+#[test]
 fn encodes_set_creative_mode_slot_dyed_color_component() {
     let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
         slot_num: 36,

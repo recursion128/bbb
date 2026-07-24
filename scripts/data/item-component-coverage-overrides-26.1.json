@@ -6588,6 +6588,93 @@
         "status": "complete"
       }
     },
+    "SHULKER_COLOR": {
+      "canonical_retention": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#SHULKER_COLOR",
+          "vanilla:net/minecraft/world/item/DyeColor.java#public static final StreamCodec<ByteBuf, DyeColor> STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub builtin_enum_component_ids",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_builtin_enum",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_animal_variant_data_components",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#shulker_color_string_enum_projects_to_builtin_enum_patch_map"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#SHULKER_COLOR",
+          "vanilla:net/minecraft/world/item/DyeColor.java#public static final StreamCodec<ByteBuf, DyeColor> STREAM_CODEC",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#idMapper",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_builtin_enum",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#shulker_color_descriptor_round_trips_canonical_ids_normalizes_decode_zero_fallback_and_rejects_invalid_values_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_shulker_color_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/entity/EntityType.java#appendComponentsConfig",
+          "vanilla:net/minecraft/world/entity/Entity.java#applyComponentsFromItemStack",
+          "vanilla:net/minecraft/world/entity/monster/Shulker.java#public @Nullable DyeColor getColor",
+          "vanilla:net/minecraft/world/entity/monster/Shulker.java#protected void applyImplicitComponents",
+          "vanilla:net/minecraft/world/entity/monster/Shulker.java#protected <T> boolean applyImplicitComponent",
+          "vanilla:net/minecraft/client/renderer/entity/ShulkerRenderer.java#public void extractRenderState",
+          "vanilla:net/minecraft/client/renderer/entity/ShulkerRenderer.java#public Identifier getTextureLocation",
+          "vanilla:net/minecraft/client/renderer/entity/ShulkerRenderer.java#public static Identifier getTextureLocation",
+          "crates/bbb-native/src/entity_scene/tests.rs#entity_model_instances_project_shulker_peek",
+          "crates/bbb-native/src/entity_scene/tests.rs#entity_model_instances_project_shulker_attach_face",
+          "crates/bbb-native/src/entity_scene/tests.rs#entity_model_kind_maps_shulker_to_real_model",
+          "crates/bbb-renderer/src/entity_models/tests/shulker.rs#shulker_textured_render_matches_vanilla_renderer"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#SHULKER_COLOR",
+          "vanilla:net/minecraft/world/item/DyeColor.java#public static final StringRepresentable.EnumCodec<DyeColor> CODEC",
+          "crates/bbb-native/src/input/component_patch.rs#encode_builtin_enum",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_all_string_enum_component_value_codecs",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#shulker_color_string_enum_projects_to_builtin_enum_patch_map",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#rejects_invalid_string_enum_component_value_codecs"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/builtin_enum_component_values.rs#built_in_enum_component_values_preserve_vanilla_fallbacks_and_names",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_animal_variant_data_components",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#shulker_color_descriptor_round_trips_canonical_ids_normalizes_decode_zero_fallback_and_rejects_invalid_values_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_shulker_color_component",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#shulker_color_string_enum_projects_to_builtin_enum_patch_map",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-native/src/entity_scene/tests.rs#entity_model_instances_project_shulker_peek",
+          "crates/bbb-native/src/entity_scene/tests.rs#entity_model_instances_project_shulker_attach_face",
+          "crates/bbb-native/src/entity_scene/tests.rs#entity_model_kind_maps_shulker_to_real_model",
+          "crates/bbb-renderer/src/entity_models/tests/shulker.rs#shulker_textured_render_matches_vanilla_renderer"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#SHULKER_COLOR",
+          "vanilla:net/minecraft/world/item/DyeColor.java#private static final IntFunction<DyeColor> BY_ID",
+          "vanilla:net/minecraft/world/item/DyeColor.java#public static final StreamCodec<ByteBuf, DyeColor> STREAM_CODEC",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#idMapper",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub builtin_enum_component_ids",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_builtin_enum",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_animal_variant_data_components",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#shulker_color_descriptor_round_trips_canonical_ids_normalizes_decode_zero_fallback_and_rejects_invalid_values_atomically"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "TOOLTIP_STYLE": {
       "canonical_retention": {
         "evidence": [

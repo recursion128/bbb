@@ -47,7 +47,8 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
     VANILLA_DATA_COMPONENT_RABBIT_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,
-    VANILLA_DATA_COMPONENT_SHEEP_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_SHEEP_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID,
+    VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID, VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID,
     VANILLA_DATA_COMPONENT_TOOLTIP_STYLE_TYPE_ID, VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
@@ -367,6 +368,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_CAT_VARIANT_TYPE_ID => Some(encode_cat_variant),
         VANILLA_DATA_COMPONENT_CAT_SOUND_VARIANT_TYPE_ID => Some(encode_cat_sound_variant),
         VANILLA_DATA_COMPONENT_SHEEP_COLOR_TYPE_ID => Some(encode_builtin_enum),
+        VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID => Some(encode_builtin_enum),
         VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID => {
             Some(encode_provides_trim_material)
         }
@@ -4134,7 +4136,7 @@ mod tests {
                 25, 26, 28, 30, 32, 34, 35, 36, 37, 38, 39, 40, 42, 43, 44, 45, 46, 48, 49, 50, 51,
                 52, 53, 54, 55, 56, 58, 59, 60, 61, 62, 63, 64, 65, 67, 68, 69, 70, 71, 72, 73, 74,
                 75, 76, 77, 80, 81, 82, 83, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99,
-                100, 101, 102, 103, 104, 105, 106, 108,
+                100, 101, 102, 103, 104, 105, 106, 108, 109,
             ]
         );
     }
@@ -10228,6 +10230,76 @@ mod tests {
             DataComponentPatchSummary {
                 builtin_enum_component_ids: BTreeMap::from([(
                     VANILLA_DATA_COMPONENT_SHEEP_COLOR_TYPE_ID,
+                    16,
+                )]),
+                ..DataComponentPatchSummary::default()
+            },
+        ] {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            assert!(descriptor.encode(&summary, &mut encoded).is_err());
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
+    }
+
+    #[test]
+    fn shulker_color_descriptor_round_trips_canonical_ids_normalizes_decode_zero_fallback_and_rejects_invalid_values_atomically(
+    ) {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID)
+                .unwrap();
+        for color_id in [0, 11, 15] {
+            let summary = DataComponentPatchSummary {
+                builtin_enum_component_ids: BTreeMap::from([(
+                    VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID,
+                    color_id,
+                )]),
+                ..DataComponentPatchSummary::default()
+            };
+            let mut encoded = Encoder::new();
+            descriptor.encode(&summary, &mut encoded).unwrap();
+
+            let mut expected = Encoder::new();
+            expected.write_var_i32(color_id);
+            assert_eq!(encoded.clone().into_inner(), expected.into_inner());
+
+            let wire = encoded.into_inner();
+            let mut decoder = Decoder::new(&wire);
+            let mut decoded = DataComponentPatchSummary::default();
+            descriptor.decode(&mut decoder, &mut decoded).unwrap();
+            assert!(decoder.is_empty());
+            assert_eq!(
+                decoded.builtin_enum_component_ids,
+                BTreeMap::from([(VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID, color_id)])
+            );
+        }
+
+        for raw_color_id in [-1, 16, 99] {
+            let mut wire = Encoder::new();
+            wire.write_var_i32(raw_color_id);
+            let wire = wire.into_inner();
+            let mut decoder = Decoder::new(&wire);
+            let mut decoded = DataComponentPatchSummary::default();
+            descriptor.decode(&mut decoder, &mut decoded).unwrap();
+            assert!(decoder.is_empty());
+            assert_eq!(
+                decoded.builtin_enum_component_ids,
+                BTreeMap::from([(VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID, 0)])
+            );
+        }
+
+        for summary in [
+            DataComponentPatchSummary::default(),
+            DataComponentPatchSummary {
+                builtin_enum_component_ids: BTreeMap::from([(
+                    VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID,
+                    -1,
+                )]),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                builtin_enum_component_ids: BTreeMap::from([(
+                    VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID,
                     16,
                 )]),
                 ..DataComponentPatchSummary::default()
