@@ -4,7 +4,7 @@ use crate::{
         VANILLA_AXOLOTL_VARIANT_BLUE_ID, VANILLA_DYE_COLOR_BLUE_ID, VANILLA_DYE_COLOR_RED_ID,
         VANILLA_HORSE_VARIANT_DARK_BROWN_ID, VANILLA_LLAMA_VARIANT_GRAY_ID,
         VANILLA_MOOSHROOM_VARIANT_BROWN_ID, VANILLA_PARROT_VARIANT_GRAY_ID,
-        VANILLA_RABBIT_VARIANT_EVIL_ID,
+        VANILLA_RABBIT_VARIANT_EVIL_ID, VANILLA_SALMON_VARIANT_LARGE_ID,
     },
     codec::{offline_player_uuid, Decoder, Encoder, ProtocolError},
     data_component_types::{
@@ -52,7 +52,8 @@ use crate::{
         VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
         VANILLA_DATA_COMPONENT_RABBIT_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,
-        VANILLA_DATA_COMPONENT_SHEEP_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID,
+        VANILLA_DATA_COMPONENT_SALMON_SIZE_TYPE_ID, VANILLA_DATA_COMPONENT_SHEEP_COLOR_TYPE_ID,
+        VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
@@ -3565,6 +3566,39 @@ fn encodes_set_creative_mode_slot_cat_sound_variant_component() {
             1, 0, // patch counts
             106, 1, // cat/sound_variant type and delimited value length
             1, // ROYAL holder id in the vanilla fallback catalog
+        ]
+    );
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_salmon_size_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_SALMON_SIZE_TYPE_ID],
+                builtin_enum_component_ids: BTreeMap::from([(
+                    VANILLA_DATA_COMPONENT_SALMON_SIZE_TYPE_ID,
+                    VANILLA_SALMON_VARIANT_LARGE_ID,
+                )]),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            1, 0, // patch counts
+            86, 1, // salmon/size type and delimited value length
+            2, // LARGE id
         ]
     );
 }

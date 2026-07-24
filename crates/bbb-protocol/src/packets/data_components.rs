@@ -52,8 +52,8 @@ use crate::{
         VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
-        VANILLA_DATA_COMPONENT_RABBIT_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_SHEEP_COLOR_TYPE_ID,
-        VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID,
+        VANILLA_DATA_COMPONENT_RABBIT_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_SALMON_SIZE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_SHEEP_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_TROPICAL_FISH_BASE_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID,
@@ -1392,6 +1392,13 @@ fn validate_encodable_data_component_patch_summary(
             }
             VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID => {
                 expected.chicken_sound_variant_id = patch.chicken_sound_variant_id;
+            }
+            VANILLA_DATA_COMPONENT_SALMON_SIZE_TYPE_ID => {
+                if let Some(value_id) = patch.builtin_enum_component_ids.get(type_id) {
+                    expected
+                        .builtin_enum_component_ids
+                        .insert(*type_id, *value_id);
+                }
             }
             VANILLA_DATA_COMPONENT_PARROT_VARIANT_TYPE_ID => {
                 if let Some(value_id) = patch.builtin_enum_component_ids.get(type_id) {
