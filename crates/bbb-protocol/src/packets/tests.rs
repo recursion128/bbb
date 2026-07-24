@@ -8,6 +8,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_BEES_TYPE_ID, VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
         VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID, VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
         VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
@@ -3397,6 +3398,36 @@ fn encodes_set_creative_mode_slot_chicken_variant_component() {
             1, 0, // patch counts
             97, 1, // chicken/variant type and delimited value length
             2, // COLD holder id in the vanilla fallback catalog
+        ]
+    );
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_chicken_sound_variant_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID],
+                chicken_sound_variant_id: Some(1),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            1, 0, // patch counts
+            98, 1, // chicken/sound_variant type and delimited value length
+            1, // PICKY holder id in the vanilla fallback catalog
         ]
     );
 }
