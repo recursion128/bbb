@@ -4512,18 +4512,25 @@
         "ack_response": {
           "evidence": [
             "crates/bbb-net/src/probe/play.rs#probe_move_vehicle_sends_vehicle_ack",
+            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#move_vehicle_event_updates_world_and_queues_ack",
+            "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#move_vehicle_compares_active_target_before_cancel_and_abs_snap",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMoveVehicle"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "command_surface": {
           "evidence": [
             "crates/bbb-native/src/input/commands.rs#queue_vehicle_move_command",
-            "crates/bbb-native/src/input/movement.rs#mounted_boat_input_queues_paddle_and_vehicle_move_instead_of_player_walk"
+            "crates/bbb-native/src/input/movement.rs#mounted_boat_input_queues_paddle_and_vehicle_move_instead_of_player_walk",
+            "crates/bbb-native/src/input/movement.rs#controlled_happy_ghast_queues_vehicle_move_without_boat_paddles",
+            "crates/bbb-native/src/input/movement.rs#controlled_abstract_horse_queues_predicted_vehicle_move_without_boat_paddles",
+            "crates/bbb-native/src/input/movement.rs#controlled_item_based_steering_mounts_queue_predicted_vehicle_moves",
+            "crates/bbb-native/src/input/movement.rs#camel_jump_release_starts_dash_before_vehicle_report",
+            "crates/bbb-native/src/input/movement.rs#nautilus_jump_release_starts_dash_before_vehicle_report"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
           "evidence": [
@@ -4537,10 +4544,11 @@
           "evidence": [
             "crates/bbb-native/src/input/movement.rs#noncontrolling_boat_passenger_only_reports_player_rotation",
             "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#noncontrolling_passenger_cannot_apply_vehicle_correction_or_drive_boat",
+            "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#local_vehicle_authority_uses_vanilla_controller_conditions",
             "vanilla:net/minecraft/world/entity/Entity.java#isLocalInstanceAuthoritative"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -4573,8 +4581,8 @@
             "crates/bbb-native/src/input/commands.rs#queue_paddle_boat_command",
             "crates/bbb-native/src/input/movement.rs#mounted_boat_input_queues_paddle_and_vehicle_move_instead_of_player_walk"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
           "evidence": [
@@ -4588,10 +4596,11 @@
           "evidence": [
             "crates/bbb-native/src/input/movement.rs#noncontrolling_boat_passenger_only_reports_player_rotation",
             "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#noncontrolling_passenger_cannot_apply_vehicle_correction_or_drive_boat",
+            "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#local_vehicle_authority_uses_vanilla_controller_conditions",
             "vanilla:net/minecraft/world/entity/vehicle/boat/AbstractBoat.java#isLocalInstanceAuthoritative"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -10115,10 +10124,12 @@
         "canonical_apply": {
           "evidence": [
             "crates/bbb-world/src/entities/passengers.rs#apply_move_vehicle",
-            "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#noncontrolling_passenger_cannot_apply_vehicle_correction_or_drive_boat"
+            "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#noncontrolling_passenger_cannot_apply_vehicle_correction_or_drive_boat",
+            "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#move_vehicle_small_delta_acks_without_snap",
+            "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#move_vehicle_compares_active_target_before_cancel_and_abs_snap"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
@@ -10141,8 +10152,8 @@
             "crates/bbb-net/src/probe/play.rs#probe_move_vehicle_without_mount_does_not_ack",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMoveVehicle"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [

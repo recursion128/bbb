@@ -705,7 +705,7 @@ mod tests {
     }
 
     #[test]
-    fn play_vehicle_movement_keeps_non_boat_prediction_open() {
+    fn play_vehicle_movement_closes_local_authority_commands_and_corrections() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let packets = BTreeSet::from([
             "SERVERBOUND_MOVE_VEHICLE",
@@ -718,27 +718,18 @@ mod tests {
             .filter(|entry| entry.state == "play" && packets.contains(entry.constant_name.as_str()))
             .collect();
         assert_eq!(entries.len(), packets.len());
-        let partial: BTreeSet<_> = entries
-            .iter()
-            .flat_map(|entry| {
-                entry.coverage.iter().filter_map(move |(dimension, cell)| {
-                    (cell.status == PacketCoverageStatus::Partial)
-                        .then_some((entry.constant_name.as_str(), dimension.as_str()))
-                })
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from([
-                ("CLIENTBOUND_MOVE_VEHICLE", "canonical_apply"),
-                ("CLIENTBOUND_MOVE_VEHICLE", "runtime_side_effect"),
-                ("SERVERBOUND_MOVE_VEHICLE", "ack_response"),
-                ("SERVERBOUND_MOVE_VEHICLE", "command_surface"),
-                ("SERVERBOUND_MOVE_VEHICLE", "state_guard"),
-                ("SERVERBOUND_PADDLE_BOAT", "command_surface"),
-                ("SERVERBOUND_PADDLE_BOAT", "state_guard"),
-            ])
-        );
+        for entry in entries {
+            for (dimension, cell) in &entry.coverage {
+                let expected = if entry.constant_name == "SERVERBOUND_PADDLE_BOAT"
+                    && dimension == "ack_response"
+                {
+                    PacketCoverageStatus::NotApplicable
+                } else {
+                    PacketCoverageStatus::Complete
+                };
+                assert_eq!(cell.status, expected, "{} {dimension}", entry.constant_name);
+            }
+        }
     }
 
     #[test]

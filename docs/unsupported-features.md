@@ -646,19 +646,6 @@ Movement:
   inside-block snowflake particle and extinguish effects are wired through the
   block-effect evaluator and particle resolver).
 - Handle the remaining `MovePlayer.Rot` vehicle movement send edge cases.
-- Complete the remaining vanilla boat physics after the direct local root-boat
-  status/buoyancy/block/entity/world-border collision/control foundation: remote
-  persistent status, passenger push and block inside/emission callbacks. The
-  exact per-substep entity/world-border/clock scheduler and metadata-driven
-  client bubble wobble are implemented. Complete the remaining locally
-  controlled vehicle subclass callback edges after the generated
-  saddle/first-passenger AbstractHorse, Camel, HappyGhast and AbstractNautilus
-  foundations. Pig/Strider exact held-item control,
-  `ItemBasedSteering` boost, Strider suffocation speed and source-lava surface
-  are implemented; remaining subclass inventory/callback edges stay explicit.
-  Do not treat first passenger as universally sufficient, and cancel active
-  interpolation on accepted corrections. Remote vehicles remain
-  server-transform/interpolation driven.
 
 Commands:
 
