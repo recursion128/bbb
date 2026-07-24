@@ -1088,6 +1088,9 @@ fn validate_encodable_data_component_patch_summary(
                 expected.item_name_styled = patch.item_name_styled.clone();
                 expected.item_name_nbt = patch.item_name_nbt.clone();
             }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID => {
+                expected.item_model = patch.item_model.clone();
+            }
             crate::data_component_types::VANILLA_DATA_COMPONENT_LORE_TYPE_ID => {
                 expected.lore = patch.lore.clone();
                 expected.lore_styled = patch.lore_styled.clone();
@@ -3110,7 +3113,7 @@ mod tests {
             VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID,
             VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID,
             VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
-            VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID,
+            VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
             VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
             VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID,
             VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID,
@@ -3270,8 +3273,9 @@ mod tests {
             1,
             DataComponentPatchSummary {
                 added: 1,
-                added_type_ids: vec![VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID],
-                item_model: Some("minecraft:stone".to_string()),
+                added_type_ids: vec![
+                    crate::data_component_types::VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,
+                ],
                 ..DataComponentPatchSummary::default()
             },
         ));

@@ -16,9 +16,10 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
     VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
-    VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
-    VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID,
+    VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
+    VANILLA_DATA_COMPONENT_LORE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
     VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
     VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
@@ -242,6 +243,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         }
         VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID => Some(encode_minimum_attack_charge),
         VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID => Some(encode_damage_type),
+        VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID => Some(encode_item_model),
         VANILLA_DATA_COMPONENT_LORE_TYPE_ID => Some(encode_lore),
         VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID
         | VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID => Some(encode_item_enchantments),
@@ -365,6 +367,22 @@ fn encode_damage_type(
         )));
     }
     out.write_var_i32(holder_id);
+    Ok(())
+}
+
+fn encode_item_model(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let item_model = summary.item_model.as_deref().ok_or_else(|| {
+        ProtocolError::InvalidData("missing item_model component value".to_string())
+    })?;
+    validate_canonical_resource_location(item_model, "item_model")?;
+
+    let mut encoded = Encoder::new();
+    encode_java_string(&mut encoded, item_model, MAX_STRING_CHARS)?;
+    out.write_bytes(&encoded.into_inner());
     Ok(())
 }
 
@@ -3126,8 +3144,8 @@ mod tests {
                 .map(|descriptor| descriptor.type_id())
                 .collect::<Vec<_>>(),
             vec![
-                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 13, 14, 15, 16, 17, 18, 24, 25, 28, 30, 36, 37,
-                38, 39, 40, 42, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 68, 69, 70, 75,
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 18, 24, 25, 28, 30, 36,
+                37, 38, 39, 40, 42, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 68, 69, 70, 75,
             ]
         );
     }
@@ -6016,6 +6034,56 @@ mod tests {
             DataComponentPatchSummary::default(),
             DataComponentPatchSummary {
                 damage_type_id: Some(-1),
+                ..DataComponentPatchSummary::default()
+            },
+        ] {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            assert!(descriptor.encode(&summary, &mut encoded).is_err());
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
+    }
+
+    #[test]
+    fn item_model_descriptor_round_trips_canonical_identifier() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID).unwrap();
+        let summary = DataComponentPatchSummary {
+            item_model: Some("example:models/variant".to_string()),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        descriptor.encode(&summary, &mut encoded).unwrap();
+
+        let mut expected = Encoder::new();
+        expected.write_string("example:models/variant");
+        assert_eq!(encoded.clone().into_inner(), expected.into_inner());
+
+        let wire = encoded.into_inner();
+        let mut decoder = Decoder::new(&wire);
+        let mut decoded = DataComponentPatchSummary::default();
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded.item_model, summary.item_model);
+    }
+
+    #[test]
+    fn item_model_descriptor_rejects_missing_noncanonical_and_oversized_values_atomically() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID).unwrap();
+        let oversized = format!("minecraft:{}", "a".repeat(MAX_STRING_CHARS + 1));
+        for summary in [
+            DataComponentPatchSummary::default(),
+            DataComponentPatchSummary {
+                item_model: Some("stone".to_string()),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                item_model: Some("Minecraft:stone".to_string()),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                item_model: Some(oversized),
                 ..DataComponentPatchSummary::default()
             },
         ] {

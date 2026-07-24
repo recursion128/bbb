@@ -793,34 +793,69 @@
       "constant_name": "ITEM_MODEL",
       "coverage": {
         "canonical_retention": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components.rs#pub item_model",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_item_model",
+            "crates/bbb-protocol/src/packets/entities/tests.rs#metadata_item_stack_uses_the_shared_nested_component_decoder",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_primitive_component_value_codecs",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_uses_item_model_component_as_root_model"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "network_encode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#ITEM_MODEL",
+            "vanilla:net/minecraft/resources/Identifier.java#STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_item_model",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#item_model_descriptor_round_trips_canonical_identifier",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_item_model_component"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "observable_consumers": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/client/renderer/item/ItemModelResolver.java#appendItemLayers",
+            "vanilla:net/minecraft/world/item/Item.java#finalizeInitializer",
+            "crates/bbb-item-model/src/item_runtime/icon.rs#item_model_id_for_stack",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_uses_item_model_component_as_root_model"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "persistent_projection": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/resources/Identifier.java#CODEC",
+            "crates/bbb-native/src/input/component_patch.rs#encode_item_model",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#rejects_invalid_primitive_component_value_codecs"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#item_model_descriptor_round_trips_canonical_identifier",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#item_model_descriptor_rejects_missing_noncanonical_and_oversized_values_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_item_model_component",
+            "crates/bbb-protocol/src/packets/entities/tests.rs#metadata_item_stack_uses_the_shared_nested_component_decoder",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#rejects_invalid_primitive_component_value_codecs",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_uses_item_model_component_as_root_model"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "typed_decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#ITEM_MODEL",
+            "vanilla:net/minecraft/resources/Identifier.java#STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_item_model",
+            "crates/bbb-protocol/src/packets/entities/tests.rs#metadata_item_stack_uses_the_shared_nested_component_decoder",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_primitive_component_value_codecs"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "resource_id": "minecraft:item_model",
