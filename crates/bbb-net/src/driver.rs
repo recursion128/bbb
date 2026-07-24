@@ -430,7 +430,10 @@ async fn read_packet_or_disconnect_command(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{AttackEntityCommand, OutboundChatCommand, OutboundChatMessage};
+    use crate::types::{
+        AttackEntityCommand, InteractEntityCommand, OutboundChatCommand, OutboundChatMessage,
+        UseItemCommand, UseItemOnCommand,
+    };
     use bbb_protocol::{
         codec::Decoder,
         ids,
@@ -1638,41 +1641,50 @@ mod tests {
         }))
         .await
         .unwrap();
-        tx.send(NetCommand::InteractEntity(InteractEntity {
-            entity_id: 5,
-            hand: InteractionHand::OffHand,
-            location: Vec3d::default(),
-            using_secondary_action: true,
+        tx.send(NetCommand::InteractEntity(InteractEntityCommand {
+            packet: InteractEntity {
+                entity_id: 5,
+                hand: InteractionHand::OffHand,
+                location: Vec3d::default(),
+                using_secondary_action: true,
+            },
+            selected_hotbar_slot: 0,
         }))
         .await
         .unwrap();
         tx.send(NetCommand::Swing(InteractionHand::MainHand))
             .await
             .unwrap();
-        tx.send(NetCommand::UseItemOn(UseItemOn {
-            hand: InteractionHand::MainHand,
-            hit: BlockHitResult {
-                pos: BlockPos {
-                    x: -5,
-                    y: 70,
-                    z: 12,
+        tx.send(NetCommand::UseItemOn(UseItemOnCommand {
+            packet: UseItemOn {
+                hand: InteractionHand::MainHand,
+                hit: BlockHitResult {
+                    pos: BlockPos {
+                        x: -5,
+                        y: 70,
+                        z: 12,
+                    },
+                    direction: Direction::South,
+                    cursor_x: 0.25,
+                    cursor_y: 0.5,
+                    cursor_z: 0.75,
+                    inside: false,
+                    world_border_hit: false,
                 },
-                direction: Direction::South,
-                cursor_x: 0.25,
-                cursor_y: 0.5,
-                cursor_z: 0.75,
-                inside: false,
-                world_border_hit: false,
+                sequence: 4,
             },
-            sequence: 4,
+            selected_hotbar_slot: 0,
         }))
         .await
         .unwrap();
-        tx.send(NetCommand::UseItem(UseItem {
-            hand: InteractionHand::OffHand,
-            sequence: 8,
-            y_rot: 45.0,
-            x_rot: -20.0,
+        tx.send(NetCommand::UseItem(UseItemCommand {
+            packet: UseItem {
+                hand: InteractionHand::OffHand,
+                sequence: 8,
+                y_rot: 45.0,
+                x_rot: -20.0,
+            },
+            selected_hotbar_slot: 0,
         }))
         .await
         .unwrap();

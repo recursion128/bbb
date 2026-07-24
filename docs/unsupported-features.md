@@ -657,9 +657,9 @@ Commands:
   projectile deflection. Damage and combat outcomes remain server-authoritative.
 - Complete local entity-use parity from `Minecraft.startUseItem` and
   `MultiPlayerGameMode.interact`: exact main/offhand iteration until a local
-  `InteractionResult.Success`, hands-busy and enabled-item gates, carried-item
-  ordering, local `interactOn` prediction, swing-source handling, and held-item
-  presentation. Entity state and inventory corrections remain server-authoritative.
+  `InteractionResult.Success`, hands-busy and enabled-item gates, local
+  `interactOn` prediction, swing-source handling, and held-item presentation.
+  Entity state and inventory corrections remain server-authoritative.
 - Complete `InstrumentItem.use` prediction from named and direct synchronized
   holders: preserve sound/range/use-duration values in the ItemStack component,
   play the local records-source sound, start the use pose, and apply the matching

@@ -7,7 +7,8 @@ use std::{
 
 use bbb_control::NetCounters;
 use bbb_net::{
-    AttackEntityCommand, NetCommand, OutboundChatCommand, OutboundChatMessage, VehicleMoveCommand,
+    AttackEntityCommand, InteractEntityCommand, NetCommand, OutboundChatCommand,
+    OutboundChatMessage, UseItemCommand, UseItemOnCommand, VehicleMoveCommand,
 };
 use bbb_protocol::packets::{
     AttackEntity, BlockEntityTagQuery, ChangeDifficultyCommand, ChangeGameModeCommand,
@@ -716,19 +717,23 @@ pub(super) fn queue_attack_entity_command(
 pub(super) fn queue_interact_entity_command(
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
+    selected_hotbar_slot: u8,
     entity_id: i32,
     hand: InteractionHand,
     location: ProtocolVec3d,
     using_secondary_action: bool,
 ) {
     if let Some(tx) = net_commands {
-        let packet = InteractEntity {
-            entity_id,
-            hand,
-            location,
-            using_secondary_action,
+        let command = InteractEntityCommand {
+            packet: InteractEntity {
+                entity_id,
+                hand,
+                location,
+                using_secondary_action,
+            },
+            selected_hotbar_slot: selected_hotbar_slot.min(8),
         };
-        if tx.try_send(NetCommand::InteractEntity(packet)).is_ok() {
+        if tx.try_send(NetCommand::InteractEntity(command)).is_ok() {
             counters.interact_entity_commands_queued += 1;
         }
     }
@@ -766,17 +771,21 @@ pub(super) fn queue_swing_command(
 pub(super) fn queue_use_item_on_command(
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
+    selected_hotbar_slot: u8,
     hand: InteractionHand,
     hit: CrosshairBlockHit,
     sequence: i32,
 ) {
     if let Some(tx) = net_commands {
-        let packet = UseItemOn {
-            hand,
-            hit: protocol_block_hit_result_from_crosshair_hit(hit),
-            sequence,
+        let command = UseItemOnCommand {
+            packet: UseItemOn {
+                hand,
+                hit: protocol_block_hit_result_from_crosshair_hit(hit),
+                sequence,
+            },
+            selected_hotbar_slot: selected_hotbar_slot.min(8),
         };
-        if tx.try_send(NetCommand::UseItemOn(packet)).is_ok() {
+        if tx.try_send(NetCommand::UseItemOn(command)).is_ok() {
             counters.use_item_on_commands_queued += 1;
         }
     }
@@ -785,19 +794,23 @@ pub(super) fn queue_use_item_on_command(
 pub(super) fn queue_use_item_command(
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
+    selected_hotbar_slot: u8,
     hand: InteractionHand,
     y_rot: f32,
     x_rot: f32,
     sequence: i32,
 ) -> bool {
     if let Some(tx) = net_commands {
-        let packet = UseItem {
-            hand,
-            sequence,
-            y_rot,
-            x_rot,
+        let command = UseItemCommand {
+            packet: UseItem {
+                hand,
+                sequence,
+                y_rot,
+                x_rot,
+            },
+            selected_hotbar_slot: selected_hotbar_slot.min(8),
         };
-        if tx.try_send(NetCommand::UseItem(packet)).is_ok() {
+        if tx.try_send(NetCommand::UseItem(command)).is_ok() {
             counters.use_item_commands_queued += 1;
             return true;
         }
@@ -1592,6 +1605,7 @@ mod tests {
         queue_interact_entity_command(
             &mut counters,
             &commands,
+            4,
             123,
             InteractionHand::OffHand,
             location,
@@ -1609,11 +1623,14 @@ mod tests {
         );
         assert_eq!(
             rx.try_recv().unwrap(),
-            NetCommand::InteractEntity(InteractEntity {
-                entity_id: 123,
-                hand: InteractionHand::OffHand,
-                location,
-                using_secondary_action: true,
+            NetCommand::InteractEntity(InteractEntityCommand {
+                packet: InteractEntity {
+                    entity_id: 123,
+                    hand: InteractionHand::OffHand,
+                    location,
+                    using_secondary_action: true,
+                },
+                selected_hotbar_slot: 4,
             })
         );
     }
@@ -1634,27 +1651,37 @@ mod tests {
             inside: false,
         };
 
-        queue_use_item_on_command(&mut counters, &commands, InteractionHand::OffHand, hit, 5);
+        queue_use_item_on_command(
+            &mut counters,
+            &commands,
+            6,
+            InteractionHand::OffHand,
+            hit,
+            5,
+        );
 
         assert_eq!(counters.use_item_on_commands_queued, 1);
         assert_eq!(
             rx.try_recv().unwrap(),
-            NetCommand::UseItemOn(UseItemOn {
-                hand: InteractionHand::OffHand,
-                hit: ProtocolBlockHitResult {
-                    pos: ProtocolBlockPos {
-                        x: -5,
-                        y: 70,
-                        z: 12
+            NetCommand::UseItemOn(UseItemOnCommand {
+                packet: UseItemOn {
+                    hand: InteractionHand::OffHand,
+                    hit: ProtocolBlockHitResult {
+                        pos: ProtocolBlockPos {
+                            x: -5,
+                            y: 70,
+                            z: 12
+                        },
+                        direction: ProtocolDirection::South,
+                        cursor_x: 0.25,
+                        cursor_y: 0.5,
+                        cursor_z: 0.75,
+                        inside: false,
+                        world_border_hit: false,
                     },
-                    direction: ProtocolDirection::South,
-                    cursor_x: 0.25,
-                    cursor_y: 0.5,
-                    cursor_z: 0.75,
-                    inside: false,
-                    world_border_hit: false,
+                    sequence: 5,
                 },
-                sequence: 5,
+                selected_hotbar_slot: 6,
             })
         );
     }

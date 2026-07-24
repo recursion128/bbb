@@ -306,6 +306,7 @@ pub(super) fn start_use_item(
             queue_interact_entity_command(
                 counters,
                 net_commands,
+                world.local_player().selected_hotbar_slot,
                 hit.entity_id,
                 hand,
                 hit.relative_location,
@@ -330,7 +331,14 @@ pub(super) fn start_use_item(
             }
             let sequence = world.next_local_prediction_sequence();
             let hand = block_use_hand(world);
-            queue_use_item_on_command(counters, net_commands, hand, hit, sequence);
+            queue_use_item_on_command(
+                counters,
+                net_commands,
+                world.local_player().selected_hotbar_slot,
+                hand,
+                hit,
+                sequence,
+            );
         }
         None => {
             if let Some(pose) = player_pose {
@@ -341,6 +349,7 @@ pub(super) fn start_use_item(
                 let using_item = queue_use_item_command(
                     counters,
                     net_commands,
+                    world.local_player().selected_hotbar_slot,
                     hand,
                     pose.y_rot,
                     pose.x_rot,
@@ -778,7 +787,7 @@ fn scroll_signum(value: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bbb_net::AttackEntityCommand;
+    use bbb_net::{AttackEntityCommand, InteractEntityCommand, UseItemCommand, UseItemOnCommand};
     use bbb_protocol::data_component_types::{
         VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID, VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID,
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID, VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
@@ -1025,6 +1034,7 @@ mod tests {
             x_rot: -20.0,
             ..LocalPlayerPoseState::default()
         });
+        assert!(world.set_local_selected_hotbar_slot(4));
         let mut counters = NetCounters::default();
 
         handle_mouse_input(
@@ -1040,11 +1050,14 @@ mod tests {
         assert_eq!(counters.use_item_commands_queued, 1);
         assert_eq!(
             rx.try_recv().unwrap(),
-            NetCommand::UseItem(UseItem {
-                hand: InteractionHand::MainHand,
-                sequence: 1,
-                y_rot: 45.0,
-                x_rot: -20.0,
+            NetCommand::UseItem(UseItemCommand {
+                packet: UseItem {
+                    hand: InteractionHand::MainHand,
+                    sequence: 1,
+                    y_rot: 45.0,
+                    x_rot: -20.0,
+                },
+                selected_hotbar_slot: 4,
             })
         );
 
@@ -1100,11 +1113,14 @@ mod tests {
         assert_eq!(counters.use_item_commands_queued, 1);
         assert_eq!(
             rx.try_recv().unwrap(),
-            NetCommand::UseItem(UseItem {
-                hand: InteractionHand::OffHand,
-                sequence: 1,
-                y_rot: 45.0,
-                x_rot: -20.0,
+            NetCommand::UseItem(UseItemCommand {
+                packet: UseItem {
+                    hand: InteractionHand::OffHand,
+                    sequence: 1,
+                    y_rot: 45.0,
+                    x_rot: -20.0,
+                },
+                selected_hotbar_slot: 0,
             })
         );
     }
@@ -1187,10 +1203,13 @@ mod tests {
         assert_eq!(counters.use_item_commands_queued, 1);
         assert!(matches!(
             rx.try_recv().unwrap(),
-            NetCommand::UseItem(UseItem {
-                hand: InteractionHand::OffHand,
-                sequence: 1,
-                ..
+            NetCommand::UseItem(UseItemCommand {
+                packet: UseItem {
+                    hand: InteractionHand::OffHand,
+                    sequence: 1,
+                    ..
+                },
+                selected_hotbar_slot: 0,
             })
         ));
     }
@@ -2796,6 +2815,7 @@ mod tests {
         let mut input = ClientInputState::new(true);
         input.sneak = true;
         let mut world = world_with_crosshair_entity(123);
+        assert!(world.set_local_selected_hotbar_slot(4));
         let mut counters = NetCounters::default();
 
         handle_mouse_input(
@@ -2816,15 +2836,18 @@ mod tests {
         assert_eq!(counters.interact_entity_commands_queued, 1);
         assert_eq!(
             rx.try_recv().unwrap(),
-            NetCommand::InteractEntity(InteractEntity {
-                entity_id: 123,
-                hand: InteractionHand::MainHand,
-                location: ProtocolVec3d {
-                    x: 0.0,
-                    y: 0.6200000047683716,
-                    z: -0.49000000953674316,
+            NetCommand::InteractEntity(InteractEntityCommand {
+                packet: InteractEntity {
+                    entity_id: 123,
+                    hand: InteractionHand::MainHand,
+                    location: ProtocolVec3d {
+                        x: 0.0,
+                        y: 0.6200000047683716,
+                        z: -0.49000000953674316,
+                    },
+                    using_secondary_action: true,
                 },
-                using_secondary_action: true,
+                selected_hotbar_slot: 4,
             })
         );
     }
@@ -2852,8 +2875,9 @@ mod tests {
         let NetCommand::InteractEntity(interact) = rx.try_recv().unwrap() else {
             panic!("expected command-minecart interaction");
         };
-        assert_eq!(interact.entity_id, 123);
-        assert_eq!(interact.hand, InteractionHand::MainHand);
+        assert_eq!(interact.packet.entity_id, 123);
+        assert_eq!(interact.packet.hand, InteractionHand::MainHand);
+        assert_eq!(interact.selected_hotbar_slot, 0);
         assert!(rx.try_recv().is_err());
     }
 
@@ -2881,15 +2905,18 @@ mod tests {
         assert_eq!(counters.interact_entity_commands_queued, 1);
         assert_eq!(
             rx.try_recv().unwrap(),
-            NetCommand::InteractEntity(InteractEntity {
-                entity_id: 123,
-                hand: InteractionHand::OffHand,
-                location: ProtocolVec3d {
-                    x: 0.0,
-                    y: 0.6200000047683716,
-                    z: -0.49000000953674316,
+            NetCommand::InteractEntity(InteractEntityCommand {
+                packet: InteractEntity {
+                    entity_id: 123,
+                    hand: InteractionHand::OffHand,
+                    location: ProtocolVec3d {
+                        x: 0.0,
+                        y: 0.6200000047683716,
+                        z: -0.49000000953674316,
+                    },
+                    using_secondary_action: false,
                 },
-                using_secondary_action: false,
+                selected_hotbar_slot: 0,
             })
         );
     }
@@ -2925,6 +2952,7 @@ mod tests {
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
         let mut world = world_with_crosshair_block();
+        assert!(world.set_local_selected_hotbar_slot(4));
         let mut counters = NetCounters::default();
 
         handle_mouse_input(
@@ -2945,18 +2973,21 @@ mod tests {
         assert_eq!(counters.use_item_on_commands_queued, 1);
         assert_eq!(
             rx.try_recv().unwrap(),
-            NetCommand::UseItemOn(UseItemOn {
-                hand: InteractionHand::MainHand,
-                hit: ProtocolBlockHitResult {
-                    pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
-                    direction: ProtocolDirection::North,
-                    cursor_x: 0.0,
-                    cursor_y: 0.62,
-                    cursor_z: 0.0,
-                    inside: false,
-                    world_border_hit: false,
+            NetCommand::UseItemOn(UseItemOnCommand {
+                packet: UseItemOn {
+                    hand: InteractionHand::MainHand,
+                    hit: ProtocolBlockHitResult {
+                        pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+                        direction: ProtocolDirection::North,
+                        cursor_x: 0.0,
+                        cursor_y: 0.62,
+                        cursor_z: 0.0,
+                        inside: false,
+                        world_border_hit: false,
+                    },
+                    sequence: 1,
                 },
-                sequence: 1,
+                selected_hotbar_slot: 4,
             })
         );
     }
@@ -2989,18 +3020,21 @@ mod tests {
         assert_eq!(counters.use_item_on_commands_queued, 1);
         assert_eq!(
             rx.try_recv().unwrap(),
-            NetCommand::UseItemOn(UseItemOn {
-                hand: InteractionHand::MainHand,
-                hit: ProtocolBlockHitResult {
-                    pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
-                    direction: ProtocolDirection::North,
-                    cursor_x: 0.0,
-                    cursor_y: 0.62,
-                    cursor_z: 0.0,
-                    inside: false,
-                    world_border_hit: false,
+            NetCommand::UseItemOn(UseItemOnCommand {
+                packet: UseItemOn {
+                    hand: InteractionHand::MainHand,
+                    hit: ProtocolBlockHitResult {
+                        pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+                        direction: ProtocolDirection::North,
+                        cursor_x: 0.0,
+                        cursor_y: 0.62,
+                        cursor_z: 0.0,
+                        inside: false,
+                        world_border_hit: false,
+                    },
+                    sequence: 1,
                 },
-                sequence: 1,
+                selected_hotbar_slot: 0,
             })
         );
     }
@@ -3053,18 +3087,21 @@ mod tests {
 
         assert_eq!(
             rx.try_recv().unwrap(),
-            NetCommand::UseItemOn(UseItemOn {
-                hand: InteractionHand::OffHand,
-                hit: ProtocolBlockHitResult {
-                    pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
-                    direction: ProtocolDirection::North,
-                    cursor_x: 0.0,
-                    cursor_y: 0.62,
-                    cursor_z: 0.0,
-                    inside: false,
-                    world_border_hit: false,
+            NetCommand::UseItemOn(UseItemOnCommand {
+                packet: UseItemOn {
+                    hand: InteractionHand::OffHand,
+                    hit: ProtocolBlockHitResult {
+                        pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+                        direction: ProtocolDirection::North,
+                        cursor_x: 0.0,
+                        cursor_y: 0.62,
+                        cursor_z: 0.0,
+                        inside: false,
+                        world_border_hit: false,
+                    },
+                    sequence: 1,
                 },
-                sequence: 1,
+                selected_hotbar_slot: 0,
             })
         );
     }
@@ -3096,18 +3133,21 @@ mod tests {
         assert_eq!(counters.use_item_on_commands_queued, 1);
         assert_eq!(
             rx.try_recv().unwrap(),
-            NetCommand::UseItemOn(UseItemOn {
-                hand: InteractionHand::MainHand,
-                hit: ProtocolBlockHitResult {
-                    pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
-                    direction: ProtocolDirection::North,
-                    cursor_x: 0.0,
-                    cursor_y: 0.62,
-                    cursor_z: 0.0,
-                    inside: false,
-                    world_border_hit: false,
+            NetCommand::UseItemOn(UseItemOnCommand {
+                packet: UseItemOn {
+                    hand: InteractionHand::MainHand,
+                    hit: ProtocolBlockHitResult {
+                        pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+                        direction: ProtocolDirection::North,
+                        cursor_x: 0.0,
+                        cursor_y: 0.62,
+                        cursor_z: 0.0,
+                        inside: false,
+                        world_border_hit: false,
+                    },
+                    sequence: 1,
                 },
-                sequence: 1,
+                selected_hotbar_slot: 0,
             })
         );
     }
@@ -3139,18 +3179,21 @@ mod tests {
 
         assert_eq!(
             rx.try_recv().unwrap(),
-            NetCommand::UseItemOn(UseItemOn {
-                hand: InteractionHand::MainHand,
-                hit: ProtocolBlockHitResult {
-                    pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
-                    direction: ProtocolDirection::North,
-                    cursor_x: 0.0,
-                    cursor_y: 0.62,
-                    cursor_z: 0.0,
-                    inside: false,
-                    world_border_hit: false,
+            NetCommand::UseItemOn(UseItemOnCommand {
+                packet: UseItemOn {
+                    hand: InteractionHand::MainHand,
+                    hit: ProtocolBlockHitResult {
+                        pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+                        direction: ProtocolDirection::North,
+                        cursor_x: 0.0,
+                        cursor_y: 0.62,
+                        cursor_z: 0.0,
+                        inside: false,
+                        world_border_hit: false,
+                    },
+                    sequence: 1,
                 },
-                sequence: 1,
+                selected_hotbar_slot: 0,
             })
         );
     }
@@ -3173,18 +3216,21 @@ mod tests {
         );
         assert_eq!(
             rx.try_recv().unwrap(),
-            NetCommand::UseItemOn(UseItemOn {
-                hand: InteractionHand::MainHand,
-                hit: ProtocolBlockHitResult {
-                    pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
-                    direction: ProtocolDirection::North,
-                    cursor_x: 0.0,
-                    cursor_y: 0.62,
-                    cursor_z: 0.0,
-                    inside: false,
-                    world_border_hit: false,
+            NetCommand::UseItemOn(UseItemOnCommand {
+                packet: UseItemOn {
+                    hand: InteractionHand::MainHand,
+                    hit: ProtocolBlockHitResult {
+                        pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+                        direction: ProtocolDirection::North,
+                        cursor_x: 0.0,
+                        cursor_y: 0.62,
+                        cursor_z: 0.0,
+                        inside: false,
+                        world_border_hit: false,
+                    },
+                    sequence: 1,
                 },
-                sequence: 1,
+                selected_hotbar_slot: 0,
             })
         );
 
@@ -3216,18 +3262,21 @@ mod tests {
         );
         assert_eq!(
             rx.try_recv().unwrap(),
-            NetCommand::UseItemOn(UseItemOn {
-                hand: InteractionHand::MainHand,
-                hit: ProtocolBlockHitResult {
-                    pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
-                    direction: ProtocolDirection::North,
-                    cursor_x: 0.0,
-                    cursor_y: 0.62,
-                    cursor_z: 0.0,
-                    inside: false,
-                    world_border_hit: false,
+            NetCommand::UseItemOn(UseItemOnCommand {
+                packet: UseItemOn {
+                    hand: InteractionHand::MainHand,
+                    hit: ProtocolBlockHitResult {
+                        pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+                        direction: ProtocolDirection::North,
+                        cursor_x: 0.0,
+                        cursor_y: 0.62,
+                        cursor_z: 0.0,
+                        inside: false,
+                        world_border_hit: false,
+                    },
+                    sequence: 2,
                 },
-                sequence: 2,
+                selected_hotbar_slot: 0,
             })
         );
     }
@@ -3333,15 +3382,18 @@ mod tests {
         assert_eq!(counters.interact_entity_commands_queued, 1);
         assert_eq!(
             rx.try_recv().unwrap(),
-            NetCommand::InteractEntity(InteractEntity {
-                entity_id: 101,
-                hand: InteractionHand::MainHand,
-                location: ProtocolVec3d {
-                    x: 0.0,
-                    y: 0.6200000047683716,
-                    z: -0.5,
+            NetCommand::InteractEntity(InteractEntityCommand {
+                packet: InteractEntity {
+                    entity_id: 101,
+                    hand: InteractionHand::MainHand,
+                    location: ProtocolVec3d {
+                        x: 0.0,
+                        y: 0.6200000047683716,
+                        z: -0.5,
+                    },
+                    using_secondary_action: false,
                 },
-                using_secondary_action: false,
+                selected_hotbar_slot: 0,
             })
         );
     }

@@ -3,20 +3,23 @@ use bbb_protocol::packets::{
     self, BlockEntityTagQuery, ChangeDifficultyCommand, ChangeGameModeCommand, ChatAcknowledgement,
     ChatCommand, ChatCommandSigned, ChatMessage, ChatSessionUpdate, ClientCommandAction,
     CommandSuggestionRequest, ContainerButtonClick, ContainerClick, ContainerCloseRequest,
-    ContainerSlotStateChanged, CustomClickAction, EditBook, EntityTagQuery, InteractEntity,
-    InteractionHand, JigsawGenerate, LockDifficultyCommand, PaddleBoat, PickItemFromBlock,
-    PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerCommand,
-    PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand,
-    RenameItem, ResourcePackResponseAction, SeenAdvancements, SelectBundleItem, SelectTradeCommand,
+    ContainerSlotStateChanged, CustomClickAction, EditBook, EntityTagQuery, InteractionHand,
+    JigsawGenerate, LockDifficultyCommand, PaddleBoat, PickItemFromBlock, PickItemFromEntity,
+    PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerInput,
+    PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem,
+    ResourcePackResponseAction, SeenAdvancements, SelectBundleItem, SelectTradeCommand,
     ServerboundCustomPayload, SetBeacon, SetCommandBlock, SetCommandMinecart, SetCreativeModeSlot,
     SetGameRule, SetJigsawBlock, SetStructureBlock, SetTestBlock, SignUpdate, SpectateEntity,
-    TeleportToEntity, TestInstanceBlockAction, UseItem, UseItemOn,
+    TeleportToEntity, TestInstanceBlockAction,
 };
 use uuid::Uuid;
 
 use crate::{
     connection::RawConnection,
-    types::{AttackEntityCommand, ConnectionState, PlayerMoveCommand, VehicleMoveCommand},
+    types::{
+        AttackEntityCommand, ConnectionState, InteractEntityCommand, PlayerMoveCommand,
+        UseItemCommand, UseItemOnCommand, VehicleMoveCommand,
+    },
 };
 
 pub(super) async fn send_resource_pack_response(
@@ -155,9 +158,10 @@ pub(crate) async fn send_attack_entity(
 
 pub(crate) async fn send_interact_entity(
     conn: &mut RawConnection,
-    packet: InteractEntity,
+    command: InteractEntityCommand,
 ) -> Result<()> {
-    let (id, payload) = packets::encode_play_interact_entity(packet);
+    send_set_held_slot_command(conn, command.selected_hotbar_slot).await?;
+    let (id, payload) = packets::encode_play_interact_entity(command.packet);
     conn.send_packet(id, &payload).await
 }
 
@@ -204,13 +208,18 @@ pub(crate) async fn send_swing_command(
     conn.send_packet(id, &payload).await
 }
 
-pub(crate) async fn send_use_item_on(conn: &mut RawConnection, packet: UseItemOn) -> Result<()> {
-    let (id, payload) = packets::encode_play_use_item_on(packet);
+pub(crate) async fn send_use_item_on(
+    conn: &mut RawConnection,
+    command: UseItemOnCommand,
+) -> Result<()> {
+    send_set_held_slot_command(conn, command.selected_hotbar_slot).await?;
+    let (id, payload) = packets::encode_play_use_item_on(command.packet);
     conn.send_packet(id, &payload).await
 }
 
-pub(crate) async fn send_use_item(conn: &mut RawConnection, packet: UseItem) -> Result<()> {
-    let (id, payload) = packets::encode_play_use_item(packet);
+pub(crate) async fn send_use_item(conn: &mut RawConnection, command: UseItemCommand) -> Result<()> {
+    send_set_held_slot_command(conn, command.selected_hotbar_slot).await?;
+    let (id, payload) = packets::encode_play_use_item(command.packet);
     conn.send_packet(id, &payload).await
 }
 

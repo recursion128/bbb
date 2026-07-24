@@ -10,7 +10,7 @@ pub use crate::resource_pack::{
 pub use crate::status::status_ping;
 pub use crate::types::{
     AcceptTeleportCommand, AttackEntityCommand, ChunkProbeSummary, ConnectionOptions,
-    ConnectionState, NetCommand, NetEvent, OutboundChatCommand, OutboundChatCommandSigning,
-    OutboundChatMessage, PlayerMoveCommand, ProbeReport, ServerResourcePackPolicy, StatusPing,
-    VehicleMoveCommand,
+    ConnectionState, InteractEntityCommand, NetCommand, NetEvent, OutboundChatCommand,
+    OutboundChatCommandSigning, OutboundChatMessage, PlayerMoveCommand, ProbeReport,
+    ServerResourcePackPolicy, StatusPing, UseItemCommand, UseItemOnCommand, VehicleMoveCommand,
 };

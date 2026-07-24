@@ -19,7 +19,10 @@ use super::{
 };
 use crate::{
     connection::RawConnection,
-    types::{AttackEntityCommand, PlayerMoveCommand, VehicleMoveCommand},
+    types::{
+        AttackEntityCommand, InteractEntityCommand, PlayerMoveCommand, UseItemCommand,
+        UseItemOnCommand, VehicleMoveCommand,
+    },
 };
 use bbb_protocol::{
     codec::Decoder,
@@ -840,6 +843,15 @@ async fn send_attack_entity_and_interact_commands_encode_with_carried_slot_repai
 
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
+            .expect("interact carried slot should be repaired")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SET_CARRIED_ITEM);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i16().unwrap(), 6);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
             .expect("interact entity command should be sent")
             .unwrap();
         assert_eq!(packet_id, ids::play::SERVERBOUND_INTERACT);
@@ -887,15 +899,18 @@ async fn send_attack_entity_and_interact_commands_encode_with_carried_slot_repai
     .unwrap();
     send_interact_entity(
         &mut conn,
-        InteractEntity {
-            entity_id: 5,
-            hand: InteractionHand::MainHand,
-            location: Vec3d {
-                x: 1.0,
-                y: 0.0,
-                z: -1.0,
+        InteractEntityCommand {
+            packet: InteractEntity {
+                entity_id: 5,
+                hand: InteractionHand::MainHand,
+                location: Vec3d {
+                    x: 1.0,
+                    y: 0.0,
+                    z: -1.0,
+                },
+                using_secondary_action: false,
             },
-            using_secondary_action: false,
+            selected_hotbar_slot: 6,
         },
     )
     .await
@@ -1163,6 +1178,15 @@ async fn send_use_item_on_encodes_use_item_on_packet() {
         let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
+            .expect("carried slot should precede use item on")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SET_CARRIED_ITEM);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i16().unwrap(), 6);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
             .expect("use item on command should be sent")
             .unwrap();
         assert_eq!(packet_id, ids::play::SERVERBOUND_USE_ITEM_ON);
@@ -1196,22 +1220,25 @@ async fn send_use_item_on_encodes_use_item_on_packet() {
 
     send_use_item_on(
         &mut conn,
-        bbb_protocol::packets::UseItemOn {
-            hand: InteractionHand::MainHand,
-            hit: bbb_protocol::packets::BlockHitResult {
-                pos: bbb_protocol::packets::BlockPos {
-                    x: -5,
-                    y: 70,
-                    z: 12,
+        UseItemOnCommand {
+            packet: bbb_protocol::packets::UseItemOn {
+                hand: InteractionHand::MainHand,
+                hit: bbb_protocol::packets::BlockHitResult {
+                    pos: bbb_protocol::packets::BlockPos {
+                        x: -5,
+                        y: 70,
+                        z: 12,
+                    },
+                    direction: bbb_protocol::packets::Direction::South,
+                    cursor_x: 0.25,
+                    cursor_y: 0.5,
+                    cursor_z: 0.75,
+                    inside: false,
+                    world_border_hit: false,
                 },
-                direction: bbb_protocol::packets::Direction::South,
-                cursor_x: 0.25,
-                cursor_y: 0.5,
-                cursor_z: 0.75,
-                inside: false,
-                world_border_hit: false,
+                sequence: 4,
             },
-            sequence: 4,
+            selected_hotbar_slot: 6,
         },
     )
     .await
@@ -1227,6 +1254,15 @@ async fn send_use_item_encodes_use_item_packet() {
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
         let mut conn = RawConnection::from_stream(stream, None);
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("carried slot should precede use item")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SET_CARRIED_ITEM);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i16().unwrap(), 7);
+        assert!(decoder.is_empty());
+
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("use item command should be sent")
@@ -1245,11 +1281,14 @@ async fn send_use_item_encodes_use_item_packet() {
 
     send_use_item(
         &mut conn,
-        bbb_protocol::packets::UseItem {
-            hand: InteractionHand::OffHand,
-            sequence: 8,
-            y_rot: 45.0,
-            x_rot: -20.0,
+        UseItemCommand {
+            packet: bbb_protocol::packets::UseItem {
+                hand: InteractionHand::OffHand,
+                sequence: 8,
+                y_rot: 45.0,
+                x_rot: -20.0,
+            },
+            selected_hotbar_slot: 7,
         },
     )
     .await

@@ -198,6 +198,24 @@ pub struct AttackEntityCommand {
     pub selected_hotbar_slot: u8,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct InteractEntityCommand {
+    pub packet: InteractEntity,
+    pub selected_hotbar_slot: u8,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct UseItemOnCommand {
+    pub packet: UseItemOn,
+    pub selected_hotbar_slot: u8,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct UseItemCommand {
+    pub packet: UseItem,
+    pub selected_hotbar_slot: u8,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum NetCommand {
     ClientTickEnd,
@@ -227,11 +245,11 @@ pub enum NetCommand {
         subscription_ids: Vec<i32>,
     },
     AttackEntity(AttackEntityCommand),
-    InteractEntity(InteractEntity),
+    InteractEntity(InteractEntityCommand),
     SetHeldSlot(u8),
     Swing(InteractionHand),
-    UseItemOn(UseItemOn),
-    UseItem(UseItem),
+    UseItemOn(UseItemOnCommand),
+    UseItem(UseItemCommand),
     PickItemFromBlock(PickItemFromBlock),
     PickItemFromEntity(PickItemFromEntity),
     PaddleBoat(PaddleBoat),
