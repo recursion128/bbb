@@ -2,6 +2,7 @@ use super::*;
 use bbb_protocol::attribute_modifier_types::{
     attribute_modifier_display_name, attribute_modifier_operation_name,
     VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_DEFAULT_ID, VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_HIDDEN_ID,
+    VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID,
 };
 use bbb_protocol::builtin_enum_component_values::{
     builtin_enum_component_value_name, vanilla_dye_color_name,
@@ -910,11 +911,35 @@ fn encode_attribute_modifiers(
                 fields.push(format!("slot: {}", debug_snbt_string(slot)));
             }
             match modifier.display_id {
-                VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_DEFAULT_ID => {}
-                VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_HIDDEN_ID => fields.push(format!(
-                    "display: {{type: {}}}",
-                    debug_snbt_string(attribute_modifier_display_name(modifier.display_id)?)
-                )),
+                VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_DEFAULT_ID => {
+                    if modifier.display_text.is_some()
+                        || modifier.display_text_styled.is_some()
+                        || modifier.display_text_nbt.is_some()
+                    {
+                        return None;
+                    }
+                }
+                VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_HIDDEN_ID => {
+                    if modifier.display_text.is_some()
+                        || modifier.display_text_styled.is_some()
+                        || modifier.display_text_nbt.is_some()
+                    {
+                        return None;
+                    }
+                    fields.push(format!(
+                        "display: {{type: {}}}",
+                        debug_snbt_string(attribute_modifier_display_name(modifier.display_id)?)
+                    ));
+                }
+                VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID => {
+                    modifier.display_text.as_ref()?;
+                    modifier.display_text_styled.as_ref()?;
+                    fields.push(format!(
+                        "display: {{type: {}, value: {}}}",
+                        debug_snbt_string(attribute_modifier_display_name(modifier.display_id)?),
+                        debug_nbt_summary_snbt(modifier.display_text_nbt.as_ref()?)
+                    ));
+                }
                 _ => return None,
             }
             Some(format!("{{{}}}", fields.join(", ")))
@@ -2989,7 +3014,7 @@ mod tests {
     }
 
     #[test]
-    fn attribute_modifier_encoder_preserves_order_defaults_and_hidden_display() {
+    fn attribute_modifier_encoder_preserves_order_and_all_display_variants() {
         let mut patch = bbb_protocol::packets::DataComponentPatchSummary {
             attribute_modifiers: vec![
                 bbb_protocol::packets::AttributeModifierSummary {
@@ -3001,6 +3026,7 @@ mod tests {
                     display_id: 0,
                     display_text: None,
                     display_text_styled: None,
+                    display_text_nbt: None,
                 },
                 bbb_protocol::packets::AttributeModifierSummary {
                     attribute_id: bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_KNOCKBACK_RESISTANCE_ID,
@@ -3011,6 +3037,7 @@ mod tests {
                     display_id: 1,
                     display_text: None,
                     display_text_styled: None,
+                    display_text_nbt: None,
                 },
             ],
             ..Default::default()
@@ -3032,8 +3059,33 @@ mod tests {
         assert_eq!(encode_added_component_value_snbt(16, &patch, None), None);
         patch.attribute_modifiers[0].attribute_id =
             bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_ATTACK_DAMAGE_ID;
+        patch.attribute_modifiers[0].display_text_nbt = Some(
+            bbb_protocol::NbtSummaryValue::String("dangling".to_string()),
+        );
+        assert_eq!(encode_added_component_value_snbt(16, &patch, None), None);
+        patch.attribute_modifiers[0].display_text_nbt = None;
         patch.attribute_modifiers[1].display_id = 2;
         patch.attribute_modifiers[1].display_text = Some("Override".to_string());
+        patch.attribute_modifiers[1].display_text_styled =
+            Some(vec![bbb_protocol::StyledTextRun {
+                text: "Override".to_string(),
+                style: bbb_protocol::ComponentStyle::default(),
+            }]);
+        patch.attribute_modifiers[1].display_text_nbt = Some(
+            bbb_protocol::NbtSummaryValue::String("Override".to_string()),
+        );
+        assert_eq!(
+            encode_added_component_value_snbt(16, &patch, None),
+            Some(
+                "[{type: \"minecraft:attack_damage\", id: \"minecraft:base_attack_damage\", \
+                 amount: 3.5d, operation: \"add_value\"}, \
+                 {type: \"minecraft:knockback_resistance\", id: \"minecraft:test/hidden\", \
+                 amount: -0.25d, operation: \"add_multiplied_total\", slot: \"mainhand\", \
+                 display: {type: \"override\", value: \"Override\"}}]"
+                    .to_string()
+            )
+        );
+        patch.attribute_modifiers[1].display_text_nbt = None;
         assert_eq!(encode_added_component_value_snbt(16, &patch, None), None);
 
         patch.attribute_modifiers.clear();

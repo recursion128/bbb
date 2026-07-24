@@ -396,3 +396,8 @@
   重编码；派生 profile textures/资源路径规范、creative framing、持久化与异步
   皮肤消费证据齐备，合同见
   `docs/archive/profile-component-roundtrip-design.md`。
+- **2026-07-23（Attribute modifiers component 六维闭环）**：
+  `ATTRIBUTE_MODIFIERS` 现保留 override Component 原始 NBT，并按固定 attribute
+  holder、modifier、slot 与 display union 精确重编码；creative framing、持久化
+  SNBT、tooltip 与 item-model predicate 证据齐备，合同见
+  `docs/archive/attribute-modifiers-component-roundtrip-design.md`。

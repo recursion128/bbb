@@ -882,34 +882,72 @@
       "constant_name": "ATTRIBUTE_MODIFIERS",
       "coverage": {
         "canonical_retention": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components.rs#pub display_text_nbt",
+            "crates/bbb-protocol/src/packets/data_components.rs#decode_attribute_modifier_display",
+            "crates/bbb-world/src/client/dialog/body/component_value.rs#attribute_modifier_summaries",
+            "crates/bbb-world/src/client/dialog/body/component_value/attribute_modifiers/tests.rs#projects_ordered_attribute_modifier_summaries_and_display_text"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "network_encode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/ItemAttributeModifiers.java#public static final StreamCodec<RegistryFriendlyByteBuf, ItemAttributeModifiers> STREAM_CODEC",
+            "vanilla:net/minecraft/world/item/component/ItemAttributeModifiers.java#public static final StreamCodec<RegistryFriendlyByteBuf, ItemAttributeModifiers.Entry> STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_attribute_modifiers",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#attribute_modifiers_descriptor_round_trips_exact_display_variants",
+            "crates/bbb-protocol/src/packets/data_components.rs#encodes_attribute_modifiers_patch_with_delimited_override_component",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_attribute_modifiers_component"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "observable_consumers": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/ItemStack.java#addAttributeTooltips",
+            "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_stack_attribute_modifiers_tooltip_lines",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+            "crates/bbb-item-model/src/item_runtime/icon_model.rs#attribute_modifiers_exact_match",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_component_condition_predicates"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "persistent_projection": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/ItemAttributeModifiers.java#public static final Codec<ItemAttributeModifiers> CODEC",
+            "vanilla:net/minecraft/world/item/component/ItemAttributeModifiers.java#public static final Codec<ItemAttributeModifiers.Entry> CODEC",
+            "crates/bbb-native/src/input/component_patch.rs#encode_attribute_modifiers",
+            "crates/bbb-native/src/input/component_patch.rs#attribute_modifier_encoder_preserves_order_and_all_display_variants",
+            "crates/bbb-world/src/client/dialog/body/component_value/attribute_modifiers/tests.rs#projects_ordered_attribute_modifier_summaries_and_display_text"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#attribute_modifiers_descriptor_round_trips_exact_display_variants",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#attribute_modifiers_descriptor_rejects_noncanonical_summaries_atomically",
+            "crates/bbb-protocol/src/packets/data_components.rs#encodes_attribute_modifiers_patch_with_delimited_override_component",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_attribute_modifiers_component",
+            "crates/bbb-world/src/client/dialog/body/component_value/attribute_modifiers/tests.rs#decodes_all_builtin_attributes_operations_slot_groups_and_displays",
+            "crates/bbb-native/src/input/component_patch.rs#attribute_modifier_encoder_preserves_order_and_all_display_variants"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "typed_decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#ATTRIBUTE_MODIFIERS",
+            "vanilla:net/minecraft/world/item/component/ItemAttributeModifiers.java#public record Entry",
+            "vanilla:net/minecraft/world/item/component/ItemAttributeModifiers.java#enum Type implements StringRepresentable",
+            "crates/bbb-protocol/src/packets/data_components.rs#decode_attribute_modifiers",
+            "crates/bbb-protocol/src/packets/data_components.rs#decode_attribute_modifier_display",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_interaction_and_attribute_data_components"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "resource_id": "minecraft:attribute_modifiers",

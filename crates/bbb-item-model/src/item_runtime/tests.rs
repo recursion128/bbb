@@ -1230,6 +1230,24 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                     },
                 }]
             }),
+            display_text_nbt: (display_id == 2).then(|| {
+                bbb_protocol::NbtSummaryValue::Compound(vec![
+                    bbb_protocol::NbtSummaryEntry {
+                        name: "text".to_string(),
+                        value: bbb_protocol::NbtSummaryValue::String(
+                            display_text.unwrap_or_default().to_string(),
+                        ),
+                    },
+                    bbb_protocol::NbtSummaryEntry {
+                        name: "bold".to_string(),
+                        value: bbb_protocol::NbtSummaryValue::Byte(1),
+                    },
+                    bbb_protocol::NbtSummaryEntry {
+                        name: "color".to_string(),
+                        value: bbb_protocol::NbtSummaryValue::String("gold".to_string()),
+                    },
+                ])
+            }),
         }
     };
     let attribute_modifier_stack = ItemStackSummary {
@@ -7441,6 +7459,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
                 display_id: 1,
                 display_text: None,
                 display_text_styled: None,
+                display_text_nbt: None,
             },
             AttributeModifierSummary {
                 attribute_id: 1,
@@ -7451,6 +7470,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
                 display_id: 2,
                 display_text: Some("Heavy hit".to_string()),
                 display_text_styled: None,
+                display_text_nbt: None,
             },
         ],
         ..DataComponentPatchSummary::default()
@@ -9024,6 +9044,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
             display_id: 0,
             display_text: None,
             display_text_styled: None,
+            display_text_nbt: None,
         }
     };
     let add_modifier = |id: &str, amount: f64, slot_id| {
@@ -9036,6 +9057,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
             display_id: 0,
             display_text: None,
             display_text_styled: None,
+            display_text_nbt: None,
         }
     };
     let multiplied_base_modifier = |id: &str, amount: f64, slot_id| {
@@ -9048,6 +9070,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
             display_id: 0,
             display_text: None,
             display_text_styled: None,
+            display_text_nbt: None,
         }
     };
     assert_eq!(

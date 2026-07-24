@@ -10215,6 +10215,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
                 display_id: 0,
                 display_text: None,
                 display_text_styled: None,
+                display_text_nbt: None,
             },
             bbb_protocol::packets::AttributeModifierSummary {
                 attribute_id: bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_KNOCKBACK_RESISTANCE_ID,
@@ -10225,6 +10226,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
                 display_id: 1,
                 display_text: None,
                 display_text_styled: None,
+                display_text_nbt: None,
             },
         ],
         custom_model_data_floats: vec![1.0, -0.0, f32::INFINITY, f32::NAN].into(),

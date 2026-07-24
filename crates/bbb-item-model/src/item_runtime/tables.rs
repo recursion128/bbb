@@ -25,6 +25,7 @@ pub(super) fn default_attribute_modifier_summary(
         display_id: VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_DEFAULT_ID,
         display_text: None,
         display_text_styled: None,
+        display_text_nbt: None,
     }
 }
 

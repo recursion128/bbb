@@ -3,7 +3,8 @@ use std::sync::OnceLock;
 
 use crate::block_entity_types::vanilla_block_entity_type;
 use crate::data_component_types::{
-    DataComponentTypeCatalogEntry, VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
+    DataComponentTypeCatalogEntry, VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
     VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
     VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
     VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
@@ -215,6 +216,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID => Some(encode_max_damage),
         VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID => Some(encode_damage),
         VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID => Some(encode_unbreakable),
+        VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID => Some(encode_attribute_modifiers),
         VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID => Some(encode_entity_data),
         VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID => Some(encode_bucket_entity_data),
         VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID => Some(encode_block_entity_data),
@@ -238,6 +240,117 @@ fn encode_custom_data(
     out: &mut Encoder,
 ) -> Result<()> {
     encode_required_compound_tag(summary.custom_data.as_ref(), "custom_data", out)
+}
+
+fn encode_attribute_modifiers(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    if summary.attribute_modifiers.len() > MAX_DATA_COMPONENT_LIST_ITEMS {
+        return Err(ProtocolError::PacketTooLarge(
+            summary.attribute_modifiers.len(),
+            MAX_DATA_COMPONENT_LIST_ITEMS,
+        ));
+    }
+
+    let mut encoded = Encoder::new();
+    encoded.write_var_i32(summary.attribute_modifiers.len() as i32);
+    for modifier in &summary.attribute_modifiers {
+        if crate::attribute_types::vanilla_attribute_type(modifier.attribute_id).is_none() {
+            return Err(ProtocolError::InvalidData(format!(
+                "invalid vanilla attribute holder id {}",
+                modifier.attribute_id
+            )));
+        }
+        if normalize_resource_location(modifier.modifier_id.clone())? != modifier.modifier_id {
+            return Err(ProtocolError::InvalidData(format!(
+                "noncanonical attribute modifier resource location `{}`",
+                modifier.modifier_id
+            )));
+        }
+        if crate::attribute_modifier_types::attribute_modifier_operation_name(modifier.operation_id)
+            .is_none()
+        {
+            return Err(ProtocolError::InvalidData(format!(
+                "invalid attribute modifier operation id {}",
+                modifier.operation_id
+            )));
+        }
+        if vanilla_equipment_slot_group(modifier.slot_id).is_none() {
+            return Err(ProtocolError::InvalidData(format!(
+                "invalid equipment slot group id {}",
+                modifier.slot_id
+            )));
+        }
+
+        encoded.write_var_i32(modifier.attribute_id);
+        encoded.write_string(&modifier.modifier_id);
+        encoded.write_f64(f64::from_bits(modifier.amount_bits));
+        encoded.write_var_i32(modifier.operation_id);
+        encoded.write_var_i32(modifier.slot_id);
+        encode_attribute_modifier_display(modifier, &mut encoded)?;
+    }
+    out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
+fn encode_attribute_modifier_display(
+    modifier: &AttributeModifierSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    use crate::attribute_modifier_types::{
+        VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_DEFAULT_ID,
+        VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_HIDDEN_ID,
+        VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID,
+    };
+
+    match modifier.display_id {
+        VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_DEFAULT_ID
+        | VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_HIDDEN_ID => {
+            if modifier.display_text.is_some()
+                || modifier.display_text_styled.is_some()
+                || modifier.display_text_nbt.is_some()
+            {
+                return Err(ProtocolError::InvalidData(format!(
+                    "attribute modifier display {} cannot contain override text",
+                    modifier.display_id
+                )));
+            }
+            out.write_var_i32(modifier.display_id);
+        }
+        VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID => {
+            let nbt = modifier.display_text_nbt.as_ref().ok_or_else(|| {
+                ProtocolError::InvalidData(
+                    "attribute modifier override display is missing component nbt".to_string(),
+                )
+            })?;
+            let component =
+                encode_nbt_summary_bounded(Some(nbt), i32::MAX as usize, MAX_NBT_DEPTH)?;
+            let (canonical_runs, canonical_nbt) =
+                decode_styled_component_summary_with_nbt_from_decoder(&mut Decoder::new(
+                    &component,
+                ))?;
+            let canonical_text = styled_runs_summary_text(&canonical_runs);
+            if modifier.display_text.as_deref() != Some(canonical_text.as_str())
+                || modifier.display_text_styled.as_deref() != Some(canonical_runs.as_slice())
+                || canonical_nbt.as_ref() != Some(nbt)
+            {
+                return Err(ProtocolError::InvalidData(
+                    "attribute modifier override display contains noncanonical component projections"
+                        .to_string(),
+                ));
+            }
+            out.write_var_i32(modifier.display_id);
+            out.write_bytes(&component);
+        }
+        display_id => {
+            return Err(ProtocolError::InvalidData(format!(
+                "invalid attribute modifier display id {display_id}"
+            )));
+        }
+    }
+    Ok(())
 }
 
 pub(super) fn decode_required_compound_tag(
@@ -1472,8 +1585,264 @@ mod tests {
                 .filter(|descriptor| descriptor.can_encode())
                 .map(|descriptor| descriptor.type_id())
                 .collect::<Vec<_>>(),
-            vec![0, 1, 2, 3, 4, 58, 59, 60, 70]
+            vec![0, 1, 2, 3, 4, 16, 58, 59, 60, 70]
         );
+    }
+
+    #[test]
+    fn attribute_modifiers_descriptor_round_trips_exact_display_variants() {
+        let display_text_nbt = NbtSummaryValue::Compound(vec![
+            NbtSummaryEntry {
+                name: "text".to_string(),
+                value: NbtSummaryValue::String("Override".to_string()),
+            },
+            NbtSummaryEntry {
+                name: "bold".to_string(),
+                value: NbtSummaryValue::Byte(1),
+            },
+        ]);
+        let display_text_styled = vec![StyledTextRun {
+            text: "Override".to_string(),
+            style: crate::ComponentStyle {
+                bold: Some(true),
+                ..crate::ComponentStyle::default()
+            },
+        }];
+        let summary = DataComponentPatchSummary {
+            attribute_modifiers: vec![
+                AttributeModifierSummary {
+                    attribute_id: crate::attribute_types::VANILLA_ATTRIBUTE_ATTACK_DAMAGE_ID,
+                    modifier_id: "minecraft:test/default".to_string(),
+                    amount_bits: (-0.0f64).to_bits(),
+                    operation_id: crate::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_BASE_ID,
+                    slot_id: VANILLA_EQUIPMENT_SLOT_GROUP_ANY_ID,
+                    display_id: crate::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_DEFAULT_ID,
+                    display_text: None,
+                    display_text_styled: None,
+                    display_text_nbt: None,
+                },
+                AttributeModifierSummary {
+                    attribute_id:
+                        crate::attribute_types::VANILLA_ATTRIBUTE_KNOCKBACK_RESISTANCE_ID,
+                    modifier_id: "minecraft:test/hidden".to_string(),
+                    amount_bits: f64::INFINITY.to_bits(),
+                    operation_id: crate::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID,
+                    slot_id:
+                        crate::equipment_slots::VANILLA_EQUIPMENT_SLOT_GROUP_MAINHAND_ID,
+                    display_id: crate::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_HIDDEN_ID,
+                    display_text: None,
+                    display_text_styled: None,
+                    display_text_nbt: None,
+                },
+                AttributeModifierSummary {
+                    attribute_id: crate::attribute_types::VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
+                    modifier_id: "example:override".to_string(),
+                    amount_bits: 1.5f64.to_bits(),
+                    operation_id: crate::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
+                    slot_id: 7,
+                    display_id: crate::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID,
+                    display_text: Some("Override".to_string()),
+                    display_text_styled: Some(display_text_styled),
+                    display_text_nbt: Some(display_text_nbt.clone()),
+                },
+            ],
+            ..DataComponentPatchSummary::default()
+        };
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID)
+                .unwrap();
+        let mut encoded = Encoder::new();
+        descriptor.encode(&summary, &mut encoded).unwrap();
+        let encoded = encoded.into_inner();
+
+        let mut expected = Encoder::new();
+        expected.write_var_i32(3);
+        for (attribute, id, amount, operation, slot, display) in [
+            (
+                crate::attribute_types::VANILLA_ATTRIBUTE_ATTACK_DAMAGE_ID,
+                "minecraft:test/default",
+                -0.0,
+                crate::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_BASE_ID,
+                VANILLA_EQUIPMENT_SLOT_GROUP_ANY_ID,
+                crate::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_DEFAULT_ID,
+            ),
+            (
+                crate::attribute_types::VANILLA_ATTRIBUTE_KNOCKBACK_RESISTANCE_ID,
+                "minecraft:test/hidden",
+                f64::INFINITY,
+                crate::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID,
+                crate::equipment_slots::VANILLA_EQUIPMENT_SLOT_GROUP_MAINHAND_ID,
+                crate::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_HIDDEN_ID,
+            ),
+            (
+                crate::attribute_types::VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
+                "example:override",
+                1.5,
+                crate::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
+                7,
+                crate::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID,
+            ),
+        ] {
+            expected.write_var_i32(attribute);
+            expected.write_string(id);
+            expected.write_f64(amount);
+            expected.write_var_i32(operation);
+            expected.write_var_i32(slot);
+            expected.write_var_i32(display);
+            if display
+                == crate::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID
+            {
+                expected.write_bytes(
+                    &encode_nbt_summary_bounded(
+                        Some(&display_text_nbt),
+                        i32::MAX as usize,
+                        MAX_NBT_DEPTH,
+                    )
+                    .unwrap(),
+                );
+            }
+        }
+        assert_eq!(encoded, expected.into_inner());
+
+        let mut decoder = Decoder::new(&encoded);
+        let mut decoded = DataComponentPatchSummary::default();
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded.attribute_modifiers, summary.attribute_modifiers);
+    }
+
+    #[test]
+    fn attribute_modifiers_descriptor_rejects_noncanonical_summaries_atomically() {
+        let valid = AttributeModifierSummary {
+            attribute_id: crate::attribute_types::VANILLA_ATTRIBUTE_ATTACK_DAMAGE_ID,
+            modifier_id: "minecraft:test".to_string(),
+            amount_bits: 1.0f64.to_bits(),
+            operation_id:
+                crate::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
+            slot_id: VANILLA_EQUIPMENT_SLOT_GROUP_ANY_ID,
+            display_id:
+                crate::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_DEFAULT_ID,
+            display_text: None,
+            display_text_styled: None,
+            display_text_nbt: None,
+        };
+        let invalid = [
+            (
+                AttributeModifierSummary {
+                    attribute_id: i32::try_from(crate::attribute_types::VANILLA_ATTRIBUTE_TYPES.len())
+                        .unwrap(),
+                    ..valid.clone()
+                },
+                "invalid vanilla attribute holder",
+            ),
+            (
+                AttributeModifierSummary {
+                    modifier_id: "test".to_string(),
+                    ..valid.clone()
+                },
+                "noncanonical attribute modifier resource location",
+            ),
+            (
+                AttributeModifierSummary {
+                    operation_id: 3,
+                    ..valid.clone()
+                },
+                "invalid attribute modifier operation",
+            ),
+            (
+                AttributeModifierSummary {
+                    slot_id: 99,
+                    ..valid.clone()
+                },
+                "invalid equipment slot group",
+            ),
+            (
+                AttributeModifierSummary {
+                    display_id:
+                        crate::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_DEFAULT_ID,
+                    display_text: Some("dangling".to_string()),
+                    ..valid.clone()
+                },
+                "cannot contain override text",
+            ),
+            (
+                AttributeModifierSummary {
+                    display_id:
+                        crate::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID,
+                    ..valid.clone()
+                },
+                "missing component nbt",
+            ),
+            (
+                AttributeModifierSummary {
+                    display_id:
+                        crate::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID,
+                    display_text: Some("stale".to_string()),
+                    display_text_styled: Some(vec![StyledTextRun {
+                        text: "wire".to_string(),
+                        style: crate::ComponentStyle::default(),
+                    }]),
+                    display_text_nbt: Some(NbtSummaryValue::String("wire".to_string())),
+                    ..valid.clone()
+                },
+                "noncanonical component projections",
+            ),
+            (
+                AttributeModifierSummary {
+                    display_id:
+                        crate::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID,
+                    display_text: Some("invalid".to_string()),
+                    display_text_styled: Some(Vec::new()),
+                    display_text_nbt: Some(NbtSummaryValue::Int(1)),
+                    ..valid.clone()
+                },
+                "is not a component",
+            ),
+            (
+                AttributeModifierSummary {
+                    display_id: 3,
+                    ..valid.clone()
+                },
+                "invalid attribute modifier display",
+            ),
+        ];
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID)
+                .unwrap();
+        for (modifier, expected_error) in invalid {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            let error = descriptor
+                .encode(
+                    &DataComponentPatchSummary {
+                        attribute_modifiers: vec![modifier],
+                        ..DataComponentPatchSummary::default()
+                    },
+                    &mut encoded,
+                )
+                .unwrap_err();
+            assert!(error.to_string().contains(expected_error), "{error}");
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
+
+        let mut encoded = Encoder::new();
+        encoded.write_u8(0xaa);
+        let error = descriptor
+            .encode(
+                &DataComponentPatchSummary {
+                    attribute_modifiers: vec![valid; MAX_DATA_COMPONENT_LIST_ITEMS + 1],
+                    ..DataComponentPatchSummary::default()
+                },
+                &mut encoded,
+            )
+            .unwrap_err();
+        assert!(matches!(
+            error,
+            ProtocolError::PacketTooLarge(actual, max)
+                if actual == MAX_DATA_COMPONENT_LIST_ITEMS + 1
+                    && max == MAX_DATA_COMPONENT_LIST_ITEMS
+        ));
+        assert_eq!(encoded.into_inner(), [0xaa]);
     }
 
     #[test]

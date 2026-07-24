@@ -1375,16 +1375,18 @@ fn attribute_modifier_summaries(
     modifiers
         .iter()
         .map(|modifier| {
-            let (display_text, display_text_styled) =
+            let (display_text, display_text_styled, display_text_nbt) =
                 match (modifier.display.type_id, modifier.display.value.as_ref()) {
                     (
                         VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_DEFAULT_ID
                         | VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_HIDDEN_ID,
                         None,
-                    ) => (None, None),
-                    (VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID, Some(value)) => {
-                        (Some(value.text.clone()), Some(value.runs.clone()))
-                    }
+                    ) => (None, None, None),
+                    (VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID, Some(value)) => (
+                        Some(value.text.clone()),
+                        Some(value.runs.clone()),
+                        Some(value.component.clone()),
+                    ),
                     _ => return None,
                 };
             Some(AttributeModifierSummary {
@@ -1396,6 +1398,7 @@ fn attribute_modifier_summaries(
                 display_id: modifier.display.type_id,
                 display_text,
                 display_text_styled,
+                display_text_nbt,
             })
         })
         .collect()

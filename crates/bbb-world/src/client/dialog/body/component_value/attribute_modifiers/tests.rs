@@ -191,6 +191,7 @@ fn projects_ordered_attribute_modifier_summaries_and_display_text() {
                 display_id: 0,
                 display_text: None,
                 display_text_styled: None,
+                display_text_nbt: None,
             },
             AttributeModifierSummary {
                 attribute_id: bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_ARMOR_ID,
@@ -201,6 +202,7 @@ fn projects_ordered_attribute_modifier_summaries_and_display_text() {
                 display_id: 1,
                 display_text: None,
                 display_text_styled: None,
+                display_text_nbt: None,
             },
             AttributeModifierSummary {
                 attribute_id: bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
@@ -211,6 +213,7 @@ fn projects_ordered_attribute_modifier_summaries_and_display_text() {
                 display_id: 2,
                 display_text: Some("Boost".to_string()),
                 display_text_styled: Some(override_text.runs.clone()),
+                display_text_nbt: Some(override_text.component.clone()),
             },
         ]
     );

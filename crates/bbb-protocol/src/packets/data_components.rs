@@ -833,6 +833,8 @@ pub struct AttributeModifierSummary {
     pub display_text: Option<String>,
     #[serde(default)]
     pub display_text_styled: Option<Vec<StyledTextRun>>,
+    #[serde(default)]
+    pub display_text_nbt: Option<NbtSummaryValue>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1026,6 +1028,9 @@ fn validate_encodable_data_component_patch_summary(
             }
             VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID => {
                 expected.unbreakable = patch.unbreakable;
+            }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID => {
+                expected.attribute_modifiers = patch.attribute_modifiers.clone();
             }
             VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID => {
                 expected.entity_data_entity_type_id = patch.entity_data_entity_type_id;
@@ -1411,7 +1416,7 @@ fn decode_attribute_modifiers(decoder: &mut Decoder<'_>) -> Result<Vec<Attribute
         let amount_bits = decoder.read_f64()?.to_bits();
         let operation_id = normalize_attribute_modifier_operation_id(decoder.read_var_i32()?);
         let slot_id = decode_equipment_slot_group_id(decoder)?;
-        let (display_id, display_text, display_text_styled) =
+        let (display_id, display_text, display_text_styled, display_text_nbt) =
             decode_attribute_modifier_display(decoder)?;
         modifiers.push(AttributeModifierSummary {
             attribute_id,
@@ -1422,6 +1427,7 @@ fn decode_attribute_modifiers(decoder: &mut Decoder<'_>) -> Result<Vec<Attribute
             display_id,
             display_text,
             display_text_styled,
+            display_text_nbt,
         });
     }
     Ok(modifiers)
@@ -1438,20 +1444,27 @@ fn decode_equipment_slot_group_id(decoder: &mut Decoder<'_>) -> Result<i32> {
 
 fn decode_attribute_modifier_display(
     decoder: &mut Decoder<'_>,
-) -> Result<(i32, Option<String>, Option<Vec<StyledTextRun>>)> {
+) -> Result<(
+    i32,
+    Option<String>,
+    Option<Vec<StyledTextRun>>,
+    Option<NbtSummaryValue>,
+)> {
     let display = AttributeModifierDisplayType::from_id(decoder.read_var_i32()?);
     match display {
         AttributeModifierDisplayType::Override => {
-            let display_text_styled = decode_styled_component_summary_from_decoder(decoder)?;
+            let (display_text_styled, display_text_nbt) =
+                decode_styled_component_summary_with_nbt_from_decoder(decoder)?;
             let display_text = styled_runs_summary_text(&display_text_styled);
             Ok((
                 display as i32,
                 Some(display_text),
                 Some(display_text_styled),
+                display_text_nbt,
             ))
         }
         AttributeModifierDisplayType::Default | AttributeModifierDisplayType::Hidden => {
-            Ok((display as i32, None, None))
+            Ok((display as i32, None, None, None))
         }
     }
 }
@@ -2889,6 +2902,63 @@ mod tests {
                 0, // removed custom_data
             ]
         );
+    }
+
+    #[test]
+    fn encodes_attribute_modifiers_patch_with_delimited_override_component() {
+        let display_text_nbt = NbtSummaryValue::String("Override".to_string());
+        let patch = DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![
+                crate::data_component_types::VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
+            ],
+            removed_type_ids: vec![VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID],
+            attribute_modifiers: vec![AttributeModifierSummary {
+                attribute_id: crate::attribute_types::VANILLA_ATTRIBUTE_ATTACK_DAMAGE_ID,
+                modifier_id: "minecraft:test".to_string(),
+                amount_bits: 1.0f64.to_bits(),
+                operation_id: crate::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
+                slot_id: VANILLA_EQUIPMENT_SLOT_GROUP_ANY_ID,
+                display_id: crate::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID,
+                display_text: Some("Override".to_string()),
+                display_text_styled: Some(vec![StyledTextRun {
+                    text: "Override".to_string(),
+                    style: crate::ComponentStyle::default(),
+                }]),
+                display_text_nbt: Some(display_text_nbt),
+            }],
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        encode_delimited_data_component_patch_summary(&mut encoded, &patch).unwrap();
+        let encoded = encoded.into_inner();
+
+        let mut decoder = Decoder::new(&encoded);
+        assert_eq!(decoder.read_len().unwrap(), 1);
+        assert_eq!(decoder.read_len().unwrap(), 1);
+        let type_id = decoder.read_var_i32().unwrap();
+        assert_eq!(
+            type_id,
+            crate::data_component_types::VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID
+        );
+        let value_len = decoder.read_len().unwrap();
+        let mut value_decoder = Decoder::new(
+            decoder
+                .read_exact(value_len, "attribute modifiers value")
+                .unwrap(),
+        );
+        let mut decoded = DataComponentPatchSummary::default();
+        data_component_descriptor_or_error(type_id)
+            .unwrap()
+            .decode(&mut value_decoder, &mut decoded)
+            .unwrap();
+        assert!(value_decoder.is_empty());
+        assert_eq!(
+            decoder.read_var_i32().unwrap(),
+            VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID
+        );
+        assert!(decoder.is_empty());
+        assert_eq!(decoded.attribute_modifiers, patch.attribute_modifiers);
     }
 
     #[test]
@@ -5050,6 +5120,7 @@ mod tests {
                         display_id: 0,
                         display_text: None,
                         display_text_styled: None,
+                        display_text_nbt: None,
                     },
                     AttributeModifierSummary {
                         attribute_id: 7,
@@ -5060,6 +5131,7 @@ mod tests {
                         display_id: 1,
                         display_text: None,
                         display_text_styled: None,
+                        display_text_nbt: None,
                     },
                     AttributeModifierSummary {
                         attribute_id: 7,
@@ -5077,6 +5149,20 @@ mod tests {
                                 ..Default::default()
                             },
                         }]),
+                        display_text_nbt: Some(NbtSummaryValue::Compound(vec![
+                            NbtSummaryEntry {
+                                name: "text".to_string(),
+                                value: NbtSummaryValue::String("Override".to_string()),
+                            },
+                            NbtSummaryEntry {
+                                name: "bold".to_string(),
+                                value: NbtSummaryValue::Byte(1),
+                            },
+                            NbtSummaryEntry {
+                                name: "color".to_string(),
+                                value: NbtSummaryValue::String("gold".to_string()),
+                            },
+                        ])),
                     },
                 ],
                 ..DataComponentPatchSummary::default()

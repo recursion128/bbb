@@ -2,6 +2,7 @@ use super::*;
 use crate::{
     codec::{offline_player_uuid, Decoder, Encoder, ProtocolError},
     data_component_types::{
+        VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
         VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
         VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
@@ -1544,6 +1545,58 @@ fn encodes_set_creative_mode_slot_entity_data_components() {
             58, 4, 0x96, 0x01, 10, 0, // entity holder + empty compound
             59, 2, 10, 0, // bucket compound
             60, 3, 9, 10, 0, // block entity holder + empty compound
+        ]
+    );
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_attribute_modifiers_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID],
+                attribute_modifiers: vec![AttributeModifierSummary {
+                    attribute_id: crate::attribute_types::VANILLA_ATTRIBUTE_ATTACK_DAMAGE_ID,
+                    modifier_id: "minecraft:test".to_string(),
+                    amount_bits: 1.5f64.to_bits(),
+                    operation_id: crate::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
+                    slot_id:
+                        crate::equipment_slots::VANILLA_EQUIPMENT_SLOT_GROUP_ANY_ID,
+                    display_id: crate::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID,
+                    display_text: Some("Override".to_string()),
+                    display_text_styled: Some(vec![crate::StyledTextRun {
+                        text: "Override".to_string(),
+                        style: crate::ComponentStyle::default(),
+                    }]),
+                    display_text_nbt: Some(NbtSummaryValue::String("Override".to_string())),
+                }],
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            1, 0, // patch counts
+            16, 39, // attribute_modifiers type and delimited value length
+            1,  // modifier count
+            2,  // attack_damage holder
+            14, b'm', b'i', b'n', b'e', b'c', b'r', b'a', b'f', b't', b':', b't', b'e', b's',
+            b't', // modifier id
+            0x3f, 0xf8, 0, 0, 0, 0, 0, 0, // amount = 1.5
+            0, // add_value
+            0, // any slot group
+            2, // override display
+            8, 0, 8, b'O', b'v', b'e', b'r', b'r', b'i', b'd', b'e', // component NBT
         ]
     );
 }
