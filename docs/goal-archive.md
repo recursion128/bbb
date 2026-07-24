@@ -461,3 +461,6 @@
 - **2026-07-23（Tool component 六维闭环）**：`TOOL` 现按 holder-set、raw
   float、VarInt 与 creative flag 精确重编码；默认与 patch 后的规则驱动挖掘
   速度、正确掉落及 creative 本地破坏预测，六维证据见 item component coverage。
+- **2026-07-23（Equippable component 六维闭环）**：`EQUIPPABLE` 现按 slot、
+  sound-holder、资源键、entity holder-set 与五个 flag 精确重编码；栈补丁的
+  asset/slot 覆盖默认装备材质投影，六维证据见 item component coverage。
