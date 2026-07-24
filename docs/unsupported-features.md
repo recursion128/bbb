@@ -680,17 +680,11 @@ Commands:
 
 Inventory:
 
-- Complete component-rich creative pick-item response parity. Middle-click/Ctrl
-  input, block/entity target selection and both serverbound packets are covered;
-  the server remains authoritative for reach, creative/game-master data access,
-  hotbar selection and inventory mutation. Remaining added-value ItemStack
-  components in SetPlayerInventory/container broadcasts can still lose clone
-  data and therefore keep the response family partial.
-- Complete the remaining ItemStack added-value component semantics consumed by
-  SetEquipment, following the per-component dispositions in
-  `docs/item-component-coverage-26.1.json`; wire-safe type presence is not
-  sufficient for canonical item state or component-driven held/armor
-  rendering.
+- Implement the creative-inventory screen item-add/item-drop interactions that
+  drive `SetCreativeModeSlot`, including its local infinite-material,
+  enabled-feature, slot, count, open-container, and drop-throttler gates. The server
+  remains authoritative for reach, creative/game-master data access, hotbar
+  selection and inventory mutation.
 - Implement the rich-tooltip `space` font provider, the remaining text styles,
   italic/complex component styles, and component-specific detail lines from
   `font/default.json`.
@@ -1050,18 +1044,13 @@ back into a todo. Do not delete these.
 - ContainerSetData is gated by the current `containerMenu` id in vanilla.
   Mismatched property updates must remain ignored rather than creating a future
   synthetic menu or replacing the active one.
-- ContainerSetContent follows the same inventory-menu-or-matching-active-menu
-  authority gate; a mismatched packet must not update the carried item or create
-  synthetic slots. Remaining ItemStack added-value semantics stay tracked above.
 - ContainerSetSlot also rejects mismatched nonzero menu ids. Remaining parity
-  includes creative-inventory remote-slot synchronization, hotbar pop-time
-  presentation, and the ItemStack added-value semantics tracked above.
+  includes creative-inventory remote-slot synchronization and hotbar pop-time
+  presentation.
 - SetCursorItem updates carried state outside creative inventory; the creative
-  screen suppression branch and remaining ItemStack added-value semantics are
-  still open.
+  screen suppression branch is still open.
 - SetPlayerInventory now limits canonical state to vanilla inventory/equipment
-  slots 0..42. Tutorial pickup presentation and remaining ItemStack added-value
-  semantics are still open.
+  slots 0..42. Tutorial pickup presentation is still open.
 - PlayerCombatEnter is a strict unit packet whose 26.1 client handler is empty;
   its diagnostic counter is not evidence of an additional combat-mode runtime.
 - PlayerCombatEnd likewise has an empty 26.1 handler; its decoded duration may

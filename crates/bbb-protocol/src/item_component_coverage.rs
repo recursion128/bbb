@@ -178,7 +178,7 @@ mod tests {
     }
 
     #[test]
-    fn component_dependent_packet_cells_cannot_close_before_the_component_ledger() {
+    fn component_dependent_packet_cells_follow_the_component_ledger() {
         let components = vanilla_item_component_coverage_26_1().unwrap();
         let packets = vanilla_packet_coverage_26_1().unwrap();
         let clientbound_packets = [
@@ -188,18 +188,43 @@ mod tests {
             "CLIENTBOUND_SET_EQUIPMENT",
             "CLIENTBOUND_SET_PLAYER_INVENTORY",
         ];
-        if has_partial_component_dimension(&components, &["typed_decode", "canonical_retention"]) {
+        if has_open_component_dimension(&components, &["typed_decode", "canonical_retention"]) {
             for constant_name in clientbound_packets {
                 assert_packet_dimension_partial(&packets, constant_name, "canonical_apply");
             }
         }
-        if has_partial_component_dimension(&components, &["observable_consumers"]) {
+        if has_open_component_dimension(&components, &["observable_consumers"]) {
             for constant_name in clientbound_packets {
                 assert_packet_dimension_partial(&packets, constant_name, "runtime_side_effect");
             }
         }
-        if has_partial_component_dimension(&components, &["network_encode"]) {
+        if has_open_component_dimension(&components, &["network_encode"]) {
             assert_packet_dimension_partial(
+                &packets,
+                "SERVERBOUND_SET_CREATIVE_MODE_SLOT",
+                "encoder",
+            );
+        }
+
+        if !has_open_component_dimension(&components, &["typed_decode", "canonical_retention"]) {
+            for constant_name in [
+                "CLIENTBOUND_CONTAINER_SET_CONTENT",
+                "CLIENTBOUND_SET_EQUIPMENT",
+                "CLIENTBOUND_SET_PLAYER_INVENTORY",
+            ] {
+                assert_packet_dimension_complete(&packets, constant_name, "canonical_apply");
+            }
+        }
+        if !has_open_component_dimension(&components, &["observable_consumers"]) {
+            for constant_name in [
+                "CLIENTBOUND_CONTAINER_SET_CONTENT",
+                "CLIENTBOUND_SET_EQUIPMENT",
+            ] {
+                assert_packet_dimension_complete(&packets, constant_name, "runtime_side_effect");
+            }
+        }
+        if !has_open_component_dimension(&components, &["network_encode"]) {
+            assert_packet_dimension_complete(
                 &packets,
                 "SERVERBOUND_SET_CREATIVE_MODE_SLOT",
                 "encoder",
@@ -231,13 +256,16 @@ mod tests {
         }
     }
 
-    fn has_partial_component_dimension(
+    fn has_open_component_dimension(
         components: &ItemComponentCoverageLedger,
         dimensions: &[&str],
     ) -> bool {
         components.entries.iter().any(|entry| {
             dimensions.iter().any(|dimension| {
-                entry.coverage[*dimension].status == ItemComponentCoverageStatus::Partial
+                matches!(
+                    entry.coverage[*dimension].status,
+                    ItemComponentCoverageStatus::Partial | ItemComponentCoverageStatus::Deferred
+                )
             })
         })
     }
@@ -256,6 +284,23 @@ mod tests {
             packet.coverage[dimension].status,
             PacketCoverageStatus::Partial,
             "{constant_name}/{dimension} closed before item components"
+        );
+    }
+
+    fn assert_packet_dimension_complete(
+        packets: &crate::packet_coverage::PacketCoverageLedger,
+        constant_name: &str,
+        dimension: &str,
+    ) {
+        let packet = packets
+            .entries
+            .iter()
+            .find(|entry| entry.constant_name == constant_name)
+            .unwrap_or_else(|| panic!("missing packet coverage row {constant_name}"));
+        assert_eq!(
+            packet.coverage[dimension].status,
+            PacketCoverageStatus::Complete,
+            "{constant_name}/{dimension} remains open after item components closed"
         );
     }
 }

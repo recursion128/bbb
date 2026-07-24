@@ -908,7 +908,7 @@ mod tests {
     }
 
     #[test]
-    fn play_equipment_keeps_remaining_component_semantics_open() {
+    fn play_equipment_closes_component_rich_canonical_and_render_paths() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -917,17 +917,10 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "CLIENTBOUND_SET_EQUIPMENT"
             })
             .expect("set equipment coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "runtime_side_effect"])
-        );
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]
@@ -1692,7 +1685,7 @@ mod tests {
     }
 
     #[test]
-    fn play_container_content_keeps_remaining_component_semantics_open() {
+    fn play_container_content_closes_component_rich_canonical_and_screen_paths() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -1701,21 +1694,14 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "CLIENTBOUND_CONTAINER_SET_CONTENT"
             })
             .expect("play container set content coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "runtime_side_effect"])
-        );
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]
-    fn play_container_slot_keeps_remaining_component_and_creative_semantics_open() {
+    fn play_container_slot_keeps_creative_sync_and_pop_semantics_open() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -1738,7 +1724,7 @@ mod tests {
     }
 
     #[test]
-    fn play_set_cursor_item_keeps_creative_and_component_semantics_open() {
+    fn play_set_cursor_item_keeps_creative_screen_suppression_open() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -1761,7 +1747,7 @@ mod tests {
     }
 
     #[test]
-    fn play_set_player_inventory_keeps_component_and_tutorial_semantics_open() {
+    fn play_set_player_inventory_keeps_tutorial_side_effect_open() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -1770,16 +1756,13 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "CLIENTBOUND_SET_PLAYER_INVENTORY"
             })
             .expect("play set player inventory coverage row");
-        let partial: BTreeSet<_> = entry
-            .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
         assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "runtime_side_effect"])
+            entry.coverage["canonical_apply"].status,
+            PacketCoverageStatus::Complete
+        );
+        assert_eq!(
+            entry.coverage["runtime_side_effect"].status,
+            PacketCoverageStatus::Partial
         );
     }
 
@@ -3479,7 +3462,7 @@ mod tests {
     }
 
     #[test]
-    fn play_serverbound_pick_item_family_keeps_component_response_open() {
+    fn play_serverbound_pick_item_family_closes_component_rich_response() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         for packet in [
             "SERVERBOUND_PICK_ITEM_FROM_BLOCK",
@@ -3491,20 +3474,10 @@ mod tests {
                 .find(|entry| entry.state == "play" && entry.constant_name == packet)
                 .expect("play serverbound pick item coverage row");
 
-            for dimension in ["command_surface", "encoder", "state_guard"] {
-                assert_eq!(
-                    entry.coverage[dimension].status,
-                    PacketCoverageStatus::Complete,
-                    "{packet} {dimension}"
-                );
-            }
-            for dimension in ["ack_response", "tests"] {
-                assert_eq!(
-                    entry.coverage[dimension].status,
-                    PacketCoverageStatus::Partial,
-                    "{packet} {dimension}"
-                );
-            }
+            assert!(entry
+                .coverage
+                .values()
+                .all(|cell| cell.status == PacketCoverageStatus::Complete));
         }
     }
 
@@ -3884,7 +3857,7 @@ mod tests {
     }
 
     #[test]
-    fn play_serverbound_set_creative_mode_slot_keeps_ui_and_components_open() {
+    fn play_serverbound_set_creative_mode_slot_keeps_ui_and_authority_response_open() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -3893,10 +3866,17 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "SERVERBOUND_SET_CREATIVE_MODE_SLOT"
             })
             .expect("play serverbound set creative mode slot coverage row");
-        assert!(entry
+        let partial: BTreeSet<_> = entry
             .coverage
-            .values()
-            .all(|cell| cell.status == PacketCoverageStatus::Partial));
+            .iter()
+            .filter_map(|(dimension, cell)| {
+                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
+            })
+            .collect();
+        assert_eq!(
+            partial,
+            BTreeSet::from(["ack_response", "command_surface", "state_guard"])
+        );
     }
 
     #[test]

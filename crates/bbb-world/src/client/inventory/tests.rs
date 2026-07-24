@@ -5,7 +5,8 @@ use crate::entities::{
 };
 use bbb_pack::RegistryDependentItemComponentInitializer;
 use bbb_protocol::data_component_types::{
-    VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_LOCK_TYPE_ID,
+    VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
 };
 use bbb_protocol::item_types::VANILLA_ITEM_ELYTRA_ID;
@@ -39,6 +40,108 @@ fn open_test_container(store: &mut WorldStore, container_id: i32) {
         title: "Chest".to_string(),
         title_styled: Vec::new(),
     });
+}
+
+fn component_rich_item_stack() -> ProtocolItemStackSummary {
+    ProtocolItemStackSummary {
+        item_id: Some(bbb_protocol::item_types::VANILLA_ITEM_STONE_ID),
+        count: 3,
+        component_patch: ProtocolDataComponentPatchSummary {
+            added: 2,
+            added_type_ids: vec![
+                VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+                VANILLA_DATA_COMPONENT_LOCK_TYPE_ID,
+            ],
+            max_stack_size: Some(16),
+            lock_predicate: Some(bbb_protocol::packets::PersistentItemPredicateSummary {
+                count_min: Some(1),
+                count_max: Some(3),
+                ..Default::default()
+            }),
+            ..Default::default()
+        },
+    }
+}
+
+#[test]
+fn component_rich_stacks_survive_inventory_equipment_and_pick_response_paths() {
+    let mut store = WorldStore::new();
+    let stack = component_rich_item_stack();
+
+    assert!(
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 5,
+            item: stack.clone(),
+        })
+    );
+    assert!(store.apply_held_slot(bbb_protocol::packets::SetHeldSlot { slot: 5 }));
+    assert_eq!(
+        store.local_item_in_hand(InteractionHand::MainHand),
+        Some(&stack)
+    );
+    store.apply_set_cursor_item(ProtocolSetCursorItem {
+        item: stack.clone(),
+    });
+    assert_eq!(store.inventory().cursor_item, stack);
+
+    open_test_container(&mut store, 7);
+    assert!(
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items: vec![stack.clone()],
+            carried_item: stack.clone(),
+        })
+    );
+    assert_eq!(
+        store.inventory().open_container.as_ref().unwrap().slots[0].item,
+        stack
+    );
+    assert_eq!(store.inventory().cursor_item, stack);
+
+    let mut slot_stack = stack.clone();
+    slot_stack.count = 2;
+    slot_stack
+        .component_patch
+        .lock_predicate
+        .as_mut()
+        .unwrap()
+        .count_max = Some(2);
+    assert!(store.apply_container_set_slot(ProtocolContainerSetSlot {
+        container_id: 7,
+        state_id: 13,
+        slot: 0,
+        item: slot_stack.clone(),
+    }));
+    assert_eq!(
+        store.inventory().open_container.as_ref().unwrap().slots[0].item,
+        slot_stack
+    );
+
+    store.apply_add_entity(protocol_add_entity_with_type(
+        123,
+        bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+    ));
+    assert!(
+        store.apply_set_equipment(bbb_protocol::packets::SetEquipment {
+            entity_id: 123,
+            slots: vec![bbb_protocol::packets::EquipmentSlotUpdate {
+                slot: EquipmentSlot::Head,
+                item: stack.clone(),
+            }],
+        })
+    );
+
+    assert_eq!(
+        store.local_item_in_hand(InteractionHand::MainHand),
+        Some(&stack)
+    );
+    assert_eq!(store.inventory().cursor_item, stack);
+    assert_eq!(
+        store.inventory().open_container.as_ref().unwrap().slots[0].item,
+        slot_stack
+    );
+    assert_eq!(store.equipment_item(123, EquipmentSlot::Head), Some(stack));
 }
 
 #[test]

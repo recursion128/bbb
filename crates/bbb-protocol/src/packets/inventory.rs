@@ -392,6 +392,120 @@ mod tests {
     }
 
     #[test]
+    fn item_stack_packets_share_component_rich_patch_decode() {
+        let stack = component_rich_stack();
+
+        let mut content = Encoder::new();
+        content.write_var_i32(7);
+        content.write_var_i32(12);
+        content.write_var_i32(1);
+        encode_item_stack_fixture(&mut content, &stack);
+        content.write_var_i32(0);
+        let PlayClientbound::ContainerSetContent(content) = decode_play_clientbound(
+            ids::play::CLIENTBOUND_CONTAINER_SET_CONTENT,
+            &content.into_inner(),
+        )
+        .unwrap() else {
+            panic!("expected container content packet");
+        };
+        assert_eq!(content.items, [stack.clone()]);
+
+        let mut slot = Encoder::new();
+        slot.write_var_i32(7);
+        slot.write_var_i32(13);
+        slot.write_i16(5);
+        encode_item_stack_fixture(&mut slot, &stack);
+        let PlayClientbound::ContainerSetSlot(slot) = decode_play_clientbound(
+            ids::play::CLIENTBOUND_CONTAINER_SET_SLOT,
+            &slot.into_inner(),
+        )
+        .unwrap() else {
+            panic!("expected container slot packet");
+        };
+        assert_eq!(slot.item, stack);
+
+        let mut cursor = Encoder::new();
+        encode_item_stack_fixture(&mut cursor, &stack);
+        let PlayClientbound::SetCursorItem(cursor) =
+            decode_play_clientbound(ids::play::CLIENTBOUND_SET_CURSOR_ITEM, &cursor.into_inner())
+                .unwrap()
+        else {
+            panic!("expected cursor item packet");
+        };
+        assert_eq!(cursor.item, stack);
+
+        let mut inventory = Encoder::new();
+        inventory.write_var_i32(5);
+        encode_item_stack_fixture(&mut inventory, &stack);
+        let PlayClientbound::SetPlayerInventory(inventory) = decode_play_clientbound(
+            ids::play::CLIENTBOUND_SET_PLAYER_INVENTORY,
+            &inventory.into_inner(),
+        )
+        .unwrap() else {
+            panic!("expected player inventory packet");
+        };
+        assert_eq!(inventory.item, stack);
+
+        let mut equipment = Encoder::new();
+        equipment.write_var_i32(123);
+        equipment.write_u8(EquipmentSlot::Head.ordinal());
+        encode_item_stack_fixture(&mut equipment, &stack);
+        let PlayClientbound::SetEquipment(equipment) = decode_play_clientbound(
+            ids::play::CLIENTBOUND_SET_EQUIPMENT,
+            &equipment.into_inner(),
+        )
+        .unwrap() else {
+            panic!("expected equipment packet");
+        };
+        assert_eq!(equipment.slots[0].item, stack);
+    }
+
+    fn component_rich_stack() -> ItemStackSummary {
+        ItemStackSummary {
+            item_id: Some(crate::item_types::VANILLA_ITEM_STONE_ID),
+            count: 3,
+            component_patch: DataComponentPatchSummary {
+                added: 2,
+                added_type_ids: vec![
+                    crate::data_component_types::VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+                    crate::data_component_types::VANILLA_DATA_COMPONENT_LOCK_TYPE_ID,
+                ],
+                max_stack_size: Some(16),
+                lock_predicate: Some(PersistentItemPredicateSummary {
+                    count_min: Some(1),
+                    count_max: Some(3),
+                    ..PersistentItemPredicateSummary::default()
+                }),
+                ..DataComponentPatchSummary::default()
+            },
+        }
+    }
+
+    fn encode_item_stack_fixture(out: &mut Encoder, stack: &ItemStackSummary) {
+        out.write_var_i32(stack.count);
+        out.write_var_i32(stack.item_id.unwrap());
+        out.write_var_i32(2);
+        out.write_var_i32(0);
+        out.write_var_i32(
+            crate::data_component_types::VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+        );
+        out.write_var_i32(stack.component_patch.max_stack_size.unwrap());
+        out.write_var_i32(crate::data_component_types::VANILLA_DATA_COMPONENT_LOCK_TYPE_ID);
+        let lock = encode_persistent_item_predicate_summary(
+            stack.component_patch.lock_predicate.as_ref().unwrap(),
+        )
+        .unwrap();
+        out.write_bytes(
+            &crate::nbt_summary::encode_nbt_summary_bounded(
+                Some(&lock),
+                i32::MAX as usize,
+                crate::nbt_summary::MAX_NBT_DEPTH,
+            )
+            .unwrap(),
+        );
+    }
+
+    #[test]
     fn decodes_item_stack_component_patch_color_values() {
         let mut payload = Encoder::new();
         payload.write_var_i32(7);
