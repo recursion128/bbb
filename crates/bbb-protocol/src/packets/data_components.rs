@@ -1096,6 +1096,9 @@ fn validate_encodable_data_component_patch_summary(
                 expected.lore_styled = patch.lore_styled.clone();
                 expected.lore_nbt = patch.lore_nbt.clone();
             }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_RARITY_TYPE_ID => {
+                expected.rarity = patch.rarity;
+            }
             crate::data_component_types::VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID => {
                 expected.enchantments = patch.enchantments.clone();
             }
@@ -3274,7 +3277,7 @@ mod tests {
             DataComponentPatchSummary {
                 added: 1,
                 added_type_ids: vec![
-                    crate::data_component_types::VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,
+                    crate::data_component_types::VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID,
                 ],
                 ..DataComponentPatchSummary::default()
             },

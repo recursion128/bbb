@@ -1711,6 +1711,76 @@
         "status": "complete"
       }
     },
+    "RARITY": {
+      "canonical_retention": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#pub rarity",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_rarity",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_item_rarity_out_of_bounds_as_common",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_primitive_component_value_codecs",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_component_select_values"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#RARITY",
+          "vanilla:net/minecraft/world/item/Rarity.java#STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_rarity",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#rarity_descriptor_round_trips_exact_vanilla_ids_and_rejects_missing_value_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_rarity_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/ItemStack.java#getRarity",
+          "vanilla:net/minecraft/client/renderer/item/properties/select/ComponentContents.java#get",
+          "crates/bbb-item-model/src/item_runtime/tooltip.rs#item_rarity_for_stack",
+          "crates/bbb-item-model/src/item_runtime/icon_model.rs#Self::Rarity",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_component_select_values",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/Rarity.java#CODEC",
+          "crates/bbb-native/src/input/component_patch.rs#encode_rarity",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#rejects_invalid_primitive_component_value_codecs"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#rarity_descriptor_round_trips_exact_vanilla_ids_and_rejects_missing_value_atomically",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_item_rarity_out_of_bounds_as_common",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_rarity_component",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#rejects_invalid_primitive_component_value_codecs",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_component_select_values",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/Rarity.java#BY_ID",
+          "vanilla:net/minecraft/world/item/Rarity.java#STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_rarity",
+          "crates/bbb-protocol/src/packets/data_components.rs#decode_item_rarity",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_item_rarity_out_of_bounds_as_common",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_primitive_component_value_codecs"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "MAX_STACK_SIZE": {
       "canonical_retention": {
         "evidence": [

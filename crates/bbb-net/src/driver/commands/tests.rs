@@ -23,7 +23,7 @@ use crate::{
 };
 use bbb_protocol::{
     codec::Decoder,
-    data_component_types::VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,
+    data_component_types::VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID,
     ids,
     packets::{
         AttackEntity, BlockEntityTagQuery, BlockPos, ChangeDifficultyCommand,
@@ -2140,7 +2140,7 @@ async fn send_set_creative_mode_slot_rejects_unsupported_components() {
                 count: 1,
                 component_patch: DataComponentPatchSummary {
                     added: 1,
-                    added_type_ids: vec![VANILLA_DATA_COMPONENT_RARITY_TYPE_ID],
+                    added_type_ids: vec![VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID],
                     ..DataComponentPatchSummary::default()
                 },
             },
@@ -2150,7 +2150,7 @@ async fn send_set_creative_mode_slot_rejects_unsupported_components() {
     .unwrap_err();
 
     assert!(err.to_string().contains(&format!(
-        "cannot encode unsupported data component minecraft:rarity ({VANILLA_DATA_COMPONENT_RARITY_TYPE_ID})"
+        "cannot encode unsupported data component minecraft:repair_cost ({VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID})"
     )));
     server.await.unwrap();
 }
