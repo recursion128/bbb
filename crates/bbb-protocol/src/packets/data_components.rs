@@ -20,8 +20,9 @@ use crate::{
     },
     consume_effect_types::ConsumeEffectType,
     data_component_types::{
-        VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID, VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
     },
     entity_types::vanilla_entity_type,
     equipment_slots::{
@@ -1008,6 +1009,9 @@ fn validate_encodable_data_component_patch_summary(
             )));
         }
         match *type_id {
+            VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID => {
+                expected.custom_data = patch.custom_data.clone();
+            }
             VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID => {
                 expected.max_stack_size = patch.max_stack_size;
             }
@@ -1020,7 +1024,7 @@ fn validate_encodable_data_component_patch_summary(
             VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID => {
                 expected.unbreakable = patch.unbreakable;
             }
-            _ => unreachable!("encodable descriptor set is limited to foundational components"),
+            _ => unreachable!("encodable descriptor set is limited to owned component callbacks"),
         }
         descriptors.push((*type_id, descriptor));
     }
@@ -2678,6 +2682,50 @@ mod tests {
     }
 
     #[test]
+    fn encodes_custom_data_patch_with_delimited_compound_tag() {
+        let custom_data = NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+            name: "answer".to_string(),
+            value: NbtSummaryValue::Int(42),
+        }]);
+        let patch = DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID],
+            custom_data: Some(custom_data.clone()),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        encode_delimited_data_component_patch_summary(&mut encoded, &patch).unwrap();
+        let encoded = encoded.into_inner();
+        assert_eq!(
+            encoded,
+            [
+                1, 0, // positive and negative counts
+                0, 15, // custom_data type and value length
+                10, 3, 0, 6, b'a', b'n', b's', b'w', b'e', b'r', 0, 0, 0, 42, 0,
+            ]
+        );
+
+        let mut decoder = Decoder::new(&encoded);
+        assert_eq!(decoder.read_len().unwrap(), 1);
+        assert_eq!(decoder.read_len().unwrap(), 0);
+        assert_eq!(
+            decoder.read_var_i32().unwrap(),
+            VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID
+        );
+        let value_len = decoder.read_len().unwrap();
+        let mut value_decoder =
+            Decoder::new(decoder.read_exact(value_len, "custom_data value").unwrap());
+        let mut decoded = DataComponentPatchSummary::default();
+        data_component_descriptor_or_error(VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID)
+            .unwrap()
+            .decode(&mut value_decoder, &mut decoded)
+            .unwrap();
+        assert!(value_decoder.is_empty());
+        assert!(decoder.is_empty());
+        assert_eq!(decoded.custom_data, Some(custom_data));
+    }
+
+    #[test]
     fn foundational_data_component_patch_encoder_rejects_noncanonical_summaries_atomically() {
         let valid_max_stack_size = || DataComponentPatchSummary {
             added: 1,
@@ -2723,6 +2771,21 @@ mod tests {
             ..DataComponentPatchSummary::default()
         };
         cases.push((missing_value, "missing max_stack_size"));
+
+        let missing_custom_data = DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID],
+            ..DataComponentPatchSummary::default()
+        };
+        cases.push((missing_custom_data, "missing custom_data"));
+
+        let scalar_custom_data = DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID],
+            custom_data: Some(NbtSummaryValue::Int(42)),
+            ..DataComponentPatchSummary::default()
+        };
+        cases.push((scalar_custom_data, "must be a non-null compound tag"));
 
         let dangling_value = DataComponentPatchSummary {
             damage: Some(1),

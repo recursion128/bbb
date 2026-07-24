@@ -2,10 +2,12 @@ use super::*;
 use std::sync::OnceLock;
 
 use crate::data_component_types::{
-    DataComponentTypeCatalogEntry, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_TYPES, VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
+    DataComponentTypeCatalogEntry, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
+    VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID, VANILLA_DATA_COMPONENT_TYPES,
+    VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
 };
+use crate::nbt_summary::{encode_nbt_summary_bounded, MAX_NBT_DEPTH};
 
 type WireDecodeHandler = fn(i32, &mut Decoder<'_>, &mut DataComponentPatchSummary) -> Result<()>;
 type WireEncodeHandler = fn(i32, &DataComponentPatchSummary, &mut Encoder) -> Result<()>;
@@ -205,6 +207,7 @@ pub fn vanilla_data_component_descriptor(type_id: i32) -> Option<&'static DataCo
 
 const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
     match type_id {
+        VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID => Some(encode_custom_data),
         VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID => Some(encode_max_stack_size),
         VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID => Some(encode_max_damage),
         VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID => Some(encode_damage),
@@ -218,7 +221,31 @@ fn decode_custom_data(
     decoder: &mut Decoder<'_>,
     summary: &mut DataComponentPatchSummary,
 ) -> Result<()> {
-    summary.custom_data = decode_nbt_summary_from_decoder(decoder)?;
+    let Some(value @ NbtSummaryValue::Compound(_)) = decode_nbt_summary_from_decoder(decoder)?
+    else {
+        return Err(ProtocolError::InvalidData(
+            "custom_data network value must be a non-null compound tag".to_string(),
+        ));
+    };
+    summary.custom_data = Some(value);
+    Ok(())
+}
+
+fn encode_custom_data(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let value = summary.custom_data.as_ref().ok_or_else(|| {
+        ProtocolError::InvalidData("missing custom_data component value".to_string())
+    })?;
+    if !matches!(value, NbtSummaryValue::Compound(_)) {
+        return Err(ProtocolError::InvalidData(
+            "custom_data network value must be a non-null compound tag".to_string(),
+        ));
+    }
+    let encoded = encode_nbt_summary_bounded(Some(value), i32::MAX as usize, MAX_NBT_DEPTH)?;
+    out.write_bytes(&encoded);
     Ok(())
 }
 
@@ -1207,7 +1234,7 @@ mod tests {
                 .filter(|descriptor| descriptor.can_encode())
                 .map(|descriptor| descriptor.type_id())
                 .collect::<Vec<_>>(),
-            vec![1, 2, 3, 4]
+            vec![0, 1, 2, 3, 4]
         );
     }
 
@@ -1257,6 +1284,81 @@ mod tests {
             } else {
                 assert!(encoded.is_empty());
             }
+        }
+    }
+
+    #[test]
+    fn custom_data_descriptor_round_trips_exact_compound_nbt() {
+        let custom_data = NbtSummaryValue::Compound(vec![
+            NbtSummaryEntry {
+                name: "answer".to_string(),
+                value: NbtSummaryValue::Int(42),
+            },
+            NbtSummaryEntry {
+                name: "owner".to_string(),
+                value: NbtSummaryValue::String("Alex".to_string()),
+            },
+        ]);
+        let summary = DataComponentPatchSummary {
+            custom_data: Some(custom_data.clone()),
+            ..DataComponentPatchSummary::default()
+        };
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID).unwrap();
+        let mut encoded = Encoder::new();
+        descriptor.encode(&summary, &mut encoded).unwrap();
+        let encoded = encoded.into_inner();
+        assert_eq!(
+            encoded,
+            [
+                10, // unnamed compound root
+                3, 0, 6, b'a', b'n', b's', b'w', b'e', b'r', 0, 0, 0, 42, 8, 0, 5, b'o', b'w',
+                b'n', b'e', b'r', 0, 4, b'A', b'l', b'e', b'x', 0, // compound end
+            ]
+        );
+
+        let mut decoder = Decoder::new(&encoded);
+        let mut decoded = DataComponentPatchSummary::default();
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded.custom_data, Some(custom_data));
+    }
+
+    #[test]
+    fn custom_data_descriptor_rejects_missing_null_and_scalar_roots() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID).unwrap();
+        for custom_data in [None, Some(NbtSummaryValue::Int(42))] {
+            let summary = DataComponentPatchSummary {
+                custom_data,
+                ..DataComponentPatchSummary::default()
+            };
+            let error = descriptor
+                .encode(&summary, &mut Encoder::new())
+                .unwrap_err();
+            assert!(
+                error
+                    .to_string()
+                    .contains(if summary.custom_data.is_some() {
+                        "must be a non-null compound tag"
+                    } else {
+                        "missing custom_data"
+                    }),
+                "{error}"
+            );
+        }
+
+        for wire in [&[0][..], &[3, 0, 0, 0, 42][..]] {
+            let mut decoder = Decoder::new(wire);
+            let error = descriptor
+                .decode(&mut decoder, &mut DataComponentPatchSummary::default())
+                .unwrap_err();
+            assert!(
+                error
+                    .to_string()
+                    .contains("must be a non-null compound tag"),
+                "{error}"
+            );
         }
     }
 

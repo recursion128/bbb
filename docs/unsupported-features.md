@@ -1174,10 +1174,9 @@ back into a todo. Do not delete these.
   are added.
 - **Full item component payload encoding for
   `ServerboundSetCreativeModeSlotPacket`.** Add descriptor-owned encoders for
-  every added value beyond `MAX_STACK_SIZE`, `MAX_DAMAGE`, `DAMAGE`, and
-  `UNBREAKABLE`; preserve Vanilla's per-value length framing and persistent
-  range checks, and keep unsupported additions rejected before any packet is
-  sent.
+  component value types 5 through 109; preserve Vanilla's per-value length
+  framing and persistent range checks, and keep unsupported additions rejected
+  before any packet is sent.
 
 ## Particles and level events
 

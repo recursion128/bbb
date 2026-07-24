@@ -1460,6 +1460,49 @@ fn encodes_set_creative_mode_slot_foundational_component_patch() {
 }
 
 #[test]
+fn encodes_set_creative_mode_slot_custom_data_component() {
+    let custom_data = NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+        name: "answer".to_string(),
+        value: NbtSummaryValue::Int(42),
+    }]);
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID],
+                custom_data: Some(custom_data.clone()),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_i16().unwrap(), 36);
+    assert_eq!(decoder.read_var_i32().unwrap(), 1);
+    assert_eq!(decoder.read_var_i32().unwrap(), 42);
+    assert_eq!(decoder.read_len().unwrap(), 1);
+    assert_eq!(decoder.read_len().unwrap(), 0);
+    assert_eq!(
+        decoder.read_var_i32().unwrap(),
+        VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID
+    );
+    let value_len = decoder.read_len().unwrap();
+    let mut value_decoder =
+        Decoder::new(decoder.read_exact(value_len, "custom_data value").unwrap());
+    assert_eq!(
+        decode_nbt_summary_from_decoder(&mut value_decoder).unwrap(),
+        Some(custom_data)
+    );
+    assert!(value_decoder.is_empty());
+    assert!(decoder.is_empty());
+}
+
+#[test]
 fn encodes_set_creative_mode_slot_drop_empty_stack() {
     let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
         slot_num: -1,

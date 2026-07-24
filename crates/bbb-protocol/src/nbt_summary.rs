@@ -7,7 +7,7 @@ mod snbt;
 pub use snbt::parse_snbt_compound;
 pub(crate) use snbt::{parse_snbt_prefix, validate_snbt_compound_prefix, validate_snbt_prefix};
 
-const MAX_NBT_DEPTH: usize = 64;
+pub(crate) const MAX_NBT_DEPTH: usize = 64;
 const MAX_NBT_ARRAY_ITEMS: usize = 4096;
 pub(crate) const MAX_NBT_COMPOUND_ENTRIES: usize = 4096;
 const MAX_NBT_LIST_ITEMS: usize = 4096;

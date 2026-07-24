@@ -1,5 +1,67 @@
 {
   "entries": {
+    "CUSTOM_DATA": {
+      "canonical_retention": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#pub custom_data",
+          "crates/bbb-protocol/src/packets/entities/tests.rs#metadata_item_stack_uses_the_shared_nested_component_decoder",
+          "crates/bbb-world/src/publication_snapshot.rs#retained_generation_isolated_from_nested_metadata_item_stack_mutation"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponentType.java#build",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_custom_data",
+          "crates/bbb-protocol/src/packets/data_components.rs#encodes_custom_data_patch_with_delimited_compound_tag",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_custom_data_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/component/CustomData.java#matchedBy",
+          "crates/bbb-item-model/src/item_runtime/icon_model.rs#item_stack_matches_custom_data_value",
+          "crates/bbb-item-model/src/item_runtime/icon_model.rs#nbt_summary_exact_matches",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_component_condition_predicates"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/component/CustomData.java#CODEC",
+          "crates/bbb-native/src/input/component_patch.rs#encode_custom_data",
+          "crates/bbb-native/src/input/component_patch.rs#custom_data_persistent_projection_requires_and_preserves_compounds",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#custom_data_descriptor_rejects_missing_null_and_scalar_roots",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#custom_data_descriptor_round_trips_exact_compound_nbt",
+          "crates/bbb-protocol/src/packets/data_components.rs#encodes_custom_data_patch_with_delimited_compound_tag",
+          "crates/bbb-world/src/publication_snapshot.rs#retained_generation_isolated_from_nested_metadata_item_stack_mutation",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_component_condition_predicates"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#CUSTOM_DATA",
+          "vanilla:net/minecraft/world/item/component/CustomData.java#COMPOUND_TAG_CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_custom_data",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#custom_data_descriptor_rejects_missing_null_and_scalar_roots"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "MAX_STACK_SIZE": {
       "canonical_retention": {
         "evidence": [

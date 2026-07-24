@@ -381,3 +381,8 @@
   canonical 原子预检和 creative untrusted 逐值 framing；四行六维 coverage
   complete，其余 added-value 仍精确拒绝，合同见
   `docs/archive/base-item-component-roundtrip-design.md`。
+- **2026-07-23（CustomData component 六维闭环）**：persistent-fallback Codec
+  现严格保留非空类型的 CompoundTag 根并由 descriptor-owned bounded NBT 编码
+  进入 creative 逐值 framing；canonical publication、持久化 SNBT 与 exact/partial
+  item-model predicate 证据齐备，合同见
+  `docs/archive/custom-data-component-roundtrip-design.md`。

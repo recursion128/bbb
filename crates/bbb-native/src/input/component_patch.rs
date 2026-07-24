@@ -588,7 +588,11 @@ fn encode_custom_data(
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
     _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
-    Some(debug_nbt_summary_snbt(patch.custom_data.as_ref()?))
+    let value = patch.custom_data.as_ref()?;
+    if !matches!(value, bbb_protocol::packets::NbtSummaryValue::Compound(_)) {
+        return None;
+    }
+    Some(debug_nbt_summary_snbt(value))
 }
 
 fn encode_max_stack_size(
@@ -2117,6 +2121,38 @@ mod tests {
             Some("64".to_string())
         );
         assert_eq!(encode_added_component_value_snbt(20, &patch, None), None);
+    }
+
+    #[test]
+    fn custom_data_persistent_projection_requires_and_preserves_compounds() {
+        let compound = bbb_protocol::packets::NbtSummaryValue::Compound(vec![
+            bbb_protocol::packets::NbtSummaryEntry {
+                name: "answer".to_string(),
+                value: bbb_protocol::packets::NbtSummaryValue::Int(42),
+            },
+        ]);
+        let mut patch = bbb_protocol::packets::DataComponentPatchSummary {
+            custom_data: Some(compound),
+            ..Default::default()
+        };
+        assert_eq!(
+            encode_added_component_value_snbt(
+                component_id::VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
+                &patch,
+                None,
+            ),
+            Some("{answer: 42}".to_string())
+        );
+
+        patch.custom_data = Some(bbb_protocol::packets::NbtSummaryValue::Int(42));
+        assert_eq!(
+            encode_added_component_value_snbt(
+                component_id::VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
+                &patch,
+                None,
+            ),
+            None
+        );
     }
 
     #[test]
