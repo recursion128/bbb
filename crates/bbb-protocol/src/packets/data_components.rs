@@ -48,6 +48,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
+        VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID,
         VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
         VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID,
@@ -1383,6 +1384,9 @@ fn validate_encodable_data_component_patch_summary(
             }
             VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID => {
                 expected.chicken_sound_variant_id = patch.chicken_sound_variant_id;
+            }
+            VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID => {
+                expected.tropical_fish_pattern_id = patch.tropical_fish_pattern_id;
             }
             VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID => {
                 expected.zombie_nautilus_variant_id = patch.zombie_nautilus_variant_id;

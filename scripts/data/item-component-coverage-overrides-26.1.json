@@ -5746,6 +5746,83 @@
         "status": "complete"
       }
     },
+    "TROPICAL_FISH_PATTERN": {
+      "canonical_retention": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#TROPICAL_FISH_PATTERN",
+          "vanilla:net/minecraft/world/entity/animal/fish/TropicalFish.java#public static final StreamCodec<ByteBuf, TropicalFish.Pattern> STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub tropical_fish_pattern_id",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_tropical_fish_pattern",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_tropical_fish_pattern_components",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_all_string_enum_component_value_codecs"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#TROPICAL_FISH_PATTERN",
+          "vanilla:net/minecraft/world/entity/animal/fish/TropicalFish.java#public static final StreamCodec<ByteBuf, TropicalFish.Pattern> STREAM_CODEC",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#idMapper",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_tropical_fish_pattern",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#tropical_fish_pattern_descriptor_round_trips_sparse_ids_and_rejects_invalid_values_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_tropical_fish_pattern_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/entity/EntityType.java#appendComponentsConfig",
+          "vanilla:net/minecraft/world/entity/Entity.java#applyComponentsFromItemStack",
+          "vanilla:net/minecraft/world/entity/animal/fish/TropicalFish.java#protected void applyImplicitComponents",
+          "vanilla:net/minecraft/world/entity/animal/fish/TropicalFish.java#public void addToTooltip",
+          "vanilla:net/minecraft/client/renderer/entity/layers/TropicalFishPatternLayer.java#public void submit",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-native/src/entity_scene/tests.rs#entity_model_kind_projects_tropical_fish_pattern_and_pattern_color_from_packed_variant",
+          "crates/bbb-renderer/src/entity_models/tests/tropical_fish.rs#tropical_fish_textured_layer_passes_match_vanilla_renderer"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/world/entity/animal/fish/TropicalFish.java#public static final Codec<TropicalFish.Pattern> CODEC",
+          "crates/bbb-native/src/input/component_patch.rs#encode_tropical_fish_pattern",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_all_string_enum_component_value_codecs",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#rejects_invalid_string_enum_component_value_codecs"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/tropical_fish_patterns.rs#tropical_fish_pattern_catalog_preserves_sparse_ids_names_and_kob_fallback",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_tropical_fish_pattern_components",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#tropical_fish_pattern_descriptor_round_trips_sparse_ids_and_rejects_invalid_values_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_tropical_fish_pattern_component",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-native/src/entity_scene/tests.rs#entity_model_kind_projects_tropical_fish_pattern_and_pattern_color_from_packed_variant",
+          "crates/bbb-renderer/src/entity_models/tests/tropical_fish.rs#tropical_fish_textured_layer_passes_match_vanilla_renderer"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#TROPICAL_FISH_PATTERN",
+          "vanilla:net/minecraft/world/entity/animal/fish/TropicalFish.java#public static final StreamCodec<ByteBuf, TropicalFish.Pattern> STREAM_CODEC",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#idMapper",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub tropical_fish_pattern_id",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_tropical_fish_pattern",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_tropical_fish_pattern_components"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "TOOLTIP_STYLE": {
       "canonical_retention": {
         "evidence": [
