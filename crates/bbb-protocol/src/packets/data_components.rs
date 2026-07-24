@@ -46,6 +46,7 @@ const MAX_BLOCK_STATE_PROPERTIES: usize = 256;
 const MAX_BOOK_PAGES: usize = 100;
 const MAX_CONTAINER_ITEMS: usize = 256;
 const MAX_FIREWORK_EXPLOSIONS: usize = 256;
+pub const MAX_ITEM_STACK_TEMPLATE_NESTING_DEPTH: usize = 32;
 const MAX_LORE_LINES: usize = 256;
 const MAX_MOB_EFFECT_DETAILS_DEPTH: usize = 16;
 const MAX_PARTIAL_DATA_COMPONENT_PREDICATES: usize = 64;
@@ -1433,18 +1434,43 @@ fn decode_consume_effect_list_summary(
 }
 
 fn decode_item_stack_template(decoder: &mut Decoder<'_>) -> Result<ItemStackTemplateSummary> {
-    let item_id = inventory::decode_non_empty_item_holder_id(decoder)?;
-    let count = decoder.read_var_i32()?;
-    if count <= 0 {
-        return Err(ProtocolError::InvalidData(format!(
-            "invalid item stack template count {count}"
-        )));
-    }
-    let component_patch = decode_data_component_patch_summary(decoder)?;
-    Ok(ItemStackTemplateSummary {
-        item_id,
-        count,
-        component_patch,
+    decoder.with_recursion_limit(
+        MAX_ITEM_STACK_TEMPLATE_NESTING_DEPTH,
+        "item stack template",
+        |decoder| {
+            #[cfg(test)]
+            record_item_stack_template_stack_address();
+
+            let item_id = inventory::decode_non_empty_item_holder_id(decoder)?;
+            let count = decoder.read_var_i32()?;
+            if count == 0 {
+                return Err(ProtocolError::InvalidData(format!(
+                    "invalid item stack template count {count}"
+                )));
+            }
+            let component_patch = decode_data_component_patch_summary(decoder)?;
+            Ok(ItemStackTemplateSummary {
+                item_id,
+                count,
+                component_patch,
+            })
+        },
+    )
+}
+
+#[cfg(test)]
+thread_local! {
+    static ITEM_STACK_TEMPLATE_STACK_EXTREMES: std::cell::Cell<(usize, usize)> =
+        const { std::cell::Cell::new((0, usize::MAX)) };
+}
+
+#[cfg(test)]
+fn record_item_stack_template_stack_address() {
+    let marker = 0u8;
+    let address = std::ptr::from_ref(&marker) as usize;
+    ITEM_STACK_TEMPLATE_STACK_EXTREMES.with(|cell| {
+        let (top, bottom) = cell.get();
+        cell.set((top.max(address), bottom.min(address)));
     })
 }
 
@@ -5815,6 +5841,34 @@ mod tests {
         });
     }
 
+    fn write_nested_use_remainder_template(payload: &mut Encoder, depth: usize) {
+        assert!(depth > 0);
+        write_item_stack_template_with_patch(payload, 1, 1, |payload| {
+            if depth == 1 {
+                payload.write_var_i32(0);
+                payload.write_var_i32(0);
+            } else {
+                payload.write_var_i32(1);
+                payload.write_var_i32(0);
+                payload.write_var_i32(
+                    crate::data_component_types::VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID,
+                );
+                write_nested_use_remainder_template(payload, depth - 1);
+            }
+        });
+    }
+
+    fn write_cursor_item_with_nested_use_remainder(payload: &mut Encoder, depth: usize) {
+        payload.write_var_i32(1);
+        payload.write_var_i32(1);
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+        payload.write_var_i32(
+            crate::data_component_types::VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID,
+        );
+        write_nested_use_remainder_template(payload, depth);
+    }
+
     #[test]
     fn item_stack_template_requires_a_non_empty_builtin_item_holder() {
         let mut air = Encoder::new();
@@ -5832,6 +5886,88 @@ mod tests {
         assert!(error
             .to_string()
             .contains(&format!("invalid vanilla item holder id {invalid_item_id}")));
+    }
+
+    #[test]
+    fn item_stack_template_network_count_matches_vanilla_non_zero_rule() {
+        let mut negative = Encoder::new();
+        write_item_stack_template(&mut negative, 1, -1);
+        let decoded =
+            decode_item_stack_template(&mut Decoder::new(&negative.into_inner())).unwrap();
+        assert_eq!(decoded.count, -1);
+
+        let mut zero = Encoder::new();
+        write_item_stack_template(&mut zero, 1, 0);
+        let error = decode_item_stack_template(&mut Decoder::new(&zero.into_inner())).unwrap_err();
+        assert_eq!(error.to_string(), "invalid item stack template count 0");
+    }
+
+    #[test]
+    fn item_stack_template_nesting_enforces_exact_boundary() {
+        run_with_deep_item_stack(|| {
+            let mut accepted = Encoder::new();
+            write_cursor_item_with_nested_use_remainder(
+                &mut accepted,
+                MAX_ITEM_STACK_TEMPLATE_NESTING_DEPTH,
+            );
+            crate::packets::decode_play_clientbound(
+                crate::ids::play::CLIENTBOUND_SET_CURSOR_ITEM,
+                &accepted.into_inner(),
+            )
+            .unwrap();
+
+            let mut rejected = Encoder::new();
+            write_cursor_item_with_nested_use_remainder(
+                &mut rejected,
+                MAX_ITEM_STACK_TEMPLATE_NESTING_DEPTH + 1,
+            );
+            let error = crate::packets::decode_play_clientbound(
+                crate::ids::play::CLIENTBOUND_SET_CURSOR_ITEM,
+                &rejected.into_inner(),
+            )
+            .unwrap_err();
+            assert_eq!(error.to_string(), "item stack template nesting exceeds 32");
+        });
+    }
+
+    /// Reverse guard for `MAX_ITEM_STACK_TEMPLATE_NESTING_DEPTH`: raising the
+    /// semantic limit or increasing debug-build frames must fail before a
+    /// production-sized 2 MiB Tokio worker stack loses its reserved headroom.
+    #[test]
+    fn full_depth_item_stack_template_stays_within_stack_budget() {
+        const STACK_BUDGET_BYTES: usize = 3 * 1024 * 1024 / 2;
+        run_with_deep_item_stack(|| {
+            let mut payload = Encoder::new();
+            write_cursor_item_with_nested_use_remainder(
+                &mut payload,
+                MAX_ITEM_STACK_TEMPLATE_NESTING_DEPTH,
+            );
+            let caller_marker = 0u8;
+            let caller_address = std::ptr::from_ref(&caller_marker) as usize;
+            ITEM_STACK_TEMPLATE_STACK_EXTREMES
+                .with(|cell| cell.set((caller_address, caller_address)));
+            crate::packets::decode_play_clientbound(
+                crate::ids::play::CLIENTBOUND_SET_CURSOR_ITEM,
+                &payload.into_inner(),
+            )
+            .unwrap();
+            let (top, bottom) = ITEM_STACK_TEMPLATE_STACK_EXTREMES.with(std::cell::Cell::get);
+            let used = top - bottom;
+            assert!(
+                used <= STACK_BUDGET_BYTES,
+                "depth-{MAX_ITEM_STACK_TEMPLATE_NESTING_DEPTH} item stack template used {used} \
+                 bytes of stack, over the {STACK_BUDGET_BYTES}-byte budget"
+            );
+        });
+    }
+
+    fn run_with_deep_item_stack(test: impl FnOnce() + Send + 'static) {
+        std::thread::Builder::new()
+            .stack_size(2 * 1024 * 1024)
+            .spawn(test)
+            .expect("spawn deep item-template test thread")
+            .join()
+            .expect("deep item-template test thread");
     }
 
     #[test]

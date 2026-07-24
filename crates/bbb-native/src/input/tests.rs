@@ -11273,6 +11273,126 @@ fn item_stack_snbt_rejects_invalid_stack_and_template_shapes() {
 }
 
 #[test]
+fn item_stack_snbt_bounds_recursive_template_projection() {
+    const STACK_BUDGET_BYTES: usize = 4 * 1024 * 1024;
+
+    fn use_remainder_patch(depth: usize) -> DataComponentPatchSummary {
+        let mut patch = DataComponentPatchSummary::default();
+        for _ in 0..depth {
+            patch = DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![
+                    bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID,
+                ],
+                use_remainder: Some(Box::new(
+                    bbb_protocol::packets::ItemStackTemplateSummary {
+                        item_id: 1,
+                        count: 1,
+                        component_patch: patch,
+                    },
+                )),
+                ..DataComponentPatchSummary::default()
+            };
+        }
+        patch
+    }
+
+    std::thread::Builder::new()
+        .stack_size(8 * 1024 * 1024)
+        .spawn(|| {
+            let item_runtime =
+                NativeItemRuntime::empty_for_test().with_vanilla_item_registry_for_test();
+            PERSISTENT_ITEM_TEMPLATE_STACK_EXTREMES.with(|cell| cell.set((0, usize::MAX)));
+            assert!(debug_supported_component_patch_snbt(
+                &use_remainder_patch(bbb_protocol::packets::MAX_ITEM_STACK_TEMPLATE_NESTING_DEPTH,),
+                Some(&item_runtime),
+            )
+            .is_some());
+            let (top, bottom) = PERSISTENT_ITEM_TEMPLATE_STACK_EXTREMES.with(std::cell::Cell::get);
+            let used = top - bottom;
+            assert!(
+                used <= STACK_BUDGET_BYTES,
+                "depth-{} persistent item template used {used} bytes of stack, over the \
+                 {STACK_BUDGET_BYTES}-byte budget",
+                bbb_protocol::packets::MAX_ITEM_STACK_TEMPLATE_NESTING_DEPTH
+            );
+
+            assert_eq!(
+                debug_supported_component_patch_snbt(
+                    &use_remainder_patch(
+                        bbb_protocol::packets::MAX_ITEM_STACK_TEMPLATE_NESTING_DEPTH + 1,
+                    ),
+                    Some(&item_runtime),
+                ),
+                None
+            );
+        })
+        .expect("spawn deep persistent item-template test thread")
+        .join()
+        .expect("deep persistent item-template test thread");
+}
+
+#[test]
+fn item_stack_template_budget_preflight_walks_all_recursive_components() {
+    fn nested_template(
+        depth: usize,
+        component: usize,
+    ) -> bbb_protocol::packets::ItemStackTemplateSummary {
+        let mut template = bbb_protocol::packets::ItemStackTemplateSummary {
+            item_id: 1,
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        for _ in 1..depth {
+            let mut patch = DataComponentPatchSummary::default();
+            match component {
+                0 => patch.use_remainder = Some(Box::new(template)),
+                1 => patch.charged_projectiles_items = vec![template],
+                2 => {
+                    patch.bundle_contents_items = vec![template];
+                    patch.bundle_contents_item_count = Some(1);
+                }
+                3 => {
+                    patch.container_slots = vec![bbb_protocol::packets::ItemContainerSlotSummary {
+                        slot: 0,
+                        item: template,
+                    }];
+                    patch.container_item_count = Some(1);
+                }
+                4 => {
+                    patch.container_items = vec![template];
+                    patch.container_item_count = Some(1);
+                }
+                _ => unreachable!("five recursive summary paths"),
+            }
+            template = bbb_protocol::packets::ItemStackTemplateSummary {
+                item_id: 1,
+                count: 1,
+                component_patch: patch,
+            };
+        }
+        template
+    }
+
+    for component in 0..5 {
+        assert!(item_stack_template_nesting_within_budget(
+            &nested_template(
+                bbb_protocol::packets::MAX_ITEM_STACK_TEMPLATE_NESTING_DEPTH,
+                component,
+            ),
+            bbb_protocol::packets::MAX_ITEM_STACK_TEMPLATE_NESTING_DEPTH,
+        ));
+        assert!(!item_stack_template_nesting_within_budget(
+            &nested_template(
+                bbb_protocol::packets::MAX_ITEM_STACK_TEMPLATE_NESTING_DEPTH + 1,
+                component,
+            ),
+            bbb_protocol::packets::MAX_ITEM_STACK_TEMPLATE_NESTING_DEPTH,
+        ));
+    }
+}
+
+#[test]
 fn item_stack_snbt_preserves_all_persistent_component_removals() {
     let stack = ProtocolItemStackSummary {
         item_id: Some(0),

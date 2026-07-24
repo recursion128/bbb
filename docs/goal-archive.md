@@ -369,3 +369,10 @@
   单元改由 Tree-sitter 生成；稀疏 evidence overrides、Rust catalog 反向断言和
   component-dependent packet closure guard 落地，合同见
   `docs/archive/item-component-coverage-foundation-design.md`。
+- **2026-07-23（递归 ItemStack component 安全前置）**：`USE_REMAINDER`、
+  `CHARGED_PROJECTILES`、`BUNDLE_CONTENTS`、`CONTAINER` 的嵌套模板统一采用
+  depth-32 解码预算并由 2 MiB 线程上的 1.5 MiB 实测栈门禁反向约束；网络 count
+  对齐 Vanilla 非零规则，bundle 权重改为迭代工作栈，tooltip 与持久化调试投影
+  拒绝越界递归且不生成截断 SNBT。四项账本只补 partial evidence，未虚报通用
+  patch 重编码或无损持久化闭环，合同见
+  `docs/archive/recursive-item-component-safety-design.md`。

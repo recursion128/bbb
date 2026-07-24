@@ -6114,6 +6114,7 @@ fn debug_push_firework_rocket_additional_save_data(
                 PersistentSnbtContext {
                     item_runtime,
                     registry_access: Some(world.frozen_registry_access()),
+                    ..Default::default()
                 },
             )
         ));
@@ -7005,6 +7006,18 @@ fn debug_item_stack_template_snbt(
     template: &bbb_protocol::packets::ItemStackTemplateSummary,
     context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
+    if context.item_stack_template_depth == 0
+        && !item_stack_template_nesting_within_budget(
+            template,
+            bbb_protocol::packets::MAX_ITEM_STACK_TEMPLATE_NESTING_DEPTH,
+        )
+    {
+        return None;
+    }
+    let context = context.descend_item_stack_template()?;
+    #[cfg(test)]
+    record_persistent_item_template_stack_address();
+
     if !(1..=99).contains(&template.count) {
         return None;
     }
@@ -7022,6 +7035,61 @@ fn debug_item_stack_template_snbt(
         fields.push(format!("components: {components}"));
     }
     Some(format!("{{{}}}", fields.join(", ")))
+}
+
+fn item_stack_template_nesting_within_budget(
+    root: &bbb_protocol::packets::ItemStackTemplateSummary,
+    max_depth: usize,
+) -> bool {
+    let mut pending = vec![(root, 1_usize)];
+    while let Some((template, depth)) = pending.pop() {
+        if depth > max_depth {
+            return false;
+        }
+        let child_depth = depth + 1;
+        let patch = &template.component_patch;
+        if let Some(remainder) = patch.use_remainder.as_deref() {
+            pending.push((remainder, child_depth));
+        }
+        pending.extend(
+            patch
+                .charged_projectiles_items
+                .iter()
+                .map(|item| (item, child_depth)),
+        );
+        pending.extend(
+            patch
+                .bundle_contents_items
+                .iter()
+                .map(|item| (item, child_depth)),
+        );
+        pending.extend(
+            patch
+                .container_slots
+                .iter()
+                .map(|slot| (&slot.item, child_depth)),
+        );
+        if patch.container_slots.is_empty() {
+            pending.extend(patch.container_items.iter().map(|item| (item, child_depth)));
+        }
+    }
+    true
+}
+
+#[cfg(test)]
+thread_local! {
+    static PERSISTENT_ITEM_TEMPLATE_STACK_EXTREMES: std::cell::Cell<(usize, usize)> =
+        const { std::cell::Cell::new((0, usize::MAX)) };
+}
+
+#[cfg(test)]
+fn record_persistent_item_template_stack_address() {
+    let marker = 0u8;
+    let address = std::ptr::from_ref(&marker) as usize;
+    PERSISTENT_ITEM_TEMPLATE_STACK_EXTREMES.with(|cell| {
+        let (top, bottom) = cell.get();
+        cell.set((top.max(address), bottom.min(address)));
+    });
 }
 
 fn debug_writable_book_content_component_snbt(
@@ -7479,6 +7547,7 @@ fn debug_push_item_frame_additional_save_data(
             PersistentSnbtContext {
                 item_runtime,
                 registry_access: Some(world.frozen_registry_access()),
+                ..Default::default()
             },
         ) {
             fields.push(format!("Item: {item}"));
@@ -8855,6 +8924,7 @@ fn debug_push_item_stack_field(
         PersistentSnbtContext {
             item_runtime,
             registry_access: Some(world.frozen_registry_access()),
+            ..Default::default()
         },
     ) {
         fields.push(format!("{field_name}: {item}"));

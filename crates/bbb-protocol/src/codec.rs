@@ -114,11 +114,16 @@ impl fmt::Debug for Encoder {
 pub struct Decoder<'a> {
     bytes: &'a [u8],
     cursor: usize,
+    recursion_depth: usize,
 }
 
 impl<'a> Decoder<'a> {
     pub fn new(bytes: &'a [u8]) -> Self {
-        Self { bytes, cursor: 0 }
+        Self {
+            bytes,
+            cursor: 0,
+            recursion_depth: 0,
+        }
     }
 
     pub fn position(&self) -> usize {
@@ -139,6 +144,23 @@ impl<'a> Decoder<'a> {
 
     pub fn is_empty(&self) -> bool {
         self.remaining_len() == 0
+    }
+
+    pub(crate) fn with_recursion_limit<T>(
+        &mut self,
+        max_depth: usize,
+        what: &'static str,
+        decode: impl FnOnce(&mut Self) -> Result<T>,
+    ) -> Result<T> {
+        if self.recursion_depth >= max_depth {
+            return Err(ProtocolError::InvalidData(format!(
+                "{what} nesting exceeds {max_depth}"
+            )));
+        }
+        self.recursion_depth += 1;
+        let result = decode(self);
+        self.recursion_depth -= 1;
+        result
     }
 
     pub fn read_exact(&mut self, len: usize, what: &'static str) -> Result<&'a [u8]> {
@@ -319,5 +341,20 @@ mod tests {
         let uuid = offline_player_uuid("bbb-client");
         assert_eq!(uuid.get_version_num(), 3);
         assert_eq!(uuid.get_variant(), uuid::Variant::RFC4122);
+    }
+
+    #[test]
+    fn recursion_limit_restores_depth_after_errors() {
+        let mut decoder = Decoder::new(&[]);
+        let error = decoder
+            .with_recursion_limit(1, "test value", |decoder| {
+                decoder.with_recursion_limit(1, "test value", |_| Ok(()))
+            })
+            .unwrap_err();
+        assert_eq!(error.to_string(), "test value nesting exceeds 1");
+
+        decoder
+            .with_recursion_limit(1, "test value", |_| Ok(()))
+            .unwrap();
     }
 }

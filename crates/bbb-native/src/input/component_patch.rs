@@ -26,9 +26,20 @@ type PersistentSnbtEncoder = for<'a> fn(
 pub(super) struct PersistentSnbtContext<'a> {
     pub item_runtime: Option<&'a NativeItemRuntime>,
     pub registry_access: Option<bbb_world::FrozenRegistryAccess<'a>>,
+    pub(super) item_stack_template_depth: usize,
 }
 
 impl<'a> PersistentSnbtContext<'a> {
+    pub(super) fn descend_item_stack_template(mut self) -> Option<Self> {
+        if self.item_stack_template_depth
+            >= bbb_protocol::packets::MAX_ITEM_STACK_TEMPLATE_NESTING_DEPTH
+        {
+            return None;
+        }
+        self.item_stack_template_depth += 1;
+        Some(self)
+    }
+
     pub(super) fn registry_resource_id(
         self,
         registry: &str,

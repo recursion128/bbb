@@ -1,4 +1,161 @@
 {
-  "entries": {},
+  "entries": {
+    "BUNDLE_CONTENTS": {
+      "canonical_retention": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#pub bundle_contents_items"
+        ],
+        "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+        "status": "partial"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "crates/bbb-item-model/src/item_runtime/icon_model.rs#evaluate_bundle_weight",
+          "crates/bbb-item-model/src/item_runtime/icon_model.rs#bundle_fullness_walks_deep_nested_bundles_without_recursion"
+        ],
+        "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+        "status": "partial"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "crates/bbb-native/src/input/component_patch.rs#encode_bundle_contents",
+          "crates/bbb-native/src/input.rs#item_stack_template_nesting_within_budget"
+        ],
+        "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+        "status": "partial"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_bundle_contents_item_count_from_component_patch",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_bounds_recursive_template_projection"
+        ],
+        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+        "status": "partial"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/component/BundleContents.java#STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_bundle_contents"
+        ],
+        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+        "status": "partial"
+      }
+    },
+    "CHARGED_PROJECTILES": {
+      "canonical_retention": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#pub charged_projectiles_items"
+        ],
+        "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+        "status": "partial"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_charged_projectiles_tooltip_lines",
+          "crates/bbb-item-model/src/item_runtime/tooltip.rs#charged_projectile_tooltip_bounds_deep_programmatic_templates"
+        ],
+        "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+        "status": "partial"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "crates/bbb-native/src/input/component_patch.rs#encode_charged_projectiles",
+          "crates/bbb-native/src/input.rs#item_stack_template_nesting_within_budget"
+        ],
+        "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+        "status": "partial"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_additional_item_data_components",
+          "crates/bbb-item-model/src/item_runtime/tooltip.rs#charged_projectile_tooltip_bounds_deep_programmatic_templates"
+        ],
+        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+        "status": "partial"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/component/ChargedProjectiles.java#STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_charged_projectiles"
+        ],
+        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+        "status": "partial"
+      }
+    },
+    "CONTAINER": {
+      "canonical_retention": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#pub container_slots"
+        ],
+        "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+        "status": "partial"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_container_items_tooltip_lines",
+          "crates/bbb-item-model/src/item_runtime/icon_model.rs#item_stack_matches_container_predicate"
+        ],
+        "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+        "status": "partial"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "crates/bbb-native/src/input/component_patch.rs#encode_container",
+          "crates/bbb-native/src/input.rs#item_stack_template_nesting_within_budget"
+        ],
+        "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+        "status": "partial"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_additional_item_data_components",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_bounds_recursive_template_projection"
+        ],
+        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+        "status": "partial"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/component/ItemContainerContents.java#STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_container"
+        ],
+        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+        "status": "partial"
+      }
+    },
+    "USE_REMAINDER": {
+      "canonical_retention": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#pub use_remainder"
+        ],
+        "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
+        "status": "partial"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "crates/bbb-native/src/input/component_patch.rs#encode_use_remainder",
+          "crates/bbb-native/src/input.rs#item_stack_template_nesting_within_budget"
+        ],
+        "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
+        "status": "partial"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#item_stack_template_nesting_enforces_exact_boundary",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_bounds_recursive_template_projection"
+        ],
+        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+        "status": "partial"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/component/UseRemainder.java#STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_use_remainder_component"
+        ],
+        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+        "status": "partial"
+      }
+    }
+  },
   "schema_version": 1
 }

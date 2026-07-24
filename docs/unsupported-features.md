@@ -86,9 +86,10 @@ Owner: `bbb-protocol`
   SNBT escapes instead of passing them through the current UTF-8-backed canonical
   string state; follow `TagParser` and the Java UTF-16 string model.
 - Extend byte-denominated stack budgets to the remaining recursive untrusted
-  decode paths (component trees, SNBT, holder sets) the way the dialog
-  semantic-depth budget test pins its depth-64 reference walk; a depth
-  constant alone does not bound stack use across build profiles.
+  decode paths (component trees other than nested ItemStack templates, SNBT,
+  and holder sets) the way the dialog depth-64 and ItemStack-template depth-32
+  tests pin their reference walks; a depth constant alone does not bound stack
+  use across build profiles.
 - Then cover the remaining play, movement, inventory, chat and interaction
   families end to end.
 ## Vanilla Java generator frontend migration

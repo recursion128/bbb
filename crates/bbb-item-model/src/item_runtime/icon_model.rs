@@ -470,34 +470,113 @@ fn bundle_fullness_value(
     component_patch: Option<&DataComponentPatchSummary>,
     default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
 ) -> f32 {
-    component_patch
-        .map(|patch| {
-            patch
-                .bundle_contents_items
-                .iter()
-                .map(|item| {
-                    bundle_item_weight(item, default_max_stack_size_for_item) * item.count as f32
-                })
-                .sum::<f32>()
-        })
-        .unwrap_or(0.0)
+    let Some(component_patch) = component_patch else {
+        return 0.0;
+    };
+    evaluate_bundle_weight(
+        BundleWeightWork::Contents(&component_patch.bundle_contents_items),
+        default_max_stack_size_for_item,
+    )
 }
 
+#[cfg(test)]
 fn bundle_item_weight(
     item: &ItemStackTemplateSummary,
     default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
 ) -> f32 {
-    if item.component_patch.bundle_contents_item_count.is_some() {
-        return bundle_fullness_value(Some(&item.component_patch), default_max_stack_size_for_item)
-            + 1.0 / 16.0;
+    evaluate_bundle_weight(
+        BundleWeightWork::Item(item),
+        default_max_stack_size_for_item,
+    )
+}
+
+enum BundleWeightWork<'a> {
+    Contents(&'a [ItemStackTemplateSummary]),
+    SumNext {
+        items: &'a [ItemStackTemplateSummary],
+        index: usize,
+        total: f32,
+    },
+    AddItem {
+        items: &'a [ItemStackTemplateSummary],
+        next_index: usize,
+        total: f32,
+        count: i32,
+    },
+    Item(&'a ItemStackTemplateSummary),
+    AddNestedBundleWeight,
+}
+
+fn evaluate_bundle_weight(
+    initial: BundleWeightWork<'_>,
+    default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
+) -> f32 {
+    let mut work = vec![initial];
+    let mut values = Vec::new();
+    while let Some(next) = work.pop() {
+        match next {
+            BundleWeightWork::Contents(items) => work.push(BundleWeightWork::SumNext {
+                items,
+                index: 0,
+                total: 0.0,
+            }),
+            BundleWeightWork::SumNext {
+                items,
+                index,
+                total,
+            } => {
+                let Some(item) = items.get(index) else {
+                    values.push(total);
+                    continue;
+                };
+                work.push(BundleWeightWork::AddItem {
+                    items,
+                    next_index: index + 1,
+                    total,
+                    count: item.count,
+                });
+                work.push(BundleWeightWork::Item(item));
+            }
+            BundleWeightWork::AddItem {
+                items,
+                next_index,
+                total,
+                count,
+            } => {
+                let weight = values.pop().expect("item weight follows item work");
+                work.push(BundleWeightWork::SumNext {
+                    items,
+                    index: next_index,
+                    total: total + weight * count as f32,
+                });
+            }
+            BundleWeightWork::Item(item) => {
+                if item.component_patch.bundle_contents_item_count.is_some() {
+                    work.push(BundleWeightWork::AddNestedBundleWeight);
+                    work.push(BundleWeightWork::Contents(
+                        &item.component_patch.bundle_contents_items,
+                    ));
+                } else if item.component_patch.bees_count > 0 {
+                    values.push(1.0);
+                } else {
+                    values.push(
+                        1.0 / effective_item_max_stack_size(
+                            Some(&item.component_patch),
+                            default_max_stack_size_for_item
+                                .map(|max_stack_size| max_stack_size(item.item_id)),
+                        ) as f32,
+                    );
+                }
+            }
+            BundleWeightWork::AddNestedBundleWeight => {
+                let contents_weight = values.pop().expect("bundle contents follow bundle work");
+                values.push(contents_weight + 1.0 / 16.0);
+            }
+        }
     }
-    if item.component_patch.bees_count > 0 {
-        return 1.0;
-    }
-    1.0 / effective_item_max_stack_size(
-        Some(&item.component_patch),
-        default_max_stack_size_for_item.map(|max_stack_size| max_stack_size(item.item_id)),
-    ) as f32
+    values
+        .pop()
+        .expect("initial bundle work produces one value")
 }
 
 #[cfg(test)]
@@ -520,6 +599,108 @@ mod tests {
 
         let weight = bundle_item_weight(&nested_empty_bundle, Some(&|_| 64));
         assert!((weight - 1.0 / 16.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn bundle_fullness_walks_deep_nested_bundles_without_recursion() {
+        let mut nested = ItemStackTemplateSummary {
+            item_id: 3,
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                bundle_contents_item_count: Some(0),
+                ..DataComponentPatchSummary::default()
+            },
+        };
+        for _ in 1..=bbb_protocol::packets::MAX_ITEM_STACK_TEMPLATE_NESTING_DEPTH {
+            nested = ItemStackTemplateSummary {
+                item_id: 3,
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    bundle_contents_items: vec![nested],
+                    bundle_contents_item_count: Some(1),
+                    ..DataComponentPatchSummary::default()
+                },
+            };
+        }
+        let patch = DataComponentPatchSummary {
+            bundle_contents_items: vec![nested],
+            bundle_contents_item_count: Some(1),
+            ..DataComponentPatchSummary::default()
+        };
+
+        assert_eq!(
+            bundle_fullness_value(Some(&patch), Some(&|_| 64)),
+            (bbb_protocol::packets::MAX_ITEM_STACK_TEMPLATE_NESTING_DEPTH as f32 + 1.0) / 16.0
+        );
+    }
+
+    #[test]
+    fn iterative_bundle_fullness_preserves_recursive_evaluation_order() {
+        fn recursive_fullness(
+            patch: &DataComponentPatchSummary,
+            default_max_stack_size_for_item: &dyn Fn(i32) -> i32,
+        ) -> f32 {
+            patch
+                .bundle_contents_items
+                .iter()
+                .map(|item| {
+                    let weight = if item.component_patch.bundle_contents_item_count.is_some() {
+                        recursive_fullness(&item.component_patch, default_max_stack_size_for_item)
+                            + 1.0 / 16.0
+                    } else if item.component_patch.bees_count > 0 {
+                        1.0
+                    } else {
+                        1.0 / effective_item_max_stack_size(
+                            Some(&item.component_patch),
+                            Some(default_max_stack_size_for_item(item.item_id)),
+                        ) as f32
+                    };
+                    weight * item.count as f32
+                })
+                .sum()
+        }
+
+        let patch = DataComponentPatchSummary {
+            bundle_contents_items: vec![
+                ItemStackTemplateSummary {
+                    item_id: 3,
+                    count: 3,
+                    component_patch: DataComponentPatchSummary {
+                        max_stack_size: Some(16),
+                        ..DataComponentPatchSummary::default()
+                    },
+                },
+                ItemStackTemplateSummary {
+                    item_id: 4,
+                    count: 2,
+                    component_patch: DataComponentPatchSummary {
+                        bees_count: 1,
+                        ..DataComponentPatchSummary::default()
+                    },
+                },
+                ItemStackTemplateSummary {
+                    item_id: 5,
+                    count: -2,
+                    component_patch: DataComponentPatchSummary {
+                        bundle_contents_items: vec![ItemStackTemplateSummary {
+                            item_id: 6,
+                            count: 5,
+                            component_patch: DataComponentPatchSummary::default(),
+                        }],
+                        bundle_contents_item_count: Some(1),
+                        ..DataComponentPatchSummary::default()
+                    },
+                },
+            ],
+            bundle_contents_item_count: Some(3),
+            ..DataComponentPatchSummary::default()
+        };
+        let default_max_stack_size = |item_id| if item_id == 6 { 32 } else { 64 };
+
+        assert_eq!(
+            bundle_fullness_value(Some(&patch), Some(&default_max_stack_size)).to_bits(),
+            recursive_fullness(&patch, &default_max_stack_size).to_bits()
+        );
     }
 
     #[test]

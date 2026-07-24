@@ -19,7 +19,7 @@ use bbb_protocol::{
     mob_effect_types::{vanilla_mob_effect_type, MobEffectCategory},
     packets::{
         AdventureModePredicateSummary, AttributeModifierSummary, PaintingVariantSummary,
-        SuspiciousStewEffectSummary,
+        SuspiciousStewEffectSummary, MAX_ITEM_STACK_TEMPLATE_NESTING_DEPTH,
     },
     tropical_fish_patterns::{
         vanilla_tropical_fish_pattern, VANILLA_TROPICAL_FISH_COMMON_VARIANTS,
@@ -93,6 +93,13 @@ const SMITHING_TEMPLATE_NETHERITE_UPGRADE_APPLIES_TO_KEY: &str =
     "item.minecraft.smithing_template.netherite_upgrade.applies_to";
 const SMITHING_TEMPLATE_NETHERITE_UPGRADE_INGREDIENTS_KEY: &str =
     "item.minecraft.smithing_template.netherite_upgrade.ingredients";
+
+#[cfg(test)]
+thread_local! {
+    static TOOLTIP_STACK_EXTREMES: std::cell::Cell<(usize, usize)> =
+        const { std::cell::Cell::new((0, usize::MAX)) };
+}
+
 #[cfg(test)]
 const fn painting_variant(
     id: i32,
@@ -1665,6 +1672,54 @@ mod tests {
         );
         assert!(lines.is_empty());
     }
+
+    #[test]
+    fn charged_projectile_tooltip_bounds_deep_programmatic_templates() {
+        const STACK_BUDGET_BYTES: usize = 4 * 1024 * 1024;
+        std::thread::Builder::new()
+            .stack_size(8 * 1024 * 1024)
+            .spawn(|| {
+                let runtime =
+                    NativeItemRuntime::empty_for_test().with_vanilla_item_registry_for_test();
+                let mut projectile = ItemStackTemplateSummary {
+                    item_id: 1,
+                    count: 1,
+                    component_patch: DataComponentPatchSummary::default(),
+                };
+                for _ in 1..MAX_ITEM_STACK_TEMPLATE_NESTING_DEPTH + 10 {
+                    projectile = ItemStackTemplateSummary {
+                        item_id: 1,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary {
+                            charged_projectiles_items: vec![projectile],
+                            ..DataComponentPatchSummary::default()
+                        },
+                    };
+                }
+                let stack = ItemStackSummary {
+                    item_id: Some(1),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary {
+                        charged_projectiles_items: vec![projectile],
+                        ..DataComponentPatchSummary::default()
+                    },
+                };
+
+                TOOLTIP_STACK_EXTREMES.with(|cell| cell.set((0, usize::MAX)));
+                let lines = runtime.tooltip_lines_for_stack(&stack).unwrap();
+                let (top, bottom) = TOOLTIP_STACK_EXTREMES.with(std::cell::Cell::get);
+                let used = top - bottom;
+                assert_eq!(lines.len(), MAX_ITEM_STACK_TEMPLATE_NESTING_DEPTH + 2);
+                assert!(
+                    used <= STACK_BUDGET_BYTES,
+                    "depth-{MAX_ITEM_STACK_TEMPLATE_NESTING_DEPTH} charged-projectile tooltip used \
+                     {used} bytes of stack, over the {STACK_BUDGET_BYTES}-byte budget"
+                );
+            })
+            .expect("spawn deep charged-projectile tooltip test thread")
+            .join()
+            .expect("deep charged-projectile tooltip test thread");
+    }
 }
 
 fn push_container_loot_tooltip_lines(
@@ -3221,8 +3276,18 @@ impl NativeItemRuntime {
         protocol_id: i32,
         component_patch: &DataComponentPatchSummary,
         options: NativeItemTooltipOptions<'_>,
+        item_stack_template_depth: usize,
         lines: &mut Vec<NativeItemTooltipLine>,
     ) {
+        #[cfg(test)]
+        {
+            let marker = 0u8;
+            let address = std::ptr::from_ref(&marker) as usize;
+            TOOLTIP_STACK_EXTREMES.with(|cell| {
+                let (top, bottom) = cell.get();
+                cell.set((top.max(address), bottom.min(address)));
+            });
+        }
         let shows = |type_id| tooltip_display_shows(component_patch, type_id);
         let tooltip_tick_rate = effective_tooltip_tick_rate(options);
         push_item_specific_tooltip_lines(&self.language, item_id, component_patch, options, lines);
@@ -3278,6 +3343,7 @@ impl NativeItemRuntime {
             self.push_charged_projectiles_tooltip_lines(
                 &component_patch.charged_projectiles_items,
                 options,
+                item_stack_template_depth,
                 lines,
             );
         }
@@ -3550,6 +3616,7 @@ impl NativeItemRuntime {
         projectile: &ItemStackTemplateSummary,
         count: usize,
         options: NativeItemTooltipOptions<'_>,
+        item_stack_template_depth: usize,
         lines: &mut Vec<NativeItemTooltipLine>,
     ) {
         let Some(registry) = self.registry.as_ref() else {
@@ -3568,6 +3635,9 @@ impl NativeItemRuntime {
             projectile_name,
             count,
         ));
+        if item_stack_template_depth >= MAX_ITEM_STACK_TEMPLATE_NESTING_DEPTH {
+            return;
+        }
         let mut detail_lines = Vec::new();
         self.push_stack_detail_tooltip_lines(
             resource_id,
@@ -3579,6 +3649,7 @@ impl NativeItemRuntime {
                 map_data: None,
                 ..options
             },
+            item_stack_template_depth + 1,
             &mut detail_lines,
         );
         lines.extend(
@@ -3592,6 +3663,7 @@ impl NativeItemRuntime {
         &self,
         projectiles: &[ItemStackTemplateSummary],
         options: NativeItemTooltipOptions<'_>,
+        item_stack_template_depth: usize,
         lines: &mut Vec<NativeItemTooltipLine>,
     ) {
         let mut current = None;
@@ -3607,7 +3679,11 @@ impl NativeItemRuntime {
                 }
                 Some(previous) => {
                     self.push_charged_projectile_group_tooltip_line(
-                        previous, count, options, lines,
+                        previous,
+                        count,
+                        options,
+                        item_stack_template_depth,
+                        lines,
                     );
                     current = Some(projectile);
                     count = 1;
@@ -3615,7 +3691,13 @@ impl NativeItemRuntime {
             }
         }
         if let Some(projectile) = current {
-            self.push_charged_projectile_group_tooltip_line(projectile, count, options, lines);
+            self.push_charged_projectile_group_tooltip_line(
+                projectile,
+                count,
+                options,
+                item_stack_template_depth,
+                lines,
+            );
         }
     }
 
@@ -3756,6 +3838,7 @@ impl NativeItemRuntime {
             protocol_id,
             &stack.component_patch,
             options,
+            0,
             &mut lines,
         );
         Some(lines)
