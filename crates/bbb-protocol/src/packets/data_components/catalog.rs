@@ -42,7 +42,8 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
     VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
-    VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID, VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,
+    VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
+    VANILLA_DATA_COMPONENT_RABBIT_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,
     VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID, VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID,
@@ -350,6 +351,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_COLOR_TYPE_ID => {
             Some(encode_tropical_fish_pattern_color)
         }
+        VANILLA_DATA_COMPONENT_RABBIT_VARIANT_TYPE_ID => Some(encode_builtin_enum),
         VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID => {
             Some(encode_zombie_nautilus_variant)
         }
@@ -3891,6 +3893,35 @@ fn decode_builtin_enum(
     Ok(())
 }
 
+fn encode_builtin_enum(
+    type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let value_id = summary
+        .builtin_enum_component_ids
+        .get(&type_id)
+        .copied()
+        .ok_or_else(|| {
+            ProtocolError::InvalidData(format!(
+                "built-in enum component type id {type_id} is missing"
+            ))
+        })?;
+    let normalized =
+        normalize_builtin_enum_component_value_id(type_id, value_id).ok_or_else(|| {
+            ProtocolError::InvalidData(format!(
+                "built-in enum component type id {type_id} has no value catalog"
+            ))
+        })?;
+    if normalized != value_id {
+        return Err(ProtocolError::InvalidData(format!(
+            "built-in enum component type id {type_id} value id {value_id} is not canonical"
+        )));
+    }
+    out.write_var_i32(value_id);
+    Ok(())
+}
+
 fn decode_tropical_fish_pattern(
     _type_id: i32,
     decoder: &mut Decoder<'_>,
@@ -4093,8 +4124,8 @@ mod tests {
                 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 22, 23, 24,
                 25, 26, 28, 30, 32, 34, 35, 36, 37, 38, 39, 40, 42, 43, 44, 45, 46, 48, 49, 50, 51,
                 52, 53, 54, 55, 56, 58, 59, 60, 61, 62, 63, 64, 65, 67, 68, 69, 70, 71, 72, 73, 74,
-                75, 76, 77, 80, 81, 82, 83, 88, 89, 90, 93, 94, 95, 96, 97, 98, 99, 100, 102, 105,
-                106,
+                75, 76, 77, 80, 81, 82, 83, 88, 89, 90, 92, 93, 94, 95, 96, 97, 98, 99, 100, 102,
+                105, 106,
             ]
         );
     }
@@ -9689,6 +9720,76 @@ mod tests {
             },
             DataComponentPatchSummary {
                 tropical_fish_base_color_id: Some(16),
+                ..DataComponentPatchSummary::default()
+            },
+        ] {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            assert!(descriptor.encode(&summary, &mut encoded).is_err());
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
+    }
+
+    #[test]
+    fn rabbit_variant_descriptor_round_trips_sparse_ids_normalizes_decode_fallback_and_rejects_invalid_values_atomically(
+    ) {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_RABBIT_VARIANT_TYPE_ID)
+                .unwrap();
+        for variant_id in [0, 5, 99] {
+            let summary = DataComponentPatchSummary {
+                builtin_enum_component_ids: BTreeMap::from([(
+                    VANILLA_DATA_COMPONENT_RABBIT_VARIANT_TYPE_ID,
+                    variant_id,
+                )]),
+                ..DataComponentPatchSummary::default()
+            };
+            let mut encoded = Encoder::new();
+            descriptor.encode(&summary, &mut encoded).unwrap();
+
+            let mut expected = Encoder::new();
+            expected.write_var_i32(variant_id);
+            assert_eq!(encoded.clone().into_inner(), expected.into_inner());
+
+            let wire = encoded.into_inner();
+            let mut decoder = Decoder::new(&wire);
+            let mut decoded = DataComponentPatchSummary::default();
+            descriptor.decode(&mut decoder, &mut decoded).unwrap();
+            assert!(decoder.is_empty());
+            assert_eq!(
+                decoded.builtin_enum_component_ids,
+                BTreeMap::from([(VANILLA_DATA_COMPONENT_RABBIT_VARIANT_TYPE_ID, variant_id)])
+            );
+        }
+
+        for raw_variant_id in [-1, 6, 98, 100] {
+            let mut wire = Encoder::new();
+            wire.write_var_i32(raw_variant_id);
+            let wire = wire.into_inner();
+            let mut decoder = Decoder::new(&wire);
+            let mut decoded = DataComponentPatchSummary::default();
+            descriptor.decode(&mut decoder, &mut decoded).unwrap();
+            assert!(decoder.is_empty());
+            assert_eq!(
+                decoded.builtin_enum_component_ids,
+                BTreeMap::from([(VANILLA_DATA_COMPONENT_RABBIT_VARIANT_TYPE_ID, 0)])
+            );
+        }
+
+        for summary in [
+            DataComponentPatchSummary::default(),
+            DataComponentPatchSummary {
+                builtin_enum_component_ids: BTreeMap::from([(
+                    VANILLA_DATA_COMPONENT_RABBIT_VARIANT_TYPE_ID,
+                    6,
+                )]),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                builtin_enum_component_ids: BTreeMap::from([(
+                    VANILLA_DATA_COMPONENT_RABBIT_VARIANT_TYPE_ID,
+                    98,
+                )]),
                 ..DataComponentPatchSummary::default()
             },
         ] {
