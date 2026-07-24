@@ -2402,6 +2402,74 @@
         "status": "complete"
       }
     },
+    "BASE_COLOR": {
+      "canonical_retention": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#BASE_COLOR",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub base_color_id",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_base_color",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_float_and_dye_data_component_values",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_all_string_enum_component_value_codecs"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#BASE_COLOR",
+          "vanilla:net/minecraft/world/item/DyeColor.java#STREAM_CODEC",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#idMapper",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_base_color",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#base_color_descriptor_round_trips_canonical_ids_and_rejects_invalid_values_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_base_color_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/ShieldItem.java#public Component getName",
+          "crates/bbb-item-model/src/item_runtime/tooltip.rs#shield_item_name_override",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#shield_hover_name_uses_base_color_before_item_name"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#BASE_COLOR",
+          "vanilla:net/minecraft/world/item/DyeColor.java#CODEC",
+          "crates/bbb-native/src/input/component_patch.rs#encode_base_color",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_all_string_enum_component_value_codecs"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_float_and_dye_data_component_values",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#base_color_descriptor_round_trips_canonical_ids_and_rejects_invalid_values_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_base_color_component",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#shield_hover_name_uses_base_color_before_item_name",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_all_string_enum_component_value_codecs"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#BASE_COLOR",
+          "vanilla:net/minecraft/world/item/DyeColor.java#STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_base_color",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_float_and_dye_data_component_values",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_all_string_enum_component_value_codecs"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "BEES": {
       "canonical_retention": {
         "evidence": [

@@ -582,6 +582,90 @@ fn localized_item_name_prefers_item_key_then_block_key() {
 }
 
 #[test]
+fn shield_hover_name_uses_base_color_before_item_name() {
+    let mut runtime = NativeItemRuntime::empty_for_test().with_vanilla_item_registry_for_test();
+    runtime.language = LanguageCatalog::from_json_bytes(
+        br#"{
+            "item.minecraft.shield": "Shield",
+            "item.minecraft.shield.red": "Red Shield",
+            "item.minecraft.stone": "Stone"
+        }"#,
+    )
+    .unwrap();
+    let shield_id = runtime.item_protocol_id("minecraft:shield").unwrap();
+    let stone_id = runtime.item_protocol_id("minecraft:stone").unwrap();
+    let stack = |item_id, component_patch| ItemStackSummary {
+        item_id: Some(item_id),
+        count: 1,
+        component_patch,
+    };
+
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&stack(
+            shield_id,
+            DataComponentPatchSummary {
+                base_color_id: Some(VANILLA_DYE_COLOR_RED_ID),
+                item_name: Some("Ignored Item Name".to_string()),
+                ..DataComponentPatchSummary::default()
+            },
+        )),
+        Some(vec![name_line(
+            "Red Shield",
+            TOOLTIP_TEXT_WHITE,
+            0xFF_FF_FF,
+            false
+        )])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&stack(
+            shield_id,
+            DataComponentPatchSummary {
+                custom_name: Some("Custom Shield".to_string()),
+                base_color_id: Some(VANILLA_DYE_COLOR_RED_ID),
+                item_name: Some("Ignored Item Name".to_string()),
+                ..DataComponentPatchSummary::default()
+            },
+        )),
+        Some(vec![name_line(
+            "Custom Shield",
+            TOOLTIP_TEXT_WHITE,
+            0xFF_FF_FF,
+            true
+        )])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&stack(
+            shield_id,
+            DataComponentPatchSummary {
+                item_name: Some("Patched Shield".to_string()),
+                ..DataComponentPatchSummary::default()
+            },
+        )),
+        Some(vec![name_line(
+            "Patched Shield",
+            TOOLTIP_TEXT_WHITE,
+            0xFF_FF_FF,
+            false
+        )])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&stack(
+            stone_id,
+            DataComponentPatchSummary {
+                base_color_id: Some(VANILLA_DYE_COLOR_RED_ID),
+                ..DataComponentPatchSummary::default()
+            },
+        )),
+        Some(vec![name_line(
+            "Stone",
+            TOOLTIP_TEXT_WHITE,
+            0xFF_FF_FF,
+            false
+        )])
+    );
+}
+
+#[test]
 fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
     let root = unique_temp_dir("item-runtime");
     let assets = assets_dir(&root);

@@ -297,6 +297,24 @@ pub(super) fn localized_item_name(language: &LanguageCatalog, resource_id: &str)
     language.get(&block_key).unwrap_or(&item_key).to_string()
 }
 
+fn shield_item_name_override(
+    language: &LanguageCatalog,
+    resource_id: &str,
+    component_patch: &DataComponentPatchSummary,
+) -> Option<String> {
+    if resource_id != "minecraft:shield" {
+        return None;
+    }
+    let color_id = component_patch.base_color_id?;
+    let translation_key = format!("item.minecraft.shield.{}", vanilla_dye_color_name(color_id));
+    Some(
+        language
+            .get(&translation_key)
+            .unwrap_or(&translation_key)
+            .to_string(),
+    )
+}
+
 pub(super) fn hover_name_for_stack(
     language: &LanguageCatalog,
     resource_id: &str,
@@ -320,6 +338,9 @@ fn hover_name_for_component_patch(
         .filter(|title| !title.trim().is_empty())
     {
         return title.to_string();
+    }
+    if let Some(name) = shield_item_name_override(language, resource_id, component_patch) {
+        return name;
     }
     if let Some(name) = &component_patch.item_name {
         return name.clone();
@@ -366,6 +387,9 @@ fn hover_name_source_runs_for_component_patch(
         .filter(|title| !title.trim().is_empty())
     {
         return (plain(title.to_string()), false);
+    }
+    if let Some(name) = shield_item_name_override(language, resource_id, patch) {
+        return (plain(name), false);
     }
     if let Some(name) = &patch.item_name {
         let runs = match &patch.item_name_styled {

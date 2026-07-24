@@ -20,8 +20,8 @@ use crate::{
     },
     consume_effect_types::ConsumeEffectType,
     data_component_types::{
-        VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID, VANILLA_DATA_COMPONENT_BEES_TYPE_ID,
-        VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
+        VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID, VANILLA_DATA_COMPONENT_BASE_COLOR_TYPE_ID,
+        VANILLA_DATA_COMPONENT_BEES_TYPE_ID, VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID, VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
         VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
@@ -1297,6 +1297,9 @@ fn validate_encodable_data_component_patch_summary(
             }
             VANILLA_DATA_COMPONENT_DYE_TYPE_ID => {
                 expected.dye_color_id = patch.dye_color_id;
+            }
+            VANILLA_DATA_COMPONENT_BASE_COLOR_TYPE_ID => {
+                expected.base_color_id = patch.base_color_id;
             }
             VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID => {
                 expected.dyed_color = patch.dyed_color;
