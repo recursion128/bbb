@@ -11,9 +11,14 @@ import json
 import math
 import struct
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Sequence
 
-from vanilla_java_source import JavaExpression, JavaSource, expression_fact
+from vanilla_java_source import (
+    JavaExpression,
+    JavaSource,
+    expression_fact,
+    resolve_class_hierarchy,
+)
 
 
 class ItemRegistryCatalogExtractionError(ValueError):
@@ -25,6 +30,112 @@ ITEM_OWNER = "net.minecraft.world.item.Item"
 ITEM_IDS_OWNER = "net.minecraft.references.ItemIds"
 FOODS_OWNER = "net.minecraft.world.food.Foods"
 ITEM_FIELD_TYPES = {"Item", "WeatheringCopperItems"}
+
+
+def _walk_expression_facts(expression: dict):
+    yield expression
+    object_fact = expression.get("object")
+    if object_fact is not None:
+        yield from _walk_expression_facts(object_fact)
+    for key in ("arguments", "children"):
+        for child in expression.get(key, []):
+            yield from _walk_expression_facts(child)
+
+
+def item_factory_class(declaration: dict) -> str:
+    initializer = declaration["initializer"]
+    name = initializer.get("name")
+    arguments = initializer.get("arguments", [])
+    if declaration["field_type"] == "WeatheringCopperItems":
+        return "BlockItem"
+    if name == "registerSpawnEgg":
+        return "SpawnEggItem"
+    if name not in {"registerBlock", "registerItem"}:
+        raise ItemRegistryCatalogExtractionError(
+            f"Items.{declaration['field']}: unsupported factory root {name!r}"
+        )
+
+    for argument in arguments[1:]:
+        if (
+            argument.get("kind") == "method_invocation"
+            and argument.get("name") == "createBlockItemWithCustomItemName"
+        ):
+            return "BlockItem"
+        for fact in _walk_expression_facts(argument):
+            if fact.get("kind") == "method_reference":
+                owner, separator, constructor = fact["canonical"].partition("::")
+                if separator and constructor == "new":
+                    return owner.rsplit(".", 1)[-1]
+            if fact.get("kind") == "object_creation_expression":
+                class_name = (
+                    fact.get("name", "").rsplit(".", 1)[-1].split("<", 1)[0]
+                )
+                if class_name.endswith("Item"):
+                    return class_name
+
+    return "BlockItem" if name == "registerBlock" else "Item"
+
+
+def _is_item_use_method(source: JavaSource, method) -> bool:
+    if method.is_constructor or method.name != "use" or len(method.parameters) != 3:
+        return False
+    return_type = method.node.child_by_field_name("type")
+    parameter_types = [
+        parameter.node.child_by_field_name("type") for parameter in method.parameters
+    ]
+    return (
+        return_type is not None
+        and all(parameter_type is not None for parameter_type in parameter_types)
+        and source.text(return_type) == "InteractionResult"
+        and tuple(source.text(parameter_type) for parameter_type in parameter_types)
+        == ("Level", "Player", "InteractionHand")
+    )
+
+
+def extract_item_use_override_owners(
+    declarations: Sequence[dict],
+    item_class_sources: Sequence[JavaSource],
+) -> dict[str, str | None]:
+    types = [item for source in item_class_sources for item in source.types]
+    resolve_class_hierarchy(types)
+    by_fqcn = {item.fqcn: item for item in types}
+    by_simple_name: dict[str, list] = {}
+    for item in types:
+        by_simple_name.setdefault(item.simple_name, []).append(item)
+    item_use_owners = {
+        method.owner
+        for source in item_class_sources
+        for method in source.methods
+        if _is_item_use_method(source, method)
+    }
+
+    owners: dict[str, str | None] = {}
+    for factory_class in sorted({item_factory_class(item) for item in declarations}):
+        matches = by_simple_name.get(factory_class, [])
+        if len(matches) != 1:
+            raise ItemRegistryCatalogExtractionError(
+                f"expected exactly one item class {factory_class}, got "
+                f"{[item.fqcn for item in matches]}"
+            )
+        item_type = matches[0]
+        seen = set()
+        while item_type.fqcn not in seen:
+            seen.add(item_type.fqcn)
+            if item_type.fqcn in item_use_owners:
+                owners[factory_class] = (
+                    None if item_type.simple_name == "Item" else item_type.simple_name
+                )
+                break
+            if item_type.superclass is None or item_type.superclass not in by_fqcn:
+                raise ItemRegistryCatalogExtractionError(
+                    f"{item_type.source_path}: {factory_class} does not resolve to Item.use"
+                )
+            item_type = by_fqcn[item_type.superclass]
+        else:
+            raise ItemRegistryCatalogExtractionError(
+                f"superclass cycle while resolving {factory_class}.use"
+            )
+    return owners
 
 
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:

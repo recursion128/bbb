@@ -765,6 +765,20 @@ impl NativeItemRuntime {
             .map(protocol_item_consumable)
     }
 
+    pub fn item_default_consumables_by_protocol_id(&self) -> BTreeMap<i32, ConsumableSummary> {
+        let mut consumables = BTreeMap::new();
+        let Some(registry) = &self.registry else {
+            return consumables;
+        };
+        for (protocol_id, resource_id) in registry.resource_ids().iter().enumerate() {
+            let Some(consumable) = registry.default_consumable(resource_id) else {
+                continue;
+            };
+            consumables.insert(protocol_id as i32, protocol_item_consumable(consumable));
+        }
+        consumables
+    }
+
     pub fn furnace_fuel_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
         self.furnace_fuel_item_ids.clone()
     }

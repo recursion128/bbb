@@ -21,7 +21,7 @@ use bbb_protocol::data_component_types::{
 use bbb_protocol::item_types::{
     VANILLA_ITEM_ABSOLUTE_MAX_STACK_SIZE, VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE,
 };
-use bbb_protocol::packets::DataComponentPatchSummary;
+use bbb_protocol::packets::{ConsumableSummary, DataComponentPatchSummary};
 
 use crate::{
     ItemAttackRange, ItemEquipmentSlot, ItemFoodProperties, ItemUseEffects, MountArmorSlotKind,
@@ -95,6 +95,8 @@ pub struct ItemProfiles {
     pub(crate) default_item_swing_animation_durations: PublicationShared<BTreeMap<i32, i32>>,
     #[serde(default)]
     pub(crate) default_item_use_effects: PublicationShared<BTreeMap<i32, ItemUseEffects>>,
+    #[serde(default)]
+    pub(crate) default_item_consumables: PublicationShared<BTreeMap<i32, ConsumableSummary>>,
     #[serde(default)]
     pub(crate) default_item_food_properties: PublicationShared<BTreeMap<i32, ItemFoodProperties>>,
     #[serde(default)]
@@ -509,6 +511,21 @@ impl ItemProfiles {
         use_effects: BTreeMap<i32, ItemUseEffects>,
     ) {
         self.default_item_use_effects = filter_item_id_keys(use_effects).into();
+    }
+
+    pub(crate) fn set_default_item_consumables(
+        &mut self,
+        consumables: BTreeMap<i32, ConsumableSummary>,
+    ) {
+        self.default_item_consumables = consumables
+            .into_iter()
+            .filter(|(item_id, consumable)| {
+                *item_id >= 0
+                    && consumable.consume_seconds.is_finite()
+                    && consumable.consume_seconds >= 0.0
+            })
+            .collect::<BTreeMap<_, _>>()
+            .into();
     }
 
     pub(crate) fn set_default_item_food_properties(

@@ -74,6 +74,11 @@ mod merchant;
 mod slot_ops;
 mod smithing;
 mod stonecutter;
+mod use_prediction;
+pub use use_prediction::{
+    LocalInteractionResult, LocalInteractionSuccess, LocalInteractionSwingSource,
+    LocalItemUsePrediction,
+};
 #[cfg(test)]
 mod tests;
 
@@ -1190,12 +1195,13 @@ impl InventoryState {
             })
     }
 
-    pub(crate) fn local_selected_main_hand_is_enabled(
+    pub(crate) fn local_item_in_hand_is_enabled(
         &self,
         ctx: InventoryCtx<'_>,
+        hand: InteractionHand,
         vanilla_feature_enabled: bool,
     ) -> bool {
-        let Some(item) = self.local_item_in_hand(ctx, InteractionHand::MainHand) else {
+        let Some(item) = self.local_item_in_hand(ctx, hand) else {
             return true;
         };
         item.item_id
@@ -2420,8 +2426,13 @@ impl WorldStore {
     }
 
     pub fn local_selected_main_hand_is_enabled(&self) -> bool {
-        self.inventory.local_selected_main_hand_is_enabled(
+        self.local_item_in_hand_is_enabled(InteractionHand::MainHand)
+    }
+
+    pub fn local_item_in_hand_is_enabled(&self, hand: InteractionHand) -> bool {
+        self.inventory.local_item_in_hand_is_enabled(
             inventory_ctx!(self),
+            hand,
             self.is_feature_enabled("minecraft:vanilla"),
         )
     }
@@ -2700,6 +2711,13 @@ impl WorldStore {
 
     pub fn set_default_item_use_effects(&mut self, use_effects: BTreeMap<i32, ItemUseEffects>) {
         self.items.set_default_item_use_effects(use_effects)
+    }
+
+    pub fn set_default_item_consumables(
+        &mut self,
+        consumables: BTreeMap<i32, bbb_protocol::packets::ConsumableSummary>,
+    ) {
+        self.items.set_default_item_consumables(consumables)
     }
 
     pub fn set_default_item_food_properties(&mut self, foods: BTreeMap<i32, ItemFoodProperties>) {

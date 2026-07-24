@@ -4,8 +4,8 @@ use bbb_protocol::packets::{
     Direction as ProtocolDirection, InteractionHand, PlayerActionKind, SpectateEntity,
 };
 use bbb_world::{
-    BlockPos as WorldBlockPos, ItemAttackRange, LocalDestroyBlockFinished, LocalPlayerPoseState,
-    WorldStore,
+    BlockPos as WorldBlockPos, ItemAttackRange, LocalDestroyBlockFinished, LocalInteractionResult,
+    LocalInteractionSwingSource, LocalItemUsePrediction, LocalPlayerPoseState, WorldStore,
 };
 use tokio::sync::mpsc;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta};
@@ -274,12 +274,11 @@ pub(super) fn start_use_item(
     camera_target: Option<CrosshairTarget>,
     player_pose: Option<bbb_world::LocalPlayerPoseState>,
 ) -> bool {
-    if world.local_player().interaction.using_item
-        || world.local_player().interaction.destroying_block.is_some()
-    {
+    if world.local_player().interaction.destroying_block.is_some() {
         return false;
     }
-    if world.local_player_is_spectator() && camera_target.is_none() {
+    input.use_item_repeat_delay_ticks = USE_ITEM_REPEAT_DELAY_TICKS;
+    if world.local_player().interaction.using_item || local_player_hands_are_busy(input, world) {
         return false;
     }
     match camera_target {
@@ -296,7 +295,6 @@ pub(super) fn start_use_item(
         None => {}
     }
 
-    input.use_item_repeat_delay_ticks = USE_ITEM_REPEAT_DELAY_TICKS;
     match camera_target {
         Some(CrosshairTarget::Entity(hit)) => {
             if world.try_open_minecart_command_block_editor(hit.entity_id) {
@@ -342,26 +340,53 @@ pub(super) fn start_use_item(
         }
         None => {
             if let Some(pose) = player_pose {
-                let Some(hand) = no_target_item_use_hand(world) else {
-                    return true;
-                };
-                let sequence = world.next_local_prediction_sequence();
-                let using_item = queue_use_item_command(
-                    counters,
-                    net_commands,
-                    world.local_player().selected_hotbar_slot,
-                    hand,
-                    pose.y_rot,
-                    pose.x_rot,
-                    sequence,
-                );
-                world.set_local_using_item_with_hand(using_item, hand);
-                if using_item
-                    && world.open_writable_book_editor(hand, input.client_text_filtering_enabled())
-                {
-                    world.set_local_using_item_with_hand(false, hand);
-                    input.sync_book_screen(world);
-                    release_active_input(input, world, counters, net_commands);
+                for hand in [InteractionHand::MainHand, InteractionHand::OffHand] {
+                    if !world.local_item_in_hand_is_enabled(hand) {
+                        return true;
+                    }
+                    if world.local_item_in_hand(hand).is_none() || world.local_player_is_spectator()
+                    {
+                        continue;
+                    }
+                    let prediction = world.predict_local_item_use(hand);
+                    let sequence = world.next_local_prediction_sequence();
+                    if !queue_use_item_command(
+                        counters,
+                        net_commands,
+                        world.local_player().selected_hotbar_slot,
+                        hand,
+                        pose.y_rot,
+                        pose.x_rot,
+                        sequence,
+                    ) {
+                        return true;
+                    }
+                    if world.open_writable_book_editor(hand, input.client_text_filtering_enabled())
+                    {
+                        input.sync_book_screen(world);
+                        release_active_input(input, world, counters, net_commands);
+                        return true;
+                    }
+                    match prediction {
+                        LocalItemUsePrediction::Result(LocalInteractionResult::Success(
+                            success,
+                        )) => {
+                            world.set_local_using_item_with_hand(success.starts_using_item, hand);
+                            if success.swing_source == LocalInteractionSwingSource::Client {
+                                queue_swing_command(world, counters, net_commands, hand);
+                            }
+                            return true;
+                        }
+                        LocalItemUsePrediction::Result(
+                            LocalInteractionResult::Pass | LocalInteractionResult::Fail,
+                        ) => {}
+                        LocalItemUsePrediction::Result(
+                            LocalInteractionResult::TryEmptyHandInteraction,
+                        )
+                        | LocalItemUsePrediction::UnsupportedOverride(_)
+                        | LocalItemUsePrediction::UnknownItemType(_)
+                        | LocalItemUsePrediction::MissingComponentValue(_) => return true,
+                    }
                 }
             }
         }
@@ -375,17 +400,6 @@ fn item_use_hand(world: &WorldStore) -> InteractionHand {
     } else {
         InteractionHand::MainHand
     }
-}
-
-fn no_target_item_use_hand(world: &WorldStore) -> Option<InteractionHand> {
-    let preferred = item_use_hand(world);
-    if world.local_item_in_hand_can_start_consuming(preferred) {
-        return Some(preferred);
-    }
-    (preferred == InteractionHand::MainHand
-        && world.local_item_in_hand(InteractionHand::OffHand).is_some()
-        && world.local_item_in_hand_can_start_consuming(InteractionHand::OffHand))
-    .then_some(InteractionHand::OffHand)
 }
 
 fn block_use_hand(world: &WorldStore) -> InteractionHand {
@@ -798,12 +812,12 @@ mod tests {
         AddEntity, AdventureModePredicateDataSummary, AdventureModePredicateSummary, AttackEntity,
         AttackRangeSummary, BlockEntityData, BlockHitResult as ProtocolBlockHitResult,
         BlockHolderSetSummary, BlockPos as ProtocolBlockPos, BlockPredicateSummary, BlockUpdate,
-        CommonPlayerSpawnInfo, EntityEvent as ProtocolEntityEvent, GameEvent as ProtocolGameEvent,
-        InitializeBorder, InteractEntity, ItemStackSummary as ProtocolItemStackSummary,
-        OpenSignEditor, PickItemFromBlock, PickItemFromEntity, PlayLogin, PlayerAbilities,
-        PlayerAction, PlayerHealth, RemoveEntities, SetPassengers,
-        SetPlayerInventory as ProtocolSetPlayerInventory, ToolSummary, UseItem, UseItemOn,
-        Vec3d as ProtocolVec3d,
+        CommonPlayerSpawnInfo, ConsumableSummary, EntityEvent as ProtocolEntityEvent,
+        GameEvent as ProtocolGameEvent, InitializeBorder, InteractEntity,
+        ItemStackSummary as ProtocolItemStackSummary, OpenSignEditor, PickItemFromBlock,
+        PickItemFromEntity, PlayLogin, PlayerAbilities, PlayerAction, PlayerHealth, RemoveEntities,
+        SetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory, ToolSummary, UseItem,
+        UseItemOn, Vec3d as ProtocolVec3d,
     };
     use bbb_world::{
         BlockEntityRecord, BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState,
@@ -1035,6 +1049,7 @@ mod tests {
             ..LocalPlayerPoseState::default()
         });
         assert!(world.set_local_selected_hotbar_slot(4));
+        install_consumable(&mut world, 4, 42, 1.6);
         let mut counters = NetCounters::default();
 
         handle_mouse_input(
@@ -1094,10 +1109,7 @@ mod tests {
             x_rot: -20.0,
             ..LocalPlayerPoseState::default()
         });
-        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
-            slot: VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
-            item: item_stack(99, 1),
-        });
+        install_consumable(&mut world, VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT, 99, 1.6);
         let mut counters = NetCounters::default();
 
         handle_mouse_input(
@@ -1126,6 +1138,65 @@ mod tests {
     }
 
     #[test]
+    fn right_mouse_press_without_target_or_items_only_starts_repeat_delay() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        world.set_local_player_pose(LocalPlayerPoseState::default());
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+        );
+
+        assert!(input.use_item_held);
+        assert_eq!(
+            input.use_item_repeat_delay_ticks,
+            USE_ITEM_REPEAT_DELAY_TICKS
+        );
+        assert!(!world.local_player().interaction.using_item);
+        assert_eq!(counters.use_item_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn right_mouse_press_without_target_honors_offhand_enabled_feature_gate() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        world.set_local_player_pose(LocalPlayerPoseState::default());
+        install_consumable(&mut world, VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT, 99, 1.6);
+        world.apply_update_enabled_features(bbb_protocol::packets::UpdateEnabledFeatures {
+            features: vec!["minecraft:trade_rebalance".to_string()],
+        });
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+        );
+
+        assert_eq!(
+            input.use_item_repeat_delay_ticks,
+            USE_ITEM_REPEAT_DELAY_TICKS
+        );
+        assert!(!world.local_player().interaction.using_item);
+        assert_eq!(counters.use_item_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
     fn full_food_consumable_blocks_main_hand_and_falls_through_to_offhand() {
         fn full_food_world() -> WorldStore {
             let mut world = WorldStore::new();
@@ -1134,13 +1205,35 @@ mod tests {
                 x_rot: -20.0,
                 ..LocalPlayerPoseState::default()
             });
-            world.set_default_item_component_type_ids(BTreeMap::from([(
-                42,
-                BTreeSet::from([
-                    VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
-                    VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
-                ]),
-            )]));
+            world.set_default_item_component_type_ids(BTreeMap::from([
+                (
+                    42,
+                    BTreeSet::from([
+                        VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
+                        VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
+                    ]),
+                ),
+                (
+                    99,
+                    BTreeSet::from([VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID]),
+                ),
+            ]));
+            world.set_default_item_consumables(BTreeMap::from([
+                (
+                    42,
+                    ConsumableSummary {
+                        consume_seconds: 1.6,
+                        ..ConsumableSummary::default()
+                    },
+                ),
+                (
+                    99,
+                    ConsumableSummary {
+                        consume_seconds: 1.6,
+                        ..ConsumableSummary::default()
+                    },
+                ),
+            ]));
             world.set_default_item_food_properties(BTreeMap::from([(
                 42,
                 ItemFoodProperties {
@@ -1179,10 +1272,20 @@ mod tests {
             USE_ITEM_REPEAT_DELAY_TICKS
         );
         assert!(!world.local_player().interaction.using_item);
-        assert_eq!(counters.use_item_commands_queued, 0);
-        assert!(rx.try_recv().is_err());
+        assert_eq!(counters.use_item_commands_queued, 1);
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::UseItem(UseItemCommand {
+                packet: UseItem {
+                    hand: InteractionHand::MainHand,
+                    sequence: 1,
+                    ..
+                },
+                selected_hotbar_slot: 0,
+            })
+        ));
 
-        let (tx, mut rx) = mpsc::channel(1);
+        let (tx, mut rx) = mpsc::channel(2);
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
         let mut world = full_food_world();
@@ -1200,13 +1303,24 @@ mod tests {
             ElementState::Pressed,
         );
         assert!(world.local_player().interaction.using_item);
-        assert_eq!(counters.use_item_commands_queued, 1);
+        assert_eq!(counters.use_item_commands_queued, 2);
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::UseItem(UseItemCommand {
+                packet: UseItem {
+                    hand: InteractionHand::MainHand,
+                    sequence: 1,
+                    ..
+                },
+                selected_hotbar_slot: 0,
+            })
+        ));
         assert!(matches!(
             rx.try_recv().unwrap(),
             NetCommand::UseItem(UseItemCommand {
                 packet: UseItem {
                     hand: InteractionHand::OffHand,
-                    sequence: 1,
+                    sequence: 2,
                     ..
                 },
                 selected_hotbar_slot: 0,
@@ -1238,7 +1352,10 @@ mod tests {
         );
 
         assert!(input.use_item_held);
-        assert_eq!(input.use_item_repeat_delay_ticks, 0);
+        assert_eq!(
+            input.use_item_repeat_delay_ticks,
+            USE_ITEM_REPEAT_DELAY_TICKS
+        );
         assert!(!world.local_player().interaction.using_item);
         assert_eq!(counters.use_item_commands_queued, 0);
 
@@ -1713,6 +1830,52 @@ mod tests {
         assert_eq!(counters.attack_entity_commands_queued, 0);
         assert_eq!(counters.spectate_entity_commands_queued, 0);
         assert_eq!(counters.swing_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn right_mouse_press_boat_directional_input_blocks_item_use() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.forward = true;
+        let mut world = local_attack_world_with_player_and_target(123);
+        world.apply_remove_entities(RemoveEntities {
+            entity_ids: vec![123],
+        });
+        world.apply_add_entity(AddEntity {
+            id: 50,
+            uuid: Uuid::from_u128(50),
+            entity_type_id: VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+            position: ProtocolVec3d::default(),
+            delta_movement: ProtocolVec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        });
+        assert!(world.apply_set_passengers(SetPassengers {
+            vehicle_id: 50,
+            passenger_ids: vec![42],
+        }));
+        install_consumable(&mut world, 0, 42, 1.6);
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+        );
+
+        assert_eq!(
+            input.use_item_repeat_delay_ticks,
+            USE_ITEM_REPEAT_DELAY_TICKS
+        );
+        assert!(!world.local_player().interaction.using_item);
+        assert_eq!(counters.use_item_commands_queued, 0);
         assert!(rx.try_recv().is_err());
     }
 
@@ -2941,7 +3104,10 @@ mod tests {
 
         assert!(!world.local_player().interaction.using_item);
         assert!(input.use_item_held);
-        assert_eq!(input.use_item_repeat_delay_ticks, 0);
+        assert_eq!(
+            input.use_item_repeat_delay_ticks,
+            USE_ITEM_REPEAT_DELAY_TICKS
+        );
         assert_eq!(counters.interact_entity_commands_queued, 0);
         assert!(rx.try_recv().is_err());
     }
@@ -3058,7 +3224,10 @@ mod tests {
         );
 
         assert!(input.use_item_held);
-        assert_eq!(input.use_item_repeat_delay_ticks, 0);
+        assert_eq!(
+            input.use_item_repeat_delay_ticks,
+            USE_ITEM_REPEAT_DELAY_TICKS
+        );
         assert!(!world.local_player().interaction.using_item);
         assert_eq!(counters.use_item_on_commands_queued, 0);
         assert!(rx.try_recv().is_err());
@@ -3334,6 +3503,7 @@ mod tests {
             x_rot: -20.0,
             ..LocalPlayerPoseState::default()
         });
+        install_consumable(&mut world, 0, 42, 1.6);
         let mut counters = NetCounters::default();
 
         handle_mouse_input(
@@ -4068,6 +4238,24 @@ mod tests {
             count,
             component_patch: Default::default(),
         }
+    }
+
+    fn install_consumable(world: &mut WorldStore, slot: i32, item_id: i32, consume_seconds: f32) {
+        world.set_default_item_component_type_ids(BTreeMap::from([(
+            item_id,
+            BTreeSet::from([VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID]),
+        )]));
+        world.set_default_item_consumables(BTreeMap::from([(
+            item_id,
+            ConsumableSummary {
+                consume_seconds,
+                ..ConsumableSummary::default()
+            },
+        )]));
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot,
+            item: item_stack(item_id, 1),
+        });
     }
 
     fn item_stack_with_attack_range(

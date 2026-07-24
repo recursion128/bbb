@@ -11,6 +11,8 @@ sys.path.insert(0, str(SCRIPTS))
 from item_registry_catalog_extractor import (  # noqa: E402
     ItemRegistryCatalogExtractionError,
     extract_item_registry_catalog,
+    extract_item_use_override_owners,
+    item_factory_class,
 )
 from vanilla_java_source import parse_source  # noqa: E402
 
@@ -170,6 +172,97 @@ class Items { public static final Item AIR = null; }
                 parse("net/minecraft/world/item/Item.java", ITEM),
                 foods(),
             )
+
+    def test_derives_factory_classes_and_nearest_item_use_override(self) -> None:
+        item_source = parse(
+            "net/minecraft/world/item/Item.java",
+            """
+package net.minecraft.world.item;
+class Item {
+  public static final int DEFAULT_MAX_STACK_SIZE = 64;
+  public static final int ABSOLUTE_MAX_STACK_SIZE = 99;
+  public InteractionResult use(Level level, Player player, InteractionHand hand) {
+    return InteractionResult.PASS;
+  }
+}
+""",
+        )
+        block_item_source = parse(
+            "net/minecraft/world/item/BlockItem.java",
+            """
+package net.minecraft.world.item;
+class BlockItem extends Item {
+  public void use(int first, int second, int third) {}
+}
+""",
+        )
+        snowball_source = parse(
+            "net/minecraft/world/item/SnowballItem.java",
+            """
+package net.minecraft.world.item;
+class SnowballItem extends Item {
+  public InteractionResult use(Level level, Player player, InteractionHand hand) {
+    return InteractionResult.SUCCESS;
+  }
+}
+""",
+        )
+        food_on_a_stick_source = parse(
+            "net/minecraft/world/item/FoodOnAStickItem.java",
+            """
+package net.minecraft.world.item;
+class FoodOnAStickItem<T> extends Item {
+  public InteractionResult use(Level level, Player player, InteractionHand hand) {
+    return InteractionResult.SUCCESS;
+  }
+}
+""",
+        )
+        items = parse(
+            "net/minecraft/world/item/Items.java",
+            """
+package net.minecraft.world.item;
+class Items {
+  public static final Item STONE = registerBlock(Blocks.STONE);
+  public static final Item STICK = registerItem("stick");
+  public static final Item SNOWBALL =
+      registerItem("snowball", SnowballItem::new, new Item.Properties());
+  public static final Item CARROT_ON_A_STICK =
+      registerItem(
+          "carrot_on_a_stick",
+          properties -> new FoodOnAStickItem<>(EntityType.PIG, 7, properties),
+          new Item.Properties());
+}
+""",
+        )
+        extracted = extract_item_registry_catalog(
+            items,
+            parse("net/minecraft/references/ItemIds.java", ITEM_IDS),
+            item_source,
+            foods(),
+        )
+        declarations = extracted.declarations
+        self.assertEqual(
+            [item_factory_class(item) for item in declarations],
+            ["BlockItem", "Item", "SnowballItem", "FoodOnAStickItem"],
+        )
+        self.assertEqual(
+            extract_item_use_override_owners(
+                declarations,
+                [
+                    item_source,
+                    block_item_source,
+                    snowball_source,
+                    food_on_a_stick_source,
+                ],
+            ),
+            {
+                "BlockItem": None,
+                "FoodOnAStickItem": "FoodOnAStickItem",
+                "Item": None,
+                "SnowballItem": "SnowballItem",
+            },
+        )
 
     def test_local_vanilla_catalog_closes_every_field_when_available(self) -> None:
         root = Path.home() / "Work/mc-code/sources/26.1"

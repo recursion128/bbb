@@ -504,6 +504,7 @@ pub(crate) struct ItemRuntimeWorldDefaults {
     piercing_weapon_item_ids: BTreeSet<i32>,
     damageable_item_ids: BTreeSet<i32>,
     use_effects: BTreeMap<i32, ItemUseEffects>,
+    consumables: BTreeMap<i32, bbb_protocol::packets::ConsumableSummary>,
     food_properties: BTreeMap<i32, ItemFoodProperties>,
     furnace_fuel_item_ids: BTreeSet<i32>,
     furnace_fuel_rules: Option<Vec<FurnaceFuelRule>>,
@@ -574,6 +575,7 @@ impl ItemRuntimeWorldDefaults {
             piercing_weapon_item_ids: items.default_piercing_weapon_item_ids_by_protocol_id(),
             damageable_item_ids: items.default_damageable_item_ids_by_protocol_id(),
             use_effects: items.item_use_effects_by_protocol_id(),
+            consumables: items.item_default_consumables_by_protocol_id(),
             food_properties: items.item_food_properties_by_protocol_id(),
             furnace_fuel_item_ids: items.furnace_fuel_item_ids_by_protocol_id(),
             furnace_fuel_rules,
@@ -623,6 +625,7 @@ impl ItemRuntimeWorldDefaults {
         world.set_default_piercing_weapon_item_ids(self.piercing_weapon_item_ids);
         world.set_default_damageable_item_ids(self.damageable_item_ids);
         world.set_default_item_use_effects(self.use_effects);
+        world.set_default_item_consumables(self.consumables);
         world.set_default_item_food_properties(self.food_properties);
         if let Some(rules) = self.furnace_fuel_rules {
             world.set_furnace_fuel_profile(self.furnace_fuel_item_ids, rules);
@@ -729,6 +732,10 @@ mod tests {
         assert_eq!(defaults.default_potion_duration_scale_bits.len(), 2);
         assert_eq!(defaults.food_properties.len(), 44);
         assert_eq!(
+            defaults.consumables[&apple_id].consume_seconds.to_bits(),
+            1.6_f32.to_bits()
+        );
+        assert_eq!(
             defaults.food_properties[&apple_id],
             ItemFoodProperties {
                 nutrition: 4,
@@ -803,6 +810,24 @@ mod tests {
         assert!(
             world.item_stack_has_effective_component(&apple, VANILLA_DATA_COMPONENT_FOOD_TYPE_ID)
         );
+        world.apply_player_health(bbb_protocol::packets::PlayerHealth {
+            health: 20.0,
+            food: 10,
+            saturation: 5.0,
+        });
+        world.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
+            slot: 0,
+            item: apple,
+        });
+        assert!(matches!(
+            world.predict_local_item_use(bbb_protocol::packets::InteractionHand::MainHand),
+            bbb_world::LocalItemUsePrediction::Result(bbb_world::LocalInteractionResult::Success(
+                bbb_world::LocalInteractionSuccess {
+                    starts_using_item: true,
+                    ..
+                }
+            ))
+        ));
     }
 
     #[test]

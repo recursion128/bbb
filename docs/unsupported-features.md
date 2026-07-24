@@ -655,11 +655,15 @@ Commands:
   `Player.attack`: synchronized enchantment effects, critical and magic-critical
   tracking emitters, special `Entity.hurtClient` families, and redirectable
   projectile deflection. Damage and combat outcomes remain server-authoritative.
-- Complete local entity-use parity from `Minecraft.startUseItem` and
-  `MultiPlayerGameMode.interact`: exact main/offhand iteration until a local
-  `InteractionResult.Success`, hands-busy and enabled-item gates, local
-  `interactOn` prediction, swing-source handling, and held-item presentation.
-  Entity state and inventory corrections remain server-authoritative.
+- Complete targeted local-use parity from `Minecraft.startUseItem`,
+  `MultiPlayerGameMode.interact`, and `useItemOn`: exact main/offhand iteration
+  until a local `InteractionResult.Success`, enabled-item gates per hand, local
+  entity/block prediction, swing-source handling, and held-item presentation.
+  Entity, block, and inventory corrections remain server-authoritative.
+- Complete no-target `Item.use` prediction for the source-derived specialized
+  override families and swappable `Equippable` behavior. Override ownership must
+  stay generated from local vanilla item classes instead of being inferred from
+  component shape.
 - Complete `InstrumentItem.use` prediction from named and direct synchronized
   holders: preserve sound/range/use-duration values in the ItemStack component,
   play the local records-source sound, start the use pose, and apply the matching
