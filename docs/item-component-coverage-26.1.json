@@ -2643,34 +2643,76 @@
       "constant_name": "TOOLTIP_STYLE",
       "coverage": {
         "canonical_retention": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components.rs#pub tooltip_style",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values",
+            "crates/bbb-world/src/registries/item_component_initializers.rs#item_stack_tooltip_style",
+            "crates/bbb-world/src/registries/item_component_initializers.rs#tooltip_style_query_honors_component_membership_and_removal",
+            "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_projects_hovered_item_tooltip_name"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "network_encode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#TOOLTIP_STYLE",
+            "vanilla:net/minecraft/resources/Identifier.java#public static final StreamCodec<ByteBuf, Identifier> STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_tooltip_style",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#tooltip_style_descriptor_round_trips_canonical_identifier",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_tooltip_style_component"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "observable_consumers": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/client/gui/GuiGraphicsExtractor.java#public void setTooltipForNextFrame(final Font font, final ItemStack itemStack",
+            "vanilla:net/minecraft/client/gui/screens/inventory/tooltip/TooltipRenderUtil.java#extractTooltipBackground",
+            "crates/bbb-world/src/registries/item_component_initializers.rs#item_stack_tooltip_style",
+            "crates/bbb-native/src/runtime.rs#hud_item_tooltip",
+            "crates/bbb-native/src/hud_assets.rs#tooltip_style_sprite_pairs",
+            "crates/bbb-renderer/src/hud.rs#push_hud_inventory_tooltip",
+            "crates/bbb-renderer/src/hud.rs#inventory_tooltip_uses_the_exact_custom_style_sprite_pair"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "persistent_projection": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/resources/Identifier.java#public static final Codec<Identifier> CODEC",
+            "crates/bbb-native/src/input/component_patch.rs#encode_tooltip_style",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_primitive_component_value_codecs"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#tooltip_style_descriptor_round_trips_canonical_identifier",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#tooltip_style_descriptor_rejects_missing_noncanonical_and_oversized_values_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_tooltip_style_component",
+            "crates/bbb-world/src/registries/item_component_initializers.rs#tooltip_style_query_honors_component_membership_and_removal",
+            "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_projects_hovered_item_tooltip_name",
+            "crates/bbb-native/src/hud_assets.rs#tooltip_style_sprite_pairs_preserve_namespace_and_require_both_layers",
+            "crates/bbb-native/src/hud_assets.rs#tooltip_style_scaling_preserves_all_vanilla_gui_sprite_variants",
+            "crates/bbb-renderer/src/hud/layout.rs#tiled_sprite_segments_repeat_whole_sprite_and_clip_final_row_and_column",
+            "crates/bbb-renderer/src/hud.rs#inventory_tooltip_uses_the_exact_custom_style_sprite_pair"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "typed_decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#TOOLTIP_STYLE",
+            "vanilla:net/minecraft/resources/Identifier.java#public static final StreamCodec<ByteBuf, Identifier> STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_tooltip_style",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_primitive_component_value_codecs"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "resource_id": "minecraft:tooltip_style",

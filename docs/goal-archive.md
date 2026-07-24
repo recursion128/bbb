@@ -467,3 +467,6 @@
 - **2026-07-23（Food component 六维闭环）**：`FOOD` 现按 VarInt、raw float
   与 bool 精确重编码；`Foods.java` 默认值经资源重载进入 world 有效补丁，
   并按 `Player.canEat` 门控无目标本地使用与双手回退。
+- **2026-07-23（Tooltip style component 六维闭环）**：`TOOLTIP_STYLE` 现按
+  Identifier 精确编解码并驱动全部 ItemStack HUD tooltip；资源包同命名空间的
+  background/frame 精灵对保留 stretch、tile、nine-slice 语义并精确选样式。
