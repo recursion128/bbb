@@ -6,8 +6,11 @@ use crate::{
         VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
         VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID,
-        VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
+        VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID,
+        VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID, VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
     },
     ids,
@@ -1648,6 +1651,69 @@ fn encodes_set_creative_mode_slot_consume_effect_family_components() {
             0, // no consume effects
             36, 1, // death_protection type and delimited value length
             0, // no death effects
+        ]
+    );
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_weapon_interaction_family_components() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 3,
+                added_type_ids: vec![
+                    VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
+                    VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
+                    VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
+                ],
+                piercing_weapon: Some(PiercingWeaponSummary {
+                    deals_knockback: true,
+                    dismounts: false,
+                    sound: None,
+                    hit_sound: None,
+                }),
+                kinetic_weapon: Some(KineticWeaponSummary {
+                    contact_cooldown_ticks: 10,
+                    delay_ticks: 0,
+                    dismount_conditions: None,
+                    knockback_conditions: None,
+                    damage_conditions: None,
+                    forward_movement_bits: 0.0_f32.to_bits(),
+                    damage_multiplier_bits: 1.0_f32.to_bits(),
+                    sound: None,
+                    hit_sound: None,
+                }),
+                swing_animation: Some(SwingAnimationSummary {
+                    animation_type: SwingAnimationTypeSummary::Stab,
+                    duration: 13,
+                }),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            3, 0, // patch counts
+            38, 4, // piercing_weapon type and delimited value length
+            1, 0, // deals knockback, does not dismount
+            0, 0, // no sound or hit sound
+            39, 15, // kinetic_weapon type and delimited value length
+            10, 0, // contact cooldown and delay
+            0, 0, 0, // no dismount, knockback, or damage conditions
+            0, 0, 0, 0, // forward movement = 0.0
+            0x3f, 0x80, 0, 0, // damage multiplier = 1.0
+            0, 0, // no sound or hit sound
+            40, 2, // swing_animation type and delimited value length
+            2, 13, // stab, duration
         ]
     );
 }

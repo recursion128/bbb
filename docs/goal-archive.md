@@ -417,3 +417,9 @@
   sound-holder union；creative framing、持久化 Codec/SNBT、默认组件感知的
   item-model condition 与第一人称使用姿势证据齐备，合同见
   `docs/archive/consume-effects-component-roundtrip-design.md`。
+- **2026-07-23（Weapon-interaction component 家族六维闭环）**：
+  `PIERCING_WEAPON`、`KINETIC_WEAPON` 与 `SWING_ANIMATION` 现精确重编码
+  可选条件、raw float/VarInt、sound-holder 与生成 animation id；creative
+  framing、持久化 Codec/SNBT、STAB 输入、spear feedback 和第一/第三人称动画
+  证据齐备，合同见
+  `docs/archive/weapon-interaction-components-roundtrip-design.md`。

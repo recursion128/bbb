@@ -1045,6 +1045,15 @@ fn validate_encodable_data_component_patch_summary(
             crate::data_component_types::VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID => {
                 expected.blocks_attacks = patch.blocks_attacks.clone();
             }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID => {
+                expected.piercing_weapon = patch.piercing_weapon.clone();
+            }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID => {
+                expected.kinetic_weapon = patch.kinetic_weapon.clone();
+            }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID => {
+                expected.swing_animation = patch.swing_animation;
+            }
             crate::data_component_types::VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID => {
                 expected.written_book = patch.written_book.clone();
                 expected.written_book_pages_nbt = patch.written_book_pages_nbt.clone();
@@ -3137,6 +3146,85 @@ mod tests {
             decoded.death_protection_effects,
             patch.death_protection_effects
         );
+    }
+
+    #[test]
+    fn encodes_weapon_interaction_family_patch_with_independent_delimiters() {
+        let patch = DataComponentPatchSummary {
+            added: 3,
+            added_type_ids: vec![
+                crate::data_component_types::VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
+                crate::data_component_types::VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
+                crate::data_component_types::VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
+            ],
+            removed_type_ids: vec![VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID],
+            piercing_weapon: Some(PiercingWeaponSummary {
+                deals_knockback: false,
+                dismounts: true,
+                sound: None,
+                hit_sound: Some(SoundEventSummary {
+                    registry_id: Some(4),
+                    sound_id: None,
+                    fixed_range_bits: None,
+                }),
+            }),
+            kinetic_weapon: Some(KineticWeaponSummary {
+                contact_cooldown_ticks: 8,
+                delay_ticks: 2,
+                dismount_conditions: None,
+                knockback_conditions: Some(KineticWeaponConditionSummary {
+                    max_duration_ticks: 20,
+                    min_speed_bits: 0.5_f32.to_bits(),
+                    min_relative_speed_bits: 1.5_f32.to_bits(),
+                }),
+                damage_conditions: None,
+                forward_movement_bits: 0.25_f32.to_bits(),
+                damage_multiplier_bits: 2.0_f32.to_bits(),
+                sound: Some(SoundEventSummary {
+                    registry_id: None,
+                    sound_id: Some("example:spear".to_string()),
+                    fixed_range_bits: None,
+                }),
+                hit_sound: None,
+            }),
+            swing_animation: Some(SwingAnimationSummary {
+                animation_type: SwingAnimationTypeSummary::Stab,
+                duration: 13,
+            }),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        encode_delimited_data_component_patch_summary(&mut encoded, &patch).unwrap();
+        let encoded = encoded.into_inner();
+
+        let mut decoder = Decoder::new(&encoded);
+        assert_eq!(decoder.read_len().unwrap(), 3);
+        assert_eq!(decoder.read_len().unwrap(), 1);
+        let mut decoded = DataComponentPatchSummary::default();
+        for expected_type_id in [
+            crate::data_component_types::VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
+            crate::data_component_types::VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
+            crate::data_component_types::VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
+        ] {
+            let type_id = decoder.read_var_i32().unwrap();
+            assert_eq!(type_id, expected_type_id);
+            let value_len = decoder.read_len().unwrap();
+            let mut value_decoder =
+                Decoder::new(decoder.read_exact(value_len, "weapon value").unwrap());
+            data_component_descriptor_or_error(type_id)
+                .unwrap()
+                .decode(&mut value_decoder, &mut decoded)
+                .unwrap();
+            assert!(value_decoder.is_empty());
+        }
+        assert_eq!(
+            decoder.read_var_i32().unwrap(),
+            VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID
+        );
+        assert!(decoder.is_empty());
+        assert_eq!(decoded.piercing_weapon, patch.piercing_weapon);
+        assert_eq!(decoded.kinetic_weapon, patch.kinetic_weapon);
+        assert_eq!(decoded.swing_animation, patch.swing_animation);
     }
 
     #[test]

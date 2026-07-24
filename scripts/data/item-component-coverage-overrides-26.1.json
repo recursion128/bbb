@@ -528,6 +528,204 @@
         "status": "complete"
       }
     },
+    "PIERCING_WEAPON": {
+      "canonical_retention": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#pub piercing_weapon",
+          "crates/bbb-protocol/src/packets/data_components.rs#decode_piercing_weapon_summary",
+          "crates/bbb-world/src/client/dialog/body/component_value/sound_event.rs#decodes_piercing_weapon_defaults_and_sound_holders"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/component/PiercingWeapon.java#public static final StreamCodec<RegistryFriendlyByteBuf, PiercingWeapon> STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_piercing_weapon",
+          "crates/bbb-protocol/src/packets/data_components.rs#encodes_weapon_interaction_family_patch_with_independent_delimiters",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_weapon_interaction_family_components"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/client/Minecraft.java#startAttack",
+          "crates/bbb-world/src/client/inventory.rs#local_selected_main_hand_has_piercing_weapon",
+          "crates/bbb-native/src/input/mouse.rs#left_mouse_press_with_piercing_weapon_queues_stab_and_swing_on_entity",
+          "crates/bbb-native/src/input/mouse.rs#left_mouse_press_with_piercing_weapon_queues_stab_and_swing_on_block",
+          "crates/bbb-native/src/input/mouse.rs#held_left_mouse_with_piercing_weapon_does_not_continue_or_abort_destroy"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/component/PiercingWeapon.java#public static final Codec<PiercingWeapon> CODEC",
+          "crates/bbb-native/src/input/component_patch.rs#encode_piercing_weapon",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_omits_default_piercing_weapon_fields_and_unknown_sounds",
+          "crates/bbb-world/src/client/dialog/body/component_value/sound_event.rs#rejects_malformed_piercing_weapon_records"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#weapon_interaction_descriptors_round_trip_exact_wire_values",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#weapon_interaction_descriptors_reject_noncanonical_summaries_atomically",
+          "crates/bbb-protocol/src/packets/data_components.rs#encodes_weapon_interaction_family_patch_with_independent_delimiters",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_weapon_interaction_family_components",
+          "crates/bbb-native/src/input/mouse.rs#left_mouse_press_with_piercing_weapon_queues_stab_and_swing_on_entity"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#PIERCING_WEAPON",
+          "vanilla:net/minecraft/world/item/component/PiercingWeapon.java#public record PiercingWeapon",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_piercing_weapon_component",
+          "crates/bbb-protocol/src/packets/data_components.rs#decode_piercing_weapon_summary",
+          "crates/bbb-world/src/client/dialog/body/component_value/sound_event.rs#decodes_piercing_weapon_defaults_and_sound_holders"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
+    "KINETIC_WEAPON": {
+      "canonical_retention": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#pub kinetic_weapon",
+          "crates/bbb-protocol/src/packets/data_components.rs#decode_kinetic_weapon_summary",
+          "crates/bbb-world/src/client/dialog/body/component_value/sound_event.rs#decodes_kinetic_weapon_defaults_and_nested_conditions",
+          "crates/bbb-world/src/client/dialog/body/component_value/sound_event.rs#kinetic_weapon_optional_records_floats_and_sounds_follow_last_wins_semantics"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/component/KineticWeapon.java#public static final StreamCodec<RegistryFriendlyByteBuf, KineticWeapon> STREAM_CODEC",
+          "vanilla:net/minecraft/world/item/component/KineticWeapon.java#public static final StreamCodec<ByteBuf, KineticWeapon.Condition> STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_kinetic_weapon",
+          "crates/bbb-protocol/src/packets/data_components.rs#encodes_weapon_interaction_family_patch_with_independent_delimiters",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_weapon_interaction_family_components"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/client/model/effects/SpearAnimations.java#firstPersonUse",
+          "crates/bbb-native/src/item_models/first_person.rs#first_person_stack_spear_kinetic_weapon",
+          "crates/bbb-native/src/item_models/tests.rs#first_person_stack_supported_use_animation_resolves_spear_kinetic_weapon",
+          "crates/bbb-native/src/item_models/tests.rs#first_person_item_models_apply_spear_kinetic_use_pose_and_feedback",
+          "crates/bbb-world/src/entities/tests/movement_combat_and_swing_projection.rs#entity_model_sources_project_kinetic_hit_feedback_from_living_entity_event"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/component/KineticWeapon.java#public static final Codec<KineticWeapon> CODEC",
+          "vanilla:net/minecraft/world/item/component/KineticWeapon.java#public static final Codec<KineticWeapon.Condition> CODEC",
+          "crates/bbb-native/src/input/component_patch.rs#encode_kinetic_weapon",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_validates_kinetic_weapon_ticks_and_omits_defaults",
+          "crates/bbb-world/src/client/dialog/body/component_value/sound_event.rs#rejects_malformed_kinetic_weapon_records"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#weapon_interaction_descriptors_round_trip_exact_wire_values",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#weapon_interaction_descriptors_reject_noncanonical_summaries_atomically",
+          "crates/bbb-protocol/src/packets/data_components.rs#encodes_weapon_interaction_family_patch_with_independent_delimiters",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_weapon_interaction_family_components",
+          "crates/bbb-native/src/item_models/tests.rs#first_person_item_models_apply_spear_kinetic_use_pose_and_feedback"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#KINETIC_WEAPON",
+          "vanilla:net/minecraft/world/item/component/KineticWeapon.java#public record KineticWeapon",
+          "vanilla:net/minecraft/world/item/component/KineticWeapon.java#public record Condition",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_kinetic_weapon_component",
+          "crates/bbb-protocol/src/packets/data_components.rs#decode_kinetic_weapon_summary",
+          "crates/bbb-world/src/client/dialog/body/component_value/sound_event.rs#decodes_kinetic_weapon_defaults_and_nested_conditions"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
+    "SWING_ANIMATION": {
+      "canonical_retention": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#pub swing_animation",
+          "crates/bbb-protocol/src/packets/data_components.rs#decode_swing_animation",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_scalar_wrappers_flat_records_and_string_map"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/component/SwingAnimation.java#public static final StreamCodec<ByteBuf, SwingAnimation> STREAM_CODEC",
+          "vanilla:net/minecraft/world/item/SwingAnimationType.java#public static final StreamCodec<ByteBuf, SwingAnimationType> STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_swing_animation",
+          "crates/bbb-protocol/src/packets/data_components.rs#encodes_weapon_interaction_family_patch_with_independent_delimiters",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_weapon_interaction_family_components"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/client/renderer/entity/player/AvatarRenderer.java#extractRenderState",
+          "crates/bbb-native/src/item_models/first_person.rs#first_person_stack_swing_animation",
+          "crates/bbb-native/src/entity_scene/tests.rs#entity_model_instances_project_stab_from_stack_swing_animation_patch",
+          "crates/bbb-native/src/entity_scene/tests.rs#entity_model_instances_stack_swing_animation_overrides_default_spear_stab",
+          "crates/bbb-world/src/entities/tests/movement_combat_and_swing_projection.rs#entity_model_sources_use_item_stack_swing_animation_patch_duration"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/component/SwingAnimation.java#public static final Codec<SwingAnimation> CODEC",
+          "crates/bbb-native/src/input/component_patch.rs#encode_swing_animation",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#rejects_invalid_scalar_wrapper_and_flat_record_codecs"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#weapon_interaction_descriptors_round_trip_exact_wire_values",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#weapon_interaction_descriptors_reject_noncanonical_summaries_atomically",
+          "crates/bbb-protocol/src/packets/data_components.rs#encodes_weapon_interaction_family_patch_with_independent_delimiters",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_weapon_interaction_family_components",
+          "crates/bbb-native/src/entity_scene/tests.rs#entity_model_instances_project_stab_from_stack_swing_animation_patch"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#SWING_ANIMATION",
+          "vanilla:net/minecraft/world/item/component/SwingAnimation.java#public record SwingAnimation",
+          "vanilla:net/minecraft/world/item/SwingAnimationType.java#public enum SwingAnimationType",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_swing_animation_component",
+          "crates/bbb-protocol/src/packets/data_components.rs#decode_swing_animation",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_scalar_wrappers_flat_records_and_string_map"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "WRITTEN_BOOK_CONTENT": {
       "canonical_retention": {
         "evidence": [

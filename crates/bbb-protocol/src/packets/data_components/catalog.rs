@@ -9,9 +9,10 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
     VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
     VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID, VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
-    VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID, VANILLA_DATA_COMPONENT_TYPES,
-    VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID, VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
+    VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID, VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
+    VANILLA_DATA_COMPONENT_TYPES, VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
     VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
 };
 use crate::nbt_summary::{encode_nbt_summary_bounded, MAX_NBT_DEPTH};
@@ -223,6 +224,9 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID => Some(encode_consumable),
         VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID => Some(encode_death_protection),
         VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID => Some(encode_blocks_attacks),
+        VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID => Some(encode_piercing_weapon),
+        VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID => Some(encode_kinetic_weapon),
+        VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID => Some(encode_swing_animation),
         VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID => Some(encode_written_book_content),
         VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID => Some(encode_entity_data),
         VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID => Some(encode_bucket_entity_data),
@@ -527,6 +531,75 @@ fn encode_mob_effect_details(
             depth + 1,
         )?;
     }
+    Ok(())
+}
+
+fn encode_piercing_weapon(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let weapon = summary.piercing_weapon.as_ref().ok_or_else(|| {
+        ProtocolError::InvalidData("missing piercing_weapon component value".to_string())
+    })?;
+    let mut encoded = Encoder::new();
+    encoded.write_bool(weapon.deals_knockback);
+    encoded.write_bool(weapon.dismounts);
+    encode_optional_sound_event_holder_summary(&mut encoded, weapon.sound.as_ref())?;
+    encode_optional_sound_event_holder_summary(&mut encoded, weapon.hit_sound.as_ref())?;
+    out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
+fn encode_kinetic_weapon(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let weapon = summary.kinetic_weapon.as_ref().ok_or_else(|| {
+        ProtocolError::InvalidData("missing kinetic_weapon component value".to_string())
+    })?;
+    let mut encoded = Encoder::new();
+    encoded.write_var_i32(weapon.contact_cooldown_ticks);
+    encoded.write_var_i32(weapon.delay_ticks);
+    encode_optional_kinetic_weapon_condition(&mut encoded, weapon.dismount_conditions)?;
+    encode_optional_kinetic_weapon_condition(&mut encoded, weapon.knockback_conditions)?;
+    encode_optional_kinetic_weapon_condition(&mut encoded, weapon.damage_conditions)?;
+    encoded.write_f32(f32::from_bits(weapon.forward_movement_bits));
+    encoded.write_f32(f32::from_bits(weapon.damage_multiplier_bits));
+    encode_optional_sound_event_holder_summary(&mut encoded, weapon.sound.as_ref())?;
+    encode_optional_sound_event_holder_summary(&mut encoded, weapon.hit_sound.as_ref())?;
+    out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
+fn encode_optional_kinetic_weapon_condition(
+    out: &mut Encoder,
+    condition: Option<KineticWeaponConditionSummary>,
+) -> Result<()> {
+    let Some(condition) = condition else {
+        out.write_bool(false);
+        return Ok(());
+    };
+    out.write_bool(true);
+    out.write_var_i32(condition.max_duration_ticks);
+    out.write_f32(f32::from_bits(condition.min_speed_bits));
+    out.write_f32(f32::from_bits(condition.min_relative_speed_bits));
+    Ok(())
+}
+
+fn encode_swing_animation(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let animation = summary.swing_animation.ok_or_else(|| {
+        ProtocolError::InvalidData("missing swing_animation component value".to_string())
+    })?;
+    let mut encoded = Encoder::new();
+    encoded.write_var_i32(animation.animation_type.id());
+    encoded.write_var_i32(animation.duration);
+    out.write_bytes(&encoded.into_inner());
     Ok(())
 }
 
@@ -2020,7 +2093,7 @@ mod tests {
                 .filter(|descriptor| descriptor.can_encode())
                 .map(|descriptor| descriptor.type_id())
                 .collect::<Vec<_>>(),
-            vec![0, 1, 2, 3, 4, 16, 24, 36, 37, 55, 58, 59, 60, 70]
+            vec![0, 1, 2, 3, 4, 16, 24, 36, 37, 38, 39, 40, 55, 58, 59, 60, 70,]
         );
     }
 
@@ -2660,6 +2733,212 @@ mod tests {
                     && max == MAX_DATA_COMPONENT_LIST_ITEMS
         ));
         assert_eq!(encoded.into_inner(), [0xaa]);
+    }
+
+    #[test]
+    fn weapon_interaction_descriptors_round_trip_exact_wire_values() {
+        let nan_bits = 0x7fc0_1234;
+        let piercing = PiercingWeaponSummary {
+            deals_knockback: false,
+            dismounts: true,
+            sound: Some(SoundEventSummary {
+                registry_id: None,
+                sound_id: Some("example:pierce".to_string()),
+                fixed_range_bits: Some(nan_bits),
+            }),
+            hit_sound: Some(SoundEventSummary {
+                registry_id: Some(7),
+                sound_id: None,
+                fixed_range_bits: None,
+            }),
+        };
+        let kinetic = KineticWeaponSummary {
+            contact_cooldown_ticks: -1,
+            delay_ticks: -2,
+            dismount_conditions: Some(KineticWeaponConditionSummary {
+                max_duration_ticks: -3,
+                min_speed_bits: (-0.0_f32).to_bits(),
+                min_relative_speed_bits: f32::INFINITY.to_bits(),
+            }),
+            knockback_conditions: None,
+            damage_conditions: Some(KineticWeaponConditionSummary {
+                max_duration_ticks: 4,
+                min_speed_bits: nan_bits,
+                min_relative_speed_bits: 0.25_f32.to_bits(),
+            }),
+            forward_movement_bits: nan_bits,
+            damage_multiplier_bits: (-0.0_f32).to_bits(),
+            sound: None,
+            hit_sound: Some(SoundEventSummary {
+                registry_id: None,
+                sound_id: Some("example:hit".to_string()),
+                fixed_range_bits: None,
+            }),
+        };
+        let swing = SwingAnimationSummary {
+            animation_type: SwingAnimationTypeSummary::Stab,
+            duration: -4,
+        };
+        let summary = DataComponentPatchSummary {
+            piercing_weapon: Some(piercing.clone()),
+            kinetic_weapon: Some(kinetic.clone()),
+            swing_animation: Some(swing),
+            ..DataComponentPatchSummary::default()
+        };
+
+        let piercing_descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID)
+                .unwrap();
+        let kinetic_descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID)
+                .unwrap();
+        let swing_descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID)
+                .unwrap();
+
+        let mut piercing_bytes = Encoder::new();
+        piercing_descriptor
+            .encode(&summary, &mut piercing_bytes)
+            .unwrap();
+        let piercing_bytes = piercing_bytes.into_inner();
+        let mut expected = Encoder::new();
+        expected.write_bool(false);
+        expected.write_bool(true);
+        expected.write_bool(true);
+        expected.write_var_i32(0);
+        expected.write_string("example:pierce");
+        expected.write_bool(true);
+        expected.write_f32(f32::from_bits(nan_bits));
+        expected.write_bool(true);
+        expected.write_var_i32(8);
+        assert_eq!(piercing_bytes, expected.into_inner());
+        let mut decoded = DataComponentPatchSummary::default();
+        let mut decoder = Decoder::new(&piercing_bytes);
+        piercing_descriptor
+            .decode(&mut decoder, &mut decoded)
+            .unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded.piercing_weapon, Some(piercing));
+
+        let mut kinetic_bytes = Encoder::new();
+        kinetic_descriptor
+            .encode(&summary, &mut kinetic_bytes)
+            .unwrap();
+        let kinetic_bytes = kinetic_bytes.into_inner();
+        let mut expected = Encoder::new();
+        expected.write_var_i32(-1);
+        expected.write_var_i32(-2);
+        expected.write_bool(true);
+        expected.write_var_i32(-3);
+        expected.write_f32(-0.0);
+        expected.write_f32(f32::INFINITY);
+        expected.write_bool(false);
+        expected.write_bool(true);
+        expected.write_var_i32(4);
+        expected.write_f32(f32::from_bits(nan_bits));
+        expected.write_f32(0.25);
+        expected.write_f32(f32::from_bits(nan_bits));
+        expected.write_f32(-0.0);
+        expected.write_bool(false);
+        expected.write_bool(true);
+        expected.write_var_i32(0);
+        expected.write_string("example:hit");
+        expected.write_bool(false);
+        assert_eq!(kinetic_bytes, expected.into_inner());
+        let mut decoded = DataComponentPatchSummary::default();
+        let mut decoder = Decoder::new(&kinetic_bytes);
+        kinetic_descriptor
+            .decode(&mut decoder, &mut decoded)
+            .unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded.kinetic_weapon, Some(kinetic));
+
+        let mut swing_bytes = Encoder::new();
+        swing_descriptor.encode(&summary, &mut swing_bytes).unwrap();
+        let swing_bytes = swing_bytes.into_inner();
+        let mut expected = Encoder::new();
+        expected.write_var_i32(SwingAnimationTypeSummary::Stab.id());
+        expected.write_var_i32(-4);
+        assert_eq!(swing_bytes, expected.into_inner());
+        let mut decoded = DataComponentPatchSummary::default();
+        let mut decoder = Decoder::new(&swing_bytes);
+        swing_descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded.swing_animation, Some(swing));
+    }
+
+    #[test]
+    fn weapon_interaction_descriptors_reject_noncanonical_summaries_atomically() {
+        let piercing_descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID)
+                .unwrap();
+        let kinetic_descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID)
+                .unwrap();
+        let swing_descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID)
+                .unwrap();
+
+        for (descriptor, expected_error) in [
+            (piercing_descriptor, "missing piercing_weapon"),
+            (kinetic_descriptor, "missing kinetic_weapon"),
+            (swing_descriptor, "missing swing_animation"),
+        ] {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            let error = descriptor
+                .encode(&DataComponentPatchSummary::default(), &mut encoded)
+                .unwrap_err();
+            assert!(error.to_string().contains(expected_error), "{error}");
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
+
+        let malformed_piercing = DataComponentPatchSummary {
+            piercing_weapon: Some(PiercingWeaponSummary {
+                deals_knockback: true,
+                dismounts: false,
+                sound: Some(SoundEventSummary {
+                    registry_id: Some(0),
+                    sound_id: Some("minecraft:item.spear.attack".to_string()),
+                    fixed_range_bits: None,
+                }),
+                hit_sound: None,
+            }),
+            ..DataComponentPatchSummary::default()
+        };
+        let malformed_kinetic = DataComponentPatchSummary {
+            kinetic_weapon: Some(KineticWeaponSummary {
+                contact_cooldown_ticks: 10,
+                delay_ticks: 0,
+                dismount_conditions: None,
+                knockback_conditions: None,
+                damage_conditions: None,
+                forward_movement_bits: 0.0_f32.to_bits(),
+                damage_multiplier_bits: 1.0_f32.to_bits(),
+                sound: None,
+                hit_sound: Some(SoundEventSummary {
+                    registry_id: Some(-1),
+                    sound_id: None,
+                    fixed_range_bits: None,
+                }),
+            }),
+            ..DataComponentPatchSummary::default()
+        };
+        for (descriptor, summary) in [
+            (piercing_descriptor, &malformed_piercing),
+            (kinetic_descriptor, &malformed_kinetic),
+        ] {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            let error = descriptor.encode(summary, &mut encoded).unwrap_err();
+            assert!(
+                error
+                    .to_string()
+                    .contains("sound event holder projections are not canonical"),
+                "{error}"
+            );
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
     }
 
     #[test]
