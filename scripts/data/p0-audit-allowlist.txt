@@ -32,7 +32,13 @@
 # diagnostic to prove unknown ids remain rejected; it is test evidence, not a fallback.
 ^crates/bbb-protocol/src/entity_data_serializers[.]rs$	unsupported entity data serializer
 ^crates/bbb-protocol/src/packets/data_components[.]rs$	unsupported data component type id
+# Creative-slot outbound encoding fails closed for component value codecs that
+# the descriptor catalog does not own yet. This is an explicit command error,
+# not packet loss/desynchronization or a fallback on the playable receive path;
+# the `unsupported_added` lines are its bounded regression fixture.
+^crates/bbb-protocol/src/packets/data_components[.]rs$	cannot encode unsupported data component|unsupported_added|Some[(]"unsupported"
 ^crates/bbb-protocol/src/packets/data_components/catalog[.]rs$	unsupported built-in enum component type id
+^crates/bbb-protocol/src/packets/data_components/catalog[.]rs$	cannot encode unsupported data component
 ^crates/bbb-protocol/src/component/codec[.]rs$	unsupported scheme
 ^crates/bbb-world/src/level[.]rs$	mut unsupported|unsupported[.]|^[[:space:]]*unsupported$
 ^crates/bbb-world/src/client/dialog(/action|/body|/input)?[.]rs$	unsupported dialog|unsupported scheme
