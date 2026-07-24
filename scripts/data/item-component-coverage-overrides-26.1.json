@@ -5746,6 +5746,94 @@
         "status": "complete"
       }
     },
+    "PARROT_VARIANT": {
+      "canonical_retention": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#PARROT_VARIANT",
+          "vanilla:net/minecraft/world/entity/animal/parrot/Parrot.java#public static final StreamCodec<ByteBuf, Parrot.Variant> STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub builtin_enum_component_ids",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_builtin_enum",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_animal_variant_data_components",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#parrot_variant_string_enum_projects_to_builtin_enum_patch_map"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#PARROT_VARIANT",
+          "vanilla:net/minecraft/world/entity/animal/parrot/Parrot.java#public static final StreamCodec<ByteBuf, Parrot.Variant> STREAM_CODEC",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#idMapper",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_builtin_enum",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#parrot_variant_descriptor_round_trips_canonical_ids_normalizes_decode_clamp_and_rejects_invalid_values_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_parrot_variant_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/entity/EntityType.java#appendComponentsConfig",
+          "vanilla:net/minecraft/world/entity/Entity.java#applyComponentsFromItemStack",
+          "vanilla:net/minecraft/world/entity/animal/parrot/Parrot.java#public Parrot.Variant getVariant",
+          "vanilla:net/minecraft/world/entity/animal/parrot/Parrot.java#protected void applyImplicitComponents",
+          "vanilla:net/minecraft/world/entity/animal/parrot/Parrot.java#protected <T> boolean applyImplicitComponent",
+          "vanilla:net/minecraft/client/renderer/entity/ParrotRenderer.java#public void extractRenderState",
+          "vanilla:net/minecraft/client/renderer/entity/ParrotRenderer.java#public Identifier getTextureLocation",
+          "vanilla:net/minecraft/client/renderer/entity/ParrotRenderer.java#public static Identifier getVariantTexture",
+          "vanilla:net/minecraft/client/renderer/entity/layers/ParrotOnShoulderLayer.java#public void submit",
+          "crates/bbb-native/src/entity_scene/tests.rs#entity_model_kind_maps_parrot_to_real_model",
+          "crates/bbb-native/src/entity_scene/tests.rs#entity_model_instances_forward_player_shoulder_parrots_from_world_source",
+          "crates/bbb-renderer/src/entity_models/tests/parrot.rs#parrot_textured_render_matches_vanilla_renderer",
+          "crates/bbb-renderer/src/entity_models/tests/parrot.rs#parrot_on_shoulder_pose_skips_standing_leg_walk_and_flying_leg_pitch"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#PARROT_VARIANT",
+          "vanilla:net/minecraft/world/entity/animal/parrot/Parrot.java#public static final Codec<Parrot.Variant> CODEC",
+          "crates/bbb-native/src/input/component_patch.rs#encode_builtin_enum",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_all_string_enum_component_value_codecs",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#parrot_variant_string_enum_projects_to_builtin_enum_patch_map",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#rejects_invalid_string_enum_component_value_codecs"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/builtin_enum_component_values.rs#built_in_enum_component_values_preserve_vanilla_fallbacks_and_names",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_animal_variant_data_components",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#parrot_variant_descriptor_round_trips_canonical_ids_normalizes_decode_clamp_and_rejects_invalid_values_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_parrot_variant_component",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#parrot_variant_string_enum_projects_to_builtin_enum_patch_map",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-native/src/entity_scene/tests.rs#entity_model_kind_maps_parrot_to_real_model",
+          "crates/bbb-native/src/entity_scene/tests.rs#entity_model_instances_forward_player_shoulder_parrots_from_world_source",
+          "crates/bbb-renderer/src/entity_models/tests/parrot.rs#parrot_textured_render_matches_vanilla_renderer",
+          "crates/bbb-renderer/src/entity_models/tests/parrot.rs#parrot_on_shoulder_pose_skips_standing_leg_walk_and_flying_leg_pitch"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#PARROT_VARIANT",
+          "vanilla:net/minecraft/world/entity/animal/parrot/Parrot.java#private static final IntFunction<Parrot.Variant> BY_ID",
+          "vanilla:net/minecraft/world/entity/animal/parrot/Parrot.java#public static final StreamCodec<ByteBuf, Parrot.Variant> STREAM_CODEC",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#idMapper",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub builtin_enum_component_ids",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_builtin_enum",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_animal_variant_data_components",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#parrot_variant_descriptor_round_trips_canonical_ids_normalizes_decode_clamp_and_rejects_invalid_values_atomically"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "TROPICAL_FISH_PATTERN": {
       "canonical_retention": {
         "evidence": [

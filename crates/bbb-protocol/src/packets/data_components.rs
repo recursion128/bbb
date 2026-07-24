@@ -46,6 +46,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_NOTE_BLOCK_SOUND_TYPE_ID,
         VANILLA_DATA_COMPONENT_OMINOUS_BOTTLE_AMPLIFIER_TYPE_ID,
         VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PARROT_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_PIG_SOUND_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
@@ -1390,6 +1391,13 @@ fn validate_encodable_data_component_patch_summary(
             }
             VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID => {
                 expected.chicken_sound_variant_id = patch.chicken_sound_variant_id;
+            }
+            VANILLA_DATA_COMPONENT_PARROT_VARIANT_TYPE_ID => {
+                if let Some(value_id) = patch.builtin_enum_component_ids.get(type_id) {
+                    expected
+                        .builtin_enum_component_ids
+                        .insert(*type_id, *value_id);
+                }
             }
             VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID => {
                 expected.tropical_fish_pattern_id = patch.tropical_fish_pattern_id;

@@ -3,7 +3,8 @@ use crate::{
     builtin_enum_component_values::{
         VANILLA_AXOLOTL_VARIANT_BLUE_ID, VANILLA_DYE_COLOR_BLUE_ID, VANILLA_DYE_COLOR_RED_ID,
         VANILLA_HORSE_VARIANT_DARK_BROWN_ID, VANILLA_LLAMA_VARIANT_GRAY_ID,
-        VANILLA_MOOSHROOM_VARIANT_BROWN_ID, VANILLA_RABBIT_VARIANT_EVIL_ID,
+        VANILLA_MOOSHROOM_VARIANT_BROWN_ID, VANILLA_PARROT_VARIANT_GRAY_ID,
+        VANILLA_RABBIT_VARIANT_EVIL_ID,
     },
     codec::{offline_player_uuid, Decoder, Encoder, ProtocolError},
     data_component_types::{
@@ -42,6 +43,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_NOTE_BLOCK_SOUND_TYPE_ID,
         VANILLA_DATA_COMPONENT_OMINOUS_BOTTLE_AMPLIFIER_TYPE_ID,
         VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PARROT_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
         VANILLA_DATA_COMPONENT_PIG_SOUND_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
@@ -3563,6 +3565,39 @@ fn encodes_set_creative_mode_slot_cat_sound_variant_component() {
             1, 0, // patch counts
             106, 1, // cat/sound_variant type and delimited value length
             1, // ROYAL holder id in the vanilla fallback catalog
+        ]
+    );
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_parrot_variant_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_PARROT_VARIANT_TYPE_ID],
+                builtin_enum_component_ids: BTreeMap::from([(
+                    VANILLA_DATA_COMPONENT_PARROT_VARIANT_TYPE_ID,
+                    VANILLA_PARROT_VARIANT_GRAY_ID,
+                )]),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            1, 0, // patch counts
+            87, 1, // parrot/variant type and delimited value length
+            4, // GRAY id
         ]
     );
 }
