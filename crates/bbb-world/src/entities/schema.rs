@@ -4382,6 +4382,12 @@ pub fn vanilla_entity_metadata_handle_entity_event_owner(
         .and_then(|entry| entry.handle_entity_event_owner)
 }
 
+pub(crate) fn vanilla_entity_metadata_interact_owner(entity_type_id: i32) -> Option<&'static str> {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).ok()?)
+        .and_then(|entry| entry.interact_owner)
+}
+
 pub(crate) fn vanilla_entity_metadata_passenger_attachment_owner(
     entity_type_id: i32,
 ) -> Option<&'static str> {

@@ -60,8 +60,8 @@ pub use crate::client::inventory::{
     ContainerState, HotbarItemState, InventorySlot, InventoryState, ItemAttackRange,
     ItemEquipmentSlot, ItemFoodProperties, ItemUseEffects, LocalInteractionResult,
     LocalInteractionSuccess, LocalInteractionSwingSource, LocalItemUsePrediction,
-    MerchantOfferState, MerchantOffersState, MountArmorSlotKind, MountEquipmentSlotVisibility,
-    MountInventoryKind,
+    LocalTargetUsePrediction, MerchantOfferState, MerchantOffersState, MountArmorSlotKind,
+    MountEquipmentSlotVisibility, MountInventoryKind,
 };
 pub use crate::client::local_player::{
     CameraState, DefaultSpawnState, LocalPlayerAbilitiesState, LocalPlayerAttackState,

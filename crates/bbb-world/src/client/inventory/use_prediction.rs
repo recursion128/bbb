@@ -1,12 +1,28 @@
 use super::*;
+use crate::{
+    entities::{
+        vanilla_entity_metadata_interact_owner, vanilla_entity_metadata_type_is_leashable,
+        vanilla_entity_metadata_type_is_living,
+    },
+    BlockPos,
+};
 use bbb_protocol::{
+    block_types::{
+        vanilla_block_type_for_resource_id, BlockTypeCatalogEntry, VanillaBlockUseItemOnOverride,
+        VanillaBlockUseWithoutItemOverride,
+    },
     data_component_types::{
         VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
         VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
     },
-    item_types::VanillaItemUseOverride,
+    item_types::{
+        VanillaItemInteractLivingEntityOverride, VanillaItemUseOnOverride, VanillaItemUseOverride,
+        VANILLA_ITEM_SHEARS_ID,
+    },
     packets::ConsumableSummary,
 };
+
+const VANILLA_DEFAULT_ENTITY_INTERACT_OWNER: &str = "net.minecraft.world.entity.Entity";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LocalInteractionSwingSource {
@@ -38,12 +54,33 @@ pub enum LocalItemUsePrediction {
     MissingComponentValue(i32),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LocalTargetUsePrediction {
+    Result(LocalInteractionResult),
+    UnsupportedBlockUseItemOn(VanillaBlockUseItemOnOverride),
+    UnsupportedBlockUseWithoutItem(VanillaBlockUseWithoutItemOverride),
+    UnsupportedItemUseOn(VanillaItemUseOnOverride),
+    UnsupportedEntityInteract(&'static str),
+    UnsupportedItemInteractLivingEntity(VanillaItemInteractLivingEntityOverride),
+    UnknownBlockType(Option<i32>),
+    UnknownEntityType(Option<i32>),
+    UnknownItemType(Option<i32>),
+}
+
 impl LocalInteractionSuccess {
     const fn consume(starts_using_item: bool) -> Self {
         Self {
             swing_source: LocalInteractionSwingSource::None,
             was_item_interaction: true,
             starts_using_item,
+        }
+    }
+
+    const fn consume_without_item() -> Self {
+        Self {
+            swing_source: LocalInteractionSwingSource::None,
+            was_item_interaction: false,
+            starts_using_item: false,
         }
     }
 }
@@ -109,6 +146,121 @@ impl WorldStore {
         LocalItemUsePrediction::Result(LocalInteractionResult::Pass)
     }
 
+    /// Predicts the client-side `MultiPlayerGameMode.performUseItemOn` result
+    /// only when every reached vanilla behavior inherits its default
+    /// implementation. Generated override ownership keeps specialized block
+    /// and item behavior explicit.
+    pub fn predict_local_block_use(
+        &self,
+        pos: BlockPos,
+        hand: InteractionHand,
+        secondary_use_active: bool,
+    ) -> LocalTargetUsePrediction {
+        if self.local_player_is_spectator() {
+            return LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::consume_without_item(),
+            ));
+        }
+        let hands_have_item = self.local_item_in_hand(InteractionHand::MainHand).is_some()
+            || self.local_item_in_hand(InteractionHand::OffHand).is_some();
+        if secondary_use_active && hands_have_item {
+            return self.predict_local_item_use_on(hand);
+        }
+        let Some(block) = self.probe_block(pos) else {
+            return LocalTargetUsePrediction::UnknownBlockType(None);
+        };
+        let Some(block_name) = block.block_name.as_deref() else {
+            return LocalTargetUsePrediction::UnknownBlockType(Some(block.block_state_id));
+        };
+        let Some(block_type) = vanilla_block_type_for_resource_id(block_name) else {
+            return LocalTargetUsePrediction::UnknownBlockType(Some(block.block_state_id));
+        };
+        self.predict_local_block_use_for_type(block_type, hand)
+    }
+
+    fn predict_local_block_use_for_type(
+        &self,
+        block_type: &BlockTypeCatalogEntry,
+        hand: InteractionHand,
+    ) -> LocalTargetUsePrediction {
+        if !self.is_feature_enabled("minecraft:vanilla") {
+            return LocalTargetUsePrediction::Result(LocalInteractionResult::Fail);
+        }
+        if let Some(owner) = block_type.use_item_on_override {
+            return LocalTargetUsePrediction::UnsupportedBlockUseItemOn(owner);
+        }
+        if hand == InteractionHand::MainHand {
+            if let Some(owner) = block_type.use_without_item_override {
+                return LocalTargetUsePrediction::UnsupportedBlockUseWithoutItem(owner);
+            }
+        }
+        self.predict_local_item_use_on(hand)
+    }
+
+    fn predict_local_item_use_on(&self, hand: InteractionHand) -> LocalTargetUsePrediction {
+        let Some(stack) = self.local_item_in_hand(hand) else {
+            return LocalTargetUsePrediction::Result(LocalInteractionResult::Pass);
+        };
+        if self.local_item_stack_is_on_cooldown(stack) {
+            return LocalTargetUsePrediction::Result(LocalInteractionResult::Pass);
+        }
+        let Some(item_id) = stack.item_id else {
+            return LocalTargetUsePrediction::UnknownItemType(None);
+        };
+        let Some(item_type) = vanilla_item_type(item_id) else {
+            return LocalTargetUsePrediction::UnknownItemType(Some(item_id));
+        };
+        if let Some(owner) = item_type.use_on_override {
+            return LocalTargetUsePrediction::UnsupportedItemUseOn(owner);
+        }
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+    }
+
+    /// Predicts `Player.interactOn` only across source-derived behavior paths
+    /// whose client result is known. Specialized `Entity.interact` owners,
+    /// leash/shears behavior, and specialized item interactions stay explicit
+    /// until their local state transitions are implemented.
+    pub fn predict_local_entity_interaction(
+        &self,
+        entity_id: i32,
+        hand: InteractionHand,
+    ) -> LocalTargetUsePrediction {
+        if self.local_player_is_spectator() {
+            return LocalTargetUsePrediction::Result(LocalInteractionResult::Pass);
+        }
+        let Some(entity_type_id) = self.entity_type_id(entity_id) else {
+            return LocalTargetUsePrediction::UnknownEntityType(None);
+        };
+        let Some(owner) = vanilla_entity_metadata_interact_owner(entity_type_id) else {
+            return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+        };
+        let held_item_id = self
+            .local_item_in_hand(hand)
+            .and_then(|stack| stack.item_id);
+        if owner != VANILLA_DEFAULT_ENTITY_INTERACT_OWNER
+            || vanilla_entity_metadata_type_is_leashable(entity_type_id)
+            || held_item_id == Some(VANILLA_ITEM_SHEARS_ID)
+        {
+            return LocalTargetUsePrediction::UnsupportedEntityInteract(owner);
+        }
+        if !vanilla_entity_metadata_type_is_living(entity_type_id) {
+            return LocalTargetUsePrediction::Result(LocalInteractionResult::Pass);
+        }
+        let Some(stack) = self.local_item_in_hand(hand) else {
+            return LocalTargetUsePrediction::Result(LocalInteractionResult::Pass);
+        };
+        let Some(item_id) = stack.item_id else {
+            return LocalTargetUsePrediction::UnknownItemType(None);
+        };
+        let Some(item_type) = vanilla_item_type(item_id) else {
+            return LocalTargetUsePrediction::UnknownItemType(Some(item_id));
+        };
+        if let Some(owner) = item_type.interact_living_entity_override {
+            return LocalTargetUsePrediction::UnsupportedItemInteractLivingEntity(owner);
+        }
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+    }
+
     fn effective_item_consumable<'a>(
         &'a self,
         stack: &'a ProtocolItemStackSummary,
@@ -150,18 +302,29 @@ impl WorldStore {
 mod tests {
     use super::*;
     use bbb_protocol::{
+        block_types::{
+            vanilla_block_type, VanillaBlockUseItemOnOverride, VanillaBlockUseWithoutItemOverride,
+            VANILLA_BLOCK_CAKE_ID, VANILLA_BLOCK_CHEST_ID, VANILLA_BLOCK_STONE_ID,
+        },
         data_component_types::{
             VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
         },
+        entity_types::{
+            VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID, VANILLA_ENTITY_TYPE_COW_ID,
+            VANILLA_ENTITY_TYPE_MANNEQUIN_ID,
+        },
         item_types::{
-            VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_CHORUS_FRUIT_ID, VANILLA_ITEM_SNOWBALL_ID,
-            VANILLA_ITEM_STONE_ID,
+            VanillaItemInteractLivingEntityOverride, VanillaItemUseOnOverride,
+            VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_CHORUS_FRUIT_ID, VANILLA_ITEM_RED_DYE_ID,
+            VANILLA_ITEM_SHEARS_ID, VANILLA_ITEM_SNOWBALL_ID, VANILLA_ITEM_STONE_ID,
         },
         packets::{
-            Cooldown, DataComponentPatchSummary, ItemStackSummary, PlayerHealth, SetPlayerInventory,
+            AddEntity, Cooldown, DataComponentPatchSummary, ItemStackSummary, PlayerHealth,
+            SetPlayerInventory, Vec3d,
         },
     };
     use std::collections::{BTreeMap, BTreeSet};
+    use uuid::Uuid;
 
     fn stack(item_id: i32) -> ItemStackSummary {
         ItemStackSummary {
@@ -175,6 +338,20 @@ mod tests {
         world.apply_set_player_inventory(SetPlayerInventory {
             slot: 0,
             item: stack(item_id),
+        });
+    }
+
+    fn add_entity(world: &mut WorldStore, id: i32, entity_type_id: i32) {
+        world.apply_add_entity(AddEntity {
+            id,
+            uuid: Uuid::from_u128(id as u128),
+            entity_type_id,
+            position: Vec3d::default(),
+            delta_movement: Vec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
         });
     }
 
@@ -297,6 +474,86 @@ mod tests {
         assert_eq!(
             world.predict_local_item_use(InteractionHand::MainHand),
             LocalItemUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+    }
+
+    #[test]
+    fn block_use_prediction_preserves_vanilla_dispatch_order() {
+        let mut world = WorldStore::new();
+        let stone = vanilla_block_type(VANILLA_BLOCK_STONE_ID).unwrap();
+        assert_eq!(
+            world.predict_local_block_use_for_type(stone, InteractionHand::MainHand),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+
+        let chest = vanilla_block_type(VANILLA_BLOCK_CHEST_ID).unwrap();
+        assert_eq!(
+            world.predict_local_block_use_for_type(chest, InteractionHand::MainHand),
+            LocalTargetUsePrediction::UnsupportedBlockUseWithoutItem(
+                VanillaBlockUseWithoutItemOverride::ChestBlock
+            )
+        );
+        assert_eq!(
+            world.predict_local_block_use_for_type(chest, InteractionHand::OffHand),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+
+        let cake = vanilla_block_type(VANILLA_BLOCK_CAKE_ID).unwrap();
+        assert_eq!(
+            world.predict_local_block_use_for_type(cake, InteractionHand::MainHand),
+            LocalTargetUsePrediction::UnsupportedBlockUseItemOn(
+                VanillaBlockUseItemOnOverride::CakeBlock
+            )
+        );
+
+        set_main_hand(&mut world, VANILLA_ITEM_STONE_ID);
+        assert_eq!(
+            world.predict_local_block_use_for_type(stone, InteractionHand::MainHand),
+            LocalTargetUsePrediction::UnsupportedItemUseOn(VanillaItemUseOnOverride::BlockItem)
+        );
+        assert_eq!(
+            world.predict_local_block_use(
+                BlockPos { x: 32, y: 0, z: 32 },
+                InteractionHand::MainHand,
+                true,
+            ),
+            LocalTargetUsePrediction::UnsupportedItemUseOn(VanillaItemUseOnOverride::BlockItem)
+        );
+    }
+
+    #[test]
+    fn entity_interaction_prediction_keeps_specialized_and_leash_edges_explicit() {
+        let mut world = WorldStore::new();
+        add_entity(&mut world, 1, VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID);
+        add_entity(&mut world, 2, VANILLA_ENTITY_TYPE_COW_ID);
+        add_entity(&mut world, 3, VANILLA_ENTITY_TYPE_MANNEQUIN_ID);
+
+        assert_eq!(
+            world.predict_local_entity_interaction(1, InteractionHand::MainHand),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+        assert_eq!(
+            world.predict_local_entity_interaction(2, InteractionHand::MainHand),
+            LocalTargetUsePrediction::UnsupportedEntityInteract("net.minecraft.world.entity.Mob")
+        );
+        assert_eq!(
+            world.predict_local_entity_interaction(99, InteractionHand::MainHand),
+            LocalTargetUsePrediction::UnknownEntityType(None)
+        );
+
+        set_main_hand(&mut world, VANILLA_ITEM_SHEARS_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(1, InteractionHand::MainHand),
+            LocalTargetUsePrediction::UnsupportedEntityInteract(
+                VANILLA_DEFAULT_ENTITY_INTERACT_OWNER
+            )
+        );
+        set_main_hand(&mut world, VANILLA_ITEM_RED_DYE_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(3, InteractionHand::MainHand),
+            LocalTargetUsePrediction::UnsupportedItemInteractLivingEntity(
+                VanillaItemInteractLivingEntityOverride::DyeItem
+            )
         );
     }
 }

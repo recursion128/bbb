@@ -105,6 +105,8 @@ pub use renderer_catalog::{
 };
 pub use renderer_catalog::{vanilla_entity_renderer_squid_kind, VanillaSquidRendererKind};
 pub use schema::vanilla_entity_metadata_experience_orb_value_accessor_for_entity_type;
+pub(crate) use schema::vanilla_entity_metadata_interact_owner;
+pub(crate) use schema::vanilla_entity_metadata_type_is_living;
 pub use schema::vanilla_entity_metadata_type_is_llama;
 pub(crate) use schema::vanilla_entity_metadata_type_uses_fishing_hook_entity_event_handler;
 pub use schema::VanillaAbstractBoatMetadataAccessors;
