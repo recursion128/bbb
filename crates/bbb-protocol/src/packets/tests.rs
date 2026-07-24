@@ -2,9 +2,10 @@ use super::*;
 use crate::{
     builtin_enum_component_values::{
         VANILLA_AXOLOTL_VARIANT_BLUE_ID, VANILLA_DYE_COLOR_BLUE_ID, VANILLA_DYE_COLOR_RED_ID,
-        VANILLA_HORSE_VARIANT_DARK_BROWN_ID, VANILLA_LLAMA_VARIANT_GRAY_ID,
-        VANILLA_MOOSHROOM_VARIANT_BROWN_ID, VANILLA_PARROT_VARIANT_GRAY_ID,
-        VANILLA_RABBIT_VARIANT_EVIL_ID, VANILLA_SALMON_VARIANT_LARGE_ID,
+        VANILLA_FOX_VARIANT_SNOW_ID, VANILLA_HORSE_VARIANT_DARK_BROWN_ID,
+        VANILLA_LLAMA_VARIANT_GRAY_ID, VANILLA_MOOSHROOM_VARIANT_BROWN_ID,
+        VANILLA_PARROT_VARIANT_GRAY_ID, VANILLA_RABBIT_VARIANT_EVIL_ID,
+        VANILLA_SALMON_VARIANT_LARGE_ID,
     },
     codec::{offline_player_uuid, Decoder, Encoder, ProtocolError},
     data_component_types::{
@@ -27,8 +28,9 @@ use crate::{
         VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
         VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID, VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
         VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID, VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
-        VANILLA_DATA_COMPONENT_FROG_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID,
-        VANILLA_DATA_COMPONENT_HORSE_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_FOX_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_FROG_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID, VANILLA_DATA_COMPONENT_HORSE_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
         VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
         VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
         VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
@@ -3300,6 +3302,39 @@ fn encodes_set_creative_mode_slot_wolf_collar_component() {
             1, 0, // patch counts
             84, 1,  // wolf/collar type and delimited value length
             14, // RED id
+        ]
+    );
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_fox_variant_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_FOX_VARIANT_TYPE_ID],
+                builtin_enum_component_ids: BTreeMap::from([(
+                    VANILLA_DATA_COMPONENT_FOX_VARIANT_TYPE_ID,
+                    VANILLA_FOX_VARIANT_SNOW_ID,
+                )]),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            1, 0, // patch counts
+            85, 1, // fox/variant type and delimited value length
+            1, // SNOW id
         ]
     );
 }

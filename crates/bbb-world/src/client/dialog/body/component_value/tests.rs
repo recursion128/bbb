@@ -3,9 +3,10 @@ use std::collections::BTreeMap;
 use bbb_protocol::builtin_enum_component_values::{
     VANILLA_AXOLOTL_VARIANT_BLUE_ID, VANILLA_DYE_COLOR_BLUE_ID, VANILLA_DYE_COLOR_LIGHT_BLUE_ID,
     VANILLA_DYE_COLOR_PURPLE_ID, VANILLA_DYE_COLOR_RED_ID, VANILLA_DYE_COLOR_YELLOW_ID,
-    VANILLA_HORSE_VARIANT_DARK_BROWN_ID, VANILLA_LLAMA_VARIANT_GRAY_ID,
-    VANILLA_MOOSHROOM_VARIANT_BROWN_ID, VANILLA_PARROT_VARIANT_GRAY_ID,
-    VANILLA_RABBIT_VARIANT_EVIL_ID, VANILLA_SALMON_VARIANT_LARGE_ID,
+    VANILLA_FOX_VARIANT_SNOW_ID, VANILLA_HORSE_VARIANT_DARK_BROWN_ID,
+    VANILLA_LLAMA_VARIANT_GRAY_ID, VANILLA_MOOSHROOM_VARIANT_BROWN_ID,
+    VANILLA_PARROT_VARIANT_GRAY_ID, VANILLA_RABBIT_VARIANT_EVIL_ID,
+    VANILLA_SALMON_VARIANT_LARGE_ID,
 };
 use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_AXOLOTL_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID,
@@ -278,6 +279,26 @@ fn wolf_collar_string_enum_projects_to_builtin_enum_patch_map() {
         BTreeMap::from([(
             VANILLA_DATA_COMPONENT_WOLF_COLLAR_TYPE_ID,
             VANILLA_DYE_COLOR_RED_ID,
+        )])
+    );
+}
+
+#[test]
+fn fox_variant_string_enum_projects_to_builtin_enum_patch_map() {
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_FOX_VARIANT_TYPE_ID,
+        &DialogDataComponentValueState::StringEnum {
+            value_id: VANILLA_FOX_VARIANT_SNOW_ID,
+            serialized_name: "snow".to_string(),
+        },
+        &mut patch,
+    ));
+    assert_eq!(
+        patch.builtin_enum_component_ids,
+        BTreeMap::from([(
+            VANILLA_DATA_COMPONENT_FOX_VARIANT_TYPE_ID,
+            VANILLA_FOX_VARIANT_SNOW_ID,
         )])
     );
 }
