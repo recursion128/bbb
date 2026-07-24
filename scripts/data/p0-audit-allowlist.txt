@@ -39,6 +39,10 @@
 ^crates/bbb-protocol/src/packets/data_components[.]rs$	cannot encode unsupported data component|unsupported_(added|inner)|Some[(]"unsupported"
 ^crates/bbb-protocol/src/packets/data_components/catalog[.]rs$	unsupported built-in enum component type id
 ^crates/bbb-protocol/src/packets/data_components/catalog[.]rs$	cannot encode unsupported data component
+# Descriptor encoders reject out-of-domain summarized values atomically before
+# packet emission; these errors guard the supported wire path rather than mark
+# a missing packet or component implementation.
+^crates/bbb-protocol/src/packets/data_components/catalog[.]rs$	unsupported tropical_fish_pattern packed id
 ^crates/bbb-protocol/src/component/codec[.]rs$	unsupported scheme
 ^crates/bbb-world/src/level[.]rs$	mut unsupported|unsupported[.]|^[[:space:]]*unsupported$
 ^crates/bbb-world/src/client/dialog(/action|/body|/input)?[.]rs$	unsupported dialog|unsupported scheme
