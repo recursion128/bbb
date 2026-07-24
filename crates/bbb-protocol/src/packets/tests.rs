@@ -19,6 +19,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_CAT_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID,
         VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
@@ -4372,6 +4373,41 @@ fn encodes_set_creative_mode_slot_weapon_component() {
             1, 0, // patch counts
             29, 5, // weapon type and delimited value length
             3, 0x40, 0xa0, 0, 0, // damage per attack and five seconds
+        ]
+    );
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_container_loot_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID],
+                container_loot: true,
+                container_loot_table: Some("minecraft:empty".to_string()),
+                container_loot_seed: Some(0),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            1, 0, // patch counts
+            79, 32, // container_loot type and delimited codec-NBT length
+            10, // compound root
+            8, 0, 10, b'l', b'o', b'o', b't', b'_', b't', b'a', b'b', b'l', b'e', 0, 15, b'm',
+            b'i', b'n', b'e', b'c', b'r', b'a', b'f', b't', b':', b'e', b'm', b'p', b't', b'y',
+            0, // loot_table string and compound end
         ]
     );
 }

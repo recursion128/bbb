@@ -1075,6 +1075,11 @@ fn decodes_resource_key_and_component_catalog_metadata() {
     ));
     assert!(patch.container_loot);
     assert_eq!(
+        patch.container_loot_table.as_deref(),
+        Some("minecraft:chests/simple_dungeon")
+    );
+    assert_eq!(patch.container_loot_seed, Some(12));
+    assert_eq!(
         patch
             .codec_backed_nbt
             .get(&VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID),
@@ -1091,6 +1096,11 @@ fn decodes_resource_key_and_component_catalog_metadata() {
         &mut default_seed_patch,
     ));
     assert!(default_seed_patch.container_loot);
+    assert_eq!(
+        default_seed_patch.container_loot_table.as_deref(),
+        Some("minecraft:empty")
+    );
+    assert_eq!(default_seed_patch.container_loot_seed, Some(0));
     assert_eq!(
         default_seed_patch
             .codec_backed_nbt

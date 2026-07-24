@@ -1039,6 +1039,8 @@ pub(super) fn apply_item_patch_value(
                 });
             }
             patch.container_loot = true;
+            patch.container_loot_table = Some(loot_table.clone());
+            patch.container_loot_seed = Some(*seed);
             patch
                 .codec_backed_nbt
                 .insert(type_id, NbtSummaryValue::Compound(entries));

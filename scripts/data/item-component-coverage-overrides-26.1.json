@@ -1425,6 +1425,79 @@
         "status": "complete"
       }
     },
+    "CONTAINER_LOOT": {
+      "canonical_retention": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#CONTAINER_LOOT",
+          "vanilla:net/minecraft/world/item/component/SeededContainerLoot.java#public record SeededContainerLoot",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub container_loot_table",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub container_loot_seed",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub codec_backed_nbt",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_container_loot",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_resource_key_and_component_catalog_metadata"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#CONTAINER_LOOT",
+          "vanilla:net/minecraft/core/component/DataComponentType.java#build",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#fromCodecWithRegistries",
+          "vanilla:net/minecraft/world/item/component/SeededContainerLoot.java#CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_container_loot",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#container_loot_descriptor_canonicalizes_codec_nbt_and_rejects_invalid_values_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_container_loot_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/component/SeededContainerLoot.java#addToTooltip",
+          "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_container_loot_tooltip_lines",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#CONTAINER_LOOT",
+          "vanilla:net/minecraft/world/item/component/SeededContainerLoot.java#CODEC",
+          "crates/bbb-native/src/input/component_patch.rs#encode_codec_backed_nbt",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_resource_key_and_component_catalog_metadata"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#container_loot_descriptor_canonicalizes_codec_nbt_and_rejects_invalid_values_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_container_loot_component",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_resource_key_and_component_catalog_metadata",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#rejects_invalid_resource_key_and_component_catalog_metadata",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#CONTAINER_LOOT",
+          "vanilla:net/minecraft/core/component/DataComponentType.java#build",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#fromCodecWithRegistries",
+          "vanilla:net/minecraft/world/item/component/SeededContainerLoot.java#CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_container_loot",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "ENCHANTMENTS": {
       "canonical_retention": {
         "evidence": [

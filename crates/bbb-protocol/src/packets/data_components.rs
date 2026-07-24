@@ -30,6 +30,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_CAT_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID,
         VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
@@ -300,6 +301,10 @@ pub struct DataComponentPatchSummary {
     pub container_slot_count: Option<usize>,
     #[serde(default)]
     pub container_loot: bool,
+    #[serde(default)]
+    pub container_loot_table: Option<String>,
+    #[serde(default)]
+    pub container_loot_seed: Option<i64>,
     #[serde(default)]
     pub banner_pattern_layers: Vec<BannerPatternLayerSummary>,
     #[serde(default)]
@@ -1300,6 +1305,14 @@ fn validate_encodable_data_component_patch_summary(
                 expected.block_entity_data_tag = patch.block_entity_data_tag.clone();
                 expected.block_entity_spawn_entity_type =
                     typed_entity_data_spawn_entity_type(patch.block_entity_data_tag.as_ref());
+            }
+            VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID => {
+                expected.container_loot = patch.container_loot;
+                expected.container_loot_table = patch.container_loot_table.clone();
+                expected.container_loot_seed = patch.container_loot_seed;
+                if let Some(value) = patch.codec_backed_nbt.get(type_id) {
+                    expected.codec_backed_nbt.insert(*type_id, value.clone());
+                }
             }
             VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID => {
                 expected.instrument_id = patch.instrument_id;
@@ -5042,7 +5055,17 @@ mod tests {
         payload.write_var_i32(71);
         payload.write_string("minecraft:block.note_block.harp");
         payload.write_var_i32(79);
-        payload.write_bytes(&empty_nbt_compound_root());
+        payload.write_bytes(
+            &crate::nbt_summary::encode_nbt_summary_bounded(
+                Some(&NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                    name: "loot_table".to_string(),
+                    value: NbtSummaryValue::String("minecraft:empty".to_string()),
+                }])),
+                i32::MAX as usize,
+                crate::nbt_summary::MAX_NBT_DEPTH,
+            )
+            .unwrap(),
+        );
         payload.write_var_i32(3);
         payload.write_var_i32(12);
 
@@ -5074,7 +5097,15 @@ mod tests {
                 note_block_sound: Some("minecraft:block.note_block.harp".to_string()),
                 ominous_bottle_amplifier: Some(3),
                 container_loot: true,
-                codec_backed_nbt: BTreeMap::from([(79, NbtSummaryValue::Compound(Vec::new()),)]),
+                container_loot_table: Some("minecraft:empty".to_string()),
+                container_loot_seed: Some(0),
+                codec_backed_nbt: BTreeMap::from([(
+                    79,
+                    NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                        name: "loot_table".to_string(),
+                        value: NbtSummaryValue::String("minecraft:empty".to_string()),
+                    }]),
+                )]),
                 ..DataComponentPatchSummary::default()
             }
         );
