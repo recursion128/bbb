@@ -3282,34 +3282,72 @@
       "constant_name": "MAP_COLOR",
       "coverage": {
         "canonical_retention": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components.rs#pub map_color",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_map_color",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_additional_item_data_components",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#map_color_descriptor_round_trips_the_full_signed_domain_in_wire_order"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "network_encode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/MapItemColor.java#public static final StreamCodec<ByteBuf, MapItemColor> STREAM_CODEC",
+            "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#StreamCodec<ByteBuf, Integer> INT",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_map_color",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#map_color_descriptor_round_trips_the_full_signed_domain_in_wire_order",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#map_color_descriptor_rejects_a_missing_value_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_map_color_component"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "observable_consumers": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/client/color/item/MapColor.java#public int calculate",
+            "vanilla:net/minecraft/client/color/item/MapColor.java#DataComponents.MAP_COLOR",
+            "crates/bbb-item-model/src/item_runtime/icon.rs#ItemTintSource::MapColor",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#item_tint_sources_use_stack_component_colors_when_available",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_component_select_values"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "persistent_projection": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/MapItemColor.java#public static final Codec<MapItemColor> CODEC",
+            "crates/bbb-native/src/input/component_patch.rs#fn encode_map_color",
+            "crates/bbb-native/src/input/component_patch.rs#map_color_encoder_preserves_the_full_signed_domain",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_scalar_wrappers_flat_records_and_string_map"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#map_color_descriptor_round_trips_the_full_signed_domain_in_wire_order",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#map_color_descriptor_rejects_a_missing_value_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_map_color_component",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_additional_item_data_components",
+            "crates/bbb-native/src/input/component_patch.rs#map_color_encoder_preserves_the_full_signed_domain",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#item_tint_sources_use_stack_component_colors_when_available",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_component_select_values"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "typed_decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#MAP_COLOR",
+            "vanilla:net/minecraft/world/item/component/MapItemColor.java#public static final StreamCodec<ByteBuf, MapItemColor> STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_map_color",
+            "crates/bbb-protocol/src/packets/data_components.rs#pub map_color",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_additional_item_data_components",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_scalar_wrappers_flat_records_and_string_map"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "resource_id": "minecraft:map_color",
