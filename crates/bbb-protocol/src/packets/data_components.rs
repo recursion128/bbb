@@ -26,8 +26,9 @@ use crate::{
         VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID, VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
     },
     entity_types::vanilla_entity_type,
     equipment_slots::{
@@ -1228,6 +1229,10 @@ fn validate_encodable_data_component_patch_summary(
                 expected.block_entity_data_tag = patch.block_entity_data_tag.clone();
                 expected.block_entity_spawn_entity_type =
                     typed_entity_data_spawn_entity_type(patch.block_entity_data_tag.as_ref());
+            }
+            VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID => {
+                expected.jukebox_song_id = patch.jukebox_song_id;
+                expected.jukebox_direct_song = patch.jukebox_direct_song.clone();
             }
             VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID => {
                 expected.profile = patch

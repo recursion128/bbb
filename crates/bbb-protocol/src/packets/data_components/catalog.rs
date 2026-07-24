@@ -20,8 +20,9 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
     VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
     VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
-    VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID, VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
+    VANILLA_DATA_COMPONENT_LORE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
     VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
     VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
@@ -284,6 +285,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID => Some(encode_entity_data),
         VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID => Some(encode_bucket_entity_data),
         VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID => Some(encode_block_entity_data),
+        VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID => Some(encode_jukebox_playable),
         VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID => Some(encode_profile),
         VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID => Some(encode_container),
         _ => None,
@@ -2092,6 +2094,53 @@ fn encode_profile(
     Ok(())
 }
 
+fn encode_jukebox_playable(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let mut encoded = Encoder::new();
+    match (
+        summary.jukebox_song_id,
+        summary.jukebox_direct_song.as_deref(),
+    ) {
+        (Some(holder_id), None) if (0..i32::MAX).contains(&holder_id) => {
+            encoded.write_var_i32(holder_id + 1);
+        }
+        (None, Some(song)) => {
+            let length_in_seconds = f32::from_bits(song.length_in_seconds_bits);
+            if !(length_in_seconds > 0.0 && length_in_seconds <= f32::MAX) {
+                return Err(ProtocolError::InvalidData(format!(
+                    "jukebox song length_in_seconds must be positive, got {length_in_seconds}"
+                )));
+            }
+            if !(0..=15).contains(&song.comparator_output) {
+                return Err(ProtocolError::InvalidData(format!(
+                    "jukebox song comparator_output {} is outside 0..=15",
+                    song.comparator_output
+                )));
+            }
+            encoded.write_var_i32(0);
+            encode_sound_event_holder_summary(&mut encoded, &song.sound_event)?;
+            encoded.write_bytes(&encode_canonical_component_projection(
+                song.description_nbt.as_deref(),
+                &song.description,
+                song.description_styled.as_deref(),
+                "jukebox song description",
+            )?);
+            encoded.write_f32(length_in_seconds);
+            encoded.write_var_i32(song.comparator_output);
+        }
+        _ => {
+            return Err(ProtocolError::InvalidData(
+                "jukebox_playable holder projections are not canonical".to_string(),
+            ));
+        }
+    }
+    out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
 fn encode_container(
     _type_id: i32,
     summary: &DataComponentPatchSummary,
@@ -3192,8 +3241,8 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec![
                 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 22, 24, 25,
-                28, 30, 36, 37, 38, 39, 40, 42, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 68, 69,
-                70, 75,
+                28, 30, 36, 37, 38, 39, 40, 42, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 64, 68,
+                69, 70, 75,
             ]
         );
     }
@@ -5067,6 +5116,165 @@ mod tests {
                     && max == MAX_DATA_COMPONENT_LIST_ITEMS
         ));
         assert_eq!(encoded.into_inner(), [0xaa]);
+    }
+
+    fn direct_jukebox_playable_patch() -> DataComponentPatchSummary {
+        DataComponentPatchSummary {
+            jukebox_direct_song: Some(Box::new(JukeboxSongSummary {
+                sound_event: SoundEventSummary {
+                    registry_id: Some(7),
+                    sound_id: None,
+                    fixed_range_bits: None,
+                },
+                description: "Custom song".to_string(),
+                description_styled: Some(
+                    vec![StyledTextRun {
+                        text: "Custom song".to_string(),
+                        style: Default::default(),
+                    }]
+                    .into_boxed_slice(),
+                ),
+                description_nbt: Some(Box::new(NbtSummaryValue::String("Custom song".to_string()))),
+                length_in_seconds_bits: 60.0_f32.to_bits(),
+                comparator_output: 7,
+            })),
+            ..DataComponentPatchSummary::default()
+        }
+    }
+
+    #[test]
+    fn jukebox_playable_descriptor_round_trips_reference_and_direct_song_holders() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID)
+                .unwrap();
+        for holder_id in [0, 300] {
+            let summary = DataComponentPatchSummary {
+                jukebox_song_id: Some(holder_id),
+                ..DataComponentPatchSummary::default()
+            };
+            let mut encoded = Encoder::new();
+            descriptor.encode(&summary, &mut encoded).unwrap();
+            let mut expected = Encoder::new();
+            expected.write_var_i32(holder_id + 1);
+            assert_eq!(encoded.clone().into_inner(), expected.into_inner());
+
+            let wire = encoded.into_inner();
+            let mut decoder = Decoder::new(&wire);
+            let mut decoded = DataComponentPatchSummary::default();
+            descriptor.decode(&mut decoder, &mut decoded).unwrap();
+            assert!(decoder.is_empty());
+            assert_eq!(decoded.jukebox_song_id, Some(holder_id));
+            assert!(decoded.jukebox_direct_song.is_none());
+        }
+
+        let direct = direct_jukebox_playable_patch();
+        let mut encoded = Encoder::new();
+        descriptor.encode(&direct, &mut encoded).unwrap();
+        assert_eq!(
+            encoded.clone().into_inner(),
+            [
+                0, // direct jukebox song holder
+                8, // sound event registry holder id 7 + 1
+                8, 0, 11, b'C', b'u', b's', b't', b'o', b'm', b' ', b's', b'o', b'n', b'g', 0x42,
+                0x70, 0, 0, // length_in_seconds = 60.0
+                7, // comparator_output
+            ]
+        );
+
+        let wire = encoded.into_inner();
+        let mut decoder = Decoder::new(&wire);
+        let mut decoded = DataComponentPatchSummary::default();
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded, direct);
+
+        let mut boundary = direct_jukebox_playable_patch();
+        let song = boundary.jukebox_direct_song.as_mut().unwrap();
+        song.sound_event = SoundEventSummary {
+            registry_id: None,
+            sound_id: Some("example:music.custom".to_string()),
+            fixed_range_bits: Some((-0.0_f32).to_bits()),
+        };
+        song.length_in_seconds_bits = f32::MAX.to_bits();
+        song.comparator_output = 15;
+        let mut encoded = Encoder::new();
+        descriptor.encode(&boundary, &mut encoded).unwrap();
+        let wire = encoded.into_inner();
+        let mut decoder = Decoder::new(&wire);
+        let mut decoded = DataComponentPatchSummary::default();
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded, boundary);
+    }
+
+    #[test]
+    fn jukebox_playable_descriptor_rejects_noncanonical_or_persistently_invalid_values_atomically()
+    {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID)
+                .unwrap();
+        let valid = direct_jukebox_playable_patch();
+        let mut cases = vec![
+            DataComponentPatchSummary::default(),
+            DataComponentPatchSummary {
+                jukebox_song_id: Some(-1),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                jukebox_song_id: Some(i32::MAX),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                jukebox_song_id: Some(0),
+                ..valid.clone()
+            },
+        ];
+        for invalid_length_bits in [
+            0.0_f32.to_bits(),
+            (-0.0_f32).to_bits(),
+            (-1.0_f32).to_bits(),
+            f32::INFINITY.to_bits(),
+            f32::NAN.to_bits(),
+        ] {
+            let mut invalid = valid.clone();
+            invalid
+                .jukebox_direct_song
+                .as_mut()
+                .unwrap()
+                .length_in_seconds_bits = invalid_length_bits;
+            cases.push(invalid);
+        }
+        for comparator_output in [-1, 16] {
+            let mut invalid = valid.clone();
+            invalid
+                .jukebox_direct_song
+                .as_mut()
+                .unwrap()
+                .comparator_output = comparator_output;
+            cases.push(invalid);
+        }
+        let mut mixed_sound = valid.clone();
+        mixed_sound
+            .jukebox_direct_song
+            .as_mut()
+            .unwrap()
+            .sound_event
+            .sound_id = Some("example:mixed".to_string());
+        cases.push(mixed_sound);
+        let mut missing_component = valid;
+        missing_component
+            .jukebox_direct_song
+            .as_mut()
+            .unwrap()
+            .description_nbt = None;
+        cases.push(missing_component);
+
+        for summary in cases {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            assert!(descriptor.encode(&summary, &mut encoded).is_err());
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
     }
 
     fn canonical_trim_description(nbt: &NbtSummaryValue) -> (String, Box<[StyledTextRun]>) {

@@ -4417,34 +4417,82 @@
       "constant_name": "JUKEBOX_PLAYABLE",
       "coverage": {
         "canonical_retention": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components.rs#pub jukebox_song_id",
+            "crates/bbb-protocol/src/packets/data_components.rs#pub jukebox_direct_song",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_jukebox_playable_component",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_jukebox_playable_song_holder_id",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_inline_jukebox_playable_song_payload",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_jukebox_playable_from_session_registry"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "network_encode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#JUKEBOX_PLAYABLE",
+            "vanilla:net/minecraft/world/item/JukeboxPlayable.java#STREAM_CODEC",
+            "vanilla:net/minecraft/world/item/JukeboxSong.java#STREAM_CODEC",
+            "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#holder",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_jukebox_playable",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#jukebox_playable_descriptor_round_trips_reference_and_direct_song_holders",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_direct_jukebox_playable_component"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "observable_consumers": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/JukeboxPlayable.java#addToTooltip",
+            "vanilla:net/minecraft/world/item/JukeboxPlayable.java#tryInsertIntoJukebox",
+            "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_jukebox_playable_tooltip_lines",
+            "crates/bbb-item-model/src/item_runtime/tooltip.rs#synchronized_jukebox_tooltip_uses_typed_description_and_safe_stub_fallback",
+            "crates/bbb-item-model/src/item_runtime/icon_model.rs#item_stack_matches_jukebox_playable_predicate",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_component_condition_predicates",
+            "crates/bbb-world/src/registries/jukebox_songs.rs#synchronized_projection_follows_custom_server_holder_order"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "persistent_projection": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/JukeboxPlayable.java#CODEC",
+            "vanilla:net/minecraft/world/item/JukeboxSong.java#CODEC",
+            "crates/bbb-native/src/input/component_patch.rs#encode_jukebox_playable",
+            "crates/bbb-native/src/input/component_patch.rs#jukebox_playable_encoder_uses_session_order_or_resource_fallback",
+            "crates/bbb-world/src/registries/jukebox_songs.rs#decodes_named_and_direct_sound_event_codec_forms",
+            "crates/bbb-world/src/registries/jukebox_songs.rs#malformed_entries_report_resource_and_exact_codec_field"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#jukebox_playable_descriptor_round_trips_reference_and_direct_song_holders",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#jukebox_playable_descriptor_rejects_noncanonical_or_persistently_invalid_values_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_direct_jukebox_playable_component",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_inline_jukebox_playable_song_payload",
+            "crates/bbb-native/src/input/component_patch.rs#jukebox_playable_encoder_uses_session_order_or_resource_fallback",
+            "crates/bbb-item-model/src/item_runtime/tooltip.rs#synchronized_jukebox_tooltip_uses_typed_description_and_safe_stub_fallback",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_component_condition_predicates",
+            "crates/bbb-world/src/registries/jukebox_songs.rs#synchronized_projection_follows_custom_server_holder_order"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "typed_decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#JUKEBOX_PLAYABLE",
+            "vanilla:net/minecraft/world/item/JukeboxPlayable.java#STREAM_CODEC",
+            "vanilla:net/minecraft/world/item/JukeboxSong.java#STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_jukebox_playable_component",
+            "crates/bbb-protocol/src/packets/data_components.rs#decode_jukebox_song_holder",
+            "crates/bbb-protocol/src/packets/data_components.rs#decode_direct_jukebox_song_summary",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_jukebox_playable_song_holder_id",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_inline_jukebox_song_registry_sound_event_payload"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "resource_id": "minecraft:jukebox_playable",
