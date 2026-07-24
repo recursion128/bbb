@@ -634,12 +634,13 @@ mod tests {
             .push(lock_entry.clone());
         let lock_summary = lock_bridged.item_stack_summary_for_protocol_id(4).unwrap();
         assert_eq!(
-            lock_summary
-                .component_patch
-                .codec_backed_nbt
-                .get(&type_id("minecraft:lock")),
-            Some(&compound(Vec::new()))
+            lock_summary.component_patch.lock_predicate,
+            Some(bbb_protocol::packets::PersistentItemPredicateSummary::default())
         );
+        assert!(!lock_summary
+            .component_patch
+            .codec_backed_nbt
+            .contains_key(&type_id("minecraft:lock")));
 
         let mut unbridged = item;
         let mut rawless_lock = lock_entry;
