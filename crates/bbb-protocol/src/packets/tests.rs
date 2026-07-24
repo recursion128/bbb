@@ -8,8 +8,8 @@ use crate::{
         VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID,
         VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
         VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
-        VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
         VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
@@ -1965,6 +1965,52 @@ fn encodes_set_creative_mode_slot_written_book_component() {
             8, 0, 3, b'R', b'a', b'w', // raw page Component NBT
             1, 8, 0, 4, b'S', b'a', b'f', b'e', // filtered page
             1,    // resolved
+        ]
+    );
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_lore_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_LORE_TYPE_ID],
+                lore: vec!["First".to_string(), "Second".to_string()],
+                lore_styled: vec![
+                    vec![crate::StyledTextRun {
+                        text: "First".to_string(),
+                        style: crate::ComponentStyle::default(),
+                    }],
+                    vec![crate::StyledTextRun {
+                        text: "Second".to_string(),
+                        style: crate::ComponentStyle::default(),
+                    }],
+                ],
+                lore_nbt: vec![
+                    NbtSummaryValue::String("First".to_string()),
+                    NbtSummaryValue::String("Second".to_string()),
+                ],
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            1, 0, // patch counts
+            11, 18, // lore type and delimited value length
+            2,  // line count
+            8, 0, 5, b'F', b'i', b'r', b's', b't', // first component
+            8, 0, 6, b'S', b'e', b'c', b'o', b'n', b'd', // second component
         ]
     );
 }

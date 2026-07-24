@@ -832,7 +832,7 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   blocks-attacks (damage-reduction/item-damage/damage-type-holder/sound)/
   attribute-modifiers-named-holder-default-hidden-display/
   simple-resource (including tooltip-style/note-block-sound)/
-  exact-component-tree (custom-name/item-name/lore)/
+  exact-component-tree (custom-name/item-name)/
   food/consumable/death-protection/potion-contents/
   weapon/
   tool-block-holder-rules/
@@ -1174,8 +1174,8 @@ back into a todo. Do not delete these.
   are added.
 - **Full item component payload encoding for
   `ServerboundSetCreativeModeSlotPacket`.** Add descriptor-owned encoders for
-  component value types 5 through 15, 17 through 23, 25 through 35, 41 through
-  50, 57, 61 through 67, and 71 through 109;
+  component value types 5 through 10, 12 through 15, 17 through 23, 25 through
+  35, 41 through 50, 57, 61 through 67, and 71 through 109;
   preserve Vanilla's per-value length framing and persistent range checks, and
   keep unsupported additions rejected before any packet is sent.
 

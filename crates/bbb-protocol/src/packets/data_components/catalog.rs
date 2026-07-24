@@ -10,9 +10,9 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
     VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID, VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
     VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID, VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
-    VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID, VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
-    VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
     VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID, VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
@@ -225,6 +225,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID => Some(encode_max_damage),
         VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID => Some(encode_damage),
         VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID => Some(encode_unbreakable),
+        VANILLA_DATA_COMPONENT_LORE_TYPE_ID => Some(encode_lore),
         VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID => Some(encode_attribute_modifiers),
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID => Some(encode_consumable),
         VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID => Some(encode_death_protection),
@@ -265,6 +266,40 @@ fn encode_custom_data(
     out: &mut Encoder,
 ) -> Result<()> {
     encode_required_compound_tag(summary.custom_data.as_ref(), "custom_data", out)
+}
+
+fn encode_lore(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let line_count = summary.lore.len();
+    if line_count > MAX_LORE_LINES {
+        return Err(ProtocolError::PacketTooLarge(line_count, MAX_LORE_LINES));
+    }
+    if summary.lore_styled.len() != line_count || summary.lore_nbt.len() != line_count {
+        return Err(ProtocolError::InvalidData(
+            "lore component projections are not aligned".to_string(),
+        ));
+    }
+
+    let mut encoded = Encoder::new();
+    encoded.write_var_i32(line_count as i32);
+    for ((line, styled), nbt) in summary
+        .lore
+        .iter()
+        .zip(&summary.lore_styled)
+        .zip(&summary.lore_nbt)
+    {
+        encoded.write_bytes(&encode_canonical_component_projection(
+            Some(nbt),
+            line,
+            Some(styled),
+            "lore line",
+        )?);
+    }
+    out.write_bytes(&encoded.into_inner());
+    Ok(())
 }
 
 fn encode_attribute_modifiers(
@@ -2467,8 +2502,8 @@ mod tests {
                 .map(|descriptor| descriptor.type_id())
                 .collect::<Vec<_>>(),
             vec![
-                0, 1, 2, 3, 4, 16, 24, 36, 37, 38, 39, 40, 51, 52, 53, 54, 55, 56, 58, 59, 60, 68,
-                69, 70,
+                0, 1, 2, 3, 4, 11, 16, 24, 36, 37, 38, 39, 40, 51, 52, 53, 54, 55, 56, 58, 59, 60,
+                68, 69, 70,
             ]
         );
     }
@@ -4498,6 +4533,158 @@ mod tests {
             ));
             assert_eq!(encoded.into_inner(), [0xaa]);
         }
+    }
+
+    #[test]
+    fn lore_descriptor_round_trips_canonical_components_in_wire_order() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_LORE_TYPE_ID).unwrap();
+        let styled_nbt = NbtSummaryValue::Compound(vec![
+            NbtSummaryEntry {
+                name: "text".to_string(),
+                value: NbtSummaryValue::String("Styled".to_string()),
+            },
+            NbtSummaryEntry {
+                name: "italic".to_string(),
+                value: NbtSummaryValue::Byte(0),
+            },
+            NbtSummaryEntry {
+                name: "color".to_string(),
+                value: NbtSummaryValue::String("gold".to_string()),
+            },
+        ]);
+        let summary = DataComponentPatchSummary {
+            lore: vec!["Plain".to_string(), "Styled".to_string()],
+            lore_styled: vec![
+                vec![StyledTextRun {
+                    text: "Plain".to_string(),
+                    style: crate::ComponentStyle::default(),
+                }],
+                vec![StyledTextRun {
+                    text: "Styled".to_string(),
+                    style: crate::ComponentStyle {
+                        italic: Some(false),
+                        color: Some(0xFF_AA_00),
+                        ..Default::default()
+                    },
+                }],
+            ],
+            lore_nbt: vec![NbtSummaryValue::String("Plain".to_string()), styled_nbt],
+            ..DataComponentPatchSummary::default()
+        };
+
+        let mut encoded = Encoder::new();
+        descriptor.encode(&summary, &mut encoded).unwrap();
+        let encoded = encoded.into_inner();
+        assert_eq!(encoded[0], 2);
+        let mut decoded = DataComponentPatchSummary::default();
+        let mut decoder = Decoder::new(&encoded);
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded.lore, summary.lore);
+        assert_eq!(decoded.lore_styled, summary.lore_styled);
+        assert_eq!(decoded.lore_nbt, summary.lore_nbt);
+
+        let mut empty = Encoder::new();
+        descriptor
+            .encode(&DataComponentPatchSummary::default(), &mut empty)
+            .unwrap();
+        assert_eq!(empty.into_inner(), [0]);
+
+        let maximal = DataComponentPatchSummary {
+            lore: vec!["x".to_string(); MAX_LORE_LINES],
+            lore_styled: vec![
+                vec![StyledTextRun {
+                    text: "x".to_string(),
+                    style: crate::ComponentStyle::default(),
+                }];
+                MAX_LORE_LINES
+            ],
+            lore_nbt: vec![NbtSummaryValue::String("x".to_string()); MAX_LORE_LINES],
+            ..DataComponentPatchSummary::default()
+        };
+        descriptor.encode(&maximal, &mut Encoder::new()).unwrap();
+    }
+
+    #[test]
+    fn lore_descriptor_rejects_limits_and_noncanonical_projections_atomically() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_LORE_TYPE_ID).unwrap();
+        let valid = DataComponentPatchSummary {
+            lore: vec!["line".to_string()],
+            lore_styled: vec![vec![StyledTextRun {
+                text: "line".to_string(),
+                style: crate::ComponentStyle::default(),
+            }]],
+            lore_nbt: vec![NbtSummaryValue::String("line".to_string())],
+            ..DataComponentPatchSummary::default()
+        };
+        let cases = [
+            (
+                DataComponentPatchSummary {
+                    lore: valid.lore.clone(),
+                    ..DataComponentPatchSummary::default()
+                },
+                "projections are not aligned",
+            ),
+            (
+                DataComponentPatchSummary {
+                    lore: vec!["stale".to_string()],
+                    ..valid.clone()
+                },
+                "noncanonical component projections",
+            ),
+            (
+                DataComponentPatchSummary {
+                    lore_styled: vec![vec![StyledTextRun {
+                        text: "stale".to_string(),
+                        style: crate::ComponentStyle::default(),
+                    }]],
+                    ..valid.clone()
+                },
+                "noncanonical component projections",
+            ),
+            (
+                DataComponentPatchSummary {
+                    lore: vec!["component nbt".to_string()],
+                    lore_styled: vec![Vec::new()],
+                    lore_nbt: vec![NbtSummaryValue::Int(1)],
+                    ..DataComponentPatchSummary::default()
+                },
+                "is not a component",
+            ),
+        ];
+        for (summary, expected_error) in cases {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            let error = descriptor.encode(&summary, &mut encoded).unwrap_err();
+            assert!(
+                error.to_string().contains(expected_error),
+                "{error} did not contain {expected_error:?}"
+            );
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
+
+        let oversized = DataComponentPatchSummary {
+            lore: vec!["x".to_string(); MAX_LORE_LINES + 1],
+            lore_styled: vec![
+                vec![StyledTextRun {
+                    text: "x".to_string(),
+                    style: crate::ComponentStyle::default(),
+                }];
+                MAX_LORE_LINES + 1
+            ],
+            lore_nbt: vec![NbtSummaryValue::String("x".to_string()); MAX_LORE_LINES + 1],
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        encoded.write_u8(0xaa);
+        assert!(matches!(
+            descriptor.encode(&oversized, &mut encoded),
+            Err(ProtocolError::PacketTooLarge(count, max))
+                if count == MAX_LORE_LINES + 1 && max == MAX_LORE_LINES
+        ));
+        assert_eq!(encoded.into_inner(), [0xaa]);
     }
 
     #[test]

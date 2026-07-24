@@ -1030,6 +1030,11 @@ fn validate_encodable_data_component_patch_summary(
             VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID => {
                 expected.unbreakable = patch.unbreakable;
             }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_LORE_TYPE_ID => {
+                expected.lore = patch.lore.clone();
+                expected.lore_styled = patch.lore_styled.clone();
+                expected.lore_nbt = patch.lore_nbt.clone();
+            }
             crate::data_component_types::VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID => {
                 expected.attribute_modifiers = patch.attribute_modifiers.clone();
             }
@@ -3558,6 +3563,50 @@ mod tests {
             decoded.writable_book_page_filters,
             patch.writable_book_page_filters
         );
+    }
+
+    #[test]
+    fn encodes_lore_patch_with_delimited_canonical_components() {
+        let patch = DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![crate::data_component_types::VANILLA_DATA_COMPONENT_LORE_TYPE_ID],
+            removed_type_ids: vec![VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID],
+            lore: vec!["First".to_string(), "Second".to_string()],
+            lore_styled: vec![plain_runs("First"), plain_runs("Second")],
+            lore_nbt: vec![
+                NbtSummaryValue::String("First".to_string()),
+                NbtSummaryValue::String("Second".to_string()),
+            ],
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        encode_delimited_data_component_patch_summary(&mut encoded, &patch).unwrap();
+        let encoded = encoded.into_inner();
+
+        let mut decoder = Decoder::new(&encoded);
+        assert_eq!(decoder.read_len().unwrap(), 1);
+        assert_eq!(decoder.read_len().unwrap(), 1);
+        let type_id = decoder.read_var_i32().unwrap();
+        assert_eq!(
+            type_id,
+            crate::data_component_types::VANILLA_DATA_COMPONENT_LORE_TYPE_ID
+        );
+        let value_len = decoder.read_len().unwrap();
+        let mut value_decoder = Decoder::new(decoder.read_exact(value_len, "lore value").unwrap());
+        let mut decoded = DataComponentPatchSummary::default();
+        data_component_descriptor_or_error(type_id)
+            .unwrap()
+            .decode(&mut value_decoder, &mut decoded)
+            .unwrap();
+        assert!(value_decoder.is_empty());
+        assert_eq!(
+            decoder.read_var_i32().unwrap(),
+            VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID
+        );
+        assert!(decoder.is_empty());
+        assert_eq!(decoded.lore, patch.lore);
+        assert_eq!(decoded.lore_styled, patch.lore_styled);
+        assert_eq!(decoded.lore_nbt, patch.lore_nbt);
     }
 
     #[test]
