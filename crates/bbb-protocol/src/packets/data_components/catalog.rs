@@ -4409,24 +4409,6 @@ mod tests {
             );
         }
 
-        let shorthand = canonical_container_loot_nbt("empty", 0);
-        let wire =
-            encode_nbt_summary_bounded(Some(&shorthand), i32::MAX as usize, MAX_NBT_DEPTH).unwrap();
-        let mut decoded = DataComponentPatchSummary::default();
-        descriptor
-            .decode(&mut Decoder::new(&wire), &mut decoded)
-            .unwrap();
-        assert_eq!(
-            decoded.container_loot_table.as_deref(),
-            Some("minecraft:empty")
-        );
-        assert_eq!(
-            decoded
-                .codec_backed_nbt
-                .get(&VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID),
-            Some(&canonical_container_loot_nbt("minecraft:empty", 0))
-        );
-
         for summary in [
             DataComponentPatchSummary {
                 damage_resistant_type_registry_ids: vec![-1],
@@ -4610,6 +4592,24 @@ mod tests {
                 ))
             );
         }
+
+        let shorthand = canonical_container_loot_nbt("empty", 0);
+        let wire =
+            encode_nbt_summary_bounded(Some(&shorthand), i32::MAX as usize, MAX_NBT_DEPTH).unwrap();
+        let mut decoded = DataComponentPatchSummary::default();
+        descriptor
+            .decode(&mut Decoder::new(&wire), &mut decoded)
+            .unwrap();
+        assert_eq!(
+            decoded.container_loot_table.as_deref(),
+            Some("minecraft:empty")
+        );
+        assert_eq!(
+            decoded
+                .codec_backed_nbt
+                .get(&VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID),
+            Some(&canonical_container_loot_nbt("minecraft:empty", 0))
+        );
 
         for summary in [
             DataComponentPatchSummary::default(),
