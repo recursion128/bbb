@@ -4346,6 +4346,75 @@
         "status": "complete"
       }
     },
+    "BLOCK_STATE": {
+      "canonical_retention": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/component/BlockItemStateProperties.java#public record BlockItemStateProperties",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub block_state_properties",
+          "crates/bbb-protocol/src/packets/data_components.rs#decode_string_map",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_block_state_component_properties",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_scalar_wrappers_flat_records_and_string_map"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#BLOCK_STATE",
+          "vanilla:net/minecraft/world/item/component/BlockItemStateProperties.java#STREAM_CODEC",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#map",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_block_state",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#block_state_descriptor_round_trips_empty_and_ordered_properties",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#block_state_descriptor_rejects_collection_and_java_string_overflow_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_block_state_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/client/renderer/item/properties/select/ItemBlockState.java#get",
+          "crates/bbb-item-model/src/item_runtime/icon_model.rs#select_property_value",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_stack_string_select_properties"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/component/BlockItemStateProperties.java#CODEC",
+          "crates/bbb-native/src/input/component_patch.rs#encode_block_state",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_scalar_wrappers_flat_records_and_string_map"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_block_state_component_properties",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#block_state_descriptor_round_trips_empty_and_ordered_properties",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#block_state_descriptor_rejects_collection_and_java_string_overflow_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_block_state_component",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_scalar_wrappers_flat_records_and_string_map",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_stack_string_select_properties"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#BLOCK_STATE",
+          "vanilla:net/minecraft/world/item/component/BlockItemStateProperties.java#STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_block_state",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_block_state_component_properties",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_scalar_wrappers_flat_records_and_string_map"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "PROVIDES_BANNER_PATTERNS": {
       "canonical_retention": {
         "evidence": [

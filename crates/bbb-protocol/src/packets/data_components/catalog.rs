@@ -7,8 +7,8 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
     VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID, VANILLA_DATA_COMPONENT_BEES_TYPE_ID,
     VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
-    VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
-    VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
+    VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID, VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
     VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID, VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID,
     VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID,
     VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
@@ -317,6 +317,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         }
         VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID => Some(encode_pot_decorations),
         VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID => Some(encode_container),
+        VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID => Some(encode_block_state),
         VANILLA_DATA_COMPONENT_BEES_TYPE_ID => Some(encode_bees),
         VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID => Some(encode_painting_variant),
         VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID => {
@@ -3494,6 +3495,29 @@ fn decode_block_state(
     summary: &mut DataComponentPatchSummary,
 ) -> Result<()> {
     summary.block_state_properties = decode_string_map(decoder, MAX_BLOCK_STATE_PROPERTIES)?;
+    Ok(())
+}
+
+fn encode_block_state(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let properties = &summary.block_state_properties;
+    if properties.len() > MAX_BLOCK_STATE_PROPERTIES {
+        return Err(ProtocolError::PacketTooLarge(
+            properties.len(),
+            MAX_BLOCK_STATE_PROPERTIES,
+        ));
+    }
+
+    let mut encoded = Encoder::new();
+    encoded.write_var_i32(properties.len() as i32);
+    for (name, value) in properties {
+        encode_java_string(&mut encoded, name, MAX_STRING_CHARS)?;
+        encode_java_string(&mut encoded, value, MAX_STRING_CHARS)?;
+    }
+    out.write_bytes(&encoded.into_inner());
     Ok(())
 }
 
@@ -8692,6 +8716,92 @@ mod tests {
             },
             DataComponentPatchSummary {
                 provides_banner_pattern_registry_ids: vec![0; MAX_DATA_COMPONENT_LIST_ITEMS + 1],
+                ..DataComponentPatchSummary::default()
+            },
+        ] {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            assert!(descriptor.encode(&summary, &mut encoded).is_err());
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
+    }
+
+    #[test]
+    fn block_state_descriptor_round_trips_empty_and_ordered_properties() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID).unwrap();
+        for summary in [
+            DataComponentPatchSummary::default(),
+            DataComponentPatchSummary {
+                block_state_properties: BTreeMap::from([
+                    ("powered".to_string(), "true".to_string()),
+                    ("facing".to_string(), "north".to_string()),
+                ]),
+                ..DataComponentPatchSummary::default()
+            },
+        ] {
+            let mut encoded = Encoder::new();
+            descriptor.encode(&summary, &mut encoded).unwrap();
+
+            let mut expected = Encoder::new();
+            expected.write_var_i32(summary.block_state_properties.len() as i32);
+            for (name, value) in &summary.block_state_properties {
+                expected.write_string(name);
+                expected.write_string(value);
+            }
+            assert_eq!(encoded.clone().into_inner(), expected.into_inner());
+
+            let wire = encoded.into_inner();
+            let mut decoder = Decoder::new(&wire);
+            let mut decoded = DataComponentPatchSummary::default();
+            descriptor.decode(&mut decoder, &mut decoded).unwrap();
+            assert!(decoder.is_empty());
+            assert_eq!(
+                decoded.block_state_properties,
+                summary.block_state_properties
+            );
+        }
+    }
+
+    #[test]
+    fn block_state_descriptor_rejects_collection_and_java_string_overflow_atomically() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID).unwrap();
+        let maximal = DataComponentPatchSummary {
+            block_state_properties: (0..MAX_BLOCK_STATE_PROPERTIES)
+                .map(|index| (format!("property_{index}"), "value".to_string()))
+                .collect(),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut maximal_wire = Encoder::new();
+        descriptor.encode(&maximal, &mut maximal_wire).unwrap();
+        let maximal_wire = maximal_wire.into_inner();
+        let mut decoder = Decoder::new(&maximal_wire);
+        let mut decoded = DataComponentPatchSummary::default();
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(
+            decoded.block_state_properties,
+            maximal.block_state_properties
+        );
+
+        let oversized = "😀".repeat(MAX_STRING_CHARS / 2 + 1);
+        for summary in [
+            DataComponentPatchSummary {
+                block_state_properties: (0..=MAX_BLOCK_STATE_PROPERTIES)
+                    .map(|index| (format!("property_{index}"), "value".to_string()))
+                    .collect(),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                block_state_properties: BTreeMap::from([(oversized.clone(), "value".to_string())]),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                block_state_properties: BTreeMap::from([(
+                    "property".to_string(),
+                    oversized.clone(),
+                )]),
                 ..DataComponentPatchSummary::default()
             },
         ] {
