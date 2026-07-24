@@ -453,3 +453,8 @@
   `CAN_PLACE_ON` 与 `CAN_BREAK` 现无损编解码并按 holder/tag、typed state 与部分
   NBT 求值，驱动冒险模式破坏和方块选框；合同见
   `docs/archive/adventure-mode-predicate-components-design.md`。
+- **2026-07-23（递归 ItemStack component 六维闭环）**：`USE_REMAINDER`、
+  `CHARGED_PROJECTILES`、`BUNDLE_CONTENTS` 与 `CONTAINER` 现按普通嵌套 patch
+  framing、精确 container 槽跨度和 depth-32 原子预算无损编解码；creative
+  持久化范围、严格嵌套 SNBT 及 item-model/tooltip 消费证据齐备，合同见
+  `docs/archive/recursive-item-components-roundtrip-design.md`。

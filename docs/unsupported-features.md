@@ -1173,8 +1173,9 @@ back into a todo. Do not delete these.
   are added.
 - **Full item component payload encoding for
   `ServerboundSetCreativeModeSlotPacket`.** Add descriptor-owned encoders for
-  component value types 10, 12, 17 through 23, 25
-  through 35, 41, 43 through 50, 57, 61 through 67, and 71 through 109;
+  component value types 10, 12, 17 through 23, 26
+  through 35, 41, 43 through 48, 57, 61 through 67, 71 through 74, and 76
+  through 109;
   preserve Vanilla's per-value length framing and persistent range checks, and
   keep unsupported additions rejected before any packet is sent.
 
