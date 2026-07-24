@@ -2602,6 +2602,8 @@ pub struct HudInventoryTooltip {
     pub x: i32,
     /// Tooltip anchor y position relative to the centered inventory screen origin.
     pub y: i32,
+    /// ItemStack `DataComponents.TOOLTIP_STYLE`; non-item tooltips leave this absent.
+    pub style: Option<String>,
     pub lines: Vec<HudInventoryTooltipLine>,
 }
 
@@ -23087,6 +23089,7 @@ mod tests {
                 slot_id: 5,
                 x: 8,
                 y: 84,
+                style: None,
                 lines: vec![
                     HudInventoryTooltipLine {
                         text: "Diamond Sword".to_string(),
@@ -23182,6 +23185,7 @@ mod tests {
                 slot_id: 5,
                 x: 8,
                 y: 84,
+                style: None,
                 lines: vec![
                     HudInventoryTooltipLine {
                         text: "Diamond Sword".to_string(),

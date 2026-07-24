@@ -12614,11 +12614,13 @@ fn hud_inventory_tooltip(
         .iter()
         .find(|layout| layout.slot_id == slot_id)?;
     let slot = container.slots.iter().find(|slot| slot.slot == slot_id)?;
+    let tooltip = hud_item_tooltip(world, item_runtime, &slot.item, advanced, creative)?;
     Some(HudInventoryTooltip {
         slot_id: u16::try_from(slot_id).ok()?,
         x: layout.x,
         y: layout.y,
-        lines: hud_item_tooltip_lines(world, item_runtime, &slot.item, advanced, creative)?,
+        style: tooltip.style,
+        lines: tooltip.lines,
     })
 }
 
@@ -12642,6 +12644,7 @@ fn hud_merchant_trade_tooltip(
             slot_id: u16::MAX,
             x: cursor_x,
             y: cursor_y,
+            style: None,
             lines: vec![HudInventoryTooltipLine {
                 text: localized_gui_text(
                     item_runtime,
@@ -12681,11 +12684,13 @@ fn hud_merchant_trade_tooltip(
     } else {
         return None;
     };
+    let tooltip = hud_item_tooltip(world, item_runtime, &item, advanced, creative)?;
     Some(HudInventoryTooltip {
         slot_id: u16::MAX,
         x: cursor_x,
         y: cursor_y,
-        lines: hud_item_tooltip_lines(world, item_runtime, &item, advanced, creative)?,
+        style: tooltip.style,
+        lines: tooltip.lines,
     })
 }
 
@@ -12706,21 +12711,29 @@ fn hud_stonecutter_recipe_tooltip(
                 && cursor_y >= option.y
                 && cursor_y < option.y + STONECUTTER_RECIPE_BUTTON_HEIGHT
         })?;
+    let tooltip = hud_item_tooltip(world, item_runtime, &option.stack, advanced, creative)?;
     Some(HudInventoryTooltip {
         slot_id: u16::MAX,
         x: cursor_x,
         y: cursor_y,
-        lines: hud_item_tooltip_lines(world, item_runtime, &option.stack, advanced, creative)?,
+        style: tooltip.style,
+        lines: tooltip.lines,
     })
 }
 
-fn hud_item_tooltip_lines(
+struct HudItemTooltipContent {
+    style: Option<String>,
+    lines: Vec<HudInventoryTooltipLine>,
+}
+
+fn hud_item_tooltip(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     item: &ItemStackSummary,
     advanced: bool,
     creative: bool,
-) -> Option<Vec<HudInventoryTooltipLine>> {
+) -> Option<HudItemTooltipContent> {
+    let style = world.item_stack_tooltip_style(item).map(str::to_string);
     let effective_item = world.effective_item_stack(item);
     let item = effective_item.as_ref();
     let map_data = item
@@ -12809,15 +12822,16 @@ fn hud_item_tooltip_lines(
                 tooltip_tick_rate: Some(world.ticking().tick_rate),
             },
         )
-        .map(|lines| {
-            lines
+        .map(|lines| HudItemTooltipContent {
+            style,
+            lines: lines
                 .into_iter()
                 .map(|line| HudInventoryTooltipLine {
                     text: line.text,
                     tint: line.tint,
                     runs: line.runs,
                 })
-                .collect()
+                .collect(),
         })
 }
 

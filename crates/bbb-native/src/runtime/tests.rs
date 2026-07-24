@@ -13239,6 +13239,7 @@ fn hud_inventory_screen_projects_hovered_item_tooltip_name() {
             slot_id: 36,
             x: 8,
             y: 142,
+            style: None,
             lines: vec![tooltip_name_line(
                 "Test Combo",
                 TOOLTIP_TEST_WHITE,
@@ -13246,6 +13247,24 @@ fn hud_inventory_screen_projects_hovered_item_tooltip_name() {
                 false
             )],
         })
+    );
+
+    let mut styled_stack = item_stack(0, 1);
+    styled_stack.component_patch.added = 1;
+    styled_stack.component_patch.added_type_ids =
+        vec![bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_TOOLTIP_STYLE_TYPE_ID];
+    styled_stack.component_patch.tooltip_style = Some("example:rare".to_string());
+    world.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
+        slot: 0,
+        item: styled_stack,
+    });
+    let screen = hud_inventory_screen(&world, Some(&item_runtime), Some(36), 0.0).unwrap();
+    assert_eq!(
+        screen
+            .tooltip
+            .as_ref()
+            .and_then(|tooltip| tooltip.style.as_deref()),
+        Some("example:rare")
     );
 
     world.apply_update_enabled_features(bbb_protocol::packets::UpdateEnabledFeatures {
@@ -13289,6 +13308,7 @@ fn hud_inventory_screen_projects_hovered_item_tooltip_name() {
             slot_id: 36,
             x: 8,
             y: 142,
+            style: None,
             lines: vec![
                 tooltip_name_line("Test Combo", TOOLTIP_TEST_WHITE, 0xFF_FF_FF, false),
                 tooltip_plain_line("Durability: 17 / 20", TOOLTIP_TEST_WHITE),
@@ -13314,6 +13334,7 @@ fn hud_inventory_screen_projects_hovered_item_tooltip_name() {
             slot_id: 36,
             x: 8,
             y: 142,
+            style: None,
             lines: vec![
                 tooltip_name_line("Custom Combo", TOOLTIP_TEST_AQUA, 0x55_FF_FF, true),
                 tooltip_lore_line("First lore"),
@@ -13363,6 +13384,7 @@ fn hud_inventory_tooltip_uses_local_player_base_attributes_for_default_weapon() 
             slot_id: 36,
             x: 8,
             y: 142,
+            style: None,
             lines: vec![
                 tooltip_name_line("Test Sword", TOOLTIP_TEST_WHITE, 0xFF_FF_FF, false),
                 tooltip_plain_line("", TOOLTIP_TEST_WHITE),
@@ -13415,6 +13437,7 @@ fn hud_inventory_tooltip_follows_synced_enchantment_holder_order_and_effects() {
             slot_id: 36,
             x: 8,
             y: 142,
+            style: None,
             lines: vec![
                 tooltip_name_line("Test Combo", TOOLTIP_TEST_AQUA, 0x55_FF_FF, false),
                 tooltip_enchantment_line("Synced Efficiency", "I", 0x12_34_56),

@@ -32,8 +32,8 @@ use crate::input::{queue_chat_command, text_edit, DebugClipboard, DialogImePreed
 use crate::terrain_runtime::TerrainTextureState;
 
 use super::{
-    block_item_3d_model, hud_ascii_approx_char_width, hud_item_icon_for_stack,
-    hud_item_tooltip_lines, wall_clock_millis, InventoryHudLocalState,
+    block_item_3d_model, hud_ascii_approx_char_width, hud_item_icon_for_stack, hud_item_tooltip,
+    wall_clock_millis, InventoryHudLocalState,
 };
 
 // Vanilla `HeaderAndFooterLayout` uses 33-pixel header/footer frames and places
@@ -2994,6 +2994,7 @@ pub(super) fn hud_dialog_screen_with_measurer(
                     i32::MAX
                 }
             }),
+            style: None,
             lines: wrapped_text_lines(tooltip, 170)
                 .into_iter()
                 .map(|line| HudInventoryTooltipLine {
@@ -3034,6 +3035,7 @@ pub(super) fn hud_dialog_screen_with_measurer(
                     i32::MAX
                 }
             }),
+            style: None,
             lines: plain_dialog_text_lines(DIALOG_WARNING_TOOLTIP, 170)
                 .into_iter()
                 .map(|line| HudInventoryTooltipLine {
@@ -6006,17 +6008,19 @@ fn dialog_item_tooltip(
 ) -> Option<HudInventoryTooltip> {
     let (cursor_x, cursor_y) = cursor_position?;
     let (origin_x, origin_y) = centered_screen_origin(surface_size, screen_width, screen_height);
+    let tooltip = hud_item_tooltip(
+        world,
+        item_runtime,
+        stack,
+        advanced,
+        world.gameplay().game_type == GameType::Creative.id(),
+    )?;
     Some(HudInventoryTooltip {
         slot_id: u16::try_from(block_index).unwrap_or(u16::MAX),
         x: i32::try_from(i64::from(cursor_x) - origin_x).ok()?,
         y: i32::try_from(i64::from(cursor_y) - origin_y).ok()?,
-        lines: hud_item_tooltip_lines(
-            world,
-            item_runtime,
-            stack,
-            advanced,
-            world.gameplay().game_type == GameType::Creative.id(),
-        )?,
+        style: tooltip.style,
+        lines: tooltip.lines,
     })
 }
 

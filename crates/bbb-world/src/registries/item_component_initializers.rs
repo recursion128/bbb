@@ -9,6 +9,7 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
+        VANILLA_DATA_COMPONENT_TOOLTIP_STYLE_TYPE_ID,
     },
     packets::{
         BlocksAttacksSummary, DamageReductionSummary, DamageTypeHolderSetSummary,
@@ -271,6 +272,15 @@ impl WorldStore {
                         .is_some_and(|defaults| defaults.added_type_ids.contains(&component_id))
             })
     }
+
+    /// Returns the synchronized tooltip-style resource id only when its patch
+    /// component is effective. Explicit removals therefore suppress stale
+    /// projection fields rather than leaking them into presentation.
+    pub fn item_stack_tooltip_style<'a>(&self, stack: &'a ItemStackSummary) -> Option<&'a str> {
+        self.item_stack_has_effective_component(stack, VANILLA_DATA_COMPONENT_TOOLTIP_STYLE_TYPE_ID)
+            .then(|| stack.component_patch.tooltip_style.as_deref())
+            .flatten()
+    }
 }
 
 #[cfg(test)]
@@ -283,10 +293,38 @@ mod tests {
         VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
+        VANILLA_DATA_COMPONENT_TOOLTIP_STYLE_TYPE_ID,
     };
 
     use super::*;
     use crate::{RegistryContentState, RegistryPacketEntry, RegistryTagState};
+
+    #[test]
+    fn tooltip_style_query_honors_component_membership_and_removal() {
+        let world = WorldStore::new();
+        let mut stack = ItemStackSummary {
+            item_id: Some(7),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                tooltip_style: Some("example:rare".to_string()),
+                ..DataComponentPatchSummary::default()
+            },
+        };
+        assert_eq!(world.item_stack_tooltip_style(&stack), None);
+
+        stack.component_patch.added = 1;
+        stack
+            .component_patch
+            .added_type_ids
+            .push(VANILLA_DATA_COMPONENT_TOOLTIP_STYLE_TYPE_ID);
+        assert_eq!(world.item_stack_tooltip_style(&stack), Some("example:rare"));
+
+        stack
+            .component_patch
+            .removed_type_ids
+            .push(VANILLA_DATA_COMPONENT_TOOLTIP_STYLE_TYPE_ID);
+        assert_eq!(world.item_stack_tooltip_style(&stack), None);
+    }
 
     #[test]
     fn resolves_all_initializer_families_through_candidate_holder_order_and_tags() {
