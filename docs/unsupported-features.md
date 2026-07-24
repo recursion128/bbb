@@ -655,14 +655,14 @@ Commands:
   `Player.attack`: synchronized enchantment effects, critical and magic-critical
   tracking emitters, special `Entity.hurtClient` families, and redirectable
   projectile deflection. Damage and combat outcomes remain server-authoritative.
-- Complete targeted local-use parity from `Minecraft.startUseItem`,
-  `MultiPlayerGameMode.interact`, and `useItemOn`: exact main/offhand iteration
-  until a local `InteractionResult.Success`, enabled-item gates per hand, local
-  entity/block prediction (including item-side `useOn` and
-  `interactLivingEntity` behavior), swing-source handling, and held-item
-  presentation. Interaction override ownership must stay generated from local
-  vanilla classes. Entity, block, and inventory corrections remain
-  server-authoritative.
+- Complete specialized targeted local-use prediction from
+  `Minecraft.startUseItem`, `MultiPlayerGameMode.interact`, and `useItemOn`.
+  Implement the source-derived entity, block, item-side `useOn`, and
+  `interactLivingEntity` override families so main/offhand iteration can stop or
+  continue on the exact `InteractionResult`; then apply each success
+  swing-source and held-item presentation. Interaction override ownership must
+  stay generated from local vanilla classes. Entity, block, and inventory
+  corrections remain server-authoritative.
 - Complete no-target `Item.use` prediction for the source-derived specialized
   override families and swappable `Equippable` behavior. Override ownership must
   stay generated from local vanilla item classes instead of being inferred from

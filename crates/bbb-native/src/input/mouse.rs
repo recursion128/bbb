@@ -5,7 +5,8 @@ use bbb_protocol::packets::{
 };
 use bbb_world::{
     BlockPos as WorldBlockPos, ItemAttackRange, LocalDestroyBlockFinished, LocalInteractionResult,
-    LocalInteractionSwingSource, LocalItemUsePrediction, LocalPlayerPoseState, WorldStore,
+    LocalInteractionSwingSource, LocalItemUsePrediction, LocalPlayerPoseState,
+    LocalTargetUsePrediction, WorldStore,
 };
 use tokio::sync::mpsc;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta};
@@ -300,16 +301,6 @@ pub(super) fn start_use_item(
             if world.try_open_minecart_command_block_editor(hit.entity_id) {
                 input.sync_minecart_command_block_editor(world, counters, net_commands);
             }
-            let hand = item_use_hand(world);
-            queue_interact_entity_command(
-                counters,
-                net_commands,
-                world.local_player().selected_hotbar_slot,
-                hit.entity_id,
-                hand,
-                hit.relative_location,
-                input.sneak,
-            );
         }
         Some(CrosshairTarget::Block(hit)) => {
             if world.try_open_command_block_editor(hit.pos) {
@@ -327,87 +318,117 @@ pub(super) fn start_use_item(
             if world.try_open_test_instance_block_editor(hit.pos) {
                 input.sync_test_instance_block_editor(world, counters, net_commands);
             }
-            let sequence = world.next_local_prediction_sequence();
-            let hand = block_use_hand(world);
-            queue_use_item_on_command(
-                counters,
-                net_commands,
-                world.local_player().selected_hotbar_slot,
-                hand,
-                hit,
-                sequence,
-            );
         }
-        None => {
-            if let Some(pose) = player_pose {
-                for hand in [InteractionHand::MainHand, InteractionHand::OffHand] {
-                    if !world.local_item_in_hand_is_enabled(hand) {
-                        return true;
-                    }
-                    if world.local_item_in_hand(hand).is_none() || world.local_player_is_spectator()
-                    {
-                        continue;
-                    }
-                    let prediction = world.predict_local_item_use(hand);
-                    let sequence = world.next_local_prediction_sequence();
-                    if !queue_use_item_command(
-                        counters,
-                        net_commands,
-                        world.local_player().selected_hotbar_slot,
-                        hand,
-                        pose.y_rot,
-                        pose.x_rot,
-                        sequence,
-                    ) {
-                        return true;
-                    }
-                    if world.open_writable_book_editor(hand, input.client_text_filtering_enabled())
-                    {
-                        input.sync_book_screen(world);
-                        release_active_input(input, world, counters, net_commands);
-                        return true;
-                    }
-                    match prediction {
-                        LocalItemUsePrediction::Result(LocalInteractionResult::Success(
-                            success,
-                        )) => {
-                            world.set_local_using_item_with_hand(success.starts_using_item, hand);
-                            if success.swing_source == LocalInteractionSwingSource::Client {
-                                queue_swing_command(world, counters, net_commands, hand);
-                            }
-                            return true;
-                        }
-                        LocalItemUsePrediction::Result(
-                            LocalInteractionResult::Pass | LocalInteractionResult::Fail,
-                        ) => {}
-                        LocalItemUsePrediction::Result(
-                            LocalInteractionResult::TryEmptyHandInteraction,
-                        )
-                        | LocalItemUsePrediction::UnsupportedOverride(_)
-                        | LocalItemUsePrediction::UnknownItemType(_)
-                        | LocalItemUsePrediction::MissingComponentValue(_) => return true,
-                    }
-                }
+        None => {}
+    }
+
+    for hand in [InteractionHand::MainHand, InteractionHand::OffHand] {
+        if !world.local_item_in_hand_is_enabled(hand) {
+            return true;
+        }
+
+        let target_prediction = match camera_target {
+            Some(CrosshairTarget::Entity(hit)) => {
+                let prediction = world.predict_local_entity_interaction(hit.entity_id, hand);
+                queue_interact_entity_command(
+                    counters,
+                    net_commands,
+                    world.local_player().selected_hotbar_slot,
+                    hit.entity_id,
+                    hand,
+                    hit.relative_location,
+                    input.sneak,
+                );
+                Some(prediction)
             }
+            Some(CrosshairTarget::Block(hit)) => {
+                let sequence = world.next_local_prediction_sequence();
+                let prediction = world.predict_local_block_use(hit.pos, hand, input.sneak);
+                queue_use_item_on_command(
+                    counters,
+                    net_commands,
+                    world.local_player().selected_hotbar_slot,
+                    hand,
+                    hit,
+                    sequence,
+                );
+                Some(prediction)
+            }
+            None => None,
+        };
+        if let Some(prediction) = target_prediction {
+            match prediction {
+                LocalTargetUsePrediction::Result(LocalInteractionResult::Success(success)) => {
+                    world.set_local_using_item_with_hand(success.starts_using_item, hand);
+                    if success.swing_source == LocalInteractionSwingSource::Client {
+                        queue_swing_command(world, counters, net_commands, hand);
+                    }
+                    return true;
+                }
+                LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
+                    if matches!(camera_target, Some(CrosshairTarget::Block(_))) =>
+                {
+                    return true;
+                }
+                LocalTargetUsePrediction::Result(
+                    LocalInteractionResult::Pass | LocalInteractionResult::Fail,
+                ) => {}
+                LocalTargetUsePrediction::Result(
+                    LocalInteractionResult::TryEmptyHandInteraction,
+                )
+                | LocalTargetUsePrediction::UnsupportedBlockUseItemOn(_)
+                | LocalTargetUsePrediction::UnsupportedBlockUseWithoutItem(_)
+                | LocalTargetUsePrediction::UnsupportedItemUseOn(_)
+                | LocalTargetUsePrediction::UnsupportedEntityInteract(_)
+                | LocalTargetUsePrediction::UnsupportedItemInteractLivingEntity(_)
+                | LocalTargetUsePrediction::UnknownBlockType(_)
+                | LocalTargetUsePrediction::UnknownEntityType(_)
+                | LocalTargetUsePrediction::UnknownItemType(_) => return true,
+            }
+        }
+
+        if world.local_item_in_hand(hand).is_none() || world.local_player_is_spectator() {
+            continue;
+        }
+        let Some(pose) = player_pose else {
+            return true;
+        };
+        let prediction = world.predict_local_item_use(hand);
+        let sequence = world.next_local_prediction_sequence();
+        if !queue_use_item_command(
+            counters,
+            net_commands,
+            world.local_player().selected_hotbar_slot,
+            hand,
+            pose.y_rot,
+            pose.x_rot,
+            sequence,
+        ) {
+            return true;
+        }
+        if world.open_writable_book_editor(hand, input.client_text_filtering_enabled()) {
+            input.sync_book_screen(world);
+            release_active_input(input, world, counters, net_commands);
+            return true;
+        }
+        match prediction {
+            LocalItemUsePrediction::Result(LocalInteractionResult::Success(success)) => {
+                world.set_local_using_item_with_hand(success.starts_using_item, hand);
+                if success.swing_source == LocalInteractionSwingSource::Client {
+                    queue_swing_command(world, counters, net_commands, hand);
+                }
+                return true;
+            }
+            LocalItemUsePrediction::Result(
+                LocalInteractionResult::Pass | LocalInteractionResult::Fail,
+            ) => {}
+            LocalItemUsePrediction::Result(LocalInteractionResult::TryEmptyHandInteraction)
+            | LocalItemUsePrediction::UnsupportedOverride(_)
+            | LocalItemUsePrediction::UnknownItemType(_)
+            | LocalItemUsePrediction::MissingComponentValue(_) => return true,
         }
     }
     true
-}
-
-fn item_use_hand(world: &WorldStore) -> InteractionHand {
-    if world.local_item_use_prefers_offhand() {
-        InteractionHand::OffHand
-    } else {
-        InteractionHand::MainHand
-    }
-}
-
-fn block_use_hand(world: &WorldStore) -> InteractionHand {
-    if world.local_player_is_spectator() {
-        InteractionHand::MainHand
-    } else {
-        item_use_hand(world)
-    }
 }
 
 fn entity_target_within_world_border(world: &WorldStore, hit: CrosshairEntityHit) -> bool {
@@ -808,6 +829,7 @@ mod tests {
         VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
     };
     use bbb_protocol::equipment_slots::VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT;
+    use bbb_protocol::item_types::VANILLA_ITEM_APPLE_ID;
     use bbb_protocol::packets::{
         AddEntity, AdventureModePredicateDataSummary, AdventureModePredicateSummary, AttackEntity,
         AttackRangeSummary, BlockEntityData, BlockHitResult as ProtocolBlockHitResult,
@@ -3045,7 +3067,7 @@ mod tests {
     }
 
     #[test]
-    fn right_mouse_press_on_entity_uses_offhand_when_selected_hotbar_slot_is_empty() {
+    fn right_mouse_press_on_specialized_entity_starts_with_main_hand() {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
@@ -3071,7 +3093,7 @@ mod tests {
             NetCommand::InteractEntity(InteractEntityCommand {
                 packet: InteractEntity {
                     entity_id: 123,
-                    hand: InteractionHand::OffHand,
+                    hand: InteractionHand::MainHand,
                     location: ProtocolVec3d {
                         x: 0.0,
                         y: 0.6200000047683716,
@@ -3082,6 +3104,44 @@ mod tests {
                 selected_hotbar_slot: 0,
             })
         );
+    }
+
+    #[test]
+    fn spectator_right_mouse_press_on_entity_tries_both_hands_in_order() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_entity(123);
+        set_local_spectator(&mut world);
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+        );
+
+        assert_eq!(counters.interact_entity_commands_queued, 2);
+        for expected_hand in [InteractionHand::MainHand, InteractionHand::OffHand] {
+            let NetCommand::InteractEntity(command) = rx.try_recv().unwrap() else {
+                panic!("expected spectator entity interaction");
+            };
+            assert_eq!(command.packet.entity_id, 123);
+            assert_eq!(command.packet.hand, expected_hand);
+            assert_eq!(
+                command.packet.location,
+                ProtocolVec3d {
+                    x: 0.0,
+                    y: 0.6200000047683716,
+                    z: -0.49000000953674316,
+                }
+            );
+            assert!(!command.packet.using_secondary_action);
+            assert_eq!(command.selected_hotbar_slot, 0);
+        }
     }
 
     #[test]
@@ -3113,8 +3173,8 @@ mod tests {
     }
 
     #[test]
-    fn right_mouse_press_on_block_queues_use_item_on() {
-        let (tx, mut rx) = mpsc::channel(1);
+    fn right_mouse_press_on_default_pass_block_queues_both_hands() {
+        let (tx, mut rx) = mpsc::channel(2);
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
         let mut world = world_with_crosshair_block();
@@ -3136,7 +3196,7 @@ mod tests {
             input.use_item_repeat_delay_ticks,
             USE_ITEM_REPEAT_DELAY_TICKS
         );
-        assert_eq!(counters.use_item_on_commands_queued, 1);
+        assert_eq!(counters.use_item_on_commands_queued, 2);
         assert_eq!(
             rx.try_recv().unwrap(),
             NetCommand::UseItemOn(UseItemOnCommand {
@@ -3154,6 +3214,79 @@ mod tests {
                     sequence: 1,
                 },
                 selected_hotbar_slot: 4,
+            })
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::UseItemOn(UseItemOnCommand {
+                packet: UseItemOn {
+                    hand: InteractionHand::OffHand,
+                    hit: ProtocolBlockHitResult {
+                        pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+                        direction: ProtocolDirection::North,
+                        cursor_x: 0.0,
+                        cursor_y: 0.62,
+                        cursor_z: 0.0,
+                        inside: false,
+                        world_border_hit: false,
+                    },
+                    sequence: 2,
+                },
+                selected_hotbar_slot: 4,
+            })
+        );
+    }
+
+    #[test]
+    fn default_block_pass_falls_through_to_same_hand_item_use() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_block();
+        install_consumable(&mut world, 0, VANILLA_ITEM_APPLE_ID, 1.6);
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+        );
+
+        assert!(world.local_player().interaction.using_item);
+        assert_eq!(counters.use_item_on_commands_queued, 1);
+        assert_eq!(counters.use_item_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::UseItemOn(UseItemOnCommand {
+                packet: UseItemOn {
+                    hand: InteractionHand::MainHand,
+                    hit: ProtocolBlockHitResult {
+                        pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+                        direction: ProtocolDirection::North,
+                        cursor_x: 0.0,
+                        cursor_y: 0.62,
+                        cursor_z: 0.0,
+                        inside: false,
+                        world_border_hit: false,
+                    },
+                    sequence: 1,
+                },
+                selected_hotbar_slot: 0,
+            })
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::UseItem(UseItemCommand {
+                packet: UseItem {
+                    hand: InteractionHand::MainHand,
+                    sequence: 2,
+                    y_rot: 0.0,
+                    x_rot: 0.0,
+                },
+                selected_hotbar_slot: 0,
             })
         );
     }
@@ -3234,8 +3367,8 @@ mod tests {
     }
 
     #[test]
-    fn right_mouse_press_on_block_uses_offhand_when_selected_hotbar_slot_is_empty() {
-        let (tx, mut rx) = mpsc::channel(1);
+    fn right_mouse_press_on_block_tries_main_before_populated_offhand() {
+        let (tx, mut rx) = mpsc::channel(2);
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
         let mut world = world_with_crosshair_block();
@@ -3254,6 +3387,26 @@ mod tests {
             ElementState::Pressed,
         );
 
+        assert_eq!(counters.use_item_on_commands_queued, 2);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::UseItemOn(UseItemOnCommand {
+                packet: UseItemOn {
+                    hand: InteractionHand::MainHand,
+                    hit: ProtocolBlockHitResult {
+                        pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+                        direction: ProtocolDirection::North,
+                        cursor_x: 0.0,
+                        cursor_y: 0.62,
+                        cursor_z: 0.0,
+                        inside: false,
+                        world_border_hit: false,
+                    },
+                    sequence: 1,
+                },
+                selected_hotbar_slot: 0,
+            })
+        );
         assert_eq!(
             rx.try_recv().unwrap(),
             NetCommand::UseItemOn(UseItemOnCommand {
@@ -3268,7 +3421,7 @@ mod tests {
                         inside: false,
                         world_border_hit: false,
                     },
-                    sequence: 1,
+                    sequence: 2,
                 },
                 selected_hotbar_slot: 0,
             })
@@ -3369,7 +3522,7 @@ mod tests {
 
     #[test]
     fn held_right_mouse_on_block_repeats_use_item_on_after_vanilla_delay() {
-        let (tx, mut rx) = mpsc::channel(2);
+        let (tx, mut rx) = mpsc::channel(4);
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
         let mut world = world_with_crosshair_block();
@@ -3383,25 +3536,20 @@ mod tests {
             MouseButton::Right,
             ElementState::Pressed,
         );
-        assert_eq!(
-            rx.try_recv().unwrap(),
-            NetCommand::UseItemOn(UseItemOnCommand {
-                packet: UseItemOn {
-                    hand: InteractionHand::MainHand,
-                    hit: ProtocolBlockHitResult {
-                        pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
-                        direction: ProtocolDirection::North,
-                        cursor_x: 0.0,
-                        cursor_y: 0.62,
-                        cursor_z: 0.0,
-                        inside: false,
-                        world_border_hit: false,
-                    },
-                    sequence: 1,
-                },
-                selected_hotbar_slot: 0,
-            })
-        );
+        for (expected_hand, expected_sequence) in [
+            (InteractionHand::MainHand, 1),
+            (InteractionHand::OffHand, 2),
+        ] {
+            let NetCommand::UseItemOn(command) = rx.try_recv().unwrap() else {
+                panic!("expected block-use command");
+            };
+            assert_eq!(command.packet.hand, expected_hand);
+            assert_eq!(command.packet.sequence, expected_sequence);
+            assert_eq!(
+                command.packet.hit.pos,
+                ProtocolBlockPos { x: 0, y: 1, z: 3 }
+            );
+        }
 
         advance_using_item_at_partial_tick(
             &mut input,
@@ -3412,7 +3560,7 @@ mod tests {
             3,
         );
         assert!(rx.try_recv().is_err());
-        assert_eq!(counters.use_item_on_commands_queued, 1);
+        assert_eq!(counters.use_item_on_commands_queued, 2);
         assert_eq!(input.use_item_repeat_delay_ticks, 1);
 
         advance_using_item_at_partial_tick(
@@ -3424,30 +3572,25 @@ mod tests {
             1,
         );
 
-        assert_eq!(counters.use_item_on_commands_queued, 2);
+        assert_eq!(counters.use_item_on_commands_queued, 4);
         assert_eq!(
             input.use_item_repeat_delay_ticks,
             USE_ITEM_REPEAT_DELAY_TICKS
         );
-        assert_eq!(
-            rx.try_recv().unwrap(),
-            NetCommand::UseItemOn(UseItemOnCommand {
-                packet: UseItemOn {
-                    hand: InteractionHand::MainHand,
-                    hit: ProtocolBlockHitResult {
-                        pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
-                        direction: ProtocolDirection::North,
-                        cursor_x: 0.0,
-                        cursor_y: 0.62,
-                        cursor_z: 0.0,
-                        inside: false,
-                        world_border_hit: false,
-                    },
-                    sequence: 2,
-                },
-                selected_hotbar_slot: 0,
-            })
-        );
+        for (expected_hand, expected_sequence) in [
+            (InteractionHand::MainHand, 3),
+            (InteractionHand::OffHand, 4),
+        ] {
+            let NetCommand::UseItemOn(command) = rx.try_recv().unwrap() else {
+                panic!("expected repeated block-use command");
+            };
+            assert_eq!(command.packet.hand, expected_hand);
+            assert_eq!(command.packet.sequence, expected_sequence);
+            assert_eq!(
+                command.packet.hit.pos,
+                ProtocolBlockPos { x: 0, y: 1, z: 3 }
+            );
+        }
     }
 
     #[test]
@@ -3466,6 +3609,7 @@ mod tests {
             MouseButton::Right,
             ElementState::Pressed,
         );
+        assert!(rx.try_recv().is_ok());
         assert!(rx.try_recv().is_ok());
 
         handle_mouse_input(
@@ -3488,7 +3632,7 @@ mod tests {
             USE_ITEM_REPEAT_DELAY_TICKS.into(),
         );
 
-        assert_eq!(counters.use_item_on_commands_queued, 1);
+        assert_eq!(counters.use_item_on_commands_queued, 2);
         assert!(rx.try_recv().is_err());
     }
 
