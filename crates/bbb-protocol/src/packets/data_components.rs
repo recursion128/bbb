@@ -34,7 +34,8 @@ use crate::{
         VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_POST_PROCESSING_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
         VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
     },
@@ -47,6 +48,7 @@ use crate::{
         FireworkExplosionShapeSummary, ItemRaritySummary, ItemUseAnimationSummary,
         MapPostProcessingSummary, SwingAnimationTypeSummary,
     },
+    item_types::{vanilla_item_type, VANILLA_ITEM_BRICK_ID},
     mob_effect_types::vanilla_mob_effect_type,
     nbt_summary::decode_nbt_summary_from_decoder,
     potion_types::vanilla_potion,
@@ -71,7 +73,7 @@ const MAX_LORE_LINES: usize = 256;
 const MAX_MOB_EFFECT_DETAILS_DEPTH: usize = 16;
 const MAX_PARTIAL_DATA_COMPONENT_PREDICATES: usize = 64;
 const MAX_PLAYER_NAME_CHARS: usize = 16;
-const MAX_POT_DECORATIONS: usize = 4;
+pub const MAX_POT_DECORATIONS: usize = 4;
 const MAX_PROFILE_PROPERTIES: usize = 16;
 const MAX_PROFILE_PROPERTY_NAME_CHARS: usize = 64;
 const MAX_PROFILE_SIGNATURE_CHARS: usize = 1024;
@@ -1282,6 +1284,9 @@ fn validate_encodable_data_component_patch_summary(
             }
             VANILLA_DATA_COMPONENT_MAP_POST_PROCESSING_TYPE_ID => {
                 expected.map_post_processing = patch.map_post_processing;
+            }
+            VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID => {
+                expected.pot_decorations_item_ids = patch.pot_decorations_item_ids.clone();
             }
             VANILLA_DATA_COMPONENT_DYE_TYPE_ID => {
                 expected.dye_color_id = patch.dye_color_id;
@@ -2828,9 +2833,18 @@ fn decode_banner_pattern_holder(decoder: &mut Decoder<'_>) -> Result<BannerPatte
 
 fn decode_pot_decorations_item_ids(decoder: &mut Decoder<'_>) -> Result<Vec<i32>> {
     let item_count = read_bounded_len(decoder, MAX_POT_DECORATIONS)?;
-    let mut item_ids = Vec::with_capacity(item_count);
+    let mut item_ids = Vec::with_capacity(MAX_POT_DECORATIONS);
     for _ in 0..item_count {
-        item_ids.push(decoder.read_var_i32()?);
+        let item_id = decoder.read_var_i32()?;
+        if vanilla_item_type(item_id).is_none() {
+            return Err(ProtocolError::InvalidData(format!(
+                "invalid pot decoration item registry id {item_id}"
+            )));
+        }
+        item_ids.push(item_id);
+    }
+    while item_ids.len() < MAX_POT_DECORATIONS {
+        item_ids.push(VANILLA_ITEM_BRICK_ID);
     }
     Ok(item_ids)
 }
@@ -5584,11 +5598,9 @@ mod tests {
         payload.write_var_i32(1);
         payload.write_var_i32(0);
         payload.write_var_i32(74);
-        payload.write_var_i32(4);
+        payload.write_var_i32(2);
         payload.write_var_i32(10);
         payload.write_var_i32(11);
-        payload.write_var_i32(12);
-        payload.write_var_i32(13);
 
         let payload = payload.into_inner();
         let mut decoder = Decoder::new(&payload);
@@ -5598,7 +5610,12 @@ mod tests {
             DataComponentPatchSummary {
                 added: 1,
                 added_type_ids: vec![74],
-                pot_decorations_item_ids: vec![10, 11, 12, 13],
+                pot_decorations_item_ids: vec![
+                    10,
+                    11,
+                    VANILLA_ITEM_BRICK_ID,
+                    VANILLA_ITEM_BRICK_ID,
+                ],
                 ..DataComponentPatchSummary::default()
             }
         );

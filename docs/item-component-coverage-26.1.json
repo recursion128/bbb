@@ -5634,34 +5634,72 @@
       "constant_name": "POT_DECORATIONS",
       "coverage": {
         "canonical_retention": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/level/block/entity/PotDecorations.java#private PotDecorations(final List<Item> items)",
+            "crates/bbb-protocol/src/packets/data_components.rs#pub pot_decorations_item_ids",
+            "crates/bbb-protocol/src/packets/data_components.rs#decode_pot_decorations_item_ids",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_pot_decorations_item_ids",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_pot_decorations_with_builtin_item_holders_and_empty_sides"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "network_encode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#POT_DECORATIONS",
+            "vanilla:net/minecraft/world/level/block/entity/PotDecorations.java#STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_pot_decorations",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#pot_decorations_descriptor_normalizes_missing_faces_to_four_bricks",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#pot_decorations_descriptor_rejects_oversized_and_unknown_items_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_pot_decorations_component"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "observable_consumers": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/level/block/entity/PotDecorations.java#addToTooltip",
+            "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_pot_decorations_tooltip_lines",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_elides_all_brick_pot_decoration_tooltips"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "persistent_projection": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/level/block/entity/PotDecorations.java#CODEC",
+            "crates/bbb-native/src/input.rs#debug_pot_decorations_component_snbt",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_omits_pot_decorations_beyond_four_faces",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_pot_decorations_with_builtin_item_holders_and_empty_sides"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_pot_decorations_item_ids",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#pot_decorations_descriptor_normalizes_missing_faces_to_four_bricks",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#pot_decorations_descriptor_rejects_oversized_and_unknown_items_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_pot_decorations_component",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_pot_decorations_with_builtin_item_holders_and_empty_sides",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_elides_all_brick_pot_decoration_tooltips",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_omits_pot_decorations_beyond_four_faces"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "typed_decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#POT_DECORATIONS",
+            "vanilla:net/minecraft/world/level/block/entity/PotDecorations.java#STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_pot_decorations_component",
+            "crates/bbb-protocol/src/packets/data_components.rs#decode_pot_decorations_item_ids",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_pot_decorations_item_ids",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_pot_decorations_with_builtin_item_holders_and_empty_sides"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "resource_id": "minecraft:pot_decorations",

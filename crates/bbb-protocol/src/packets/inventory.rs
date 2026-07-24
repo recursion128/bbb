@@ -39,7 +39,7 @@ pub use data_components::{
     ResourceTextureSummary, SoundEventSummary, StatePropertyMatcherSummary,
     StatePropertyValueMatcherSummary, SuspiciousStewEffectSummary, SwingAnimationSummary,
     ToolRuleSummary, ToolSummary, TrimMaterialSummary, TrimPatternSummary, UseEffectsSummary,
-    WrittenBookContentSummary, MAX_ITEM_STACK_TEMPLATE_NESTING_DEPTH,
+    WrittenBookContentSummary, MAX_ITEM_STACK_TEMPLATE_NESTING_DEPTH, MAX_POT_DECORATIONS,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

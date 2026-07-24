@@ -915,12 +915,16 @@ Owner: `bbb-audio` + `bbb-native` + `bbb-pack` + `bbb-world`
 
 ## Official 26.1 resource-pack coverage
 
-Owner: `bbb-pack`
+Owner: `bbb-pack` + `bbb-item-model` + `bbb-native` + `bbb-renderer`
 
 - Consume atlas mip animation metadata in the renderer, beyond the current
   static sprite use.
 - Apply full item tint parity for dynamic sources across every item rendering
   path.
+- Execute parsed `minecraft:special` item models through their special renderer
+  instead of resolving only the base baked model in GUI, hand, dropped-item,
+  and item-frame paths. Follow `SpecialModelWrapper` / `SpecialModelRenderer`;
+  `DecoratedPotSpecialRenderer` must consume `POT_DECORATIONS` face data.
 - Load equipment asset layers for armor/equipment rendering.
 
 Loader invariants (not todos): keep the local vanilla coverage tests

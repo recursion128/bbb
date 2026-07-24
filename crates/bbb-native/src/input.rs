@@ -7235,6 +7235,10 @@ fn debug_pot_decorations_component_snbt(
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
     item_runtime: Option<&NativeItemRuntime>,
 ) -> Option<String> {
+    let max_decorations = bbb_protocol::packets::MAX_POT_DECORATIONS;
+    if patch.pot_decorations_item_ids.len() > max_decorations {
+        return None;
+    }
     let mut items = patch
         .pot_decorations_item_ids
         .iter()
@@ -7244,7 +7248,7 @@ fn debug_pot_decorations_component_snbt(
                 .map(debug_snbt_string)
         })
         .collect::<Option<Vec<_>>>()?;
-    while items.len() < 4 {
+    while items.len() < max_decorations {
         items.push(debug_snbt_string("minecraft:brick"));
     }
     Some(format!("[{}]", items.join(", ")))

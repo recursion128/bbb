@@ -32,7 +32,8 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
     VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
     VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
-    VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID, VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,
     VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
@@ -44,6 +45,7 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
     VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
 };
+use crate::item_types::{vanilla_item_type, VANILLA_ITEM_BRICK_ID};
 use crate::nbt_summary::{encode_nbt_summary_bounded, MAX_NBT_DEPTH};
 
 type WireDecodeHandler = fn(i32, &mut Decoder<'_>, &mut DataComponentPatchSummary) -> Result<()>;
@@ -309,6 +311,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID => Some(encode_map_id),
         VANILLA_DATA_COMPONENT_MAP_POST_PROCESSING_TYPE_ID => Some(encode_map_post_processing),
         VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID => Some(encode_banner_patterns),
+        VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID => Some(encode_pot_decorations),
         VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID => Some(encode_container),
         VANILLA_DATA_COMPONENT_BEES_TYPE_ID => Some(encode_bees),
         VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID => Some(encode_painting_variant),
@@ -3421,6 +3424,36 @@ fn decode_pot_decorations_component(
     Ok(())
 }
 
+fn encode_pot_decorations(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    if summary.pot_decorations_item_ids.len() > MAX_POT_DECORATIONS {
+        return Err(ProtocolError::PacketTooLarge(
+            summary.pot_decorations_item_ids.len(),
+            MAX_POT_DECORATIONS,
+        ));
+    }
+    let mut item_ids = [VANILLA_ITEM_BRICK_ID; MAX_POT_DECORATIONS];
+    for (target, item_id) in item_ids.iter_mut().zip(&summary.pot_decorations_item_ids) {
+        if vanilla_item_type(*item_id).is_none() {
+            return Err(ProtocolError::InvalidData(format!(
+                "invalid pot decoration item registry id {item_id}"
+            )));
+        }
+        *target = *item_id;
+    }
+
+    let mut encoded = Encoder::new();
+    encoded.write_var_i32(MAX_POT_DECORATIONS as i32);
+    for item_id in item_ids {
+        encoded.write_var_i32(item_id);
+    }
+    out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
 fn decode_container(
     _type_id: i32,
     decoder: &mut Decoder<'_>,
@@ -3752,7 +3785,8 @@ mod tests {
             vec![
                 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 22, 23, 24,
                 25, 26, 28, 30, 32, 34, 35, 36, 37, 38, 39, 40, 42, 43, 44, 45, 46, 48, 49, 50, 51,
-                52, 53, 54, 55, 56, 58, 59, 60, 61, 62, 64, 67, 68, 69, 70, 72, 75, 77, 80, 102,
+                52, 53, 54, 55, 56, 58, 59, 60, 61, 62, 64, 67, 68, 69, 70, 72, 74, 75, 77, 80,
+                102,
             ]
         );
     }
@@ -8542,6 +8576,77 @@ mod tests {
             assert!(descriptor.encode(&summary, &mut encoded).is_err());
             assert_eq!(encoded.into_inner(), [0xaa]);
         }
+    }
+
+    #[test]
+    fn pot_decorations_descriptor_normalizes_missing_faces_to_four_bricks() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID)
+                .unwrap();
+        let stone = crate::item_types::VANILLA_ITEM_STONE_ID;
+        let summary = DataComponentPatchSummary {
+            pot_decorations_item_ids: vec![stone],
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        descriptor.encode(&summary, &mut encoded).unwrap();
+
+        let mut expected = Encoder::new();
+        expected.write_var_i32(4);
+        expected.write_var_i32(stone);
+        expected.write_var_i32(VANILLA_ITEM_BRICK_ID);
+        expected.write_var_i32(VANILLA_ITEM_BRICK_ID);
+        expected.write_var_i32(VANILLA_ITEM_BRICK_ID);
+        assert_eq!(encoded.clone().into_inner(), expected.into_inner());
+
+        let wire = encoded.into_inner();
+        let mut decoder = Decoder::new(&wire);
+        let mut decoded = DataComponentPatchSummary::default();
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(
+            decoded.pot_decorations_item_ids,
+            vec![
+                stone,
+                VANILLA_ITEM_BRICK_ID,
+                VANILLA_ITEM_BRICK_ID,
+                VANILLA_ITEM_BRICK_ID,
+            ]
+        );
+    }
+
+    #[test]
+    fn pot_decorations_descriptor_rejects_oversized_and_unknown_items_atomically() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID)
+                .unwrap();
+        for summary in [
+            DataComponentPatchSummary {
+                pot_decorations_item_ids: vec![VANILLA_ITEM_BRICK_ID; MAX_POT_DECORATIONS + 1],
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                pot_decorations_item_ids: vec![i32::MAX],
+                ..DataComponentPatchSummary::default()
+            },
+        ] {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            assert!(descriptor.encode(&summary, &mut encoded).is_err());
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
+
+        let mut invalid_wire = Encoder::new();
+        invalid_wire.write_var_i32(1);
+        invalid_wire.write_var_i32(i32::MAX);
+        let wire = invalid_wire.into_inner();
+        let mut decoder = Decoder::new(&wire);
+        let mut decoded = DataComponentPatchSummary::default();
+        let error = descriptor.decode(&mut decoder, &mut decoded).unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("invalid pot decoration item registry id"));
+        assert!(decoded.pot_decorations_item_ids.is_empty());
     }
 
     #[test]

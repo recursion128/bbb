@@ -22,9 +22,10 @@ use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_FOX_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID,
     VANILLA_DATA_COMPONENT_HORSE_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_LLAMA_VARIANT_TYPE_ID,
     VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MOOSHROOM_VARIANT_TYPE_ID,
-    VANILLA_DATA_COMPONENT_PARROT_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_RABBIT_VARIANT_TYPE_ID,
-    VANILLA_DATA_COMPONENT_SALMON_SIZE_TYPE_ID, VANILLA_DATA_COMPONENT_SHEEP_COLOR_TYPE_ID,
-    VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_WOLF_COLLAR_TYPE_ID,
+    VANILLA_DATA_COMPONENT_PARROT_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_RABBIT_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_SALMON_SIZE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_SHEEP_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID,
+    VANILLA_DATA_COMPONENT_WOLF_COLLAR_TYPE_ID,
 };
 use bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_SLEEPING_ID;
 use bbb_protocol::entity_types::{
@@ -11250,6 +11251,39 @@ fn item_stack_snbt_omits_components_with_invalid_persistent_integer_ranges() {
     assert_eq!(
         debug_item_stack_snbt("minecraft:stone", stack.count, Some(&stack), None),
         Some("{id: \"minecraft:stone\"}".to_string())
+    );
+}
+
+#[test]
+fn item_stack_snbt_omits_pot_decorations_beyond_four_faces() {
+    let registry: ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
+        "resource_ids": ["minecraft:angler_pottery_sherd"],
+        "protocol_ids": {"minecraft:angler_pottery_sherd": 0}
+    }))
+    .unwrap();
+    let item_runtime = NativeItemRuntime::for_test_with_registry_and_equipment_assets(
+        registry,
+        EquipmentAssetCatalog::default(),
+    );
+    let stack = ProtocolItemStackSummary {
+        item_id: Some(0),
+        count: 1,
+        component_patch: DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID],
+            pot_decorations_item_ids: vec![0; bbb_protocol::packets::MAX_POT_DECORATIONS + 1],
+            ..DataComponentPatchSummary::default()
+        },
+    };
+
+    assert_eq!(
+        debug_item_stack_snbt(
+            "minecraft:decorated_pot",
+            stack.count,
+            Some(&stack),
+            Some(&item_runtime),
+        ),
+        Some("{id: \"minecraft:decorated_pot\"}".to_string())
     );
 }
 
