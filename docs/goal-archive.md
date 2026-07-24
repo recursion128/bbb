@@ -449,3 +449,7 @@
   `Items.java` 派生并经 frozen registry 解析，generic component-select 消费
   显式/default/removal 值，合同见
   `docs/archive/damage-type-item-component-design.md`。
+- **2026-07-23（Adventure-mode predicate component 六维闭环）**：
+  `CAN_PLACE_ON` 与 `CAN_BREAK` 现无损编解码并按 holder/tag、typed state 与部分
+  NBT 求值，驱动冒险模式破坏和方块选框；合同见
+  `docs/archive/adventure-mode-predicate-components-design.md`。

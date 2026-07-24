@@ -2239,6 +2239,128 @@
         "status": "complete"
       }
     },
+    "CAN_PLACE_ON": {
+      "canonical_retention": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#pub can_place_on_persistent",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_can_place_on",
+          "crates/bbb-world/src/client/adventure_mode_predicate.rs#adventure_mode_predicates_match_direct_tags_state_ranges_and_ignore_component_matchers"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/AdventureModePredicate.java#STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_adventure_mode_predicate",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#adventure_mode_predicate_descriptor_round_trips_all_stream_fields",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_adventure_mode_predicate_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/ItemStack.java#canPlaceOnBlockInAdventureMode",
+          "crates/bbb-world/src/client/adventure_mode_predicate.rs#local_selected_main_hand_can_place_on_block_in_adventure_mode",
+          "crates/bbb-native/src/crosshair.rs#adventure_mode_outline_requires_matching_selected_item_predicate",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_shows_adventure_mode_predicate_tooltips"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/AdventureModePredicate.java#CODEC",
+          "crates/bbb-native/src/input/component_patch.rs#encode_adventure_mode_predicate",
+          "crates/bbb-native/src/input/component_patch.rs#adventure_mode_predicate_encoder_preserves_codec_fields_and_compact_lists",
+          "crates/bbb-world/src/client/dialog/body/component_value/predicates/tests.rs#projects_adventure_block_holders_state_nbt_and_exact_components"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#adventure_mode_predicate_descriptor_round_trips_all_stream_fields",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#adventure_mode_predicate_descriptor_rejects_invalid_values_atomically",
+          "crates/bbb-world/src/client/adventure_mode_predicate.rs#adventure_mode_predicates_match_direct_tags_state_ranges_and_ignore_component_matchers",
+          "crates/bbb-native/src/crosshair.rs#adventure_mode_outline_requires_matching_selected_item_predicate"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#CAN_PLACE_ON",
+          "vanilla:net/minecraft/world/item/AdventureModePredicate.java#STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_can_place_on",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_adventure_mode_predicate_tooltip_summary"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
+    "CAN_BREAK": {
+      "canonical_retention": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#pub can_break_persistent",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_can_break",
+          "crates/bbb-world/src/client/adventure_mode_predicate.rs#adventure_mode_nbt_uses_partial_compounds_lists_and_full_metadata"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/AdventureModePredicate.java#STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_adventure_mode_predicate",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#adventure_mode_predicate_descriptor_rejects_invalid_values_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_adventure_mode_predicate_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/ItemStack.java#canBreakBlockInAdventureMode",
+          "crates/bbb-world/src/client/adventure_mode_predicate.rs#local_selected_main_hand_can_break_block_in_adventure_mode",
+          "crates/bbb-native/src/input/mouse.rs#adventure_mode_block_destroy_requires_matching_can_break_predicate",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_shows_adventure_mode_predicate_tooltips"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/AdventureModePredicate.java#CODEC",
+          "crates/bbb-native/src/input/component_patch.rs#encode_adventure_mode_predicate",
+          "crates/bbb-native/src/input/component_patch.rs#adventure_mode_predicate_encoder_preserves_codec_fields_and_compact_lists",
+          "crates/bbb-world/src/client/dialog/body/component_value/predicates/tests.rs#projects_adventure_partial_component_predicates_and_rejects_rawless_values"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#adventure_mode_predicate_decode_and_encode_bound_recursive_exact_components",
+          "crates/bbb-world/src/client/adventure_mode_predicate.rs#adventure_mode_predicate_rejects_invalid_state_values_and_explicit_removal",
+          "crates/bbb-world/src/client/adventure_mode_predicate.rs#adventure_mode_nbt_uses_partial_compounds_lists_and_full_metadata",
+          "crates/bbb-native/src/input/mouse.rs#adventure_mode_block_destroy_requires_matching_can_break_predicate"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#CAN_BREAK",
+          "vanilla:net/minecraft/world/item/AdventureModePredicate.java#STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_can_break",
+          "crates/bbb-world/src/client/dialog/body/component_value/predicates/tests.rs#projects_adventure_partial_component_predicates_and_rejects_rawless_values"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "CONTAINER": {
       "canonical_retention": {
         "evidence": [
