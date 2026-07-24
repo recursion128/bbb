@@ -1051,6 +1051,9 @@ fn validate_encodable_data_component_patch_summary(
                 expected.lore_styled = patch.lore_styled.clone();
                 expected.lore_nbt = patch.lore_nbt.clone();
             }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID => {
+                expected.enchantments = patch.enchantments.clone();
+            }
             crate::data_component_types::VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID => {
                 expected.attribute_modifiers = patch.attribute_modifiers.clone();
             }
@@ -1100,6 +1103,9 @@ fn validate_encodable_data_component_patch_summary(
                 expected.fireworks_flight_duration = patch.fireworks_flight_duration;
                 expected.fireworks_explosions_count = patch.fireworks_explosions_count;
                 expected.fireworks_explosions = patch.fireworks_explosions.clone();
+            }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID => {
+                expected.stored_enchantments = patch.stored_enchantments.clone();
             }
             crate::data_component_types::VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID => {
                 expected.potion_id = patch.potion_id;
@@ -1355,12 +1361,28 @@ fn decode_item_rarity(decoder: &mut Decoder<'_>) -> Result<ItemRaritySummary> {
 
 fn decode_varint_map(decoder: &mut Decoder<'_>) -> Result<Vec<ItemEnchantmentSummary>> {
     let count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
-    let mut entries = Vec::with_capacity(count);
+    let mut entries: Vec<ItemEnchantmentSummary> = Vec::with_capacity(count);
+    let mut positions: BTreeMap<i32, usize> = BTreeMap::new();
     for _ in 0..count {
-        entries.push(ItemEnchantmentSummary {
-            holder_id: decode_holder_registry_id(decoder)?,
-            level: decoder.read_var_i32()?,
-        });
+        let holder_id = decode_holder_registry_id(decoder)?;
+        let level = decoder.read_var_i32()?;
+        if let Some(index) = positions.get(&holder_id).copied() {
+            entries[index].level = level;
+        } else {
+            positions.insert(holder_id, entries.len());
+            entries.push(ItemEnchantmentSummary { holder_id, level });
+        }
+    }
+    // `ByteBufCodecs.map` overwrites duplicate keys before the
+    // `ItemEnchantments` constructor validates the final map.
+    if let Some(entry) = entries
+        .iter()
+        .find(|entry| !(0..=u8::MAX.into()).contains(&entry.level))
+    {
+        return Err(ProtocolError::InvalidData(format!(
+            "enchantment level {} is outside network range 0..=255",
+            entry.level
+        )));
     }
     Ok(entries)
 }
@@ -3769,6 +3791,63 @@ mod tests {
     }
 
     #[test]
+    fn encodes_item_enchantment_patches_with_delimited_maps() {
+        let patch = DataComponentPatchSummary {
+            added: 2,
+            added_type_ids: vec![
+                crate::data_component_types::VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
+                crate::data_component_types::VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID,
+            ],
+            removed_type_ids: vec![VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID],
+            enchantments: vec![
+                ItemEnchantmentSummary {
+                    holder_id: 37,
+                    level: 4,
+                },
+                ItemEnchantmentSummary {
+                    holder_id: 12,
+                    level: 1,
+                },
+            ],
+            stored_enchantments: vec![ItemEnchantmentSummary {
+                holder_id: 13,
+                level: 5,
+            }],
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        encode_delimited_data_component_patch_summary(&mut encoded, &patch).unwrap();
+        let encoded = encoded.into_inner();
+
+        let mut decoder = Decoder::new(&encoded);
+        assert_eq!(decoder.read_len().unwrap(), 2);
+        assert_eq!(decoder.read_len().unwrap(), 1);
+        let mut decoded = DataComponentPatchSummary::default();
+        for expected_type_id in &patch.added_type_ids {
+            let type_id = decoder.read_var_i32().unwrap();
+            assert_eq!(type_id, *expected_type_id);
+            let value_len = decoder.read_len().unwrap();
+            let mut value_decoder = Decoder::new(
+                decoder
+                    .read_exact(value_len, "item enchantments value")
+                    .unwrap(),
+            );
+            data_component_descriptor_or_error(type_id)
+                .unwrap()
+                .decode(&mut value_decoder, &mut decoded)
+                .unwrap();
+            assert!(value_decoder.is_empty());
+        }
+        assert_eq!(
+            decoder.read_var_i32().unwrap(),
+            VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID
+        );
+        assert!(decoder.is_empty());
+        assert_eq!(decoded.enchantments, patch.enchantments);
+        assert_eq!(decoded.stored_enchantments, patch.stored_enchantments);
+    }
+
+    #[test]
     fn encodes_written_book_patch_with_delimited_filterable_pages() {
         let patch = DataComponentPatchSummary {
             added: 1,
@@ -5721,6 +5800,66 @@ mod tests {
                 decode_data_component_patch_summary(&mut Decoder::new(&payload.into_inner()))
                     .unwrap_err();
             assert_eq!(error.to_string(), "negative length -1");
+        }
+    }
+
+    #[test]
+    fn enchantment_maps_apply_last_duplicate_value_in_first_key_order() {
+        for type_id in [13, 42] {
+            let mut payload = Encoder::new();
+            payload.write_var_i32(3);
+            payload.write_var_i32(7);
+            payload.write_var_i32(-1);
+            payload.write_var_i32(8);
+            payload.write_var_i32(2);
+            payload.write_var_i32(7);
+            payload.write_var_i32(3);
+
+            let bytes = payload.into_inner();
+            let mut decoder = Decoder::new(&bytes);
+            let mut summary = DataComponentPatchSummary::default();
+            data_component_descriptor_or_error(type_id)
+                .unwrap()
+                .decode(&mut decoder, &mut summary)
+                .unwrap();
+            assert!(decoder.is_empty());
+            let expected = vec![
+                ItemEnchantmentSummary {
+                    holder_id: 7,
+                    level: 3,
+                },
+                ItemEnchantmentSummary {
+                    holder_id: 8,
+                    level: 2,
+                },
+            ];
+            if type_id == 13 {
+                assert_eq!(summary.enchantments, expected);
+            } else {
+                assert_eq!(summary.stored_enchantments, expected);
+            }
+        }
+    }
+
+    #[test]
+    fn enchantment_maps_reject_network_levels_outside_constructor_range() {
+        for type_id in [13, 42] {
+            for level in [-1, 256] {
+                let mut payload = Encoder::new();
+                payload.write_var_i32(1);
+                payload.write_var_i32(0);
+                payload.write_var_i32(level);
+
+                let bytes = payload.into_inner();
+                let mut summary = DataComponentPatchSummary::default();
+                let error = data_component_descriptor_or_error(type_id)
+                    .unwrap()
+                    .decode(&mut Decoder::new(&bytes), &mut summary)
+                    .unwrap_err();
+                assert!(error
+                    .to_string()
+                    .contains("is outside network range 0..=255"));
+            }
         }
     }
 

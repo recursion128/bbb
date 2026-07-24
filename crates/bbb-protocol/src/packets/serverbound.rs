@@ -1173,6 +1173,19 @@ fn validate_creative_item_component_ranges(patch: &DataComponentPatchSummary) ->
             "creative mode minimum_attack_charge must be in 0.0..=1.0".to_string(),
         ));
     }
+    for (what, enchantments) in [
+        ("enchantments", patch.enchantments.as_slice()),
+        ("stored_enchantments", patch.stored_enchantments.as_slice()),
+    ] {
+        if enchantments
+            .iter()
+            .any(|enchantment| !(1..=u8::MAX.into()).contains(&enchantment.level))
+        {
+            return Err(ProtocolError::InvalidData(format!(
+                "creative mode {what} levels must be in 1..=255"
+            )));
+        }
+    }
     if patch
         .fireworks_flight_duration
         .is_some_and(|value| !(0..=u8::MAX.into()).contains(&value))

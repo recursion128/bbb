@@ -936,34 +936,75 @@
       "constant_name": "ENCHANTMENTS",
       "coverage": {
         "canonical_retention": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components.rs#pub enchantments",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_enchantments",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_enchantments_component_summary_in_wire_order",
+            "crates/bbb-protocol/src/packets/data_components.rs#enchantment_maps_apply_last_duplicate_value_in_first_key_order"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "network_encode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/enchantment/ItemEnchantments.java#STREAM_CODEC",
+            "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#map",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_item_enchantments",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#item_enchantment_descriptors_round_trip_maps_and_reject_noncanonical_values",
+            "crates/bbb-protocol/src/packets/data_components.rs#encodes_item_enchantment_patches_with_delimited_maps",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_item_enchantment_components"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "observable_consumers": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/enchantment/ItemEnchantments.java#addToTooltip",
+            "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_enchantments_tooltip_lines",
+            "crates/bbb-item-model/src/item_runtime/tooltip.rs#synced_enchantment_definition_controls_description_style_and_level_suffix",
+            "crates/bbb-item-model/src/item_runtime/icon_model.rs#item_stack_matches_enchantments_predicate",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_component_condition_predicates"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "persistent_projection": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/enchantment/ItemEnchantments.java#CODEC",
+            "crates/bbb-native/src/input/component_patch.rs#encode_enchantments",
+            "crates/bbb-native/src/input/component_patch.rs#enchantment_components_share_map_codec_and_validate_persistent_values",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+            "crates/bbb-native/src/input/tests.rs#shift_f3_i_with_permission_copies_local_item_frame_save_nbt_to_clipboard",
+            "crates/bbb-protocol/src/packets/serverbound.rs#validate_creative_item_component_ranges",
+            "crates/bbb-world/src/client/dialog/body/component_value/enchantments/tests.rs#decodes_enchantment_maps_with_session_holder_ids"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#item_enchantment_descriptors_round_trip_maps_and_reject_noncanonical_values",
+            "crates/bbb-protocol/src/packets/data_components.rs#enchantment_maps_apply_last_duplicate_value_in_first_key_order",
+            "crates/bbb-protocol/src/packets/data_components.rs#enchantment_maps_reject_network_levels_outside_constructor_range",
+            "crates/bbb-protocol/src/packets/data_components.rs#encodes_item_enchantment_patches_with_delimited_maps",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_item_enchantment_components",
+            "crates/bbb-protocol/src/packets/tests.rs#set_creative_mode_slot_rejects_values_rejected_by_the_untrusted_stack_codec",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_component_condition_predicates"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "typed_decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#ENCHANTMENTS",
+            "vanilla:net/minecraft/world/item/enchantment/ItemEnchantments.java#public class ItemEnchantments",
+            "crates/bbb-protocol/src/packets/data_components.rs#pub struct ItemEnchantmentSummary",
+            "crates/bbb-protocol/src/packets/data_components.rs#decode_varint_map",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_enchantments",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_enchantments_component_summary_in_wire_order"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "resource_id": "minecraft:enchantments",
@@ -2534,34 +2575,75 @@
       "constant_name": "STORED_ENCHANTMENTS",
       "coverage": {
         "canonical_retention": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components.rs#pub stored_enchantments",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_stored_enchantments",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_stored_enchantments_component_summary_in_wire_order",
+            "crates/bbb-protocol/src/packets/data_components.rs#enchantment_maps_apply_last_duplicate_value_in_first_key_order"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "network_encode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/enchantment/ItemEnchantments.java#STREAM_CODEC",
+            "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#map",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_item_enchantments",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#item_enchantment_descriptors_round_trip_maps_and_reject_noncanonical_values",
+            "crates/bbb-protocol/src/packets/data_components.rs#encodes_item_enchantment_patches_with_delimited_maps",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_item_enchantment_components"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "observable_consumers": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/enchantment/ItemEnchantments.java#addToTooltip",
+            "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_enchantments_tooltip_lines",
+            "crates/bbb-item-model/src/item_runtime/tooltip.rs#synced_enchantment_definition_controls_description_style_and_level_suffix",
+            "crates/bbb-item-model/src/item_runtime/icon_model.rs#item_stack_matches_enchantments_predicate",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_component_condition_predicates"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "persistent_projection": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/enchantment/ItemEnchantments.java#CODEC",
+            "crates/bbb-native/src/input/component_patch.rs#encode_enchantments",
+            "crates/bbb-native/src/input/component_patch.rs#enchantment_components_share_map_codec_and_validate_persistent_values",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+            "crates/bbb-protocol/src/packets/serverbound.rs#validate_creative_item_component_ranges",
+            "crates/bbb-world/src/client/dialog/body/component_value/enchantments/tests.rs#decodes_stored_enchantments_and_context_free_empty_maps",
+            "crates/bbb-world/src/client/dialog/body/component_value/enchantments/tests.rs#rejects_malformed_enchantment_maps_holders_and_levels"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#item_enchantment_descriptors_round_trip_maps_and_reject_noncanonical_values",
+            "crates/bbb-protocol/src/packets/data_components.rs#enchantment_maps_apply_last_duplicate_value_in_first_key_order",
+            "crates/bbb-protocol/src/packets/data_components.rs#enchantment_maps_reject_network_levels_outside_constructor_range",
+            "crates/bbb-protocol/src/packets/data_components.rs#encodes_item_enchantment_patches_with_delimited_maps",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_item_enchantment_components",
+            "crates/bbb-protocol/src/packets/tests.rs#set_creative_mode_slot_rejects_values_rejected_by_the_untrusted_stack_codec",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_component_condition_predicates"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "typed_decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#STORED_ENCHANTMENTS",
+            "vanilla:net/minecraft/world/item/enchantment/ItemEnchantments.java#public class ItemEnchantments",
+            "crates/bbb-protocol/src/packets/data_components.rs#pub struct ItemEnchantmentSummary",
+            "crates/bbb-protocol/src/packets/data_components.rs#decode_varint_map",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_stored_enchantments",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_stored_enchantments_component_summary_in_wire_order"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "resource_id": "minecraft:stored_enchantments",

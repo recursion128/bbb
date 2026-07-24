@@ -6,7 +6,8 @@ use crate::{
         VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID,
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID, VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID, VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
         VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
         VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
         VANILLA_DATA_COMPONENT_LORE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
@@ -16,6 +17,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
         VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID,
+        VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID, VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
         VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID, VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID,
@@ -2129,6 +2131,48 @@ fn encodes_set_creative_mode_slot_minimum_attack_charge_component() {
 }
 
 #[test]
+fn encodes_set_creative_mode_slot_item_enchantment_components() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 2,
+                added_type_ids: vec![
+                    VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
+                    VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID,
+                ],
+                enchantments: vec![crate::packets::ItemEnchantmentSummary {
+                    holder_id: 37,
+                    level: 4,
+                }],
+                stored_enchantments: vec![crate::packets::ItemEnchantmentSummary {
+                    holder_id: 13,
+                    level: 5,
+                }],
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            2, 0, // patch counts
+            13, 3, // enchantments type and delimited value length
+            1, 37, 4, // one level-four enchantment
+            42, 3, // stored_enchantments type and delimited value length
+            1, 13, 5, // one stored level-five enchantment
+        ]
+    );
+}
+
+#[test]
 fn encodes_set_creative_mode_slot_writable_book_component() {
     let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
         slot_num: 36,
@@ -2308,6 +2352,23 @@ fn set_creative_mode_slot_rejects_values_rejected_by_the_untrusted_stack_codec()
         minimum_attack_charge_bits: Some(value.to_bits()),
         ..DataComponentPatchSummary::default()
     };
+    let enchantments_patch = |type_id, level| {
+        let mut patch = DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![type_id],
+            ..DataComponentPatchSummary::default()
+        };
+        let value = vec![crate::packets::ItemEnchantmentSummary {
+            holder_id: 0,
+            level,
+        }];
+        if type_id == VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID {
+            patch.enchantments = value;
+        } else {
+            patch.stored_enchantments = value;
+        }
+        patch
+    };
     let fireworks_patch = |value| DataComponentPatchSummary {
         added: 1,
         added_type_ids: vec![VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID],
@@ -2388,6 +2449,34 @@ fn set_creative_mode_slot_rejects_values_rejected_by_the_untrusted_stack_codec()
             "minimum_attack_charge must be in 0.0..=1.0",
         ),
         (
+            stack_with_patch(
+                1,
+                enchantments_patch(VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID, 0),
+            ),
+            "enchantments levels must be in 1..=255",
+        ),
+        (
+            stack_with_patch(
+                1,
+                enchantments_patch(VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID, -1),
+            ),
+            "enchantments levels must be in 1..=255",
+        ),
+        (
+            stack_with_patch(
+                1,
+                enchantments_patch(VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID, 256),
+            ),
+            "enchantments levels must be in 1..=255",
+        ),
+        (
+            stack_with_patch(
+                1,
+                enchantments_patch(VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID, 0),
+            ),
+            "stored_enchantments levels must be in 1..=255",
+        ),
+        (
             stack_with_patch(1, fireworks_patch(-1)),
             "fireworks flight_duration must be in 0..=255",
         ),
@@ -2422,22 +2511,25 @@ fn set_creative_mode_slot_rejects_values_rejected_by_the_untrusted_stack_codec()
 
 #[test]
 fn set_creative_mode_slot_accepts_untrusted_stack_codec_boundaries() {
-    for (flight_duration, duration_scale_bits, bounded_float) in
-        [(0, 0.0_f32.to_bits(), 0.0), (255, f32::MAX.to_bits(), 1.0)]
-    {
+    for (flight_duration, duration_scale_bits, bounded_float, enchantment_level) in [
+        (0, 0.0_f32.to_bits(), 0.0, 1),
+        (255, f32::MAX.to_bits(), 1.0, 255),
+    ] {
         encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
             slot_num: 36,
             item: ItemStackSummary {
                 item_id: Some(42),
                 count: 99,
                 component_patch: DataComponentPatchSummary {
-                    added: 7,
+                    added: 9,
                     added_type_ids: vec![
                         VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
                         VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
                         VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
                         VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID,
                         VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
+                        VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
+                        VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID,
                         VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
                         VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
                     ],
@@ -2450,6 +2542,14 @@ fn set_creative_mode_slot_accepts_untrusted_stack_codec_boundaries() {
                         speed_multiplier: bounded_float,
                     }),
                     minimum_attack_charge_bits: Some(bounded_float.to_bits()),
+                    enchantments: vec![crate::packets::ItemEnchantmentSummary {
+                        holder_id: 0,
+                        level: enchantment_level,
+                    }],
+                    stored_enchantments: vec![crate::packets::ItemEnchantmentSummary {
+                        holder_id: 0,
+                        level: enchantment_level,
+                    }],
                     fireworks_flight_duration: Some(flight_duration),
                     fireworks_explosions_count: Some(0),
                     potion_duration_scale_bits: Some(duration_scale_bits),

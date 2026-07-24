@@ -9,13 +9,15 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
     VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
     VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID,
-    VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
-    VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
-    VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID, VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
+    VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID, VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
+    VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
+    VANILLA_DATA_COMPONENT_LORE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
     VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
     VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID, VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
     VANILLA_DATA_COMPONENT_TYPES, VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
@@ -234,6 +236,8 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         }
         VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID => Some(encode_minimum_attack_charge),
         VANILLA_DATA_COMPONENT_LORE_TYPE_ID => Some(encode_lore),
+        VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID
+        | VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID => Some(encode_item_enchantments),
         VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID => Some(encode_attribute_modifiers),
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID => Some(encode_consumable),
         VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID => Some(encode_death_protection),
@@ -326,6 +330,57 @@ fn encode_minimum_attack_charge(
         ProtocolError::InvalidData("missing minimum_attack_charge component value".to_string())
     })?;
     out.write_f32(f32::from_bits(bits));
+    Ok(())
+}
+
+fn encode_item_enchantments(
+    type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let (entries, what) = match type_id {
+        VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID => {
+            (summary.enchantments.as_slice(), "enchantments")
+        }
+        VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID => (
+            summary.stored_enchantments.as_slice(),
+            "stored_enchantments",
+        ),
+        _ => unreachable!("item enchantments encoder registered for type id {type_id}"),
+    };
+    if entries.len() > MAX_DATA_COMPONENT_LIST_ITEMS {
+        return Err(ProtocolError::PacketTooLarge(
+            entries.len(),
+            MAX_DATA_COMPONENT_LIST_ITEMS,
+        ));
+    }
+
+    let mut encoded = Encoder::new();
+    encoded.write_var_i32(entries.len() as i32);
+    let mut holder_ids = BTreeSet::new();
+    for entry in entries {
+        if entry.holder_id < 0 {
+            return Err(ProtocolError::InvalidData(format!(
+                "{what} has negative holder id {}",
+                entry.holder_id
+            )));
+        }
+        if !holder_ids.insert(entry.holder_id) {
+            return Err(ProtocolError::InvalidData(format!(
+                "{what} has duplicate holder id {}",
+                entry.holder_id
+            )));
+        }
+        if !(0..=u8::MAX.into()).contains(&entry.level) {
+            return Err(ProtocolError::InvalidData(format!(
+                "{what} level {} is outside network range 0..=255",
+                entry.level
+            )));
+        }
+        encoded.write_var_i32(entry.holder_id);
+        encoded.write_var_i32(entry.level);
+    }
+    out.write_bytes(&encoded.into_inner());
     Ok(())
 }
 
@@ -2563,8 +2618,8 @@ mod tests {
                 .map(|descriptor| descriptor.type_id())
                 .collect::<Vec<_>>(),
             vec![
-                0, 1, 2, 3, 4, 5, 6, 7, 9, 11, 16, 24, 36, 37, 38, 39, 40, 51, 52, 53, 54, 55, 56,
-                58, 59, 60, 68, 69, 70,
+                0, 1, 2, 3, 4, 5, 6, 7, 9, 11, 13, 16, 24, 36, 37, 38, 39, 40, 42, 51, 52, 53, 54,
+                55, 56, 58, 59, 60, 68, 69, 70,
             ]
         );
     }
@@ -4676,6 +4731,102 @@ mod tests {
             .to_string()
             .contains("missing minimum_attack_charge component value"));
         assert_eq!(encoded.into_inner(), [0xaa]);
+    }
+
+    #[test]
+    fn item_enchantment_descriptors_round_trip_maps_and_reject_noncanonical_values() {
+        for type_id in [
+            VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
+            VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID,
+        ] {
+            let descriptor = vanilla_data_component_descriptor(type_id).unwrap();
+            let entries = vec![
+                ItemEnchantmentSummary {
+                    holder_id: 37,
+                    level: 4,
+                },
+                ItemEnchantmentSummary {
+                    holder_id: 300,
+                    level: 255,
+                },
+            ];
+            let mut summary = DataComponentPatchSummary::default();
+            if type_id == VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID {
+                summary.enchantments.clone_from(&entries);
+            } else {
+                summary.stored_enchantments.clone_from(&entries);
+            }
+
+            let mut encoded = Encoder::new();
+            descriptor.encode(&summary, &mut encoded).unwrap();
+            let encoded = encoded.into_inner();
+            assert_eq!(encoded, [2, 37, 4, 0xac, 2, 0xff, 1]);
+
+            let mut decoded = DataComponentPatchSummary::default();
+            let mut decoder = Decoder::new(&encoded);
+            descriptor.decode(&mut decoder, &mut decoded).unwrap();
+            assert!(decoder.is_empty());
+            if type_id == VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID {
+                assert_eq!(decoded.enchantments, entries);
+            } else {
+                assert_eq!(decoded.stored_enchantments, entries);
+            }
+
+            for invalid_entries in [
+                vec![ItemEnchantmentSummary {
+                    holder_id: -1,
+                    level: 1,
+                }],
+                vec![
+                    ItemEnchantmentSummary {
+                        holder_id: 1,
+                        level: 1,
+                    },
+                    ItemEnchantmentSummary {
+                        holder_id: 1,
+                        level: 2,
+                    },
+                ],
+                vec![ItemEnchantmentSummary {
+                    holder_id: 1,
+                    level: -1,
+                }],
+                vec![ItemEnchantmentSummary {
+                    holder_id: 1,
+                    level: 256,
+                }],
+            ] {
+                let mut invalid = DataComponentPatchSummary::default();
+                if type_id == VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID {
+                    invalid.enchantments = invalid_entries;
+                } else {
+                    invalid.stored_enchantments = invalid_entries;
+                }
+                let mut encoded = Encoder::new();
+                encoded.write_u8(0xaa);
+                assert!(descriptor.encode(&invalid, &mut encoded).is_err());
+                assert_eq!(encoded.into_inner(), [0xaa]);
+            }
+        }
+
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID).unwrap();
+        let oversized = DataComponentPatchSummary {
+            enchantments: (0..=MAX_DATA_COMPONENT_LIST_ITEMS)
+                .map(|holder_id| ItemEnchantmentSummary {
+                    holder_id: holder_id as i32,
+                    level: 1,
+                })
+                .collect(),
+            ..DataComponentPatchSummary::default()
+        };
+        assert!(matches!(
+            descriptor.encode(&oversized, &mut Encoder::new()),
+            Err(ProtocolError::PacketTooLarge(
+                _,
+                MAX_DATA_COMPONENT_LIST_ITEMS
+            ))
+        ));
     }
 
     #[test]
