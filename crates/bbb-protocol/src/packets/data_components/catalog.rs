@@ -5,7 +5,8 @@ use bbb_render_types::{vanilla_map_decoration_type, vanilla_map_decoration_type_
 
 use crate::block_entity_types::vanilla_block_entity_type;
 use crate::data_component_types::{
-    DataComponentTypeCatalogEntry, VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
+    DataComponentTypeCatalogEntry, VANILLA_DATA_COMPONENT_ADDITIONAL_TRADE_COST_TYPE_ID,
+    VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
     VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
     VANILLA_DATA_COMPONENT_AXOLOTL_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID,
     VANILLA_DATA_COMPONENT_BASE_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_BEES_TYPE_ID,
@@ -168,7 +169,7 @@ static WIRE_DECODE_HANDLERS: &[WireDecodeHandler] = &[
     decode_piercing_weapon_component,
     decode_kinetic_weapon_component,
     decode_swing_animation_component,
-    skip_var_i32,
+    decode_additional_trade_cost,
     decode_stored_enchantments,
     decode_dye,
     decode_dyed_color,
@@ -318,6 +319,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID => Some(encode_piercing_weapon),
         VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID => Some(encode_kinetic_weapon),
         VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID => Some(encode_swing_animation),
+        VANILLA_DATA_COMPONENT_ADDITIONAL_TRADE_COST_TYPE_ID => Some(encode_additional_trade_cost),
         VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID => Some(encode_writable_book_content),
         VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID => Some(encode_written_book_content),
         VANILLA_DATA_COMPONENT_TRIM_TYPE_ID => Some(encode_trim),
@@ -2861,6 +2863,7 @@ macro_rules! decode_var_i32_field {
 decode_var_i32_field!(decode_max_stack_size, max_stack_size);
 decode_var_i32_field!(decode_max_damage, max_damage);
 decode_var_i32_field!(decode_damage, damage);
+decode_var_i32_field!(decode_additional_trade_cost, additional_trade_cost);
 decode_var_i32_field!(decode_map_id, map_id);
 decode_var_i32_field!(decode_ominous_bottle_amplifier, ominous_bottle_amplifier);
 
@@ -2916,6 +2919,7 @@ macro_rules! encode_var_i32_field {
 encode_var_i32_field!(encode_max_stack_size, max_stack_size);
 encode_var_i32_field!(encode_max_damage, max_damage);
 encode_var_i32_field!(encode_damage, damage);
+encode_var_i32_field!(encode_additional_trade_cost, additional_trade_cost);
 
 fn encode_repair_cost(
     _type_id: i32,
@@ -4560,15 +4564,6 @@ fn decode_painting_variant(
     Ok(())
 }
 
-fn skip_var_i32(
-    _type_id: i32,
-    decoder: &mut Decoder<'_>,
-    _summary: &mut DataComponentPatchSummary,
-) -> Result<()> {
-    decoder.read_var_i32()?;
-    Ok(())
-}
-
 fn skip_unit(
     _type_id: i32,
     _decoder: &mut Decoder<'_>,
@@ -4670,10 +4665,10 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec![
                 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23,
-                24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 42, 43, 44, 45,
-                46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67,
-                68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89,
-                90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107,
+                24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44,
+                45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 61, 62, 63, 64, 65, 66,
+                67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88,
+                89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107,
                 108, 109,
             ]
         );
@@ -4789,6 +4784,45 @@ mod tests {
                 .is_err());
             assert_eq!(decoded.repair_cost, Some(7));
         }
+    }
+
+    #[test]
+    fn additional_trade_cost_descriptor_round_trips_signed_var_int_values() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_ADDITIONAL_TRADE_COST_TYPE_ID)
+                .unwrap();
+        for value in [i32::MIN, 0, i32::MAX] {
+            let summary = DataComponentPatchSummary {
+                additional_trade_cost: Some(value),
+                ..DataComponentPatchSummary::default()
+            };
+            let mut encoded = Encoder::new();
+            descriptor.encode(&summary, &mut encoded).unwrap();
+
+            let mut expected = Encoder::new();
+            expected.write_var_i32(value);
+            assert_eq!(encoded.clone().into_inner(), expected.into_inner());
+
+            let wire = encoded.into_inner();
+            let mut decoder = Decoder::new(&wire);
+            let mut decoded = DataComponentPatchSummary::default();
+            descriptor.decode(&mut decoder, &mut decoded).unwrap();
+            assert!(decoder.is_empty());
+            assert_eq!(decoded.additional_trade_cost, Some(value));
+        }
+    }
+
+    #[test]
+    fn additional_trade_cost_descriptor_rejects_a_missing_value_atomically() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_ADDITIONAL_TRADE_COST_TYPE_ID)
+                .unwrap();
+        let mut encoded = Encoder::new();
+        encoded.write_u8(0x7f);
+        assert!(descriptor
+            .encode(&DataComponentPatchSummary::default(), &mut encoded)
+            .is_err());
+        assert_eq!(encoded.into_inner(), [0x7f]);
     }
 
     #[test]

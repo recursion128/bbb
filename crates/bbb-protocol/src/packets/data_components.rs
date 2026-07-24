@@ -20,6 +20,7 @@ use crate::{
     },
     consume_effect_types::ConsumeEffectType,
     data_component_types::{
+        VANILLA_DATA_COMPONENT_ADDITIONAL_TRADE_COST_TYPE_ID,
         VANILLA_DATA_COMPONENT_AXOLOTL_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID, VANILLA_DATA_COMPONENT_BASE_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_BEES_TYPE_ID, VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
@@ -135,6 +136,8 @@ pub struct DataComponentPatchSummary {
     pub damage_type_id: Option<i32>,
     #[serde(default)]
     pub repair_cost: Option<i32>,
+    #[serde(default)]
+    pub additional_trade_cost: Option<i32>,
     #[serde(default)]
     pub intangible_projectile: bool,
     #[serde(default)]
@@ -1184,6 +1187,9 @@ fn validate_encodable_data_component_patch_summary(
             }
             VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID => {
                 expected.repair_cost = patch.repair_cost;
+            }
+            VANILLA_DATA_COMPONENT_ADDITIONAL_TRADE_COST_TYPE_ID => {
+                expected.additional_trade_cost = patch.additional_trade_cost;
             }
             VANILLA_DATA_COMPONENT_FOOD_TYPE_ID => {
                 expected.food_nutrition = patch.food_nutrition;

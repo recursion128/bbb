@@ -167,7 +167,7 @@ mod tests {
         payload.write_var_i32(7);
         payload.write_var_i32(1);
         write_item_cost(&mut payload, 42, 3);
-        write_item_stack(&mut payload, 99, 1);
+        write_item_stack_with_additional_trade_cost(&mut payload, 99, 1, -7);
         payload.write_bool(true);
         write_item_cost(&mut payload, 43, 2);
         payload.write_bool(true);
@@ -195,7 +195,14 @@ mod tests {
                     sell: ItemStackSummary {
                         item_id: Some(99),
                         count: 1,
-                        component_patch: DataComponentPatchSummary::default(),
+                        component_patch: DataComponentPatchSummary {
+                            added: 1,
+                            added_type_ids: vec![
+                                crate::data_component_types::VANILLA_DATA_COMPONENT_ADDITIONAL_TRADE_COST_TYPE_ID,
+                            ],
+                            additional_trade_cost: Some(-7),
+                            ..DataComponentPatchSummary::default()
+                        },
                     },
                     buy_b: Some(item_cost(43, 2)),
                     is_out_of_stock: true,
@@ -345,6 +352,22 @@ mod tests {
         out.write_var_i32(item_id);
         out.write_var_i32(0);
         out.write_var_i32(0);
+    }
+
+    fn write_item_stack_with_additional_trade_cost(
+        out: &mut Encoder,
+        item_id: i32,
+        count: i32,
+        additional_trade_cost: i32,
+    ) {
+        out.write_var_i32(count);
+        out.write_var_i32(item_id);
+        out.write_var_i32(1);
+        out.write_var_i32(0);
+        out.write_var_i32(
+            crate::data_component_types::VANILLA_DATA_COMPONENT_ADDITIONAL_TRADE_COST_TYPE_ID,
+        );
+        out.write_var_i32(additional_trade_cost);
     }
 
     fn item_cost(item_id: i32, count: i32) -> ItemCostSummary {

@@ -726,6 +726,67 @@
         "status": "complete"
       }
     },
+    "ADDITIONAL_TRADE_COST": {
+      "canonical_retention": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#ADDITIONAL_TRADE_COST",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub additional_trade_cost",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_additional_trade_cost",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#additional_trade_cost_descriptor_round_trips_signed_var_int_values",
+          "crates/bbb-protocol/src/packets/merchant.rs#decodes_merchant_offers_wire_order",
+          "crates/bbb-control/src/server/tests.rs#client_inventory_reads_merchant_offers_and_close_from_canonical_world_state"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#ADDITIONAL_TRADE_COST",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#StreamCodec<ByteBuf, Integer> VAR_INT",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_additional_trade_cost",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#additional_trade_cost_descriptor_round_trips_signed_var_int_values",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#additional_trade_cost_descriptor_rejects_a_missing_value_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_additional_trade_cost_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/trading/VillagerTrade.java#DataComponents.ADDITIONAL_TRADE_COST",
+          "vanilla:net/minecraft/world/level/storage/loot/functions/EnchantWithLevelsFunction.java#DataComponents.ADDITIONAL_TRADE_COST",
+          "vanilla:net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java#DataComponents.ADDITIONAL_TRADE_COST",
+          "crates/bbb-protocol/src/packets/merchant.rs#decodes_merchant_offers_wire_order",
+          "crates/bbb-world/src/client/inventory/merchant.rs#MerchantOfferState::from_packet",
+          "crates/bbb-control/src/server/tests.rs#client_inventory_reads_merchant_offers_and_close_from_canonical_world_state"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#additional_trade_cost_descriptor_round_trips_signed_var_int_values",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#additional_trade_cost_descriptor_rejects_a_missing_value_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_additional_trade_cost_component",
+          "crates/bbb-protocol/src/packets/merchant.rs#decodes_merchant_offers_wire_order",
+          "crates/bbb-control/src/server/tests.rs#client_inventory_reads_merchant_offers_and_close_from_canonical_world_state"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#ADDITIONAL_TRADE_COST",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#StreamCodec<ByteBuf, Integer> VAR_INT",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub additional_trade_cost",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_additional_trade_cost",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#additional_trade_cost_descriptor_round_trips_signed_var_int_values",
+          "crates/bbb-protocol/src/packets/merchant.rs#decodes_merchant_offers_wire_order"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "WRITTEN_BOOK_CONTENT": {
       "canonical_retention": {
         "evidence": [

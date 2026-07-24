@@ -2393,12 +2393,20 @@ fn client_inventory_reads_merchant_offers_and_close_from_canonical_world_state()
             title: "Merchant".to_string(),
             title_styled: Vec::new(),
         });
+        let mut sell_with_additional_cost = item_stack(99, 1);
+        sell_with_additional_cost.component_patch.added = 1;
+        sell_with_additional_cost.component_patch.added_type_ids = vec![
+            bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_ADDITIONAL_TRADE_COST_TYPE_ID,
+        ];
+        sell_with_additional_cost
+            .component_patch
+            .additional_trade_cost = Some(-7);
         assert!(store.apply_merchant_offers(MerchantOffers {
             container_id: 7,
             offers: vec![
                 MerchantOffer {
                     buy_a: item_cost(42, 3),
-                    sell: item_stack(99, 1),
+                    sell: sell_with_additional_cost,
                     buy_b: Some(item_cost(43, 4)),
                     is_out_of_stock: false,
                     uses: 1,
@@ -2450,6 +2458,10 @@ fn client_inventory_reads_merchant_offers_and_close_from_canonical_world_state()
     assert_eq!(offers["offers"][0]["buy_a"]["count"], 3);
     assert_eq!(offers["offers"][0]["sell"]["item_id"], 99);
     assert_eq!(offers["offers"][0]["sell"]["count"], 1);
+    assert_eq!(
+        offers["offers"][0]["sell"]["component_patch"]["additional_trade_cost"],
+        -7
+    );
     assert_eq!(offers["offers"][0]["buy_b"]["item_id"], 43);
     assert_eq!(offers["offers"][0]["buy_b"]["count"], 4);
     assert_eq!(offers["offers"][0]["is_out_of_stock"], false);
