@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
 use bbb_protocol::builtin_enum_component_values::{
-    VANILLA_DYE_COLOR_BLUE_ID, VANILLA_DYE_COLOR_LIGHT_BLUE_ID, VANILLA_DYE_COLOR_RED_ID,
-    VANILLA_DYE_COLOR_YELLOW_ID,
+    VANILLA_DYE_COLOR_BLUE_ID, VANILLA_DYE_COLOR_LIGHT_BLUE_ID, VANILLA_DYE_COLOR_PURPLE_ID,
+    VANILLA_DYE_COLOR_RED_ID, VANILLA_DYE_COLOR_YELLOW_ID,
 };
 use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID, VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
@@ -16,6 +16,7 @@ use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
     VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID,
     VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID, VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
+    VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_COLOR_TYPE_ID,
     VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID,
 };
 use bbb_protocol::mob_effect_types::{
@@ -251,6 +252,24 @@ fn decodes_all_string_enum_component_value_codecs() {
             })
         );
     }
+}
+
+#[test]
+fn tropical_fish_pattern_color_string_enum_projects_to_owned_patch_field() {
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_COLOR_TYPE_ID,
+        &DialogDataComponentValueState::StringEnum {
+            value_id: VANILLA_DYE_COLOR_PURPLE_ID,
+            serialized_name: "purple".to_string(),
+        },
+        &mut patch,
+    ));
+    assert_eq!(
+        patch.tropical_fish_pattern_color_id,
+        Some(VANILLA_DYE_COLOR_PURPLE_ID)
+    );
+    assert!(patch.builtin_enum_component_ids.is_empty());
 }
 
 #[test]
