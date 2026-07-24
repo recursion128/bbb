@@ -25,7 +25,7 @@ use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID, VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
     VANILLA_DATA_COMPONENT_TROPICAL_FISH_BASE_COLOR_TYPE_ID,
     VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_COLOR_TYPE_ID,
-    VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID,
+    VANILLA_DATA_COMPONENT_WOLF_COLLAR_TYPE_ID, VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID,
 };
 use bbb_protocol::mob_effect_types::{
     VANILLA_MOB_EFFECT_HASTE_ID, VANILLA_MOB_EFFECT_POISON_ID, VANILLA_MOB_EFFECT_SLOWNESS_ID,
@@ -260,6 +260,26 @@ fn decodes_all_string_enum_component_value_codecs() {
             })
         );
     }
+}
+
+#[test]
+fn wolf_collar_string_enum_projects_to_builtin_enum_patch_map() {
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_WOLF_COLLAR_TYPE_ID,
+        &DialogDataComponentValueState::StringEnum {
+            value_id: VANILLA_DYE_COLOR_RED_ID,
+            serialized_name: "red".to_string(),
+        },
+        &mut patch,
+    ));
+    assert_eq!(
+        patch.builtin_enum_component_ids,
+        BTreeMap::from([(
+            VANILLA_DATA_COMPONENT_WOLF_COLLAR_TYPE_ID,
+            VANILLA_DYE_COLOR_RED_ID,
+        )])
+    );
 }
 
 #[test]

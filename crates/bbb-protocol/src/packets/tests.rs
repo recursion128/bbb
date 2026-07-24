@@ -64,6 +64,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
         VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_WOLF_COLLAR_TYPE_ID,
         VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
@@ -3266,6 +3267,39 @@ fn encodes_set_creative_mode_slot_wolf_sound_variant_component() {
             1, 0, // patch counts
             83, 1, // wolf/sound_variant type and delimited value length
             6, // CUTE holder id in the vanilla fallback catalog
+        ]
+    );
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_wolf_collar_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_WOLF_COLLAR_TYPE_ID],
+                builtin_enum_component_ids: BTreeMap::from([(
+                    VANILLA_DATA_COMPONENT_WOLF_COLLAR_TYPE_ID,
+                    VANILLA_DYE_COLOR_RED_ID,
+                )]),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            1, 0, // patch counts
+            84, 1,  // wolf/collar type and delimited value length
+            14, // RED id
         ]
     );
 }

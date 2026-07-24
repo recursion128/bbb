@@ -59,6 +59,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID,
         VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
         VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_WOLF_COLLAR_TYPE_ID,
         VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID,
@@ -1374,6 +1375,13 @@ fn validate_encodable_data_component_patch_summary(
             }
             VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID => {
                 expected.wolf_sound_variant_id = patch.wolf_sound_variant_id;
+            }
+            VANILLA_DATA_COMPONENT_WOLF_COLLAR_TYPE_ID => {
+                if let Some(value_id) = patch.builtin_enum_component_ids.get(type_id) {
+                    expected
+                        .builtin_enum_component_ids
+                        .insert(*type_id, *value_id);
+                }
             }
             VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID => {
                 expected.pig_variant_id = patch.pig_variant_id;
