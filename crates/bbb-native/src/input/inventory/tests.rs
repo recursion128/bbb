@@ -1974,22 +1974,7 @@ fn shulker_box_hit_test_uses_vanilla_slots() {
 #[test]
 fn loom_hit_test_uses_vanilla_slots() {
     let size = PhysicalSize::new(1280, 720);
-    let mut world = WorldStore::new();
-    world.apply_open_screen(OpenScreen {
-        container_id: 7,
-        menu_type_id: VANILLA_MENU_TYPE_LOOM_ID,
-        title: "Loom".to_string(),
-        title_styled: Vec::new(),
-    });
-    let mut items = vec![ItemStackSummary::empty(); 40];
-    items[0] = item_stack(42, 1);
-    items[1] = item_stack(43, 1);
-    world.apply_container_set_content(ContainerSetContent {
-        container_id: 7,
-        state_id: 12,
-        items,
-        carried_item: ItemStackSummary::empty(),
-    });
+    let world = loom_world_with_banner_and_dye();
 
     assert_eq!(
         inventory_screen_click_target(&world, Some(PhysicalPosition::new(573.0, 311.0)), size),
