@@ -10,7 +10,8 @@ use crate::{
         VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
         VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID,
-        VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID, VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID, VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
+        VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
     },
     ids,
@@ -1714,6 +1715,37 @@ fn encodes_set_creative_mode_slot_weapon_interaction_family_components() {
             0, 0, // no sound or hit sound
             40, 2, // swing_animation type and delimited value length
             2, 13, // stab, duration
+        ]
+    );
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_trim_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_TRIM_TYPE_ID],
+                armor_trim_material_id: Some(0),
+                armor_trim_pattern_id: Some(17),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            1, 0, // patch counts
+            56, 2, // trim type and delimited value length
+            1, 18, // material holder 0 and pattern holder 17, both offset by one
         ]
     );
 }

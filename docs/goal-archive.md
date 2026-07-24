@@ -423,3 +423,8 @@
   framing、持久化 Codec/SNBT、STAB 输入、spear feedback 和第一/第三人称动画
   证据齐备，合同见
   `docs/archive/weapon-interaction-components-roundtrip-design.md`。
+- **2026-07-23（Armor trim component 六维闭环）**：`TRIM` 现精确重编码
+  dynamic registry/direct Holder、材质资源覆盖与 canonical Component NBT；
+  creative framing、持久化 Codec/SNBT、配方、谓词、tooltip 和 named/direct
+  armor sprite 证据齐备，合同见
+  `docs/archive/trim-component-roundtrip-design.md`。

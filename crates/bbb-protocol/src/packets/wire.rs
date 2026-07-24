@@ -90,7 +90,7 @@ fn is_valid_resource_namespace(namespace: &str) -> bool {
         })
 }
 
-fn is_valid_resource_path(path: &str) -> bool {
+pub(crate) fn is_valid_resource_path(path: &str) -> bool {
     path.chars().all(|ch| {
         ch == '_'
             || ch == '-'

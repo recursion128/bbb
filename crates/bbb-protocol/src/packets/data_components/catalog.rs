@@ -12,7 +12,8 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
     VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID, VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID, VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
-    VANILLA_DATA_COMPONENT_TYPES, VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_TRIM_TYPE_ID, VANILLA_DATA_COMPONENT_TYPES,
+    VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
     VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
 };
 use crate::nbt_summary::{encode_nbt_summary_bounded, MAX_NBT_DEPTH};
@@ -228,6 +229,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID => Some(encode_kinetic_weapon),
         VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID => Some(encode_swing_animation),
         VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID => Some(encode_written_book_content),
+        VANILLA_DATA_COMPONENT_TRIM_TYPE_ID => Some(encode_trim),
         VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID => Some(encode_entity_data),
         VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID => Some(encode_bucket_entity_data),
         VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID => Some(encode_block_entity_data),
@@ -833,6 +835,144 @@ fn encode_written_book_content(
     encoded.write_bool(book.resolved);
     out.write_bytes(&encoded.into_inner());
     Ok(())
+}
+
+fn encode_trim(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let mut encoded = Encoder::new();
+    encode_trim_material_holder(
+        &mut encoded,
+        summary.armor_trim_material_id,
+        summary.armor_trim_material_direct.as_deref(),
+    )?;
+    encode_trim_pattern_holder(
+        &mut encoded,
+        summary.armor_trim_pattern_id,
+        summary.armor_trim_pattern_direct.as_deref(),
+    )?;
+    out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
+fn encode_trim_material_holder(
+    out: &mut Encoder,
+    registry_id: Option<i32>,
+    direct: Option<&TrimMaterialSummary>,
+) -> Result<()> {
+    match (registry_id, direct) {
+        (Some(registry_id), None) if (0..i32::MAX).contains(&registry_id) => {
+            out.write_var_i32(registry_id + 1);
+            Ok(())
+        }
+        (None, Some(material)) => {
+            if material.override_armor_assets.len() > MAX_DATA_COMPONENT_LIST_ITEMS {
+                return Err(ProtocolError::PacketTooLarge(
+                    material.override_armor_assets.len(),
+                    MAX_DATA_COMPONENT_LIST_ITEMS,
+                ));
+            }
+            validate_trim_material_asset_suffix(&material.asset_name, "asset_name")?;
+            out.write_var_i32(0);
+            encode_java_string(out, &material.asset_name, MAX_STRING_CHARS)?;
+            out.write_var_i32(material.override_armor_assets.len() as i32);
+            for (equipment_asset, suffix) in &material.override_armor_assets {
+                validate_canonical_resource_location(
+                    equipment_asset,
+                    "trim material equipment asset",
+                )?;
+                validate_trim_material_asset_suffix(suffix, "override_armor_assets suffix")?;
+                encode_java_string(out, equipment_asset, MAX_STRING_CHARS)?;
+                encode_java_string(out, suffix, MAX_STRING_CHARS)?;
+            }
+            let description = encode_canonical_component_projection(
+                material.description_nbt.as_deref(),
+                &material.description,
+                material.description_styled.as_deref(),
+                "trim material description",
+            )?;
+            out.write_bytes(&description);
+            Ok(())
+        }
+        _ => Err(ProtocolError::InvalidData(
+            "trim material holder projections are not canonical".to_string(),
+        )),
+    }
+}
+
+fn encode_trim_pattern_holder(
+    out: &mut Encoder,
+    registry_id: Option<i32>,
+    direct: Option<&TrimPatternSummary>,
+) -> Result<()> {
+    match (registry_id, direct) {
+        (Some(registry_id), None) if (0..i32::MAX).contains(&registry_id) => {
+            out.write_var_i32(registry_id + 1);
+            Ok(())
+        }
+        (None, Some(pattern)) => {
+            validate_canonical_resource_location(&pattern.asset_id, "trim pattern asset id")?;
+            out.write_var_i32(0);
+            encode_java_string(out, &pattern.asset_id, MAX_STRING_CHARS)?;
+            let description = encode_canonical_component_projection(
+                pattern.description_nbt.as_deref(),
+                &pattern.description,
+                pattern.description_styled.as_deref(),
+                "trim pattern description",
+            )?;
+            out.write_bytes(&description);
+            out.write_bool(pattern.decal);
+            Ok(())
+        }
+        _ => Err(ProtocolError::InvalidData(
+            "trim pattern holder projections are not canonical".to_string(),
+        )),
+    }
+}
+
+fn validate_trim_material_asset_suffix(suffix: &str, field: &str) -> Result<()> {
+    if !is_valid_resource_path(suffix) {
+        return Err(ProtocolError::InvalidData(format!(
+            "trim material {field} `{suffix}` is not a valid resource path"
+        )));
+    }
+    Ok(())
+}
+
+fn validate_canonical_resource_location(resource_id: &str, what: &str) -> Result<()> {
+    if normalize_resource_location(resource_id.to_string())? != resource_id {
+        return Err(ProtocolError::InvalidData(format!(
+            "{what} has noncanonical resource location `{resource_id}`"
+        )));
+    }
+    Ok(())
+}
+
+fn encode_canonical_component_projection(
+    nbt: Option<&NbtSummaryValue>,
+    expected_text: &str,
+    expected_styled: Option<&[StyledTextRun]>,
+    what: &str,
+) -> Result<Vec<u8>> {
+    let nbt =
+        nbt.ok_or_else(|| ProtocolError::InvalidData(format!("{what} is missing component nbt")))?;
+    let expected_styled = expected_styled.ok_or_else(|| {
+        ProtocolError::InvalidData(format!("{what} is missing styled projection"))
+    })?;
+    let encoded = encode_nbt_summary_bounded(Some(nbt), i32::MAX as usize, MAX_NBT_DEPTH)?;
+    let (canonical_runs, canonical_nbt) =
+        decode_styled_component_summary_with_nbt_from_decoder(&mut Decoder::new(&encoded))?;
+    if styled_runs_summary_text(&canonical_runs) != expected_text
+        || canonical_runs != expected_styled
+        || canonical_nbt.as_ref() != Some(nbt)
+    {
+        return Err(ProtocolError::InvalidData(format!(
+            "{what} contains noncanonical component projections"
+        )));
+    }
+    Ok(encoded)
 }
 
 fn encode_filterable_java_string(
@@ -2049,7 +2189,7 @@ fn decode_provides_trim_material(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
+    use std::collections::{BTreeMap, HashSet};
 
     use crate::{
         block_entity_types::{
@@ -2093,7 +2233,7 @@ mod tests {
                 .filter(|descriptor| descriptor.can_encode())
                 .map(|descriptor| descriptor.type_id())
                 .collect::<Vec<_>>(),
-            vec![0, 1, 2, 3, 4, 16, 24, 36, 37, 38, 39, 40, 55, 58, 59, 60, 70,]
+            vec![0, 1, 2, 3, 4, 16, 24, 36, 37, 38, 39, 40, 55, 56, 58, 59, 60, 70,]
         );
     }
 
@@ -3216,6 +3356,332 @@ mod tests {
                     && max == MAX_DATA_COMPONENT_LIST_ITEMS
         ));
         assert_eq!(encoded.into_inner(), [0xaa]);
+    }
+
+    fn canonical_trim_description(nbt: &NbtSummaryValue) -> (String, Box<[StyledTextRun]>) {
+        let encoded =
+            encode_nbt_summary_bounded(Some(nbt), i32::MAX as usize, MAX_NBT_DEPTH).unwrap();
+        let (runs, canonical_nbt) =
+            decode_styled_component_summary_with_nbt_from_decoder(&mut Decoder::new(&encoded))
+                .unwrap();
+        assert_eq!(canonical_nbt.as_ref(), Some(nbt));
+        (styled_runs_summary_text(&runs), runs.into_boxed_slice())
+    }
+
+    fn direct_trim_patch() -> DataComponentPatchSummary {
+        let material_nbt = NbtSummaryValue::Compound(vec![
+            NbtSummaryEntry {
+                name: "text".to_string(),
+                value: NbtSummaryValue::String("Ruby".to_string()),
+            },
+            NbtSummaryEntry {
+                name: "color".to_string(),
+                value: NbtSummaryValue::String("red".to_string()),
+            },
+        ]);
+        let pattern_nbt = NbtSummaryValue::Compound(vec![
+            NbtSummaryEntry {
+                name: "text".to_string(),
+                value: NbtSummaryValue::String("Spiral".to_string()),
+            },
+            NbtSummaryEntry {
+                name: "italic".to_string(),
+                value: NbtSummaryValue::Byte(1),
+            },
+        ]);
+        let (material_description, material_styled) = canonical_trim_description(&material_nbt);
+        let (pattern_description, pattern_styled) = canonical_trim_description(&pattern_nbt);
+        DataComponentPatchSummary {
+            armor_trim_material_direct: Some(Box::new(TrimMaterialSummary {
+                asset_name: "ruby".to_string(),
+                override_armor_assets: BTreeMap::from([
+                    ("minecraft:netherite".to_string(), "ruby_darker".to_string()),
+                    ("example:opal".to_string(), "ruby_opal".to_string()),
+                ]),
+                description: material_description,
+                description_styled: Some(material_styled),
+                description_nbt: Some(Box::new(material_nbt)),
+            })),
+            armor_trim_pattern_direct: Some(Box::new(TrimPatternSummary {
+                asset_id: "example:spiral".to_string(),
+                description: pattern_description,
+                description_styled: Some(pattern_styled),
+                description_nbt: Some(Box::new(pattern_nbt)),
+                decal: true,
+            })),
+            ..DataComponentPatchSummary::default()
+        }
+    }
+
+    #[test]
+    fn trim_descriptor_round_trips_registry_and_direct_holders_in_wire_order() {
+        let direct = direct_trim_patch();
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_TRIM_TYPE_ID).unwrap();
+        let mut encoded = Encoder::new();
+        descriptor.encode(&direct, &mut encoded).unwrap();
+        let encoded = encoded.into_inner();
+
+        let material = direct.armor_trim_material_direct.as_deref().unwrap();
+        let pattern = direct.armor_trim_pattern_direct.as_deref().unwrap();
+        let mut expected = Encoder::new();
+        expected.write_var_i32(0);
+        expected.write_string("ruby");
+        expected.write_var_i32(2);
+        for (equipment_asset, suffix) in &material.override_armor_assets {
+            expected.write_string(equipment_asset);
+            expected.write_string(suffix);
+        }
+        expected.write_bytes(
+            &encode_nbt_summary_bounded(
+                material.description_nbt.as_deref(),
+                i32::MAX as usize,
+                MAX_NBT_DEPTH,
+            )
+            .unwrap(),
+        );
+        expected.write_var_i32(0);
+        expected.write_string("example:spiral");
+        expected.write_bytes(
+            &encode_nbt_summary_bounded(
+                pattern.description_nbt.as_deref(),
+                i32::MAX as usize,
+                MAX_NBT_DEPTH,
+            )
+            .unwrap(),
+        );
+        expected.write_bool(true);
+        assert_eq!(encoded, expected.into_inner());
+
+        let mut decoded = DataComponentPatchSummary::default();
+        let mut decoder = Decoder::new(&encoded);
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(
+            decoded.armor_trim_material_direct,
+            direct.armor_trim_material_direct
+        );
+        assert_eq!(
+            decoded.armor_trim_pattern_direct,
+            direct.armor_trim_pattern_direct
+        );
+
+        let referenced = DataComponentPatchSummary {
+            armor_trim_material_id: Some(0),
+            armor_trim_pattern_id: Some(i32::MAX - 1),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        descriptor.encode(&referenced, &mut encoded).unwrap();
+        let encoded = encoded.into_inner();
+        let mut expected = Encoder::new();
+        expected.write_var_i32(1);
+        expected.write_var_i32(i32::MAX);
+        assert_eq!(encoded, expected.into_inner());
+        let mut decoded = DataComponentPatchSummary::default();
+        descriptor
+            .decode(&mut Decoder::new(&encoded), &mut decoded)
+            .unwrap();
+        assert_eq!(decoded.armor_trim_material_id, Some(0));
+        assert_eq!(decoded.armor_trim_pattern_id, Some(i32::MAX - 1));
+
+        let mixed = DataComponentPatchSummary {
+            armor_trim_material_id: Some(41),
+            armor_trim_pattern_direct: direct.armor_trim_pattern_direct.clone(),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        descriptor.encode(&mixed, &mut encoded).unwrap();
+        let mut decoded = DataComponentPatchSummary::default();
+        descriptor
+            .decode(&mut Decoder::new(&encoded.into_inner()), &mut decoded)
+            .unwrap();
+        assert_eq!(decoded.armor_trim_material_id, Some(41));
+        assert_eq!(
+            decoded.armor_trim_pattern_direct,
+            mixed.armor_trim_pattern_direct
+        );
+    }
+
+    #[test]
+    fn trim_descriptor_rejects_noncanonical_holders_and_payloads_atomically() {
+        let valid = direct_trim_patch();
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_TRIM_TYPE_ID).unwrap();
+        let mut cases = Vec::new();
+
+        let mut missing_material = valid.clone();
+        missing_material.armor_trim_material_direct = None;
+        cases.push((missing_material, "trim material holder projections"));
+        let mut mixed_material = valid.clone();
+        mixed_material.armor_trim_material_id = Some(0);
+        cases.push((mixed_material, "trim material holder projections"));
+        for registry_id in [-1, i32::MAX] {
+            let mut invalid = valid.clone();
+            invalid.armor_trim_material_direct = None;
+            invalid.armor_trim_material_id = Some(registry_id);
+            cases.push((invalid, "trim material holder projections"));
+        }
+        let mut invalid_asset_name = valid.clone();
+        invalid_asset_name
+            .armor_trim_material_direct
+            .as_mut()
+            .unwrap()
+            .asset_name = "Ruby".to_string();
+        cases.push((invalid_asset_name, "not a valid resource path"));
+        let mut invalid_equipment_asset = valid.clone();
+        invalid_equipment_asset
+            .armor_trim_material_direct
+            .as_mut()
+            .unwrap()
+            .override_armor_assets =
+            BTreeMap::from([("Invalid Asset".to_string(), "ruby".to_string())]);
+        cases.push((invalid_equipment_asset, "invalid resource location"));
+        let mut noncanonical_equipment_asset = valid.clone();
+        noncanonical_equipment_asset
+            .armor_trim_material_direct
+            .as_mut()
+            .unwrap()
+            .override_armor_assets =
+            BTreeMap::from([("netherite".to_string(), "ruby".to_string())]);
+        cases.push((
+            noncanonical_equipment_asset,
+            "noncanonical resource location",
+        ));
+        let mut invalid_override_suffix = valid.clone();
+        invalid_override_suffix
+            .armor_trim_material_direct
+            .as_mut()
+            .unwrap()
+            .override_armor_assets =
+            BTreeMap::from([("minecraft:netherite".to_string(), "Ruby".to_string())]);
+        cases.push((invalid_override_suffix, "not a valid resource path"));
+        let mut missing_material_nbt = valid.clone();
+        missing_material_nbt
+            .armor_trim_material_direct
+            .as_mut()
+            .unwrap()
+            .description_nbt = None;
+        cases.push((missing_material_nbt, "missing component nbt"));
+        let mut missing_material_styled = valid.clone();
+        missing_material_styled
+            .armor_trim_material_direct
+            .as_mut()
+            .unwrap()
+            .description_styled = None;
+        cases.push((missing_material_styled, "missing styled projection"));
+        let mut stale_material_text = valid.clone();
+        stale_material_text
+            .armor_trim_material_direct
+            .as_mut()
+            .unwrap()
+            .description = "Stale".to_string();
+        cases.push((stale_material_text, "noncanonical component projections"));
+        let mut malformed_material_nbt = valid.clone();
+        malformed_material_nbt
+            .armor_trim_material_direct
+            .as_mut()
+            .unwrap()
+            .description_nbt = Some(Box::new(NbtSummaryValue::Int(1)));
+        cases.push((malformed_material_nbt, "is not a component"));
+        let mut invalid_pattern_asset = valid.clone();
+        invalid_pattern_asset
+            .armor_trim_pattern_direct
+            .as_mut()
+            .unwrap()
+            .asset_id = "Invalid Pattern".to_string();
+        cases.push((invalid_pattern_asset, "invalid resource location"));
+        let mut noncanonical_pattern_asset = valid.clone();
+        noncanonical_pattern_asset
+            .armor_trim_pattern_direct
+            .as_mut()
+            .unwrap()
+            .asset_id = "spiral".to_string();
+        cases.push((noncanonical_pattern_asset, "noncanonical resource location"));
+        let mut mixed_pattern = valid.clone();
+        mixed_pattern.armor_trim_pattern_id = Some(0);
+        cases.push((mixed_pattern, "trim pattern holder projections"));
+        for registry_id in [-1, i32::MAX] {
+            let mut invalid = valid.clone();
+            invalid.armor_trim_pattern_direct = None;
+            invalid.armor_trim_pattern_id = Some(registry_id);
+            cases.push((invalid, "trim pattern holder projections"));
+        }
+        let mut stale_pattern_styled = valid.clone();
+        stale_pattern_styled
+            .armor_trim_pattern_direct
+            .as_mut()
+            .unwrap()
+            .description_styled
+            .as_mut()
+            .unwrap()[0]
+            .text = "Stale".to_string();
+        cases.push((stale_pattern_styled, "noncanonical component projections"));
+
+        for (summary, expected_error) in cases {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            let error = descriptor.encode(&summary, &mut encoded).unwrap_err();
+            assert!(
+                error.to_string().contains(expected_error),
+                "{error} did not contain {expected_error:?}"
+            );
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
+
+        let mut oversized = valid;
+        oversized
+            .armor_trim_material_direct
+            .as_mut()
+            .unwrap()
+            .override_armor_assets = (0..=MAX_DATA_COMPONENT_LIST_ITEMS)
+            .map(|index| (format!("example:asset_{index}"), "ruby".to_string()))
+            .collect();
+        let mut encoded = Encoder::new();
+        encoded.write_u8(0xaa);
+        assert!(matches!(
+            descriptor.encode(&oversized, &mut encoded),
+            Err(ProtocolError::PacketTooLarge(actual, max))
+                if actual == MAX_DATA_COMPONENT_LIST_ITEMS + 1
+                    && max == MAX_DATA_COMPONENT_LIST_ITEMS
+        ));
+        assert_eq!(encoded.into_inner(), [0xaa]);
+    }
+
+    #[test]
+    fn trim_descriptor_rejects_invalid_material_resource_paths_on_decode() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_TRIM_TYPE_ID).unwrap();
+        for (asset_name, suffix, expected_error) in [
+            ("Ruby", "ruby", "asset_name"),
+            ("ruby", "Ruby", "override_armor_assets suffix"),
+        ] {
+            let mut wire = Encoder::new();
+            wire.write_var_i32(0);
+            wire.write_string(asset_name);
+            wire.write_var_i32(1);
+            wire.write_string("minecraft:netherite");
+            wire.write_string(suffix);
+            wire.write_bytes(
+                &encode_nbt_summary_bounded(
+                    Some(&NbtSummaryValue::String("Ruby".to_string())),
+                    i32::MAX as usize,
+                    MAX_NBT_DEPTH,
+                )
+                .unwrap(),
+            );
+            wire.write_var_i32(1);
+            let error = descriptor
+                .decode(
+                    &mut Decoder::new(&wire.into_inner()),
+                    &mut DataComponentPatchSummary::default(),
+                )
+                .unwrap_err();
+            assert!(
+                error.to_string().contains(expected_error),
+                "{error} did not contain {expected_error:?}"
+            );
+        }
     }
 
     #[test]

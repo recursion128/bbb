@@ -796,6 +796,82 @@
         "status": "complete"
       }
     },
+    "TRIM": {
+      "canonical_retention": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#pub armor_trim_material_id",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub armor_trim_material_direct",
+          "crates/bbb-protocol/src/packets/data_components.rs#decode_armor_trim",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_inline_trim_pattern_payload",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_inline_trim_material_payload",
+          "crates/bbb-world/src/client/dialog/body/component_value/trim/tests.rs#decodes_mixed_named_and_direct_armor_trim_holders"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/equipment/trim/ArmorTrim.java#public static final StreamCodec<RegistryFriendlyByteBuf, ArmorTrim> STREAM_CODEC",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, Holder<T>> holder",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_trim",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#trim_descriptor_round_trips_registry_and_direct_holders_in_wire_order",
+          "crates/bbb-protocol/src/packets/data_components.rs#encodes_trim_patch_with_an_independent_direct_holder_delimiter",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_trim_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/equipment/trim/ArmorTrim.java#layerAssetId",
+          "vanilla:net/minecraft/world/item/equipment/trim/ArmorTrim.java#addToTooltip",
+          "crates/bbb-world/src/registries/armor_trims.rs#armor_trim_sprite",
+          "crates/bbb-world/src/entities/tests/visibility_equipment_and_mount_projection.rs#entity_model_sources_project_named_and_direct_armor_trim_sprites",
+          "crates/bbb-world/src/recipes/slot_display/tests.rs#smithing_trim_uses_reordered_dynamic_holders_and_stable_sampling",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_component_condition_predicates",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/equipment/trim/ArmorTrim.java#public static final Codec<ArmorTrim> CODEC",
+          "crates/bbb-native/src/input/component_patch.rs#encode_armor_trim",
+          "crates/bbb-native/src/input/component_patch.rs#armor_trim_encoder_supports_named_direct_and_mixed_holders",
+          "crates/bbb-native/src/input/component_patch.rs#trim_encoders_use_synchronized_holder_order_when_available",
+          "crates/bbb-world/src/client/dialog/body/component_value/trim/tests.rs#decodes_context_free_direct_armor_trim_and_pattern_defaults"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#trim_descriptor_round_trips_registry_and_direct_holders_in_wire_order",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#trim_descriptor_rejects_noncanonical_holders_and_payloads_atomically",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#trim_descriptor_rejects_invalid_material_resource_paths_on_decode",
+          "crates/bbb-protocol/src/packets/data_components.rs#encodes_trim_patch_with_an_independent_direct_holder_delimiter",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_trim_component",
+          "crates/bbb-world/src/entities/tests/visibility_equipment_and_mount_projection.rs#entity_model_sources_project_synchronized_custom_armor_trim_payloads",
+          "crates/bbb-native/src/entity_scene/tests.rs#armor_trim_crosses_native_boundary_only_after_texture_is_ready"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#TRIM",
+          "vanilla:net/minecraft/world/item/equipment/trim/TrimMaterial.java#DIRECT_STREAM_CODEC",
+          "vanilla:net/minecraft/world/item/equipment/trim/TrimPattern.java#DIRECT_STREAM_CODEC",
+          "vanilla:net/minecraft/world/item/equipment/trim/MaterialAssetGroup.java#STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components.rs#decode_armor_trim",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_inline_trim_pattern_payload",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_inline_trim_material_payload"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "PROFILE": {
       "canonical_retention": {
         "evidence": [

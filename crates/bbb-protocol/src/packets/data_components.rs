@@ -3,7 +3,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use serde::{Deserialize, Serialize};
 
 use super::{
-    chunks, client_state, entities, inventory, normalize_resource_location, read_resource_location,
+    chunks, client_state, entities, inventory, is_valid_resource_path, normalize_resource_location,
+    read_resource_location,
 };
 use crate::{
     attribute_modifier_types::{
@@ -1060,6 +1061,12 @@ fn validate_encodable_data_component_patch_summary(
                 expected.written_book_page_filters_nbt =
                     patch.written_book_page_filters_nbt.clone();
             }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_TRIM_TYPE_ID => {
+                expected.armor_trim_material_id = patch.armor_trim_material_id;
+                expected.armor_trim_material_direct = patch.armor_trim_material_direct.clone();
+                expected.armor_trim_pattern_id = patch.armor_trim_pattern_id;
+                expected.armor_trim_pattern_direct = patch.armor_trim_pattern_direct.clone();
+            }
             VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID => {
                 expected.entity_data_entity_type_id = patch.entity_data_entity_type_id;
                 expected.entity_data_tag = patch.entity_data_tag.clone();
@@ -2016,15 +2023,25 @@ fn decode_direct_trim_material_summary(decoder: &mut Decoder<'_>) -> Result<Trim
 fn decode_material_asset_group_summary(
     decoder: &mut Decoder<'_>,
 ) -> Result<(String, BTreeMap<String, String>)> {
-    let asset_name = decoder.read_string(MAX_STRING_CHARS)?;
+    let asset_name = decode_trim_material_asset_suffix(decoder, "asset_name")?;
     let overrides = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
     let mut override_armor_assets = BTreeMap::new();
     for _ in 0..overrides {
         let equipment_asset = read_resource_location(decoder)?;
-        let suffix = decoder.read_string(MAX_STRING_CHARS)?;
+        let suffix = decode_trim_material_asset_suffix(decoder, "override_armor_assets suffix")?;
         override_armor_assets.insert(equipment_asset, suffix);
     }
     Ok((asset_name, override_armor_assets))
+}
+
+fn decode_trim_material_asset_suffix(decoder: &mut Decoder<'_>, field: &str) -> Result<String> {
+    let suffix = decoder.read_string(MAX_STRING_CHARS)?;
+    if !is_valid_resource_path(&suffix) {
+        return Err(ProtocolError::InvalidData(format!(
+            "trim material {field} `{suffix}` is not a valid resource path"
+        )));
+    }
+    Ok(suffix)
 }
 
 pub(crate) struct TrimPatternHolderSummary {
@@ -3225,6 +3242,67 @@ mod tests {
         assert_eq!(decoded.piercing_weapon, patch.piercing_weapon);
         assert_eq!(decoded.kinetic_weapon, patch.kinetic_weapon);
         assert_eq!(decoded.swing_animation, patch.swing_animation);
+    }
+
+    #[test]
+    fn encodes_trim_patch_with_an_independent_direct_holder_delimiter() {
+        let description_nbt = NbtSummaryValue::String("Spiral".to_string());
+        let description_wire = crate::nbt_summary::encode_nbt_summary_bounded(
+            Some(&description_nbt),
+            i32::MAX as usize,
+            crate::nbt_summary::MAX_NBT_DEPTH,
+        )
+        .unwrap();
+        let (description_styled, canonical_nbt) =
+            decode_styled_component_summary_with_nbt_from_decoder(&mut Decoder::new(
+                &description_wire,
+            ))
+            .unwrap();
+        assert_eq!(canonical_nbt.as_ref(), Some(&description_nbt));
+        let patch = DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![crate::data_component_types::VANILLA_DATA_COMPONENT_TRIM_TYPE_ID],
+            removed_type_ids: vec![VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID],
+            armor_trim_material_id: Some(41),
+            armor_trim_pattern_direct: Some(Box::new(TrimPatternSummary {
+                asset_id: "example:spiral".to_string(),
+                description: "Spiral".to_string(),
+                description_styled: Some(description_styled.into_boxed_slice()),
+                description_nbt: Some(Box::new(description_nbt)),
+                decal: true,
+            })),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        encode_delimited_data_component_patch_summary(&mut encoded, &patch).unwrap();
+        let encoded = encoded.into_inner();
+
+        let mut decoder = Decoder::new(&encoded);
+        assert_eq!(decoder.read_len().unwrap(), 1);
+        assert_eq!(decoder.read_len().unwrap(), 1);
+        let type_id = decoder.read_var_i32().unwrap();
+        assert_eq!(
+            type_id,
+            crate::data_component_types::VANILLA_DATA_COMPONENT_TRIM_TYPE_ID
+        );
+        let value_len = decoder.read_len().unwrap();
+        let mut value_decoder = Decoder::new(decoder.read_exact(value_len, "trim value").unwrap());
+        let mut decoded = DataComponentPatchSummary::default();
+        data_component_descriptor_or_error(type_id)
+            .unwrap()
+            .decode(&mut value_decoder, &mut decoded)
+            .unwrap();
+        assert!(value_decoder.is_empty());
+        assert_eq!(
+            decoder.read_var_i32().unwrap(),
+            VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID
+        );
+        assert!(decoder.is_empty());
+        assert_eq!(decoded.armor_trim_material_id, Some(41));
+        assert_eq!(
+            decoded.armor_trim_pattern_direct,
+            patch.armor_trim_pattern_direct
+        );
     }
 
     #[test]
