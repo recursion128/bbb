@@ -329,7 +329,8 @@ pub(super) fn start_use_item(
 
         let target_prediction = match camera_target {
             Some(CrosshairTarget::Entity(hit)) => {
-                let prediction = world.predict_local_entity_interaction(hit.entity_id, hand);
+                let prediction =
+                    world.predict_local_entity_interaction(hit.entity_id, hand, input.sneak);
                 queue_interact_entity_command(
                     counters,
                     net_commands,
@@ -2995,7 +2996,7 @@ mod tests {
 
     #[test]
     fn right_mouse_press_on_entity_queues_interact_with_relative_hit_location() {
-        let (tx, mut rx) = mpsc::channel(1);
+        let (tx, mut rx) = mpsc::channel(2);
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
         input.sneak = true;
@@ -3018,13 +3019,29 @@ mod tests {
             input.use_item_repeat_delay_ticks,
             USE_ITEM_REPEAT_DELAY_TICKS
         );
-        assert_eq!(counters.interact_entity_commands_queued, 1);
+        assert_eq!(counters.interact_entity_commands_queued, 2);
         assert_eq!(
             rx.try_recv().unwrap(),
             NetCommand::InteractEntity(InteractEntityCommand {
                 packet: InteractEntity {
                     entity_id: 123,
                     hand: InteractionHand::MainHand,
+                    location: ProtocolVec3d {
+                        x: 0.0,
+                        y: 0.6200000047683716,
+                        z: -0.49000000953674316,
+                    },
+                    using_secondary_action: true,
+                },
+                selected_hotbar_slot: 4,
+            })
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::InteractEntity(InteractEntityCommand {
+                packet: InteractEntity {
+                    entity_id: 123,
+                    hand: InteractionHand::OffHand,
                     location: ProtocolVec3d {
                         x: 0.0,
                         y: 0.6200000047683716,
@@ -3063,12 +3080,16 @@ mod tests {
         assert_eq!(interact.packet.entity_id, 123);
         assert_eq!(interact.packet.hand, InteractionHand::MainHand);
         assert_eq!(interact.selected_hotbar_slot, 0);
-        assert!(rx.try_recv().is_err());
+        assert_eq!(counters.swing_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
     }
 
     #[test]
-    fn right_mouse_press_on_specialized_entity_starts_with_main_hand() {
-        let (tx, mut rx) = mpsc::channel(1);
+    fn right_mouse_press_on_minecart_success_swings_main_and_stops() {
+        let (tx, mut rx) = mpsc::channel(2);
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
         let mut world = world_with_crosshair_entity(123);
@@ -3103,6 +3124,11 @@ mod tests {
                 },
                 selected_hotbar_slot: 0,
             })
+        );
+        assert_eq!(counters.swing_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
         );
     }
 
