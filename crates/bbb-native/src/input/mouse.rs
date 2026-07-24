@@ -3164,6 +3164,56 @@ mod tests {
     }
 
     #[test]
+    fn right_mouse_press_on_empty_item_frame_uses_populated_offhand() {
+        let (tx, mut rx) = mpsc::channel(3);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_entity_type(123, VANILLA_ENTITY_TYPE_ITEM_FRAME_ID);
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+            item: item_stack(99, 1),
+        });
+        let mut counters = NetCounters::default();
+        let player_pose = world.local_player_pose();
+
+        assert!(start_use_item(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            Some(CrosshairTarget::Entity(CrosshairEntityHit {
+                entity_id: 123,
+                location: ProtocolVec3d {
+                    x: 0.0,
+                    y: 1.62,
+                    z: 3.0,
+                },
+                relative_location: ProtocolVec3d {
+                    x: 0.0,
+                    y: 0.12,
+                    z: 0.0,
+                },
+            })),
+            player_pose,
+        ));
+
+        assert_eq!(counters.interact_entity_commands_queued, 2);
+        for expected_hand in [InteractionHand::MainHand, InteractionHand::OffHand] {
+            let NetCommand::InteractEntity(command) = rx.try_recv().unwrap() else {
+                panic!("expected item-frame interaction");
+            };
+            assert_eq!(command.packet.entity_id, 123);
+            assert_eq!(command.packet.hand, expected_hand);
+        }
+        assert_eq!(counters.swing_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::OffHand)
+        );
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
     fn right_mouse_press_on_default_mob_pass_tries_both_hands_in_order() {
         let (tx, mut rx) = mpsc::channel(2);
         let commands = Some(tx);

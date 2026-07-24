@@ -5121,6 +5121,15 @@ impl EntityStore {
             .cloned()
     }
 
+    pub(crate) fn item_frame_has_item(&self, id: i32) -> Option<bool> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        let accessors =
+            vanilla_entity_metadata_item_frame_accessors_for_entity_type(identity.entity_type_id)?;
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        Some(item_frame_item(accessors, &metadata.data_values).is_some())
+    }
+
     pub(crate) fn raw_item_stack_for_entity(&self, id: i32) -> Option<ItemStackSummary> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
