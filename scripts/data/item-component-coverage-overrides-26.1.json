@@ -4198,6 +4198,75 @@
         "status": "complete"
       }
     },
+    "OMINOUS_BOTTLE_AMPLIFIER": {
+      "canonical_retention": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#OMINOUS_BOTTLE_AMPLIFIER",
+          "vanilla:net/minecraft/world/item/component/OminousBottleAmplifier.java#public static final StreamCodec<RegistryFriendlyByteBuf, OminousBottleAmplifier> STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub ominous_bottle_amplifier",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_ominous_bottle_amplifier",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#OMINOUS_BOTTLE_AMPLIFIER",
+          "vanilla:net/minecraft/world/item/component/OminousBottleAmplifier.java#public static final StreamCodec<RegistryFriendlyByteBuf, OminousBottleAmplifier> STREAM_CODEC",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#StreamCodec<ByteBuf, Integer> VAR_INT",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_ominous_bottle_amplifier",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#ominous_bottle_amplifier_descriptor_round_trips_persistent_range_and_rejects_invalid_values_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_ominous_bottle_amplifier_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/component/OminousBottleAmplifier.java#public void addToTooltip",
+          "vanilla:net/minecraft/world/item/ItemStack.java#DataComponents.OMINOUS_BOTTLE_AMPLIFIER",
+          "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_ominous_bottle_tooltip_lines",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/component/OminousBottleAmplifier.java#public static final Codec<OminousBottleAmplifier> CODEC",
+          "vanilla:net/minecraft/util/ExtraCodecs.java#intRange",
+          "crates/bbb-native/src/input/component_patch.rs#encode_ominous_bottle_amplifier",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_omits_components_with_invalid_persistent_integer_ranges"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#ominous_bottle_amplifier_descriptor_round_trips_persistent_range_and_rejects_invalid_values_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_ominous_bottle_amplifier_component",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_omits_components_with_invalid_persistent_integer_ranges",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#OMINOUS_BOTTLE_AMPLIFIER",
+          "vanilla:net/minecraft/world/item/component/OminousBottleAmplifier.java#public static final StreamCodec<RegistryFriendlyByteBuf, OminousBottleAmplifier> STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub ominous_bottle_amplifier",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_ominous_bottle_amplifier",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "PAINTING_VARIANT": {
       "canonical_retention": {
         "evidence": [
