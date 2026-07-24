@@ -3,7 +3,8 @@ use std::sync::OnceLock;
 
 use crate::block_entity_types::vanilla_block_entity_type;
 use crate::data_component_types::{
-    DataComponentTypeCatalogEntry, VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
+    DataComponentTypeCatalogEntry, VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
     VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
     VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
     VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
@@ -253,6 +254,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID => Some(encode_consumable),
         VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID => Some(encode_use_remainder),
         VANILLA_DATA_COMPONENT_TOOL_TYPE_ID => Some(encode_tool),
+        VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID => Some(encode_attack_range),
         VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID => Some(encode_death_protection),
         VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID => Some(encode_blocks_attacks),
         VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID => Some(encode_piercing_weapon),
@@ -550,6 +552,40 @@ fn encode_tool(
     encoded.write_f32(f32::from_bits(tool.default_mining_speed_bits));
     encoded.write_var_i32(tool.damage_per_block);
     encoded.write_bool(tool.can_destroy_blocks_in_creative);
+    out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
+fn encode_attack_range(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let range = summary.attack_range.ok_or_else(|| {
+        ProtocolError::InvalidData("missing attack_range component value".to_string())
+    })?;
+    for (field, value, max) in [
+        ("min_reach", range.min_reach, 64.0),
+        ("max_reach", range.max_reach, 64.0),
+        ("min_creative_reach", range.min_creative_reach, 64.0),
+        ("max_creative_reach", range.max_creative_reach, 64.0),
+        ("hitbox_margin", range.hitbox_margin, 1.0),
+        ("mob_factor", range.mob_factor, 2.0),
+    ] {
+        if !value.is_finite() || value.total_cmp(&0.0).is_lt() || value.total_cmp(&max).is_gt() {
+            return Err(ProtocolError::InvalidData(format!(
+                "attack_range {field} {value} is outside persistent range 0..={max}"
+            )));
+        }
+    }
+
+    let mut encoded = Encoder::new();
+    encoded.write_f32(range.min_reach);
+    encoded.write_f32(range.max_reach);
+    encoded.write_f32(range.min_creative_reach);
+    encoded.write_f32(range.max_creative_reach);
+    encoded.write_f32(range.hitbox_margin);
+    encoded.write_f32(range.mob_factor);
     out.write_bytes(&encoded.into_inner());
     Ok(())
 }
@@ -3090,8 +3126,8 @@ mod tests {
                 .map(|descriptor| descriptor.type_id())
                 .collect::<Vec<_>>(),
             vec![
-                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 13, 14, 15, 16, 17, 18, 24, 25, 28, 36, 37, 38,
-                39, 40, 42, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 68, 69, 70, 75,
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 13, 14, 15, 16, 17, 18, 24, 25, 28, 30, 36, 37,
+                38, 39, 40, 42, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 68, 69, 70, 75,
             ]
         );
     }
@@ -3450,6 +3486,114 @@ mod tests {
                         block_tag: Some("minecraft:mineable/pickaxe".to_string()),
                         ..valid.rules[0].clone()
                     }],
+                    ..valid
+                }),
+                ..DataComponentPatchSummary::default()
+            },
+        ];
+        for summary in cases {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0x7f);
+            assert!(descriptor.encode(&summary, &mut encoded).is_err());
+            assert_eq!(encoded.into_inner(), [0x7f]);
+        }
+    }
+
+    #[test]
+    fn attack_range_descriptor_round_trips_six_raw_floats_in_wire_order() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID).unwrap();
+        let range = AttackRangeSummary {
+            min_reach: 0.0,
+            max_reach: 64.0,
+            min_creative_reach: f32::from_bits(0x3f80_0001),
+            max_creative_reach: 6.5,
+            hitbox_margin: 0.125,
+            mob_factor: 2.0,
+        };
+        let summary = DataComponentPatchSummary {
+            attack_range: Some(range),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        descriptor.encode(&summary, &mut encoded).unwrap();
+
+        let mut expected = Encoder::new();
+        expected.write_f32(range.min_reach);
+        expected.write_f32(range.max_reach);
+        expected.write_f32(range.min_creative_reach);
+        expected.write_f32(range.max_creative_reach);
+        expected.write_f32(range.hitbox_margin);
+        expected.write_f32(range.mob_factor);
+        assert_eq!(encoded.clone().into_inner(), expected.into_inner());
+
+        let wire = encoded.into_inner();
+        let mut decoded = DataComponentPatchSummary::default();
+        let mut decoder = Decoder::new(&wire);
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded.attack_range, Some(range));
+    }
+
+    #[test]
+    fn attack_range_descriptor_rejects_persistent_ranges_atomically() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID).unwrap();
+        let valid = AttackRangeSummary {
+            min_reach: 0.0,
+            max_reach: 3.0,
+            min_creative_reach: 0.0,
+            max_creative_reach: 5.0,
+            hitbox_margin: 0.3,
+            mob_factor: 1.0,
+        };
+        let cases = [
+            DataComponentPatchSummary::default(),
+            DataComponentPatchSummary {
+                attack_range: Some(AttackRangeSummary {
+                    min_reach: -0.0,
+                    ..valid
+                }),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                attack_range: Some(AttackRangeSummary {
+                    min_reach: -0.01,
+                    ..valid
+                }),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                attack_range: Some(AttackRangeSummary {
+                    max_reach: 64.01,
+                    ..valid
+                }),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                attack_range: Some(AttackRangeSummary {
+                    min_creative_reach: f32::NAN,
+                    ..valid
+                }),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                attack_range: Some(AttackRangeSummary {
+                    max_creative_reach: f32::INFINITY,
+                    ..valid
+                }),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                attack_range: Some(AttackRangeSummary {
+                    hitbox_margin: 1.01,
+                    ..valid
+                }),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                attack_range: Some(AttackRangeSummary {
+                    mob_factor: 2.01,
                     ..valid
                 }),
                 ..DataComponentPatchSummary::default()

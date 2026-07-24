@@ -2058,34 +2058,74 @@
       "constant_name": "ATTACK_RANGE",
       "coverage": {
         "canonical_retention": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components.rs#pub struct AttackRangeSummary",
+            "crates/bbb-pack/src/item_registry.rs#loads_checked_in_vanilla_item_registry",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_numeric_item_behavior_records",
+            "crates/bbb-world/src/client/inventory/tests.rs#local_selected_main_hand_attack_range_reads_default_and_patch_components",
+            "crates/bbb-world/src/client/inventory/tests.rs#local_selected_main_hand_attack_range_removed_component_overrides_default_and_added"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "network_encode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/AttackRange.java#STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_attack_range",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#attack_range_descriptor_round_trips_six_raw_floats_in_wire_order",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_attack_range_component"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "observable_consumers": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/AttackRange.java#getClosesetHit",
+            "vanilla:net/minecraft/world/item/component/AttackRange.java#isInRange",
+            "crates/bbb-native/src/crosshair.rs#crosshair_target_uses_selected_item_attack_range_for_extended_entity_hit",
+            "crates/bbb-native/src/crosshair.rs#crosshair_target_attack_range_extends_max_reach_by_forward_movement",
+            "crates/bbb-native/src/crosshair.rs#crosshair_target_attack_range_uses_hitbox_margin",
+            "crates/bbb-native/src/crosshair.rs#crosshair_target_attack_range_uses_creative_reach_when_instabuild",
+            "crates/bbb-native/src/crosshair.rs#crosshair_target_attack_range_keeps_block_when_block_clips_before_extended_entity",
+            "crates/bbb-native/src/input/mouse.rs#left_mouse_press_on_extended_attack_range_entity_queues_attack_and_swing"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "persistent_projection": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/AttackRange.java#CODEC",
+            "crates/bbb-native/src/input/component_patch.rs#encode_attack_range",
+            "crates/bbb-native/src/input.rs#debug_attack_range_component_snbt",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#rejects_invalid_numeric_item_behavior_records"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#attack_range_descriptor_round_trips_six_raw_floats_in_wire_order",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#attack_range_descriptor_rejects_persistent_ranges_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_attack_range_component",
+            "crates/bbb-pack/src/item_registry.rs#loads_checked_in_vanilla_item_registry",
+            "crates/bbb-world/src/client/inventory/tests.rs#local_selected_main_hand_attack_range_reads_default_and_patch_components",
+            "crates/bbb-native/src/crosshair.rs#crosshair_target_uses_selected_item_attack_range_for_extended_entity_hit",
+            "crates/bbb-native/src/input/mouse.rs#left_mouse_press_on_entity_outside_selected_attack_range_swings_without_attack"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "typed_decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#ATTACK_RANGE",
+            "vanilla:net/minecraft/world/item/component/AttackRange.java#STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_attack_range_component",
+            "crates/bbb-protocol/src/packets/data_components.rs#decode_attack_range_summary",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_attack_range_component_summary"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "resource_id": "minecraft:attack_range",
