@@ -33,6 +33,8 @@ const VANILLA_CHEST_BOAT_INTERACT_OWNER: &str =
     "net.minecraft.world.entity.vehicle.boat.AbstractChestBoat";
 const VANILLA_INTERACTION_ENTITY_INTERACT_OWNER: &str = "net.minecraft.world.entity.Interaction";
 const VANILLA_ITEM_FRAME_INTERACT_OWNER: &str = "net.minecraft.world.entity.decoration.ItemFrame";
+const VANILLA_LEASH_KNOT_INTERACT_OWNER: &str =
+    "net.minecraft.world.entity.decoration.LeashFenceKnotEntity";
 const VANILLA_MINECART_INTERACT_OWNER: &str =
     "net.minecraft.world.entity.vehicle.minecart.Minecart";
 const VANILLA_MINECART_CONTAINER_INTERACT_OWNER: &str =
@@ -292,6 +294,10 @@ impl WorldStore {
             self.predict_local_interaction_entity_interact(entity_id, entity_type_id)
         } else if owner == VANILLA_ITEM_FRAME_INTERACT_OWNER {
             self.predict_local_item_frame_interact(entity_id, entity_type_id, held_item_id)
+        } else if owner == VANILLA_LEASH_KNOT_INTERACT_OWNER {
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction(),
+            ))
         } else if let Some(result) =
             self.predict_local_minecart_interact(owner, entity_id, secondary_use_active)
         {
@@ -630,9 +636,10 @@ mod tests {
             VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
             VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
             VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
-            VANILLA_ENTITY_TYPE_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_MANNEQUIN_ID,
-            VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
-            VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            VANILLA_ENTITY_TYPE_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_LEASH_KNOT_ID,
+            VANILLA_ENTITY_TYPE_MANNEQUIN_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
+            VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID,
         },
         item_types::{
             VanillaItemInteractLivingEntityOverride, VanillaItemUseOnOverride,
@@ -1151,6 +1158,32 @@ mod tests {
         assert_eq!(
             world.predict_local_entity_interaction(50, InteractionHand::MainHand, false),
             LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+    }
+
+    #[test]
+    fn leash_knot_interaction_is_unconditional_client_success() {
+        let mut world = WorldStore::new();
+        add_entity(&mut world, 60, VANILLA_ENTITY_TYPE_LEASH_KNOT_ID);
+
+        for secondary_use_active in [false, true] {
+            assert_eq!(
+                world.predict_local_entity_interaction(
+                    60,
+                    InteractionHand::MainHand,
+                    secondary_use_active
+                ),
+                LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                    LocalInteractionSuccess::client_item_interaction()
+                ))
+            );
+        }
+        set_main_hand(&mut world, VANILLA_ITEM_SHEARS_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(60, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction()
+            ))
         );
     }
 }
