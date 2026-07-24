@@ -6534,7 +6534,7 @@
         "state_guard": {
           "evidence": [
             "crates/bbb-native/src/input/mouse.rs#start_use_item",
-            "crates/bbb-native/src/input/mouse.rs#block_use_hand",
+            "crates/bbb-world/src/client/inventory/use_prediction.rs#predict_local_block_use",
             "crates/bbb-world/src/client/local_player.rs#next_local_prediction_sequence",
             "vanilla:net/minecraft/client/multiplayer/MultiPlayerGameMode.java#performUseItemOn",
             "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleUseItemOn"
@@ -6548,7 +6548,8 @@
             "crates/bbb-net/src/driver/commands/tests.rs#send_use_item_on_encodes_use_item_on_packet",
             "crates/bbb-net/src/driver.rs#drive_connection_sends_interaction_net_commands_in_play",
             "crates/bbb-native/src/input/commands.rs#queues_use_item_on_for_crosshair_hit",
-            "crates/bbb-native/src/input/mouse.rs#right_mouse_press_on_block_queues_use_item_on",
+            "crates/bbb-native/src/input/mouse.rs#right_mouse_press_on_default_pass_block_queues_both_hands",
+            "crates/bbb-native/src/input/mouse.rs#default_block_pass_falls_through_to_same_hand_item_use",
             "crates/bbb-native/src/input/mouse.rs#right_mouse_press_on_block_outside_world_border_does_not_queue_use_item_on",
             "crates/bbb-native/src/input/mouse.rs#held_right_mouse_on_block_repeats_use_item_on_after_vanilla_delay",
             "crates/bbb-world/src/chunks/tests.rs#local_destroy_prediction_defers_server_block_update_until_ack"
