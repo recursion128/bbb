@@ -4,7 +4,7 @@ use std::sync::OnceLock;
 use crate::block_entity_types::vanilla_block_entity_type;
 use crate::data_component_types::{
     DataComponentTypeCatalogEntry, VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID, VANILLA_DATA_COMPONENT_BEES_TYPE_ID,
     VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
     VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
     VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
@@ -289,6 +289,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID => Some(encode_jukebox_playable),
         VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID => Some(encode_profile),
         VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID => Some(encode_container),
+        VANILLA_DATA_COMPONENT_BEES_TYPE_ID => Some(encode_bees),
         _ => None,
     }
 }
@@ -2209,6 +2210,40 @@ fn encode_container(
     encode_item_container_contents(out, summary)
 }
 
+fn encode_bees(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    if !summary.bees_present || summary.bees_count != summary.bees.len() {
+        return Err(ProtocolError::InvalidData(
+            "bees presence and count projections are not canonical".to_string(),
+        ));
+    }
+    if summary.bees.len() > MAX_DATA_COMPONENT_LIST_ITEMS {
+        return Err(ProtocolError::PacketTooLarge(
+            summary.bees.len(),
+            MAX_DATA_COMPONENT_LIST_ITEMS,
+        ));
+    }
+
+    let mut encoded = Encoder::new();
+    encoded.write_var_i32(summary.bees.len() as i32);
+    for bee in &summary.bees {
+        encode_typed_entity_data(
+            Some(bee.entity_type_id),
+            bee.entity_data_tag.as_ref(),
+            TypedEntityDataRegistry::EntityType,
+            "bees entity_data",
+            &mut encoded,
+        )?;
+        encoded.write_var_i32(bee.ticks_in_hive);
+        encoded.write_var_i32(bee.min_ticks_in_hive);
+    }
+    out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
 fn encode_game_profile_properties(
     out: &mut Encoder,
     properties: &[GameProfilePropertySummary],
@@ -3262,7 +3297,9 @@ mod tests {
             VANILLA_BLOCK_ENTITY_TYPES, VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID,
         },
         codec::Encoder,
-        entity_types::{VANILLA_ENTITY_TYPES, VANILLA_ENTITY_TYPE_ZOMBIE_ID},
+        entity_types::{
+            VANILLA_ENTITY_TYPES, VANILLA_ENTITY_TYPE_BEE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        },
     };
 
     use super::*;
@@ -3302,7 +3339,7 @@ mod tests {
             vec![
                 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 22, 24, 25,
                 28, 30, 36, 37, 38, 39, 40, 42, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 61, 64,
-                68, 69, 70, 75,
+                68, 69, 70, 75, 77,
             ]
         );
     }
@@ -5345,6 +5382,156 @@ mod tests {
             assert!(descriptor.encode(&summary, &mut encoded).is_err());
             assert_eq!(encoded.into_inner(), [0xaa]);
         }
+    }
+
+    fn bee_occupant() -> BeeOccupantSummary {
+        BeeOccupantSummary {
+            entity_type_id: VANILLA_ENTITY_TYPE_BEE_ID,
+            entity_data_tag: Some(NbtSummaryValue::Compound(Vec::new())),
+            ticks_in_hive: i32::MIN,
+            min_ticks_in_hive: i32::MAX,
+        }
+    }
+
+    #[test]
+    fn bees_descriptor_round_trips_empty_and_populated_lists_in_wire_order() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_BEES_TYPE_ID).unwrap();
+        let empty = DataComponentPatchSummary {
+            bees_present: true,
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        descriptor.encode(&empty, &mut encoded).unwrap();
+        assert_eq!(encoded.clone().into_inner(), [0]);
+        let wire = encoded.into_inner();
+        let mut decoder = Decoder::new(&wire);
+        let mut decoded = DataComponentPatchSummary::default();
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded, empty);
+
+        let summary = DataComponentPatchSummary {
+            bees_present: true,
+            bees_count: 1,
+            bees: vec![bee_occupant()],
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        descriptor.encode(&summary, &mut encoded).unwrap();
+        let mut expected = Encoder::new();
+        expected.write_var_i32(1);
+        expected.write_var_i32(VANILLA_ENTITY_TYPE_BEE_ID);
+        expected.write_bytes(&[10, 0]);
+        expected.write_var_i32(i32::MIN);
+        expected.write_var_i32(i32::MAX);
+        assert_eq!(encoded.clone().into_inner(), expected.into_inner());
+
+        let wire = encoded.into_inner();
+        let mut decoder = Decoder::new(&wire);
+        let mut decoded = DataComponentPatchSummary::default();
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded, summary);
+    }
+
+    #[test]
+    fn bees_descriptor_rejects_noncanonical_nested_values_atomically() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_BEES_TYPE_ID).unwrap();
+        let valid = DataComponentPatchSummary {
+            bees_present: true,
+            bees_count: 1,
+            bees: vec![bee_occupant()],
+            ..DataComponentPatchSummary::default()
+        };
+        let mut cases = vec![
+            DataComponentPatchSummary::default(),
+            DataComponentPatchSummary {
+                bees_present: true,
+                bees_count: 1,
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                bees_count: 1,
+                bees: vec![bee_occupant()],
+                ..DataComponentPatchSummary::default()
+            },
+        ];
+        for invalid_bee in [
+            BeeOccupantSummary {
+                entity_type_id: -1,
+                ..bee_occupant()
+            },
+            BeeOccupantSummary {
+                entity_type_id: VANILLA_ENTITY_TYPES.len() as i32,
+                ..bee_occupant()
+            },
+            BeeOccupantSummary {
+                entity_data_tag: None,
+                ..bee_occupant()
+            },
+            BeeOccupantSummary {
+                entity_data_tag: Some(NbtSummaryValue::String("not a compound".to_string())),
+                ..bee_occupant()
+            },
+            BeeOccupantSummary {
+                entity_data_tag: Some(NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                    name: "id".to_string(),
+                    value: NbtSummaryValue::String("minecraft:bee".to_string()),
+                }])),
+                ..bee_occupant()
+            },
+        ] {
+            cases.push(DataComponentPatchSummary {
+                bees_present: true,
+                bees_count: 2,
+                bees: vec![bee_occupant(), invalid_bee],
+                ..DataComponentPatchSummary::default()
+            });
+        }
+
+        for summary in cases {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            assert!(descriptor.encode(&summary, &mut encoded).is_err());
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
+
+        let oversized = DataComponentPatchSummary {
+            bees_present: true,
+            bees_count: MAX_DATA_COMPONENT_LIST_ITEMS + 1,
+            bees: vec![bee_occupant(); MAX_DATA_COMPONENT_LIST_ITEMS + 1],
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        encoded.write_u8(0xaa);
+        assert!(matches!(
+            descriptor.encode(&oversized, &mut encoded),
+            Err(ProtocolError::PacketTooLarge(count, max))
+                if count == MAX_DATA_COMPONENT_LIST_ITEMS + 1
+                    && max == MAX_DATA_COMPONENT_LIST_ITEMS
+        ));
+        assert_eq!(encoded.into_inner(), [0xaa]);
+
+        let mut encoded = Encoder::new();
+        descriptor.encode(&valid, &mut encoded).unwrap();
+        assert!(!encoded.into_inner().is_empty());
+
+        let maximal = DataComponentPatchSummary {
+            bees_present: true,
+            bees_count: MAX_DATA_COMPONENT_LIST_ITEMS,
+            bees: vec![bee_occupant(); MAX_DATA_COMPONENT_LIST_ITEMS],
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        descriptor.encode(&maximal, &mut encoded).unwrap();
+        let wire = encoded.into_inner();
+        let mut decoder = Decoder::new(&wire);
+        let mut decoded = DataComponentPatchSummary::default();
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded, maximal);
     }
 
     fn direct_jukebox_playable_patch() -> DataComponentPatchSummary {

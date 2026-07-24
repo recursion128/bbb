@@ -2316,6 +2316,90 @@
         "status": "complete"
       }
     },
+    "BEES": {
+      "canonical_retention": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#pub bees_present",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub bees_count",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub bees",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_bees_component",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_empty_bees_data_component_presence",
+          "crates/bbb-protocol/src/packets/data_components.rs#bees_typed_entity_data_strips_id_and_rejects_invalid_values",
+          "crates/bbb-world/src/client/dialog/body/component_value/bees/tests.rs#decodes_bee_occupants_with_builtin_typed_entity_data"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#BEES",
+          "vanilla:net/minecraft/world/item/component/Bees.java#STREAM_CODEC",
+          "vanilla:net/minecraft/world/level/block/entity/BeehiveBlockEntity.java#public static final StreamCodec<RegistryFriendlyByteBuf, BeehiveBlockEntity.Occupant> STREAM_CODEC",
+          "vanilla:net/minecraft/world/item/component/TypedEntityData.java#streamCodec",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#list",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_bees",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#bees_descriptor_round_trips_empty_and_populated_lists_in_wire_order",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_bees_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/component/Bees.java#addToTooltip",
+          "vanilla:net/minecraft/world/item/component/BundleContents.java#getWeight",
+          "vanilla:net/minecraft/world/level/block/entity/BeehiveBlockEntity.java#applyImplicitComponents",
+          "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_bees_tooltip_lines",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-item-model/src/item_runtime/icon_model.rs#evaluate_bundle_weight",
+          "crates/bbb-item-model/src/item_runtime/icon_model.rs#iterative_bundle_fullness_preserves_recursive_evaluation_order"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#BEES",
+          "vanilla:net/minecraft/world/item/component/Bees.java#CODEC",
+          "vanilla:net/minecraft/world/level/block/entity/BeehiveBlockEntity.java#public static final Codec<BeehiveBlockEntity.Occupant> CODEC",
+          "vanilla:net/minecraft/world/item/component/TypedEntityData.java#codec",
+          "crates/bbb-native/src/input/component_patch.rs#encode_bees",
+          "crates/bbb-native/src/input.rs#debug_bees_component_snbt",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-world/src/client/dialog/body/component_value/bees/tests.rs#rejects_malformed_bee_occupants"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#bees_descriptor_round_trips_empty_and_populated_lists_in_wire_order",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#bees_descriptor_rejects_noncanonical_nested_values_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_bees_component",
+          "crates/bbb-protocol/src/packets/data_components.rs#bees_typed_entity_data_strips_id_and_rejects_invalid_values",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-item-model/src/item_runtime/icon_model.rs#iterative_bundle_fullness_preserves_recursive_evaluation_order",
+          "crates/bbb-world/src/client/dialog/body/component_value/bees/tests.rs#decodes_bee_occupants_with_builtin_typed_entity_data"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#BEES",
+          "vanilla:net/minecraft/world/item/component/Bees.java#STREAM_CODEC",
+          "vanilla:net/minecraft/world/level/block/entity/BeehiveBlockEntity.java#public static final StreamCodec<RegistryFriendlyByteBuf, BeehiveBlockEntity.Occupant> STREAM_CODEC",
+          "vanilla:net/minecraft/world/item/component/TypedEntityData.java#streamCodec",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_bees_component",
+          "crates/bbb-protocol/src/packets/data_components.rs#decode_bees",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_empty_bees_data_component_presence",
+          "crates/bbb-protocol/src/packets/data_components.rs#bees_typed_entity_data_strips_id_and_rejects_invalid_values"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "BUNDLE_CONTENTS": {
       "canonical_retention": {
         "evidence": [

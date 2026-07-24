@@ -21,7 +21,7 @@ use crate::{
     },
     consume_effect_types::ConsumeEffectType,
     data_component_types::{
-        VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
+        VANILLA_DATA_COMPONENT_BEES_TYPE_ID, VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
@@ -1253,6 +1253,11 @@ fn validate_encodable_data_component_patch_summary(
                 expected.container_slots = patch.container_slots.clone();
                 expected.container_item_count = patch.container_item_count;
                 expected.container_slot_count = patch.container_slot_count;
+            }
+            VANILLA_DATA_COMPONENT_BEES_TYPE_ID => {
+                expected.bees_present = patch.bees_present;
+                expected.bees_count = patch.bees_count;
+                expected.bees = patch.bees.clone();
             }
             _ => unreachable!("encodable descriptor set is limited to owned component callbacks"),
         }
