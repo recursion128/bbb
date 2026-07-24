@@ -29,7 +29,8 @@ use crate::{
         VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID, VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
-        VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID, VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
+        VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
         VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
     },
@@ -1753,6 +1754,52 @@ fn encodes_set_creative_mode_slot_attack_range_component() {
     for expected in [2.0, 4.5, 2.0, 6.5, 0.125, 0.5] {
         assert_eq!(value.read_f32().unwrap(), expected);
     }
+    assert!(value.is_empty());
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_use_cooldown_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID],
+                use_cooldown_seconds_bits: Some(1.25_f32.to_bits()),
+                use_cooldown_ticks: Some(25),
+                use_cooldown_group: Some("minecraft:ender_pearl".to_string()),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_i16().unwrap(), 36);
+    assert_eq!(decoder.read_var_i32().unwrap(), 1);
+    assert_eq!(decoder.read_var_i32().unwrap(), 42);
+    assert_eq!(decoder.read_len().unwrap(), 1);
+    assert_eq!(decoder.read_len().unwrap(), 0);
+    assert_eq!(
+        decoder.read_var_i32().unwrap(),
+        VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID
+    );
+    let value_len = decoder.read_len().unwrap();
+    let mut value = Decoder::new(
+        decoder
+            .read_exact(value_len, "use_cooldown component value")
+            .unwrap(),
+    );
+    assert_eq!(value.read_f32().unwrap(), 1.25);
+    assert!(value.read_bool().unwrap());
+    assert_eq!(
+        value.read_string(usize::MAX).unwrap(),
+        "minecraft:ender_pearl"
+    );
     assert!(value.is_empty());
     assert!(decoder.is_empty());
 }

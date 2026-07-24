@@ -1989,34 +1989,78 @@
       "constant_name": "USE_COOLDOWN",
       "coverage": {
         "canonical_retention": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components.rs#pub use_cooldown_seconds_bits",
+            "crates/bbb-protocol/src/packets/data_components.rs#pub use_cooldown_ticks",
+            "crates/bbb-protocol/src/packets/data_components.rs#pub use_cooldown_group",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_use_cooldown_component",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_numeric_item_behavior_records"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "network_encode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/UseCooldown.java#public static final StreamCodec<RegistryFriendlyByteBuf, UseCooldown> STREAM_CODEC",
+            "vanilla:net/minecraft/world/item/component/UseCooldown.java#public int ticks",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_use_cooldown",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#use_cooldown_descriptor_round_trips_raw_seconds_and_optional_group_in_wire_order",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#use_cooldown_descriptor_rejects_noncanonical_projections_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_use_cooldown_component"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "observable_consumers": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/ItemCooldowns.java#public Identifier getCooldownGroup",
+            "crates/bbb-native/src/runtime.rs#item_cooldown_group",
+            "crates/bbb-native/src/runtime.rs#hud_item_cooldown_progress_for_stack",
+            "crates/bbb-item-model/src/item_runtime/icon_model.rs#Self::Cooldown => ctx.cooldown_progress",
+            "crates/bbb-native/src/runtime/tests.rs#hud_item_cooldown_progress_uses_world_cooldown_group_state",
+            "crates/bbb-native/src/runtime/tests.rs#item_cooldown_group_requires_runtime_for_default_item_group",
+            "crates/bbb-native/src/runtime/tests.rs#hotbar_item_icons_use_vanilla_zero_partial_cooldown_model_property"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "persistent_projection": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/UseCooldown.java#public static final Codec<UseCooldown> CODEC",
+            "crates/bbb-native/src/input/component_patch.rs#encode_use_cooldown",
+            "crates/bbb-native/src/input.rs#debug_use_cooldown_component_snbt",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_numeric_item_behavior_records",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#rejects_invalid_numeric_item_behavior_records"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#use_cooldown_descriptor_round_trips_raw_seconds_and_optional_group_in_wire_order",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#use_cooldown_descriptor_rejects_noncanonical_projections_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_use_cooldown_component",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_numeric_item_behavior_records",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#rejects_invalid_numeric_item_behavior_records",
+            "crates/bbb-native/src/runtime/tests.rs#hud_item_cooldown_progress_uses_world_cooldown_group_state",
+            "crates/bbb-native/src/runtime/tests.rs#hotbar_item_icons_use_vanilla_zero_partial_cooldown_model_property"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "typed_decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#USE_COOLDOWN",
+            "vanilla:net/minecraft/world/item/component/UseCooldown.java#public static final StreamCodec<RegistryFriendlyByteBuf, UseCooldown> STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_use_cooldown_component",
+            "crates/bbb-protocol/src/packets/data_components.rs#decode_use_cooldown_summary",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_numeric_item_behavior_records"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "resource_id": "minecraft:use_cooldown",

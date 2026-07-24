@@ -31,6 +31,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID, VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
     },
     entity_types::vanilla_entity_type,
     equipment_slots::{
@@ -1127,6 +1128,11 @@ fn validate_encodable_data_component_patch_summary(
             crate::data_component_types::VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID => {
                 expected.use_remainder = patch.use_remainder.clone();
             }
+            VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID => {
+                expected.use_cooldown_seconds_bits = patch.use_cooldown_seconds_bits;
+                expected.use_cooldown_ticks = patch.use_cooldown_ticks;
+                expected.use_cooldown_group = patch.use_cooldown_group.clone();
+            }
             crate::data_component_types::VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID => {
                 expected.death_protection_effects = patch.death_protection_effects.clone();
             }
@@ -2119,11 +2125,15 @@ struct UseCooldownSummary {
     cooldown_group: Option<String>,
 }
 
+fn vanilla_use_cooldown_ticks(seconds: f32) -> i32 {
+    (seconds * 20.0) as i32
+}
+
 fn decode_use_cooldown_summary(decoder: &mut Decoder<'_>) -> Result<UseCooldownSummary> {
     let seconds = decoder.read_f32()?;
     Ok(UseCooldownSummary {
         seconds_bits: seconds.to_bits(),
-        ticks: (seconds * 20.0) as i32,
+        ticks: vanilla_use_cooldown_ticks(seconds),
         cooldown_group: decode_optional_identifier_value(decoder)?,
     })
 }

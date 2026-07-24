@@ -32,7 +32,8 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID, VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID,
     VANILLA_DATA_COMPONENT_TOOL_TYPE_ID, VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
     VANILLA_DATA_COMPONENT_TYPES, VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID, VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID,
+    VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID, VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID,
     VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
     VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
 };
@@ -264,6 +265,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID => Some(encode_intangible_projectile),
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID => Some(encode_consumable),
         VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID => Some(encode_use_remainder),
+        VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID => Some(encode_use_cooldown),
         VANILLA_DATA_COMPONENT_TOOL_TYPE_ID => Some(encode_tool),
         VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID => Some(encode_attack_range),
         VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID => Some(encode_death_protection),
@@ -1097,6 +1099,34 @@ fn encode_use_remainder(
     })?;
     validate_item_stack_template_forest(std::iter::once(template))?;
     encode_item_stack_template(out, template)
+}
+
+fn encode_use_cooldown(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let seconds_bits = summary.use_cooldown_seconds_bits.ok_or_else(|| {
+        ProtocolError::InvalidData("use_cooldown is missing seconds projection".to_string())
+    })?;
+    let seconds = decode_persistent_positive_float(seconds_bits, "use_cooldown seconds")?;
+    let ticks = vanilla_use_cooldown_ticks(seconds);
+    if summary.use_cooldown_ticks != Some(ticks) {
+        return Err(ProtocolError::InvalidData(format!(
+            "use_cooldown ticks projection {:?} does not match {ticks}",
+            summary.use_cooldown_ticks
+        )));
+    }
+
+    let mut encoded = Encoder::new();
+    encoded.write_f32(seconds);
+    encoded.write_bool(summary.use_cooldown_group.is_some());
+    if let Some(group) = &summary.use_cooldown_group {
+        validate_canonical_resource_location(group, "use_cooldown group")?;
+        encode_java_string(&mut encoded, group, MAX_STRING_CHARS)?;
+    }
+    out.write_bytes(&encoded.into_inner());
+    Ok(())
 }
 
 fn encode_death_protection(
@@ -3425,8 +3455,8 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec![
                 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 22, 24, 25,
-                28, 30, 36, 37, 38, 39, 40, 42, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 61, 64,
-                67, 68, 69, 70, 72, 75, 77,
+                26, 28, 30, 36, 37, 38, 39, 40, 42, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 61,
+                64, 67, 68, 69, 70, 72, 75, 77,
             ]
         );
     }
@@ -3904,6 +3934,113 @@ mod tests {
             assert!(descriptor.encode(&summary, &mut encoded).is_err());
             assert_eq!(encoded.into_inner(), [0x7f]);
         }
+    }
+
+    #[test]
+    fn use_cooldown_descriptor_round_trips_raw_seconds_and_optional_group_in_wire_order() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID).unwrap();
+        let ungrouped = DataComponentPatchSummary {
+            use_cooldown_seconds_bits: Some(1.25_f32.to_bits()),
+            use_cooldown_ticks: Some(25),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        descriptor.encode(&ungrouped, &mut encoded).unwrap();
+        let mut expected = Encoder::new();
+        expected.write_f32(1.25);
+        expected.write_bool(false);
+        assert_eq!(encoded.clone().into_inner(), expected.into_inner());
+        let wire = encoded.into_inner();
+        let mut decoder = Decoder::new(&wire);
+        let mut decoded = DataComponentPatchSummary::default();
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded, ungrouped);
+
+        let grouped = DataComponentPatchSummary {
+            use_cooldown_seconds_bits: Some(2.5_f32.to_bits()),
+            use_cooldown_ticks: Some(50),
+            use_cooldown_group: Some("minecraft:ender_pearl".to_string()),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        descriptor.encode(&grouped, &mut encoded).unwrap();
+        let mut expected = Encoder::new();
+        expected.write_f32(2.5);
+        expected.write_bool(true);
+        expected.write_string("minecraft:ender_pearl");
+        assert_eq!(encoded.clone().into_inner(), expected.into_inner());
+        let wire = encoded.into_inner();
+        let mut decoder = Decoder::new(&wire);
+        let mut decoded = DataComponentPatchSummary::default();
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded, grouped);
+
+        for seconds in [f32::from_bits(1), f32::MAX] {
+            let boundary = DataComponentPatchSummary {
+                use_cooldown_seconds_bits: Some(seconds.to_bits()),
+                use_cooldown_ticks: Some(vanilla_use_cooldown_ticks(seconds)),
+                ..DataComponentPatchSummary::default()
+            };
+            let mut encoded = Encoder::new();
+            descriptor.encode(&boundary, &mut encoded).unwrap();
+            let wire = encoded.into_inner();
+            let mut decoder = Decoder::new(&wire);
+            let mut decoded = DataComponentPatchSummary::default();
+            descriptor.decode(&mut decoder, &mut decoded).unwrap();
+            assert!(decoder.is_empty());
+            assert_eq!(decoded, boundary);
+        }
+    }
+
+    #[test]
+    fn use_cooldown_descriptor_rejects_noncanonical_projections_atomically() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID).unwrap();
+        let valid = DataComponentPatchSummary {
+            use_cooldown_seconds_bits: Some(1.25_f32.to_bits()),
+            use_cooldown_ticks: Some(25),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut cases = vec![
+            DataComponentPatchSummary::default(),
+            DataComponentPatchSummary {
+                use_cooldown_seconds_bits: Some(1.25_f32.to_bits()),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                use_cooldown_seconds_bits: Some(1.25_f32.to_bits()),
+                use_cooldown_ticks: Some(24),
+                ..DataComponentPatchSummary::default()
+            },
+        ];
+        for seconds in [0.0, -0.0, -1.0, f32::INFINITY, f32::NEG_INFINITY, f32::NAN] {
+            cases.push(DataComponentPatchSummary {
+                use_cooldown_seconds_bits: Some(seconds.to_bits()),
+                use_cooldown_ticks: Some(vanilla_use_cooldown_ticks(seconds)),
+                ..DataComponentPatchSummary::default()
+            });
+        }
+        for group in [
+            "ender_pearl".to_string(),
+            "Bad:group".to_string(),
+            format!("minecraft:{}", "a".repeat(MAX_STRING_CHARS + 1)),
+        ] {
+            cases.push(DataComponentPatchSummary {
+                use_cooldown_group: Some(group),
+                ..valid.clone()
+            });
+        }
+
+        for summary in cases {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            assert!(descriptor.encode(&summary, &mut encoded).is_err());
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
+        descriptor.encode(&valid, &mut Encoder::new()).unwrap();
     }
 
     #[test]
