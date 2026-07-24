@@ -1026,6 +1026,7 @@ pub(super) fn apply_item_patch_value(
             );
         }
         (VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID, Value::Recipes { resource_ids }) => {
+            patch.recipe_keys = Some(resource_ids.clone());
             patch.codec_backed_nbt.insert(
                 type_id,
                 NbtSummaryValue::List(

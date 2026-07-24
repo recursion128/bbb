@@ -968,6 +968,17 @@ fn decodes_resource_key_and_component_catalog_metadata() {
         &mut patch,
     ));
     assert_eq!(
+        patch.recipe_keys.as_deref(),
+        Some(
+            [
+                "minecraft:stick".to_string(),
+                "minecraft:custom".to_string(),
+                "minecraft:stick".to_string(),
+            ]
+            .as_slice()
+        )
+    );
+    assert_eq!(
         patch
             .codec_backed_nbt
             .get(&VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID),

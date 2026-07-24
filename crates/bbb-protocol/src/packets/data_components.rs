@@ -56,9 +56,9 @@ use crate::{
         VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
-        VANILLA_DATA_COMPONENT_RABBIT_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_SALMON_SIZE_TYPE_ID, VANILLA_DATA_COMPONENT_SHEEP_COLOR_TYPE_ID,
-        VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID,
+        VANILLA_DATA_COMPONENT_RABBIT_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID,
+        VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID, VANILLA_DATA_COMPONENT_SALMON_SIZE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_SHEEP_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_TROPICAL_FISH_BASE_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID,
@@ -253,6 +253,8 @@ pub struct DataComponentPatchSummary {
     pub map_color: Option<i32>,
     #[serde(default)]
     pub map_decorations: Option<Vec<ItemMapDecorationSummary>>,
+    #[serde(default)]
+    pub recipe_keys: Option<Vec<String>>,
     #[serde(default)]
     pub potion_custom_color: Option<i32>,
     #[serde(default)]
@@ -1353,6 +1355,12 @@ fn validate_encodable_data_component_patch_summary(
             }
             VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID => {
                 expected.map_decorations = patch.map_decorations.clone();
+                if let Some(value) = patch.codec_backed_nbt.get(type_id) {
+                    expected.codec_backed_nbt.insert(*type_id, value.clone());
+                }
+            }
+            VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID => {
+                expected.recipe_keys = patch.recipe_keys.clone();
                 if let Some(value) = patch.codec_backed_nbt.get(type_id) {
                     expected.codec_backed_nbt.insert(*type_id, value.clone());
                 }
@@ -5191,6 +5199,10 @@ mod tests {
                 added: 5,
                 added_type_ids: vec![47, 57, 59, 66, 78],
                 map_decorations: Some(Vec::new()),
+                recipe_keys: Some(vec![
+                    "minecraft:bread".to_string(),
+                    "minecraft:torch".to_string(),
+                ]),
                 codec_backed_nbt: BTreeMap::from([
                     (47, NbtSummaryValue::Compound(Vec::new())),
                     (57, NbtSummaryValue::Compound(Vec::new())),

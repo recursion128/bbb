@@ -5307,34 +5307,78 @@
       "constant_name": "RECIPES",
       "coverage": {
         "canonical_retention": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#RECIPES",
+            "vanilla:net/minecraft/world/item/crafting/Recipe.java#KEY_CODEC",
+            "crates/bbb-protocol/src/packets/data_components.rs#pub recipe_keys",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_recipes",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#recipes_descriptor_preserves_order_duplicates_and_canonicalizes_resource_keys",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_resource_key_and_component_catalog_metadata"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "network_encode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#RECIPES",
+            "vanilla:net/minecraft/core/component/DataComponentType.java#build",
+            "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#fromCodecWithRegistries",
+            "vanilla:net/minecraft/world/item/crafting/Recipe.java#KEY_CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_recipes",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#recipes_descriptor_preserves_order_duplicates_and_canonicalizes_resource_keys",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#recipes_descriptor_rejects_invalid_values_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_recipes_component"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "observable_consumers": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/KnowledgeBookItem.java#public InteractionResult use",
+            "crates/bbb-world/src/client/dialog/body/component_value/canonical_json.rs#DialogDataComponentValueState::Recipes",
+            "crates/bbb-world/src/client/dialog/body/component_value/canonical_json.rs#canonicalizes_flat_maps_lists_metadata_and_escaped_strings",
+            "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_projects_dialog_item_body_structured_patches"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "persistent_projection": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#RECIPES",
+            "vanilla:net/minecraft/world/item/crafting/Recipe.java#KEY_CODEC",
+            "crates/bbb-native/src/input/component_patch.rs#encode_codec_backed_nbt",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_resource_key_and_component_catalog_metadata"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#recipes_descriptor_preserves_order_duplicates_and_canonicalizes_resource_keys",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#recipes_descriptor_rejects_invalid_values_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_recipes_component",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_codec_backed_nbt_component_values",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_resource_key_and_component_catalog_metadata",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#rejects_invalid_resource_key_and_component_catalog_metadata",
+            "crates/bbb-world/src/client/dialog/body/component_value/canonical_json.rs#canonicalizes_flat_maps_lists_metadata_and_escaped_strings",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "typed_decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#RECIPES",
+            "vanilla:net/minecraft/core/component/DataComponentType.java#build",
+            "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#fromCodecWithRegistries",
+            "vanilla:net/minecraft/world/item/crafting/Recipe.java#KEY_CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_recipes",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#recipes_descriptor_preserves_order_duplicates_and_canonicalizes_resource_keys",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_resource_key_and_component_catalog_metadata"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "resource_id": "minecraft:recipes",
