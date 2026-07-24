@@ -21,12 +21,12 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
     VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID, VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID,
     VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID,
-    VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID,
-    VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID,
-    VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID, VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID,
-    VANILLA_DATA_COMPONENT_DYE_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_CREATIVE_SLOT_LOCK_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
+    VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+    VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID, VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID,
+    VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
     VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
     VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID, VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
@@ -148,7 +148,7 @@ static WIRE_DECODE_HANDLERS: &[WireDecodeHandler] = &[
     decode_custom_model_data_component,
     decode_tooltip_display_component,
     decode_repair_cost,
-    skip_unit,
+    decode_creative_slot_lock,
     decode_enchantment_glint_override,
     decode_intangible_projectile,
     decode_food_component,
@@ -298,6 +298,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID => Some(encode_custom_model_data),
         VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID => Some(encode_tooltip_display),
         VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID => Some(encode_repair_cost),
+        VANILLA_DATA_COMPONENT_CREATIVE_SLOT_LOCK_TYPE_ID => Some(encode_creative_slot_lock),
         VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID => {
             Some(encode_enchantment_glint_override)
         }
@@ -4564,11 +4565,25 @@ fn decode_painting_variant(
     Ok(())
 }
 
-fn skip_unit(
+fn decode_creative_slot_lock(
     _type_id: i32,
     _decoder: &mut Decoder<'_>,
-    _summary: &mut DataComponentPatchSummary,
+    summary: &mut DataComponentPatchSummary,
 ) -> Result<()> {
+    summary.creative_slot_lock = true;
+    Ok(())
+}
+
+fn encode_creative_slot_lock(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    _out: &mut Encoder,
+) -> Result<()> {
+    if !summary.creative_slot_lock {
+        return Err(ProtocolError::InvalidData(
+            "missing creative_slot_lock component value".to_string(),
+        ));
+    }
     Ok(())
 }
 
@@ -4664,12 +4679,12 @@ mod tests {
                 .map(|descriptor| descriptor.type_id())
                 .collect::<Vec<_>>(),
             vec![
-                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23,
-                24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44,
-                45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 61, 62, 63, 64, 65, 66,
-                67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88,
-                89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107,
-                108, 109,
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
+                23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43,
+                44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 61, 62, 63, 64, 65,
+                66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 79, 80, 81, 82, 83, 84, 85, 86, 87,
+                88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106,
+                107, 108, 109,
             ]
         );
     }
@@ -4823,6 +4838,43 @@ mod tests {
             .encode(&DataComponentPatchSummary::default(), &mut encoded)
             .is_err());
         assert_eq!(encoded.into_inner(), [0x7f]);
+    }
+
+    #[test]
+    fn creative_slot_lock_descriptor_round_trips_empty_unit_payload() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_CREATIVE_SLOT_LOCK_TYPE_ID)
+                .unwrap();
+        let summary = DataComponentPatchSummary {
+            creative_slot_lock: true,
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        descriptor.encode(&summary, &mut encoded).unwrap();
+
+        let wire = encoded.into_inner();
+        assert!(wire.is_empty());
+        let mut decoder = Decoder::new(&wire);
+        let mut decoded = DataComponentPatchSummary::default();
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert!(decoded.creative_slot_lock);
+    }
+
+    #[test]
+    fn creative_slot_lock_descriptor_rejects_absent_unit_atomically() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_CREATIVE_SLOT_LOCK_TYPE_ID)
+                .unwrap();
+        let mut encoded = Encoder::new();
+        encoded.write_u8(0xaa);
+        let error = descriptor
+            .encode(&DataComponentPatchSummary::default(), &mut encoded)
+            .unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("missing creative_slot_lock component value"));
+        assert_eq!(encoded.into_inner(), [0xaa]);
     }
 
     #[test]

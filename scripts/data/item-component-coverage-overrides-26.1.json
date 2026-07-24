@@ -3905,6 +3905,65 @@
         "status": "complete"
       }
     },
+    "CREATIVE_SLOT_LOCK": {
+      "canonical_retention": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#CREATIVE_SLOT_LOCK",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub creative_slot_lock",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_creative_slot_lock",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#creative_slot_lock_descriptor_round_trips_empty_unit_payload",
+          "crates/bbb-control/src/server/tests.rs#client_inventory_reads_canonical_world_state"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#CREATIVE_SLOT_LOCK",
+          "vanilla:net/minecraft/util/Unit.java#public static final StreamCodec<ByteBuf, Unit> STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_creative_slot_lock",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#creative_slot_lock_descriptor_round_trips_empty_unit_payload",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#creative_slot_lock_descriptor_rejects_absent_unit_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_creative_slot_lock_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/client/gui/screens/inventory/CreativeModeInventoryScreen.java#selectTab",
+          "vanilla:net/minecraft/client/gui/screens/inventory/CreativeModeInventoryScreen.java#mayPickup",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub creative_slot_lock",
+          "crates/bbb-control/src/server/tests.rs#client_inventory_reads_canonical_world_state"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#creative_slot_lock_descriptor_round_trips_empty_unit_payload",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#creative_slot_lock_descriptor_rejects_absent_unit_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_creative_slot_lock_component",
+          "crates/bbb-control/src/server/tests.rs#client_inventory_reads_canonical_world_state"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#CREATIVE_SLOT_LOCK",
+          "vanilla:net/minecraft/util/Unit.java#public static final StreamCodec<ByteBuf, Unit> STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub creative_slot_lock",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_creative_slot_lock",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#creative_slot_lock_descriptor_round_trips_empty_unit_payload"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "TOOL": {
       "canonical_retention": {
         "evidence": [

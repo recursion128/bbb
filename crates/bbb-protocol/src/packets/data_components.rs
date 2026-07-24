@@ -33,7 +33,9 @@ use crate::{
         VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID,
         VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID,
-        VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
+        VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CREATIVE_SLOT_LOCK_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
         VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID, VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
@@ -138,6 +140,8 @@ pub struct DataComponentPatchSummary {
     pub repair_cost: Option<i32>,
     #[serde(default)]
     pub additional_trade_cost: Option<i32>,
+    #[serde(default)]
+    pub creative_slot_lock: bool,
     #[serde(default)]
     pub intangible_projectile: bool,
     #[serde(default)]
@@ -1187,6 +1191,9 @@ fn validate_encodable_data_component_patch_summary(
             }
             VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID => {
                 expected.repair_cost = patch.repair_cost;
+            }
+            VANILLA_DATA_COMPONENT_CREATIVE_SLOT_LOCK_TYPE_ID => {
+                expected.creative_slot_lock = patch.creative_slot_lock;
             }
             VANILLA_DATA_COMPONENT_ADDITIONAL_TRADE_COST_TYPE_ID => {
                 expected.additional_trade_cost = patch.additional_trade_cost;
@@ -5063,7 +5070,7 @@ mod tests {
     #[test]
     fn decodes_supported_data_component_patch_values() {
         let mut payload = Encoder::new();
-        payload.write_var_i32(16);
+        payload.write_var_i32(17);
         payload.write_var_i32(2);
         payload.write_var_i32(1);
         payload.write_var_i32(64);
@@ -5078,6 +5085,7 @@ mod tests {
         payload.write_string("minecraft:diamond_sword");
         payload.write_var_i32(19);
         payload.write_var_i32(5);
+        payload.write_var_i32(20);
         payload.write_var_i32(21);
         payload.write_bool(true);
         payload.write_var_i32(22);
@@ -5116,13 +5124,16 @@ mod tests {
         assert_eq!(
             patch,
             DataComponentPatchSummary {
-                added: 16,
-                added_type_ids: vec![1, 2, 3, 4, 6, 10, 19, 21, 22, 26, 31, 34, 35, 63, 71, 79,],
+                added: 17,
+                added_type_ids: vec![
+                    1, 2, 3, 4, 6, 10, 19, 20, 21, 22, 26, 31, 34, 35, 63, 71, 79,
+                ],
                 removed_type_ids: vec![3, 12],
                 max_stack_size: Some(64),
                 max_damage: Some(432),
                 damage: Some(431),
                 repair_cost: Some(5),
+                creative_slot_lock: true,
                 unbreakable: true,
                 custom_name: Some("Named".to_string()),
                 custom_name_styled: Some(plain_runs("Named")),

@@ -2316,9 +2316,15 @@ fn client_inventory_reads_canonical_world_state() {
     let state = ControlState::new("test");
     {
         let mut store = WorldStore::new();
+        let mut locked_stack = item_stack(43, 2);
+        locked_stack.component_patch.added = 1;
+        locked_stack.component_patch.added_type_ids = vec![
+            bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_CREATIVE_SLOT_LOCK_TYPE_ID,
+        ];
+        locked_stack.component_patch.creative_slot_lock = true;
         store.apply_set_player_inventory(SetPlayerInventory {
             slot: 36,
-            item: item_stack(43, 2),
+            item: locked_stack,
         });
         store.apply_set_cursor_item(SetCursorItem {
             item: item_stack(99, 1),
@@ -2362,6 +2368,10 @@ fn client_inventory_reads_canonical_world_state() {
     assert_eq!(inventory["player_slots"][0]["slot"], 36);
     assert_eq!(inventory["player_slots"][0]["item"]["item_id"], 43);
     assert_eq!(inventory["player_slots"][0]["item"]["count"], 2);
+    assert_eq!(
+        inventory["player_slots"][0]["item"]["component_patch"]["creative_slot_lock"],
+        true
+    );
     assert_eq!(inventory["cursor_item"]["item_id"], serde_json::Value::Null);
     assert_eq!(inventory["cursor_item"]["count"], 0);
     assert_eq!(inventory["open_container"]["container_id"], 7);
