@@ -7926,34 +7926,79 @@
       "constant_name": "CAT_VARIANT",
       "coverage": {
         "canonical_retention": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#CAT_VARIANT",
+            "vanilla:net/minecraft/world/entity/animal/feline/CatVariant.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<CatVariant>> STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components.rs#pub cat_variant_id",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_cat_variant",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_cat_variant_and_sound_holder_registry_ids",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_all_synchronized_registry_fixed_variant_components"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "network_encode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#CAT_VARIANT",
+            "vanilla:net/minecraft/world/entity/animal/feline/CatVariant.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<CatVariant>> STREAM_CODEC",
+            "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#holderRegistry",
+            "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#registry",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_cat_variant",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#cat_variant_descriptor_round_trips_ids_and_rejects_invalid_values_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_cat_variant_component"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "observable_consumers": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/entity/EntityType.java#appendComponentsConfig",
+            "vanilla:net/minecraft/world/entity/Entity.java#applyComponentsFromItemStack",
+            "vanilla:net/minecraft/world/entity/animal/feline/Cat.java#protected void applyImplicitComponents",
+            "vanilla:net/minecraft/client/renderer/entity/CatRenderer.java#public void extractRenderState",
+            "crates/bbb-world/src/registries/animal_variants.rs#cat_world_query_uses_server_holder_order_and_omits_stubs",
+            "crates/bbb-native/src/entity_variant_textures.rs#synchronized_cat_assets_are_discovered_in_server_holder_order",
+            "crates/bbb-native/src/entity_scene/tests.rs#entity_model_instances_project_cat_variants_from_world_registry_order"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "persistent_projection": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/entity/animal/feline/CatVariant.java#public static final Codec<Holder<CatVariant>> CODEC",
+            "crates/bbb-native/src/input/component_patch.rs#encode_named_variant",
+            "crates/bbb-native/src/input/component_patch.rs#named_variant_encoders_use_session_order_or_fixed_catalog",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#projects_holder_backed_component_values_into_protocol_summary"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_cat_variant_and_sound_holder_registry_ids",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#cat_variant_descriptor_round_trips_ids_and_rejects_invalid_values_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_cat_variant_component",
+            "crates/bbb-native/src/input/component_patch.rs#named_variant_encoders_use_session_order_or_fixed_catalog",
+            "crates/bbb-world/src/registries/animal_variants.rs#decodes_cat_network_codec_shape_and_rejects_invalid_assets",
+            "crates/bbb-world/src/registries/animal_variants.rs#cat_world_query_uses_server_holder_order_and_omits_stubs",
+            "crates/bbb-native/src/entity_variant_textures.rs#synchronized_cat_assets_are_discovered_in_server_holder_order",
+            "crates/bbb-native/src/entity_scene/tests.rs#entity_model_instances_project_cat_variants_from_world_registry_order"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "typed_decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#CAT_VARIANT",
+            "vanilla:net/minecraft/world/entity/animal/feline/CatVariant.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<CatVariant>> STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components.rs#pub cat_variant_id",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_cat_variant",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_cat_variant_and_sound_holder_registry_ids",
+            "crates/bbb-world/src/registries/animal_variants.rs#decodes_cat_network_codec_shape_and_rejects_invalid_assets"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "resource_id": "minecraft:cat/variant",
