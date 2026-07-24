@@ -12,12 +12,12 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID, VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID,
     VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID,
     VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID, VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID,
-    VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID,
-    VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID, VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID,
-    VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID, VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID,
+    VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
+    VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+    VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID, VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID,
+    VANILLA_DATA_COMPONENT_DYE_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
     VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
     VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID, VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
@@ -335,6 +335,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID => Some(encode_pig_variant),
         VANILLA_DATA_COMPONENT_PIG_SOUND_VARIANT_TYPE_ID => Some(encode_pig_sound_variant),
         VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID => Some(encode_cow_variant),
+        VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID => Some(encode_cow_sound_variant),
         VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID => {
             Some(encode_provides_trim_material)
         }
@@ -3755,6 +3756,14 @@ fn decode_cow_sound_variant(
     Ok(())
 }
 
+fn encode_cow_sound_variant(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    encode_registry_holder_id(summary.cow_sound_variant_id, "cow_sound_variant", out)
+}
+
 fn decode_chicken_variant(
     _type_id: i32,
     decoder: &mut Decoder<'_>,
@@ -3955,7 +3964,7 @@ mod tests {
                 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 22, 23, 24,
                 25, 26, 28, 30, 32, 34, 35, 36, 37, 38, 39, 40, 42, 43, 44, 45, 46, 48, 49, 50, 51,
                 52, 53, 54, 55, 56, 58, 59, 60, 61, 62, 63, 64, 65, 67, 68, 69, 70, 71, 72, 73, 74,
-                75, 76, 77, 80, 81, 82, 83, 93, 94, 95, 102,
+                75, 76, 77, 80, 81, 82, 83, 93, 94, 95, 96, 102,
             ]
         );
     }
@@ -9122,6 +9131,45 @@ mod tests {
             DataComponentPatchSummary::default(),
             DataComponentPatchSummary {
                 cow_variant_id: Some(-1),
+                ..DataComponentPatchSummary::default()
+            },
+        ] {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            assert!(descriptor.encode(&summary, &mut encoded).is_err());
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
+    }
+
+    #[test]
+    fn cow_sound_variant_descriptor_round_trips_ids_and_rejects_invalid_values_atomically() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID)
+                .unwrap();
+        for holder_id in [0, 1, i32::MAX] {
+            let summary = DataComponentPatchSummary {
+                cow_sound_variant_id: Some(holder_id),
+                ..DataComponentPatchSummary::default()
+            };
+            let mut encoded = Encoder::new();
+            descriptor.encode(&summary, &mut encoded).unwrap();
+
+            let mut expected = Encoder::new();
+            expected.write_var_i32(holder_id);
+            assert_eq!(encoded.clone().into_inner(), expected.into_inner());
+
+            let wire = encoded.into_inner();
+            let mut decoder = Decoder::new(&wire);
+            let mut decoded = DataComponentPatchSummary::default();
+            descriptor.decode(&mut decoder, &mut decoded).unwrap();
+            assert!(decoder.is_empty());
+            assert_eq!(decoded.cow_sound_variant_id, Some(holder_id));
+        }
+
+        for summary in [
+            DataComponentPatchSummary::default(),
+            DataComponentPatchSummary {
+                cow_sound_variant_id: Some(-1),
                 ..DataComponentPatchSummary::default()
             },
         ] {
