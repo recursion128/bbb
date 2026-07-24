@@ -20,6 +20,7 @@ use crate::{
     },
     consume_effect_types::ConsumeEffectType,
     data_component_types::{
+        VANILLA_DATA_COMPONENT_AXOLOTL_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID, VANILLA_DATA_COMPONENT_BASE_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_BEES_TYPE_ID, VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID, VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
@@ -1413,6 +1414,13 @@ fn validate_encodable_data_component_patch_summary(
                 }
             }
             VANILLA_DATA_COMPONENT_LLAMA_VARIANT_TYPE_ID => {
+                if let Some(value_id) = patch.builtin_enum_component_ids.get(type_id) {
+                    expected
+                        .builtin_enum_component_ids
+                        .insert(*type_id, *value_id);
+                }
+            }
+            VANILLA_DATA_COMPONENT_AXOLOTL_VARIANT_TYPE_ID => {
                 if let Some(value_id) = patch.builtin_enum_component_ids.get(type_id) {
                     expected
                         .builtin_enum_component_ids

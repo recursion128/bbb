@@ -1,12 +1,14 @@
 use super::*;
 use crate::{
     builtin_enum_component_values::{
-        VANILLA_DYE_COLOR_BLUE_ID, VANILLA_DYE_COLOR_RED_ID, VANILLA_HORSE_VARIANT_DARK_BROWN_ID,
-        VANILLA_LLAMA_VARIANT_GRAY_ID, VANILLA_RABBIT_VARIANT_EVIL_ID,
+        VANILLA_AXOLOTL_VARIANT_BLUE_ID, VANILLA_DYE_COLOR_BLUE_ID, VANILLA_DYE_COLOR_RED_ID,
+        VANILLA_HORSE_VARIANT_DARK_BROWN_ID, VANILLA_LLAMA_VARIANT_GRAY_ID,
+        VANILLA_RABBIT_VARIANT_EVIL_ID,
     },
     codec::{offline_player_uuid, Decoder, Encoder, ProtocolError},
     data_component_types::{
         VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_AXOLOTL_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID, VANILLA_DATA_COMPONENT_BASE_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_BEES_TYPE_ID, VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
         VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID, VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
@@ -3749,6 +3751,39 @@ fn encodes_set_creative_mode_slot_llama_variant_component() {
             1, 0, // patch counts
             103, 1, // llama/variant type and delimited value length
             3, // GRAY id
+        ]
+    );
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_axolotl_variant_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_AXOLOTL_VARIANT_TYPE_ID],
+                builtin_enum_component_ids: BTreeMap::from([(
+                    VANILLA_DATA_COMPONENT_AXOLOTL_VARIANT_TYPE_ID,
+                    VANILLA_AXOLOTL_VARIANT_BLUE_ID,
+                )]),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            1, 0, // patch counts
+            104, 1, // axolotl/variant type and delimited value length
+            4, // BLUE id
         ]
     );
 }
