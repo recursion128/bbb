@@ -9,6 +9,7 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
     VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
     VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID, VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
+    VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID, VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
     VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
     VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID, VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID, VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
@@ -230,6 +231,8 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID => Some(encode_swing_animation),
         VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID => Some(encode_written_book_content),
         VANILLA_DATA_COMPONENT_TRIM_TYPE_ID => Some(encode_trim),
+        VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID => Some(encode_firework_explosion),
+        VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID => Some(encode_fireworks),
         VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID => Some(encode_entity_data),
         VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID => Some(encode_bucket_entity_data),
         VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID => Some(encode_block_entity_data),
@@ -854,6 +857,111 @@ fn encode_trim(
         summary.armor_trim_pattern_direct.as_deref(),
     )?;
     out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
+fn encode_firework_explosion(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let shape = summary.firework_explosion_shape.ok_or_else(|| {
+        ProtocolError::InvalidData("missing firework_explosion shape".to_string())
+    })?;
+    let has_trail = summary.firework_explosion_has_trail.ok_or_else(|| {
+        ProtocolError::InvalidData("missing firework_explosion trail flag".to_string())
+    })?;
+    let has_twinkle = summary.firework_explosion_has_twinkle.ok_or_else(|| {
+        ProtocolError::InvalidData("missing firework_explosion twinkle flag".to_string())
+    })?;
+    let mut encoded = Encoder::new();
+    encode_firework_explosion_fields(
+        &mut encoded,
+        shape,
+        &summary.firework_explosion_colors,
+        &summary.firework_explosion_fade_colors,
+        has_trail,
+        has_twinkle,
+    )?;
+    out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
+fn encode_fireworks(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let flight_duration = summary.fireworks_flight_duration.ok_or_else(|| {
+        ProtocolError::InvalidData("missing fireworks flight duration".to_string())
+    })?;
+    let explosion_count = summary.fireworks_explosions_count.ok_or_else(|| {
+        ProtocolError::InvalidData("missing fireworks explosion count".to_string())
+    })?;
+    if explosion_count != summary.fireworks_explosions.len() {
+        return Err(ProtocolError::InvalidData(format!(
+            "fireworks explosion count {explosion_count} does not match {} explosions",
+            summary.fireworks_explosions.len()
+        )));
+    }
+    if explosion_count > MAX_FIREWORK_EXPLOSIONS {
+        return Err(ProtocolError::PacketTooLarge(
+            explosion_count,
+            MAX_FIREWORK_EXPLOSIONS,
+        ));
+    }
+
+    let mut encoded = Encoder::new();
+    encoded.write_var_i32(flight_duration);
+    encoded.write_var_i32(explosion_count as i32);
+    for explosion in &summary.fireworks_explosions {
+        encode_firework_explosion_value(&mut encoded, explosion)?;
+    }
+    out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
+fn encode_firework_explosion_value(
+    out: &mut Encoder,
+    explosion: &FireworkExplosionSummary,
+) -> Result<()> {
+    encode_firework_explosion_fields(
+        out,
+        explosion.shape,
+        &explosion.colors,
+        &explosion.fade_colors,
+        explosion.has_trail,
+        explosion.has_twinkle,
+    )
+}
+
+fn encode_firework_explosion_fields(
+    out: &mut Encoder,
+    shape: FireworkExplosionShapeSummary,
+    colors: &[i32],
+    fade_colors: &[i32],
+    has_trail: bool,
+    has_twinkle: bool,
+) -> Result<()> {
+    out.write_var_i32(shape.id());
+    encode_firework_color_list(out, colors)?;
+    encode_firework_color_list(out, fade_colors)?;
+    out.write_bool(has_trail);
+    out.write_bool(has_twinkle);
+    Ok(())
+}
+
+fn encode_firework_color_list(out: &mut Encoder, colors: &[i32]) -> Result<()> {
+    if colors.len() > MAX_DATA_COMPONENT_LIST_ITEMS {
+        return Err(ProtocolError::PacketTooLarge(
+            colors.len(),
+            MAX_DATA_COMPONENT_LIST_ITEMS,
+        ));
+    }
+    out.write_var_i32(colors.len() as i32);
+    for color in colors {
+        out.write_i32(*color);
+    }
     Ok(())
 }
 
@@ -2233,7 +2341,7 @@ mod tests {
                 .filter(|descriptor| descriptor.can_encode())
                 .map(|descriptor| descriptor.type_id())
                 .collect::<Vec<_>>(),
-            vec![0, 1, 2, 3, 4, 16, 24, 36, 37, 38, 39, 40, 55, 56, 58, 59, 60, 70,]
+            vec![0, 1, 2, 3, 4, 16, 24, 36, 37, 38, 39, 40, 55, 56, 58, 59, 60, 68, 69, 70,]
         );
     }
 
@@ -3681,6 +3789,253 @@ mod tests {
                 error.to_string().contains(expected_error),
                 "{error} did not contain {expected_error:?}"
             );
+        }
+    }
+
+    #[test]
+    fn firework_descriptors_round_trip_exact_wire_values() {
+        let explosion_descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID)
+                .unwrap();
+        let standalone = DataComponentPatchSummary {
+            firework_explosion_shape: Some(FireworkExplosionShapeSummary::Burst),
+            firework_explosion_colors: vec![i32::MIN, 0x11_22_33, i32::MAX],
+            firework_explosion_fade_colors: vec![-1, 0x44_55_66],
+            firework_explosion_has_trail: Some(true),
+            firework_explosion_has_twinkle: Some(false),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        explosion_descriptor
+            .encode(&standalone, &mut encoded)
+            .unwrap();
+        let encoded = encoded.into_inner();
+        let mut expected = Encoder::new();
+        expected.write_var_i32(FireworkExplosionShapeSummary::Burst.id());
+        expected.write_var_i32(3);
+        expected.write_i32(i32::MIN);
+        expected.write_i32(0x11_22_33);
+        expected.write_i32(i32::MAX);
+        expected.write_var_i32(2);
+        expected.write_i32(-1);
+        expected.write_i32(0x44_55_66);
+        expected.write_bool(true);
+        expected.write_bool(false);
+        assert_eq!(encoded, expected.into_inner());
+
+        let mut decoded = DataComponentPatchSummary::default();
+        let mut decoder = Decoder::new(&encoded);
+        explosion_descriptor
+            .decode(&mut decoder, &mut decoded)
+            .unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(
+            decoded.firework_explosion_shape,
+            standalone.firework_explosion_shape
+        );
+        assert_eq!(
+            decoded.firework_explosion_colors,
+            standalone.firework_explosion_colors
+        );
+        assert_eq!(
+            decoded.firework_explosion_fade_colors,
+            standalone.firework_explosion_fade_colors
+        );
+        assert_eq!(
+            decoded.firework_explosion_has_trail,
+            standalone.firework_explosion_has_trail
+        );
+        assert_eq!(
+            decoded.firework_explosion_has_twinkle,
+            standalone.firework_explosion_has_twinkle
+        );
+
+        let shapes = [
+            FireworkExplosionShapeSummary::SmallBall,
+            FireworkExplosionShapeSummary::LargeBall,
+            FireworkExplosionShapeSummary::Star,
+            FireworkExplosionShapeSummary::Creeper,
+            FireworkExplosionShapeSummary::Burst,
+        ];
+        let explosions = shapes
+            .into_iter()
+            .enumerate()
+            .map(|(index, shape)| FireworkExplosionSummary {
+                shape,
+                colors: vec![index as i32, -(index as i32) - 1],
+                fade_colors: (index % 2 == 0)
+                    .then_some(index as i32)
+                    .into_iter()
+                    .collect(),
+                has_trail: index % 2 == 0,
+                has_twinkle: index % 2 != 0,
+            })
+            .collect::<Vec<_>>();
+        let fireworks = DataComponentPatchSummary {
+            fireworks_flight_duration: Some(-1),
+            fireworks_explosions_count: Some(explosions.len()),
+            fireworks_explosions: explosions,
+            ..DataComponentPatchSummary::default()
+        };
+        let fireworks_descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID).unwrap();
+        let mut encoded = Encoder::new();
+        fireworks_descriptor
+            .encode(&fireworks, &mut encoded)
+            .unwrap();
+        let encoded = encoded.into_inner();
+        let mut expected = Encoder::new();
+        expected.write_var_i32(-1);
+        expected.write_var_i32(fireworks.fireworks_explosions.len() as i32);
+        for explosion in &fireworks.fireworks_explosions {
+            expected.write_var_i32(explosion.shape.id());
+            expected.write_var_i32(explosion.colors.len() as i32);
+            for color in &explosion.colors {
+                expected.write_i32(*color);
+            }
+            expected.write_var_i32(explosion.fade_colors.len() as i32);
+            for color in &explosion.fade_colors {
+                expected.write_i32(*color);
+            }
+            expected.write_bool(explosion.has_trail);
+            expected.write_bool(explosion.has_twinkle);
+        }
+        assert_eq!(encoded, expected.into_inner());
+
+        let mut decoded = DataComponentPatchSummary::default();
+        let mut decoder = Decoder::new(&encoded);
+        fireworks_descriptor
+            .decode(&mut decoder, &mut decoded)
+            .unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded.fireworks_flight_duration, Some(-1));
+        assert_eq!(
+            decoded.fireworks_explosions_count,
+            fireworks.fireworks_explosions_count
+        );
+        assert_eq!(decoded.fireworks_explosions, fireworks.fireworks_explosions);
+    }
+
+    #[test]
+    fn firework_descriptors_enforce_collection_bounds_and_presence_atomically() {
+        let explosion_descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID)
+                .unwrap();
+        let valid_explosion = DataComponentPatchSummary {
+            firework_explosion_shape: Some(FireworkExplosionShapeSummary::Star),
+            firework_explosion_has_trail: Some(false),
+            firework_explosion_has_twinkle: Some(true),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut maximal_colors = valid_explosion.clone();
+        maximal_colors.firework_explosion_colors = vec![0; MAX_DATA_COMPONENT_LIST_ITEMS];
+        explosion_descriptor
+            .encode(&maximal_colors, &mut Encoder::new())
+            .unwrap();
+
+        let mut explosion_cases = Vec::new();
+        let mut missing_shape = valid_explosion.clone();
+        missing_shape.firework_explosion_shape = None;
+        explosion_cases.push((missing_shape, "missing firework_explosion shape"));
+        let mut missing_trail = valid_explosion.clone();
+        missing_trail.firework_explosion_has_trail = None;
+        explosion_cases.push((missing_trail, "missing firework_explosion trail"));
+        let mut missing_twinkle = valid_explosion.clone();
+        missing_twinkle.firework_explosion_has_twinkle = None;
+        explosion_cases.push((missing_twinkle, "missing firework_explosion twinkle"));
+        for (summary, expected_error) in explosion_cases {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            let error = explosion_descriptor
+                .encode(&summary, &mut encoded)
+                .unwrap_err();
+            assert!(error.to_string().contains(expected_error), "{error}");
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
+        for colors_are_fades in [false, true] {
+            let mut oversized = valid_explosion.clone();
+            let colors = vec![0; MAX_DATA_COMPONENT_LIST_ITEMS + 1];
+            if colors_are_fades {
+                oversized.firework_explosion_fade_colors = colors;
+            } else {
+                oversized.firework_explosion_colors = colors;
+            }
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            assert!(matches!(
+                explosion_descriptor.encode(&oversized, &mut encoded),
+                Err(ProtocolError::PacketTooLarge(actual, max))
+                    if actual == MAX_DATA_COMPONENT_LIST_ITEMS + 1
+                        && max == MAX_DATA_COMPONENT_LIST_ITEMS
+            ));
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
+
+        let fireworks_descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID).unwrap();
+        let explosion = FireworkExplosionSummary {
+            shape: FireworkExplosionShapeSummary::SmallBall,
+            colors: Vec::new(),
+            fade_colors: Vec::new(),
+            has_trail: false,
+            has_twinkle: false,
+        };
+        let valid_fireworks = DataComponentPatchSummary {
+            fireworks_flight_duration: Some(0),
+            fireworks_explosions_count: Some(1),
+            fireworks_explosions: vec![explosion.clone()],
+            ..DataComponentPatchSummary::default()
+        };
+        let maximal_fireworks = DataComponentPatchSummary {
+            fireworks_flight_duration: Some(i32::MIN),
+            fireworks_explosions_count: Some(MAX_FIREWORK_EXPLOSIONS),
+            fireworks_explosions: vec![explosion.clone(); MAX_FIREWORK_EXPLOSIONS],
+            ..DataComponentPatchSummary::default()
+        };
+        fireworks_descriptor
+            .encode(&maximal_fireworks, &mut Encoder::new())
+            .unwrap();
+
+        let mut fireworks_cases = Vec::new();
+        let mut missing_duration = valid_fireworks.clone();
+        missing_duration.fireworks_flight_duration = None;
+        fireworks_cases.push((missing_duration, "missing fireworks flight duration"));
+        let mut missing_count = valid_fireworks.clone();
+        missing_count.fireworks_explosions_count = None;
+        fireworks_cases.push((missing_count, "missing fireworks explosion count"));
+        let mut mismatched_count = valid_fireworks.clone();
+        mismatched_count.fireworks_explosions_count = Some(0);
+        fireworks_cases.push((mismatched_count, "does not match 1 explosions"));
+        let oversized_explosions = DataComponentPatchSummary {
+            fireworks_flight_duration: Some(0),
+            fireworks_explosions_count: Some(MAX_FIREWORK_EXPLOSIONS + 1),
+            fireworks_explosions: vec![explosion.clone(); MAX_FIREWORK_EXPLOSIONS + 1],
+            ..DataComponentPatchSummary::default()
+        };
+        let mut oversized_nested_colors = valid_fireworks;
+        oversized_nested_colors.fireworks_explosions[0].colors =
+            vec![0; MAX_DATA_COMPONENT_LIST_ITEMS + 1];
+
+        for (summary, expected_error) in fireworks_cases {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            let error = fireworks_descriptor
+                .encode(&summary, &mut encoded)
+                .unwrap_err();
+            assert!(error.to_string().contains(expected_error), "{error}");
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
+        for (summary, expected_max) in [
+            (oversized_explosions, MAX_FIREWORK_EXPLOSIONS),
+            (oversized_nested_colors, MAX_DATA_COMPONENT_LIST_ITEMS),
+        ] {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            assert!(matches!(
+                fireworks_descriptor.encode(&summary, &mut encoded),
+                Err(ProtocolError::PacketTooLarge(_, max)) if max == expected_max
+            ));
+            assert_eq!(encoded.into_inner(), [0xaa]);
         }
     }
 

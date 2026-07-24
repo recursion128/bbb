@@ -6,6 +6,8 @@ use crate::{
         VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
         VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID,
+        VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
         VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
@@ -1751,6 +1753,57 @@ fn encodes_set_creative_mode_slot_trim_component() {
 }
 
 #[test]
+fn encodes_set_creative_mode_slot_firework_family_components() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 2,
+                added_type_ids: vec![
+                    VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
+                    VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
+                ],
+                firework_explosion_shape: Some(FireworkExplosionShapeSummary::Star),
+                firework_explosion_colors: vec![0x11_22_33],
+                firework_explosion_has_trail: Some(true),
+                firework_explosion_has_twinkle: Some(false),
+                fireworks_flight_duration: Some(2),
+                fireworks_explosions_count: Some(1),
+                fireworks_explosions: vec![FireworkExplosionSummary {
+                    shape: FireworkExplosionShapeSummary::Burst,
+                    colors: vec![-1],
+                    fade_colors: vec![0x44_55_66],
+                    has_trail: false,
+                    has_twinkle: true,
+                }],
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            2, 0, // patch counts
+            68, 9, // firework_explosion type and delimited value length
+            2, 1, 0, 0x11, 0x22, 0x33, // star and one color
+            0, 1, 0, // no fade colors, trail, no twinkle
+            69, 15, // fireworks type and delimited value length
+            2, 1, // flight duration and one explosion
+            4, 1, 0xff, 0xff, 0xff, 0xff, // burst and one signed color
+            1, 0, 0x44, 0x55, 0x66, // one fade color
+            0, 1, // no trail, twinkle
+        ]
+    );
+}
+
+#[test]
 fn encodes_set_creative_mode_slot_blocks_attacks_component() {
     let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
         slot_num: 36,
@@ -1976,6 +2029,13 @@ fn set_creative_mode_slot_rejects_values_rejected_by_the_untrusted_stack_codec()
         damage: Some(value),
         ..DataComponentPatchSummary::default()
     };
+    let fireworks_patch = |value| DataComponentPatchSummary {
+        added: 1,
+        added_type_ids: vec![VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID],
+        fireworks_flight_duration: Some(value),
+        fireworks_explosions_count: Some(0),
+        ..DataComponentPatchSummary::default()
+    };
 
     for (packet, expected_error) in [
         (
@@ -2002,6 +2062,14 @@ fn set_creative_mode_slot_rejects_values_rejected_by_the_untrusted_stack_codec()
             stack_with_patch(1, damage_patch(-1)),
             "damage must be non-negative",
         ),
+        (
+            stack_with_patch(1, fireworks_patch(-1)),
+            "fireworks flight_duration must be in 0..=255",
+        ),
+        (
+            stack_with_patch(1, fireworks_patch(256)),
+            "fireworks flight_duration must be in 0..=255",
+        ),
     ] {
         let error = encode_play_set_creative_mode_slot(&packet).unwrap_err();
         assert!(
@@ -2013,26 +2081,31 @@ fn set_creative_mode_slot_rejects_values_rejected_by_the_untrusted_stack_codec()
 
 #[test]
 fn set_creative_mode_slot_accepts_untrusted_stack_codec_integer_boundaries() {
-    encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
-        slot_num: 36,
-        item: ItemStackSummary {
-            item_id: Some(42),
-            count: 99,
-            component_patch: DataComponentPatchSummary {
-                added: 3,
-                added_type_ids: vec![
-                    VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
-                    VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
-                    VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
-                ],
-                max_stack_size: Some(99),
-                max_damage: Some(1),
-                damage: Some(0),
-                ..DataComponentPatchSummary::default()
+    for flight_duration in [0, 255] {
+        encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+            slot_num: 36,
+            item: ItemStackSummary {
+                item_id: Some(42),
+                count: 99,
+                component_patch: DataComponentPatchSummary {
+                    added: 4,
+                    added_type_ids: vec![
+                        VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+                        VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
+                        VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+                        VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
+                    ],
+                    max_stack_size: Some(99),
+                    max_damage: Some(1),
+                    damage: Some(0),
+                    fireworks_flight_duration: Some(flight_duration),
+                    fireworks_explosions_count: Some(0),
+                    ..DataComponentPatchSummary::default()
+                },
             },
-        },
-    })
-    .unwrap();
+        })
+        .unwrap();
+    }
 }
 
 #[test]

@@ -1157,6 +1157,14 @@ fn validate_creative_item_component_ranges(patch: &DataComponentPatchSummary) ->
             "creative mode damage must be non-negative".to_string(),
         ));
     }
+    if patch
+        .fireworks_flight_duration
+        .is_some_and(|value| !(0..=u8::MAX.into()).contains(&value))
+    {
+        return Err(ProtocolError::InvalidData(
+            "creative mode fireworks flight_duration must be in 0..=255".to_string(),
+        ));
+    }
     Ok(())
 }
 

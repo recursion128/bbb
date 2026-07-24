@@ -1067,6 +1067,19 @@ fn validate_encodable_data_component_patch_summary(
                 expected.armor_trim_pattern_id = patch.armor_trim_pattern_id;
                 expected.armor_trim_pattern_direct = patch.armor_trim_pattern_direct.clone();
             }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID => {
+                expected.firework_explosion_colors = patch.firework_explosion_colors.clone();
+                expected.firework_explosion_fade_colors =
+                    patch.firework_explosion_fade_colors.clone();
+                expected.firework_explosion_shape = patch.firework_explosion_shape;
+                expected.firework_explosion_has_trail = patch.firework_explosion_has_trail;
+                expected.firework_explosion_has_twinkle = patch.firework_explosion_has_twinkle;
+            }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID => {
+                expected.fireworks_flight_duration = patch.fireworks_flight_duration;
+                expected.fireworks_explosions_count = patch.fireworks_explosions_count;
+                expected.fireworks_explosions = patch.fireworks_explosions.clone();
+            }
             VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID => {
                 expected.entity_data_entity_type_id = patch.entity_data_entity_type_id;
                 expected.entity_data_tag = patch.entity_data_tag.clone();
@@ -3303,6 +3316,90 @@ mod tests {
             decoded.armor_trim_pattern_direct,
             patch.armor_trim_pattern_direct
         );
+    }
+
+    #[test]
+    fn encodes_firework_family_patch_with_independent_delimiters() {
+        let patch = DataComponentPatchSummary {
+            added: 2,
+            added_type_ids: vec![
+                crate::data_component_types::VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
+                crate::data_component_types::VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
+            ],
+            removed_type_ids: vec![VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID],
+            firework_explosion_shape: Some(FireworkExplosionShapeSummary::Star),
+            firework_explosion_colors: vec![0x11_22_33],
+            firework_explosion_fade_colors: Vec::new(),
+            firework_explosion_has_trail: Some(true),
+            firework_explosion_has_twinkle: Some(false),
+            fireworks_flight_duration: Some(-1),
+            fireworks_explosions_count: Some(1),
+            fireworks_explosions: vec![FireworkExplosionSummary {
+                shape: FireworkExplosionShapeSummary::Burst,
+                colors: vec![-1],
+                fade_colors: vec![0x44_55_66],
+                has_trail: false,
+                has_twinkle: true,
+            }],
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        encode_delimited_data_component_patch_summary(&mut encoded, &patch).unwrap();
+        let encoded = encoded.into_inner();
+
+        let mut decoder = Decoder::new(&encoded);
+        assert_eq!(decoder.read_len().unwrap(), 2);
+        assert_eq!(decoder.read_len().unwrap(), 1);
+        let mut decoded = DataComponentPatchSummary::default();
+        for expected_type_id in [
+            crate::data_component_types::VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
+            crate::data_component_types::VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
+        ] {
+            let type_id = decoder.read_var_i32().unwrap();
+            assert_eq!(type_id, expected_type_id);
+            let value_len = decoder.read_len().unwrap();
+            let mut value_decoder =
+                Decoder::new(decoder.read_exact(value_len, "firework value").unwrap());
+            data_component_descriptor_or_error(type_id)
+                .unwrap()
+                .decode(&mut value_decoder, &mut decoded)
+                .unwrap();
+            assert!(value_decoder.is_empty());
+        }
+        assert_eq!(
+            decoder.read_var_i32().unwrap(),
+            VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID
+        );
+        assert!(decoder.is_empty());
+        assert_eq!(
+            decoded.firework_explosion_shape,
+            patch.firework_explosion_shape
+        );
+        assert_eq!(
+            decoded.firework_explosion_colors,
+            patch.firework_explosion_colors
+        );
+        assert_eq!(
+            decoded.firework_explosion_fade_colors,
+            patch.firework_explosion_fade_colors
+        );
+        assert_eq!(
+            decoded.firework_explosion_has_trail,
+            patch.firework_explosion_has_trail
+        );
+        assert_eq!(
+            decoded.firework_explosion_has_twinkle,
+            patch.firework_explosion_has_twinkle
+        );
+        assert_eq!(
+            decoded.fireworks_flight_duration,
+            patch.fireworks_flight_duration
+        );
+        assert_eq!(
+            decoded.fireworks_explosions_count,
+            patch.fireworks_explosions_count
+        );
+        assert_eq!(decoded.fireworks_explosions, patch.fireworks_explosions);
     }
 
     #[test]

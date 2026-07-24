@@ -3745,34 +3745,71 @@
       "constant_name": "FIREWORK_EXPLOSION",
       "coverage": {
         "canonical_retention": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components.rs#pub firework_explosion_shape",
+            "crates/bbb-protocol/src/packets/data_components.rs#pub firework_explosion_colors",
+            "crates/bbb-protocol/src/packets/data_components.rs#decode_firework_explosion",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_additional_item_data_components",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_firework_component_records_and_collection_tags"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "network_encode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/FireworkExplosion.java#public static final StreamCodec<ByteBuf, FireworkExplosion> STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_firework_explosion",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#firework_descriptors_round_trip_exact_wire_values",
+            "crates/bbb-protocol/src/packets/data_components.rs#encodes_firework_family_patch_with_independent_delimiters",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_firework_family_components"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "observable_consumers": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/FireworkExplosion.java#addToTooltip",
+            "vanilla:net/minecraft/client/color/item/Firework.java#calculate",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#item_tint_sources_use_stack_component_colors_when_available",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+            "crates/bbb-native/src/particle_runtime/resolver_firework.rs#append_firework_explosion_sparks",
+            "crates/bbb-native/src/runtime/events/tests/entity_particle_events.rs#firework_entity_event_with_explosions_emits_firework_particles"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "persistent_projection": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/FireworkExplosion.java#public static final Codec<FireworkExplosion> CODEC",
+            "crates/bbb-native/src/input/component_patch.rs#encode_firework_explosion",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_firework_component_records_and_collection_tags"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#firework_descriptors_round_trip_exact_wire_values",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#firework_descriptors_enforce_collection_bounds_and_presence_atomically",
+            "crates/bbb-protocol/src/packets/data_components.rs#encodes_firework_family_patch_with_independent_delimiters",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_firework_family_components",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#item_tint_sources_use_stack_component_colors_when_available",
+            "crates/bbb-native/src/runtime/events/tests/entity_particle_events.rs#firework_entity_event_with_explosions_emits_firework_particles"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "typed_decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#FIREWORK_EXPLOSION",
+            "vanilla:net/minecraft/world/item/component/FireworkExplosion.java#public record FireworkExplosion",
+            "crates/bbb-protocol/src/packets/data_components.rs#decode_firework_explosion",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_additional_item_data_components",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_firework_component_records_and_collection_tags"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "resource_id": "minecraft:firework_explosion",
@@ -3791,34 +3828,73 @@
       "constant_name": "FIREWORKS",
       "coverage": {
         "canonical_retention": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components.rs#pub fireworks_flight_duration",
+            "crates/bbb-protocol/src/packets/data_components.rs#pub fireworks_explosions",
+            "crates/bbb-protocol/src/packets/data_components.rs#decode_fireworks",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_additional_item_data_components",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_firework_component_records_and_collection_tags"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "network_encode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/Fireworks.java#public static final StreamCodec<ByteBuf, Fireworks> STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_fireworks",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#firework_descriptors_round_trip_exact_wire_values",
+            "crates/bbb-protocol/src/packets/data_components.rs#encodes_firework_family_patch_with_independent_delimiters",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_firework_family_components"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "observable_consumers": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/Fireworks.java#addToTooltip",
+            "vanilla:net/minecraft/world/entity/projectile/FireworkRocketEntity.java#getExplosions",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+            "crates/bbb-world/src/entities/tests/item_entity_and_pickup_projection.rs#firework_rocket_explosion_particle_state_projects_event_context",
+            "crates/bbb-native/src/runtime/events/tests/entity_particle_events.rs#firework_entity_event_with_explosions_emits_firework_particles",
+            "crates/bbb-native/src/particle_runtime/tests.rs#firework_rocket_trail_batch_matches_vanilla_client_tick_particle"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "persistent_projection": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/Fireworks.java#public static final Codec<Fireworks> CODEC",
+            "crates/bbb-protocol/src/packets/serverbound.rs#validate_creative_item_component_ranges",
+            "crates/bbb-native/src/input/component_patch.rs#encode_fireworks",
+            "crates/bbb-native/src/input/tests.rs#local_firework_save_uses_parent_lifecycle_synced_item_codec_and_client_life",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_firework_component_records_and_collection_tags"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#firework_descriptors_round_trip_exact_wire_values",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#firework_descriptors_enforce_collection_bounds_and_presence_atomically",
+            "crates/bbb-protocol/src/packets/data_components.rs#encodes_firework_family_patch_with_independent_delimiters",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_firework_family_components",
+            "crates/bbb-protocol/src/packets/tests.rs#set_creative_mode_slot_rejects_values_rejected_by_the_untrusted_stack_codec",
+            "crates/bbb-world/src/entities/tests/item_entity_and_pickup_projection.rs#firework_rocket_explosion_particle_state_projects_event_context",
+            "crates/bbb-native/src/input/tests.rs#local_firework_save_uses_parent_lifecycle_synced_item_codec_and_client_life"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "typed_decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#FIREWORKS",
+            "vanilla:net/minecraft/world/item/component/Fireworks.java#public record Fireworks",
+            "crates/bbb-protocol/src/packets/data_components.rs#decode_fireworks",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_additional_item_data_components",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_firework_component_records_and_collection_tags"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "resource_id": "minecraft:fireworks",

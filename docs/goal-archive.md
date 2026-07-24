@@ -428,3 +428,8 @@
   creative framing、持久化 Codec/SNBT、配方、谓词、tooltip 和 named/direct
   armor sprite 证据齐备，合同见
   `docs/archive/trim-component-roundtrip-design.md`。
+- **2026-07-23（Firework component 家族六维闭环）**：
+  `FIREWORK_EXPLOSION` 与 `FIREWORKS` 现精确重编码形状、颜色/渐变、trail、
+  twinkle、raw flight VarInt 与最多 256 个嵌套爆炸；creative 持久化范围、
+  framing、SNBT、tooltip/tint、rocket 状态及粒子/声音证据齐备，合同见
+  `docs/archive/firework-components-roundtrip-design.md`。
