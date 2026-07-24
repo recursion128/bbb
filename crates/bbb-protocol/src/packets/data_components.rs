@@ -3632,7 +3632,7 @@ mod tests {
             DataComponentPatchSummary {
                 added: 1,
                 added_type_ids: vec![
-                    crate::data_component_types::VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID,
+                    crate::data_component_types::VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID,
                 ],
                 ..DataComponentPatchSummary::default()
             },
