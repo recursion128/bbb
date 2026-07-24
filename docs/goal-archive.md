@@ -376,3 +376,8 @@
   拒绝越界递归且不生成截断 SNBT。四项账本只补 partial evidence，未虚报通用
   patch 重编码或无损持久化闭环，合同见
   `docs/archive/recursive-item-component-safety-design.md`。
+- **2026-07-23（基础 ItemStack component 六维闭环）**：`MAX_STACK_SIZE`、
+  `MAX_DAMAGE`、`DAMAGE`、`UNBREAKABLE` 获得 descriptor-owned 编码、
+  canonical 原子预检和 creative untrusted 逐值 framing；四行六维 coverage
+  complete，其余 added-value 仍精确拒绝，合同见
+  `docs/archive/base-item-component-roundtrip-design.md`。

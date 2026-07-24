@@ -13,6 +13,7 @@ use crate::{
     codec::{Encoder, ProtocolError, Result},
     game_rules::{vanilla_game_rule, VANILLA_GAME_RULES},
     ids,
+    item_types::{VANILLA_ITEM_ABSOLUTE_MAX_STACK_SIZE, VANILLA_ITEM_AIR_ID},
 };
 
 use super::client_features::{RecipeBookType, RecipeDisplayId};
@@ -22,7 +23,7 @@ use super::player_info::{GameType, PlayerInfoChatSession};
 use super::{
     chunks,
     client_common::{self, CustomClickAction},
-    connection, normalize_resource_location, BlockPos, MessageSignature, Vec3d,
+    connection, data_components, normalize_resource_location, BlockPos, MessageSignature, Vec3d,
 };
 
 const PLAYER_INPUT_FORWARD: u8 = 1;
@@ -1117,16 +1118,45 @@ fn encode_item_stack_summary(out: &mut Encoder, item: &ItemStackSummary) -> Resu
         return Ok(());
     }
     super::inventory::validate_item_holder_id(item_id)?;
-    if item.component_patch != DataComponentPatchSummary::default() {
+    if item_id == VANILLA_ITEM_AIR_ID {
+        out.write_var_i32(0);
+        return Ok(());
+    }
+    if item.count > VANILLA_ITEM_ABSOLUTE_MAX_STACK_SIZE {
         return Err(ProtocolError::InvalidData(
-            "cannot encode summarized item component patch for creative mode slot".to_string(),
+            format!(
+                "creative mode item stack count {} exceeds Vanilla persistent maximum {VANILLA_ITEM_ABSOLUTE_MAX_STACK_SIZE}",
+                item.count
+            ),
         ));
     }
+    validate_creative_item_component_ranges(&item.component_patch)?;
 
     out.write_var_i32(item.count);
     out.write_var_i32(item_id);
-    out.write_var_i32(0);
-    out.write_var_i32(0);
+    data_components::encode_delimited_data_component_patch_summary(out, &item.component_patch)?;
+    Ok(())
+}
+
+fn validate_creative_item_component_ranges(patch: &DataComponentPatchSummary) -> Result<()> {
+    if patch
+        .max_stack_size
+        .is_some_and(|value| !(1..=VANILLA_ITEM_ABSOLUTE_MAX_STACK_SIZE).contains(&value))
+    {
+        return Err(ProtocolError::InvalidData(
+            "creative mode max_stack_size must be in 1..=99".to_string(),
+        ));
+    }
+    if patch.max_damage.is_some_and(|value| value <= 0) {
+        return Err(ProtocolError::InvalidData(
+            "creative mode max_damage must be positive".to_string(),
+        ));
+    }
+    if patch.damage.is_some_and(|value| value < 0) {
+        return Err(ProtocolError::InvalidData(
+            "creative mode damage must be non-negative".to_string(),
+        ));
+    }
     Ok(())
 }
 

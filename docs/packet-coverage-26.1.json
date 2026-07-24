@@ -5867,6 +5867,7 @@
           "evidence": [
             "crates/bbb-protocol/src/packets/serverbound.rs#encode_play_set_creative_mode_slot",
             "crates/bbb-protocol/src/packets/serverbound.rs#encode_item_stack_summary",
+            "crates/bbb-protocol/src/packets/data_components.rs#encode_delimited_data_component_patch_summary",
             "vanilla:net/minecraft/network/protocol/game/ServerboundSetCreativeModeSlotPacket.java#STREAM_CODEC",
             "vanilla:net/minecraft/network/protocol/game/GameProtocols.java#HAS_INFINITE_MATERIALS"
           ],
@@ -5887,8 +5888,11 @@
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_componentless_item",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_foundational_component_patch",
             "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_drop_empty_stack",
-            "crates/bbb-protocol/src/packets/tests.rs#set_creative_mode_slot_rejects_summarized_component_patch",
+            "crates/bbb-protocol/src/packets/tests.rs#set_creative_mode_slot_normalizes_air_item_to_empty_stack",
+            "crates/bbb-protocol/src/packets/tests.rs#set_creative_mode_slot_rejects_unsupported_component_patch",
+            "crates/bbb-protocol/src/packets/tests.rs#set_creative_mode_slot_rejects_values_rejected_by_the_untrusted_stack_codec",
             "crates/bbb-net/src/driver/commands/tests.rs#send_set_creative_mode_slot_encodes_componentless_item",
             "crates/bbb-net/src/driver/commands/tests.rs#send_set_creative_mode_slot_rejects_summarized_components",
             "crates/bbb-control/src/server/tests.rs#net_set_creative_mode_slot_queues_request",

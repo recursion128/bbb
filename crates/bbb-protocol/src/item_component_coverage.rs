@@ -207,6 +207,30 @@ mod tests {
         }
     }
 
+    #[test]
+    fn complete_network_encode_cells_have_catalog_handlers() {
+        let ledger = vanilla_item_component_coverage_26_1().unwrap();
+        for entry in ledger.entries.iter().filter(|entry| {
+            entry.coverage["network_encode"].status == ItemComponentCoverageStatus::Complete
+        }) {
+            let descriptor =
+                crate::packets::data_components::catalog::vanilla_data_component_descriptor(
+                    entry.type_id,
+                )
+                .unwrap_or_else(|| {
+                    panic!(
+                        "complete network encoder lacks descriptor for {}",
+                        entry.constant_name
+                    )
+                });
+            assert!(
+                descriptor.can_encode(),
+                "complete network encoder lacks handler for {}",
+                entry.constant_name
+            );
+        }
+    }
+
     fn has_partial_component_dimension(
         components: &ItemComponentCoverageLedger,
         dimensions: &[&str],

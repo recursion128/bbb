@@ -1173,8 +1173,11 @@ back into a todo. Do not delete these.
   damage, fox/bee exceptions. Restart when locally controlled non-player entities
   are added.
 - **Full item component payload encoding for
-  `ServerboundSetCreativeModeSlotPacket`.** The queue handles empty/componentless
-  stacks only. Restart when component-rich creative stacks must be sent.
+  `ServerboundSetCreativeModeSlotPacket`.** Add descriptor-owned encoders for
+  every added value beyond `MAX_STACK_SIZE`, `MAX_DAMAGE`, `DAMAGE`, and
+  `UNBREAKABLE`; preserve Vanilla's per-value length framing and persistent
+  range checks, and keep unsupported additions rejected before any packet is
+  sent.
 
 ## Particles and level events
 

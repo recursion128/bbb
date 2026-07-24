@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 
@@ -12,13 +12,17 @@ use crate::{
     builtin_enum_component_values::{
         normalize_builtin_enum_component_value_id, normalize_vanilla_dye_color_id,
     },
-    codec::{Decoder, ProtocolError, Result},
+    codec::{Decoder, Encoder, ProtocolError, Result},
     component::{
         decode_styled_component_summary_from_decoder,
         decode_styled_component_summary_with_nbt_from_decoder, skip_nbt_tag_from_decoder,
         styled_runs_summary_text, StyledTextRun,
     },
     consume_effect_types::ConsumeEffectType,
+    data_component_types::{
+        VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID, VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
+    },
     entity_types::vanilla_entity_type,
     equipment_slots::{
         vanilla_equipment_slot_by_id, vanilla_equipment_slot_group,
@@ -926,6 +930,117 @@ pub(crate) fn decode_data_component_patch_summary(
     summary.added = added;
     summary.removed_type_ids = removed_type_ids;
     Ok(summary)
+}
+
+pub(crate) fn encode_delimited_data_component_patch_summary(
+    out: &mut Encoder,
+    patch: &DataComponentPatchSummary,
+) -> Result<()> {
+    let added_descriptors = validate_encodable_data_component_patch_summary(patch)?;
+    let mut encoded = Encoder::new();
+    encoded.write_var_i32(patch.added as i32);
+    encoded.write_var_i32(patch.removed_type_ids.len() as i32);
+
+    for (type_id, descriptor) in added_descriptors {
+        let mut value = Encoder::new();
+        descriptor.encode(patch, &mut value)?;
+        let value = value.into_inner();
+        let value_len = i32::try_from(value.len()).map_err(|_| {
+            ProtocolError::InvalidData(format!(
+                "encoded data component type id {type_id} value length does not fit i32"
+            ))
+        })?;
+        encoded.write_var_i32(type_id);
+        encoded.write_var_i32(value_len);
+        encoded.write_bytes(&value);
+    }
+
+    for type_id in &patch.removed_type_ids {
+        encoded.write_var_i32(*type_id);
+    }
+
+    out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
+fn validate_encodable_data_component_patch_summary(
+    patch: &DataComponentPatchSummary,
+) -> Result<Vec<(i32, &'static catalog::DataComponentDescriptor)>> {
+    if patch.added != patch.added_type_ids.len() {
+        return Err(ProtocolError::InvalidData(format!(
+            "data component patch added count {} does not match {} type ids",
+            patch.added,
+            patch.added_type_ids.len()
+        )));
+    }
+    let entry_count = patch
+        .added
+        .checked_add(patch.removed_type_ids.len())
+        .ok_or_else(|| {
+            ProtocolError::InvalidData("data component patch entry count overflows".to_string())
+        })?;
+    if entry_count > MAX_DATA_COMPONENT_PATCH_ENTRIES {
+        return Err(ProtocolError::PacketTooLarge(
+            entry_count,
+            MAX_DATA_COMPONENT_PATCH_ENTRIES,
+        ));
+    }
+
+    let mut expected = DataComponentPatchSummary {
+        added: patch.added,
+        added_type_ids: patch.added_type_ids.clone(),
+        removed_type_ids: patch.removed_type_ids.clone(),
+        ..DataComponentPatchSummary::default()
+    };
+    let mut seen = BTreeSet::new();
+    let mut descriptors = Vec::with_capacity(patch.added);
+    for type_id in &patch.added_type_ids {
+        if !seen.insert(*type_id) {
+            return Err(ProtocolError::InvalidData(format!(
+                "duplicate added data component type id {type_id}"
+            )));
+        }
+        let descriptor = data_component_descriptor_or_error(*type_id)?;
+        if !descriptor.can_encode() {
+            return Err(ProtocolError::InvalidData(format!(
+                "cannot encode unsupported data component {} ({type_id})",
+                descriptor.resource_id()
+            )));
+        }
+        match *type_id {
+            VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID => {
+                expected.max_stack_size = patch.max_stack_size;
+            }
+            VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID => {
+                expected.max_damage = patch.max_damage;
+            }
+            VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID => {
+                expected.damage = patch.damage;
+            }
+            VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID => {
+                expected.unbreakable = patch.unbreakable;
+            }
+            _ => unreachable!("encodable descriptor set is limited to foundational components"),
+        }
+        descriptors.push((*type_id, descriptor));
+    }
+
+    for type_id in &patch.removed_type_ids {
+        data_component_descriptor_or_error(*type_id)?;
+        if !seen.insert(*type_id) {
+            return Err(ProtocolError::InvalidData(format!(
+                "duplicate or overlapping removed data component type id {type_id}"
+            )));
+        }
+    }
+
+    if patch != &expected {
+        return Err(ProtocolError::InvalidData(
+            "data component patch contains missing or dangling summarized values".to_string(),
+        ));
+    }
+
+    Ok(descriptors)
 }
 
 pub(crate) fn decode_data_component_exact_predicate_summary(
@@ -2486,8 +2601,179 @@ fn read_bounded_len(decoder: &mut Decoder<'_>, max: usize) -> Result<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::codec::Encoder;
+    use crate::{
+        codec::Encoder,
+        data_component_types::{
+            VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+            VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID,
+        },
+    };
     use uuid::Uuid;
+
+    #[test]
+    fn encodes_foundational_data_component_patch_with_delimited_values() {
+        let patch = DataComponentPatchSummary {
+            added: 4,
+            added_type_ids: vec![
+                VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+                VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
+                VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+                VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
+            ],
+            removed_type_ids: vec![
+                VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
+                VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID,
+            ],
+            max_stack_size: Some(64),
+            max_damage: Some(300),
+            damage: Some(7),
+            unbreakable: true,
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        encode_delimited_data_component_patch_summary(&mut encoded, &patch).unwrap();
+        let encoded = encoded.into_inner();
+        assert_eq!(
+            encoded,
+            [
+                4, 2, // positive and negative counts
+                3, 1, 7, // damage: type, byte length, VarInt value
+                4, 0, // unbreakable: type, zero-byte Unit value
+                1, 1, 64, // max_stack_size
+                2, 2, 0xac, 0x02, // max_damage = 300
+                0, 109, // removed types
+            ]
+        );
+
+        let mut decoder = Decoder::new(&encoded);
+        assert_eq!(decoder.read_len().unwrap(), 4);
+        assert_eq!(decoder.read_len().unwrap(), 2);
+        let mut decoded = DataComponentPatchSummary::default();
+        for expected_type_id in [
+            VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+            VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
+            VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+            VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
+        ] {
+            let type_id = decoder.read_var_i32().unwrap();
+            assert_eq!(type_id, expected_type_id);
+            let value_len = decoder.read_len().unwrap();
+            let value = decoder
+                .read_exact(value_len, "delimited component value")
+                .unwrap();
+            let mut value_decoder = Decoder::new(value);
+            data_component_descriptor_or_error(type_id)
+                .unwrap()
+                .decode(&mut value_decoder, &mut decoded)
+                .unwrap();
+            assert!(value_decoder.is_empty());
+        }
+        assert_eq!(decoder.read_var_i32().unwrap(), 0);
+        assert_eq!(decoder.read_var_i32().unwrap(), 109);
+        assert!(decoder.is_empty());
+        assert_eq!(decoded.max_stack_size, Some(64));
+        assert_eq!(decoded.max_damage, Some(300));
+        assert_eq!(decoded.damage, Some(7));
+        assert!(decoded.unbreakable);
+    }
+
+    #[test]
+    fn foundational_data_component_patch_encoder_rejects_noncanonical_summaries_atomically() {
+        let valid_max_stack_size = || DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID],
+            max_stack_size: Some(64),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut cases = Vec::new();
+
+        let mut added_count_mismatch = valid_max_stack_size();
+        added_count_mismatch.added = 2;
+        cases.push((added_count_mismatch, "added count"));
+
+        let mut duplicate_added = valid_max_stack_size();
+        duplicate_added.added = 2;
+        duplicate_added.added_type_ids.push(1);
+        cases.push((duplicate_added, "duplicate added"));
+
+        let mut overlapping = valid_max_stack_size();
+        overlapping
+            .removed_type_ids
+            .push(VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID);
+        cases.push((overlapping, "overlapping removed"));
+
+        let mut duplicate_removed = DataComponentPatchSummary::default();
+        duplicate_removed.removed_type_ids = vec![
+            VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
+            VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
+        ];
+        cases.push((duplicate_removed, "duplicate or overlapping removed"));
+
+        let unsupported_added = DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID],
+            custom_name: Some("unsupported".to_string()),
+            ..DataComponentPatchSummary::default()
+        };
+        cases.push((unsupported_added, "cannot encode unsupported"));
+
+        let missing_value = DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID],
+            ..DataComponentPatchSummary::default()
+        };
+        cases.push((missing_value, "missing max_stack_size"));
+
+        let dangling_value = DataComponentPatchSummary {
+            damage: Some(1),
+            ..DataComponentPatchSummary::default()
+        };
+        cases.push((dangling_value, "dangling summarized values"));
+
+        let missing_unit = DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID],
+            ..DataComponentPatchSummary::default()
+        };
+        cases.push((missing_unit, "missing unbreakable"));
+
+        let unknown_removed = DataComponentPatchSummary {
+            removed_type_ids: vec![110],
+            ..DataComponentPatchSummary::default()
+        };
+        cases.push((unknown_removed, "unsupported data component type id 110"));
+
+        for (patch, expected_error) in cases {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            let error =
+                encode_delimited_data_component_patch_summary(&mut encoded, &patch).unwrap_err();
+            assert!(
+                error.to_string().contains(expected_error),
+                "{error} did not contain {expected_error:?}"
+            );
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
+
+        let oversized = DataComponentPatchSummary {
+            removed_type_ids: vec![
+                VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID;
+                MAX_DATA_COMPONENT_PATCH_ENTRIES + 1
+            ],
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        encoded.write_u8(0xaa);
+        let error =
+            encode_delimited_data_component_patch_summary(&mut encoded, &oversized).unwrap_err();
+        assert!(matches!(
+            error,
+            ProtocolError::PacketTooLarge(actual, max)
+                if actual == MAX_DATA_COMPONENT_PATCH_ENTRIES + 1
+                    && max == MAX_DATA_COMPONENT_PATCH_ENTRIES
+        ));
+        assert_eq!(encoded.into_inner(), [0xaa]);
+    }
 
     #[test]
     fn fixed_registry_network_holder_sets_reject_unknown_direct_ids() {

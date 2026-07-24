@@ -1,14 +1,20 @@
 use super::*;
 use std::sync::OnceLock;
 
-use crate::data_component_types::{DataComponentTypeCatalogEntry, VANILLA_DATA_COMPONENT_TYPES};
+use crate::data_component_types::{
+    DataComponentTypeCatalogEntry, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_TYPES, VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
+};
 
 type WireDecodeHandler = fn(i32, &mut Decoder<'_>, &mut DataComponentPatchSummary) -> Result<()>;
+type WireEncodeHandler = fn(i32, &DataComponentPatchSummary, &mut Encoder) -> Result<()>;
 
 #[derive(Clone, Copy)]
 pub struct DataComponentDescriptor {
     metadata: &'static DataComponentTypeCatalogEntry,
     decode: WireDecodeHandler,
+    encode: Option<WireEncodeHandler>,
 }
 
 impl DataComponentDescriptor {
@@ -30,6 +36,25 @@ impl DataComponentDescriptor {
         summary: &mut DataComponentPatchSummary,
     ) -> Result<()> {
         (self.decode)(self.metadata.type_id, decoder, summary)
+    }
+
+    pub(crate) const fn can_encode(self) -> bool {
+        self.encode.is_some()
+    }
+
+    pub(super) fn encode(
+        self,
+        summary: &DataComponentPatchSummary,
+        out: &mut Encoder,
+    ) -> Result<()> {
+        let encode = self.encode.ok_or_else(|| {
+            ProtocolError::InvalidData(format!(
+                "cannot encode unsupported data component {} ({})",
+                self.resource_id(),
+                self.type_id()
+            ))
+        })?;
+        encode(self.metadata.type_id, summary, out)
     }
 }
 
@@ -158,7 +183,11 @@ fn initialized_data_component_descriptors() -> &'static [DataComponentDescriptor
             VANILLA_DATA_COMPONENT_TYPES
                 .iter()
                 .zip(WIRE_DECODE_HANDLERS.iter().copied())
-                .map(|(metadata, decode)| DataComponentDescriptor { metadata, decode })
+                .map(|(metadata, decode)| DataComponentDescriptor {
+                    metadata,
+                    decode,
+                    encode: wire_encode_handler(metadata.type_id),
+                })
                 .collect()
         })
         .as_slice()
@@ -172,6 +201,16 @@ pub fn vanilla_data_component_descriptor(type_id: i32) -> Option<&'static DataCo
     let index = usize::try_from(type_id).ok()?;
     let descriptor = initialized_data_component_descriptors().get(index)?;
     (descriptor.type_id() == type_id).then_some(descriptor)
+}
+
+const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
+    match type_id {
+        VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID => Some(encode_max_stack_size),
+        VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID => Some(encode_max_damage),
+        VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID => Some(encode_damage),
+        VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID => Some(encode_unbreakable),
+        _ => None,
+    }
 }
 
 fn decode_custom_data(
@@ -204,12 +243,48 @@ decode_var_i32_field!(decode_enchantable, enchantable_value);
 decode_var_i32_field!(decode_map_id, map_id);
 decode_var_i32_field!(decode_ominous_bottle_amplifier, ominous_bottle_amplifier);
 
+macro_rules! encode_var_i32_field {
+    ($name:ident, $field:ident) => {
+        fn $name(
+            type_id: i32,
+            summary: &DataComponentPatchSummary,
+            out: &mut Encoder,
+        ) -> Result<()> {
+            let value = summary.$field.ok_or_else(|| {
+                ProtocolError::InvalidData(format!(
+                    "data component type id {type_id} is missing {}",
+                    stringify!($field)
+                ))
+            })?;
+            out.write_var_i32(value);
+            Ok(())
+        }
+    };
+}
+
+encode_var_i32_field!(encode_max_stack_size, max_stack_size);
+encode_var_i32_field!(encode_max_damage, max_damage);
+encode_var_i32_field!(encode_damage, damage);
+
 fn decode_unbreakable(
     _type_id: i32,
     _decoder: &mut Decoder<'_>,
     summary: &mut DataComponentPatchSummary,
 ) -> Result<()> {
     summary.unbreakable = true;
+    Ok(())
+}
+
+fn encode_unbreakable(
+    type_id: i32,
+    summary: &DataComponentPatchSummary,
+    _out: &mut Encoder,
+) -> Result<()> {
+    if !summary.unbreakable {
+        return Err(ProtocolError::InvalidData(format!(
+            "data component type id {type_id} is missing unbreakable"
+        )));
+    }
     Ok(())
 }
 
@@ -1126,6 +1201,14 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec![20, 41, 48]
         );
+        assert_eq!(
+            descriptors
+                .iter()
+                .filter(|descriptor| descriptor.can_encode())
+                .map(|descriptor| descriptor.type_id())
+                .collect::<Vec<_>>(),
+            vec![1, 2, 3, 4]
+        );
     }
 
     #[test]
@@ -1143,6 +1226,38 @@ mod tests {
 
         assert_eq!(summary.max_stack_size, Some(99));
         assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn foundational_descriptors_encode_exact_network_values() {
+        let summary = DataComponentPatchSummary {
+            max_stack_size: Some(i32::MIN),
+            max_damage: Some(0),
+            damage: Some(-1),
+            unbreakable: true,
+            ..DataComponentPatchSummary::default()
+        };
+        for (type_id, expected_value) in [
+            (
+                VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+                Some(i32::MIN),
+            ),
+            (VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, Some(0)),
+            (VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, Some(-1)),
+            (VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID, None),
+        ] {
+            let descriptor = vanilla_data_component_descriptor(type_id).unwrap();
+            let mut encoded = Encoder::new();
+            descriptor.encode(&summary, &mut encoded).unwrap();
+            let encoded = encoded.into_inner();
+            if let Some(expected_value) = expected_value {
+                let mut decoder = Decoder::new(&encoded);
+                assert_eq!(decoder.read_var_i32().unwrap(), expected_value);
+                assert!(decoder.is_empty());
+            } else {
+                assert!(encoded.is_empty());
+            }
+        }
     }
 
     #[test]

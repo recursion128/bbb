@@ -1,6 +1,12 @@
 use super::*;
 use crate::{
     codec::{offline_player_uuid, Decoder, Encoder, ProtocolError},
+    data_component_types::{
+        VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+        VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
+    },
     ids,
     nbt_summary::decode_nbt_summary_from_decoder,
     NbtSummaryEntry, NbtSummaryValue,
@@ -1409,6 +1415,51 @@ fn encodes_set_creative_mode_slot_componentless_item() {
 }
 
 #[test]
+fn encodes_set_creative_mode_slot_foundational_component_patch() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 4,
+                added_type_ids: vec![
+                    VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+                    VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
+                    VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+                    VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
+                ],
+                removed_type_ids: vec![
+                    VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
+                    VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID,
+                ],
+                max_stack_size: Some(64),
+                max_damage: Some(300),
+                damage: Some(7),
+                unbreakable: true,
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            4, 2, // positive and negative patch counts
+            3, 1, 7, // damage
+            4, 0, // zero-byte unbreakable Unit
+            1, 1, 64, // max_stack_size
+            2, 2, 0xac, 0x02, // max_damage = 300
+            0, 109, // removed component types
+        ]
+    );
+}
+
+#[test]
 fn encodes_set_creative_mode_slot_drop_empty_stack() {
     let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
         slot_num: -1,
@@ -1424,7 +1475,28 @@ fn encodes_set_creative_mode_slot_drop_empty_stack() {
 }
 
 #[test]
-fn set_creative_mode_slot_rejects_summarized_component_patch() {
+fn set_creative_mode_slot_normalizes_air_item_to_empty_stack() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(crate::item_types::VANILLA_ITEM_AIR_ID),
+            count: 99,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID],
+                max_stack_size: Some(99),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(payload, [0, 36, 0]);
+}
+
+#[test]
+fn set_creative_mode_slot_rejects_unsupported_component_patch() {
     let err = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
         slot_num: 36,
         item: ItemStackSummary {
@@ -1432,7 +1504,7 @@ fn set_creative_mode_slot_rejects_summarized_component_patch() {
             count: 1,
             component_patch: DataComponentPatchSummary {
                 added: 1,
-                added_type_ids: vec![6],
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID],
                 custom_name: Some("Renamed".to_string()),
                 ..DataComponentPatchSummary::default()
             },
@@ -1441,6 +1513,96 @@ fn set_creative_mode_slot_rejects_summarized_component_patch() {
     .unwrap_err();
 
     assert!(matches!(err, ProtocolError::InvalidData(_)));
+    assert!(err.to_string().contains(&format!(
+        "cannot encode unsupported data component minecraft:custom_name ({VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID})"
+    )));
+}
+
+#[test]
+fn set_creative_mode_slot_rejects_values_rejected_by_the_untrusted_stack_codec() {
+    let stack_with_patch = |count, component_patch| SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count,
+            component_patch,
+        },
+    };
+    let max_stack_size_patch = |value| DataComponentPatchSummary {
+        added: 1,
+        added_type_ids: vec![VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID],
+        max_stack_size: Some(value),
+        ..DataComponentPatchSummary::default()
+    };
+    let max_damage_patch = |value| DataComponentPatchSummary {
+        added: 1,
+        added_type_ids: vec![VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID],
+        max_damage: Some(value),
+        ..DataComponentPatchSummary::default()
+    };
+    let damage_patch = |value| DataComponentPatchSummary {
+        added: 1,
+        added_type_ids: vec![VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID],
+        damage: Some(value),
+        ..DataComponentPatchSummary::default()
+    };
+
+    for (packet, expected_error) in [
+        (
+            stack_with_patch(100, DataComponentPatchSummary::default()),
+            "count 100 exceeds",
+        ),
+        (
+            stack_with_patch(1, max_stack_size_patch(0)),
+            "max_stack_size must be in 1..=99",
+        ),
+        (
+            stack_with_patch(1, max_stack_size_patch(100)),
+            "max_stack_size must be in 1..=99",
+        ),
+        (
+            stack_with_patch(1, max_damage_patch(0)),
+            "max_damage must be positive",
+        ),
+        (
+            stack_with_patch(1, max_damage_patch(-1)),
+            "max_damage must be positive",
+        ),
+        (
+            stack_with_patch(1, damage_patch(-1)),
+            "damage must be non-negative",
+        ),
+    ] {
+        let error = encode_play_set_creative_mode_slot(&packet).unwrap_err();
+        assert!(
+            error.to_string().contains(expected_error),
+            "{error} did not contain {expected_error:?}"
+        );
+    }
+}
+
+#[test]
+fn set_creative_mode_slot_accepts_untrusted_stack_codec_integer_boundaries() {
+    encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 99,
+            component_patch: DataComponentPatchSummary {
+                added: 3,
+                added_type_ids: vec![
+                    VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+                    VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
+                    VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+                ],
+                max_stack_size: Some(99),
+                max_damage: Some(1),
+                damage: Some(0),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
 }
 
 #[test]
