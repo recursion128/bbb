@@ -14,7 +14,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID, VANILLA_DATA_COMPONENT_BASE_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_BEES_TYPE_ID, VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
         VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID, VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
-        VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID, VANILLA_DATA_COMPONENT_CAT_COLLAR_TYPE_ID,
         VANILLA_DATA_COMPONENT_CAT_SOUND_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_CAT_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID,
@@ -3635,6 +3635,39 @@ fn encodes_set_creative_mode_slot_cat_sound_variant_component() {
             1, 0, // patch counts
             106, 1, // cat/sound_variant type and delimited value length
             1, // ROYAL holder id in the vanilla fallback catalog
+        ]
+    );
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_cat_collar_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_CAT_COLLAR_TYPE_ID],
+                builtin_enum_component_ids: BTreeMap::from([(
+                    VANILLA_DATA_COMPONENT_CAT_COLLAR_TYPE_ID,
+                    VANILLA_DYE_COLOR_RED_ID,
+                )]),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            1, 0, // patch counts
+            107, 1,  // cat/collar type and delimited value length
+            14, // RED id
         ]
     );
 }

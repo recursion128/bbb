@@ -8746,34 +8746,87 @@
       "constant_name": "CAT_COLLAR",
       "coverage": {
         "canonical_retention": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#CAT_COLLAR",
+            "vanilla:net/minecraft/world/item/DyeColor.java#public static final StreamCodec<ByteBuf, DyeColor> STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components.rs#pub builtin_enum_component_ids",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_builtin_enum",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_animal_variant_data_components",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#cat_collar_string_enum_projects_to_builtin_enum_patch_map"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "network_encode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#CAT_COLLAR",
+            "vanilla:net/minecraft/world/item/DyeColor.java#public static final StreamCodec<ByteBuf, DyeColor> STREAM_CODEC",
+            "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#idMapper",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_builtin_enum",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#cat_collar_descriptor_round_trips_canonical_ids_normalizes_decode_zero_fallback_and_rejects_invalid_values_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_cat_collar_component"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "observable_consumers": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/entity/EntityType.java#appendComponentsConfig",
+            "vanilla:net/minecraft/world/entity/Entity.java#applyComponentsFromItemStack",
+            "vanilla:net/minecraft/world/entity/animal/feline/Cat.java#public DyeColor getCollarColor",
+            "vanilla:net/minecraft/world/entity/animal/feline/Cat.java#private void setCollarColor",
+            "vanilla:net/minecraft/world/entity/animal/feline/Cat.java#protected void applyImplicitComponents",
+            "vanilla:net/minecraft/world/entity/animal/feline/Cat.java#protected <T> boolean applyImplicitComponent",
+            "vanilla:net/minecraft/client/renderer/entity/CatRenderer.java#public void extractRenderState",
+            "vanilla:net/minecraft/client/renderer/entity/layers/CatCollarLayer.java#public void submit",
+            "crates/bbb-native/src/entity_scene/tests.rs#entity_model_kind_projects_cat_collar_from_tame_and_color",
+            "crates/bbb-renderer/src/entity_models/tests/feline.rs#feline_collar_submission_survives_missing_texture_atlas_entry",
+            "crates/bbb-renderer/src/entity_models/tests/feline.rs#feline_collar_layer_matches_vanilla_cat_collar_layer"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "persistent_projection": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#CAT_COLLAR",
+            "vanilla:net/minecraft/world/item/DyeColor.java#public static final StringRepresentable.EnumCodec<DyeColor> CODEC",
+            "crates/bbb-native/src/input/component_patch.rs#encode_builtin_enum",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_all_string_enum_component_value_codecs",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#cat_collar_string_enum_projects_to_builtin_enum_patch_map",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#rejects_invalid_string_enum_component_value_codecs"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/builtin_enum_component_values.rs#built_in_enum_component_values_preserve_vanilla_fallbacks_and_names",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_animal_variant_data_components",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#cat_collar_descriptor_round_trips_canonical_ids_normalizes_decode_zero_fallback_and_rejects_invalid_values_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_cat_collar_component",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#cat_collar_string_enum_projects_to_builtin_enum_patch_map",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+            "crates/bbb-native/src/entity_scene/tests.rs#entity_model_kind_projects_cat_collar_from_tame_and_color",
+            "crates/bbb-renderer/src/entity_models/tests/feline.rs#feline_collar_submission_survives_missing_texture_atlas_entry",
+            "crates/bbb-renderer/src/entity_models/tests/feline.rs#feline_collar_layer_matches_vanilla_cat_collar_layer"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "typed_decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#CAT_COLLAR",
+            "vanilla:net/minecraft/world/item/DyeColor.java#private static final IntFunction<DyeColor> BY_ID",
+            "vanilla:net/minecraft/world/item/DyeColor.java#public static final StreamCodec<ByteBuf, DyeColor> STREAM_CODEC",
+            "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#idMapper",
+            "crates/bbb-protocol/src/packets/data_components.rs#pub builtin_enum_component_ids",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_builtin_enum",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_animal_variant_data_components",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#cat_collar_descriptor_round_trips_canonical_ids_normalizes_decode_zero_fallback_and_rejects_invalid_values_atomically"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "resource_id": "minecraft:cat/collar",

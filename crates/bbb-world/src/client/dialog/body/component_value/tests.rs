@@ -10,7 +10,8 @@ use bbb_protocol::builtin_enum_component_values::{
 };
 use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_AXOLOTL_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID,
-    VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID, VANILLA_DATA_COMPONENT_CREATIVE_SLOT_LOCK_TYPE_ID,
+    VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID, VANILLA_DATA_COMPONENT_CAT_COLLAR_TYPE_ID,
+    VANILLA_DATA_COMPONENT_CREATIVE_SLOT_LOCK_TYPE_ID,
     VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
     VANILLA_DATA_COMPONENT_DYE_TYPE_ID, VANILLA_DATA_COMPONENT_FOX_VARIANT_TYPE_ID,
     VANILLA_DATA_COMPONENT_HORSE_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
@@ -299,6 +300,26 @@ fn fox_variant_string_enum_projects_to_builtin_enum_patch_map() {
         BTreeMap::from([(
             VANILLA_DATA_COMPONENT_FOX_VARIANT_TYPE_ID,
             VANILLA_FOX_VARIANT_SNOW_ID,
+        )])
+    );
+}
+
+#[test]
+fn cat_collar_string_enum_projects_to_builtin_enum_patch_map() {
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_CAT_COLLAR_TYPE_ID,
+        &DialogDataComponentValueState::StringEnum {
+            value_id: VANILLA_DYE_COLOR_RED_ID,
+            serialized_name: "red".to_string(),
+        },
+        &mut patch,
+    ));
+    assert_eq!(
+        patch.builtin_enum_component_ids,
+        BTreeMap::from([(
+            VANILLA_DATA_COMPONENT_CAT_COLLAR_TYPE_ID,
+            VANILLA_DYE_COLOR_RED_ID,
         )])
     );
 }

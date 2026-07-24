@@ -25,6 +25,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_BEES_TYPE_ID, VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID, VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
         VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CAT_COLLAR_TYPE_ID,
         VANILLA_DATA_COMPONENT_CAT_SOUND_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_CAT_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID,
@@ -1478,6 +1479,13 @@ fn validate_encodable_data_component_patch_summary(
             }
             VANILLA_DATA_COMPONENT_CAT_SOUND_VARIANT_TYPE_ID => {
                 expected.cat_sound_variant_id = patch.cat_sound_variant_id;
+            }
+            VANILLA_DATA_COMPONENT_CAT_COLLAR_TYPE_ID => {
+                if let Some(value_id) = patch.builtin_enum_component_ids.get(type_id) {
+                    expected
+                        .builtin_enum_component_ids
+                        .insert(*type_id, *value_id);
+                }
             }
             VANILLA_DATA_COMPONENT_SHEEP_COLOR_TYPE_ID => {
                 if let Some(value_id) = patch.builtin_enum_component_ids.get(type_id) {
