@@ -3133,6 +3133,37 @@ mod tests {
     }
 
     #[test]
+    fn right_mouse_press_on_default_interaction_entity_consumes_without_swing() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_entity_type(123, VANILLA_ENTITY_TYPE_INTERACTION_ID);
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+            item: item_stack(99, 1),
+        });
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+        );
+
+        assert_eq!(counters.interact_entity_commands_queued, 1);
+        assert_eq!(counters.swing_commands_queued, 0);
+        let NetCommand::InteractEntity(command) = rx.try_recv().unwrap() else {
+            panic!("expected interaction-entity command");
+        };
+        assert_eq!(command.packet.entity_id, 123);
+        assert_eq!(command.packet.hand, InteractionHand::MainHand);
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
     fn right_mouse_press_on_default_mob_pass_tries_both_hands_in_order() {
         let (tx, mut rx) = mpsc::channel(2);
         let commands = Some(tx);
