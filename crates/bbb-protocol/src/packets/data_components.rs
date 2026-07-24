@@ -27,7 +27,8 @@ use crate::{
         VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
         VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID,
+        VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
         VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
         VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID,
@@ -1219,6 +1220,7 @@ fn validate_encodable_data_component_patch_summary(
             crate::data_component_types::VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID => {
                 expected.attack_range = patch.attack_range;
             }
+            VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID => {}
             crate::data_component_types::VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID => {
                 expected.potion_id = patch.potion_id;
                 expected.potion_custom_color = patch.potion_custom_color;
@@ -7471,8 +7473,8 @@ mod tests {
     fn decodes_additional_item_data_components() {
         let mut payload = Encoder::new();
         let component_ids = [
-            0, 5, 23, 24, 25, 26, 28, 29, 30, 32, 40, 44, 45, 49, 50, 51, 53, 54, 55, 56, 61, 64,
-            68, 69, 75, 76, 80, 102,
+            0, 5, 23, 24, 25, 26, 28, 29, 30, 32, 34, 40, 44, 45, 49, 50, 51, 53, 54, 55, 56, 61,
+            64, 68, 69, 75, 76, 80, 102,
         ];
         payload.write_var_i32(component_ids.len() as i32);
         payload.write_var_i32(0);
@@ -7555,6 +7557,8 @@ mod tests {
         payload.write_bool(false);
         payload.write_bool(true);
         write_direct_sound_event(&mut payload, "minecraft:item.shears.snip", None);
+
+        payload.write_var_i32(34);
 
         payload.write_var_i32(40);
         payload.write_var_i32(0);

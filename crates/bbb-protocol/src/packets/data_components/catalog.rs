@@ -20,7 +20,8 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
     VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
     VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID, VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
-    VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+    VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID,
+    VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
     VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
     VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
     VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID, VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
@@ -276,6 +277,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_TOOL_TYPE_ID => Some(encode_tool),
         VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID => Some(encode_attack_range),
         VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID => Some(encode_equippable),
+        VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID => Some(encode_glider),
         VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID => Some(encode_death_protection),
         VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID => Some(encode_blocks_attacks),
         VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID => Some(encode_piercing_weapon),
@@ -679,6 +681,14 @@ fn encode_attack_range(
     encoded.write_f32(range.hitbox_margin);
     encoded.write_f32(range.mob_factor);
     out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
+fn encode_glider(
+    _type_id: i32,
+    _summary: &DataComponentPatchSummary,
+    _out: &mut Encoder,
+) -> Result<()> {
     Ok(())
 }
 
@@ -3724,8 +3734,8 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec![
                 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 22, 23, 24,
-                25, 26, 28, 30, 32, 36, 37, 38, 39, 40, 42, 43, 44, 45, 46, 48, 49, 50, 51, 52, 53,
-                54, 55, 56, 58, 59, 60, 61, 62, 64, 67, 68, 69, 70, 72, 75, 77, 80, 102,
+                25, 26, 28, 30, 32, 34, 36, 37, 38, 39, 40, 42, 43, 44, 45, 46, 48, 49, 50, 51, 52,
+                53, 54, 55, 56, 58, 59, 60, 61, 62, 64, 67, 68, 69, 70, 72, 75, 77, 80, 102,
             ]
         );
     }
@@ -5082,6 +5092,24 @@ mod tests {
             assert!(descriptor.encode(&summary, &mut encoded).is_err());
             assert_eq!(encoded.into_inner(), [0xaa]);
         }
+    }
+
+    #[test]
+    fn glider_descriptor_round_trips_empty_unit_payload() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID).unwrap();
+        let mut encoded = Encoder::new();
+        descriptor
+            .encode(&DataComponentPatchSummary::default(), &mut encoded)
+            .unwrap();
+
+        let encoded = encoded.into_inner();
+        assert!(encoded.is_empty());
+        let mut decoded = DataComponentPatchSummary::default();
+        let mut decoder = Decoder::new(&encoded);
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded, DataComponentPatchSummary::default());
     }
 
     #[test]

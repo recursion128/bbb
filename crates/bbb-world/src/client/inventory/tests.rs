@@ -6,6 +6,7 @@ use crate::entities::{
 use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
 };
+use bbb_protocol::item_types::VANILLA_ITEM_ELYTRA_ID;
 use bbb_protocol::menu_types::{
     VANILLA_MENU_TYPES, VANILLA_MENU_TYPE_GENERIC_9X2_ID, VANILLA_MENU_TYPE_GENERIC_9X3_ID,
 };
@@ -1456,51 +1457,113 @@ fn drop_local_selected_hotbar_item_drops_stack_and_reports_empty_slots() {
 }
 
 #[test]
-fn local_player_has_equipped_elytra_true_for_non_empty_elytra_in_chest_slot() {
+fn local_player_usable_glider_applies_default_components_slot_and_damage() {
     let mut store = WorldStore::new();
+    store.set_default_item_component_type_ids(BTreeMap::from([(
+        42,
+        BTreeSet::from([
+            VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID,
+            VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
+            VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
+            VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+        ]),
+    )]));
+    store.set_default_item_equipment_slots(BTreeMap::from([(42, ItemEquipmentSlot::Chest)]));
+    store.set_default_item_max_damage(BTreeMap::from([(42, 432)]));
 
     store.apply_set_player_inventory(ProtocolSetPlayerInventory {
         slot: VANILLA_PLAYER_INVENTORY_CHEST_SLOT,
-        item: item_stack(VANILLA_ITEM_ELYTRA_ID, 1),
+        item: item_stack(42, 1),
     });
+    assert!(store.local_player_has_usable_glider());
 
-    assert!(store.local_player_has_equipped_elytra());
-}
-
-#[test]
-fn local_player_has_equipped_elytra_false_when_chest_slot_is_missing() {
-    let store = WorldStore::new();
-
-    assert!(!store.local_player_has_equipped_elytra());
-}
-
-#[test]
-fn local_player_has_equipped_elytra_false_when_elytra_is_in_wrong_slot() {
-    let mut store = WorldStore::new();
-
-    store.apply_set_player_inventory(ProtocolSetPlayerInventory {
-        slot: VANILLA_PLAYER_INVENTORY_CHEST_SLOT - 1,
-        item: item_stack(VANILLA_ITEM_ELYTRA_ID, 1),
-    });
-
-    assert!(!store.local_player_has_equipped_elytra());
-}
-
-#[test]
-fn local_player_has_equipped_elytra_false_for_empty_or_count_zero_stack() {
-    let mut store = WorldStore::new();
-
+    let mut damaged = item_stack(42, 1);
+    damaged.component_patch.added = 1;
+    damaged.component_patch.added_type_ids = vec![VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID];
+    damaged.component_patch.damage = Some(430);
     store.apply_set_player_inventory(ProtocolSetPlayerInventory {
         slot: VANILLA_PLAYER_INVENTORY_CHEST_SLOT,
-        item: ProtocolItemStackSummary::empty(),
+        item: damaged.clone(),
     });
-    assert!(!store.local_player_has_equipped_elytra());
+    assert!(store.local_player_has_usable_glider());
 
+    damaged.component_patch.damage = Some(431);
     store.apply_set_player_inventory(ProtocolSetPlayerInventory {
         slot: VANILLA_PLAYER_INVENTORY_CHEST_SLOT,
-        item: item_stack(VANILLA_ITEM_ELYTRA_ID, 0),
+        item: damaged.clone(),
     });
-    assert!(!store.local_player_has_equipped_elytra());
+    assert!(!store.local_player_has_usable_glider());
+
+    damaged.component_patch.added = 2;
+    damaged
+        .component_patch
+        .added_type_ids
+        .push(VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID);
+    damaged.component_patch.unbreakable = true;
+    store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: VANILLA_PLAYER_INVENTORY_CHEST_SLOT,
+        item: damaged,
+    });
+    assert!(store.local_player_has_usable_glider());
+}
+
+#[test]
+fn local_player_usable_glider_honors_equippable_patch_slot_and_removals() {
+    fn equippable(slot_id: i32) -> bbb_protocol::packets::EquippableSummary {
+        let sound = || bbb_protocol::packets::SoundEventSummary {
+            registry_id: Some(0),
+            sound_id: None,
+            fixed_range_bits: None,
+        };
+        bbb_protocol::packets::EquippableSummary {
+            slot_id,
+            equip_sound: sound(),
+            asset_id: None,
+            camera_overlay: None,
+            allowed_entities: None,
+            dispensable: true,
+            swappable: true,
+            damage_on_hurt: true,
+            equip_on_interact: false,
+            can_be_sheared: false,
+            shearing_sound: sound(),
+        }
+    }
+
+    let mut store = WorldStore::new();
+    store.set_default_item_component_type_ids(BTreeMap::from([(
+        43,
+        BTreeSet::from([
+            VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID,
+            VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
+        ]),
+    )]));
+    store.set_default_item_equipment_slots(BTreeMap::from([(43, ItemEquipmentSlot::Chest)]));
+
+    store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+        item: item_stack(43, 1),
+    });
+    assert!(!store.local_player_has_usable_glider());
+
+    let mut offhand = item_stack(43, 1);
+    offhand.component_patch.added = 1;
+    offhand.component_patch.added_type_ids = vec![VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID];
+    offhand.component_patch.equippable = Some(equippable(
+        bbb_protocol::equipment_slots::VANILLA_EQUIPMENT_SLOT_OFFHAND_ID,
+    ));
+    store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+        item: offhand.clone(),
+    });
+    assert!(store.local_player_has_usable_glider());
+
+    offhand.component_patch.removed_type_ids = vec![VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID];
+    store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+        item: offhand,
+    });
+    assert!(!store.local_player_has_usable_glider());
 }
 
 #[test]

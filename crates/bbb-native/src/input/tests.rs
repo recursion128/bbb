@@ -18,8 +18,10 @@ use bbb_protocol::builtin_enum_component_values::{
 };
 use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_AXOLOTL_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_CAT_COLLAR_TYPE_ID,
-    VANILLA_DATA_COMPONENT_FOX_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_HORSE_VARIANT_TYPE_ID,
-    VANILLA_DATA_COMPONENT_LLAMA_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_MOOSHROOM_VARIANT_TYPE_ID,
+    VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_FOX_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID,
+    VANILLA_DATA_COMPONENT_HORSE_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_LLAMA_VARIANT_TYPE_ID,
+    VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MOOSHROOM_VARIANT_TYPE_ID,
     VANILLA_DATA_COMPONENT_PARROT_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_RABBIT_VARIANT_TYPE_ID,
     VANILLA_DATA_COMPONENT_SALMON_SIZE_TYPE_ID, VANILLA_DATA_COMPONENT_SHEEP_COLOR_TYPE_ID,
     VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_WOLF_COLLAR_TYPE_ID,
@@ -85,7 +87,6 @@ use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
 };
 use bbb_protocol::equipment_slots::VANILLA_PLAYER_INVENTORY_CHEST_SLOT;
-use bbb_protocol::item_types::VANILLA_ITEM_ELYTRA_ID;
 use bbb_protocol::menu_types::{
     VANILLA_MENU_TYPE_ANVIL_ID, VANILLA_MENU_TYPE_CRAFTING_ID, VANILLA_MENU_TYPE_FURNACE_ID,
     VANILLA_MENU_TYPE_GENERIC_9X1_ID, VANILLA_MENU_TYPE_GENERIC_9X3_ID,
@@ -159,13 +160,14 @@ use bbb_world::{
     WorldStore,
 };
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
     path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
 };
 use uuid::Uuid;
 
 const TEST_SADDLE_ITEM_ID: i32 = 8_903;
+const TEST_GLIDER_ITEM_ID: i32 = 8_904;
 
 fn entity_metadata_accessors() -> bbb_world::VanillaEntityMetadataAccessors {
     let accessors = vanilla_entity_metadata_entity_accessors()
@@ -1909,6 +1911,37 @@ fn equip_player_slot(world: &mut WorldStore, slot: i32, item_id: i32, count: i32
             count,
             component_patch: Default::default(),
         },
+    });
+}
+
+fn equip_test_glider(world: &mut WorldStore, damage: i32) {
+    world.set_default_item_component_type_ids(BTreeMap::from([(
+        TEST_GLIDER_ITEM_ID,
+        BTreeSet::from([
+            VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID,
+            VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
+            VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
+            VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+        ]),
+    )]));
+    world.set_default_item_equipment_slots(BTreeMap::from([(
+        TEST_GLIDER_ITEM_ID,
+        ItemEquipmentSlot::Chest,
+    )]));
+    world.set_default_item_max_damage(BTreeMap::from([(TEST_GLIDER_ITEM_ID, 432)]));
+    let mut item = ProtocolItemStackSummary {
+        item_id: Some(TEST_GLIDER_ITEM_ID),
+        count: 1,
+        component_patch: Default::default(),
+    };
+    if damage != 0 {
+        item.component_patch.added = 1;
+        item.component_patch.added_type_ids = vec![VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID];
+        item.component_patch.damage = Some(damage);
+    }
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: VANILLA_PLAYER_INVENTORY_CHEST_SLOT,
+        item,
     });
 }
 
@@ -26059,12 +26092,7 @@ fn creative_flight_toggle_suppresses_same_jump_fall_flying_command() {
     );
 
     set_local_player_on_ground(&mut world, false);
-    equip_player_slot(
-        &mut world,
-        VANILLA_PLAYER_INVENTORY_CHEST_SLOT,
-        VANILLA_ITEM_ELYTRA_ID,
-        1,
-    );
+    equip_test_glider(&mut world, 0);
     handle_key_input(
         &mut input,
         &mut counters,
@@ -26089,19 +26117,14 @@ fn creative_flight_toggle_suppresses_same_jump_fall_flying_command() {
 }
 
 #[test]
-fn jump_key_queues_start_fall_flying_when_airborne_with_elytra() {
+fn jump_key_queues_start_fall_flying_when_airborne_with_usable_glider() {
     let (tx, mut rx) = mpsc::channel(4);
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
     let mut world = world_with_local_player_id(77);
     set_local_player_on_ground(&mut world, false);
-    equip_player_slot(
-        &mut world,
-        VANILLA_PLAYER_INVENTORY_CHEST_SLOT,
-        VANILLA_ITEM_ELYTRA_ID,
-        1,
-    );
+    equip_test_glider(&mut world, 0);
 
     handle_key_input(
         &mut input,
@@ -26133,19 +26156,34 @@ fn jump_key_queues_start_fall_flying_when_airborne_with_elytra() {
 }
 
 #[test]
-fn jump_key_on_ground_with_elytra_only_queues_player_input() {
+fn start_fall_flying_gate_rejects_last_durability_glider_and_creative_flight() {
+    let before = PlayerInput::default();
+    let after = PlayerInput {
+        jump: true,
+        ..PlayerInput::default()
+    };
+    let mut world = world_with_local_player_id(77);
+    set_local_player_on_ground(&mut world, false);
+    equip_test_glider(&mut world, 430);
+    assert!(should_queue_start_fall_flying(&world, before, after));
+
+    equip_test_glider(&mut world, 431);
+    assert!(!should_queue_start_fall_flying(&world, before, after));
+
+    equip_test_glider(&mut world, 0);
+    set_player_abilities(&mut world, true, true);
+    assert!(!should_queue_start_fall_flying(&world, before, after));
+}
+
+#[test]
+fn jump_key_on_ground_with_usable_glider_only_queues_player_input() {
     let (tx, mut rx) = mpsc::channel(2);
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
     let mut world = world_with_local_player_id(77);
     set_local_player_on_ground(&mut world, true);
-    equip_player_slot(
-        &mut world,
-        VANILLA_PLAYER_INVENTORY_CHEST_SLOT,
-        VANILLA_ITEM_ELYTRA_ID,
-        1,
-    );
+    equip_test_glider(&mut world, 0);
 
     handle_key_input(
         &mut input,
@@ -26169,7 +26207,7 @@ fn jump_key_on_ground_with_elytra_only_queues_player_input() {
 }
 
 #[test]
-fn jump_key_airborne_without_elytra_only_queues_player_input() {
+fn jump_key_airborne_without_usable_glider_only_queues_player_input() {
     let (tx, mut rx) = mpsc::channel(2);
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);

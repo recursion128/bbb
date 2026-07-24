@@ -11067,13 +11067,7 @@ fn should_queue_start_fall_flying(
     before: PlayerInput,
     after: PlayerInput,
 ) -> bool {
-    after.jump
-        && !before.jump
-        && world.local_player_root_vehicle_id().is_none()
-        && world
-            .local_player_pose()
-            .is_some_and(|pose| !pose.on_ground)
-        && world.local_player_has_equipped_elytra()
+    after.jump && !before.jump && world.local_player_can_start_fall_flying()
 }
 
 #[cfg(test)]

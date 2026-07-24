@@ -1,22 +1,22 @@
 use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
+    VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID,
     VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
     VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
     VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
     VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
-    VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID, VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
 };
 use bbb_protocol::equipment_slots::{
+    vanilla_equipment_slot_by_id, EquipmentSlot, VANILLA_EQUIPMENT_SLOTS,
     VANILLA_PLAYER_INVENTORY_BODY_SLOT, VANILLA_PLAYER_INVENTORY_CHEST_SLOT,
     VANILLA_PLAYER_INVENTORY_FEET_SLOT, VANILLA_PLAYER_INVENTORY_HEAD_SLOT,
     VANILLA_PLAYER_INVENTORY_LEGS_SLOT, VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
     VANILLA_PLAYER_INVENTORY_SADDLE_SLOT,
 };
-use bbb_protocol::item_types::{
-    vanilla_item_type, VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE, VANILLA_ITEM_ELYTRA_ID,
-};
+use bbb_protocol::item_types::{vanilla_item_type, VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE};
 use bbb_protocol::menu_types::{
     VANILLA_MENU_TYPE_ANVIL_ID, VANILLA_MENU_TYPE_BEACON_ID, VANILLA_MENU_TYPE_BLAST_FURNACE_ID,
     VANILLA_MENU_TYPE_BREWING_STAND_ID, VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
@@ -260,6 +260,21 @@ pub enum ItemEquipmentSlot {
     Head,
     Body,
     Saddle,
+}
+
+impl ItemEquipmentSlot {
+    fn protocol_slot(self) -> EquipmentSlot {
+        match self {
+            Self::MainHand => EquipmentSlot::MainHand,
+            Self::OffHand => EquipmentSlot::OffHand,
+            Self::Feet => EquipmentSlot::Feet,
+            Self::Legs => EquipmentSlot::Legs,
+            Self::Chest => EquipmentSlot::Chest,
+            Self::Head => EquipmentSlot::Head,
+            Self::Body => EquipmentSlot::Body,
+            Self::Saddle => EquipmentSlot::Saddle,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
@@ -1247,16 +1262,6 @@ impl InventoryState {
         self.set_player_inventory_slot_and_menu_slot(selected);
         self.update_inventory_slot_count(counters);
         true
-    }
-
-    pub(crate) fn local_player_has_equipped_elytra(&self) -> bool {
-        self.player_slots
-            .iter()
-            .find(|slot| slot.slot == VANILLA_PLAYER_INVENTORY_CHEST_SLOT)
-            .is_some_and(|slot| {
-                slot.item.item_id == Some(VANILLA_ITEM_ELYTRA_ID)
-                    && item_stack_is_non_empty(&slot.item)
-            })
     }
 
     pub(crate) fn set_local_merchant_selected_offer(
@@ -2409,8 +2414,26 @@ impl WorldStore {
         )
     }
 
-    pub fn local_player_has_equipped_elytra(&self) -> bool {
-        self.inventory.local_player_has_equipped_elytra()
+    /// Vanilla `LivingEntity.canGlideUsing`: any equipment slot may carry the
+    /// usable glider, but the effective EQUIPPABLE slot must match and the
+    /// next durability point must not break the stack.
+    pub fn local_player_has_usable_glider(&self) -> bool {
+        VANILLA_EQUIPMENT_SLOTS.iter().any(|slot| {
+            let stack = match slot.slot {
+                EquipmentSlot::MainHand => self.local_item_in_hand(InteractionHand::MainHand),
+                EquipmentSlot::OffHand => self.local_item_in_hand(InteractionHand::OffHand),
+                _ => slot
+                    .player_inventory_slot
+                    .and_then(|slot| self.inventory.local_player_inventory_item(slot))
+                    .filter(|stack| item_stack_is_non_empty(stack)),
+            };
+            let Some(stack) = stack else {
+                return false;
+            };
+            self.item_stack_has_effective_component(stack, VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID)
+                && self.effective_item_equipment_slot(stack) == Some(slot.slot)
+                && !self.item_stack_next_damage_will_break(stack)
+        })
     }
 
     pub fn set_default_item_max_stack_sizes(&mut self, max_stack_sizes: BTreeMap<i32, i32>) {
@@ -2432,6 +2455,77 @@ impl WorldStore {
 
     pub fn item_max_stack_size_for_protocol_id(&self, item_id: i32) -> i32 {
         self.items.item_max_stack_size_for_protocol_id(item_id)
+    }
+
+    fn effective_item_equipment_slot(
+        &self,
+        stack: &ProtocolItemStackSummary,
+    ) -> Option<EquipmentSlot> {
+        if !self
+            .item_stack_has_effective_component(stack, VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID)
+        {
+            return None;
+        }
+        if stack
+            .component_patch
+            .added_type_ids
+            .contains(&VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID)
+        {
+            return vanilla_equipment_slot_by_id(
+                stack.component_patch.equippable.as_ref()?.slot_id,
+            )
+            .map(|slot| slot.slot);
+        }
+        stack
+            .item_id
+            .and_then(|item_id| {
+                self.items
+                    .default_item_equipment_slots
+                    .get(&item_id)
+                    .copied()
+            })
+            .map(ItemEquipmentSlot::protocol_slot)
+    }
+
+    fn item_stack_next_damage_will_break(&self, stack: &ProtocolItemStackSummary) -> bool {
+        if !self
+            .item_stack_has_effective_component(stack, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID)
+            || !self
+                .item_stack_has_effective_component(stack, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID)
+            || self.item_stack_has_effective_component(
+                stack,
+                VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
+            )
+        {
+            return false;
+        }
+
+        let max_damage = if stack
+            .component_patch
+            .added_type_ids
+            .contains(&VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID)
+        {
+            stack.component_patch.max_damage
+        } else {
+            stack
+                .item_id
+                .and_then(|item_id| self.items.default_item_max_damage.get(&item_id).copied())
+        };
+        let Some(max_damage) = max_damage.filter(|max_damage| *max_damage > 0) else {
+            return false;
+        };
+        let damage = if stack
+            .component_patch
+            .added_type_ids
+            .contains(&VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID)
+        {
+            stack.component_patch.damage.unwrap_or_default()
+        } else {
+            0
+        }
+        .max(0)
+        .min(max_damage);
+        damage >= max_damage - 1
     }
 
     pub fn item_max_damage_for_protocol_id(&self, item_id: i32) -> Option<i32> {

@@ -2559,34 +2559,72 @@
       "constant_name": "GLIDER",
       "coverage": {
         "canonical_retention": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_additional_item_data_components",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_glider",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#glider_descriptor_round_trips_empty_unit_payload",
+            "crates/bbb-world/src/client/inventory.rs#local_player_has_usable_glider",
+            "crates/bbb-world/src/client/inventory/tests.rs#local_player_usable_glider_honors_equippable_patch_slot_and_removals"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "network_encode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#GLIDER",
+            "vanilla:net/minecraft/util/Unit.java#public static final StreamCodec<ByteBuf, Unit> STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_glider",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#glider_descriptor_round_trips_empty_unit_payload",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_glider_component"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "observable_consumers": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/entity/LivingEntity.java#public static boolean canGlideUsing",
+            "vanilla:net/minecraft/world/entity/player/Player.java#public boolean tryToStartFallFlying",
+            "crates/bbb-world/src/client/inventory.rs#local_player_has_usable_glider",
+            "crates/bbb-world/src/client/local_player.rs#local_player_can_start_fall_flying",
+            "crates/bbb-world/src/client/local_player.rs#local_player_fall_flying_gate_composes_vanilla_state_and_glider_rules",
+            "crates/bbb-native/src/input/tests.rs#jump_key_queues_start_fall_flying_when_airborne_with_usable_glider"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "persistent_projection": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/util/Unit.java#public static final Codec<Unit> CODEC",
+            "crates/bbb-native/src/input/component_patch.rs#encode_unit",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_primitive_component_value_codecs"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_additional_item_data_components",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#glider_descriptor_round_trips_empty_unit_payload",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_glider_component",
+            "crates/bbb-world/src/client/inventory/tests.rs#local_player_usable_glider_applies_default_components_slot_and_damage",
+            "crates/bbb-world/src/client/inventory/tests.rs#local_player_usable_glider_honors_equippable_patch_slot_and_removals",
+            "crates/bbb-world/src/client/local_player.rs#local_player_fall_flying_gate_composes_vanilla_state_and_glider_rules",
+            "crates/bbb-native/src/input/tests.rs#start_fall_flying_gate_rejects_last_durability_glider_and_creative_flight"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "typed_decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#GLIDER",
+            "vanilla:net/minecraft/util/Unit.java#public static final StreamCodec<ByteBuf, Unit> STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_glider",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_additional_item_data_components",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_primitive_component_value_codecs"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "resource_id": "minecraft:glider",

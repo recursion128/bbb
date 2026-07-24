@@ -2,6 +2,7 @@ use bbb_protocol::attribute_types::{
     VANILLA_ATTRIBUTE_ARMOR_ID, VANILLA_ATTRIBUTE_ATTACK_SPEED_ID,
 };
 use bbb_protocol::game_types::GameType;
+use bbb_protocol::mob_effect_types::VANILLA_MOB_EFFECT_LEVITATION_ID;
 use bbb_protocol::packets::{
     DataComponentPatchSummary, Direction as ProtocolDirection, EntityAnchor, InteractionHand,
     ItemStackSummary as ProtocolItemStackSummary, PlayerAbilities as ProtocolPlayerAbilities,
@@ -15,10 +16,10 @@ use bbb_protocol::packets::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::local_player_fluid::local_player_eye_in_water;
+use super::local_player_fluid::{local_player_eye_in_water, local_player_fluid_contact};
 use super::local_player_movement::{
     apply_local_player_input_look, integrate_local_player_input_pose_with_world_effects,
-    local_player_effective_sprint,
+    local_player_effective_sprint, local_player_is_on_climbable,
 };
 use crate::{protocol_block_pos, BlockPos, WorldStore};
 
@@ -547,6 +548,35 @@ impl WorldStore {
         local_player_eye_in_water(self)
     }
 
+    /// The client-side composition of `LocalPlayer`'s jump-edge guard,
+    /// `Player.tryToStartFallFlying`, `Player.canGlide`, and
+    /// `LivingEntity.canGlide`. The server remains authoritative for accepting
+    /// the command and setting the fall-flying shared flag.
+    pub fn local_player_can_start_fall_flying(&self) -> bool {
+        let Some(local_player_id) = self.local_player_id else {
+            return false;
+        };
+        let Some(pose) = self.local_player.pose else {
+            return false;
+        };
+        !pose.on_ground
+            && self.local_player_root_vehicle_id().is_none()
+            && !self
+                .local_player
+                .abilities
+                .is_some_and(|abilities| abilities.flying)
+            && self
+                .entity_effect(local_player_id, VANILLA_MOB_EFFECT_LEVITATION_ID)
+                .is_none()
+            && !self
+                .entities
+                .is_fall_flying(local_player_id)
+                .unwrap_or(false)
+            && !local_player_fluid_contact(self, pose).in_water()
+            && !local_player_is_on_climbable(self, pose)
+            && self.local_player_has_usable_glider()
+    }
+
     /// Vanilla `LivingEntity.getArmorValue()` =
     /// `Mth.floor(getAttributeValue(Attributes.ARMOR))` (LivingEntity.java:1845-1846),
     /// the value `Gui.extractArmor` reads to draw the armor bar (Gui.java:799). The
@@ -935,7 +965,7 @@ fn wrap_degrees_f32(degrees: f32) -> f32 {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
+    use std::collections::{BTreeMap, BTreeSet};
 
     use super::super::local_player_movement::LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND;
     use super::*;
@@ -2098,6 +2128,100 @@ mod tests {
             ),
             None,
         );
+    }
+
+    #[test]
+    fn local_player_fall_flying_gate_composes_vanilla_state_and_glider_rules() {
+        fn world_with_glider() -> WorldStore {
+            let mut world = spawned_player_world();
+            world.set_local_player_pose(LocalPlayerPoseState {
+                position: vec3(0.5, 1.0, 0.5),
+                on_ground: false,
+                ..LocalPlayerPoseState::default()
+            });
+            world.set_default_item_component_type_ids(BTreeMap::from([(
+                42,
+                BTreeSet::from([
+                    bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID,
+                    bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
+                ]),
+            )]));
+            world.set_default_item_equipment_slots(BTreeMap::from([(
+                42,
+                crate::ItemEquipmentSlot::Chest,
+            )]));
+            world.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
+                slot: bbb_protocol::equipment_slots::VANILLA_PLAYER_INVENTORY_CHEST_SLOT,
+                item: ProtocolItemStackSummary {
+                    item_id: Some(42),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary::default(),
+                },
+            });
+            world
+        }
+
+        assert!(world_with_glider().local_player_can_start_fall_flying());
+
+        let mut grounded = world_with_glider();
+        let mut pose = grounded.local_player_pose().unwrap();
+        pose.on_ground = true;
+        grounded.set_local_player_pose(pose);
+        assert!(!grounded.local_player_can_start_fall_flying());
+
+        let mut creative_flying = world_with_glider();
+        creative_flying.apply_player_abilities(ProtocolPlayerAbilities {
+            invulnerable: true,
+            flying: true,
+            can_fly: true,
+            instabuild: true,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        });
+        assert!(!creative_flying.local_player_can_start_fall_flying());
+
+        let mut levitating = world_with_glider();
+        assert!(
+            levitating.apply_update_mob_effect(bbb_protocol::packets::UpdateMobEffect {
+                entity_id: 7,
+                effect_id: VANILLA_MOB_EFFECT_LEVITATION_ID,
+                amplifier: 0,
+                duration_ticks: 200,
+                flags: bbb_protocol::packets::MobEffectFlags::default(),
+            })
+        );
+        assert!(!levitating.local_player_can_start_fall_flying());
+
+        let mut already_flying = world_with_glider();
+        let accessors = entity_metadata_accessors();
+        assert!(set_entity_data(
+            &mut already_flying,
+            7,
+            accessors.shared_flags_data_id,
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+            bbb_protocol::packets::EntityDataValueKind::Byte(accessors.fall_flying_mask),
+        ));
+        assert!(!already_flying.local_player_can_start_fall_flying());
+
+        let mut passenger = world_with_glider();
+        passenger.apply_add_entity(ProtocolAddEntity {
+            id: 8,
+            uuid: Uuid::from_u128(0x87654321876543218765432187654321),
+            entity_type_id: bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_HORSE_ID,
+            position: vec3(0.5, 1.0, 0.5),
+            delta_movement: ProtocolVec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        });
+        assert!(
+            passenger.apply_set_passengers(bbb_protocol::packets::SetPassengers {
+                vehicle_id: 8,
+                passenger_ids: vec![7],
+            })
+        );
+        assert!(!passenger.local_player_can_start_fall_flying());
     }
 
     fn spawned_player_world() -> WorldStore {
