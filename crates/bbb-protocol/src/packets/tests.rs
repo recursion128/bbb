@@ -17,7 +17,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID, VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
-        VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID, VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
         VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
     },
@@ -2185,8 +2185,7 @@ fn set_creative_mode_slot_rejects_unsupported_component_patch() {
             count: 1,
             component_patch: DataComponentPatchSummary {
                 added: 1,
-                added_type_ids: vec![VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID],
-                custom_name: Some("Renamed".to_string()),
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID],
                 ..DataComponentPatchSummary::default()
             },
         },
@@ -2195,7 +2194,7 @@ fn set_creative_mode_slot_rejects_unsupported_component_patch() {
 
     assert!(matches!(err, ProtocolError::InvalidData(_)));
     assert!(err.to_string().contains(&format!(
-        "cannot encode unsupported data component minecraft:custom_name ({VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID})"
+        "cannot encode unsupported data component minecraft:use_effects ({VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID})"
     )));
 }
 

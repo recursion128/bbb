@@ -3759,13 +3759,13 @@ mod tests {
         ];
         cases.push((duplicate_removed, "duplicate or overlapping removed"));
 
-        let unsupported_added = DataComponentPatchSummary {
+        let incomplete_custom_name = DataComponentPatchSummary {
             added: 1,
             added_type_ids: vec![VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID],
-            custom_name: Some("unsupported".to_string()),
+            custom_name: Some("missing exact tree".to_string()),
             ..DataComponentPatchSummary::default()
         };
-        cases.push((unsupported_added, "cannot encode unsupported"));
+        cases.push((incomplete_custom_name, "missing component nbt"));
 
         let missing_value = DataComponentPatchSummary {
             added: 1,
