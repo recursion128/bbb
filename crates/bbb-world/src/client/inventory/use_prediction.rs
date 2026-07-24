@@ -29,12 +29,15 @@ const VANILLA_DEFAULT_ENTITY_INTERACT_OWNER: &str = "net.minecraft.world.entity.
 const VANILLA_MOB_ENTITY_INTERACT_OWNER: &str = "net.minecraft.world.entity.Mob";
 const VANILLA_ARMOR_STAND_INTERACT_OWNER: &str = "net.minecraft.world.entity.decoration.ArmorStand";
 const VANILLA_BOAT_INTERACT_OWNER: &str = "net.minecraft.world.entity.vehicle.boat.AbstractBoat";
+const VANILLA_CAMEL_HUSK_INTERACT_OWNER: &str = "net.minecraft.world.entity.animal.camel.CamelHusk";
 const VANILLA_CHEST_BOAT_INTERACT_OWNER: &str =
     "net.minecraft.world.entity.vehicle.boat.AbstractChestBoat";
 const VANILLA_INTERACTION_ENTITY_INTERACT_OWNER: &str = "net.minecraft.world.entity.Interaction";
 const VANILLA_ITEM_FRAME_INTERACT_OWNER: &str = "net.minecraft.world.entity.decoration.ItemFrame";
 const VANILLA_LEASH_KNOT_INTERACT_OWNER: &str =
     "net.minecraft.world.entity.decoration.LeashFenceKnotEntity";
+const VANILLA_NAUTILUS_INTERACT_OWNER: &str =
+    "net.minecraft.world.entity.animal.nautilus.AbstractNautilus";
 const VANILLA_MINECART_INTERACT_OWNER: &str =
     "net.minecraft.world.entity.vehicle.minecart.Minecart";
 const VANILLA_MINECART_CONTAINER_INTERACT_OWNER: &str =
@@ -45,6 +48,8 @@ const VANILLA_MINECART_COMMAND_BLOCK_INTERACT_OWNER: &str =
     "net.minecraft.world.entity.vehicle.minecart.MinecartCommandBlock";
 const VANILLA_MINECART_FURNACE_INTERACT_OWNER: &str =
     "net.minecraft.world.entity.vehicle.minecart.MinecartFurnace";
+const VANILLA_ZOMBIE_HORSE_INTERACT_OWNER: &str =
+    "net.minecraft.world.entity.animal.equine.ZombieHorse";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LocalInteractionSwingSource {
@@ -284,7 +289,13 @@ impl WorldStore {
         let held_item_id = self
             .local_item_in_hand(hand)
             .and_then(|stack| stack.item_id);
-        let interact_result = if owner == VANILLA_MOB_ENTITY_INTERACT_OWNER {
+        let interact_result = if matches!(
+            owner,
+            VANILLA_MOB_ENTITY_INTERACT_OWNER
+                | VANILLA_CAMEL_HUSK_INTERACT_OWNER
+                | VANILLA_NAUTILUS_INTERACT_OWNER
+                | VANILLA_ZOMBIE_HORSE_INTERACT_OWNER
+        ) {
             self.predict_local_mob_interact(entity_id, entity_type_id, hand)
         } else if owner == VANILLA_DEFAULT_ENTITY_INTERACT_OWNER {
             self.predict_local_base_entity_interact(entity_id, entity_type_id, held_item_id)
@@ -633,13 +644,15 @@ mod tests {
         },
         entity_types::{
             VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
-            VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
-            VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
-            VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
-            VANILLA_ENTITY_TYPE_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_LEASH_KNOT_ID,
-            VANILLA_ENTITY_TYPE_MANNEQUIN_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
+            VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
+            VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_COW_ID,
+            VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
+            VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_ITEM_FRAME_ID,
+            VANILLA_ENTITY_TYPE_LEASH_KNOT_ID, VANILLA_ENTITY_TYPE_MANNEQUIN_ID,
+            VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
             VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
-            VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
         },
         item_types::{
             VanillaItemInteractLivingEntityOverride, VanillaItemUseOnOverride,
@@ -1183,6 +1196,45 @@ mod tests {
             world.predict_local_entity_interaction(60, InteractionHand::MainHand, false),
             LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
                 LocalInteractionSuccess::client_item_interaction()
+            ))
+        );
+    }
+
+    #[test]
+    fn persistence_only_mob_interact_overrides_delegate_to_mob_flow() {
+        let mut world = WorldStore::new();
+        for (entity_id, entity_type_id) in [
+            (70, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID),
+            (71, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID),
+            (72, VANILLA_ENTITY_TYPE_NAUTILUS_ID),
+            (73, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID),
+        ] {
+            add_entity(&mut world, entity_id, entity_type_id);
+        }
+
+        for (entity_id, owner) in [
+            (70, "net.minecraft.world.entity.animal.camel.Camel"),
+            (71, "net.minecraft.world.entity.animal.equine.ZombieHorse"),
+            (
+                72,
+                "net.minecraft.world.entity.animal.nautilus.AbstractNautilus",
+            ),
+            (
+                73,
+                "net.minecraft.world.entity.animal.nautilus.AbstractNautilus",
+            ),
+        ] {
+            assert_eq!(
+                world.predict_local_entity_interaction(entity_id, InteractionHand::MainHand, false),
+                LocalTargetUsePrediction::UnsupportedEntityInteract(owner)
+            );
+        }
+
+        set_main_hand(&mut world, VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(70, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::server_item_interaction()
             ))
         );
     }
