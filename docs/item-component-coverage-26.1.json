@@ -3734,34 +3734,85 @@
       "constant_name": "MAP_DECORATIONS",
       "coverage": {
         "canonical_retention": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#MAP_DECORATIONS",
+            "vanilla:net/minecraft/world/item/component/MapDecorations.java#public record MapDecorations",
+            "vanilla:net/minecraft/world/item/component/MapDecorations.java#public record Entry",
+            "crates/bbb-protocol/src/packets/data_components.rs#pub map_decorations",
+            "crates/bbb-protocol/src/packets/data_components.rs#pub struct ItemMapDecorationSummary",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_map_decorations",
+            "crates/bbb-render-types/src/map_decorations/generated_26_1.rs#VANILLA_MAP_DECORATION_TYPES",
+            "crates/bbb-world/src/client/dialog/body/component_value/map_decorations/tests.rs#decodes_map_decorations_with_builtin_types_and_numeric_codecs"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "network_encode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#MAP_DECORATIONS",
+            "vanilla:net/minecraft/core/component/DataComponentType.java#build",
+            "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#fromCodecWithRegistries",
+            "vanilla:net/minecraft/world/item/component/MapDecorations.java#CODEC",
+            "vanilla:net/minecraft/world/level/saveddata/maps/MapDecorationType.java#CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_map_decorations",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#map_decorations_descriptor_round_trips_all_builtin_holders_and_canonicalizes_numeric_nbt",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#map_decorations_descriptor_rejects_noncanonical_values_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_map_decorations_component"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "observable_consumers": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/level/saveddata/maps/MapItemSavedData.java#public void tickCarriedBy",
+            "vanilla:net/minecraft/world/level/saveddata/maps/MapItemSavedData.java#public static void addTargetDecoration",
+            "crates/bbb-world/src/client/dialog/body/component_value/canonical_json.rs#DialogDataComponentValueState::MapDecorations",
+            "crates/bbb-world/src/client/dialog/body/component_value/canonical_json.rs#canonicalizes_map_decoration_maps_and_java_numbers",
+            "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_projects_dialog_item_body_structured_patches"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "persistent_projection": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#MAP_DECORATIONS",
+            "vanilla:net/minecraft/world/item/component/MapDecorations.java#CODEC",
+            "vanilla:net/minecraft/world/level/saveddata/maps/MapDecorationType.java#CODEC",
+            "crates/bbb-native/src/input/component_patch.rs#encode_codec_backed_nbt",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+            "crates/bbb-world/src/client/dialog/body/component_value/map_decorations/tests.rs#decodes_map_decorations_with_builtin_types_and_numeric_codecs"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#map_decorations_descriptor_round_trips_all_builtin_holders_and_canonicalizes_numeric_nbt",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#map_decorations_descriptor_rejects_noncanonical_values_atomically",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#map_decorations_descriptor_rejects_malformed_codec_nbt",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_map_decorations_component",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_codec_backed_nbt_component_values",
+            "crates/bbb-world/src/client/dialog/body/component_value/map_decorations/tests.rs#decodes_map_decorations_with_builtin_types_and_numeric_codecs",
+            "crates/bbb-world/src/client/dialog/body/component_value/map_decorations/tests.rs#map_and_entry_fields_follow_compound_last_wins_semantics",
+            "crates/bbb-world/src/client/dialog/body/component_value/map_decorations/tests.rs#rejects_malformed_map_decoration_maps_and_entries",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "typed_decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#MAP_DECORATIONS",
+            "vanilla:net/minecraft/core/component/DataComponentType.java#build",
+            "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#fromCodecWithRegistries",
+            "vanilla:net/minecraft/world/item/component/MapDecorations.java#CODEC",
+            "vanilla:net/minecraft/world/level/saveddata/maps/MapDecorationType.java#CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_map_decorations",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#map_decorations_descriptor_round_trips_all_builtin_holders_and_canonicalizes_numeric_nbt",
+            "crates/bbb-world/src/client/dialog/body/component_value/map_decorations/tests.rs#decodes_map_decorations_with_builtin_types_and_numeric_codecs"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "resource_id": "minecraft:map_decorations",

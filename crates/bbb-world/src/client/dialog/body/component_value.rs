@@ -19,13 +19,13 @@ use bbb_protocol::packets::{
         ConsumeEffectSummary, DamageReductionSummary, DamageTypeHolderSetSummary,
         DataComponentPatchSummary, DataComponentPredicateTypeSummary, EntityTypeHolderSetSummary,
         EquippableSummary, FireworkExplosionSummary, ItemContainerSlotSummary,
-        ItemDamageFunctionSummary, ItemEnchantmentSummary, ItemStackTemplateSummary,
-        KineticWeaponConditionSummary, KineticWeaponSummary, LodestoneTargetSummary,
-        MobEffectDetailsSummary, MobEffectInstanceSummary, PartialDataComponentPredicateSummary,
-        PiercingWeaponSummary, ResolvableProfileSummary, SoundEventSummary,
-        StatePropertyMatcherSummary, StatePropertyValueMatcherSummary, SuspiciousStewEffectSummary,
-        SwingAnimationSummary, ToolRuleSummary, ToolSummary, TrimMaterialSummary,
-        TrimPatternSummary, UseEffectsSummary, WrittenBookContentSummary,
+        ItemDamageFunctionSummary, ItemEnchantmentSummary, ItemMapDecorationSummary,
+        ItemStackTemplateSummary, KineticWeaponConditionSummary, KineticWeaponSummary,
+        LodestoneTargetSummary, MobEffectDetailsSummary, MobEffectInstanceSummary,
+        PartialDataComponentPredicateSummary, PiercingWeaponSummary, ResolvableProfileSummary,
+        SoundEventSummary, StatePropertyMatcherSummary, StatePropertyValueMatcherSummary,
+        SuspiciousStewEffectSummary, SwingAnimationSummary, ToolRuleSummary, ToolSummary,
+        TrimMaterialSummary, TrimPatternSummary, UseEffectsSummary, WrittenBookContentSummary,
     },
 };
 use bbb_protocol::{
@@ -963,6 +963,19 @@ pub(super) fn apply_item_patch_value(
             patch.bees = bees;
         }
         (VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID, Value::MapDecorations { decorations }) => {
+            patch.map_decorations = Some(
+                decorations
+                    .iter()
+                    .map(|decoration| ItemMapDecorationSummary {
+                        id: decoration.id.clone(),
+                        decoration_type_id: decoration.decoration_type.holder_id,
+                        decoration_type_resource_id: decoration.decoration_type.resource_id.clone(),
+                        x_bits: decoration.x_bits,
+                        z_bits: decoration.z_bits,
+                        rotation_bits: decoration.rotation_bits,
+                    })
+                    .collect(),
+            );
             patch.codec_backed_nbt.insert(
                 type_id,
                 NbtSummaryValue::Compound(

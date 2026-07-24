@@ -396,6 +396,7 @@ dependencies = [
 name = "bbb-protocol"
 version = "0.1.0"
 dependencies = [
+ "bbb-render-types",
  "bytes",
  "flate2",
  "md5",

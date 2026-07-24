@@ -43,7 +43,8 @@ use crate::{
         VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_LLAMA_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID,
-        VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_POST_PROCESSING_TYPE_ID,
+        VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID,
+        VANILLA_DATA_COMPONENT_MAP_POST_PROCESSING_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
         VANILLA_DATA_COMPONENT_MOOSHROOM_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_NOTE_BLOCK_SOUND_TYPE_ID,
@@ -250,6 +251,8 @@ pub struct DataComponentPatchSummary {
     pub base_color_id: Option<i32>,
     #[serde(default)]
     pub map_color: Option<i32>,
+    #[serde(default)]
+    pub map_decorations: Option<Vec<ItemMapDecorationSummary>>,
     #[serde(default)]
     pub potion_custom_color: Option<i32>,
     #[serde(default)]
@@ -930,6 +933,16 @@ pub struct ItemContainerSlotSummary {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ItemMapDecorationSummary {
+    pub id: String,
+    pub decoration_type_id: i32,
+    pub decoration_type_resource_id: String,
+    pub x_bits: u64,
+    pub z_bits: u64,
+    pub rotation_bits: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ResolvableProfileSummary {
     pub kind: ResolvableProfileKindSummary,
     pub uuid: Option<Uuid>,
@@ -1337,6 +1350,12 @@ fn validate_encodable_data_component_patch_summary(
             }
             VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID => {
                 expected.map_id = patch.map_id;
+            }
+            VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID => {
+                expected.map_decorations = patch.map_decorations.clone();
+                if let Some(value) = patch.codec_backed_nbt.get(type_id) {
+                    expected.codec_backed_nbt.insert(*type_id, value.clone());
+                }
             }
             VANILLA_DATA_COMPONENT_MAP_POST_PROCESSING_TYPE_ID => {
                 expected.map_post_processing = patch.map_post_processing;
@@ -5171,6 +5190,7 @@ mod tests {
             DataComponentPatchSummary {
                 added: 5,
                 added_type_ids: vec![47, 57, 59, 66, 78],
+                map_decorations: Some(Vec::new()),
                 codec_backed_nbt: BTreeMap::from([
                     (47, NbtSummaryValue::Compound(Vec::new())),
                     (57, NbtSummaryValue::Compound(Vec::new())),

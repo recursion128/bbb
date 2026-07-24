@@ -10,6 +10,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+bbb-render-types = { path = "../bbb-render-types" }
 bytes = { workspace = true }
 flate2 = { workspace = true }
 md5 = { workspace = true }

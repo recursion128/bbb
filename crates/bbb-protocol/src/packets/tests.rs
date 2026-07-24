@@ -39,8 +39,8 @@ use crate::{
         VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
         VANILLA_DATA_COMPONENT_LLAMA_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID, VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID,
-        VANILLA_DATA_COMPONENT_MAP_POST_PROCESSING_TYPE_ID,
+        VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_POST_PROCESSING_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
         VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_MOOSHROOM_VARIANT_TYPE_ID,
@@ -3031,6 +3031,52 @@ fn encodes_set_creative_mode_slot_map_id_component() {
             1, 0, // patch counts
             46, 1,  // map_id type and delimited value length
             42, // map id
+        ]
+    );
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_map_decorations_component() {
+    let frame =
+        bbb_render_types::vanilla_map_decoration_type_for_resource_id("minecraft:frame").unwrap();
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID],
+                map_decorations: Some(vec![ItemMapDecorationSummary {
+                    id: "home".to_string(),
+                    decoration_type_id: frame.type_id,
+                    decoration_type_resource_id: frame.resource_id.to_string(),
+                    x_bits: 1.5_f64.to_bits(),
+                    z_bits: (-2.25_f64).to_bits(),
+                    rotation_bits: 90.0_f32.to_bits(),
+                }]),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            1, 0, // patch counts
+            47, 73, // map_decorations type and delimited codec-NBT length
+            10, // compound root
+            10, 0, 4, b'h', b'o', b'm', b'e', // `home` compound
+            8, 0, 4, b't', b'y', b'p', b'e', 0, 15, b'm', b'i', b'n', b'e', b'c', b'r', b'a', b'f',
+            b't', b':', b'f', b'r', b'a', b'm', b'e', // type
+            6, 0, 1, b'x', 0x3f, 0xf8, 0, 0, 0, 0, 0, 0, // x = 1.5d
+            6, 0, 1, b'z', 0xc0, 0x02, 0, 0, 0, 0, 0, 0, // z = -2.25d
+            5, 0, 8, b'r', b'o', b't', b'a', b't', b'i', b'o', b'n', 0x42, 0xb4, 0, 0, 0,
+            0, // inner and outer compound ends
         ]
     );
 }

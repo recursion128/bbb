@@ -1,6 +1,8 @@
 use super::*;
 use std::sync::OnceLock;
 
+use bbb_render_types::{vanilla_map_decoration_type, vanilla_map_decoration_type_for_resource_id};
+
 use crate::block_entity_types::vanilla_block_entity_type;
 use crate::data_component_types::{
     DataComponentTypeCatalogEntry, VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
@@ -34,8 +36,9 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID, VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
     VANILLA_DATA_COMPONENT_LLAMA_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID,
     VANILLA_DATA_COMPONENT_LORE_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID,
-    VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_POST_PROCESSING_TYPE_ID,
-    VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID,
+    VANILLA_DATA_COMPONENT_MAP_POST_PROCESSING_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
     VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
     VANILLA_DATA_COMPONENT_MOOSHROOM_VARIANT_TYPE_ID,
     VANILLA_DATA_COMPONENT_NOTE_BLOCK_SOUND_TYPE_ID,
@@ -169,7 +172,7 @@ static WIRE_DECODE_HANDLERS: &[WireDecodeHandler] = &[
     decode_dyed_color,
     decode_map_color,
     decode_map_id,
-    decode_codec_backed_nbt,
+    decode_map_decorations,
     decode_map_post_processing_component,
     decode_charged_projectiles,
     decode_bundle_contents,
@@ -334,6 +337,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID => Some(encode_dyed_color),
         VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID => Some(encode_map_color),
         VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID => Some(encode_map_id),
+        VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID => Some(encode_map_decorations),
         VANILLA_DATA_COMPONENT_MAP_POST_PROCESSING_TYPE_ID => Some(encode_map_post_processing),
         VANILLA_DATA_COMPONENT_NOTE_BLOCK_SOUND_TYPE_ID => Some(encode_note_block_sound),
         VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID => Some(encode_banner_patterns),
@@ -3336,6 +3340,205 @@ fn decode_map_color(
     Ok(())
 }
 
+fn decode_map_decorations(
+    type_id: i32,
+    decoder: &mut Decoder<'_>,
+    summary: &mut DataComponentPatchSummary,
+) -> Result<()> {
+    let value = decode_nbt_summary_from_decoder(decoder)?.ok_or_else(|| {
+        ProtocolError::InvalidData("map_decorations codec value is missing".to_string())
+    })?;
+    let decorations = parse_map_decorations_nbt(&value)?;
+    let canonical = canonical_map_decorations_nbt(&decorations);
+    summary.map_decorations = Some(decorations);
+    summary.codec_backed_nbt.insert(type_id, canonical);
+    Ok(())
+}
+
+fn encode_map_decorations(
+    type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let decorations = summary.map_decorations.as_ref().ok_or_else(|| {
+        ProtocolError::InvalidData("missing map_decorations component value".to_string())
+    })?;
+    if decorations.len() > MAX_DATA_COMPONENT_LIST_ITEMS {
+        return Err(ProtocolError::PacketTooLarge(
+            decorations.len(),
+            MAX_DATA_COMPONENT_LIST_ITEMS,
+        ));
+    }
+    let mut seen = BTreeSet::new();
+    for decoration in decorations {
+        if !seen.insert(decoration.id.as_str()) {
+            return Err(ProtocolError::InvalidData(format!(
+                "duplicate map_decorations id {:?}",
+                decoration.id
+            )));
+        }
+        let canonical_resource =
+            normalize_resource_location(decoration.decoration_type_resource_id.clone())?;
+        if canonical_resource != decoration.decoration_type_resource_id {
+            return Err(ProtocolError::InvalidData(format!(
+                "map_decorations entry {:?} has noncanonical type resource location `{}`",
+                decoration.id, decoration.decoration_type_resource_id
+            )));
+        }
+        let Some(expected) = vanilla_map_decoration_type(decoration.decoration_type_id) else {
+            return Err(ProtocolError::InvalidData(format!(
+                "map_decorations entry {:?} has unknown type holder id {}",
+                decoration.id, decoration.decoration_type_id
+            )));
+        };
+        if expected.resource_id != decoration.decoration_type_resource_id {
+            return Err(ProtocolError::InvalidData(format!(
+                "map_decorations entry {:?} type holder id {} resolves to {}, not {}",
+                decoration.id,
+                decoration.decoration_type_id,
+                expected.resource_id,
+                decoration.decoration_type_resource_id
+            )));
+        }
+    }
+
+    let canonical = canonical_map_decorations_nbt(decorations);
+    if let Some(retained) = summary.codec_backed_nbt.get(&type_id) {
+        if retained != &canonical {
+            return Err(ProtocolError::InvalidData(
+                "map_decorations retained codec value does not match its typed entries".to_string(),
+            ));
+        }
+    }
+    let encoded = encode_nbt_summary_bounded(Some(&canonical), i32::MAX as usize, MAX_NBT_DEPTH)?;
+    out.write_bytes(&encoded);
+    Ok(())
+}
+
+fn parse_map_decorations_nbt(value: &NbtSummaryValue) -> Result<Vec<ItemMapDecorationSummary>> {
+    let NbtSummaryValue::Compound(entries) = value else {
+        return Err(ProtocolError::InvalidData(
+            "map_decorations codec value is not a compound map".to_string(),
+        ));
+    };
+    if entries.len() > MAX_DATA_COMPONENT_LIST_ITEMS {
+        return Err(ProtocolError::PacketTooLarge(
+            entries.len(),
+            MAX_DATA_COMPONENT_LIST_ITEMS,
+        ));
+    }
+    entries
+        .iter()
+        .map(|entry| parse_map_decoration_entry(&entry.name, &entry.value))
+        .collect()
+}
+
+fn parse_map_decoration_entry(
+    id: &str,
+    value: &NbtSummaryValue,
+) -> Result<ItemMapDecorationSummary> {
+    let NbtSummaryValue::Compound(entries) = value else {
+        return Err(ProtocolError::InvalidData(format!(
+            "map_decorations entry {id:?} is not a compound"
+        )));
+    };
+    let field = |name: &str| {
+        entries
+            .iter()
+            .rev()
+            .find(|entry| entry.name == name)
+            .map(|entry| &entry.value)
+            .ok_or_else(|| {
+                ProtocolError::InvalidData(format!(
+                    "map_decorations entry {id:?} is missing {name}"
+                ))
+            })
+    };
+    let raw_type = match field("type")? {
+        NbtSummaryValue::String(raw_type) => raw_type,
+        _ => {
+            return Err(ProtocolError::InvalidData(format!(
+                "map_decorations entry {id:?} type is not a resource location"
+            )));
+        }
+    };
+    let resource_id = normalize_resource_location(raw_type.clone())?;
+    let decoration_type =
+        vanilla_map_decoration_type_for_resource_id(&resource_id).ok_or_else(|| {
+            ProtocolError::InvalidData(format!(
+                "map_decorations entry {id:?} references unknown type {resource_id}"
+            ))
+        })?;
+    Ok(ItemMapDecorationSummary {
+        id: id.to_string(),
+        decoration_type_id: decoration_type.type_id,
+        decoration_type_resource_id: decoration_type.resource_id.to_string(),
+        x_bits: nbt_number_as_f64_bits(field("x")?, &format!("map_decorations entry {id:?} x"))?,
+        z_bits: nbt_number_as_f64_bits(field("z")?, &format!("map_decorations entry {id:?} z"))?,
+        rotation_bits: nbt_number_as_f32_bits(
+            field("rotation")?,
+            &format!("map_decorations entry {id:?} rotation"),
+        )?,
+    })
+}
+
+fn nbt_number_as_f64_bits(value: &NbtSummaryValue, what: &str) -> Result<u64> {
+    let value = match value {
+        NbtSummaryValue::Byte(value) => f64::from(*value),
+        NbtSummaryValue::Short(value) => f64::from(*value),
+        NbtSummaryValue::Int(value) => f64::from(*value),
+        NbtSummaryValue::Long(value) => *value as f64,
+        NbtSummaryValue::Float(bits) => f64::from(f32::from_bits(*bits)),
+        NbtSummaryValue::Double(bits) => return Ok(*bits),
+        _ => return Err(ProtocolError::InvalidData(format!("{what} is not numeric"))),
+    };
+    Ok(value.to_bits())
+}
+
+fn nbt_number_as_f32_bits(value: &NbtSummaryValue, what: &str) -> Result<u32> {
+    let value = match value {
+        NbtSummaryValue::Byte(value) => f32::from(*value),
+        NbtSummaryValue::Short(value) => f32::from(*value),
+        NbtSummaryValue::Int(value) => *value as f32,
+        NbtSummaryValue::Long(value) => *value as f32,
+        NbtSummaryValue::Float(bits) => return Ok(*bits),
+        NbtSummaryValue::Double(bits) => f64::from_bits(*bits) as f32,
+        _ => return Err(ProtocolError::InvalidData(format!("{what} is not numeric"))),
+    };
+    Ok(value.to_bits())
+}
+
+fn canonical_map_decorations_nbt(decorations: &[ItemMapDecorationSummary]) -> NbtSummaryValue {
+    NbtSummaryValue::Compound(
+        decorations
+            .iter()
+            .map(|decoration| NbtSummaryEntry {
+                name: decoration.id.clone(),
+                value: NbtSummaryValue::Compound(vec![
+                    NbtSummaryEntry {
+                        name: "type".to_string(),
+                        value: NbtSummaryValue::String(
+                            decoration.decoration_type_resource_id.clone(),
+                        ),
+                    },
+                    NbtSummaryEntry {
+                        name: "x".to_string(),
+                        value: NbtSummaryValue::Double(decoration.x_bits),
+                    },
+                    NbtSummaryEntry {
+                        name: "z".to_string(),
+                        value: NbtSummaryValue::Double(decoration.z_bits),
+                    },
+                    NbtSummaryEntry {
+                        name: "rotation".to_string(),
+                        value: NbtSummaryValue::Float(decoration.rotation_bits),
+                    },
+                ]),
+            })
+            .collect(),
+    )
+}
+
 fn decode_codec_backed_nbt(
     type_id: i32,
     decoder: &mut Decoder<'_>,
@@ -4263,6 +4466,8 @@ fn decode_provides_trim_material(
 mod tests {
     use std::collections::{BTreeMap, HashSet};
 
+    use bbb_render_types::vanilla_map_decoration_types;
+
     use crate::{
         block_entity_types::{
             VANILLA_BLOCK_ENTITY_TYPES, VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID,
@@ -4312,10 +4517,10 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec![
                 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 22, 23, 24,
-                25, 26, 27, 28, 29, 30, 32, 33, 34, 35, 36, 37, 38, 39, 40, 42, 43, 44, 45, 46, 48,
-                49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 61, 62, 63, 64, 65, 67, 68, 69, 70, 71,
-                72, 73, 74, 75, 76, 77, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93,
-                94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109,
+                25, 26, 27, 28, 29, 30, 32, 33, 34, 35, 36, 37, 38, 39, 40, 42, 43, 44, 45, 46, 47,
+                48, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 61, 62, 63, 64, 65, 67, 68, 69, 70,
+                71, 72, 73, 74, 75, 76, 77, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92,
+                93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109,
             ]
         );
     }
@@ -8066,6 +8271,229 @@ mod tests {
             .encode(&DataComponentPatchSummary::default(), &mut encoded)
             .is_err());
         assert_eq!(encoded.into_inner(), [0xaa]);
+    }
+
+    #[test]
+    fn map_decorations_descriptor_round_trips_all_builtin_holders_and_canonicalizes_numeric_nbt() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID)
+                .unwrap();
+        let decorations = vanilla_map_decoration_types()
+            .enumerate()
+            .map(|(index, decoration_type)| ItemMapDecorationSummary {
+                id: format!("marker {index}"),
+                decoration_type_id: decoration_type.type_id,
+                decoration_type_resource_id: decoration_type.resource_id.to_string(),
+                x_bits: (index as f64 - 12.5).to_bits(),
+                z_bits: (64.0 - index as f64).to_bits(),
+                rotation_bits: (index as f32 * 11.25).to_bits(),
+            })
+            .collect::<Vec<_>>();
+        for expected in [Vec::new(), decorations] {
+            let summary = DataComponentPatchSummary {
+                map_decorations: Some(expected.clone()),
+                ..DataComponentPatchSummary::default()
+            };
+            let mut encoded = Encoder::new();
+            descriptor.encode(&summary, &mut encoded).unwrap();
+            let wire = encoded.into_inner();
+            let mut decoder = Decoder::new(&wire);
+            let mut decoded = DataComponentPatchSummary::default();
+            descriptor.decode(&mut decoder, &mut decoded).unwrap();
+            assert!(decoder.is_empty());
+            assert_eq!(
+                decoded.map_decorations.as_deref(),
+                Some(expected.as_slice())
+            );
+            assert_eq!(
+                decoded
+                    .codec_backed_nbt
+                    .get(&VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID),
+                Some(&canonical_map_decorations_nbt(&expected))
+            );
+        }
+
+        let shorthand = NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+            name: "home".to_string(),
+            value: NbtSummaryValue::Compound(vec![
+                NbtSummaryEntry {
+                    name: "ignored".to_string(),
+                    value: NbtSummaryValue::Int(1),
+                },
+                NbtSummaryEntry {
+                    name: "type".to_string(),
+                    value: NbtSummaryValue::String("mansion".to_string()),
+                },
+                NbtSummaryEntry {
+                    name: "x".to_string(),
+                    value: NbtSummaryValue::Int(-12),
+                },
+                NbtSummaryEntry {
+                    name: "z".to_string(),
+                    value: NbtSummaryValue::Float(2.5_f32.to_bits()),
+                },
+                NbtSummaryEntry {
+                    name: "rotation".to_string(),
+                    value: NbtSummaryValue::Double(45.25_f64.to_bits()),
+                },
+            ]),
+        }]);
+        let wire =
+            encode_nbt_summary_bounded(Some(&shorthand), i32::MAX as usize, MAX_NBT_DEPTH).unwrap();
+        let mut decoded = DataComponentPatchSummary::default();
+        descriptor
+            .decode(&mut Decoder::new(&wire), &mut decoded)
+            .unwrap();
+        let decoration = &decoded.map_decorations.as_ref().unwrap()[0];
+        let mansion = vanilla_map_decoration_type_for_resource_id("minecraft:mansion").unwrap();
+        assert_eq!(decoration.id, "home");
+        assert_eq!(decoration.decoration_type_id, mansion.type_id);
+        assert_eq!(decoration.decoration_type_resource_id, "minecraft:mansion");
+        assert_eq!(f64::from_bits(decoration.x_bits), -12.0);
+        assert_eq!(f64::from_bits(decoration.z_bits), 2.5);
+        assert_eq!(f32::from_bits(decoration.rotation_bits), 45.25);
+        assert_eq!(
+            decoded
+                .codec_backed_nbt
+                .get(&VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID),
+            Some(&canonical_map_decorations_nbt(
+                decoded.map_decorations.as_deref().unwrap()
+            ))
+        );
+    }
+
+    #[test]
+    fn map_decorations_descriptor_rejects_noncanonical_values_atomically() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID)
+                .unwrap();
+        let frame = vanilla_map_decoration_type_for_resource_id("minecraft:frame").unwrap();
+        let valid = ItemMapDecorationSummary {
+            id: "home".to_string(),
+            decoration_type_id: frame.type_id,
+            decoration_type_resource_id: frame.resource_id.to_string(),
+            x_bits: 1.0_f64.to_bits(),
+            z_bits: 2.0_f64.to_bits(),
+            rotation_bits: 90.0_f32.to_bits(),
+        };
+        let mut cases = vec![
+            DataComponentPatchSummary::default(),
+            DataComponentPatchSummary {
+                map_decorations: Some(vec![valid.clone(), valid.clone()]),
+                ..DataComponentPatchSummary::default()
+            },
+        ];
+        let mut unknown_id = valid.clone();
+        unknown_id.decoration_type_id = i32::MAX;
+        cases.push(DataComponentPatchSummary {
+            map_decorations: Some(vec![unknown_id]),
+            ..DataComponentPatchSummary::default()
+        });
+        let mut mismatched = valid.clone();
+        mismatched.decoration_type_resource_id = "minecraft:mansion".to_string();
+        cases.push(DataComponentPatchSummary {
+            map_decorations: Some(vec![mismatched]),
+            ..DataComponentPatchSummary::default()
+        });
+        let mut shorthand = valid.clone();
+        shorthand.decoration_type_resource_id = "frame".to_string();
+        cases.push(DataComponentPatchSummary {
+            map_decorations: Some(vec![shorthand]),
+            ..DataComponentPatchSummary::default()
+        });
+        cases.push(DataComponentPatchSummary {
+            map_decorations: Some(vec![valid.clone()]),
+            codec_backed_nbt: BTreeMap::from([(
+                VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID,
+                canonical_map_decorations_nbt(&[]),
+            )]),
+            ..DataComponentPatchSummary::default()
+        });
+        cases.push(DataComponentPatchSummary {
+            map_decorations: Some(vec![valid; MAX_DATA_COMPONENT_LIST_ITEMS + 1]),
+            ..DataComponentPatchSummary::default()
+        });
+
+        for summary in cases {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            assert!(descriptor.encode(&summary, &mut encoded).is_err());
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
+    }
+
+    #[test]
+    fn map_decorations_descriptor_rejects_malformed_codec_nbt() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID)
+                .unwrap();
+        let entry = |fields| {
+            NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                name: "home".to_string(),
+                value: NbtSummaryValue::Compound(fields),
+            }])
+        };
+        for malformed in [
+            NbtSummaryValue::String("home".to_string()),
+            NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                name: "home".to_string(),
+                value: NbtSummaryValue::Int(1),
+            }]),
+            entry(Vec::new()),
+            entry(vec![
+                NbtSummaryEntry {
+                    name: "type".to_string(),
+                    value: NbtSummaryValue::String("minecraft:missing".to_string()),
+                },
+                NbtSummaryEntry {
+                    name: "x".to_string(),
+                    value: NbtSummaryValue::Double(0.0_f64.to_bits()),
+                },
+                NbtSummaryEntry {
+                    name: "z".to_string(),
+                    value: NbtSummaryValue::Double(0.0_f64.to_bits()),
+                },
+                NbtSummaryEntry {
+                    name: "rotation".to_string(),
+                    value: NbtSummaryValue::Float(0.0_f32.to_bits()),
+                },
+            ]),
+            entry(vec![
+                NbtSummaryEntry {
+                    name: "type".to_string(),
+                    value: NbtSummaryValue::String("minecraft:frame".to_string()),
+                },
+                NbtSummaryEntry {
+                    name: "x".to_string(),
+                    value: NbtSummaryValue::String("near".to_string()),
+                },
+                NbtSummaryEntry {
+                    name: "z".to_string(),
+                    value: NbtSummaryValue::Double(0.0_f64.to_bits()),
+                },
+                NbtSummaryEntry {
+                    name: "rotation".to_string(),
+                    value: NbtSummaryValue::Float(0.0_f32.to_bits()),
+                },
+            ]),
+        ] {
+            let wire =
+                encode_nbt_summary_bounded(Some(&malformed), i32::MAX as usize, MAX_NBT_DEPTH)
+                    .unwrap();
+            assert!(descriptor
+                .decode(
+                    &mut Decoder::new(&wire),
+                    &mut DataComponentPatchSummary::default()
+                )
+                .is_err());
+        }
+        let missing = encode_nbt_summary_bounded(None, i32::MAX as usize, MAX_NBT_DEPTH).unwrap();
+        assert!(descriptor
+            .decode(
+                &mut Decoder::new(&missing),
+                &mut DataComponentPatchSummary::default()
+            )
+            .is_err());
     }
 
     #[test]

@@ -63,6 +63,24 @@ fn decodes_map_decorations_with_builtin_types_and_numeric_codecs() {
         },
         &mut patch,
     ));
+    let typed = patch.map_decorations.as_deref().unwrap();
+    assert_eq!(typed.len(), 2);
+    assert_eq!(typed[0].id, "home");
+    assert_eq!(
+        typed[0].decoration_type_id,
+        vanilla_map_decoration_type_for_resource_id("minecraft:mansion")
+            .unwrap()
+            .type_id
+    );
+    assert_eq!(typed[0].decoration_type_resource_id, "minecraft:mansion");
+    assert_eq!(f64::from_bits(typed[0].x_bits), -120.5);
+    assert_eq!(f64::from_bits(typed[0].z_bits), 64.0);
+    assert_eq!(f32::from_bits(typed[0].rotation_bits), 180.0);
+    assert_eq!(typed[1].id, "trial marker");
+    assert_eq!(
+        typed[1].decoration_type_resource_id,
+        "minecraft:trial_chambers"
+    );
     assert_eq!(
         patch
             .codec_backed_nbt
@@ -97,6 +115,7 @@ fn decodes_map_decorations_with_builtin_types_and_numeric_codecs() {
         },
         &mut empty_patch,
     ));
+    assert_eq!(empty_patch.map_decorations.as_deref(), Some(&[][..]));
     assert_eq!(
         empty_patch
             .codec_backed_nbt
