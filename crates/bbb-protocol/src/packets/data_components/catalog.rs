@@ -24,9 +24,9 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID, VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID,
-    VANILLA_DATA_COMPONENT_TRIM_TYPE_ID, VANILLA_DATA_COMPONENT_TYPES,
-    VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID, VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID,
-    VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID,
+    VANILLA_DATA_COMPONENT_TOOL_TYPE_ID, VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
+    VANILLA_DATA_COMPONENT_TYPES, VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID, VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID,
     VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
     VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
 };
@@ -252,6 +252,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID => Some(encode_tooltip_display),
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID => Some(encode_consumable),
         VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID => Some(encode_use_remainder),
+        VANILLA_DATA_COMPONENT_TOOL_TYPE_ID => Some(encode_tool),
         VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID => Some(encode_death_protection),
         VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID => Some(encode_blocks_attacks),
         VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID => Some(encode_piercing_weapon),
@@ -489,6 +490,66 @@ fn encode_tooltip_display(
     for type_id in hidden_components {
         encoded.write_var_i32(*type_id);
     }
+    out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
+fn encode_tool(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let tool = summary
+        .tool
+        .as_ref()
+        .ok_or_else(|| ProtocolError::InvalidData("missing tool component value".to_string()))?;
+    if tool.rules.len() > MAX_DATA_COMPONENT_LIST_ITEMS {
+        return Err(ProtocolError::PacketTooLarge(
+            tool.rules.len(),
+            MAX_DATA_COMPONENT_LIST_ITEMS,
+        ));
+    }
+    if tool.damage_per_block < 0 {
+        return Err(ProtocolError::InvalidData(format!(
+            "tool damage_per_block {} is negative",
+            tool.damage_per_block
+        )));
+    }
+
+    let mut encoded = Encoder::new();
+    encoded.write_var_i32(tool.rules.len() as i32);
+    for (index, rule) in tool.rules.iter().enumerate() {
+        encode_holder_set_summary(
+            &mut encoded,
+            &rule.block_registry_ids,
+            rule.block_tag.as_deref(),
+            NetworkHolderSetRegistry::Block,
+            "tool rule block holder set",
+        )?;
+        match rule.speed_bits {
+            Some(bits) => {
+                let speed = f32::from_bits(bits);
+                if !speed.is_finite() || speed <= 0.0 {
+                    return Err(ProtocolError::InvalidData(format!(
+                        "tool rule {index} speed {speed} is not a positive finite float"
+                    )));
+                }
+                encoded.write_bool(true);
+                encoded.write_f32(speed);
+            }
+            None => encoded.write_bool(false),
+        }
+        match rule.correct_for_drops {
+            Some(correct_for_drops) => {
+                encoded.write_bool(true);
+                encoded.write_bool(correct_for_drops);
+            }
+            None => encoded.write_bool(false),
+        }
+    }
+    encoded.write_f32(f32::from_bits(tool.default_mining_speed_bits));
+    encoded.write_var_i32(tool.damage_per_block);
+    encoded.write_bool(tool.can_destroy_blocks_in_creative);
     out.write_bytes(&encoded.into_inner());
     Ok(())
 }
@@ -3029,8 +3090,8 @@ mod tests {
                 .map(|descriptor| descriptor.type_id())
                 .collect::<Vec<_>>(),
             vec![
-                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 13, 14, 15, 16, 17, 18, 24, 25, 36, 37, 38, 39,
-                40, 42, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 68, 69, 70, 75,
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 13, 14, 15, 16, 17, 18, 24, 25, 28, 36, 37, 38,
+                39, 40, 42, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 68, 69, 70, 75,
             ]
         );
     }
@@ -3251,6 +3312,155 @@ mod tests {
                 MAX_DATA_COMPONENT_LIST_ITEMS
             ))
         ));
+    }
+
+    #[test]
+    fn tool_descriptor_round_trips_rules_holders_and_raw_defaults_in_wire_order() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_TOOL_TYPE_ID).unwrap();
+        let summary = DataComponentPatchSummary {
+            tool: Some(ToolSummary {
+                rules: vec![
+                    ToolRuleSummary {
+                        block_registry_ids: Vec::new(),
+                        block_tag: Some("minecraft:mineable/pickaxe".to_string()),
+                        speed_bits: Some(8.0_f32.to_bits()),
+                        correct_for_drops: Some(true),
+                    },
+                    ToolRuleSummary {
+                        block_registry_ids: vec![1, 193],
+                        block_tag: None,
+                        speed_bits: None,
+                        correct_for_drops: Some(false),
+                    },
+                ],
+                default_mining_speed_bits: (-0.0_f32).to_bits(),
+                damage_per_block: 2,
+                can_destroy_blocks_in_creative: false,
+            }),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        descriptor.encode(&summary, &mut encoded).unwrap();
+
+        let mut expected = Encoder::new();
+        expected.write_var_i32(2);
+        expected.write_var_i32(0);
+        expected.write_string("minecraft:mineable/pickaxe");
+        expected.write_bool(true);
+        expected.write_f32(8.0);
+        expected.write_bool(true);
+        expected.write_bool(true);
+        expected.write_var_i32(3);
+        expected.write_var_i32(1);
+        expected.write_var_i32(193);
+        expected.write_bool(false);
+        expected.write_bool(true);
+        expected.write_bool(false);
+        expected.write_f32(-0.0);
+        expected.write_var_i32(2);
+        expected.write_bool(false);
+        assert_eq!(encoded.clone().into_inner(), expected.into_inner());
+
+        let wire = encoded.into_inner();
+        let mut decoded = DataComponentPatchSummary::default();
+        let mut decoder = Decoder::new(&wire);
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded.tool, summary.tool);
+    }
+
+    #[test]
+    fn tool_descriptor_rejects_persistent_range_and_holder_errors_atomically() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_TOOL_TYPE_ID).unwrap();
+        let valid = ToolSummary {
+            rules: vec![ToolRuleSummary {
+                block_registry_ids: vec![1],
+                block_tag: None,
+                speed_bits: Some(1.0_f32.to_bits()),
+                correct_for_drops: None,
+            }],
+            default_mining_speed_bits: 1.0_f32.to_bits(),
+            damage_per_block: 1,
+            can_destroy_blocks_in_creative: true,
+        };
+        let invalid_holder_id =
+            i32::try_from(crate::block_types::VANILLA_BLOCK_TYPES.len()).unwrap();
+        let cases = [
+            DataComponentPatchSummary::default(),
+            DataComponentPatchSummary {
+                tool: Some(ToolSummary {
+                    rules: vec![valid.rules[0].clone(); MAX_DATA_COMPONENT_LIST_ITEMS + 1],
+                    ..valid.clone()
+                }),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                tool: Some(ToolSummary {
+                    damage_per_block: -1,
+                    ..valid.clone()
+                }),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                tool: Some(ToolSummary {
+                    rules: vec![ToolRuleSummary {
+                        speed_bits: Some(0.0_f32.to_bits()),
+                        ..valid.rules[0].clone()
+                    }],
+                    ..valid.clone()
+                }),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                tool: Some(ToolSummary {
+                    rules: vec![ToolRuleSummary {
+                        speed_bits: Some(f32::INFINITY.to_bits()),
+                        ..valid.rules[0].clone()
+                    }],
+                    ..valid.clone()
+                }),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                tool: Some(ToolSummary {
+                    rules: vec![ToolRuleSummary {
+                        block_registry_ids: vec![invalid_holder_id],
+                        ..valid.rules[0].clone()
+                    }],
+                    ..valid.clone()
+                }),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                tool: Some(ToolSummary {
+                    rules: vec![ToolRuleSummary {
+                        block_registry_ids: Vec::new(),
+                        block_tag: Some("mineable/pickaxe".to_string()),
+                        ..valid.rules[0].clone()
+                    }],
+                    ..valid.clone()
+                }),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                tool: Some(ToolSummary {
+                    rules: vec![ToolRuleSummary {
+                        block_tag: Some("minecraft:mineable/pickaxe".to_string()),
+                        ..valid.rules[0].clone()
+                    }],
+                    ..valid
+                }),
+                ..DataComponentPatchSummary::default()
+            },
+        ];
+        for summary in cases {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0x7f);
+            assert!(descriptor.encode(&summary, &mut encoded).is_err());
+            assert_eq!(encoded.into_inner(), [0x7f]);
+        }
     }
 
     #[test]

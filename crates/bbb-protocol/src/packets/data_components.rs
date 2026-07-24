@@ -1178,6 +1178,9 @@ fn validate_encodable_data_component_patch_summary(
                 expected.tooltip_hidden_component_type_ids =
                     patch.tooltip_hidden_component_type_ids.clone();
             }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_TOOL_TYPE_ID => {
+                expected.tool = patch.tool.clone();
+            }
             crate::data_component_types::VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID => {
                 expected.potion_id = patch.potion_id;
                 expected.potion_custom_color = patch.potion_custom_color;

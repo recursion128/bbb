@@ -1636,6 +1636,69 @@ fn encodes_set_creative_mode_slot_tooltip_display_component() {
 }
 
 #[test]
+fn encodes_set_creative_mode_slot_tool_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![
+                    crate::data_component_types::VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
+                ],
+                tool: Some(ToolSummary {
+                    rules: vec![ToolRuleSummary {
+                        block_registry_ids: Vec::new(),
+                        block_tag: Some("minecraft:mineable/pickaxe".to_string()),
+                        speed_bits: Some(8.0_f32.to_bits()),
+                        correct_for_drops: Some(true),
+                    }],
+                    default_mining_speed_bits: 1.0_f32.to_bits(),
+                    damage_per_block: 2,
+                    can_destroy_blocks_in_creative: false,
+                }),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_i16().unwrap(), 36);
+    assert_eq!(decoder.read_var_i32().unwrap(), 1);
+    assert_eq!(decoder.read_var_i32().unwrap(), 42);
+    assert_eq!(decoder.read_len().unwrap(), 1);
+    assert_eq!(decoder.read_len().unwrap(), 0);
+    assert_eq!(
+        decoder.read_var_i32().unwrap(),
+        crate::data_component_types::VANILLA_DATA_COMPONENT_TOOL_TYPE_ID
+    );
+    let value_len = decoder.read_len().unwrap();
+    let mut value = Decoder::new(
+        decoder
+            .read_exact(value_len, "tool component value")
+            .unwrap(),
+    );
+    assert_eq!(value.read_len().unwrap(), 1);
+    assert_eq!(value.read_var_i32().unwrap(), 0);
+    assert_eq!(
+        value.read_string(32_767).unwrap(),
+        "minecraft:mineable/pickaxe"
+    );
+    assert!(value.read_bool().unwrap());
+    assert_eq!(value.read_f32().unwrap(), 8.0);
+    assert!(value.read_bool().unwrap());
+    assert!(value.read_bool().unwrap());
+    assert_eq!(value.read_f32().unwrap(), 1.0);
+    assert_eq!(value.read_var_i32().unwrap(), 2);
+    assert!(!value.read_bool().unwrap());
+    assert!(value.is_empty());
+    assert!(decoder.is_empty());
+}
+
+#[test]
 fn encodes_set_creative_mode_slot_entity_data_components() {
     let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
         slot_num: 36,
