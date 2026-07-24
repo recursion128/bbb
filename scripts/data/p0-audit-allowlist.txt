@@ -35,8 +35,8 @@
 # Creative-slot outbound encoding fails closed for component value codecs that
 # the descriptor catalog does not own yet. This is an explicit command error,
 # not packet loss/desynchronization or a fallback on the playable receive path;
-# the `unsupported_added` lines are its bounded regression fixture.
-^crates/bbb-protocol/src/packets/data_components[.]rs$	cannot encode unsupported data component|unsupported_added|Some[(]"unsupported"
+# the `unsupported_added` / `unsupported_inner` lines are bounded regression fixtures.
+^crates/bbb-protocol/src/packets/data_components[.]rs$	cannot encode unsupported data component|unsupported_(added|inner)|Some[(]"unsupported"
 ^crates/bbb-protocol/src/packets/data_components/catalog[.]rs$	unsupported built-in enum component type id
 ^crates/bbb-protocol/src/packets/data_components/catalog[.]rs$	cannot encode unsupported data component
 ^crates/bbb-protocol/src/component/codec[.]rs$	unsupported scheme
