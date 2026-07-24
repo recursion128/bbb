@@ -178,6 +178,12 @@ fn rejects_invalid_primitive_component_value_codecs() {
             "outside 0..=",
         ),
         (
+            VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID,
+            "minecraft:repair_cost",
+            NbtSummaryValue::Int(-1),
+            "outside 0..=",
+        ),
+        (
             VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
             "minecraft:minimum_attack_charge",
             NbtSummaryValue::Float((-0.0f32).to_bits()),

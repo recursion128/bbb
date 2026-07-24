@@ -3769,6 +3769,81 @@
         "status": "complete"
       }
     },
+    "REPAIR_COST": {
+      "canonical_retention": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#REPAIR_COST",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub repair_cost",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_repair_cost",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#repair_cost_descriptor_round_trips_nonnegative_var_int_values",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_primitive_component_value_codecs",
+          "crates/bbb-world/src/client/dialog/body/component_value/item_stack_collections/tests.rs#decodes_ordered_charged_projectile_and_bundle_item_template_lists"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#REPAIR_COST",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#StreamCodec<ByteBuf, Integer> VAR_INT",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_repair_cost",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#repair_cost_descriptor_round_trips_nonnegative_var_int_values",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#repair_cost_descriptor_rejects_negative_values_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_repair_cost_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/inventory/AnvilMenu.java#DataComponents.REPAIR_COST",
+          "vanilla:net/minecraft/world/inventory/GrindstoneMenu.java#DataComponents.REPAIR_COST",
+          "crates/bbb-world/src/client/dialog/body/component_value/canonical_json.rs#canonicalizes_recursive_item_stack_templates_and_sparse_slots",
+          "crates/bbb-world/src/client/dialog/canonical_json.rs#canonicalizes_compact_plain_and_item_bodies",
+          "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_projects_dialog_item_body_structured_patches"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#REPAIR_COST",
+          "vanilla:net/minecraft/util/ExtraCodecs.java#NON_NEGATIVE_INT",
+          "crates/bbb-native/src/input/component_patch.rs#encode_repair_cost",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_omits_components_with_invalid_persistent_integer_ranges",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#rejects_invalid_primitive_component_value_codecs"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#repair_cost_descriptor_round_trips_nonnegative_var_int_values",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#repair_cost_descriptor_rejects_negative_values_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_repair_cost_component",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_primitive_component_value_codecs",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#rejects_invalid_primitive_component_value_codecs",
+          "crates/bbb-world/src/client/dialog/body/component_value/canonical_json.rs#canonicalizes_recursive_item_stack_templates_and_sparse_slots",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_omits_components_with_invalid_persistent_integer_ranges"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#REPAIR_COST",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#StreamCodec<ByteBuf, Integer> VAR_INT",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub repair_cost",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_repair_cost",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#repair_cost_descriptor_rejects_negative_values_atomically"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "TOOL": {
       "canonical_retention": {
         "evidence": [
