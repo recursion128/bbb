@@ -5031,7 +5031,7 @@
             "crates/bbb-native/src/input/tests.rs#sprint_key_with_forward_input_queues_player_input_and_sprint_commands",
             "crates/bbb-native/src/input/movement.rs#mounted_jumpable_vehicle_release_queues_riding_jump_command",
             "crates/bbb-native/src/input/tests.rs#inventory_key_on_server_controlled_mount_queues_open_inventory_command",
-            "crates/bbb-native/src/input/tests.rs#jump_key_queues_start_fall_flying_when_airborne_with_elytra"
+            "crates/bbb-native/src/input/tests.rs#jump_key_queues_start_fall_flying_when_airborne_with_usable_glider"
           ],
           "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
           "status": "partial"
