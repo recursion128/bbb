@@ -2,11 +2,14 @@ use bbb_protocol::attribute_types::{
     VANILLA_ATTRIBUTE_BLOCK_BREAK_SPEED_ID, VANILLA_ATTRIBUTE_MINING_EFFICIENCY_ID,
     VANILLA_ATTRIBUTE_SUBMERGED_MINING_SPEED_ID,
 };
+use bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_TOOL_TYPE_ID;
 use bbb_protocol::mob_effect_types::{
     VANILLA_MOB_EFFECT_CONDUIT_POWER_ID, VANILLA_MOB_EFFECT_HASTE_ID,
     VANILLA_MOB_EFFECT_MINING_FATIGUE_ID,
 };
-use bbb_protocol::packets::Direction as ProtocolDirection;
+use bbb_protocol::packets::{
+    Direction as ProtocolDirection, ItemStackSummary, ToolRuleSummary, ToolSummary,
+};
 use serde::{Deserialize, Serialize};
 
 use super::local_player_fluid::local_player_eye_in_water;
@@ -47,6 +50,19 @@ pub struct WorldItemMiningRule {
 pub struct WorldItemMiningProfile {
     pub default_mining_speed_thousandths: u32,
     pub rules: Vec<WorldItemMiningRule>,
+    #[serde(default = "default_tool_can_destroy_blocks_in_creative")]
+    pub can_destroy_blocks_in_creative: bool,
+}
+
+const fn default_tool_can_destroy_blocks_in_creative() -> bool {
+    true
+}
+
+#[derive(Debug, Clone, Copy)]
+enum EffectiveItemTool<'a> {
+    Patched(&'a ToolSummary),
+    Default(&'a WorldItemMiningProfile),
+    Absent,
 }
 
 impl WorldStore {
@@ -96,9 +112,7 @@ impl WorldStore {
         self.items.default_item_mining_profiles = profiles
             .into_iter()
             .filter(|(item_id, profile)| {
-                *item_id >= 0
-                    && profile.default_mining_speed_thousandths > 0
-                    && !profile.rules.is_empty()
+                *item_id >= 0 && profile.default_mining_speed_thousandths > 0
             })
             .collect::<std::collections::BTreeMap<_, _>>()
             .into();
@@ -183,13 +197,27 @@ impl WorldStore {
     fn local_destroy_item_mining_speed_thousandths(
         &self,
         block_name: &str,
-        item: &bbb_protocol::packets::ItemStackSummary,
+        item: &ItemStackSummary,
     ) -> u32 {
-        item.item_id
-            .filter(|_| item.count > 0)
-            .and_then(|item_id| self.items.default_item_mining_profiles.get(&item_id))
-            .map(|profile| item_mining_speed_thousandths(profile, block_name))
-            .unwrap_or(1_000)
+        match self.effective_item_tool(item) {
+            EffectiveItemTool::Patched(tool) => tool
+                .rules
+                .iter()
+                .find_map(|rule| {
+                    rule.speed_bits
+                        .filter(|_| self.tool_rule_matches(rule, block_name))
+                })
+                .map(|bits| mining_speed_thousandths_from_float(f32::from_bits(bits).into()))
+                .unwrap_or_else(|| {
+                    mining_speed_thousandths_from_float(
+                        f32::from_bits(tool.default_mining_speed_bits).into(),
+                    )
+                }),
+            EffectiveItemTool::Default(profile) => {
+                item_mining_speed_thousandths(profile, block_name)
+            }
+            EffectiveItemTool::Absent => 1_000,
+        }
     }
 
     fn local_destroy_player_mining_speed_thousandths(&self, base_speed_thousandths: u32) -> u32 {
@@ -225,12 +253,72 @@ impl WorldStore {
     fn local_destroy_item_is_correct_for_drops(
         &self,
         block_name: &str,
-        item: &bbb_protocol::packets::ItemStackSummary,
+        item: &ItemStackSummary,
     ) -> bool {
-        item.item_id
-            .filter(|_| item.count > 0)
-            .and_then(|item_id| self.items.default_item_mining_profiles.get(&item_id))
-            .is_some_and(|profile| item_is_correct_for_drops(profile, block_name))
+        match self.effective_item_tool(item) {
+            EffectiveItemTool::Patched(tool) => tool.rules.iter().find_map(|rule| {
+                rule.correct_for_drops
+                    .filter(|_| self.tool_rule_matches(rule, block_name))
+            }),
+            EffectiveItemTool::Default(profile) => {
+                Some(item_is_correct_for_drops(profile, block_name))
+            }
+            EffectiveItemTool::Absent => None,
+        }
+        .unwrap_or(false)
+    }
+
+    pub fn local_selected_main_hand_can_destroy_block_in_creative(&self) -> bool {
+        let hotbar_items = self.inventory.hotbar_items();
+        let selected_slot = usize::from(self.local_player.selected_hotbar_slot.min(8));
+        match self.effective_item_tool(&hotbar_items[selected_slot]) {
+            EffectiveItemTool::Patched(tool) => tool.can_destroy_blocks_in_creative,
+            EffectiveItemTool::Default(profile) => profile.can_destroy_blocks_in_creative,
+            EffectiveItemTool::Absent => true,
+        }
+    }
+
+    fn effective_item_tool<'a>(&'a self, item: &'a ItemStackSummary) -> EffectiveItemTool<'a> {
+        let Some(item_id) = item.item_id.filter(|_| item.count > 0) else {
+            return EffectiveItemTool::Absent;
+        };
+        let patch = &item.component_patch;
+        if patch
+            .added_type_ids
+            .contains(&VANILLA_DATA_COMPONENT_TOOL_TYPE_ID)
+        {
+            return patch
+                .tool
+                .as_ref()
+                .map_or(EffectiveItemTool::Absent, EffectiveItemTool::Patched);
+        }
+        if patch
+            .removed_type_ids
+            .contains(&VANILLA_DATA_COMPONENT_TOOL_TYPE_ID)
+        {
+            return EffectiveItemTool::Absent;
+        }
+        self.items
+            .default_item_mining_profiles
+            .get(&item_id)
+            .map_or(EffectiveItemTool::Absent, EffectiveItemTool::Default)
+    }
+
+    fn tool_rule_matches(&self, rule: &ToolRuleSummary, block_name: &str) -> bool {
+        let Some(holder_id) = self.registry_holder_id_by_resource_id("minecraft:block", block_name)
+        else {
+            return false;
+        };
+        match (
+            rule.block_registry_ids.as_slice(),
+            rule.block_tag.as_deref(),
+        ) {
+            (ids, None) => ids.contains(&holder_id),
+            ([], Some(tag)) => self
+                .registry_holder_ids_for_tag("minecraft:block", tag)
+                .is_some_and(|ids| ids.contains(&holder_id)),
+            (_, Some(_)) => false,
+        }
     }
 
     fn local_block_destroy_profile(&self, block_name: &str) -> Option<LocalBlockDestroyProfile> {
@@ -593,6 +681,80 @@ mod tests {
             ]),
         )]));
         assert_eq!(world.local_destroy_progress_per_tick(pos), Some(26_667));
+    }
+
+    #[test]
+    fn patched_tool_rules_override_defaults_and_removal_restores_bare_hand_semantics() {
+        let pos = BlockPos { x: 0, y: 1, z: 3 };
+        let mut world = world_with_block(pos, 1);
+        let mut default_profile = mining_profile(vec![mining_rule(
+            vec!["minecraft:stone"],
+            Some(4_000),
+            Some(true),
+        )]);
+        default_profile.can_destroy_blocks_in_creative = false;
+        world.set_default_item_mining_profiles(BTreeMap::from([(42, default_profile)]));
+        world.apply_update_tags(bbb_protocol::packets::UpdateTags {
+            registries: vec![bbb_protocol::packets::RegistryTags {
+                registry: "minecraft:block".to_string(),
+                tags: vec![bbb_protocol::packets::TagNetworkPayload {
+                    tag: "minecraft:test/tool_rule".to_string(),
+                    entries: vec![1],
+                }],
+            }],
+        });
+
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(42, 1),
+        });
+        assert_eq!(world.local_destroy_progress_per_tick(pos), Some(88_889));
+        assert!(!world.local_selected_main_hand_can_destroy_block_in_creative());
+
+        let mut patched = item_stack(42, 1);
+        patched.component_patch.added = 1;
+        patched.component_patch.added_type_ids = vec![VANILLA_DATA_COMPONENT_TOOL_TYPE_ID];
+        patched.component_patch.tool = Some(ToolSummary {
+            rules: vec![
+                ToolRuleSummary {
+                    block_registry_ids: vec![1],
+                    block_tag: None,
+                    speed_bits: None,
+                    correct_for_drops: Some(false),
+                },
+                ToolRuleSummary {
+                    block_registry_ids: Vec::new(),
+                    block_tag: Some("minecraft:test/tool_rule".to_string()),
+                    speed_bits: Some(6.0_f32.to_bits()),
+                    correct_for_drops: Some(true),
+                },
+            ],
+            default_mining_speed_bits: 0.5_f32.to_bits(),
+            damage_per_block: 2,
+            can_destroy_blocks_in_creative: true,
+        });
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: patched.clone(),
+        });
+        assert_eq!(world.local_destroy_progress_per_tick(pos), Some(40_000));
+        assert!(world.local_selected_main_hand_can_destroy_block_in_creative());
+
+        patched.component_patch.tool.as_mut().unwrap().rules[0].correct_for_drops = None;
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: patched,
+        });
+        assert_eq!(world.local_destroy_progress_per_tick(pos), Some(133_334));
+
+        let mut removed = item_stack(42, 1);
+        removed.component_patch.removed_type_ids = vec![VANILLA_DATA_COMPONENT_TOOL_TYPE_ID];
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: removed,
+        });
+        assert_eq!(world.local_destroy_progress_per_tick(pos), Some(6_667));
+        assert!(world.local_selected_main_hand_can_destroy_block_in_creative());
     }
 
     #[test]
@@ -1064,6 +1226,7 @@ mod tests {
         WorldItemMiningProfile {
             default_mining_speed_thousandths: 1_000,
             rules,
+            can_destroy_blocks_in_creative: true,
         }
     }
 

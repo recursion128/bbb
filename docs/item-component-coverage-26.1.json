@@ -1930,34 +1930,70 @@
       "constant_name": "TOOL",
       "coverage": {
         "canonical_retention": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components.rs#pub struct ToolSummary",
+            "crates/bbb-protocol/src/packets/data_components.rs#pub struct ToolRuleSummary",
+            "crates/bbb-world/src/client/dialog/body/component_value/tool/tests.rs#decodes_tool_defaults_and_block_holder_rules",
+            "crates/bbb-world/src/client/local_player_destroy.rs#patched_tool_rules_override_defaults_and_removal_restores_bare_hand_semantics"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "network_encode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/Tool.java#STREAM_CODEC",
+            "vanilla:net/minecraft/world/item/component/Tool.java#Rule.STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_tool",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#tool_descriptor_round_trips_rules_holders_and_raw_defaults_in_wire_order",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_tool_component"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "observable_consumers": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/Tool.java#getMiningSpeed",
+            "vanilla:net/minecraft/world/item/component/Tool.java#isCorrectForDrops",
+            "vanilla:net/minecraft/world/item/Item.java#canDestroyBlock",
+            "crates/bbb-world/src/client/local_player_destroy.rs#patched_tool_rules_override_defaults_and_removal_restores_bare_hand_semantics",
+            "crates/bbb-native/src/input/mouse.rs#creative_tool_flag_suppresses_local_destroy_but_still_queues_start"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "persistent_projection": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/Tool.java#CODEC",
+            "vanilla:net/minecraft/world/item/component/Tool.java#Rule.CODEC",
+            "crates/bbb-native/src/input/component_patch.rs#encode_tool",
+            "crates/bbb-native/src/input/component_patch.rs#tool_encoder_resolves_block_holders_and_validates_codec_ranges",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#tool_descriptor_round_trips_rules_holders_and_raw_defaults_in_wire_order",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#tool_descriptor_rejects_persistent_range_and_holder_errors_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_tool_component",
+            "crates/bbb-pack/src/item_registry.rs#extracts_complete_component_membership_and_scalar_values_by_protocol_id",
+            "crates/bbb-world/src/client/local_player_destroy.rs#patched_tool_rules_override_defaults_and_removal_restores_bare_hand_semantics",
+            "crates/bbb-native/src/input/mouse.rs#creative_tool_flag_suppresses_local_destroy_but_still_queues_start"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "typed_decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#TOOL",
+            "vanilla:net/minecraft/world/item/component/Tool.java#STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_tool_component",
+            "crates/bbb-protocol/src/packets/data_components.rs#decode_tool",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_tool_rules_and_defaults_in_wire_order"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "resource_id": "minecraft:tool",

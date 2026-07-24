@@ -5042,6 +5042,7 @@ fn native_item_runtime_converts_mining_profiles_for_world() {
                 correct_for_drops: Some(true),
             },
         ],
+        can_destroy_blocks_in_creative: false,
     };
 
     let converted = world_item_mining_profile(&profile);
@@ -5059,6 +5060,7 @@ fn native_item_runtime_converts_mining_profiles_for_world() {
     );
     assert_eq!(converted.rules[1].mining_speed_thousandths, Some(4_000));
     assert_eq!(converted.rules[1].correct_for_drops, Some(true));
+    assert!(!converted.can_destroy_blocks_in_creative);
 }
 
 #[test]

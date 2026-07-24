@@ -458,3 +458,6 @@
   framing、精确 container 槽跨度和 depth-32 原子预算无损编解码；creative
   持久化范围、严格嵌套 SNBT 及 item-model/tooltip 消费证据齐备，合同见
   `docs/archive/recursive-item-components-roundtrip-design.md`。
+- **2026-07-23（Tool component 六维闭环）**：`TOOL` 现按 holder-set、raw
+  float、VarInt 与 creative flag 精确重编码；默认与 patch 后的规则驱动挖掘
+  速度、正确掉落及 creative 本地破坏预测，六维证据见 item component coverage。

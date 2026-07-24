@@ -584,7 +584,9 @@ fn start_destroy_block(
 
     let sequence = world.next_local_prediction_sequence();
     if local_player_instabuild(world) {
-        world.predict_local_destroy_block(hit.pos, sequence);
+        if world.local_selected_main_hand_can_destroy_block_in_creative() {
+            world.predict_local_destroy_block(hit.pos, sequence);
+        }
         world.set_local_destroy_delay_ticks(5);
     } else {
         if let Some(effect) = world.apply_local_block_attack(hit.pos, sequence) {
@@ -766,6 +768,7 @@ mod tests {
     use bbb_net::AttackEntityCommand;
     use bbb_protocol::data_component_types::{
         VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID, VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID,
+        VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
     };
     use bbb_protocol::equipment_slots::VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT;
     use bbb_protocol::packets::{
@@ -776,7 +779,7 @@ mod tests {
         InitializeBorder, InteractEntity, ItemStackSummary as ProtocolItemStackSummary,
         OpenSignEditor, PickItemFromBlock, PickItemFromEntity, PlayLogin, PlayerAbilities,
         PlayerAction, RemoveEntities, SetPassengers,
-        SetPlayerInventory as ProtocolSetPlayerInventory, UseItem, UseItemOn,
+        SetPlayerInventory as ProtocolSetPlayerInventory, ToolSummary, UseItem, UseItemOn,
         Vec3d as ProtocolVec3d,
     };
     use bbb_world::{
@@ -2547,6 +2550,70 @@ mod tests {
             rx.try_recv().unwrap(),
             NetCommand::Swing(InteractionHand::MainHand)
         );
+    }
+
+    #[test]
+    fn creative_tool_flag_suppresses_local_destroy_but_still_queues_start() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_block();
+        world.apply_player_abilities(PlayerAbilities {
+            invulnerable: true,
+            flying: false,
+            can_fly: true,
+            instabuild: true,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        });
+        let mut stack = item_stack(42, 1);
+        stack.component_patch.added = 1;
+        stack.component_patch.added_type_ids = vec![VANILLA_DATA_COMPONENT_TOOL_TYPE_ID];
+        stack.component_patch.tool = Some(ToolSummary {
+            rules: Vec::new(),
+            default_mining_speed_bits: 1.0_f32.to_bits(),
+            damage_per_block: 2,
+            can_destroy_blocks_in_creative: false,
+        });
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: stack,
+        });
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+        );
+
+        assert!(input.destroy_block_held);
+        assert_eq!(
+            world
+                .probe_block(CROSSHAIR_BLOCK_POS)
+                .unwrap()
+                .block_state_id,
+            VANILLA_GRASS_BLOCK_STATE_ID
+        );
+        assert!(world.local_block_predictions().is_empty());
+        assert_eq!(world.local_player().interaction.destroy_delay_ticks, 5);
+        assert_eq!(counters.player_action_commands_queued, 1);
+        assert_eq!(counters.swing_commands_queued, 1);
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::PlayerAction(PlayerAction {
+                action: PlayerActionKind::StartDestroyBlock,
+                ..
+            })
+        ));
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
+        assert!(rx.try_recv().is_err());
     }
 
     #[test]

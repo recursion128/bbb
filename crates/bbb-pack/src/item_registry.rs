@@ -66,6 +66,12 @@ pub struct ItemMiningRule {
 pub struct ItemMiningProfile {
     pub default_mining_speed_thousandths: u32,
     pub rules: Vec<ItemMiningRule>,
+    #[serde(default = "default_tool_can_destroy_blocks_in_creative")]
+    pub can_destroy_blocks_in_creative: bool,
+}
+
+const fn default_tool_can_destroy_blocks_in_creative() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -2042,7 +2048,7 @@ fn mining_profile_for_declaration(
             Some(material_speed_thousandths(&material)?),
             Some(true),
         );
-        return Ok(non_empty_mining_profile(rules));
+        return Ok(Some(mining_profile(rules, true)));
     }
 
     if expression.call("sword").is_some() {
@@ -2068,7 +2074,7 @@ fn mining_profile_for_declaration(
             Some(1_500),
             None,
         );
-        return Ok(non_empty_mining_profile(rules));
+        return Ok(Some(mining_profile(rules, false)));
     }
 
     if qualified_call(expression, "createToolProperties", "ShearsItem").is_some() {
@@ -2095,7 +2101,13 @@ fn mining_profile_for_declaration(
             Some(2_000),
             None,
         )?;
-        return Ok(non_empty_mining_profile(rules));
+        return Ok(Some(mining_profile(rules, true)));
+    }
+
+    if qualified_call(expression, "createToolProperties", "MaceItem").is_some()
+        || qualified_call(expression, "createToolProperties", "TridentItem").is_some()
+    {
+        return Ok(Some(mining_profile(Vec::new(), false)));
     }
 
     Ok(None)
@@ -2192,11 +2204,15 @@ fn push_direct_block_rule<const N: usize>(
     Ok(())
 }
 
-fn non_empty_mining_profile(rules: Vec<ItemMiningRule>) -> Option<ItemMiningProfile> {
-    (!rules.is_empty()).then_some(ItemMiningProfile {
+fn mining_profile(
+    rules: Vec<ItemMiningRule>,
+    can_destroy_blocks_in_creative: bool,
+) -> ItemMiningProfile {
+    ItemMiningProfile {
         default_mining_speed_thousandths: 1_000,
         rules,
-    })
+        can_destroy_blocks_in_creative,
+    }
 }
 
 fn equipment_slot_from_name(name: &str) -> Result<ItemEquipmentSlot> {
@@ -2712,6 +2728,12 @@ mod tests {
         assert!(catalog
             .mining_profile("minecraft:diamond_pickaxe")
             .is_some());
+        assert!(
+            catalog
+                .mining_profile("minecraft:diamond_pickaxe")
+                .unwrap()
+                .can_destroy_blocks_in_creative
+        );
         let rule = |block_names: &[&str], speed, correct_for_drops| ItemMiningRule {
             block_names: block_names.iter().map(|name| (*name).to_string()).collect(),
             mining_speed_thousandths: speed,
@@ -2728,6 +2750,12 @@ mod tests {
                 rule(&["minecraft:oak_leaves"], Some(1_500), None),
             ]
         );
+        assert!(
+            !catalog
+                .mining_profile("minecraft:diamond_sword")
+                .unwrap()
+                .can_destroy_blocks_in_creative
+        );
         assert_eq!(
             catalog.mining_profile("minecraft:shears").unwrap().rules,
             vec![
@@ -2741,6 +2769,20 @@ mod tests {
                 ),
             ]
         );
+        assert!(
+            catalog
+                .mining_profile("minecraft:shears")
+                .unwrap()
+                .can_destroy_blocks_in_creative
+        );
+        for item in ["minecraft:mace", "minecraft:trident"] {
+            let profile = catalog
+                .mining_profile(item)
+                .unwrap_or_else(|| panic!("missing {item} Tool profile"));
+            assert_eq!(profile.default_mining_speed_thousandths, 1_000);
+            assert!(profile.rules.is_empty());
+            assert!(!profile.can_destroy_blocks_in_creative);
+        }
         let default_piercing_weapon_ids: Vec<_> = catalog
             .default_piercing_weapon_protocol_ids()
             .into_iter()

@@ -423,6 +423,7 @@ pub(super) fn world_item_mining_profile(profile: &PackItemMiningProfile) -> Worl
     WorldItemMiningProfile {
         default_mining_speed_thousandths: profile.default_mining_speed_thousandths,
         rules: profile.rules.iter().map(world_item_mining_rule).collect(),
+        can_destroy_blocks_in_creative: profile.can_destroy_blocks_in_creative,
     }
 }
 
