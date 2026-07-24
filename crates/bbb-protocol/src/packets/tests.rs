@@ -1549,6 +1549,49 @@ fn encodes_set_creative_mode_slot_entity_data_components() {
 }
 
 #[test]
+fn encodes_set_creative_mode_slot_profile_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![
+                    crate::data_component_types::VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
+                ],
+                profile: Some(ResolvableProfileSummary {
+                    kind: ResolvableProfileKindSummary::GameProfile,
+                    uuid: Some(Uuid::from_u128(1)),
+                    name: Some("Alex".to_string()),
+                    properties: Vec::new(),
+                    profile_textures: None,
+                    skin_patch: PlayerSkinPatchSummary::default(),
+                }),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            1, 0, // patch counts
+            70, 27, // profile type and value length
+            1,  // Either.left(GameProfile)
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, // UUID
+            4, b'A', b'l', b'e', b'x', // name
+            0,    // property count
+            0, 0, 0, 0, // empty skin patch
+        ]
+    );
+}
+
+#[test]
 fn encodes_set_creative_mode_slot_drop_empty_stack() {
     let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
         slot_num: -1,

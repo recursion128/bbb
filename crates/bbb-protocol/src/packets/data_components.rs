@@ -24,7 +24,8 @@ use crate::{
         VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID, VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
     },
     entity_types::vanilla_entity_type,
     equipment_slots::{
@@ -1040,6 +1041,13 @@ fn validate_encodable_data_component_patch_summary(
                 expected.block_entity_data_tag = patch.block_entity_data_tag.clone();
                 expected.block_entity_spawn_entity_type =
                     typed_entity_data_spawn_entity_type(patch.block_entity_data_tag.as_ref());
+            }
+            VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID => {
+                expected.profile = patch
+                    .profile
+                    .as_ref()
+                    .map(canonical_resolvable_profile_summary)
+                    .transpose()?;
             }
             _ => unreachable!("encodable descriptor set is limited to owned component callbacks"),
         }
@@ -2094,7 +2102,7 @@ struct DecodedGameProfile {
 fn decode_game_profile(decoder: &mut Decoder<'_>) -> Result<DecodedGameProfile> {
     Ok(DecodedGameProfile {
         uuid: decoder.read_uuid()?,
-        name: decoder.read_string(MAX_PLAYER_NAME_CHARS)?,
+        name: decode_java_string(decoder, MAX_PLAYER_NAME_CHARS)?,
         properties: decode_game_profile_properties(decoder)?,
     })
 }
@@ -2106,7 +2114,7 @@ struct DecodedPartialProfile {
 }
 
 fn decode_partial_profile(decoder: &mut Decoder<'_>) -> Result<DecodedPartialProfile> {
-    let name = decode_optional_string_value(decoder, MAX_PLAYER_NAME_CHARS)?;
+    let name = decode_optional_java_string(decoder, MAX_PLAYER_NAME_CHARS)?;
     let uuid = if decoder.read_bool()? {
         Some(decoder.read_uuid()?)
     } else {
@@ -2126,12 +2134,39 @@ fn decode_game_profile_properties(
     let mut properties = Vec::with_capacity(property_count);
     for _ in 0..property_count {
         properties.push(GameProfilePropertySummary {
-            name: decoder.read_string(MAX_PROFILE_PROPERTY_NAME_CHARS)?,
-            value: decoder.read_string(MAX_STRING_CHARS)?,
-            signature: decode_optional_string_value(decoder, MAX_PROFILE_SIGNATURE_CHARS)?,
+            name: decode_java_string(decoder, MAX_PROFILE_PROPERTY_NAME_CHARS)?,
+            value: decode_java_string(decoder, MAX_STRING_CHARS)?,
+            signature: decode_optional_java_string(decoder, MAX_PROFILE_SIGNATURE_CHARS)?,
         });
     }
     Ok(properties)
+}
+
+fn decode_java_string(decoder: &mut Decoder<'_>, max_utf16_units: usize) -> Result<String> {
+    let value = decoder.read_string(max_utf16_units)?;
+    validate_java_string_len(&value, max_utf16_units)?;
+    Ok(value)
+}
+
+fn decode_optional_java_string(
+    decoder: &mut Decoder<'_>,
+    max_utf16_units: usize,
+) -> Result<Option<String>> {
+    if decoder.read_bool()? {
+        return decode_java_string(decoder, max_utf16_units).map(Some);
+    }
+    Ok(None)
+}
+
+fn validate_java_string_len(value: &str, max_utf16_units: usize) -> Result<()> {
+    let actual = value.encode_utf16().count();
+    if actual > max_utf16_units {
+        return Err(ProtocolError::StringTooLong {
+            actual,
+            max: max_utf16_units,
+        });
+    }
+    Ok(())
 }
 
 fn decode_player_skin_patch(decoder: &mut Decoder<'_>) -> Result<PlayerSkinPatchSummary> {
@@ -2161,6 +2196,30 @@ fn resource_texture_path(asset_id: &str) -> String {
         .split_once(':')
         .expect("resource locations decoded by read_resource_location include a namespace");
     format!("{namespace}:textures/{path}.png")
+}
+
+fn canonical_resolvable_profile_summary(
+    profile: &ResolvableProfileSummary,
+) -> Result<ResolvableProfileSummary> {
+    let mut canonical = profile.clone();
+    canonical.profile_textures = decode_profile_textures_from_properties(
+        canonical
+            .properties
+            .iter()
+            .map(|property| (property.name.as_str(), property.value.as_str())),
+    );
+    for texture in [
+        canonical.skin_patch.body.as_mut(),
+        canonical.skin_patch.cape.as_mut(),
+        canonical.skin_patch.elytra.as_mut(),
+    ]
+    .into_iter()
+    .flatten()
+    {
+        texture.asset_id = normalize_resource_location(texture.asset_id.clone())?;
+        texture.texture_path = resource_texture_path(&texture.asset_id);
+    }
+    Ok(canonical)
 }
 
 fn decode_optional_player_model_type(
@@ -2800,6 +2859,39 @@ mod tests {
     }
 
     #[test]
+    fn encodes_profile_patch_with_delimited_game_profile_value() {
+        let patch = DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID],
+            removed_type_ids: vec![VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID],
+            profile: Some(ResolvableProfileSummary {
+                kind: ResolvableProfileKindSummary::GameProfile,
+                uuid: Some(Uuid::from_u128(1)),
+                name: Some("Alex".to_string()),
+                properties: Vec::new(),
+                profile_textures: None,
+                skin_patch: PlayerSkinPatchSummary::default(),
+            }),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        encode_delimited_data_component_patch_summary(&mut encoded, &patch).unwrap();
+        assert_eq!(
+            encoded.into_inner(),
+            [
+                1, 1, // positive and negative counts
+                70, 27, // profile type and value length
+                1,  // Either.left(GameProfile)
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, // UUID
+                4, b'A', b'l', b'e', b'x', // name
+                0,    // property count
+                0, 0, 0, 0, // empty skin patch
+                0, // removed custom_data
+            ]
+        );
+    }
+
+    #[test]
     fn component_patch_encoder_rejects_noncanonical_summaries_atomically() {
         let valid_max_stack_size = || DataComponentPatchSummary {
             added: 1,
@@ -2890,6 +2982,32 @@ mod tests {
             stale_block_entity_derived_value,
             "dangling summarized values",
         ));
+
+        let missing_profile = DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID],
+            ..DataComponentPatchSummary::default()
+        };
+        cases.push((missing_profile, "missing profile"));
+
+        let stale_profile_textures = DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID],
+            profile: Some(ResolvableProfileSummary {
+                kind: ResolvableProfileKindSummary::Partial,
+                uuid: None,
+                name: Some("Alex".to_string()),
+                properties: Vec::new(),
+                profile_textures: Some(ProfileTexturesSummary {
+                    skin: None,
+                    cape: None,
+                    elytra: None,
+                }),
+                skin_patch: PlayerSkinPatchSummary::default(),
+            }),
+            ..DataComponentPatchSummary::default()
+        };
+        cases.push((stale_profile_textures, "dangling summarized values"));
 
         let dangling_value = DataComponentPatchSummary {
             damage: Some(1),

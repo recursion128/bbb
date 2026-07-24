@@ -3506,34 +3506,70 @@
       "constant_name": "PROFILE",
       "coverage": {
         "canonical_retention": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components.rs#pub profile",
+            "crates/bbb-protocol/src/packets/data_components.rs#canonical_resolvable_profile_summary",
+            "crates/bbb-world/src/client/dialog/body/component_value/profile/tests.rs#decodes_string_partial_and_full_profile_records"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "network_encode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#PROFILE",
+            "vanilla:net/minecraft/world/item/component/ResolvableProfile.java#STREAM_CODEC",
+            "vanilla:net/minecraft/world/entity/player/PlayerSkin.java#public static final StreamCodec<ByteBuf, PlayerSkin.Patch> STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_profile",
+            "crates/bbb-protocol/src/packets/data_components.rs#encodes_profile_patch_with_delimited_game_profile_value",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_profile_component"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "observable_consumers": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/ResolvableProfile.java#DYNAMIC_TOOLTIP",
+            "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_profile_tooltip_lines",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#player_skin_for_profile_resolves_dynamic_owner_before_skin_selection",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#player_profile_resource_texture_patch_loads_local_body_skin"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "persistent_projection": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/ResolvableProfile.java#CODEC",
+            "crates/bbb-native/src/input/component_patch.rs#encode_profile",
+            "crates/bbb-native/src/input.rs#debug_profile_component_snbt",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#profile_descriptor_encodes_exact_game_and_partial_values",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#profile_descriptor_round_trips_java_utf16_name_boundary",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#profile_descriptor_rejects_noncanonical_and_oversized_summaries_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_profile_component",
+            "crates/bbb-world/src/client/dialog/body/component_value/profile/tests.rs#rejects_invalid_profile_alternatives_fields_and_bounds",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#player_skin_for_profile_resolves_dynamic_owner_before_skin_selection"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "typed_decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/ResolvableProfile.java#ByteBufCodecs.either",
+            "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#GAME_PROFILE_PROPERTIES",
+            "vanilla:net/minecraft/network/Utf8String.java#value.length() > maxLength",
+            "crates/bbb-protocol/src/packets/data_components.rs#decode_resolvable_profile",
+            "crates/bbb-protocol/src/packets/data_components.rs#validate_java_string_len",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_game_profile_data_component_summary"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "resource_id": "minecraft:profile",

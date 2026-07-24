@@ -391,3 +391,8 @@
   CompoundTag 根、按 Vanilla 剥离网络顶层 `id`，并由 descriptor-owned 编码进入
   creative 逐值 framing；三行六维 coverage complete，合同见
   `docs/archive/typed-entity-data-component-roundtrip-design.md`。
+- **2026-07-23（Resolvable profile component 六维闭环）**：`PROFILE` 的
+  GameProfile/Partial 判别、Java UTF-16/属性预算与 PlayerSkin.Patch 现可无损
+  重编码；派生 profile textures/资源路径规范、creative framing、持久化与异步
+  皮肤消费证据齐备，合同见
+  `docs/archive/profile-component-roundtrip-design.md`。

@@ -7,7 +7,8 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
     VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
     VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_TYPES, VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID, VANILLA_DATA_COMPONENT_TYPES,
+    VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
 };
 use crate::nbt_summary::{encode_nbt_summary_bounded, MAX_NBT_DEPTH};
 
@@ -217,6 +218,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID => Some(encode_entity_data),
         VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID => Some(encode_bucket_entity_data),
         VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID => Some(encode_block_entity_data),
+        VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID => Some(encode_profile),
         _ => None,
     }
 }
@@ -331,6 +333,108 @@ fn encode_typed_entity_data(
     encoded.write_var_i32(type_id);
     encode_required_compound_tag(tag, component, &mut encoded)?;
     out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
+fn encode_profile(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let profile = summary
+        .profile
+        .as_ref()
+        .ok_or_else(|| ProtocolError::InvalidData("missing profile component value".to_string()))?;
+    if canonical_resolvable_profile_summary(profile)? != *profile {
+        return Err(ProtocolError::InvalidData(
+            "profile component contains noncanonical derived texture values".to_string(),
+        ));
+    }
+
+    let mut encoded = Encoder::new();
+    match profile.kind {
+        ResolvableProfileKindSummary::GameProfile => {
+            let uuid = profile.uuid.ok_or_else(|| {
+                ProtocolError::InvalidData("game profile component is missing its UUID".to_string())
+            })?;
+            let name = profile.name.as_deref().ok_or_else(|| {
+                ProtocolError::InvalidData("game profile component is missing its name".to_string())
+            })?;
+            encoded.write_bool(true);
+            encoded.write_uuid(uuid);
+            encode_java_string(&mut encoded, name, MAX_PLAYER_NAME_CHARS)?;
+        }
+        ResolvableProfileKindSummary::Partial => {
+            encoded.write_bool(false);
+            encode_optional_java_string(
+                &mut encoded,
+                profile.name.as_deref(),
+                MAX_PLAYER_NAME_CHARS,
+            )?;
+            encoded.write_bool(profile.uuid.is_some());
+            if let Some(uuid) = profile.uuid {
+                encoded.write_uuid(uuid);
+            }
+        }
+    }
+    encode_game_profile_properties(&mut encoded, &profile.properties)?;
+    encode_player_skin_patch(&mut encoded, &profile.skin_patch)?;
+    out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
+fn encode_game_profile_properties(
+    out: &mut Encoder,
+    properties: &[GameProfilePropertySummary],
+) -> Result<()> {
+    if properties.len() > MAX_PROFILE_PROPERTIES {
+        return Err(ProtocolError::PacketTooLarge(
+            properties.len(),
+            MAX_PROFILE_PROPERTIES,
+        ));
+    }
+    out.write_var_i32(properties.len() as i32);
+    for property in properties {
+        encode_java_string(out, &property.name, MAX_PROFILE_PROPERTY_NAME_CHARS)?;
+        encode_java_string(out, &property.value, MAX_STRING_CHARS)?;
+        encode_optional_java_string(
+            out,
+            property.signature.as_deref(),
+            MAX_PROFILE_SIGNATURE_CHARS,
+        )?;
+    }
+    Ok(())
+}
+
+fn encode_player_skin_patch(out: &mut Encoder, patch: &PlayerSkinPatchSummary) -> Result<()> {
+    for texture in [&patch.body, &patch.cape, &patch.elytra] {
+        out.write_bool(texture.is_some());
+        if let Some(texture) = texture {
+            encode_java_string(out, &texture.asset_id, MAX_STRING_CHARS)?;
+        }
+    }
+    out.write_bool(patch.model.is_some());
+    if let Some(model) = patch.model {
+        out.write_bool(model == PlayerModelTypeSummary::Slim);
+    }
+    Ok(())
+}
+
+fn encode_optional_java_string(
+    out: &mut Encoder,
+    value: Option<&str>,
+    max_utf16_units: usize,
+) -> Result<()> {
+    out.write_bool(value.is_some());
+    if let Some(value) = value {
+        encode_java_string(out, value, max_utf16_units)?;
+    }
+    Ok(())
+}
+
+fn encode_java_string(out: &mut Encoder, value: &str, max_utf16_units: usize) -> Result<()> {
+    validate_java_string_len(value, max_utf16_units)?;
+    out.write_string(value);
     Ok(())
 }
 
@@ -1368,7 +1472,7 @@ mod tests {
                 .filter(|descriptor| descriptor.can_encode())
                 .map(|descriptor| descriptor.type_id())
                 .collect::<Vec<_>>(),
-            vec![0, 1, 2, 3, 4, 58, 59, 60]
+            vec![0, 1, 2, 3, 4, 58, 59, 60, 70]
         );
     }
 
@@ -1699,6 +1803,331 @@ mod tests {
             "{error}"
         );
         assert_eq!(encoded.into_inner(), [0xaa]);
+    }
+
+    #[test]
+    fn profile_descriptor_encodes_exact_game_and_partial_values() {
+        let uuid = Uuid::from_u128(1);
+        let game_profile = DataComponentPatchSummary {
+            profile: Some(ResolvableProfileSummary {
+                kind: ResolvableProfileKindSummary::GameProfile,
+                uuid: Some(uuid),
+                name: Some("Alex".to_string()),
+                properties: vec![GameProfilePropertySummary {
+                    name: "p".to_string(),
+                    value: "v".to_string(),
+                    signature: None,
+                }],
+                profile_textures: None,
+                skin_patch: PlayerSkinPatchSummary {
+                    model: Some(PlayerModelTypeSummary::Wide),
+                    ..PlayerSkinPatchSummary::default()
+                },
+            }),
+            ..DataComponentPatchSummary::default()
+        };
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID).unwrap();
+        let mut encoded = Encoder::new();
+        descriptor.encode(&game_profile, &mut encoded).unwrap();
+        assert_eq!(
+            encoded.into_inner(),
+            [
+                1, // Either.left(GameProfile)
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, // UUID
+                4, b'A', b'l', b'e', b'x', // name
+                1,    // property count
+                1, b'p', 1, b'v', 0, // property and absent signature
+                0, 0, 0, // absent body, cape, and elytra
+                1, 0, // present wide model
+            ]
+        );
+
+        let partial_profile = DataComponentPatchSummary {
+            profile: Some(ResolvableProfileSummary {
+                kind: ResolvableProfileKindSummary::Partial,
+                uuid: Some(uuid),
+                name: None,
+                properties: Vec::new(),
+                profile_textures: None,
+                skin_patch: PlayerSkinPatchSummary {
+                    body: Some(ResourceTextureSummary {
+                        asset_id: "minecraft:entity/player/wide/steve".to_string(),
+                        texture_path: "minecraft:textures/entity/player/wide/steve.png".to_string(),
+                    }),
+                    cape: None,
+                    elytra: Some(ResourceTextureSummary {
+                        asset_id: "minecraft:entity/player/elytra".to_string(),
+                        texture_path: "minecraft:textures/entity/player/elytra.png".to_string(),
+                    }),
+                    model: Some(PlayerModelTypeSummary::Slim),
+                },
+            }),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        descriptor.encode(&partial_profile, &mut encoded).unwrap();
+        assert_eq!(
+            encoded.into_inner(),
+            [
+                0, // Either.right(Partial)
+                0, // absent name
+                1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, // UUID
+                0, // property count
+                1, 34, b'm', b'i', b'n', b'e', b'c', b'r', b'a', b'f', b't', b':', b'e', b'n',
+                b't', b'i', b't', b'y', b'/', b'p', b'l', b'a', b'y', b'e', b'r', b'/', b'w', b'i',
+                b'd', b'e', b'/', b's', b't', b'e', b'v', b'e', // body
+                0,    // absent cape
+                1, 30, b'm', b'i', b'n', b'e', b'c', b'r', b'a', b'f', b't', b':', b'e', b'n',
+                b't', b'i', b't', b'y', b'/', b'p', b'l', b'a', b'y', b'e', b'r', b'/', b'e', b'l',
+                b'y', b't', b'r', b'a', // elytra
+                1, 1, // present slim model
+            ]
+        );
+    }
+
+    #[test]
+    fn profile_descriptor_round_trips_java_utf16_name_boundary() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID).unwrap();
+        let name = "😀".repeat(8);
+        let summary = DataComponentPatchSummary {
+            profile: Some(ResolvableProfileSummary {
+                kind: ResolvableProfileKindSummary::Partial,
+                uuid: None,
+                name: Some(name.clone()),
+                properties: Vec::new(),
+                profile_textures: None,
+                skin_patch: PlayerSkinPatchSummary::default(),
+            }),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        descriptor.encode(&summary, &mut encoded).unwrap();
+        let encoded = encoded.into_inner();
+        let mut decoded = DataComponentPatchSummary::default();
+        let mut decoder = Decoder::new(&encoded);
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded.profile, summary.profile);
+
+        let mut oversized = encoded;
+        oversized[1] = 1;
+        oversized[2] = 36;
+        oversized.splice(3..35, "😀".repeat(9).into_bytes());
+        let error = descriptor
+            .decode(
+                &mut Decoder::new(&oversized),
+                &mut DataComponentPatchSummary::default(),
+            )
+            .unwrap_err();
+        assert!(matches!(
+            error,
+            ProtocolError::StringTooLong {
+                actual: 18,
+                max: MAX_PLAYER_NAME_CHARS
+            }
+        ));
+
+        let mut too_many_properties = Encoder::new();
+        too_many_properties.write_bool(false);
+        too_many_properties.write_bool(false);
+        too_many_properties.write_bool(false);
+        too_many_properties.write_var_i32((MAX_PROFILE_PROPERTIES + 1) as i32);
+        let too_many_properties = too_many_properties.into_inner();
+        let error = descriptor
+            .decode(
+                &mut Decoder::new(&too_many_properties),
+                &mut DataComponentPatchSummary::default(),
+            )
+            .unwrap_err();
+        assert!(matches!(
+            error,
+            ProtocolError::PacketTooLarge(
+                actual,
+                MAX_PROFILE_PROPERTIES
+            ) if actual == MAX_PROFILE_PROPERTIES + 1
+        ));
+
+        let mut oversized_property_name = Encoder::new();
+        oversized_property_name.write_bool(false);
+        oversized_property_name.write_bool(false);
+        oversized_property_name.write_bool(false);
+        oversized_property_name.write_var_i32(1);
+        oversized_property_name.write_string(&"😀".repeat(33));
+        let oversized_property_name = oversized_property_name.into_inner();
+        let error = descriptor
+            .decode(
+                &mut Decoder::new(&oversized_property_name),
+                &mut DataComponentPatchSummary::default(),
+            )
+            .unwrap_err();
+        assert!(matches!(
+            error,
+            ProtocolError::StringTooLong {
+                actual: 66,
+                max: MAX_PROFILE_PROPERTY_NAME_CHARS
+            }
+        ));
+    }
+
+    #[test]
+    fn profile_descriptor_rejects_noncanonical_and_oversized_summaries_atomically() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID).unwrap();
+        let valid = || ResolvableProfileSummary {
+            kind: ResolvableProfileKindSummary::Partial,
+            uuid: None,
+            name: Some("Alex".to_string()),
+            properties: Vec::new(),
+            profile_textures: None,
+            skin_patch: PlayerSkinPatchSummary::default(),
+        };
+        let mut cases = Vec::new();
+
+        cases.push((
+            DataComponentPatchSummary::default(),
+            "missing profile component value",
+        ));
+
+        let mut missing_game_uuid = valid();
+        missing_game_uuid.kind = ResolvableProfileKindSummary::GameProfile;
+        cases.push((
+            DataComponentPatchSummary {
+                profile: Some(missing_game_uuid),
+                ..DataComponentPatchSummary::default()
+            },
+            "missing its UUID",
+        ));
+
+        let mut missing_game_name = valid();
+        missing_game_name.kind = ResolvableProfileKindSummary::GameProfile;
+        missing_game_name.uuid = Some(Uuid::from_u128(1));
+        missing_game_name.name = None;
+        cases.push((
+            DataComponentPatchSummary {
+                profile: Some(missing_game_name),
+                ..DataComponentPatchSummary::default()
+            },
+            "missing its name",
+        ));
+
+        let mut oversized_name = valid();
+        oversized_name.name = Some("😀".repeat(9));
+        cases.push((
+            DataComponentPatchSummary {
+                profile: Some(oversized_name),
+                ..DataComponentPatchSummary::default()
+            },
+            "string has 18 bytes",
+        ));
+
+        let mut too_many_properties = valid();
+        too_many_properties.properties = (0..=MAX_PROFILE_PROPERTIES)
+            .map(|index| GameProfilePropertySummary {
+                name: format!("p{index}"),
+                value: "value".to_string(),
+                signature: None,
+            })
+            .collect();
+        cases.push((
+            DataComponentPatchSummary {
+                profile: Some(too_many_properties),
+                ..DataComponentPatchSummary::default()
+            },
+            "exceeds configured maximum 16",
+        ));
+
+        for (property, expected_error) in [
+            (
+                GameProfilePropertySummary {
+                    name: "p".repeat(MAX_PROFILE_PROPERTY_NAME_CHARS + 1),
+                    value: "value".to_string(),
+                    signature: None,
+                },
+                "max is 64",
+            ),
+            (
+                GameProfilePropertySummary {
+                    name: "p".to_string(),
+                    value: "v".repeat(MAX_STRING_CHARS + 1),
+                    signature: None,
+                },
+                "max is 32767",
+            ),
+            (
+                GameProfilePropertySummary {
+                    name: "p".to_string(),
+                    value: "value".to_string(),
+                    signature: Some("s".repeat(MAX_PROFILE_SIGNATURE_CHARS + 1)),
+                },
+                "max is 1024",
+            ),
+        ] {
+            let mut oversized_property = valid();
+            oversized_property.properties.push(property);
+            cases.push((
+                DataComponentPatchSummary {
+                    profile: Some(oversized_property),
+                    ..DataComponentPatchSummary::default()
+                },
+                expected_error,
+            ));
+        }
+
+        let mut stale_profile_textures = valid();
+        stale_profile_textures.profile_textures = Some(ProfileTexturesSummary {
+            skin: None,
+            cape: None,
+            elytra: None,
+        });
+        cases.push((
+            DataComponentPatchSummary {
+                profile: Some(stale_profile_textures),
+                ..DataComponentPatchSummary::default()
+            },
+            "noncanonical derived texture values",
+        ));
+
+        let mut stale_path = valid();
+        stale_path.skin_patch.body = Some(ResourceTextureSummary {
+            asset_id: "minecraft:entity/player/wide/steve".to_string(),
+            texture_path: "minecraft:wrong.png".to_string(),
+        });
+        cases.push((
+            DataComponentPatchSummary {
+                profile: Some(stale_path),
+                ..DataComponentPatchSummary::default()
+            },
+            "noncanonical derived texture values",
+        ));
+
+        let mut invalid_asset = valid();
+        invalid_asset.skin_patch.body = Some(ResourceTextureSummary {
+            asset_id: "minecraft:Bad Asset".to_string(),
+            texture_path: "minecraft:textures/Bad Asset.png".to_string(),
+        });
+        cases.push((
+            DataComponentPatchSummary {
+                profile: Some(invalid_asset),
+                ..DataComponentPatchSummary::default()
+            },
+            "invalid resource location",
+        ));
+
+        for (summary, expected_error) in cases {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            let error = descriptor.encode(&summary, &mut encoded).unwrap_err();
+            assert!(
+                error
+                    .to_string()
+                    .to_ascii_lowercase()
+                    .contains(&expected_error.to_ascii_lowercase()),
+                "{error}"
+            );
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
     }
 
     #[test]
