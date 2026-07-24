@@ -34,6 +34,24 @@ class Item {
 }
 """
 
+FOODS = """
+package net.minecraft.world.food;
+class Foods {
+  public static final FoodProperties APPLE =
+      new FoodProperties.Builder().nutrition(4).saturationModifier(0.3F).build();
+  public static final FoodProperties CHORUS_FRUIT =
+      new FoodProperties.Builder().nutrition(4).saturationModifier(0.3F).alwaysEdible().build();
+  public static final FoodProperties MUSHROOM_STEW = stew(6).build();
+  private static FoodProperties.Builder stew(final int nutrition) {
+    return new FoodProperties.Builder().nutrition(nutrition).saturationModifier(0.6F);
+  }
+}
+"""
+
+
+def foods():
+    return parse("net/minecraft/world/food/Foods.java", FOODS)
+
 
 class ItemRegistryCatalogExtractorTests(unittest.TestCase):
     def test_extracts_fields_and_nested_builder_cst(self) -> None:
@@ -58,12 +76,33 @@ class Items {
             items,
             parse("net/minecraft/references/ItemIds.java", ITEM_IDS),
             parse("net/minecraft/world/item/Item.java", ITEM),
+            foods(),
         )
 
         self.assertEqual(extracted.item_id_constants, {"PUMPKIN_SEEDS": "pumpkin_seeds"})
         self.assertEqual(
             extracted.item_constants,
             {"DEFAULT_MAX_STACK_SIZE": 64, "ABSOLUTE_MAX_STACK_SIZE": 99},
+        )
+        self.assertEqual(
+            extracted.food_properties,
+            {
+                "APPLE": {
+                    "nutrition": 4,
+                    "saturation_bits": 1075419546,
+                    "can_always_eat": False,
+                },
+                "CHORUS_FRUIT": {
+                    "nutrition": 4,
+                    "saturation_bits": 1075419546,
+                    "can_always_eat": True,
+                },
+                "MUSHROOM_STEW": {
+                    "nutrition": 6,
+                    "saturation_bits": 1088841319,
+                    "can_always_eat": False,
+                },
+            },
         )
         self.assertEqual([item["field"] for item in extracted.declarations], [
             "AIR", "PUMPKIN_SEEDS", "COPPER_BARS"
@@ -105,11 +144,13 @@ class Items {
             compact,
             parse("net/minecraft/references/ItemIds.java", ITEM_IDS),
             parse("net/minecraft/world/item/Item.java", ITEM),
+            foods(),
         ).declarations[0]["initializer"]
         spaced_fact = extract_item_registry_catalog(
             spaced,
             parse("net/minecraft/references/ItemIds.java", ITEM_IDS),
             parse("net/minecraft/world/item/Item.java", ITEM),
+            foods(),
         ).declarations[0]["initializer"]
         self.assertEqual(compact_fact, spaced_fact)
 
@@ -127,6 +168,7 @@ class Items { public static final Item AIR = null; }
                 items,
                 parse("net/minecraft/references/ItemIds.java", ITEM_IDS),
                 parse("net/minecraft/world/item/Item.java", ITEM),
+                foods(),
             )
 
     def test_local_vanilla_catalog_closes_every_field_when_available(self) -> None:
@@ -134,7 +176,13 @@ class Items { public static final Item AIR = null; }
         items_path = root / "net/minecraft/world/item/Items.java"
         ids_path = root / "net/minecraft/references/ItemIds.java"
         item_path = root / "net/minecraft/world/item/Item.java"
-        if not items_path.is_file() or not ids_path.is_file() or not item_path.is_file():
+        foods_path = root / "net/minecraft/world/food/Foods.java"
+        if (
+            not items_path.is_file()
+            or not ids_path.is_file()
+            or not item_path.is_file()
+            or not foods_path.is_file()
+        ):
             self.skipTest("local vanilla 26.1 sources are unavailable")
         extracted = extract_item_registry_catalog(
             parse_source(
@@ -144,8 +192,18 @@ class Items { public static final Item AIR = null; }
                 "net/minecraft/references/ItemIds.java", ids_path.read_bytes()
             ),
             parse_source("net/minecraft/world/item/Item.java", item_path.read_bytes()),
+            parse_source("net/minecraft/world/food/Foods.java", foods_path.read_bytes()),
         )
         self.assertEqual(len(extracted.declarations), 1485)
+        self.assertEqual(len(extracted.food_properties), 40)
+        self.assertEqual(
+            extracted.food_properties["ENCHANTED_GOLDEN_APPLE"],
+            {
+                "nutrition": 4,
+                "saturation_bits": 1092196762,
+                "can_always_eat": True,
+            },
+        )
         weathering = sum(
             declaration["field_type"] == "WeatheringCopperItems"
             for declaration in extracted.declarations

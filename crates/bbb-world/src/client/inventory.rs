@@ -1,7 +1,7 @@
 use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID,
+    VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
     VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
     VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
     VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID,
@@ -283,6 +283,13 @@ impl PartialEq for ItemAttackRange {
 }
 
 impl Eq for ItemAttackRange {}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ItemFoodProperties {
+    pub nutrition: i32,
+    pub saturation_bits: u32,
+    pub can_always_eat: bool,
+}
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct ItemUseEffects {
@@ -2506,6 +2513,10 @@ impl WorldStore {
 
     pub fn set_default_item_use_effects(&mut self, use_effects: BTreeMap<i32, ItemUseEffects>) {
         self.items.set_default_item_use_effects(use_effects)
+    }
+
+    pub fn set_default_item_food_properties(&mut self, foods: BTreeMap<i32, ItemFoodProperties>) {
+        self.items.set_default_item_food_properties(foods)
     }
 
     pub fn set_default_item_equipment_slots(

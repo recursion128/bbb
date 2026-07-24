@@ -14,7 +14,7 @@ use bbb_pack::{
     ItemAttackRange as PackItemAttackRange, ItemConsumable as PackItemConsumable, ItemCuboidModel,
     ItemCuboidModelCatalog, ItemCuboidModelSet, ItemCuboidTextureImageCatalog,
     ItemDefaultAttributeModifier as PackItemDefaultAttributeModifier,
-    ItemEquipmentSlot as PackItemEquipmentSlot,
+    ItemEquipmentSlot as PackItemEquipmentSlot, ItemFoodProperties as PackItemFoodProperties,
     ItemKineticWeaponDefaults as PackItemKineticWeaponDefaults,
     ItemMiningProfile as PackItemMiningProfile, ItemMiningRule as PackItemMiningRule,
     ItemModelCatalog, ItemModelDefinition, ItemMountBodyArmorKind as PackItemMountBodyArmorKind,
@@ -57,9 +57,9 @@ use bbb_render_types::HudUvRect;
 use bbb_world::{
     ArmorMaterialKind as WorldArmorMaterialKind,
     HappyGhastHarnessColor as WorldHappyGhastHarnessColor, ItemAttackRange as WorldItemAttackRange,
-    ItemEquipmentSlot as WorldItemEquipmentSlot, ItemUseEffects as WorldItemUseEffects,
-    LlamaBodyDecorColor as WorldLlamaBodyDecorColor, MountArmorSlotKind as WorldMountArmorSlotKind,
-    WorldItemMiningProfile, WorldItemMiningRule,
+    ItemEquipmentSlot as WorldItemEquipmentSlot, ItemFoodProperties as WorldItemFoodProperties,
+    ItemUseEffects as WorldItemUseEffects, LlamaBodyDecorColor as WorldLlamaBodyDecorColor,
+    MountArmorSlotKind as WorldMountArmorSlotKind, WorldItemMiningProfile, WorldItemMiningRule,
 };
 
 use crate::{

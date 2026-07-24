@@ -186,6 +186,14 @@ pub(super) fn world_item_use_effects(effects: PackItemUseEffects) -> WorldItemUs
     }
 }
 
+pub(super) fn world_item_food_properties(food: PackItemFoodProperties) -> WorldItemFoodProperties {
+    WorldItemFoodProperties {
+        nutrition: food.nutrition,
+        saturation_bits: food.saturation_bits,
+        can_always_eat: food.can_always_eat,
+    }
+}
+
 pub(super) fn protocol_item_consumable(consumable: PackItemConsumable) -> ConsumableSummary {
     ConsumableSummary {
         consume_seconds: consumable.consume_seconds,
@@ -727,6 +735,24 @@ impl NativeItemRuntime {
 
     pub fn item_use_effect_count(&self) -> usize {
         self.item_use_effects_by_protocol_id().len()
+    }
+
+    pub fn item_food_properties_by_protocol_id(&self) -> BTreeMap<i32, WorldItemFoodProperties> {
+        let mut foods = BTreeMap::new();
+        let Some(registry) = &self.registry else {
+            return foods;
+        };
+        for (protocol_id, resource_id) in registry.resource_ids().iter().enumerate() {
+            let Some(food) = registry.default_food_properties(resource_id) else {
+                continue;
+            };
+            foods.insert(protocol_id as i32, world_item_food_properties(food));
+        }
+        foods
+    }
+
+    pub fn item_food_property_count(&self) -> usize {
+        self.item_food_properties_by_protocol_id().len()
     }
 
     pub fn item_default_consumable(&self, item_id: i32) -> Option<ConsumableSummary> {

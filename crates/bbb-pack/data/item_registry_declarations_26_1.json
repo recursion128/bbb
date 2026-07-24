@@ -61812,6 +61812,208 @@
       "start_byte": 181587
     }
   ],
+  "food_properties": {
+    "APPLE": {
+      "can_always_eat": false,
+      "nutrition": 4,
+      "saturation_bits": 1075419546
+    },
+    "BAKED_POTATO": {
+      "can_always_eat": false,
+      "nutrition": 5,
+      "saturation_bits": 1086324736
+    },
+    "BEEF": {
+      "can_always_eat": false,
+      "nutrition": 3,
+      "saturation_bits": 1072064103
+    },
+    "BEETROOT": {
+      "can_always_eat": false,
+      "nutrition": 1,
+      "saturation_bits": 1067030938
+    },
+    "BEETROOT_SOUP": {
+      "can_always_eat": false,
+      "nutrition": 6,
+      "saturation_bits": 1088841319
+    },
+    "BREAD": {
+      "can_always_eat": false,
+      "nutrition": 5,
+      "saturation_bits": 1086324736
+    },
+    "CARROT": {
+      "can_always_eat": false,
+      "nutrition": 3,
+      "saturation_bits": 1080452711
+    },
+    "CHICKEN": {
+      "can_always_eat": false,
+      "nutrition": 2,
+      "saturation_bits": 1067030938
+    },
+    "CHORUS_FRUIT": {
+      "can_always_eat": true,
+      "nutrition": 4,
+      "saturation_bits": 1075419546
+    },
+    "COD": {
+      "can_always_eat": false,
+      "nutrition": 2,
+      "saturation_bits": 1053609165
+    },
+    "COOKED_BEEF": {
+      "can_always_eat": false,
+      "nutrition": 8,
+      "saturation_bits": 1095552205
+    },
+    "COOKED_CHICKEN": {
+      "can_always_eat": false,
+      "nutrition": 6,
+      "saturation_bits": 1088841319
+    },
+    "COOKED_COD": {
+      "can_always_eat": false,
+      "nutrition": 5,
+      "saturation_bits": 1086324736
+    },
+    "COOKED_MUTTON": {
+      "can_always_eat": false,
+      "nutrition": 6,
+      "saturation_bits": 1092196762
+    },
+    "COOKED_PORKCHOP": {
+      "can_always_eat": false,
+      "nutrition": 8,
+      "saturation_bits": 1095552205
+    },
+    "COOKED_RABBIT": {
+      "can_always_eat": false,
+      "nutrition": 5,
+      "saturation_bits": 1086324736
+    },
+    "COOKED_SALMON": {
+      "can_always_eat": false,
+      "nutrition": 6,
+      "saturation_bits": 1092196762
+    },
+    "COOKIE": {
+      "can_always_eat": false,
+      "nutrition": 2,
+      "saturation_bits": 1053609165
+    },
+    "DRIED_KELP": {
+      "can_always_eat": false,
+      "nutrition": 1,
+      "saturation_bits": 1058642330
+    },
+    "ENCHANTED_GOLDEN_APPLE": {
+      "can_always_eat": true,
+      "nutrition": 4,
+      "saturation_bits": 1092196762
+    },
+    "GLOW_BERRIES": {
+      "can_always_eat": false,
+      "nutrition": 2,
+      "saturation_bits": 1053609165
+    },
+    "GOLDEN_APPLE": {
+      "can_always_eat": true,
+      "nutrition": 4,
+      "saturation_bits": 1092196762
+    },
+    "GOLDEN_CARROT": {
+      "can_always_eat": false,
+      "nutrition": 6,
+      "saturation_bits": 1097229927
+    },
+    "HONEY_BOTTLE": {
+      "can_always_eat": true,
+      "nutrition": 6,
+      "saturation_bits": 1067030938
+    },
+    "MELON_SLICE": {
+      "can_always_eat": false,
+      "nutrition": 2,
+      "saturation_bits": 1067030938
+    },
+    "MUSHROOM_STEW": {
+      "can_always_eat": false,
+      "nutrition": 6,
+      "saturation_bits": 1088841319
+    },
+    "MUTTON": {
+      "can_always_eat": false,
+      "nutrition": 2,
+      "saturation_bits": 1067030938
+    },
+    "POISONOUS_POTATO": {
+      "can_always_eat": false,
+      "nutrition": 2,
+      "saturation_bits": 1067030938
+    },
+    "PORKCHOP": {
+      "can_always_eat": false,
+      "nutrition": 3,
+      "saturation_bits": 1072064103
+    },
+    "POTATO": {
+      "can_always_eat": false,
+      "nutrition": 1,
+      "saturation_bits": 1058642330
+    },
+    "PUFFERFISH": {
+      "can_always_eat": false,
+      "nutrition": 1,
+      "saturation_bits": 1045220557
+    },
+    "PUMPKIN_PIE": {
+      "can_always_eat": false,
+      "nutrition": 8,
+      "saturation_bits": 1083808154
+    },
+    "RABBIT": {
+      "can_always_eat": false,
+      "nutrition": 3,
+      "saturation_bits": 1072064103
+    },
+    "RABBIT_STEW": {
+      "can_always_eat": false,
+      "nutrition": 10,
+      "saturation_bits": 1094713344
+    },
+    "ROTTEN_FLESH": {
+      "can_always_eat": false,
+      "nutrition": 4,
+      "saturation_bits": 1061997773
+    },
+    "SALMON": {
+      "can_always_eat": false,
+      "nutrition": 2,
+      "saturation_bits": 1053609165
+    },
+    "SPIDER_EYE": {
+      "can_always_eat": false,
+      "nutrition": 2,
+      "saturation_bits": 1078774989
+    },
+    "SUSPICIOUS_STEW": {
+      "can_always_eat": true,
+      "nutrition": 6,
+      "saturation_bits": 1088841319
+    },
+    "SWEET_BERRIES": {
+      "can_always_eat": false,
+      "nutrition": 2,
+      "saturation_bits": 1053609165
+    },
+    "TROPICAL_FISH": {
+      "can_always_eat": false,
+      "nutrition": 1,
+      "saturation_bits": 1045220557
+    }
+  },
   "generated_by": "scripts/generate-item-registry-catalog.py",
   "item_id_constants": {
     "MELON_SEEDS": "melon_seeds",
@@ -61819,7 +62021,8 @@
   },
   "sources": [
     "net/minecraft/references/ItemIds.java",
-    "net/minecraft/world/item/Items.java"
+    "net/minecraft/world/item/Items.java",
+    "net/minecraft/world/food/Foods.java"
   ],
   "update_command": "scripts/vanilla-source-tools.sh scripts/generate-item-registry-catalog.py",
   "vanilla_version": "26.1"

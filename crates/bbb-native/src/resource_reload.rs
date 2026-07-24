@@ -17,8 +17,8 @@ use bbb_pack::{
 use bbb_renderer::{ParticleSpriteUv, ParticleUvRect};
 use bbb_world::{
     ArmorMaterialKind, FurnaceFuelRule, HappyGhastHarnessColor, ItemAttackRange, ItemEquipmentSlot,
-    ItemUseEffects, LlamaBodyDecorColor, MountArmorSlotKind, WorldBlockDestroyProfile,
-    WorldBlockSoundProfile, WorldItemMiningProfile, WorldStore,
+    ItemFoodProperties, ItemUseEffects, LlamaBodyDecorColor, MountArmorSlotKind,
+    WorldBlockDestroyProfile, WorldBlockSoundProfile, WorldItemMiningProfile, WorldStore,
 };
 
 use crate::{
@@ -504,6 +504,7 @@ pub(crate) struct ItemRuntimeWorldDefaults {
     piercing_weapon_item_ids: BTreeSet<i32>,
     damageable_item_ids: BTreeSet<i32>,
     use_effects: BTreeMap<i32, ItemUseEffects>,
+    food_properties: BTreeMap<i32, ItemFoodProperties>,
     furnace_fuel_item_ids: BTreeSet<i32>,
     furnace_fuel_rules: Option<Vec<FurnaceFuelRule>>,
     brewing_potion_item_ids: BTreeSet<i32>,
@@ -573,6 +574,7 @@ impl ItemRuntimeWorldDefaults {
             piercing_weapon_item_ids: items.default_piercing_weapon_item_ids_by_protocol_id(),
             damageable_item_ids: items.default_damageable_item_ids_by_protocol_id(),
             use_effects: items.item_use_effects_by_protocol_id(),
+            food_properties: items.item_food_properties_by_protocol_id(),
             furnace_fuel_item_ids: items.furnace_fuel_item_ids_by_protocol_id(),
             furnace_fuel_rules,
             brewing_potion_item_ids: items.brewing_potion_item_ids_by_protocol_id(),
@@ -621,6 +623,7 @@ impl ItemRuntimeWorldDefaults {
         world.set_default_piercing_weapon_item_ids(self.piercing_weapon_item_ids);
         world.set_default_damageable_item_ids(self.damageable_item_ids);
         world.set_default_item_use_effects(self.use_effects);
+        world.set_default_item_food_properties(self.food_properties);
         if let Some(rules) = self.furnace_fuel_rules {
             world.set_furnace_fuel_profile(self.furnace_fuel_item_ids, rules);
         } else {
@@ -698,7 +701,7 @@ mod tests {
     use bbb_protocol::{
         builtin_enum_component_values::VANILLA_DYE_COLOR_RED_ID,
         data_component_types::{
-            VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
+            VANILLA_DATA_COMPONENT_DYE_TYPE_ID, VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
             VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
             VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
         },
@@ -716,12 +719,24 @@ mod tests {
         let items = NativeItemRuntime::empty_for_test().with_vanilla_item_registry_for_test();
         let red_dye_id = items.item_protocol_id("minecraft:red_dye").unwrap();
         let diamond_id = items.item_protocol_id("minecraft:diamond").unwrap();
+        let apple_id = items.item_protocol_id("minecraft:apple").unwrap();
+        let chorus_fruit_id = items.item_protocol_id("minecraft:chorus_fruit").unwrap();
         let tipped_arrow_id = items.item_protocol_id("minecraft:tipped_arrow").unwrap();
         let defaults = ItemRuntimeWorldDefaults::from_runtime(&items);
 
         assert_eq!(defaults.default_component_type_ids.len(), 1506);
         assert_eq!(defaults.default_dye_color_ids.len(), 16);
         assert_eq!(defaults.default_potion_duration_scale_bits.len(), 2);
+        assert_eq!(defaults.food_properties.len(), 44);
+        assert_eq!(
+            defaults.food_properties[&apple_id],
+            ItemFoodProperties {
+                nutrition: 4,
+                saturation_bits: 2.4_f32.to_bits(),
+                can_always_eat: false,
+            }
+        );
+        assert!(defaults.food_properties[&chorus_fruit_id].can_always_eat);
         assert_eq!(
             defaults.default_potion_duration_scale_bits[&tipped_arrow_id],
             0.125_f32.to_bits()
@@ -773,6 +788,21 @@ mod tests {
             &tipped_arrow,
             VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID
         ));
+        let apple = ItemStackSummary {
+            item_id: Some(apple_id),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        let effective_apple = world.effective_item_stack(&apple);
+        assert_eq!(effective_apple.component_patch.food_nutrition, Some(4));
+        assert_eq!(
+            effective_apple.component_patch.food_saturation_bits,
+            Some(2.4_f32.to_bits())
+        );
+        assert!(!effective_apple.component_patch.food_can_always_eat);
+        assert!(
+            world.item_stack_has_effective_component(&apple, VANILLA_DATA_COMPONENT_FOOD_TYPE_ID)
+        );
     }
 
     #[test]

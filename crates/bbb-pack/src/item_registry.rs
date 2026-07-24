@@ -135,6 +135,8 @@ pub struct ItemRegistryCatalog {
     #[serde(default)]
     default_use_effects: BTreeMap<String, ItemUseEffects>,
     #[serde(default)]
+    default_food_properties: BTreeMap<String, ItemFoodProperties>,
+    #[serde(default)]
     default_consumables: BTreeMap<String, ItemConsumable>,
     #[serde(default)]
     crafting_remainders: BTreeMap<String, String>,
@@ -230,6 +232,13 @@ impl PartialEq for ItemConsumable {
 
 impl Eq for ItemConsumable {}
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ItemFoodProperties {
+    pub nutrition: i32,
+    pub saturation_bits: u32,
+    pub can_always_eat: bool,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ItemUseAnimation {
@@ -264,6 +273,7 @@ struct ItemSourceCatalog {
     vanilla_version: String,
     sources: Vec<String>,
     item_id_constants: BTreeMap<String, String>,
+    food_properties: BTreeMap<String, ItemFoodProperties>,
     declarations: Vec<ItemSourceDeclaration>,
 }
 
@@ -324,6 +334,7 @@ impl ItemRegistryCatalog {
                 != [
                     "net/minecraft/references/ItemIds.java",
                     "net/minecraft/world/item/Items.java",
+                    "net/minecraft/world/food/Foods.java",
                 ]
         {
             bail!("unsupported generated item source catalog manifest");
@@ -357,6 +368,7 @@ impl ItemRegistryCatalog {
         let mut default_kinetic_weapons = BTreeMap::new();
         let mut default_attribute_modifiers = BTreeMap::new();
         let mut default_use_effects = BTreeMap::new();
+        let mut default_food_properties = BTreeMap::new();
         let mut default_consumables = BTreeMap::new();
         let mut crafting_remainders = BTreeMap::new();
         let mut mining_profiles = BTreeMap::new();
@@ -430,6 +442,9 @@ impl ItemRegistryCatalog {
                     .with_context(source_context)?;
             let default_use_effect =
                 default_use_effects_for_declaration(expression).with_context(source_context)?;
+            let default_food =
+                default_food_properties_for_declaration(expression, &source.food_properties)
+                    .with_context(source_context)?;
             let default_consumable =
                 default_consumable_for_declaration(expression).with_context(source_context)?;
             let crafting_remainder =
@@ -516,6 +531,9 @@ impl ItemRegistryCatalog {
                 }
                 if let Some(default_use_effect) = default_use_effect {
                     default_use_effects.insert(resource_id.clone(), default_use_effect);
+                }
+                if let Some(default_food) = default_food {
+                    default_food_properties.insert(resource_id.clone(), default_food);
                 }
                 if let Some(default_consumable) = default_consumable {
                     default_consumables.insert(resource_id.clone(), default_consumable);
@@ -634,6 +652,7 @@ impl ItemRegistryCatalog {
             default_kinetic_weapons,
             default_attribute_modifiers,
             default_use_effects,
+            default_food_properties,
             default_consumables,
             crafting_remainders,
             mining_profiles,
@@ -882,6 +901,23 @@ impl ItemRegistryCatalog {
     pub fn default_use_effects(&self, resource_id: &str) -> Option<ItemUseEffects> {
         let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
         self.default_use_effects.get(&resource_id).copied()
+    }
+
+    pub fn default_food_properties(&self, resource_id: &str) -> Option<ItemFoodProperties> {
+        let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
+        self.default_food_properties.get(&resource_id).copied()
+    }
+
+    pub fn default_food_properties_by_protocol_id(&self) -> BTreeMap<i32, ItemFoodProperties> {
+        self.default_food_properties
+            .iter()
+            .filter_map(|(resource_id, food)| {
+                self.protocol_ids
+                    .get(resource_id)
+                    .copied()
+                    .map(|item_id| (item_id, *food))
+            })
+            .collect()
     }
 
     pub fn default_consumable(&self, resource_id: &str) -> Option<ItemConsumable> {
@@ -1950,6 +1986,25 @@ fn default_use_effects_for_declaration(
     }))
 }
 
+fn default_food_properties_for_declaration(
+    expression: &GeneratedJavaExpression,
+    food_properties: &BTreeMap<String, ItemFoodProperties>,
+) -> Result<Option<ItemFoodProperties>> {
+    let food_name = expression
+        .call("food")
+        .and_then(|call| call.arguments.first())
+        .or_else(|| component_value(expression, "FOOD"))
+        .and_then(|value| value.field_constant("Foods"));
+    let Some(food_name) = food_name else {
+        return Ok(None);
+    };
+    food_properties
+        .get(food_name)
+        .copied()
+        .map(Some)
+        .ok_or_else(|| anyhow::anyhow!("unknown Foods.{food_name} constant"))
+}
+
 fn default_consumable_for_declaration(
     expression: &GeneratedJavaExpression,
 ) -> Result<Option<ItemConsumable>> {
@@ -2832,6 +2887,30 @@ mod tests {
             Some(ItemConsumable {
                 consume_seconds: 1.6,
                 animation: ItemUseAnimation::Eat,
+            })
+        );
+        assert_eq!(
+            catalog.default_food_properties("minecraft:apple"),
+            Some(ItemFoodProperties {
+                nutrition: 4,
+                saturation_bits: 2.4_f32.to_bits(),
+                can_always_eat: false,
+            })
+        );
+        assert_eq!(
+            catalog.default_food_properties("minecraft:chorus_fruit"),
+            Some(ItemFoodProperties {
+                nutrition: 4,
+                saturation_bits: 2.4_f32.to_bits(),
+                can_always_eat: true,
+            })
+        );
+        assert_eq!(
+            catalog.default_food_properties("minecraft:salmon_bucket"),
+            Some(ItemFoodProperties {
+                nutrition: 2,
+                saturation_bits: 0.4_f32.to_bits(),
+                can_always_eat: false,
             })
         );
         assert_eq!(

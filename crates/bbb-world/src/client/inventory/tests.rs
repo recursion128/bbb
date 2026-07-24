@@ -1059,6 +1059,62 @@ fn local_selected_main_hand_attack_range_reads_default_and_patch_components() {
 }
 
 #[test]
+fn effective_food_properties_apply_default_patch_and_removal_precedence() {
+    let mut store = WorldStore::new();
+    store.set_default_item_food_properties(BTreeMap::from([
+        (
+            -1,
+            ItemFoodProperties {
+                nutrition: 99,
+                saturation_bits: 99.0_f32.to_bits(),
+                can_always_eat: true,
+            },
+        ),
+        (
+            42,
+            ItemFoodProperties {
+                nutrition: 4,
+                saturation_bits: 2.4_f32.to_bits(),
+                can_always_eat: false,
+            },
+        ),
+    ]));
+
+    let default_stack = item_stack(42, 1);
+    let effective_default = store.effective_item_stack(&default_stack);
+    assert_eq!(effective_default.component_patch.food_nutrition, Some(4));
+    assert_eq!(
+        effective_default.component_patch.food_saturation_bits,
+        Some(2.4_f32.to_bits())
+    );
+    assert!(!effective_default.component_patch.food_can_always_eat);
+
+    let mut patched = item_stack(42, 1);
+    patched.component_patch.added = 1;
+    patched.component_patch.added_type_ids = vec![VANILLA_DATA_COMPONENT_FOOD_TYPE_ID];
+    patched.component_patch.food_nutrition = Some(6);
+    patched.component_patch.food_saturation_bits = Some(7.2_f32.to_bits());
+    patched.component_patch.food_can_always_eat = true;
+    let effective_patch = store.effective_item_stack(&patched);
+    assert_eq!(effective_patch.component_patch.food_nutrition, Some(6));
+    assert_eq!(
+        effective_patch.component_patch.food_saturation_bits,
+        Some(7.2_f32.to_bits())
+    );
+    assert!(effective_patch.component_patch.food_can_always_eat);
+
+    patched.component_patch.removed_type_ids = vec![VANILLA_DATA_COMPONENT_FOOD_TYPE_ID];
+    let effective_removed = store.effective_item_stack(&patched);
+    assert!(effective_removed
+        .component_patch
+        .removed_type_ids
+        .contains(&VANILLA_DATA_COMPONENT_FOOD_TYPE_ID));
+    assert!(
+        !store.item_stack_has_effective_component(&patched, VANILLA_DATA_COMPONENT_FOOD_TYPE_ID)
+    );
+}
+
+#[test]
 fn local_selected_main_hand_attack_range_removed_component_overrides_default_and_added() {
     let mut store = WorldStore::new();
     store.set_default_item_attack_ranges(BTreeMap::from([(42, item_attack_range(2.0, 4.5))]));

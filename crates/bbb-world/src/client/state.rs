@@ -58,8 +58,8 @@ pub use crate::client::hud::{
 pub use crate::client::inventory::{
     ContainerClickBuildError, ContainerClickSlotRequest, ContainerDataValue, ContainerSlot,
     ContainerState, HotbarItemState, InventorySlot, InventoryState, ItemAttackRange,
-    ItemEquipmentSlot, ItemUseEffects, MerchantOfferState, MerchantOffersState, MountArmorSlotKind,
-    MountEquipmentSlotVisibility, MountInventoryKind,
+    ItemEquipmentSlot, ItemFoodProperties, ItemUseEffects, MerchantOfferState, MerchantOffersState,
+    MountArmorSlotKind, MountEquipmentSlotVisibility, MountInventoryKind,
 };
 pub use crate::client::local_player::{
     CameraState, DefaultSpawnState, LocalPlayerAbilitiesState, LocalPlayerAttackState,

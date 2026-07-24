@@ -59,6 +59,7 @@ fn fixture_value(item_ids: &[&str]) -> serde_json::Value {
         "default_kinetic_weapons",
         "default_attribute_modifiers",
         "default_use_effects",
+        "default_food_properties",
         "default_consumables",
         "crafting_remainders",
         "mining_profiles",
@@ -125,6 +126,7 @@ fn copy_profile(catalog: &mut serde_json::Value, target_item_id: &str, vanilla_i
         "default_kinetic_weapons",
         "default_attribute_modifiers",
         "default_use_effects",
+        "default_food_properties",
         "default_consumables",
         "crafting_remainders",
     ] {

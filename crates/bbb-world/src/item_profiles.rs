@@ -12,7 +12,8 @@ use bbb_pack::RegistryDependentItemComponentInitializer;
 use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID,
     VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID, VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+    VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
     VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
@@ -23,8 +24,8 @@ use bbb_protocol::item_types::{
 use bbb_protocol::packets::DataComponentPatchSummary;
 
 use crate::{
-    ItemAttackRange, ItemEquipmentSlot, ItemUseEffects, MountArmorSlotKind, PublicationShared,
-    WorldBlockDestroyProfile, WorldBlockSoundProfile, WorldItemMiningProfile,
+    ItemAttackRange, ItemEquipmentSlot, ItemFoodProperties, ItemUseEffects, MountArmorSlotKind,
+    PublicationShared, WorldBlockDestroyProfile, WorldBlockSoundProfile, WorldItemMiningProfile,
 };
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -94,6 +95,8 @@ pub struct ItemProfiles {
     pub(crate) default_item_swing_animation_durations: PublicationShared<BTreeMap<i32, i32>>,
     #[serde(default)]
     pub(crate) default_item_use_effects: PublicationShared<BTreeMap<i32, ItemUseEffects>>,
+    #[serde(default)]
+    pub(crate) default_item_food_properties: PublicationShared<BTreeMap<i32, ItemFoodProperties>>,
     #[serde(default)]
     pub(crate) default_damageable_item_ids: PublicationShared<BTreeSet<i32>>,
     #[serde(default)]
@@ -248,9 +251,11 @@ impl ItemProfiles {
             .default_potion_duration_scale_bits
             .get(&item_id)
             .copied();
+        let default_food_properties = self.default_item_food_properties.get(&item_id).copied();
         if registry_defaults.is_none()
             && default_dye_color_id.is_none()
             && default_potion_duration_scale_bits.is_none()
+            && default_food_properties.is_none()
         {
             return None;
         }
@@ -318,6 +323,18 @@ impl ItemProfiles {
             {
                 effective.added_type_ids.push(duration_scale_component_id);
                 effective.potion_duration_scale_bits = Some(bits);
+                changed = true;
+            }
+        }
+        let food_component_id = VANILLA_DATA_COMPONENT_FOOD_TYPE_ID;
+        if let Some(food) = default_food_properties {
+            if !patch.removed_type_ids.contains(&food_component_id)
+                && !patch.added_type_ids.contains(&food_component_id)
+            {
+                effective.added_type_ids.push(food_component_id);
+                effective.food_nutrition = Some(food.nutrition);
+                effective.food_saturation_bits = Some(food.saturation_bits);
+                effective.food_can_always_eat = food.can_always_eat;
                 changed = true;
             }
         }
@@ -492,6 +509,17 @@ impl ItemProfiles {
         use_effects: BTreeMap<i32, ItemUseEffects>,
     ) {
         self.default_item_use_effects = filter_item_id_keys(use_effects).into();
+    }
+
+    pub(crate) fn set_default_item_food_properties(
+        &mut self,
+        foods: BTreeMap<i32, ItemFoodProperties>,
+    ) {
+        self.default_item_food_properties = foods
+            .into_iter()
+            .filter(|(item_id, food)| *item_id >= 0 && food.nutrition >= 0)
+            .collect::<BTreeMap<_, _>>()
+            .into();
     }
 
     pub(crate) fn set_default_item_equipment_slots(

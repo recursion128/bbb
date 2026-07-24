@@ -22,6 +22,7 @@ DEFAULT_TYPES_OUTPUT = REPO_ROOT / "crates/bbb-protocol/src/item_types.rs"
 ITEMS_PATH = Path("net/minecraft/world/item/Items.java")
 ITEM_PATH = Path("net/minecraft/world/item/Item.java")
 ITEM_IDS_PATH = Path("net/minecraft/references/ItemIds.java")
+FOODS_PATH = Path("net/minecraft/world/food/Foods.java")
 DATA_COMPONENTS_PATH = Path("net/minecraft/core/component/DataComponents.java")
 SOUND_EVENTS_PATH = Path("net/minecraft/sounds/SoundEvents.java")
 
@@ -373,13 +374,14 @@ def generate(source_root: Path) -> tuple[str, str]:
     items = parse_source(ITEMS_PATH.as_posix(), (source_root / ITEMS_PATH).read_bytes())
     item = parse_source(ITEM_PATH.as_posix(), (source_root / ITEM_PATH).read_bytes())
     item_ids = parse_source(ITEM_IDS_PATH.as_posix(), (source_root / ITEM_IDS_PATH).read_bytes())
+    foods = parse_source(FOODS_PATH.as_posix(), (source_root / FOODS_PATH).read_bytes())
     data_components = parse_source(
         DATA_COMPONENTS_PATH.as_posix(), (source_root / DATA_COMPONENTS_PATH).read_bytes()
     )
     sound_events = parse_source(
         SOUND_EVENTS_PATH.as_posix(), (source_root / SOUND_EVENTS_PATH).read_bytes()
     )
-    extracted = extract_item_registry_catalog(items, item_ids, item)
+    extracted = extract_item_registry_catalog(items, item_ids, item, foods)
     value = extracted.as_json_value()
     facts = json.dumps(value, indent=2, sort_keys=True) + "\n"
     resource_paths: list[str] = []
