@@ -4,7 +4,8 @@ use bbb_pack::RegistryDependentItemComponentInitializer;
 use bbb_protocol::{
     data_component_types::{
         VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
-        VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
         VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
@@ -61,6 +62,15 @@ fn apply_initializer(
                 .map(|entry| entry.holder_id)
                 .collect();
             defaults.damage_resistant_type_tag = Some(tag.clone());
+        }
+        RegistryDependentItemComponentInitializer::DamageType { damage_type } => {
+            insert_component(defaults, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID)?;
+            defaults.damage_type_id = Some(
+                access
+                    .require_entry_by_resource_id(DAMAGE_TYPE_REGISTRY, damage_type)
+                    .map_err(initializer_error)?
+                    .holder_id,
+            );
         }
         RegistryDependentItemComponentInitializer::JukeboxPlayable { song } => {
             insert_component(defaults, VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID)?;
@@ -269,7 +279,7 @@ mod tests {
 
     use bbb_pack::RegistryDependentItemComponentInitializer as Initializer;
     use bbb_protocol::data_component_types::{
-        VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
         VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
@@ -284,7 +294,12 @@ mod tests {
         insert_registry(
             &mut world,
             DAMAGE_TYPE_REGISTRY,
-            &["example:custom", "minecraft:in_fire", "minecraft:explosion"],
+            &[
+                "example:custom",
+                "minecraft:in_fire",
+                "minecraft:explosion",
+                "minecraft:spear",
+            ],
         );
         insert_registry(
             &mut world,
@@ -356,6 +371,12 @@ mod tests {
                     material: "minecraft:diamond".to_string(),
                 }],
             ),
+            (
+                7,
+                vec![Initializer::DamageType {
+                    damage_type: "minecraft:spear".to_string(),
+                }],
+            ),
         ]));
 
         world.rebuild_registry_dependent_item_defaults().unwrap();
@@ -377,9 +398,14 @@ mod tests {
         assert_eq!(defaults[&4].provides_banner_pattern_registry_ids, vec![1]);
         assert_eq!(defaults[&5].instrument_id, Some(1));
         assert_eq!(defaults[&6].provides_trim_material_id, Some(1));
+        assert_eq!(defaults[&7].damage_type_id, Some(3));
         assert_eq!(
             defaults[&6].added_type_ids,
             vec![VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID]
+        );
+        assert_eq!(
+            defaults[&7].added_type_ids,
+            vec![VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID]
         );
     }
 
@@ -441,6 +467,83 @@ mod tests {
             &removed,
             VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID
         ));
+    }
+
+    #[test]
+    fn damage_type_default_uses_session_order_and_patch_remove_precedence() {
+        let mut world = WorldStore::new();
+        insert_registry(
+            &mut world,
+            DAMAGE_TYPE_REGISTRY,
+            &["example:custom", "minecraft:spear"],
+        );
+        world.set_registry_dependent_item_component_initializers(BTreeMap::from([(
+            7,
+            vec![Initializer::DamageType {
+                damage_type: "minecraft:spear".to_string(),
+            }],
+        )]));
+        world.rebuild_registry_dependent_item_defaults().unwrap();
+
+        let stack = ItemStackSummary {
+            item_id: Some(7),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        let effective = world.effective_item_stack(&stack);
+        assert_eq!(effective.component_patch.damage_type_id, Some(1));
+        assert_eq!(
+            effective.component_patch.added_type_ids,
+            vec![VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID]
+        );
+
+        let explicit = ItemStackSummary {
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID],
+                damage_type_id: Some(0),
+                ..DataComponentPatchSummary::default()
+            },
+            ..stack.clone()
+        };
+        assert_eq!(
+            world
+                .effective_item_stack(&explicit)
+                .component_patch
+                .damage_type_id,
+            Some(0)
+        );
+
+        let removed = ItemStackSummary {
+            component_patch: DataComponentPatchSummary {
+                removed_type_ids: vec![VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID],
+                ..DataComponentPatchSummary::default()
+            },
+            ..stack
+        };
+        assert_eq!(
+            world
+                .effective_item_stack(&removed)
+                .component_patch
+                .damage_type_id,
+            None
+        );
+
+        let mut missing = WorldStore::new();
+        insert_registry(&mut missing, DAMAGE_TYPE_REGISTRY, &["example:custom"]);
+        missing.set_registry_dependent_item_component_initializers(BTreeMap::from([(
+            7,
+            vec![Initializer::DamageType {
+                damage_type: "minecraft:spear".to_string(),
+            }],
+        )]));
+        let error = missing
+            .rebuild_registry_dependent_item_defaults()
+            .unwrap_err();
+        assert!(error
+            .message
+            .contains("missing minecraft:damage_type resource"));
+        assert!(missing.items.registry_dependent_item_defaults.is_empty());
     }
 
     #[test]

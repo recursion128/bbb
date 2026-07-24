@@ -11,8 +11,8 @@ use serde::{Deserialize, Serialize};
 use bbb_pack::RegistryDependentItemComponentInitializer;
 use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID,
-    VANILLA_DATA_COMPONENT_DYE_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
-    VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID, VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
     VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
@@ -270,6 +270,9 @@ impl ItemProfiles {
                             defaults.damage_resistant_type_registry_ids.clone();
                         effective.damage_resistant_type_tag =
                             defaults.damage_resistant_type_tag.clone();
+                    }
+                    VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID => {
+                        effective.damage_type_id = defaults.damage_type_id;
                     }
                     VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID => {
                         effective.blocks_attacks = defaults.blocks_attacks.clone();

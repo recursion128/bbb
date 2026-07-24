@@ -47,6 +47,7 @@ pub enum ItemMountBodyArmorKind {
 #[serde(tag = "component", rename_all = "snake_case")]
 pub enum RegistryDependentItemComponentInitializer {
     DamageResistant { tag: String },
+    DamageType { damage_type: String },
     JukeboxPlayable { song: String },
     BlocksAttacks,
     ProvidesBannerPatterns { tag: String },
@@ -764,6 +765,18 @@ impl ItemRegistryCatalog {
             .collect()
     }
 
+    pub fn default_damage_type(&self, resource_id: &str) -> Option<&str> {
+        self.registry_dependent_component_initializers
+            .get(resource_id)?
+            .iter()
+            .find_map(|initializer| match initializer {
+                RegistryDependentItemComponentInitializer::DamageType { damage_type } => {
+                    Some(damage_type.as_str())
+                }
+                _ => None,
+            })
+    }
+
     pub fn equipment_slot(&self, resource_id: &str) -> Option<ItemEquipmentSlot> {
         let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
         self.default_equipment_slots.get(&resource_id).copied()
@@ -1224,6 +1237,11 @@ fn registry_dependent_component_initializers_for_declaration(
     if expression.call("fireResistant").is_some() {
         initializers.push(RegistryDependentItemComponentInitializer::DamageResistant {
             tag: "minecraft:is_fire".to_string(),
+        });
+    }
+    if expression.call("spear").is_some() {
+        initializers.push(RegistryDependentItemComponentInitializer::DamageType {
+            damage_type: "minecraft:spear".to_string(),
         });
     }
     if let Some(call) = expression.call("jukeboxPlayable") {
@@ -2385,8 +2403,8 @@ mod tests {
     fn extracts_all_registry_dependent_vanilla_item_initializers() {
         let catalog = ItemRegistryCatalog::from_generated_source_catalog(None).unwrap();
         let initializers = catalog.registry_dependent_component_initializers_by_protocol_id();
-        assert_eq!(initializers.len(), 60);
-        assert_eq!(initializers.values().map(Vec::len).sum::<usize>(), 61);
+        assert_eq!(initializers.len(), 66);
+        assert_eq!(initializers.values().map(Vec::len).sum::<usize>(), 68);
 
         let item = |resource_id| catalog.protocol_id(resource_id).unwrap();
         assert_eq!(
@@ -2446,6 +2464,28 @@ mod tests {
                 },
             ]
         );
+        assert_eq!(
+            initializers[&item("minecraft:wooden_spear")],
+            vec![RegistryDependentItemComponentInitializer::DamageType {
+                damage_type: "minecraft:spear".to_string(),
+            }]
+        );
+        assert_eq!(
+            initializers[&item("minecraft:netherite_spear")],
+            vec![
+                RegistryDependentItemComponentInitializer::DamageResistant {
+                    tag: "minecraft:is_fire".to_string(),
+                },
+                RegistryDependentItemComponentInitializer::DamageType {
+                    damage_type: "minecraft:spear".to_string(),
+                },
+            ]
+        );
+        assert_eq!(
+            catalog.default_damage_type("minecraft:wooden_spear"),
+            Some("minecraft:spear")
+        );
+        assert_eq!(catalog.default_damage_type("minecraft:diamond_sword"), None);
     }
 
     #[test]
