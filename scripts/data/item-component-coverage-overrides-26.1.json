@@ -4267,6 +4267,80 @@
         "status": "complete"
       }
     },
+    "NOTE_BLOCK_SOUND": {
+      "canonical_retention": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#NOTE_BLOCK_SOUND",
+          "vanilla:net/minecraft/resources/Identifier.java#public static final StreamCodec<ByteBuf, Identifier> STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub note_block_sound",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_note_block_sound",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_primitive_component_value_codecs"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#NOTE_BLOCK_SOUND",
+          "vanilla:net/minecraft/resources/Identifier.java#public static final StreamCodec<ByteBuf, Identifier> STREAM_CODEC",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#StreamCodec<ByteBuf, String> STRING_UTF8",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_note_block_sound",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#note_block_sound_descriptor_round_trips_canonical_identifier",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#note_block_sound_descriptor_rejects_missing_noncanonical_and_oversized_values_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_note_block_sound_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/level/block/entity/SkullBlockEntity.java#protected void applyImplicitComponents",
+          "vanilla:net/minecraft/world/level/block/NoteBlock.java#private @Nullable Identifier getCustomSoundId",
+          "crates/bbb-world/src/chunks/skull.rs#decode_skull_note_block_sound",
+          "crates/bbb-world/src/note_blocks.rs#trigger_note_block_event",
+          "crates/bbb-world/src/note_blocks.rs#custom_head_requires_typed_skull_sound_without_consuming_random_on_miss",
+          "crates/bbb-world/src/chunks/tests.rs#decodes_skull_note_block_sound_from_initial_chunk_data"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/resources/Identifier.java#public static final Codec<Identifier> CODEC",
+          "crates/bbb-native/src/input/component_patch.rs#encode_note_block_sound",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_primitive_component_value_codecs"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#note_block_sound_descriptor_round_trips_canonical_identifier",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#note_block_sound_descriptor_rejects_missing_noncanonical_and_oversized_values_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_note_block_sound_component",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-world/src/note_blocks.rs#custom_head_requires_typed_skull_sound_without_consuming_random_on_miss",
+          "crates/bbb-world/src/chunks/tests.rs#decodes_skull_note_block_sound_from_initial_chunk_data"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#NOTE_BLOCK_SOUND",
+          "vanilla:net/minecraft/resources/Identifier.java#public static final StreamCodec<ByteBuf, Identifier> STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub note_block_sound",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_note_block_sound",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_primitive_component_value_codecs"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "PAINTING_VARIANT": {
       "canonical_retention": {
         "evidence": [

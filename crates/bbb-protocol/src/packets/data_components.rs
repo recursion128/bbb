@@ -34,6 +34,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_POST_PROCESSING_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_NOTE_BLOCK_SOUND_TYPE_ID,
         VANILLA_DATA_COMPONENT_OMINOUS_BOTTLE_AMPLIFIER_TYPE_ID,
         VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
@@ -1287,6 +1288,9 @@ fn validate_encodable_data_component_patch_summary(
             }
             VANILLA_DATA_COMPONENT_MAP_POST_PROCESSING_TYPE_ID => {
                 expected.map_post_processing = patch.map_post_processing;
+            }
+            VANILLA_DATA_COMPONENT_NOTE_BLOCK_SOUND_TYPE_ID => {
+                expected.note_block_sound = patch.note_block_sound.clone();
             }
             VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID => {
                 expected.pot_decorations_item_ids = patch.pot_decorations_item_ids.clone();
