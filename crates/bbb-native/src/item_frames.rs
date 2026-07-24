@@ -71,6 +71,7 @@ pub(crate) fn item_frame_models(
     trim_material_keys: Option<&[String]>,
     trim_pattern_keys: Option<&[String]>,
     enchantment_keys: Option<&[String]>,
+    damage_type_keys: Option<&[String]>,
     attribute_keys: Option<&[String]>,
 ) -> ItemFrameModels {
     let mut map_textures = MapTextureExtractionCache::default();
@@ -83,6 +84,7 @@ pub(crate) fn item_frame_models(
         trim_material_keys,
         trim_pattern_keys,
         enchantment_keys,
+        damage_type_keys,
         attribute_keys,
     )
 }
@@ -95,6 +97,7 @@ pub(crate) fn item_frame_models_with_map_cache(
     trim_material_keys: Option<&[String]>,
     trim_pattern_keys: Option<&[String]>,
     enchantment_keys: Option<&[String]>,
+    damage_type_keys: Option<&[String]>,
     attribute_keys: Option<&[String]>,
 ) -> ItemFrameModels {
     let block_meshes = Vec::new();
@@ -289,6 +292,7 @@ pub(crate) fn item_frame_models_with_map_cache(
             trim_material_keys,
             trim_pattern_keys,
             enchantment_keys,
+            damage_type_keys,
             attribute_keys,
         );
         if layers.is_empty() {
@@ -504,6 +508,7 @@ mod tests {
             None,
             None,
             None,
+            None,
         );
         assert!(visible.block_meshes.is_empty());
         assert!(visible.block_z_offset_forward_meshes.is_empty());
@@ -525,6 +530,7 @@ mod tests {
             &world,
             None,
             &TerrainTextureState::default(),
+            None,
             None,
             None,
             None,
@@ -556,6 +562,7 @@ mod tests {
             &world,
             None,
             &TerrainTextureState::default(),
+            None,
             None,
             None,
             None,
@@ -602,6 +609,7 @@ mod tests {
             &world,
             None,
             &TerrainTextureState::default(),
+            None,
             None,
             None,
             None,
@@ -704,6 +712,7 @@ mod tests {
             &world,
             Some(&item_runtime),
             &TerrainTextureState::default(),
+            None,
             None,
             None,
             None,

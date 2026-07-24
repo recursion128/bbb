@@ -135,6 +135,7 @@ pub(crate) fn first_person_item_models_with_map_cache(
     }
 
     let enchantment_keys = world_enchantment_keys(world);
+    let damage_type_keys = world_damage_type_keys(world);
     let trim_material_keys = world_trim_material_keys(world);
     let attribute_keys = world_attribute_keys(world);
     let context_dimension = world.level_info().map(|level| level.dimension.as_str());
@@ -352,6 +353,7 @@ pub(crate) fn first_person_item_models_with_map_cache(
             using_this_hand,
             world.local_player().interaction.using_item_ticks as f32,
             enchantment_keys.as_deref(),
+            damage_type_keys.as_deref(),
             trim_material_keys.as_deref(),
             attribute_keys.as_deref(),
             context_dimension,

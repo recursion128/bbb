@@ -1036,6 +1036,9 @@ fn validate_encodable_data_component_patch_summary(
             crate::data_component_types::VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID => {
                 expected.minimum_attack_charge_bits = patch.minimum_attack_charge_bits;
             }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID => {
+                expected.damage_type_id = patch.damage_type_id;
+            }
             crate::data_component_types::VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID => {
                 expected.custom_name = patch.custom_name.clone();
                 expected.custom_name_styled = patch.custom_name_styled.clone();
@@ -3788,6 +3791,38 @@ mod tests {
             decoded.minimum_attack_charge_bits,
             patch.minimum_attack_charge_bits
         );
+    }
+
+    #[test]
+    fn encodes_damage_type_patch_with_delimited_holder_id() {
+        let patch = DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![
+                crate::data_component_types::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
+            ],
+            removed_type_ids: vec![VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID],
+            damage_type_id: Some(300),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        encode_delimited_data_component_patch_summary(&mut encoded, &patch).unwrap();
+        let encoded = encoded.into_inner();
+
+        let mut decoder = Decoder::new(&encoded);
+        assert_eq!(decoder.read_len().unwrap(), 1);
+        assert_eq!(decoder.read_len().unwrap(), 1);
+        let type_id = decoder.read_var_i32().unwrap();
+        assert_eq!(
+            type_id,
+            crate::data_component_types::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID
+        );
+        assert_eq!(decoder.read_len().unwrap(), 2);
+        assert_eq!(decoder.read_var_i32().unwrap(), 300);
+        assert_eq!(
+            decoder.read_var_i32().unwrap(),
+            VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID
+        );
+        assert!(decoder.is_empty());
     }
 
     #[test]

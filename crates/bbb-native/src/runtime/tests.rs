@@ -685,6 +685,20 @@ fn map_texture_cache_invalidates_only_on_level_generation_edge() {
 #[test]
 fn item_registry_key_cache_follows_registry_access_revision() {
     let mut world = WorldStore::new();
+    world.record_registry_data(bbb_protocol::packets::RegistryData {
+        registry: "minecraft:damage_type".to_string(),
+        entries: vec![
+            bbb_protocol::packets::RegistryDataEntry {
+                id: "example:custom".to_string(),
+                raw_data: None,
+            },
+            bbb_protocol::packets::RegistryDataEntry {
+                id: "minecraft:spear".to_string(),
+                raw_data: None,
+            },
+        ],
+        raw_payload_len: 0,
+    });
     let mut scratch = NonEntityRenderExtractionScratch::default();
 
     let first = scratch.item_registry_keys(&world);
@@ -692,14 +706,19 @@ fn item_registry_key_cache_follows_registry_access_revision() {
     assert_eq!(first.trim_materials, second.trim_materials);
     assert_eq!(first.trim_patterns, second.trim_patterns);
     assert_eq!(first.enchantments, second.enchantments);
+    assert_eq!(first.damage_types, second.damage_types);
+    assert_eq!(
+        first.damage_types.as_deref(),
+        Some(["example:custom".to_string(), "minecraft:spear".to_string()].as_slice())
+    );
     assert_eq!(first.attributes, second.attributes);
-    assert_eq!(scratch.observation().cache_misses, 4);
-    assert_eq!(scratch.observation().cache_hits, 4);
+    assert_eq!(scratch.observation().cache_misses, 5);
+    assert_eq!(scratch.observation().cache_hits, 5);
 
     world.reset_registry_session();
     let _ = scratch.item_registry_keys(&world);
-    assert_eq!(scratch.observation().cache_misses, 8);
-    assert_eq!(scratch.observation().cache_hits, 4);
+    assert_eq!(scratch.observation().cache_misses, 10);
+    assert_eq!(scratch.observation().cache_hits, 5);
 }
 
 /// A hover-name tooltip line: rarity colour run, italic when custom-named
@@ -13113,6 +13132,7 @@ fn dropped_item_models_use_world_trim_material_select_context() {
         None,
         None,
         None,
+        None,
     );
     let trim_material_keys = world_trim_material_keys(&world).unwrap();
     let trimmed = crate::item_models::dropped_item_models(
@@ -13121,6 +13141,7 @@ fn dropped_item_models_use_world_trim_material_select_context() {
         &terrain_textures,
         0.0,
         Some(&trim_material_keys),
+        None,
         None,
         None,
         None,
@@ -13162,6 +13183,7 @@ fn item_frame_models_use_world_trim_material_select_context() {
         None,
         None,
         None,
+        None,
     );
     let trim_material_keys = world_trim_material_keys(&world).unwrap();
     let trimmed = crate::item_frames::item_frame_models(
@@ -13169,6 +13191,7 @@ fn item_frame_models_use_world_trim_material_select_context() {
         Some(&item_runtime),
         &terrain_textures,
         Some(&trim_material_keys),
+        None,
         None,
         None,
         None,

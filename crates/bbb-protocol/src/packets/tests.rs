@@ -6,6 +6,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID,
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
         VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID,
         VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID, VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
         VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
@@ -2131,6 +2132,36 @@ fn encodes_set_creative_mode_slot_minimum_attack_charge_component() {
 }
 
 #[test]
+fn encodes_set_creative_mode_slot_damage_type_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID],
+                damage_type_id: Some(300),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            1, 0, // patch counts
+            8, 2, // damage_type component and delimited value length
+            0xac, 2, // session holder id 300
+        ]
+    );
+}
+
+#[test]
 fn encodes_set_creative_mode_slot_item_enchantment_components() {
     let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
         slot_num: 36,
@@ -2336,6 +2367,12 @@ fn set_creative_mode_slot_rejects_values_rejected_by_the_untrusted_stack_codec()
         damage: Some(value),
         ..DataComponentPatchSummary::default()
     };
+    let damage_type_patch = |holder_id| DataComponentPatchSummary {
+        added: 1,
+        added_type_ids: vec![VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID],
+        damage_type_id: Some(holder_id),
+        ..DataComponentPatchSummary::default()
+    };
     let use_effects_patch = |speed_multiplier| DataComponentPatchSummary {
         added: 1,
         added_type_ids: vec![VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID],
@@ -2407,6 +2444,10 @@ fn set_creative_mode_slot_rejects_values_rejected_by_the_untrusted_stack_codec()
         (
             stack_with_patch(1, damage_patch(-1)),
             "damage must be non-negative",
+        ),
+        (
+            stack_with_patch(1, damage_type_patch(-1)),
+            "damage_type has negative holder id -1",
         ),
         (
             stack_with_patch(1, use_effects_patch(-0.0)),

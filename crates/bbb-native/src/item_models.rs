@@ -90,6 +90,10 @@ pub(crate) fn world_enchantment_keys(world: &WorldStore) -> Option<Vec<String>> 
     world_registry_keys(world, "minecraft:enchantment")
 }
 
+pub(crate) fn world_damage_type_keys(world: &WorldStore) -> Option<Vec<String>> {
+    world_registry_keys(world, "minecraft:damage_type")
+}
+
 pub(crate) fn world_trim_material_keys(world: &WorldStore) -> Option<Vec<String>> {
     world_registry_keys(world, "minecraft:trim_material")
 }

@@ -1017,6 +1017,7 @@ pub(super) enum ComponentSelectProperty {
     MapId,
     DyedColor,
     MapColor,
+    DamageType,
 }
 
 impl ComponentSelectProperty {
@@ -1033,6 +1034,7 @@ impl ComponentSelectProperty {
             "minecraft:map_id" => Some(Self::MapId),
             "minecraft:dyed_color" => Some(Self::DyedColor),
             "minecraft:map_color" => Some(Self::MapColor),
+            "minecraft:damage_type" => Some(Self::DamageType),
             _ => None,
         }
     }
@@ -1052,6 +1054,7 @@ impl ComponentSelectProperty {
             Self::MapId => component_id::VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID,
             Self::DyedColor => component_id::VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID,
             Self::MapColor => component_id::VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID,
+            Self::DamageType => component_id::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
         }
     }
 
@@ -1062,6 +1065,8 @@ impl ComponentSelectProperty {
             ctx.default_max_damage,
             ctx.default_item_model_id,
             ctx.default_item_name_translation_key,
+            ctx.default_damage_type,
+            ctx.damage_type_keys,
         )
     }
 
@@ -1072,6 +1077,8 @@ impl ComponentSelectProperty {
         default_max_damage: Option<i32>,
         default_item_model_id: &str,
         default_item_name_translation_key: &str,
+        default_damage_type: Option<&str>,
+        damage_type_keys: Option<&[String]>,
     ) -> Option<SelectCaseValue> {
         if component_patch
             .is_some_and(|patch| patch.removed_type_ids.contains(&self.component_id()))
@@ -1129,6 +1136,26 @@ impl ComponentSelectProperty {
             Self::MapColor => component_patch
                 .and_then(|patch| patch.map_color)
                 .map(SelectCaseValue::I32),
+            Self::DamageType => {
+                if let Some(patch) = component_patch {
+                    if let Some(holder_id) = patch.damage_type_id {
+                        return usize::try_from(holder_id)
+                            .ok()
+                            .and_then(|holder_id| damage_type_keys?.get(holder_id))
+                            .cloned()
+                            .map(SelectCaseValue::String);
+                    }
+                    if patch
+                        .added_type_ids
+                        .contains(&component_id::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID)
+                    {
+                        return None;
+                    }
+                }
+                default_damage_type
+                    .map(str::to_string)
+                    .map(SelectCaseValue::String)
+            }
         }
     }
 }
@@ -1412,6 +1439,8 @@ pub(super) struct IconResolveContext<'a> {
     pub item_model_seed: i32,
     pub default_item_model_id: &'a str,
     pub default_item_name_translation_key: &'a str,
+    /// Pack-derived holder key for registry-dependent prototype components.
+    pub default_damage_type: Option<&'a str>,
     /// Vanilla `MainHand.get`: `None` means this native call site has not
     /// threaded a `LivingEntity` owner, so select cases do not match and
     /// fallback is used. `Some(true)` is `HumanoidArm.LEFT`; `Some(false)` is
@@ -1482,6 +1511,9 @@ pub(super) struct IconResolveContext<'a> {
     /// `minecraft:enchantment` registry keys by holder id (the dynamic
     /// registry, projected from `bbb-world` at the call site).
     pub enchantment_keys: Option<&'a [String]>,
+    /// `minecraft:damage_type` registry keys by holder id (the dynamic
+    /// registry, projected from `bbb-world` at the call site).
+    pub damage_type_keys: Option<&'a [String]>,
     /// `minecraft:attribute` registry keys by holder id (the dynamic registry,
     /// projected from `bbb-world` at the call site).
     pub attribute_keys: Option<&'a [String]>,
@@ -5130,6 +5162,8 @@ fn item_exact_component_matches(
             default_max_damage,
             resource_id,
             &default_item_name_translation_key(resource_id),
+            None,
+            None,
         ) == Some(expected);
     }
 

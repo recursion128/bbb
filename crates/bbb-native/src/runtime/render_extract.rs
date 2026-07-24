@@ -2271,6 +2271,7 @@ pub(crate) struct ItemRegistryKeySet {
     pub(crate) trim_materials: Option<Arc<[String]>>,
     pub(crate) trim_patterns: Option<Arc<[String]>>,
     pub(crate) enchantments: Option<Arc<[String]>>,
+    pub(crate) damage_types: Option<Arc<[String]>>,
     pub(crate) attributes: Option<Arc<[String]>>,
 }
 
@@ -2332,7 +2333,7 @@ impl NonEntityRenderExtractionScratch {
     pub(crate) fn item_registry_keys(&mut self, world: &WorldStore) -> ItemRegistryKeySet {
         let revision = world.registry_access_revision();
         if self.item_registry_keys.revision == Some(revision) {
-            self.observation.cache_hits = self.observation.cache_hits.saturating_add(4);
+            self.observation.cache_hits = self.observation.cache_hits.saturating_add(5);
             return self.item_registry_keys.keys.clone();
         }
 
@@ -2342,10 +2343,11 @@ impl NonEntityRenderExtractionScratch {
                 trim_materials: world_trim_material_keys(world).map(Arc::from),
                 trim_patterns: world_trim_pattern_keys(world).map(Arc::from),
                 enchantments: world_enchantment_keys(world).map(Arc::from),
+                damage_types: world_damage_type_keys(world).map(Arc::from),
                 attributes: world_attribute_keys(world).map(Arc::from),
             },
         };
-        self.observation.cache_misses = self.observation.cache_misses.saturating_add(4);
+        self.observation.cache_misses = self.observation.cache_misses.saturating_add(5);
         self.item_registry_keys.keys.clone()
     }
 

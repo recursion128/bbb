@@ -168,7 +168,7 @@ use crate::{
         display_entity_item_models, dropped_item_models, entity_block_models,
         first_person_item_models_with_map_cache, first_person_player_arms, held_item_models,
         item_pickup_particle_item_models, ominous_item_spawner_models, world_attribute_keys,
-        world_banner_pattern_tooltip_context, world_enchantment_keys,
+        world_banner_pattern_tooltip_context, world_damage_type_keys, world_enchantment_keys,
         world_instrument_tooltip_context, world_jukebox_song_tooltip_context,
         world_painting_variant_tooltip_context, world_trim_material_keys,
         world_trim_material_tooltip_context, world_trim_pattern_keys,
@@ -3209,6 +3209,7 @@ pub(crate) fn update_renderer_from_publication(
     let trim_material_keys = item_registry_keys.trim_materials;
     let trim_pattern_keys = item_registry_keys.trim_patterns;
     let enchantment_keys = item_registry_keys.enchantments;
+    let damage_type_keys = item_registry_keys.damage_types;
     let attribute_keys = item_registry_keys.attributes;
     let camera_pose = camera_pose_from_world_at_partial_tick(world, entity_partial_tick);
     hud_render_runtime.vignette.advance(
@@ -3277,6 +3278,7 @@ pub(crate) fn update_renderer_from_publication(
         trim_material_keys.as_deref(),
         trim_pattern_keys.as_deref(),
         enchantment_keys.as_deref(),
+        damage_type_keys.as_deref(),
         attribute_keys.as_deref(),
     );
     let ominous_item_spawner_models = ominous_item_spawner_models(
@@ -3287,6 +3289,7 @@ pub(crate) fn update_renderer_from_publication(
         trim_material_keys.as_deref(),
         trim_pattern_keys.as_deref(),
         enchantment_keys.as_deref(),
+        damage_type_keys.as_deref(),
         attribute_keys.as_deref(),
     );
     let item_pickup_particle_states = renderer.item_pickup_particle_render_states();
@@ -3297,6 +3300,7 @@ pub(crate) fn update_renderer_from_publication(
         trim_material_keys.as_deref(),
         trim_pattern_keys.as_deref(),
         enchantment_keys.as_deref(),
+        damage_type_keys.as_deref(),
         attribute_keys.as_deref(),
     );
     let item_entity_billboards = item_entity_billboards_from_world(
@@ -3363,6 +3367,7 @@ pub(crate) fn update_renderer_from_publication(
         renderer_counters.frame_index,
         trim_material_keys.as_deref(),
         enchantment_keys.as_deref(),
+        damage_type_keys.as_deref(),
         attribute_keys.as_deref(),
     );
     let display_text_surfaces = display_entity_item_models.text_surfaces;
@@ -3478,6 +3483,7 @@ pub(crate) fn update_renderer_from_publication(
         trim_material_keys.as_deref(),
         trim_pattern_keys.as_deref(),
         enchantment_keys.as_deref(),
+        damage_type_keys.as_deref(),
         attribute_keys.as_deref(),
     );
     let entity_block_models = entity_block_models(
@@ -15013,6 +15019,7 @@ fn hud_item_icon_for_stack(
     let trim_material_keys = world_trim_material_keys(world);
     let trim_pattern_keys = world_trim_pattern_keys(world);
     let enchantment_keys = world_enchantment_keys(world);
+    let damage_type_keys = world_damage_type_keys(world);
     let attribute_keys = world_attribute_keys(world);
     let owner_main_hand_left = world.local_player_main_arm_left();
     let context_entity_type = Some("minecraft:player");
@@ -15099,6 +15106,7 @@ fn hud_item_icon_for_stack(
             trim_material_keys.as_deref(),
             trim_pattern_keys.as_deref(),
             enchantment_keys.as_deref(),
+            damage_type_keys.as_deref(),
             attribute_keys.as_deref(),
             owner_main_hand_left,
             context_entity_type,

@@ -38,6 +38,7 @@ pub(crate) fn display_entity_item_models(
     obfuscated_seed: u64,
     trim_material_keys: Option<&[String]>,
     enchantment_keys: Option<&[String]>,
+    damage_type_keys: Option<&[String]>,
     attribute_keys: Option<&[String]>,
 ) -> DisplayEntityItemModels {
     let mut models = DisplayEntityItemModels::default();
@@ -69,6 +70,7 @@ pub(crate) fn display_entity_item_models(
                     terrain_textures,
                     trim_material_keys,
                     enchantment_keys,
+                    damage_type_keys,
                     attribute_keys,
                     &mut models.residency,
                 );
@@ -203,6 +205,7 @@ fn bake_item_display(
     terrain_textures: &TerrainTextureState,
     trim_material_keys: Option<&[String]>,
     enchantment_keys: Option<&[String]>,
+    damage_type_keys: Option<&[String]>,
     attribute_keys: Option<&[String]>,
     residency: &mut ItemModelResidencyFrame,
 ) {
@@ -232,6 +235,7 @@ fn bake_item_display(
         false,
         0.0,
         enchantment_keys,
+        damage_type_keys,
         trim_material_keys,
         attribute_keys,
         world.level_info().map(|level| level.dimension.as_str()),
@@ -473,6 +477,7 @@ mod tests {
             &TerrainTextureState::default(),
             None,
             0,
+            None,
             None,
             None,
             None,

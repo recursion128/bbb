@@ -5376,7 +5376,6 @@ fn native_item_runtime_selects_has_component_defaults_and_nondefault_patches() {
             .layers[0]
             .uv
     };
-
     // Vanilla `HasComponent.get(ignoreDefault=false)` calls
     // `ItemStack.has`, so common prototype components count as present.
     assert_eq!(
@@ -5532,6 +5531,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
                     None,
                     None,
                     None,
+                    None,
                     false,
                     false,
                     false,
@@ -5568,6 +5568,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
                 None,
                 None,
                 None,
+                None,
                 false,
                 false,
                 false,
@@ -5592,6 +5593,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
                 ItemModelUseContext::inactive(),
                 BlockModelDisplayContext::Gui,
                 0.0,
+                None,
                 None,
                 None,
                 None,
@@ -10637,6 +10639,13 @@ fn native_item_runtime_resolves_component_select_values() {
             .layers[0]
             .uv
     };
+    let rect = |model_id: &str| {
+        let uv = uv(model_id);
+        ItemSpriteRect {
+            min: uv.min,
+            max: uv.max,
+        }
+    };
 
     // Vanilla `COMMON_ITEM_COMPONENTS` gives every item `rarity=common`.
     assert_eq!(
@@ -10993,6 +11002,52 @@ fn native_item_runtime_resolves_component_select_values() {
             }
         ),
         uv("component_item_name_fallback")
+    );
+
+    // `DamageType.STREAM_CODEC` carries a registry holder. Prototype spear
+    // defaults use the pack-derived key; explicit patches resolve through the
+    // current session holder order, and removal suppresses the prototype.
+    assert_eq!(
+        selected(12, DataComponentPatchSummary::default()),
+        uv("component_damage_type_spear")
+    );
+    let session_damage_types = vec!["minecraft:spear".to_string(), "example:custom".to_string()];
+    let explicit = ItemStackSummary {
+        item_id: Some(12),
+        count: 1,
+        component_patch: DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![8],
+            damage_type_id: Some(1),
+            ..DataComponentPatchSummary::default()
+        },
+    };
+    assert_eq!(
+        runtime
+            .generated_item_layers_for_stack_with_registry_context(
+                &explicit,
+                BlockModelDisplayContext::Gui,
+                None,
+                None,
+                None,
+                Some(&session_damage_types),
+                None,
+            )
+            .into_iter()
+            .next()
+            .unwrap()
+            .rect,
+        rect("component_damage_type_custom")
+    );
+    assert_eq!(
+        selected(
+            12,
+            DataComponentPatchSummary {
+                removed_type_ids: vec![8],
+                ..DataComponentPatchSummary::default()
+            }
+        ),
+        uv("component_damage_type_fallback")
     );
 
     std::fs::remove_dir_all(root).unwrap();
@@ -16674,6 +16729,7 @@ fn write_component_select_fixture(root: &Path) {
         "custom_name_component_selector",
         "item_name_component_selector",
         "block_item_name_component_selector",
+        "damage_type_component_selector",
     ];
     write_item_registry_fixture(root, &item_ids);
     let mut catalog = item_registry_override_value(&item_ids);
@@ -16684,6 +16740,14 @@ fn write_component_select_fixture(root: &Path) {
     catalog["default_item_name_translation_keys"]["minecraft:block_item_name_component_selector"] =
         serde_json::json!("block.minecraft.block_item_name_component_selector");
     catalog["block_items"] = serde_json::json!(["minecraft:block_item_name_component_selector"]);
+    catalog["registry_dependent_component_initializers"] = serde_json::json!({
+        "minecraft:damage_type_component_selector": [
+            {
+                "component": "damage_type",
+                "damage_type": "minecraft:spear"
+            }
+        ]
+    });
     write_item_registry_override_value(root, &catalog);
     write_json(
         &assets.join("items").join("rarity_selector.json"),
@@ -16958,6 +17022,29 @@ fn write_component_select_fixture(root: &Path) {
                 }
             }"#,
     );
+    write_json(
+        &assets
+            .join("items")
+            .join("damage_type_component_selector.json"),
+        r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:component",
+                    "component": "minecraft:damage_type",
+                    "cases": [
+                        {
+                            "when": "minecraft:spear",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/component_damage_type_spear" }
+                        },
+                        {
+                            "when": "example:custom",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/component_damage_type_custom" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/component_damage_type_fallback" }
+                }
+            }"#,
+    );
     for (model_id, color) in [
         ("component_rarity_common", [80, 80, 80, 255]),
         ("component_rarity_rare", [80, 180, 220, 255]),
@@ -16992,6 +17079,9 @@ fn write_component_select_fixture(root: &Path) {
         ("component_item_name_literal_key", [210, 95, 170, 255]),
         ("component_item_name_block_default", [95, 210, 190, 255]),
         ("component_item_name_fallback", [45, 55, 70, 255]),
+        ("component_damage_type_spear", [170, 105, 45, 255]),
+        ("component_damage_type_custom", [45, 170, 105, 255]),
+        ("component_damage_type_fallback", [55, 45, 70, 255]),
     ] {
         write_flat_item_model_and_texture(&assets, model_id, &color);
     }

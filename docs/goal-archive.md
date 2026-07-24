@@ -444,3 +444,8 @@
   原型倍率由 `Items.java` CST 派生，经资源重载进入 world 有效 patch，并按
   Vanilla 顺序缩放 potion tooltip，合同见
   `docs/archive/potion-duration-scale-roundtrip-design.md`。
+- **2026-07-23（Damage type component 六维闭环）**：`DAMAGE_TYPE` 现按
+  session holder 顺序解码、重编码并进入 creative framing；spear 原型默认由
+  `Items.java` 派生并经 frozen registry 解析，generic component-select 消费
+  显式/default/removal 值，合同见
+  `docs/archive/damage-type-item-component-design.md`。

@@ -653,6 +653,10 @@ impl NativeItemRuntime {
             item_model_seed: 0,
             default_item_model_id: item_id,
             default_item_name_translation_key: &default_item_name_translation_key,
+            default_damage_type: self
+                .registry
+                .as_ref()
+                .and_then(|registry| registry.default_damage_type(item_id)),
             main_hand_left: None,
             context_dimension: None,
             context_entity_type: None,
@@ -683,6 +687,7 @@ impl NativeItemRuntime {
             trim_material_keys: None,
             trim_pattern_keys: None,
             enchantment_keys: None,
+            damage_type_keys: None,
             attribute_keys: None,
         };
         let mut indices = self
@@ -746,6 +751,10 @@ impl NativeItemRuntime {
             item_model_seed: 0,
             default_item_model_id: item_id,
             default_item_name_translation_key: &default_item_name_translation_key,
+            default_damage_type: self
+                .registry
+                .as_ref()
+                .and_then(|registry| registry.default_damage_type(item_id)),
             main_hand_left: None,
             context_dimension: None,
             context_entity_type: None,
@@ -776,6 +785,7 @@ impl NativeItemRuntime {
             trim_material_keys: None,
             trim_pattern_keys: None,
             enchantment_keys: None,
+            damage_type_keys: None,
             attribute_keys: None,
         };
         let mut indices = self
@@ -921,6 +931,7 @@ impl NativeItemRuntime {
             None,
             None,
             None,
+            None,
         )
     }
 
@@ -931,6 +942,7 @@ impl NativeItemRuntime {
         trim_material_keys: Option<&[String]>,
         trim_pattern_keys: Option<&[String]>,
         enchantment_keys: Option<&[String]>,
+        damage_type_keys: Option<&[String]>,
         attribute_keys: Option<&[String]>,
     ) -> Vec<GeneratedItemLayer> {
         self.generated_item_layers_for_stack_with_context(
@@ -944,6 +956,7 @@ impl NativeItemRuntime {
             trim_material_keys,
             trim_pattern_keys,
             enchantment_keys,
+            damage_type_keys,
             attribute_keys,
         )
     }
@@ -980,6 +993,7 @@ impl NativeItemRuntime {
             None,
             None,
             None,
+            None,
             using_item,
             use_context,
         )
@@ -995,6 +1009,7 @@ impl NativeItemRuntime {
         trim_material_keys: Option<&[String]>,
         trim_pattern_keys: Option<&[String]>,
         enchantment_keys: Option<&[String]>,
+        damage_type_keys: Option<&[String]>,
         attribute_keys: Option<&[String]>,
         using_item: bool,
         use_context: ItemModelUseContext,
@@ -1010,6 +1025,7 @@ impl NativeItemRuntime {
             trim_material_keys,
             trim_pattern_keys,
             enchantment_keys,
+            damage_type_keys,
             attribute_keys,
         )
     }
@@ -1026,6 +1042,7 @@ impl NativeItemRuntime {
         trim_material_keys: Option<&[String]>,
         trim_pattern_keys: Option<&[String]>,
         enchantment_keys: Option<&[String]>,
+        damage_type_keys: Option<&[String]>,
         attribute_keys: Option<&[String]>,
     ) -> Vec<GeneratedItemLayer> {
         let Some(icon) = self.icon_for_stack_with_model_registry_context(
@@ -1038,6 +1055,7 @@ impl NativeItemRuntime {
             trim_material_keys,
             trim_pattern_keys,
             enchantment_keys,
+            damage_type_keys,
             attribute_keys,
             owner_main_hand_left,
             context_entity_type,
@@ -1304,6 +1322,7 @@ impl NativeItemRuntime {
             None,
             None,
             None,
+            None,
             owner_main_hand_left,
             context_entity_type,
             context_dimension,
@@ -1331,6 +1350,7 @@ impl NativeItemRuntime {
         trim_material_keys: Option<&[String]>,
         trim_pattern_keys: Option<&[String]>,
         enchantment_keys: Option<&[String]>,
+        damage_type_keys: Option<&[String]>,
         attribute_keys: Option<&[String]>,
         owner_main_hand_left: Option<bool>,
         context_entity_type: Option<&str>,
@@ -1355,6 +1375,7 @@ impl NativeItemRuntime {
             trim_material_keys,
             trim_pattern_keys,
             enchantment_keys,
+            damage_type_keys,
             attribute_keys,
             owner_main_hand_left,
             context_entity_type,
@@ -1439,6 +1460,7 @@ impl NativeItemRuntime {
             None,
             None,
             None,
+            None,
             owner_main_hand_left,
             context_entity_type,
             context_dimension,
@@ -1465,6 +1487,7 @@ impl NativeItemRuntime {
         trim_material_keys: Option<&[String]>,
         trim_pattern_keys: Option<&[String]>,
         enchantment_keys: Option<&[String]>,
+        damage_type_keys: Option<&[String]>,
         attribute_keys: Option<&[String]>,
         owner_main_hand_left: Option<bool>,
         context_entity_type: Option<&str>,
@@ -1488,6 +1511,7 @@ impl NativeItemRuntime {
             trim_material_keys,
             trim_pattern_keys,
             enchantment_keys,
+            damage_type_keys,
             attribute_keys,
             owner_main_hand_left,
             context_entity_type,
@@ -1516,6 +1540,7 @@ impl NativeItemRuntime {
         trim_material_keys: Option<&[String]>,
         trim_pattern_keys: Option<&[String]>,
         enchantment_keys: Option<&[String]>,
+        damage_type_keys: Option<&[String]>,
         attribute_keys: Option<&[String]>,
         owner_main_hand_left: Option<bool>,
         context_entity_type: Option<&str>,
@@ -1545,6 +1570,7 @@ impl NativeItemRuntime {
             trim_material_keys,
             trim_pattern_keys,
             enchantment_keys,
+            damage_type_keys,
             attribute_keys,
             owner_main_hand_left,
             context_entity_type,
@@ -1583,6 +1609,7 @@ impl NativeItemRuntime {
             None,
             None,
             None,
+            None,
             false,
             false,
             false,
@@ -1607,6 +1634,7 @@ impl NativeItemRuntime {
         trim_material_keys: Option<&[String]>,
         trim_pattern_keys: Option<&[String]>,
         enchantment_keys: Option<&[String]>,
+        damage_type_keys: Option<&[String]>,
         attribute_keys: Option<&[String]>,
         owner_main_hand_left: Option<bool>,
         context_entity_type: Option<&str>,
@@ -1686,6 +1714,10 @@ impl NativeItemRuntime {
             item_model_seed,
             default_item_model_id: item_id,
             default_item_name_translation_key: &default_item_name_translation_key,
+            default_damage_type: self
+                .registry
+                .as_ref()
+                .and_then(|registry| registry.default_damage_type(item_id)),
             main_hand_left: owner_main_hand_left,
             context_dimension,
             context_entity_type,
@@ -1716,6 +1748,7 @@ impl NativeItemRuntime {
             trim_material_keys,
             trim_pattern_keys,
             enchantment_keys,
+            damage_type_keys,
             attribute_keys,
         };
         let layers = self
@@ -2004,6 +2037,10 @@ impl NativeItemRuntime {
             item_model_seed: parent_context.item_model_seed,
             default_item_model_id: item_id,
             default_item_name_translation_key: &default_item_name_translation_key,
+            default_damage_type: self
+                .registry
+                .as_ref()
+                .and_then(|registry| registry.default_damage_type(item_id)),
             main_hand_left: parent_context.main_hand_left,
             context_dimension: parent_context.context_dimension,
             context_entity_type: parent_context.context_entity_type,
@@ -2032,6 +2069,7 @@ impl NativeItemRuntime {
             trim_material_keys: parent_context.trim_material_keys,
             trim_pattern_keys: parent_context.trim_pattern_keys,
             enchantment_keys: parent_context.enchantment_keys,
+            damage_type_keys: parent_context.damage_type_keys,
             attribute_keys: parent_context.attribute_keys,
         };
         let layers = self
