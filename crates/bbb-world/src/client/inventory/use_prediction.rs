@@ -17,7 +17,7 @@ use bbb_protocol::{
     },
     item_types::{
         VanillaItemInteractLivingEntityOverride, VanillaItemUseOnOverride, VanillaItemUseOverride,
-        VANILLA_ITEM_SHEARS_ID,
+        VANILLA_ITEM_LEAD_ID, VANILLA_ITEM_SHEARS_ID,
     },
     packets::ConsumableSummary,
 };
@@ -80,6 +80,22 @@ impl LocalInteractionSuccess {
     const fn consume_without_item() -> Self {
         Self {
             swing_source: LocalInteractionSwingSource::None,
+            was_item_interaction: false,
+            starts_using_item: false,
+        }
+    }
+
+    const fn server_item_interaction() -> Self {
+        Self {
+            swing_source: LocalInteractionSwingSource::Server,
+            was_item_interaction: true,
+            starts_using_item: false,
+        }
+    }
+
+    const fn client_without_item() -> Self {
+        Self {
+            swing_source: LocalInteractionSwingSource::Client,
             was_item_interaction: false,
             starts_using_item: false,
         }
@@ -238,23 +254,15 @@ impl WorldStore {
         let held_item_id = self
             .local_item_in_hand(hand)
             .and_then(|stack| stack.item_id);
-        if owner != VANILLA_DEFAULT_ENTITY_INTERACT_OWNER {
-            let owner = if owner == VANILLA_MOB_ENTITY_INTERACT_OWNER {
-                let Some(mob_interact_owner) =
-                    vanilla_entity_metadata_mob_interact_owner(entity_type_id)
-                else {
-                    return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
-                };
-                mob_interact_owner
-            } else {
-                owner
-            };
+        let interact_result = if owner == VANILLA_MOB_ENTITY_INTERACT_OWNER {
+            self.predict_local_mob_interact(entity_id, entity_type_id, hand)
+        } else if owner == VANILLA_DEFAULT_ENTITY_INTERACT_OWNER {
+            self.predict_local_base_entity_interact(entity_id, entity_type_id, held_item_id)
+        } else {
             return LocalTargetUsePrediction::UnsupportedEntityInteract(owner);
-        }
-        if vanilla_entity_metadata_type_is_leashable(entity_type_id)
-            || held_item_id == Some(VANILLA_ITEM_SHEARS_ID)
-        {
-            return LocalTargetUsePrediction::UnsupportedEntityInteract(owner);
+        };
+        if interact_result != LocalTargetUsePrediction::Result(LocalInteractionResult::Pass) {
+            return interact_result;
         }
         if !vanilla_entity_metadata_type_is_living(entity_type_id) {
             return LocalTargetUsePrediction::Result(LocalInteractionResult::Pass);
@@ -270,6 +278,89 @@ impl WorldStore {
         };
         if let Some(owner) = item_type.interact_living_entity_override {
             return LocalTargetUsePrediction::UnsupportedItemInteractLivingEntity(owner);
+        }
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+    }
+
+    fn predict_local_mob_interact(
+        &self,
+        entity_id: i32,
+        entity_type_id: i32,
+        hand: InteractionHand,
+    ) -> LocalTargetUsePrediction {
+        let Some(health) = self.entities.living_entity_health(entity_id) else {
+            return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+        };
+        if health <= 0.0 {
+            return LocalTargetUsePrediction::Result(LocalInteractionResult::Pass);
+        }
+
+        let held_item_id = self
+            .local_item_in_hand(hand)
+            .and_then(|stack| stack.item_id);
+        if let Some(item_id) = held_item_id {
+            let Some(item_type) = vanilla_item_type(item_id) else {
+                return LocalTargetUsePrediction::UnknownItemType(Some(item_id));
+            };
+            if item_type.interact_living_entity_override
+                == Some(VanillaItemInteractLivingEntityOverride::NameTagItem)
+            {
+                return LocalTargetUsePrediction::UnsupportedItemInteractLivingEntity(
+                    VanillaItemInteractLivingEntityOverride::NameTagItem,
+                );
+            }
+            if item_type.use_override == Some(VanillaItemUseOverride::SpawnEggItem) {
+                return LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                    LocalInteractionSuccess::server_item_interaction(),
+                ));
+            }
+        }
+
+        let base_result =
+            self.predict_local_base_entity_interact(entity_id, entity_type_id, held_item_id);
+        if base_result != LocalTargetUsePrediction::Result(LocalInteractionResult::Pass) {
+            return base_result;
+        }
+
+        let Some(owner) = vanilla_entity_metadata_mob_interact_owner(entity_type_id) else {
+            return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+        };
+        if owner != VANILLA_MOB_ENTITY_INTERACT_OWNER {
+            return LocalTargetUsePrediction::UnsupportedEntityInteract(owner);
+        }
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+    }
+
+    fn predict_local_base_entity_interact(
+        &self,
+        entity_id: i32,
+        entity_type_id: i32,
+        held_item_id: Option<i32>,
+    ) -> LocalTargetUsePrediction {
+        if held_item_id == Some(VANILLA_ITEM_SHEARS_ID) {
+            return LocalTargetUsePrediction::UnsupportedEntityInteract(
+                VANILLA_DEFAULT_ENTITY_INTERACT_OWNER,
+            );
+        }
+        if !vanilla_entity_metadata_type_is_leashable(entity_type_id) {
+            return LocalTargetUsePrediction::Result(LocalInteractionResult::Pass);
+        }
+        if let Some(holder_id) = self.entities.leash_holder_id(entity_id) {
+            let Some(local_player_id) = self.local_player_id else {
+                return LocalTargetUsePrediction::UnsupportedEntityInteract(
+                    VANILLA_DEFAULT_ENTITY_INTERACT_OWNER,
+                );
+            };
+            if holder_id == local_player_id {
+                return LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                    LocalInteractionSuccess::client_without_item(),
+                ));
+            }
+        }
+        if held_item_id == Some(VANILLA_ITEM_LEAD_ID) {
+            return LocalTargetUsePrediction::UnsupportedEntityInteract(
+                VANILLA_DEFAULT_ENTITY_INTERACT_OWNER,
+            );
         }
         LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
     }
@@ -324,16 +415,17 @@ mod tests {
         },
         entity_types::{
             VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID, VANILLA_ENTITY_TYPE_COW_ID,
-            VANILLA_ENTITY_TYPE_MANNEQUIN_ID,
+            VANILLA_ENTITY_TYPE_MANNEQUIN_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
         },
         item_types::{
             VanillaItemInteractLivingEntityOverride, VanillaItemUseOnOverride,
-            VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_CHORUS_FRUIT_ID, VANILLA_ITEM_RED_DYE_ID,
-            VANILLA_ITEM_SHEARS_ID, VANILLA_ITEM_SNOWBALL_ID, VANILLA_ITEM_STONE_ID,
+            VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID, VANILLA_ITEM_CHORUS_FRUIT_ID,
+            VANILLA_ITEM_LEAD_ID, VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_SHEARS_ID,
+            VANILLA_ITEM_SNOWBALL_ID, VANILLA_ITEM_STONE_ID,
         },
         packets::{
             AddEntity, Cooldown, DataComponentPatchSummary, ItemStackSummary, PlayerHealth,
-            SetPlayerInventory, Vec3d,
+            SetEntityLink, SetPlayerInventory, Vec3d,
         },
     };
     use std::collections::{BTreeMap, BTreeSet};
@@ -569,6 +661,54 @@ mod tests {
             LocalTargetUsePrediction::UnsupportedItemInteractLivingEntity(
                 VanillaItemInteractLivingEntityOverride::DyeItem
             )
+        );
+    }
+
+    #[test]
+    fn default_mob_interaction_predicts_pass_spawn_egg_and_local_unleash() {
+        let mut world = WorldStore::new();
+        add_entity(&mut world, 4, VANILLA_ENTITY_TYPE_ZOMBIE_ID);
+
+        assert_eq!(
+            world.predict_local_entity_interaction(4, InteractionHand::MainHand),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+        set_main_hand(&mut world, VANILLA_ITEM_STONE_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(4, InteractionHand::MainHand),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+
+        set_main_hand(&mut world, VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(4, InteractionHand::MainHand),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::server_item_interaction()
+            ))
+        );
+
+        set_main_hand(&mut world, VANILLA_ITEM_LEAD_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(4, InteractionHand::MainHand),
+            LocalTargetUsePrediction::UnsupportedEntityInteract(
+                VANILLA_DEFAULT_ENTITY_INTERACT_OWNER
+            )
+        );
+
+        world.local_player_id = Some(7);
+        assert!(world.apply_set_entity_link(SetEntityLink {
+            source_id: 4,
+            dest_id: 7,
+        }));
+        world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: ItemStackSummary::empty(),
+        });
+        assert_eq!(
+            world.predict_local_entity_interaction(4, InteractionHand::MainHand),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_without_item()
+            ))
         );
     }
 }

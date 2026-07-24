@@ -829,7 +829,7 @@ mod tests {
         VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
     };
     use bbb_protocol::equipment_slots::VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT;
-    use bbb_protocol::item_types::VANILLA_ITEM_APPLE_ID;
+    use bbb_protocol::item_types::{VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID};
     use bbb_protocol::packets::{
         AddEntity, AdventureModePredicateDataSummary, AdventureModePredicateSummary, AttackEntity,
         AttackRangeSummary, BlockEntityData, BlockHitResult as ProtocolBlockHitResult,
@@ -3107,6 +3107,64 @@ mod tests {
     }
 
     #[test]
+    fn right_mouse_press_on_default_mob_pass_tries_both_hands_in_order() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_entity_type(123, VANILLA_ENTITY_TYPE_ZOMBIE_ID);
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+        );
+
+        assert_eq!(counters.interact_entity_commands_queued, 2);
+        for expected_hand in [InteractionHand::MainHand, InteractionHand::OffHand] {
+            let NetCommand::InteractEntity(command) = rx.try_recv().unwrap() else {
+                panic!("expected default-mob interaction");
+            };
+            assert_eq!(command.packet.entity_id, 123);
+            assert_eq!(command.packet.hand, expected_hand);
+        }
+    }
+
+    #[test]
+    fn spawn_egg_success_on_default_mob_stops_without_client_swing() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_entity_type(123, VANILLA_ENTITY_TYPE_ZOMBIE_ID);
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID, 1),
+        });
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+        );
+
+        assert!(!world.local_player().interaction.using_item);
+        assert_eq!(counters.interact_entity_commands_queued, 1);
+        assert_eq!(counters.swing_commands_queued, 0);
+        let NetCommand::InteractEntity(command) = rx.try_recv().unwrap() else {
+            panic!("expected spawn-egg mob interaction");
+        };
+        assert_eq!(command.packet.entity_id, 123);
+        assert_eq!(command.packet.hand, InteractionHand::MainHand);
+    }
+
+    #[test]
     fn spectator_right_mouse_press_on_entity_tries_both_hands_in_order() {
         let (tx, mut rx) = mpsc::channel(2);
         let commands = Some(tx);
@@ -4114,7 +4172,15 @@ mod tests {
     }
 
     fn world_with_crosshair_entity(entity_id: i32) -> WorldStore {
-        world_with_crosshair_entity_at(entity_id, [0.0, 1.0, 3.0])
+        world_with_crosshair_entity_type_at(
+            entity_id,
+            VANILLA_ENTITY_TYPE_MINECART_ID,
+            [0.0, 1.0, 3.0],
+        )
+    }
+
+    fn world_with_crosshair_entity_type(entity_id: i32, entity_type_id: i32) -> WorldStore {
+        world_with_crosshair_entity_type_at(entity_id, entity_type_id, [0.0, 1.0, 3.0])
     }
 
     fn local_attack_world_with_player_and_target(entity_id: i32) -> WorldStore {
@@ -4223,12 +4289,20 @@ mod tests {
     }
 
     fn world_with_crosshair_entity_at(entity_id: i32, position: [f64; 3]) -> WorldStore {
+        world_with_crosshair_entity_type_at(entity_id, VANILLA_ENTITY_TYPE_MINECART_ID, position)
+    }
+
+    fn world_with_crosshair_entity_type_at(
+        entity_id: i32,
+        entity_type_id: i32,
+        position: [f64; 3],
+    ) -> WorldStore {
         let mut world = WorldStore::new();
         world.set_local_player_pose(LocalPlayerPoseState::default());
         world.apply_add_entity(AddEntity {
             id: entity_id,
             uuid: Uuid::from_u128(0x12345678123456781234567812345678),
-            entity_type_id: VANILLA_ENTITY_TYPE_MINECART_ID,
+            entity_type_id,
             position: ProtocolVec3d {
                 x: position[0],
                 y: position[1],
