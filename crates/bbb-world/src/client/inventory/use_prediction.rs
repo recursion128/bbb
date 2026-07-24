@@ -30,6 +30,8 @@ const VANILLA_MOB_ENTITY_INTERACT_OWNER: &str = "net.minecraft.world.entity.Mob"
 const VANILLA_ARMOR_STAND_INTERACT_OWNER: &str = "net.minecraft.world.entity.decoration.ArmorStand";
 const VANILLA_BOAT_INTERACT_OWNER: &str = "net.minecraft.world.entity.vehicle.boat.AbstractBoat";
 const VANILLA_CAMEL_HUSK_INTERACT_OWNER: &str = "net.minecraft.world.entity.animal.camel.CamelHusk";
+const VANILLA_CAMEL_MOB_INTERACT_OWNER: &str = "net.minecraft.world.entity.animal.camel.Camel";
+const VANILLA_CAMEL_HUSK_FOOD_TAG: &str = "minecraft:camel_husk_food";
 const VANILLA_CHEST_BOAT_INTERACT_OWNER: &str =
     "net.minecraft.world.entity.vehicle.boat.AbstractChestBoat";
 const VANILLA_INTERACTION_ENTITY_INTERACT_OWNER: &str = "net.minecraft.world.entity.Interaction";
@@ -296,7 +298,13 @@ impl WorldStore {
                 | VANILLA_NAUTILUS_INTERACT_OWNER
                 | VANILLA_ZOMBIE_HORSE_INTERACT_OWNER
         ) {
-            self.predict_local_mob_interact(entity_id, entity_type_id, hand)
+            self.predict_local_mob_interact(
+                entity_id,
+                entity_type_id,
+                hand,
+                owner,
+                secondary_use_active,
+            )
         } else if owner == VANILLA_DEFAULT_ENTITY_INTERACT_OWNER {
             self.predict_local_base_entity_interact(entity_id, entity_type_id, held_item_id)
         } else if owner == VANILLA_ARMOR_STAND_INTERACT_OWNER {
@@ -512,6 +520,8 @@ impl WorldStore {
         entity_id: i32,
         entity_type_id: i32,
         hand: InteractionHand,
+        interact_owner: &'static str,
+        secondary_use_active: bool,
     ) -> LocalTargetUsePrediction {
         let Some(health) = self.entities.living_entity_health(entity_id) else {
             return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
@@ -550,10 +560,54 @@ impl WorldStore {
         let Some(owner) = vanilla_entity_metadata_mob_interact_owner(entity_type_id) else {
             return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
         };
+        if interact_owner == VANILLA_CAMEL_HUSK_INTERACT_OWNER
+            && owner == VANILLA_CAMEL_MOB_INTERACT_OWNER
+        {
+            return self.predict_local_camel_husk_mob_interact(held_item_id, secondary_use_active);
+        }
         if owner != VANILLA_MOB_ENTITY_INTERACT_OWNER {
             return LocalTargetUsePrediction::UnsupportedEntityInteract(owner);
         }
         LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+    }
+
+    fn predict_local_camel_husk_mob_interact(
+        &self,
+        held_item_id: Option<i32>,
+        secondary_use_active: bool,
+    ) -> LocalTargetUsePrediction {
+        if secondary_use_active {
+            return LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction(),
+            ));
+        }
+        let Some(item_id) = held_item_id else {
+            return LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::consume(false),
+            ));
+        };
+        let Some(item_type) = vanilla_item_type(item_id) else {
+            return LocalTargetUsePrediction::UnknownItemType(Some(item_id));
+        };
+        if let Some(owner) = item_type.interact_living_entity_override {
+            return LocalTargetUsePrediction::UnsupportedItemInteractLivingEntity(owner);
+        }
+        let Some(food_item_ids) =
+            self.registry_holder_ids_for_tag("minecraft:item", VANILLA_CAMEL_HUSK_FOOD_TAG)
+        else {
+            return LocalTargetUsePrediction::UnsupportedEntityInteract(
+                VANILLA_CAMEL_MOB_INTERACT_OWNER,
+            );
+        };
+        if food_item_ids.contains(&item_id) {
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::server_item_interaction(),
+            ))
+        } else {
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::consume(false),
+            ))
+        }
     }
 
     fn predict_local_base_entity_interact(
@@ -662,8 +716,8 @@ mod tests {
         },
         packets::{
             AddEntity, Cooldown, DataComponentPatchSummary, EntityDataValue, EntityDataValueKind,
-            EntityEvent, ItemStackSummary, PlayerHealth, SetEntityData, SetEntityLink,
-            SetPassengers, SetPlayerInventory, Vec3d,
+            EntityEvent, ItemStackSummary, PlayerHealth, RegistryTags, SetEntityData,
+            SetEntityLink, SetPassengers, SetPlayerInventory, TagNetworkPayload, UpdateTags, Vec3d,
         },
     };
     use std::collections::{BTreeMap, BTreeSet};
@@ -1213,7 +1267,6 @@ mod tests {
         }
 
         for (entity_id, owner) in [
-            (70, "net.minecraft.world.entity.animal.camel.Camel"),
             (71, "net.minecraft.world.entity.animal.equine.ZombieHorse"),
             (
                 72,
@@ -1236,6 +1289,69 @@ mod tests {
             LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
                 LocalInteractionSuccess::server_item_interaction()
             ))
+        );
+    }
+
+    #[test]
+    fn camel_husk_mob_interaction_uses_secondary_and_synced_food_tag() {
+        let mut world = WorldStore::new();
+        add_entity(&mut world, 80, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID);
+
+        assert_eq!(
+            world.predict_local_entity_interaction(80, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::consume(false)
+            ))
+        );
+        assert_eq!(
+            world.predict_local_entity_interaction(80, InteractionHand::MainHand, true),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction()
+            ))
+        );
+
+        set_main_hand(&mut world, VANILLA_ITEM_STONE_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(80, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::UnsupportedEntityInteract(VANILLA_CAMEL_MOB_INTERACT_OWNER)
+        );
+        world.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: "minecraft:item".to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: VANILLA_CAMEL_HUSK_FOOD_TAG.to_string(),
+                    entries: vec![VANILLA_ITEM_STONE_ID],
+                }],
+            }],
+        });
+        assert_eq!(
+            world.predict_local_entity_interaction(80, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::server_item_interaction()
+            ))
+        );
+        world.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: "minecraft:item".to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: VANILLA_CAMEL_HUSK_FOOD_TAG.to_string(),
+                    entries: Vec::new(),
+                }],
+            }],
+        });
+        assert_eq!(
+            world.predict_local_entity_interaction(80, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::consume(false)
+            ))
+        );
+
+        set_main_hand(&mut world, VANILLA_ITEM_RED_DYE_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(80, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::UnsupportedItemInteractLivingEntity(
+                VanillaItemInteractLivingEntityOverride::DyeItem
+            )
         );
     }
 }

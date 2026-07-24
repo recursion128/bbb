@@ -657,8 +657,8 @@ Commands:
   projectile deflection. Damage and combat outcomes remain server-authoritative.
 - Complete specialized targeted local-use prediction from
   `Minecraft.startUseItem`, `MultiPlayerGameMode.interact`, and `useItemOn`.
-  Implement the generated specialized `mobInteract` owners, together with
-  unresolved leash, shears, and name-tag paths plus the block, item-side
+  Implement the remaining generated specialized `mobInteract` owners, together
+  with unresolved leash, shears, and name-tag paths plus the block, item-side
   `useOn`, and `interactLivingEntity` override families, so main/offhand
   iteration can stop or continue on the exact `InteractionResult`; then apply
   each success swing-source and held-item presentation. Interaction override
