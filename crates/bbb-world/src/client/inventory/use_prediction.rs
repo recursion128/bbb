@@ -24,6 +24,9 @@ use bbb_protocol::{
 
 const VANILLA_DEFAULT_ENTITY_INTERACT_OWNER: &str = "net.minecraft.world.entity.Entity";
 const VANILLA_MOB_ENTITY_INTERACT_OWNER: &str = "net.minecraft.world.entity.Mob";
+const VANILLA_BOAT_INTERACT_OWNER: &str = "net.minecraft.world.entity.vehicle.boat.AbstractBoat";
+const VANILLA_CHEST_BOAT_INTERACT_OWNER: &str =
+    "net.minecraft.world.entity.vehicle.boat.AbstractChestBoat";
 const VANILLA_MINECART_INTERACT_OWNER: &str =
     "net.minecraft.world.entity.vehicle.minecart.Minecart";
 const VANILLA_MINECART_CONTAINER_INTERACT_OWNER: &str =
@@ -281,6 +284,14 @@ impl WorldStore {
             self.predict_local_minecart_interact(owner, entity_id, secondary_use_active)
         {
             result
+        } else if let Some(result) = self.predict_local_boat_interact(
+            owner,
+            entity_id,
+            entity_type_id,
+            held_item_id,
+            secondary_use_active,
+        ) {
+            result
         } else {
             return LocalTargetUsePrediction::UnsupportedEntityInteract(owner);
         };
@@ -336,6 +347,52 @@ impl WorldStore {
             }
             _ => None,
         }
+    }
+
+    fn predict_local_boat_interact(
+        &self,
+        owner: &'static str,
+        entity_id: i32,
+        entity_type_id: i32,
+        held_item_id: Option<i32>,
+        secondary_use_active: bool,
+    ) -> Option<LocalTargetUsePrediction> {
+        if !matches!(
+            owner,
+            VANILLA_BOAT_INTERACT_OWNER | VANILLA_CHEST_BOAT_INTERACT_OWNER
+        ) {
+            return None;
+        }
+        let base_result =
+            self.predict_local_base_entity_interact(entity_id, entity_type_id, held_item_id);
+        if base_result != LocalTargetUsePrediction::Result(LocalInteractionResult::Pass) {
+            return Some(base_result);
+        }
+
+        let success = || {
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction(),
+            ))
+        };
+        if owner == VANILLA_CHEST_BOAT_INTERACT_OWNER {
+            // `AbstractChestBoat.interact` opens its container whenever
+            // `AbstractBoat.interact` passes on the client: secondary use
+            // intentionally skips riding, while 60 submerged ticks imply
+            // `canAddPassenger == false`.
+            return Some(success());
+        }
+        let Some(movement) = self.entities.boat_movement(entity_id) else {
+            return Some(LocalTargetUsePrediction::UnknownEntityType(Some(
+                entity_type_id,
+            )));
+        };
+        Some(
+            if secondary_use_active || movement.out_of_control_ticks >= 60.0 {
+                LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+            } else {
+                success()
+            },
+        )
     }
 
     fn predict_local_mob_interact(
@@ -474,6 +531,7 @@ mod tests {
             VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_COW_ID,
             VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
             VANILLA_ENTITY_TYPE_MANNEQUIN_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
+            VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
             VANILLA_ENTITY_TYPE_ZOMBIE_ID,
         },
         item_types::{
@@ -824,6 +882,64 @@ mod tests {
         assert_eq!(
             world.predict_local_entity_interaction(14, InteractionHand::MainHand, false),
             success
+        );
+    }
+
+    #[test]
+    fn boat_interaction_predicts_riding_container_and_submerged_guards() {
+        let mut world = WorldStore::new();
+        add_entity(&mut world, 20, VANILLA_ENTITY_TYPE_OAK_BOAT_ID);
+        add_entity(&mut world, 21, VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID);
+
+        let success = LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+            LocalInteractionSuccess::client_item_interaction(),
+        ));
+        assert_eq!(
+            world.predict_local_entity_interaction(20, InteractionHand::MainHand, false),
+            success
+        );
+        assert_eq!(
+            world.predict_local_entity_interaction(20, InteractionHand::MainHand, true),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+        world
+            .entities
+            .with_boat_movement_transform_and_support_mut(20, |movement, _, _| {
+                movement.out_of_control_ticks = 60.0;
+            })
+            .unwrap();
+        assert_eq!(
+            world.predict_local_entity_interaction(20, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+
+        for secondary_use_active in [false, true] {
+            assert_eq!(
+                world.predict_local_entity_interaction(
+                    21,
+                    InteractionHand::MainHand,
+                    secondary_use_active
+                ),
+                success
+            );
+        }
+        world
+            .entities
+            .with_boat_movement_transform_and_support_mut(21, |movement, _, _| {
+                movement.out_of_control_ticks = 60.0;
+            })
+            .unwrap();
+        assert_eq!(
+            world.predict_local_entity_interaction(21, InteractionHand::MainHand, false),
+            success
+        );
+
+        set_main_hand(&mut world, VANILLA_ITEM_LEAD_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(20, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::UnsupportedEntityInteract(
+                VANILLA_DEFAULT_ENTITY_INTERACT_OWNER
+            )
         );
     }
 }

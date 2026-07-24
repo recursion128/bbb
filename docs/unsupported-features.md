@@ -657,15 +657,14 @@ Commands:
   projectile deflection. Damage and combat outcomes remain server-authoritative.
 - Complete specialized targeted local-use prediction from
   `Minecraft.startUseItem`, `MultiPlayerGameMode.interact`, and `useItemOn`.
-  Implement the generated boat, decoration, leash-knot, interaction-entity,
+  Implement the generated decoration, leash-knot, interaction-entity,
   camel-husk, zombie-horse, nautilus, and specialized `mobInteract` owners,
   together with unresolved leash, shears, and name-tag paths plus the block,
-  item-side `useOn`, and `interactLivingEntity` override families, so
-  main/offhand iteration can stop or continue on the exact
-  `InteractionResult`; then apply each success swing-source and held-item
-  presentation. Interaction override ownership must stay generated from local
-  vanilla classes. Entity, block, and inventory corrections remain
-  server-authoritative.
+  item-side `useOn`, and `interactLivingEntity` override families, so main/offhand
+  iteration can stop or continue on the exact `InteractionResult`; then apply
+  each success swing-source and held-item presentation. Interaction override
+  ownership must stay generated from local vanilla classes. Entity, block, and
+  inventory corrections remain server-authoritative.
 - Complete no-target `Item.use` prediction for the source-derived specialized
   override families and swappable `Equippable` behavior. Override ownership must
   stay generated from local vanilla item classes instead of being inferred from
