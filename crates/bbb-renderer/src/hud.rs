@@ -1,4 +1,7 @@
-use std::{collections::BTreeMap, sync::Arc};
+use std::{
+    collections::{BTreeMap, HashMap},
+    sync::Arc,
+};
 
 use anyhow::{bail, Result};
 use winit::dpi::{PhysicalPosition, PhysicalSize};
@@ -67,10 +70,10 @@ use self::layout::{
     hud_styled_quad_vertices, hud_subtitle_text_origin, hud_title_text_origin,
     hud_vehicle_heart_fill, hud_vehicle_max_hearts, inventory_background_hud_rect,
     inventory_slot_highlight_hud_rect, inventory_slot_item_hud_rect, nine_slice_segments,
-    vehicle_heart_hud_rect, HudAirBubbleIcon, HudIconFill, HudRect, HudTooltipSpriteLayer,
-    HUD_AIR_BUBBLES_PER_ROW, HUD_ARMOR_ICONS_PER_ROW, HUD_BOSS_BAR_WIDTH, HUD_FOOD_ICONS_PER_ROW,
-    HUD_INVENTORY_ITEM_SIZE, HUD_SINGLE_HEALTH_ROW_HEIGHT, HUD_SUBTITLE_TEXT_SCALE,
-    HUD_TITLE_TEXT_SCALE, HUD_VEHICLE_HEARTS_PER_ROW,
+    tiled_sprite_segments, vehicle_heart_hud_rect, HudAirBubbleIcon, HudIconFill, HudRect,
+    HudTooltipSpriteLayer, HUD_AIR_BUBBLES_PER_ROW, HUD_ARMOR_ICONS_PER_ROW, HUD_BOSS_BAR_WIDTH,
+    HUD_FOOD_ICONS_PER_ROW, HUD_INVENTORY_ITEM_SIZE, HUD_SINGLE_HEALTH_ROW_HEIGHT,
+    HUD_SUBTITLE_TEXT_SCALE, HUD_TITLE_TEXT_SCALE, HUD_VEHICLE_HEARTS_PER_ROW,
 };
 pub use self::player_list::{HudPlayerList, HudPlayerListEntry, HudPlayerListScore};
 pub(crate) use self::player_list::{HudPlayerListHeartSprites, HudPlayerListRuntime};
@@ -107,6 +110,16 @@ pub struct HudNineSliceScaling {
     pub border_right: u32,
     pub border_bottom: u32,
     pub stretch_inner: bool,
+}
+
+/// GUI sprite scaling selected by `assets/.../gui/sprites/**.png.mcmeta`, matching vanilla
+/// `GuiSpriteScaling`. Custom tooltip background and frame sprites can independently use any of
+/// the three variants.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HudGuiSpriteScaling {
+    Stretch,
+    Tile { width: u32, height: u32 },
+    NineSlice(HudNineSliceScaling),
 }
 
 #[cfg(test)]
@@ -271,6 +284,16 @@ mod chat_layout_tests {
 pub(crate) struct HudNineSliceSprite {
     pub(crate) gpu: HudSpriteGpu,
     pub(crate) scaling: HudNineSliceScaling,
+}
+
+pub(crate) struct HudGuiSprite {
+    pub(crate) gpu: HudSpriteGpu,
+    pub(crate) scaling: HudGuiSpriteScaling,
+}
+
+pub(crate) struct HudTooltipStyleSprites {
+    pub(crate) background: HudGuiSprite,
+    pub(crate) frame: HudGuiSprite,
 }
 
 /// One frame's action-bar overlay message state (vanilla
@@ -2949,6 +2972,45 @@ impl Renderer {
             gpu: self.upload_hud_sprite(width, height, rgba)?,
             scaling,
         });
+        Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn upload_hud_tooltip_style(
+        &mut self,
+        style: impl Into<String>,
+        background_width: u32,
+        background_height: u32,
+        background_rgba: &[u8],
+        background_scaling: HudGuiSpriteScaling,
+        frame_width: u32,
+        frame_height: u32,
+        frame_rgba: &[u8],
+        frame_scaling: HudGuiSpriteScaling,
+    ) -> Result<()> {
+        let style = style.into();
+        if style.is_empty() {
+            bail!("tooltip style resource id cannot be empty");
+        }
+        for (layer, scaling) in [("background", background_scaling), ("frame", frame_scaling)] {
+            if let HudGuiSpriteScaling::Tile { width, height } = scaling {
+                if width == 0 || height == 0 {
+                    bail!(
+                        "tooltip style {style} {layer} tile size must be positive, got {width}x{height}"
+                    );
+                }
+            }
+        }
+        let background = HudGuiSprite {
+            gpu: self.upload_hud_sprite(background_width, background_height, background_rgba)?,
+            scaling: background_scaling,
+        };
+        let frame = HudGuiSprite {
+            gpu: self.upload_hud_sprite(frame_width, frame_height, frame_rgba)?,
+            scaling: frame_scaling,
+        };
+        self.hud_tooltip_styles
+            .insert(style, HudTooltipStyleSprites { background, frame });
         Ok(())
     }
 
@@ -6667,6 +6729,7 @@ impl Renderer {
                 &self.hud_white_pixel,
                 self.hud_tooltip_background.as_ref(),
                 self.hud_tooltip_frame.as_ref(),
+                &self.hud_tooltip_styles,
                 self.hud_font_atlas.as_ref(),
                 &self.hud_font_glyphs,
                 &self.hud_obfuscated_glyph_pool,
@@ -16744,6 +16807,7 @@ fn push_hud_inventory_tooltip<'a>(
     white_pixel: &'a HudSpriteGpu,
     tooltip_background: Option<&'a HudNineSliceSprite>,
     tooltip_frame: Option<&'a HudNineSliceSprite>,
+    tooltip_styles: &'a HashMap<String, HudTooltipStyleSprites>,
     font_atlas: Option<&'a HudSpriteGpu>,
     glyphs: &HudFontGlyphMap,
     obfuscated_pool: &HudObfuscatedGlyphPool,
@@ -16775,45 +16839,62 @@ fn push_hud_inventory_tooltip<'a>(
         text_width,
         text_height,
     );
-    match (tooltip_background, tooltip_frame) {
-        // Vanilla `TooltipRenderUtil.extractTooltipBackground`: nine-slice `tooltip/background`
-        // then `tooltip/frame` over the same padded rect.
-        (Some(background), Some(frame)) => {
-            for segment in hud_inventory_tooltip_sprite_segments(
+    if let Some(style) = tooltip.style.as_deref() {
+        if let Some(sprites) = tooltip_styles.get(style) {
+            push_hud_gui_sprite(
+                vertices,
+                commands,
+                &sprites.background,
+                surface_size,
                 background_rect,
-                background.scaling,
-                frame.scaling,
-            ) {
-                let sprite = match segment.layer {
-                    HudTooltipSpriteLayer::Background => &background.gpu,
-                    HudTooltipSpriteLayer::Frame => &frame.gpu,
-                };
-                push_hud_draw_with_uv_and_tint(
-                    vertices,
-                    commands,
-                    sprite,
-                    surface_size,
-                    segment.rect,
-                    segment.uv,
-                    HUD_TINT_WHITE,
-                );
-            }
-        }
-        // Missing-asset fallback: the legacy flat translucent background quad.
-        _ => {
-            push_hud_draw_with_uv_and_tint(
+            );
+            push_hud_gui_sprite(
+                vertices,
+                commands,
+                &sprites.frame,
+                surface_size,
+                background_rect,
+            );
+        } else {
+            push_hud_inventory_tooltip_flat_background(
                 vertices,
                 commands,
                 white_pixel,
                 surface_size,
                 background_rect,
-                HudUvRect {
-                    min: [0.0, 0.0],
-                    max: [1.0, 1.0],
-                },
-                HUD_TOOLTIP_BACKGROUND_TINT,
             );
         }
+    } else if let (Some(background), Some(frame)) = (tooltip_background, tooltip_frame) {
+        // Vanilla `TooltipRenderUtil.extractTooltipBackground`: default nine-slice
+        // `tooltip/background` then `tooltip/frame` over the same padded rect.
+        for segment in hud_inventory_tooltip_sprite_segments(
+            background_rect,
+            background.scaling,
+            frame.scaling,
+        ) {
+            let sprite = match segment.layer {
+                HudTooltipSpriteLayer::Background => &background.gpu,
+                HudTooltipSpriteLayer::Frame => &frame.gpu,
+            };
+            push_hud_draw_with_uv_and_tint(
+                vertices,
+                commands,
+                sprite,
+                surface_size,
+                segment.rect,
+                segment.uv,
+                HUD_TINT_WHITE,
+            );
+        }
+    } else {
+        // Missing-asset fallback: the legacy flat translucent background quad.
+        push_hud_inventory_tooltip_flat_background(
+            vertices,
+            commands,
+            white_pixel,
+            surface_size,
+            background_rect,
+        );
     }
 
     // Vanilla pass order kept from the plain path: every line's shadow first,
@@ -16852,6 +16933,76 @@ fn push_hud_inventory_tooltip<'a>(
             );
         }
     }
+}
+
+fn push_hud_gui_sprite<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    sprite: &'a HudGuiSprite,
+    surface_size: PhysicalSize<u32>,
+    target: HudRect,
+) {
+    match sprite.scaling {
+        HudGuiSpriteScaling::Stretch => push_hud_draw_with_uv_and_tint(
+            vertices,
+            commands,
+            &sprite.gpu,
+            surface_size,
+            target,
+            HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+            HUD_TINT_WHITE,
+        ),
+        HudGuiSpriteScaling::Tile { width, height } => {
+            for segment in tiled_sprite_segments(target, width, height) {
+                push_hud_draw_with_uv_and_tint(
+                    vertices,
+                    commands,
+                    &sprite.gpu,
+                    surface_size,
+                    segment.rect,
+                    segment.uv,
+                    HUD_TINT_WHITE,
+                );
+            }
+        }
+        HudGuiSpriteScaling::NineSlice(scaling) => {
+            for segment in nine_slice_segments(target, scaling) {
+                push_hud_draw_with_uv_and_tint(
+                    vertices,
+                    commands,
+                    &sprite.gpu,
+                    surface_size,
+                    segment.rect,
+                    segment.uv,
+                    HUD_TINT_WHITE,
+                );
+            }
+        }
+    }
+}
+
+fn push_hud_inventory_tooltip_flat_background<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    surface_size: PhysicalSize<u32>,
+    target: HudRect,
+) {
+    push_hud_draw_with_uv_and_tint(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        target,
+        HudUvRect {
+            min: [0.0, 0.0],
+            max: [1.0, 1.0],
+        },
+        HUD_TOOLTIP_BACKGROUND_TINT,
+    );
 }
 
 fn hud_digit_text_width(text: &str, glyphs: &[HudDigitGlyph; 10]) -> Option<u32> {
@@ -24199,6 +24350,96 @@ mod tests {
             .find("push_hud_inventory_tooltip(")
             .expect("tooltip is submitted");
         assert!(foreground < preedit && preedit < tooltip);
+    }
+
+    #[test]
+    fn inventory_tooltip_uses_the_exact_custom_style_sprite_pair() {
+        let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        let glyph = HudAsciiGlyph {
+            uv: HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+            width: 1,
+            height: 1,
+            advance: 1,
+            ascent: HUD_FONT_BASELINE,
+        };
+        let mut glyphs = HudFontGlyphMap::new();
+        glyphs.insert_first_wins('A', glyph);
+        renderer
+            .upload_hud_font_atlas(1, 1, &[255, 255, 255, 255], glyphs)
+            .unwrap();
+
+        let scaling = HudNineSliceScaling {
+            sprite_width: 3,
+            sprite_height: 3,
+            border_left: 1,
+            border_top: 1,
+            border_right: 1,
+            border_bottom: 1,
+            stretch_inner: true,
+        };
+        renderer
+            .upload_hud_tooltip_background(3, 3, &[255, 0, 0, 255].repeat(9), scaling)
+            .unwrap();
+        renderer
+            .upload_hud_tooltip_frame(3, 3, &[0, 0, 0, 0].repeat(9), scaling)
+            .unwrap();
+        renderer
+            .upload_hud_tooltip_style(
+                "example:rare",
+                3,
+                3,
+                &[0, 255, 0, 255].repeat(9),
+                HudGuiSpriteScaling::Stretch,
+                3,
+                3,
+                &[0, 0, 0, 0].repeat(9),
+                HudGuiSpriteScaling::Tile {
+                    width: 3,
+                    height: 3,
+                },
+            )
+            .unwrap();
+
+        let mut screen = hud_inventory_screen_with_entity_previews(Vec::new());
+        screen.tooltip = Some(HudInventoryTooltip {
+            slot_id: 0,
+            x: 20,
+            y: 20,
+            style: Some("example:rare".to_string()),
+            lines: vec![HudInventoryTooltipLine {
+                text: "A".to_string(),
+                tint: HUD_TINT_WHITE,
+                runs: Vec::new(),
+            }],
+        });
+        let background = hud_inventory_tooltip_background_hud_rect(
+            PhysicalSize::new(320, 240),
+            screen.width,
+            screen.height,
+            20,
+            20,
+            1,
+            8,
+        );
+        renderer.set_hud_inventory_screen(Some(screen));
+
+        let pixels = renderer.render_offscreen_frame().unwrap();
+        let sample = pixels.pixel(background.x as u32, background.y as u32);
+        assert!(
+            sample[1] > 128 && sample[0] < 128 && sample[2] < 128,
+            "custom tooltip background should be green instead of default red, got {sample:?}"
+        );
     }
 
     #[test]

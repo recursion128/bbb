@@ -233,6 +233,7 @@ macro_rules! take_hud_resource_owners {
         $take_owner!(hud_inventory_background);
         $take_owner!(hud_tooltip_background);
         $take_owner!(hud_tooltip_frame);
+        $take_owner!(hud_tooltip_styles);
         $take_owner!(hud_generic_container_background);
         $take_owner!(hud_dispenser_background);
         $take_owner!(hud_crafting_table_background);

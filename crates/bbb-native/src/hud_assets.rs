@@ -5,8 +5,8 @@ use bbb_pack::{PackRoots, ResourceLocation, SpriteGuiScaling, SpriteImage};
 use bbb_protocol::mob_effect_types::VANILLA_MOB_EFFECT_TYPES;
 use bbb_renderer::{
     HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite, HudAdvancementTabSprite,
-    HudAdvancementWidgetFrameSprite, HudBossBarColor, HudBossBarOverlay, HudHeartKind,
-    HudLocatorStyle, HudNineSliceScaling, HudStatsScrollbarSprite, HudStatsSprite,
+    HudAdvancementWidgetFrameSprite, HudBossBarColor, HudBossBarOverlay, HudGuiSpriteScaling,
+    HudHeartKind, HudLocatorStyle, HudNineSliceScaling, HudStatsScrollbarSprite, HudStatsSprite,
     VIGNETTE_TEXTURE_PATH,
 };
 use bbb_world::vanilla_sign_wood_kinds;
@@ -150,6 +150,25 @@ pub(crate) fn try_load_hud_textures(
         &tooltip_frame.rgba,
         tooltip_frame_scaling,
     )?;
+    for (style, (background_id, frame_id)) in tooltip_style_sprite_pairs(&sprites) {
+        let background = sprites
+            .get(&background_id)
+            .with_context(|| format!("missing discovered tooltip background {background_id}"))?;
+        let frame = sprites
+            .get(&frame_id)
+            .with_context(|| format!("missing discovered tooltip frame {frame_id}"))?;
+        renderer.upload_hud_tooltip_style(
+            style,
+            background.width,
+            background.height,
+            &background.rgba,
+            hud_gui_sprite_scaling(background),
+            frame.width,
+            frame.height,
+            &frame.rgba,
+            hud_gui_sprite_scaling(frame),
+        )?;
+    }
     let system_toast = hud_sprite(&sprites, "toast/system")?;
     let system_toast_scaling = hud_nine_slice_scaling(system_toast)?;
     renderer.upload_hud_system_toast_background(
@@ -1610,6 +1629,39 @@ fn hud_sprite<'a>(
         .with_context(|| format!("missing HUD sprite {id} in vanilla GUI atlas"))
 }
 
+fn tooltip_style_sprite_pairs(
+    sprites: &HashMap<String, SpriteImage>,
+) -> BTreeMap<String, (String, String)> {
+    let mut pairs = BTreeMap::new();
+    for background_id in sprites.keys() {
+        let Ok(background) = ResourceLocation::parse(background_id) else {
+            continue;
+        };
+        let Some(style_path) = background
+            .path()
+            .strip_prefix("tooltip/")
+            .and_then(|path| path.strip_suffix("_background"))
+            .filter(|path| !path.is_empty())
+        else {
+            continue;
+        };
+        let Ok(style) = ResourceLocation::new(background.namespace(), style_path) else {
+            continue;
+        };
+        let Ok(frame) = ResourceLocation::new(
+            background.namespace(),
+            format!("tooltip/{style_path}_frame"),
+        ) else {
+            continue;
+        };
+        let frame_id = frame.id();
+        if sprites.contains_key(&frame_id) {
+            pairs.insert(style.id(), (background_id.clone(), frame_id));
+        }
+    }
+    pairs
+}
+
 /// Extracts a HUD sprite's nine-slice scaling from its `gui.scaling` mcmeta, failing loudly if the
 /// sprite is not declared `nine_slice` (the tooltip and system-toast sprites used here are).
 fn hud_nine_slice_scaling(sprite: &SpriteImage) -> Result<HudNineSliceScaling> {
@@ -1633,6 +1685,27 @@ fn hud_nine_slice_scaling(sprite: &SpriteImage) -> Result<HudNineSliceScaling> {
             sprite.id,
             other
         ),
+    }
+}
+
+fn hud_gui_sprite_scaling(sprite: &SpriteImage) -> HudGuiSpriteScaling {
+    match sprite.gui_metadata.scaling {
+        SpriteGuiScaling::Stretch => HudGuiSpriteScaling::Stretch,
+        SpriteGuiScaling::Tile { width, height } => HudGuiSpriteScaling::Tile { width, height },
+        SpriteGuiScaling::NineSlice {
+            width,
+            height,
+            border,
+            stretch_inner,
+        } => HudGuiSpriteScaling::NineSlice(HudNineSliceScaling {
+            sprite_width: width,
+            sprite_height: height,
+            border_left: border.left,
+            border_top: border.top,
+            border_right: border.right,
+            border_bottom: border.bottom,
+            stretch_inner,
+        }),
     }
 }
 
@@ -1754,6 +1827,99 @@ mod tests {
                 border_bottom: 1,
                 stretch_inner: false,
             }
+        );
+    }
+
+    #[test]
+    fn tooltip_style_sprite_pairs_preserve_namespace_and_require_both_layers() {
+        let mut sprites = HashMap::new();
+        for id in [
+            "minecraft:tooltip/background",
+            "minecraft:tooltip/frame",
+            "example:tooltip/rare_background",
+            "example:tooltip/rare_frame",
+            "example:tooltip/nested/epic_background",
+            "example:tooltip/nested/epic_frame",
+            "example:tooltip/incomplete_background",
+            "other:tooltip/rare_frame",
+        ] {
+            let image = SpriteImage::new(id, 1, 1, vec![255, 255, 255, 255]).unwrap();
+            sprites.insert(id.to_string(), image);
+        }
+
+        assert_eq!(
+            tooltip_style_sprite_pairs(&sprites),
+            BTreeMap::from([
+                (
+                    "example:nested/epic".to_string(),
+                    (
+                        "example:tooltip/nested/epic_background".to_string(),
+                        "example:tooltip/nested/epic_frame".to_string(),
+                    ),
+                ),
+                (
+                    "example:rare".to_string(),
+                    (
+                        "example:tooltip/rare_background".to_string(),
+                        "example:tooltip/rare_frame".to_string(),
+                    ),
+                ),
+            ])
+        );
+    }
+
+    #[test]
+    fn tooltip_style_scaling_preserves_all_vanilla_gui_sprite_variants() {
+        let stretch =
+            SpriteImage::new("example:tooltip/stretch_background", 1, 1, vec![255; 4]).unwrap();
+        assert_eq!(
+            hud_gui_sprite_scaling(&stretch),
+            HudGuiSpriteScaling::Stretch
+        );
+
+        let mut tile = SpriteImage::new(
+            "example:tooltip/tile_background",
+            2,
+            3,
+            vec![255; 2 * 3 * 4],
+        )
+        .unwrap();
+        tile.gui_metadata.scaling = SpriteGuiScaling::Tile {
+            width: 2,
+            height: 3,
+        };
+        assert_eq!(
+            hud_gui_sprite_scaling(&tile),
+            HudGuiSpriteScaling::Tile {
+                width: 2,
+                height: 3,
+            }
+        );
+
+        let mut nine_slice =
+            SpriteImage::new("example:tooltip/panel_frame", 7, 9, vec![255; 7 * 9 * 4]).unwrap();
+        nine_slice.gui_metadata.scaling = SpriteGuiScaling::NineSlice {
+            width: 7,
+            height: 9,
+            border: bbb_pack::SpriteNineSliceBorder {
+                left: 1,
+                top: 2,
+                right: 3,
+                bottom: 4,
+            },
+            stretch_inner: true,
+        };
+        assert_eq!(
+            hud_gui_sprite_scaling(&nine_slice),
+            HudGuiSpriteScaling::NineSlice(HudNineSliceScaling {
+                sprite_width: 7,
+                sprite_height: 9,
+                border_left: 1,
+                border_top: 2,
+                border_right: 3,
+                border_bottom: 4,
+                stretch_inner: true,
+            })
         );
     }
 

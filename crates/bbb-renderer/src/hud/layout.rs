@@ -1152,6 +1152,45 @@ pub(super) struct NineSliceSegment {
     pub(super) uv: HudUvRect,
 }
 
+/// Tiles a whole GUI sprite over `target` at the declared tile size, clipping the final row and
+/// column like vanilla `GuiGraphicsExtractor.blitTiledSprite`.
+pub(super) fn tiled_sprite_segments(
+    target: HudRect,
+    tile_width: u32,
+    tile_height: u32,
+) -> Vec<NineSliceSegment> {
+    let mut segments = Vec::new();
+    if target.width == 0 || target.height == 0 || tile_width == 0 || tile_height == 0 {
+        return segments;
+    }
+
+    let mut oy = 0;
+    while oy < target.height {
+        let height = tile_height.min(target.height - oy);
+        let mut ox = 0;
+        while ox < target.width {
+            let width = tile_width.min(target.width - ox);
+            segments.push(nine_slice_region_segment(
+                target,
+                tile_width,
+                tile_height,
+                ox,
+                oy,
+                width,
+                height,
+                0,
+                0,
+                width,
+                height,
+            ));
+            ox += tile_width;
+        }
+        oy += tile_height;
+    }
+
+    segments
+}
+
 /// Which tooltip sprite a planned segment belongs to. Vanilla draws the whole background sprite
 /// first and the whole frame sprite second (`TooltipRenderUtil.extractTooltipBackground` blits
 /// `tooltip/background` then `tooltip/frame`), so the planner preserves that source order.
@@ -2011,6 +2050,52 @@ mod tests {
         assert_eq!(bottom.x, 30.0);
         assert_eq!(bottom.y, 65.0);
         assert_eq!(bottom.height, 44);
+    }
+
+    #[test]
+    fn tiled_sprite_segments_repeat_whole_sprite_and_clip_final_row_and_column() {
+        let segments = tiled_sprite_segments(
+            HudRect {
+                x: 10.0,
+                y: 20.0,
+                width: 5,
+                height: 3,
+            },
+            2,
+            2,
+        );
+
+        assert_eq!(segments.len(), 6);
+        assert_eq!(
+            segments[0],
+            NineSliceSegment {
+                rect: HudRect {
+                    x: 10.0,
+                    y: 20.0,
+                    width: 2,
+                    height: 2,
+                },
+                uv: HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+            }
+        );
+        assert_eq!(
+            segments[5],
+            NineSliceSegment {
+                rect: HudRect {
+                    x: 14.0,
+                    y: 22.0,
+                    width: 1,
+                    height: 1,
+                },
+                uv: HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [0.5, 0.5],
+                },
+            }
+        );
     }
 
     fn uniform_nine_slice(size: u32, border: u32, stretch_inner: bool) -> HudNineSliceScaling {
