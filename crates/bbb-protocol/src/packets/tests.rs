@@ -12,6 +12,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
         VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
         VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
+        VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
         VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
         VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
@@ -1864,6 +1865,43 @@ fn encodes_set_creative_mode_slot_enchantment_glint_override_component() {
     );
     assert!(!value.read_bool().unwrap());
     assert!(value.is_empty());
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_intangible_projectile_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID],
+                intangible_projectile: true,
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_i16().unwrap(), 36);
+    assert_eq!(decoder.read_var_i32().unwrap(), 1);
+    assert_eq!(decoder.read_var_i32().unwrap(), 42);
+    assert_eq!(decoder.read_len().unwrap(), 1);
+    assert_eq!(decoder.read_len().unwrap(), 0);
+    assert_eq!(
+        decoder.read_var_i32().unwrap(),
+        VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID
+    );
+    let value_len = decoder.read_len().unwrap();
+    assert_eq!(value_len, 2);
+    let value = decoder
+        .read_exact(value_len, "intangible_projectile component value")
+        .unwrap();
+    assert_eq!(value, [10, 0]);
     assert!(decoder.is_empty());
 }
 

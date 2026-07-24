@@ -24,9 +24,10 @@ use crate::{
         VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
+        VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID, VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
     },
     entity_types::vanilla_entity_type,
     equipment_slots::{
@@ -1186,6 +1187,9 @@ fn validate_encodable_data_component_patch_summary(
             }
             crate::data_component_types::VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID => {
                 expected.enchantment_glint_override = patch.enchantment_glint_override;
+            }
+            VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID => {
+                expected.intangible_projectile = patch.intangible_projectile;
             }
             crate::data_component_types::VANILLA_DATA_COMPONENT_TOOL_TYPE_ID => {
                 expected.tool = patch.tool.clone();

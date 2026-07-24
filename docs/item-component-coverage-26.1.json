@@ -1700,34 +1700,75 @@
       "constant_name": "INTANGIBLE_PROJECTILE",
       "coverage": {
         "canonical_retention": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components.rs#pub intangible_projectile",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_intangible_projectile",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_primitive_component_value_codecs",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "network_encode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#INTANGIBLE_PROJECTILE",
+            "vanilla:net/minecraft/core/component/DataComponentType.java#build",
+            "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#fromCodecWithRegistries",
+            "vanilla:net/minecraft/util/Unit.java#CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_intangible_projectile",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#intangible_projectile_descriptor_round_trips_persistent_fallback_unit_nbt",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_intangible_projectile_component"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "observable_consumers": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/ItemStack.java#addUnitComponentToTooltip",
+            "vanilla:net/minecraft/world/item/ProjectileWeaponItem.java#useAmmo",
+            "vanilla:net/minecraft/world/entity/projectile/arrow/AbstractArrow.java#INTANGIBLE_PROJECTILE",
+            "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_intangible_projectile_tooltip_line",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "persistent_projection": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#INTANGIBLE_PROJECTILE",
+            "vanilla:net/minecraft/util/Unit.java#CODEC",
+            "crates/bbb-native/src/input/component_patch.rs#encode_unit",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_primitive_component_value_codecs"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#intangible_projectile_descriptor_round_trips_persistent_fallback_unit_nbt",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#intangible_projectile_descriptor_rejects_absent_unit_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_intangible_projectile_component",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "typed_decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#INTANGIBLE_PROJECTILE",
+            "vanilla:net/minecraft/core/component/DataComponentType.java#build",
+            "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#fromCodecWithRegistries",
+            "vanilla:net/minecraft/util/Unit.java#CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_intangible_projectile",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_primitive_component_value_codecs"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "resource_id": "minecraft:intangible_projectile",

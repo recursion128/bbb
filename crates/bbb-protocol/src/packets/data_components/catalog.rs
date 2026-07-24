@@ -17,10 +17,11 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
     VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
-    VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID,
-    VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
-    VANILLA_DATA_COMPONENT_LORE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
+    VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
+    VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
     VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
     VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
@@ -258,6 +259,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID => {
             Some(encode_enchantment_glint_override)
         }
+        VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID => Some(encode_intangible_projectile),
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID => Some(encode_consumable),
         VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID => Some(encode_use_remainder),
         VANILLA_DATA_COMPONENT_TOOL_TYPE_ID => Some(encode_tool),
@@ -540,6 +542,22 @@ fn encode_enchantment_glint_override(
         ProtocolError::InvalidData("missing enchantment_glint_override component value".to_string())
     })?;
     out.write_bool(override_value);
+    Ok(())
+}
+
+fn encode_intangible_projectile(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    if !summary.intangible_projectile {
+        return Err(ProtocolError::InvalidData(
+            "missing intangible_projectile component value".to_string(),
+        ));
+    }
+    let unit = NbtSummaryValue::Compound(Vec::new());
+    let encoded = encode_nbt_summary_bounded(Some(&unit), i32::MAX as usize, MAX_NBT_DEPTH)?;
+    out.write_bytes(&encoded);
     Ok(())
 }
 
@@ -3173,9 +3191,9 @@ mod tests {
                 .map(|descriptor| descriptor.type_id())
                 .collect::<Vec<_>>(),
             vec![
-                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 24, 25, 28,
-                30, 36, 37, 38, 39, 40, 42, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 68, 69, 70,
-                75,
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 22, 24, 25,
+                28, 30, 36, 37, 38, 39, 40, 42, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 68, 69,
+                70, 75,
             ]
         );
     }
@@ -6186,6 +6204,43 @@ mod tests {
         assert!(descriptor
             .encode(&DataComponentPatchSummary::default(), &mut encoded)
             .is_err());
+        assert_eq!(encoded.into_inner(), [0xaa]);
+    }
+
+    #[test]
+    fn intangible_projectile_descriptor_round_trips_persistent_fallback_unit_nbt() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID)
+                .unwrap();
+        let summary = DataComponentPatchSummary {
+            intangible_projectile: true,
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        descriptor.encode(&summary, &mut encoded).unwrap();
+        assert_eq!(encoded.clone().into_inner(), [10, 0]);
+
+        let wire = encoded.into_inner();
+        let mut decoder = Decoder::new(&wire);
+        let mut decoded = DataComponentPatchSummary::default();
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert!(decoded.intangible_projectile);
+    }
+
+    #[test]
+    fn intangible_projectile_descriptor_rejects_absent_unit_atomically() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID)
+                .unwrap();
+        let mut encoded = Encoder::new();
+        encoded.write_u8(0xaa);
+        let error = descriptor
+            .encode(&DataComponentPatchSummary::default(), &mut encoded)
+            .unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("missing intangible_projectile component value"));
         assert_eq!(encoded.into_inner(), [0xaa]);
     }
 

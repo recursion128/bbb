@@ -1277,12 +1277,13 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             item_id: Some(0),
             count: 1,
             component_patch: DataComponentPatchSummary {
-                tooltip_hidden_component_type_ids: vec![11, 13, 44],
+                tooltip_hidden_component_type_ids: vec![11, 13, 22, 44],
                 enchantments: vec![bbb_protocol::packets::ItemEnchantmentSummary {
                     holder_id: 13,
                     level: 1,
                 }],
                 dyed_color: Some(0x11_22_33),
+                intangible_projectile: true,
                 lore: vec!["Hidden lore".to_string()],
                 unbreakable: true,
                 ..DataComponentPatchSummary::default()
