@@ -37,6 +37,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_HORSE_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
         VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
         VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_LLAMA_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_POST_PROCESSING_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
@@ -1405,6 +1406,13 @@ fn validate_encodable_data_component_patch_summary(
                 }
             }
             VANILLA_DATA_COMPONENT_HORSE_VARIANT_TYPE_ID => {
+                if let Some(value_id) = patch.builtin_enum_component_ids.get(type_id) {
+                    expected
+                        .builtin_enum_component_ids
+                        .insert(*type_id, *value_id);
+                }
+            }
+            VANILLA_DATA_COMPONENT_LLAMA_VARIANT_TYPE_ID => {
                 if let Some(value_id) = patch.builtin_enum_component_ids.get(type_id) {
                     expected
                         .builtin_enum_component_ids

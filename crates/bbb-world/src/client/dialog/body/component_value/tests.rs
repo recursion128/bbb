@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use bbb_protocol::builtin_enum_component_values::{
     VANILLA_DYE_COLOR_BLUE_ID, VANILLA_DYE_COLOR_LIGHT_BLUE_ID, VANILLA_DYE_COLOR_PURPLE_ID,
     VANILLA_DYE_COLOR_RED_ID, VANILLA_DYE_COLOR_YELLOW_ID, VANILLA_HORSE_VARIANT_DARK_BROWN_ID,
-    VANILLA_RABBIT_VARIANT_EVIL_ID,
+    VANILLA_LLAMA_VARIANT_GRAY_ID, VANILLA_RABBIT_VARIANT_EVIL_ID,
 };
 use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID, VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
@@ -12,7 +12,7 @@ use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_DYE_TYPE_ID, VANILLA_DATA_COMPONENT_FOX_VARIANT_TYPE_ID,
     VANILLA_DATA_COMPONENT_HORSE_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
     VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID, VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
-    VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
+    VANILLA_DATA_COMPONENT_LLAMA_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
     VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
@@ -329,6 +329,26 @@ fn horse_variant_string_enum_projects_to_builtin_enum_patch_map() {
         BTreeMap::from([(
             VANILLA_DATA_COMPONENT_HORSE_VARIANT_TYPE_ID,
             VANILLA_HORSE_VARIANT_DARK_BROWN_ID,
+        )])
+    );
+}
+
+#[test]
+fn llama_variant_string_enum_projects_to_builtin_enum_patch_map() {
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_LLAMA_VARIANT_TYPE_ID,
+        &DialogDataComponentValueState::StringEnum {
+            value_id: VANILLA_LLAMA_VARIANT_GRAY_ID,
+            serialized_name: "gray".to_string(),
+        },
+        &mut patch,
+    ));
+    assert_eq!(
+        patch.builtin_enum_component_ids,
+        BTreeMap::from([(
+            VANILLA_DATA_COMPONENT_LLAMA_VARIANT_TYPE_ID,
+            VANILLA_LLAMA_VARIANT_GRAY_ID,
         )])
     );
 }
