@@ -3547,6 +3547,82 @@
         "status": "complete"
       }
     },
+    "BREAK_SOUND": {
+      "canonical_retention": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#pub struct SoundEventSummary",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub break_sound",
+          "crates/bbb-protocol/src/packets/data_components.rs#decode_sound_event_holder_summary",
+          "crates/bbb-protocol/src/packets/data_components.rs#decode_direct_sound_event_summary",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#break_sound_descriptor_round_trips_reference_and_direct_holders_in_wire_order"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/sounds/SoundEvent.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<SoundEvent>> STREAM_CODEC",
+          "vanilla:net/minecraft/sounds/SoundEvent.java#public static final StreamCodec<ByteBuf, SoundEvent> DIRECT_STREAM_CODEC",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, Holder<T>> holder",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_break_sound",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#break_sound_descriptor_round_trips_reference_and_direct_holders_in_wire_order",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#break_sound_descriptor_rejects_noncanonical_holders_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_direct_break_sound_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/entity/LivingEntity.java#private void breakItem",
+          "vanilla:net/minecraft/world/entity/LivingEntity.java#DataComponents.BREAK_SOUND",
+          "crates/bbb-world/src/client/audio.rs#pub fn living_entity_item_break_sound",
+          "crates/bbb-world/src/client/audio.rs#fn sound_event_summary_holder",
+          "crates/bbb-world/src/play_apply.rs#living_entity_item_break_sound_honors_patch_removal_and_generated_defaults"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/sounds/SoundEvent.java#public static final Codec<Holder<SoundEvent>> CODEC",
+          "vanilla:net/minecraft/resources/RegistryFileCodec.java#public static <E> RegistryFileCodec<E> create",
+          "crates/bbb-native/src/input/component_patch.rs#fn encode_break_sound",
+          "crates/bbb-native/src/input.rs#fn debug_sound_event_component_snbt",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_preserves_break_sound_holder_shapes",
+          "crates/bbb-world/src/client/dialog/body/component_value/sound_event.rs#decodes_named_and_direct_break_sound_holders"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#break_sound_descriptor_round_trips_reference_and_direct_holders_in_wire_order",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#break_sound_descriptor_rejects_noncanonical_holders_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_direct_break_sound_component",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_break_sound_registry_holder",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_preserves_break_sound_holder_shapes",
+          "crates/bbb-world/src/play_apply.rs#living_entity_item_break_sound_honors_patch_removal_and_generated_defaults",
+          "crates/bbb-world/src/client/dialog/body/component_value/sound_event.rs#decodes_named_and_direct_break_sound_holders"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#BREAK_SOUND",
+          "vanilla:net/minecraft/sounds/SoundEvent.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<SoundEvent>> STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_break_sound",
+          "crates/bbb-protocol/src/packets/data_components.rs#decode_sound_event_holder_summary",
+          "crates/bbb-protocol/src/packets/data_components.rs#decode_direct_sound_event_summary",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "PROVIDES_TRIM_MATERIAL": {
       "canonical_retention": {
         "evidence": [

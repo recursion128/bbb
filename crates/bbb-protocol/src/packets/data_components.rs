@@ -22,6 +22,7 @@ use crate::{
     data_component_types::{
         VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID, VANILLA_DATA_COMPONENT_BEES_TYPE_ID,
         VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
+        VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
         VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
@@ -1251,6 +1252,9 @@ fn validate_encodable_data_component_patch_summary(
             }
             VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID => {
                 expected.banner_pattern_layers = patch.banner_pattern_layers.clone();
+            }
+            VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID => {
+                expected.break_sound = patch.break_sound.clone();
             }
             VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID => {
                 expected.jukebox_song_id = patch.jukebox_song_id;

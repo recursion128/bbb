@@ -11030,6 +11030,19 @@ fn item_stack_snbt_preserves_resolvable_banner_pattern_holder_sets() {
 fn item_stack_snbt_preserves_break_sound_holder_shapes() {
     assert_eq!(
         debug_sound_event_component_snbt(&bbb_protocol::packets::SoundEventSummary {
+            registry_id: Some(
+                bbb_protocol::sound_event_types::vanilla_sound_event_registry_id(
+                    "minecraft:entity.item.break",
+                )
+                .unwrap(),
+            ),
+            sound_id: None,
+            fixed_range_bits: None,
+        }),
+        Some("\"minecraft:entity.item.break\"".to_string())
+    );
+    assert_eq!(
+        debug_sound_event_component_snbt(&bbb_protocol::packets::SoundEventSummary {
             registry_id: None,
             sound_id: Some("example:item.custom_break".to_string()),
             fixed_range_bits: Some(16.0_f32.to_bits()),

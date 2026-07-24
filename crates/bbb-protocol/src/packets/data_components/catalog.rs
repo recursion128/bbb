@@ -7,7 +7,7 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
     VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID, VANILLA_DATA_COMPONENT_BEES_TYPE_ID,
     VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
-    VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
+    VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
     VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
     VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID, VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID,
     VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID,
@@ -301,6 +301,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID => {
             Some(encode_provides_trim_material)
         }
+        VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID => Some(encode_break_sound),
         _ => None,
     }
 }
@@ -1719,6 +1720,21 @@ fn encode_provides_trim_material(
         summary.provides_trim_material_id,
         summary.provides_trim_material_direct.as_deref(),
     )?;
+    out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
+fn encode_break_sound(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let sound = summary
+        .break_sound
+        .as_ref()
+        .ok_or_else(|| ProtocolError::InvalidData("missing break_sound value".to_string()))?;
+    let mut encoded = Encoder::new();
+    encode_sound_event_holder_summary(&mut encoded, sound)?;
     out.write_bytes(&encoded.into_inner());
     Ok(())
 }
@@ -3555,7 +3571,7 @@ mod tests {
             vec![
                 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 22, 24, 25,
                 26, 28, 30, 36, 37, 38, 39, 40, 42, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 61,
-                62, 64, 67, 68, 69, 70, 72, 75, 77, 102,
+                62, 64, 67, 68, 69, 70, 72, 75, 77, 80, 102,
             ]
         );
     }
@@ -6587,6 +6603,121 @@ mod tests {
                 decal: true,
             })),
             ..DataComponentPatchSummary::default()
+        }
+    }
+
+    #[test]
+    fn break_sound_descriptor_round_trips_reference_and_direct_holders_in_wire_order() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID).unwrap();
+        for holder_id in [0, i32::MAX - 1] {
+            let referenced = DataComponentPatchSummary {
+                break_sound: Some(SoundEventSummary {
+                    registry_id: Some(holder_id),
+                    sound_id: None,
+                    fixed_range_bits: None,
+                }),
+                ..DataComponentPatchSummary::default()
+            };
+            let mut encoded = Encoder::new();
+            descriptor.encode(&referenced, &mut encoded).unwrap();
+            let wire = encoded.into_inner();
+            let mut expected = Encoder::new();
+            expected.write_var_i32(holder_id + 1);
+            assert_eq!(wire, expected.into_inner());
+
+            let mut decoded = DataComponentPatchSummary::default();
+            let mut decoder = Decoder::new(&wire);
+            descriptor.decode(&mut decoder, &mut decoded).unwrap();
+            assert!(decoder.is_empty());
+            assert_eq!(decoded, referenced);
+        }
+
+        for fixed_range_bits in [None, Some(12.5_f32.to_bits())] {
+            let direct = DataComponentPatchSummary {
+                break_sound: Some(SoundEventSummary {
+                    registry_id: None,
+                    sound_id: Some("example:item.custom_break".to_string()),
+                    fixed_range_bits,
+                }),
+                ..DataComponentPatchSummary::default()
+            };
+            let mut encoded = Encoder::new();
+            descriptor.encode(&direct, &mut encoded).unwrap();
+            let wire = encoded.into_inner();
+            let mut expected = Encoder::new();
+            expected.write_var_i32(0);
+            expected.write_string("example:item.custom_break");
+            expected.write_bool(fixed_range_bits.is_some());
+            if let Some(bits) = fixed_range_bits {
+                expected.write_f32(f32::from_bits(bits));
+            }
+            assert_eq!(wire, expected.into_inner());
+
+            let mut decoded = DataComponentPatchSummary::default();
+            let mut decoder = Decoder::new(&wire);
+            descriptor.decode(&mut decoder, &mut decoded).unwrap();
+            assert!(decoder.is_empty());
+            assert_eq!(decoded, direct);
+        }
+    }
+
+    #[test]
+    fn break_sound_descriptor_rejects_noncanonical_holders_atomically() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID).unwrap();
+        let cases = [
+            None,
+            Some(SoundEventSummary {
+                registry_id: Some(-1),
+                sound_id: None,
+                fixed_range_bits: None,
+            }),
+            Some(SoundEventSummary {
+                registry_id: Some(i32::MAX),
+                sound_id: None,
+                fixed_range_bits: None,
+            }),
+            Some(SoundEventSummary {
+                registry_id: Some(0),
+                sound_id: Some("example:item.custom_break".to_string()),
+                fixed_range_bits: None,
+            }),
+            Some(SoundEventSummary {
+                registry_id: Some(0),
+                sound_id: None,
+                fixed_range_bits: Some(12.5_f32.to_bits()),
+            }),
+            Some(SoundEventSummary {
+                registry_id: None,
+                sound_id: None,
+                fixed_range_bits: Some(12.5_f32.to_bits()),
+            }),
+            Some(SoundEventSummary {
+                registry_id: None,
+                sound_id: Some("item.custom_break".to_string()),
+                fixed_range_bits: None,
+            }),
+            Some(SoundEventSummary {
+                registry_id: None,
+                sound_id: Some("Bad:custom_break".to_string()),
+                fixed_range_bits: None,
+            }),
+            Some(SoundEventSummary {
+                registry_id: None,
+                sound_id: Some(format!("example:{}", "a".repeat(MAX_STRING_CHARS + 1))),
+                fixed_range_bits: None,
+            }),
+        ];
+        for break_sound in cases {
+            let summary = DataComponentPatchSummary {
+                break_sound,
+                ..DataComponentPatchSummary::default()
+            };
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            assert!(descriptor.encode(&summary, &mut encoded).is_err());
+            assert_eq!(encoded.into_inner(), [0xaa]);
         }
     }
 
