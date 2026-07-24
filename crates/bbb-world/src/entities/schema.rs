@@ -800,6 +800,10 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     /// Nearest vanilla class that declares
     /// `interact(Player, InteractionHand, Vec3)` for this runtime type.
     pub interact_owner: Option<&'static str>,
+    /// Nearest vanilla class that declares
+    /// `mobInteract(Player, InteractionHand)` for this runtime type.
+    /// Absent for runtime classes that do not inherit `Mob`.
+    pub mob_interact_owner: Option<&'static str>,
     /// Nearest runtime-class declarations for the two attachment hooks and
     /// the controller decision. These close the fixed-type reverse inventory
     /// without duplicating family membership in handwritten code.
@@ -850,6 +854,7 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub pushability_kind: VanillaEntityPushabilityKind,
     pub collidability_kind: VanillaEntityCollidabilityKind,
     pub is_living: bool,
+    pub is_mob: bool,
     pub is_animal: bool,
     pub is_tamable_animal: bool,
     pub is_projectile: bool,
@@ -4360,14 +4365,10 @@ pub fn vanilla_entity_metadata_type_is_living(entity_type_id: i32) -> bool {
 
 /// Returns whether the generated vanilla runtime class inherits `Mob`.
 pub fn vanilla_entity_metadata_type_is_mob(entity_type_id: i32) -> bool {
-    const MOB: &str = "net.minecraft.world.entity.Mob";
-    let Some(runtime_class) = VANILLA_ENTITY_TYPE_METADATA_26_1
+    VANILLA_ENTITY_TYPE_METADATA_26_1
         .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
-        .and_then(|entry| entry.runtime_class)
-    else {
-        return false;
-    };
-    vanilla_class_is_or_implements(runtime_class, MOB, 0)
+        .map(|entry| entry.is_mob)
+        .unwrap_or(false)
 }
 
 /// Returns the nearest generated vanilla `handleEntityEvent(byte)` declaration owner.
@@ -4386,6 +4387,18 @@ pub(crate) fn vanilla_entity_metadata_interact_owner(entity_type_id: i32) -> Opt
     VANILLA_ENTITY_TYPE_METADATA_26_1
         .get(usize::try_from(entity_type_id).ok()?)
         .and_then(|entry| entry.interact_owner)
+}
+
+/// Returns the nearest generated vanilla `mobInteract(Player, InteractionHand)`
+/// declaration owner for a Mob runtime type.
+///
+/// Non-Mob and unknown entity type ids return `None`.
+pub(crate) fn vanilla_entity_metadata_mob_interact_owner(
+    entity_type_id: i32,
+) -> Option<&'static str> {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).ok()?)
+        .and_then(|entry| entry.mob_interact_owner)
 }
 
 pub(crate) fn vanilla_entity_metadata_passenger_attachment_owner(

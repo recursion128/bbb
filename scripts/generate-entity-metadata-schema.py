@@ -4192,6 +4192,7 @@ def render(result: ExtractionResult) -> str:
     illager_celebrating_cache: dict[str, bool] = {}
     handle_entity_event_owner_cache: dict[str, str] = {}
     interact_owner_cache: dict[str, str] = {}
+    mob_interact_owner_cache: dict[str, str] = {}
     passenger_attachment_owner_cache: dict[str, str] = {}
     vehicle_attachment_owner_cache: dict[str, str] = {}
     controlling_passenger_owner_cache: dict[str, str] = {}
@@ -4889,6 +4890,7 @@ def render(result: ExtractionResult) -> str:
                 + "],",
                 f"        handle_entity_event_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'handleEntityEvent', 1, handle_entity_event_owner_cache) if item.runtime_class is not None else None)},",
                 f"        interact_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'interact', 3, interact_owner_cache) if item.runtime_class is not None else None)},",
+                f"        mob_interact_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'mobInteract', 2, mob_interact_owner_cache) if extends_class(item.runtime_class, 'net.minecraft.world.entity.Mob') else None)},",
                 f"        passenger_attachment_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'getPassengerAttachmentPoint', 3, passenger_attachment_owner_cache) if item.runtime_class is not None else None)},",
                 f"        vehicle_attachment_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'getVehicleAttachmentPoint', 1, vehicle_attachment_owner_cache) if item.runtime_class is not None else None)},",
                 f"        controlling_passenger_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'getControllingPassenger', 0, controlling_passenger_owner_cache) if item.runtime_class is not None else None)},",
@@ -4914,6 +4916,7 @@ def render(result: ExtractionResult) -> str:
                 f"        pushability_kind: VanillaEntityPushabilityKind::{class_pushability_kind(result, class_map, item.runtime_class, pushability_cache)},",
                 f"        collidability_kind: VanillaEntityCollidabilityKind::{class_collidability_kind(result, class_map, item.runtime_class, collidability_cache)},",
                 f"        is_living: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity')).lower()},",
+                f"        is_mob: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.Mob')).lower()},",
                 f"        is_animal: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.animal.Animal')).lower()},",
                 f"        is_tamable_animal: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.TamableAnimal')).lower()},",
                 f"        is_projectile: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.projectile.Projectile')).lower()},",
@@ -5129,6 +5132,29 @@ def render(result: ExtractionResult) -> str:
             "            \"net.minecraft.world.entity.vehicle.minecart.MinecartCommandBlock\",",
             "            \"net.minecraft.world.entity.vehicle.minecart.MinecartFurnace\",",
             "        ]));",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn mob_interaction_owner_inventory_covers_exactly_mob_types() {",
+            "        for entry in super::VANILLA_ENTITY_TYPE_METADATA_26_1 {",
+            "            assert_eq!(",
+            "                entry.mob_interact_owner.is_some(),",
+            "                entry.is_mob,",
+            "                \"{}\",",
+            "                entry.resource_id,",
+            "            );",
+            "        }",
+            "        let owner = |resource_id| {",
+            "            super::VANILLA_ENTITY_TYPE_METADATA_26_1",
+            "                .iter()",
+            "                .find(|entry| entry.resource_id == resource_id)",
+            "                .unwrap()",
+            "        };",
+            "        assert!(owner(\"minecraft:cow\").mob_interact_owner.unwrap().ends_with(\".AbstractCow\"));",
+            "        assert!(owner(\"minecraft:creeper\").mob_interact_owner.unwrap().ends_with(\".Creeper\"));",
+            "        assert!(owner(\"minecraft:zombie\").mob_interact_owner.unwrap().ends_with(\".Mob\"));",
+            "        assert!(owner(\"minecraft:item\").mob_interact_owner.is_none());",
+            "        assert!(owner(\"minecraft:player\").mob_interact_owner.is_none());",
             "    }",
             "",
             "    #[test]",

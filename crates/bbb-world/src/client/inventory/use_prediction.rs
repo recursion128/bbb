@@ -1,8 +1,8 @@
 use super::*;
 use crate::{
     entities::{
-        vanilla_entity_metadata_interact_owner, vanilla_entity_metadata_type_is_leashable,
-        vanilla_entity_metadata_type_is_living,
+        vanilla_entity_metadata_interact_owner, vanilla_entity_metadata_mob_interact_owner,
+        vanilla_entity_metadata_type_is_leashable, vanilla_entity_metadata_type_is_living,
     },
     BlockPos,
 };
@@ -23,6 +23,7 @@ use bbb_protocol::{
 };
 
 const VANILLA_DEFAULT_ENTITY_INTERACT_OWNER: &str = "net.minecraft.world.entity.Entity";
+const VANILLA_MOB_ENTITY_INTERACT_OWNER: &str = "net.minecraft.world.entity.Mob";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LocalInteractionSwingSource {
@@ -237,8 +238,20 @@ impl WorldStore {
         let held_item_id = self
             .local_item_in_hand(hand)
             .and_then(|stack| stack.item_id);
-        if owner != VANILLA_DEFAULT_ENTITY_INTERACT_OWNER
-            || vanilla_entity_metadata_type_is_leashable(entity_type_id)
+        if owner != VANILLA_DEFAULT_ENTITY_INTERACT_OWNER {
+            let owner = if owner == VANILLA_MOB_ENTITY_INTERACT_OWNER {
+                let Some(mob_interact_owner) =
+                    vanilla_entity_metadata_mob_interact_owner(entity_type_id)
+                else {
+                    return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+                };
+                mob_interact_owner
+            } else {
+                owner
+            };
+            return LocalTargetUsePrediction::UnsupportedEntityInteract(owner);
+        }
+        if vanilla_entity_metadata_type_is_leashable(entity_type_id)
             || held_item_id == Some(VANILLA_ITEM_SHEARS_ID)
         {
             return LocalTargetUsePrediction::UnsupportedEntityInteract(owner);
@@ -534,7 +547,9 @@ mod tests {
         );
         assert_eq!(
             world.predict_local_entity_interaction(2, InteractionHand::MainHand),
-            LocalTargetUsePrediction::UnsupportedEntityInteract("net.minecraft.world.entity.Mob")
+            LocalTargetUsePrediction::UnsupportedEntityInteract(
+                "net.minecraft.world.entity.animal.cow.AbstractCow"
+            )
         );
         assert_eq!(
             world.predict_local_entity_interaction(99, InteractionHand::MainHand),
