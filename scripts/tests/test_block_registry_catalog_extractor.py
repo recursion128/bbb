@@ -10,7 +10,10 @@ sys.path.insert(0, str(SCRIPTS))
 
 from block_registry_catalog_extractor import (  # noqa: E402
     BlockRegistryCatalogExtractionError,
+    block_factory_class,
     extract_block_registry_catalog,
+    extract_block_use_item_on_override_owners,
+    extract_block_use_without_item_override_owners,
 )
 from vanilla_java_source import parse_source  # noqa: E402
 
@@ -114,6 +117,131 @@ class BlockRegistryCatalogExtractorTests(unittest.TestCase):
                 for argument in dirt["arguments"]
                 for child in _walk(argument)
             )
+        )
+
+    def test_derives_factory_classes_and_nearest_interaction_overrides(self) -> None:
+        declarations = extract().declarations
+        for helper, expected in (
+            ("registerBed", "BedBlock"),
+            ("registerLegacyStair", "StairBlock"),
+            ("registerStair", "StairBlock"),
+            ("registerStainedGlass", "StainedGlassBlock"),
+        ):
+            self.assertEqual(
+                block_factory_class(
+                    {
+                        "field": "FIXTURE",
+                        "initializer": {"name": helper, "arguments": []},
+                    }
+                ),
+                expected,
+            )
+        self.assertEqual(
+            [block_factory_class(declaration) for declaration in declarations],
+            [
+                "AirBlock",
+                "Block",
+                "StairBlock",
+                "WeatheringCopperChainBlock",
+                "WeatheringCopperChainBlock",
+                "WeatheringCopperChainBlock",
+                "WeatheringCopperChainBlock",
+                "ChainBlock",
+                "ChainBlock",
+                "ChainBlock",
+                "ChainBlock",
+            ],
+        )
+        sources = [
+            parse(
+                "net/minecraft/world/level/block/state/BlockBehaviour.java",
+                """
+package net.minecraft.world.level.block.state;
+class BlockBehaviour {
+  protected InteractionResult useItemOn(
+      ItemStack stack, BlockState state, Level level, BlockPos pos,
+      Player player, InteractionHand hand, BlockHitResult hit) {
+    return InteractionResult.TRY_WITH_EMPTY_HAND;
+  }
+  protected InteractionResult useWithoutItem(
+      BlockState state, Level level, BlockPos pos, Player player,
+      BlockHitResult hit) {
+    return InteractionResult.PASS;
+  }
+}
+""",
+            ),
+            parse(
+                "net/minecraft/world/level/block/Block.java",
+                """
+package net.minecraft.world.level.block;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+class Block extends BlockBehaviour {}
+""",
+            ),
+            parse(
+                "net/minecraft/world/level/block/AirBlock.java",
+                """
+package net.minecraft.world.level.block;
+class AirBlock extends Block {}
+""",
+            ),
+            parse(
+                "net/minecraft/world/level/block/StairBlock.java",
+                """
+package net.minecraft.world.level.block;
+class StairBlock extends Block {
+  public void useWithoutItem(int first, int second, int third) {}
+  protected InteractionResult useWithoutItem(
+      BlockState state, Level level, BlockPos pos, Player player,
+      BlockHitResult hit) {
+    return InteractionResult.SUCCESS;
+  }
+}
+""",
+            ),
+            parse(
+                "net/minecraft/world/level/block/ChainBlock.java",
+                """
+package net.minecraft.world.level.block;
+class ChainBlock extends Block {}
+""",
+            ),
+            parse(
+                "net/minecraft/world/level/block/WeatheringCopperChainBlock.java",
+                """
+package net.minecraft.world.level.block;
+class WeatheringCopperChainBlock extends ChainBlock {
+  protected InteractionResult useItemOn(
+      ItemStack stack, BlockState state, Level level, BlockPos pos,
+      Player player, InteractionHand hand, BlockHitResult hit) {
+    return InteractionResult.SUCCESS;
+  }
+}
+""",
+            ),
+        ]
+        self.assertEqual(
+            extract_block_use_item_on_override_owners(declarations, sources),
+            {
+                "AirBlock": None,
+                "Block": None,
+                "ChainBlock": None,
+                "StairBlock": None,
+                "WeatheringCopperChainBlock": "WeatheringCopperChainBlock",
+            },
+        )
+        self.assertEqual(
+            extract_block_use_without_item_override_owners(
+                declarations, sources
+            ),
+            {
+                "AirBlock": None,
+                "Block": None,
+                "ChainBlock": None,
+                "StairBlock": "StairBlock",
+                "WeatheringCopperChainBlock": None,
+            },
         )
 
     def test_whitespace_and_comments_preserve_declaration_semantics(self) -> None:

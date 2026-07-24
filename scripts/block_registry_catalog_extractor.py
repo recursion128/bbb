@@ -9,9 +9,14 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Sequence
 
-from vanilla_java_source import JavaExpression, JavaSource, expression_fact
+from vanilla_java_source import (
+    JavaExpression,
+    JavaSource,
+    expression_fact,
+    resolve_class_hierarchy,
+)
 
 
 class BlockRegistryCatalogExtractionError(ValueError):
@@ -39,6 +44,12 @@ WEATHERING_COPPER_VARIANTS = (
     ("waxed_weathered", "waxed_weathered_", "WAXED_WEATHERED_"),
     ("waxed_oxidized", "waxed_oxidized_", "WAXED_OXIDIZED_"),
 )
+BLOCK_FACTORY_CLASSES_BY_HELPER = {
+    "registerBed": "BedBlock",
+    "registerLegacyStair": "StairBlock",
+    "registerStair": "StairBlock",
+    "registerStainedGlass": "StainedGlassBlock",
+}
 
 
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
@@ -81,6 +92,179 @@ def field_constant(
     if source.expression(object_node).canonical.replace(" ", "") != owner:
         return None
     return source.text(field_node)
+
+
+def _walk_expression_facts(expression: dict):
+    yield expression
+    object_fact = expression.get("object")
+    if object_fact is not None:
+        yield from _walk_expression_facts(object_fact)
+    for key in ("arguments", "children"):
+        for child in expression.get(key, []):
+            yield from _walk_expression_facts(child)
+
+
+def _factory_class_from_expression(expression: dict) -> str | None:
+    for fact in _walk_expression_facts(expression):
+        if fact.get("kind") == "method_reference":
+            owner, separator, constructor = fact["canonical"].partition("::")
+            if separator and constructor == "new":
+                return owner.rsplit(".", 1)[-1]
+        if fact.get("kind") == "object_creation_expression":
+            return fact.get("name", "").rsplit(".", 1)[-1].split("<", 1)[0]
+    return None
+
+
+def block_factory_class(declaration: dict) -> str:
+    initializer = declaration["initializer"]
+    arguments = initializer.get("arguments", [])
+    group_variant = declaration.get("group_variant")
+    if group_variant is not None:
+        factory_index = 2 if group_variant.startswith("waxed") else 3
+        if len(arguments) <= factory_index:
+            raise BlockRegistryCatalogExtractionError(
+                f"Blocks.{declaration['field']}: incomplete WeatheringCopperBlocks factory"
+            )
+        factory_class = _factory_class_from_expression(arguments[factory_index])
+    else:
+        helper = initializer.get("name")
+        if helper in BLOCK_FACTORY_CLASSES_BY_HELPER:
+            return BLOCK_FACTORY_CLASSES_BY_HELPER[helper]
+        if helper != "register":
+            raise BlockRegistryCatalogExtractionError(
+                f"Blocks.{declaration['field']}: unsupported factory root {helper!r}"
+            )
+        if len(arguments) == 2:
+            return "Block"
+        if len(arguments) != 3:
+            raise BlockRegistryCatalogExtractionError(
+                f"Blocks.{declaration['field']}: register has {len(arguments)} arguments"
+            )
+        factory_class = _factory_class_from_expression(arguments[1])
+    if not factory_class:
+        raise BlockRegistryCatalogExtractionError(
+            f"Blocks.{declaration['field']}: block factory class is not explicit"
+        )
+    return factory_class
+
+
+def _is_block_behavior_method(
+    source: JavaSource,
+    method,
+    method_name: str,
+    parameter_types: tuple[str, ...],
+) -> bool:
+    if (
+        method.is_constructor
+        or method.name != method_name
+        or len(method.parameters) != len(parameter_types)
+    ):
+        return False
+    return_type = method.node.child_by_field_name("type")
+    actual_parameter_types = [
+        parameter.node.child_by_field_name("type") for parameter in method.parameters
+    ]
+    return (
+        return_type is not None
+        and all(
+            parameter_type is not None for parameter_type in actual_parameter_types
+        )
+        and source.text(return_type) == "InteractionResult"
+        and tuple(
+            source.text(parameter_type) for parameter_type in actual_parameter_types
+        )
+        == parameter_types
+    )
+
+
+def _extract_block_behavior_override_owners(
+    declarations: Sequence[dict],
+    block_class_sources: Sequence[JavaSource],
+    method_name: str,
+    parameter_types: tuple[str, ...],
+) -> dict[str, str | None]:
+    types = [item for source in block_class_sources for item in source.types]
+    resolve_class_hierarchy(types)
+    by_fqcn = {item.fqcn: item for item in types}
+    by_simple_name: dict[str, list] = {}
+    for item in types:
+        by_simple_name.setdefault(item.simple_name, []).append(item)
+    behavior_owners = {
+        method.owner
+        for source in block_class_sources
+        for method in source.methods
+        if _is_block_behavior_method(
+            source, method, method_name, parameter_types
+        )
+    }
+
+    owners: dict[str, str | None] = {}
+    for factory_class in sorted(
+        {block_factory_class(declaration) for declaration in declarations}
+    ):
+        matches = by_simple_name.get(factory_class, [])
+        if len(matches) != 1:
+            raise BlockRegistryCatalogExtractionError(
+                f"expected exactly one block class {factory_class}, got "
+                f"{len(matches)}"
+            )
+        block_type = matches[0]
+        seen = set()
+        while block_type.fqcn not in seen:
+            seen.add(block_type.fqcn)
+            if block_type.fqcn in behavior_owners:
+                owners[factory_class] = (
+                    None
+                    if block_type.simple_name == "BlockBehaviour"
+                    else block_type.simple_name
+                )
+                break
+            if (
+                block_type.superclass is None
+                or block_type.superclass not in by_fqcn
+            ):
+                raise BlockRegistryCatalogExtractionError(
+                    f"{block_type.source_path}: {factory_class} does not resolve to "
+                    f"BlockBehaviour.{method_name}"
+                )
+            block_type = by_fqcn[block_type.superclass]
+        else:
+            raise BlockRegistryCatalogExtractionError(
+                f"superclass cycle while resolving {factory_class}.{method_name}"
+            )
+    return owners
+
+
+def extract_block_use_item_on_override_owners(
+    declarations: Sequence[dict],
+    block_class_sources: Sequence[JavaSource],
+) -> dict[str, str | None]:
+    return _extract_block_behavior_override_owners(
+        declarations,
+        block_class_sources,
+        "useItemOn",
+        (
+            "ItemStack",
+            "BlockState",
+            "Level",
+            "BlockPos",
+            "Player",
+            "InteractionHand",
+            "BlockHitResult",
+        ),
+    )
+
+
+def extract_block_use_without_item_override_owners(
+    declarations: Sequence[dict],
+    block_class_sources: Sequence[JavaSource],
+) -> dict[str, str | None]:
+    return _extract_block_behavior_override_owners(
+        declarations,
+        block_class_sources,
+        "useWithoutItem",
+        ("BlockState", "Level", "BlockPos", "Player", "BlockHitResult"),
+    )
 
 
 def resolve_block_resource_path(
