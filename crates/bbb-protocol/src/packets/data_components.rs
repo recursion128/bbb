@@ -49,6 +49,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID,
     },
     entity_types::vanilla_entity_type,
     equipment_slots::{
@@ -1379,6 +1380,9 @@ fn validate_encodable_data_component_patch_summary(
             }
             VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID => {
                 expected.chicken_sound_variant_id = patch.chicken_sound_variant_id;
+            }
+            VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID => {
+                expected.zombie_nautilus_variant_id = patch.zombie_nautilus_variant_id;
             }
             VANILLA_DATA_COMPONENT_OMINOUS_BOTTLE_AMPLIFIER_TYPE_ID => {
                 expected.ominous_bottle_amplifier = patch.ominous_bottle_amplifier;

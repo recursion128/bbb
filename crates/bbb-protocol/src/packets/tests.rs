@@ -51,6 +51,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
         VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID,
     },
     entity_types::VANILLA_ENTITY_TYPE_BEE_ID,
     ids,
@@ -3428,6 +3429,36 @@ fn encodes_set_creative_mode_slot_chicken_sound_variant_component() {
             1, 0, // patch counts
             98, 1, // chicken/sound_variant type and delimited value length
             1, // PICKY holder id in the vanilla fallback catalog
+        ]
+    );
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_zombie_nautilus_variant_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID],
+                zombie_nautilus_variant_id: Some(1),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            1, 0, // patch counts
+            99, 1, // zombie_nautilus/variant type and delimited value length
+            1, // WARM holder id in the vanilla fallback catalog
         ]
     );
 }
