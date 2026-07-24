@@ -3,8 +3,10 @@ use crate::entities::{
     vanilla_entity_metadata_baby_accessor_for_entity_type, VANILLA_ENTITY_TYPE_DONKEY_ID,
     VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_LLAMA_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
 };
+use bbb_pack::RegistryDependentItemComponentInitializer;
 use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
 };
 use bbb_protocol::item_types::VANILLA_ITEM_ELYTRA_ID;
 use bbb_protocol::menu_types::{
@@ -5208,6 +5210,103 @@ fn apply_local_beacon_confirm_requires_beacon_payment() {
 }
 
 #[test]
+fn loom_selectable_patterns_follow_direct_and_named_session_holder_order() {
+    let mut store = WorldStore::new();
+    install_loom_banner_pattern_registry(&mut store);
+
+    open_loom_with_pattern_stack(&mut store, ProtocolItemStackSummary::empty());
+    assert_eq!(
+        store.loom_selectable_banner_pattern_ids(),
+        Some(vec![3, 0, 1])
+    );
+
+    let mut direct = item_stack(44, 1);
+    direct.component_patch.added = 1;
+    direct
+        .component_patch
+        .added_type_ids
+        .push(VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID);
+    direct.component_patch.provides_banner_pattern_registry_ids = vec![2, 0];
+    open_loom_with_pattern_stack(&mut store, direct);
+    assert_eq!(store.loom_selectable_banner_pattern_ids(), Some(vec![2, 0]));
+
+    let mut named = item_stack(44, 1);
+    named.component_patch.added = 1;
+    named
+        .component_patch
+        .added_type_ids
+        .push(VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID);
+    named.component_patch.provides_banner_pattern_tag = Some("example:item_patterns".to_string());
+    open_loom_with_pattern_stack(&mut store, named);
+    assert_eq!(store.loom_selectable_banner_pattern_ids(), Some(vec![2, 0]));
+
+    let mut unknown = item_stack(44, 1);
+    unknown.component_patch.added = 1;
+    unknown
+        .component_patch
+        .added_type_ids
+        .push(VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID);
+    unknown.component_patch.provides_banner_pattern_registry_ids = vec![9];
+    open_loom_with_pattern_stack(&mut store, unknown);
+    assert_eq!(store.loom_selectable_banner_pattern_ids(), Some(Vec::new()));
+
+    let mut conflicting = item_stack(44, 1);
+    conflicting.component_patch.added = 1;
+    conflicting
+        .component_patch
+        .added_type_ids
+        .push(VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID);
+    conflicting
+        .component_patch
+        .provides_banner_pattern_registry_ids = vec![2, 0];
+    conflicting.component_patch.provides_banner_pattern_tag =
+        Some("example:item_patterns".to_string());
+    open_loom_with_pattern_stack(&mut store, conflicting);
+    assert_eq!(store.loom_selectable_banner_pattern_ids(), Some(Vec::new()));
+
+    open_loom_with_pattern_stack(&mut store, item_stack(44, 1));
+    assert_eq!(store.loom_selectable_banner_pattern_ids(), Some(Vec::new()));
+}
+
+#[test]
+fn loom_selectable_patterns_honor_effective_defaults_overrides_and_removals() {
+    let mut store = WorldStore::new();
+    install_loom_banner_pattern_registry(&mut store);
+    store.set_registry_dependent_item_component_initializers(BTreeMap::from([(
+        44,
+        vec![
+            RegistryDependentItemComponentInitializer::ProvidesBannerPatterns {
+                tag: "example:item_patterns".to_string(),
+            },
+        ],
+    )]));
+    store.rebuild_registry_dependent_item_defaults().unwrap();
+
+    open_loom_with_pattern_stack(&mut store, item_stack(44, 1));
+    assert_eq!(store.loom_selectable_banner_pattern_ids(), Some(vec![2, 0]));
+
+    let mut explicit = item_stack(44, 1);
+    explicit.component_patch.added = 1;
+    explicit
+        .component_patch
+        .added_type_ids
+        .push(VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID);
+    explicit
+        .component_patch
+        .provides_banner_pattern_registry_ids = vec![1];
+    open_loom_with_pattern_stack(&mut store, explicit);
+    assert_eq!(store.loom_selectable_banner_pattern_ids(), Some(vec![1]));
+
+    let mut removed = item_stack(44, 1);
+    removed
+        .component_patch
+        .removed_type_ids
+        .push(VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID);
+    open_loom_with_pattern_stack(&mut store, removed);
+    assert_eq!(store.loom_selectable_banner_pattern_ids(), Some(Vec::new()));
+}
+
+#[test]
 fn apply_local_loom_result_quick_move_consumes_single_banner_and_dye() {
     let mut store = WorldStore::new();
     store.apply_open_screen(ProtocolOpenScreen {
@@ -9427,6 +9526,55 @@ fn item_stack(item_id: i32, count: i32) -> ProtocolItemStackSummary {
         count,
         component_patch: Default::default(),
     }
+}
+
+fn install_loom_banner_pattern_registry(store: &mut WorldStore) {
+    store.registries.contents.insert(
+        BANNER_PATTERN_REGISTRY.to_string(),
+        crate::RegistryContentState {
+            registry: BANNER_PATTERN_REGISTRY.to_string(),
+            packet_count: 1,
+            entries: [
+                "example:custom",
+                "minecraft:stripe",
+                "minecraft:flower",
+                "minecraft:base",
+            ]
+            .into_iter()
+            .map(crate::RegistryPacketEntry::stub)
+            .collect(),
+            duplicate_entry_ids: BTreeMap::new(),
+        },
+    );
+    store.registries.tags.insert(
+        BANNER_PATTERN_REGISTRY.to_string(),
+        RegistryTagState {
+            registry: BANNER_PATTERN_REGISTRY.to_string(),
+            tags: BTreeMap::from([
+                (LOOM_NO_ITEM_REQUIRED_PATTERN_TAG.to_string(), vec![3, 0, 1]),
+                ("example:item_patterns".to_string(), vec![2, 0]),
+            ]),
+        },
+    );
+}
+
+fn open_loom_with_pattern_stack(store: &mut WorldStore, pattern_stack: ProtocolItemStackSummary) {
+    store.apply_open_screen(ProtocolOpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_LOOM_ID,
+        title: "Loom".to_string(),
+        title_styled: Vec::new(),
+    });
+    let mut items = vec![ProtocolItemStackSummary::empty(); LOOM_TOTAL_SLOT_COUNT as usize];
+    items[LOOM_BANNER_SLOT as usize] = item_stack(42, 1);
+    items[LOOM_DYE_SLOT as usize] = item_stack(43, 1);
+    items[LOOM_PATTERN_SLOT as usize] = pattern_stack;
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: 7,
+        state_id: 13,
+        items,
+        carried_item: ProtocolItemStackSummary::empty(),
+    });
 }
 
 fn slot_display_empty() -> SlotDisplaySummary {

@@ -192,8 +192,6 @@ const LOOM_SCREEN_WIDTH: i32 = 176;
 const LOOM_SCREEN_HEIGHT: i32 = 166;
 const LOOM_SLOT_COUNT: i16 = 4;
 pub(crate) const LOOM_SELECTED_PATTERN_DATA_ID: i16 = 0;
-pub(crate) const LOOM_NO_ITEM_REQUIRED_PATTERN_COUNT: i32 = 32;
-pub(crate) const LOOM_PATTERN_ITEM_PATTERN_COUNT: i32 = 1;
 const MERCHANT_SCREEN_WIDTH: i32 = 276;
 const MERCHANT_SCREEN_HEIGHT: i32 = 166;
 const MERCHANT_SLOT_COUNT: i16 = 3;
@@ -3294,18 +3292,7 @@ fn loom_pattern_max_scroll_row(world: &WorldStore) -> Option<i32> {
 }
 
 fn loom_selectable_pattern_count(world: &WorldStore) -> Option<i32> {
-    let container = world.inventory().open_container.as_ref()?;
-    if container.menu_type_id != Some(VANILLA_MENU_TYPE_LOOM_ID) {
-        return None;
-    }
-    if !inventory_slot_has_item(world, 0) || !inventory_slot_has_item(world, 1) {
-        return Some(0);
-    }
-    if inventory_slot_has_item(world, 2) {
-        Some(LOOM_PATTERN_ITEM_PATTERN_COUNT)
-    } else {
-        Some(LOOM_NO_ITEM_REQUIRED_PATTERN_COUNT)
-    }
+    i32::try_from(world.loom_selectable_banner_pattern_ids()?.len()).ok()
 }
 
 fn stonecutter_recipe_row_count(visible_recipes: i32) -> i32 {

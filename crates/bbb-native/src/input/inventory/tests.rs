@@ -4,6 +4,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID,
     VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
 };
 use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_DONKEY_ID;
 use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_NAUTILUS_ID;
@@ -17,9 +18,9 @@ use bbb_protocol::packets::{
     ItemStackSummary, MerchantOffer, MerchantOffers, MountScreenOpen, OpenScreen,
     PlaceRecipeCommand, PlayerAbilities, PlayerExperience, RecipeBookChangeSettingsCommand,
     RecipeBookSettings, RecipeBookType, RecipeBookTypeSettings, RecipePropertySetSummary,
-    RegistryTags, SelectBundleItem, SelectTradeCommand, SetBeacon, SetCursorItem, SetEntityData,
-    SetPlayerInventory, SlotDisplaySummary, StonecutterSelectableRecipeSummary, TagNetworkPayload,
-    UpdateRecipes, UpdateTags, Vec3d,
+    RegistryData, RegistryDataEntry, RegistryTags, SelectBundleItem, SelectTradeCommand, SetBeacon,
+    SetCursorItem, SetEntityData, SetPlayerInventory, SlotDisplaySummary,
+    StonecutterSelectableRecipeSummary, TagNetworkPayload, UpdateRecipes, UpdateTags, Vec3d,
 };
 use bbb_protocol::recipe_wire_types::{
     VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID, VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID,
@@ -2055,6 +2056,50 @@ fn loom_pattern_click_queues_container_button_command() {
         })
     );
     assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn loom_pattern_click_targets_use_the_component_holder_set_size() {
+    let mut world = loom_world_with_banner_and_dye();
+    let mut pattern_stack = item_stack(44, 1);
+    pattern_stack.component_patch.added = 1;
+    pattern_stack
+        .component_patch
+        .added_type_ids
+        .push(VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID);
+    pattern_stack
+        .component_patch
+        .provides_banner_pattern_registry_ids = vec![5, 2];
+    let mut items = vec![ItemStackSummary::empty(); 40];
+    items[0] = item_stack(42, 1);
+    items[1] = item_stack(43, 1);
+    items[2] = pattern_stack;
+    world.apply_container_set_content(ContainerSetContent {
+        container_id: 7,
+        state_id: 13,
+        items,
+        carried_item: ItemStackSummary::empty(),
+    });
+
+    assert_eq!(loom_selectable_pattern_count(&world), Some(2));
+    assert_eq!(
+        loom_click_target_at_position(
+            &world,
+            0,
+            Some(PhysicalPosition::new(632.0, 296.0)),
+            PhysicalSize::new(1280, 720),
+        ),
+        Some(LoomClickTarget::Pattern(1))
+    );
+    assert_eq!(
+        loom_click_target_at_position(
+            &world,
+            0,
+            Some(PhysicalPosition::new(646.0, 296.0)),
+            PhysicalSize::new(1280, 720),
+        ),
+        None
+    );
 }
 
 #[test]
@@ -8088,6 +8133,25 @@ fn apply_item_tags(world: &mut WorldStore, tags: Vec<(&str, Vec<i32>)>) {
 
 fn loom_world_with_banner_and_dye() -> WorldStore {
     let mut world = WorldStore::new();
+    world.record_registry_data(RegistryData {
+        registry: "minecraft:banner_pattern".to_string(),
+        entries: (0..32)
+            .map(|index| RegistryDataEntry {
+                id: format!("example:pattern_{index}"),
+                raw_data: None,
+            })
+            .collect(),
+        raw_payload_len: 0,
+    });
+    world.apply_update_tags(UpdateTags {
+        registries: vec![RegistryTags {
+            registry: "minecraft:banner_pattern".to_string(),
+            tags: vec![TagNetworkPayload {
+                tag: "minecraft:no_item_required".to_string(),
+                entries: (0..32).collect(),
+            }],
+        }],
+    });
     world.apply_open_screen(OpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_LOOM_ID,

@@ -140,13 +140,12 @@ use crate::{
         CommandSuggestionHudTooltip, CommandSuggestionNarrationState, DebugOptionsScreenHudRow,
         DialogImePreeditHudState, InventoryScreenBackground, RecipeBookOverlayHudState,
         RecipeBookPageHudState, RecipeBookSearchHudState, RecipeBookTabSelectionHudState,
-        StatsScreenFocus, LOOM_NO_ITEM_REQUIRED_PATTERN_COUNT, LOOM_PATTERN_BUTTON_COLUMNS,
-        LOOM_PATTERN_BUTTON_ROWS, LOOM_PATTERN_BUTTON_SIZE, LOOM_PATTERN_BUTTON_X,
-        LOOM_PATTERN_BUTTON_Y, LOOM_PATTERN_ITEM_PATTERN_COUNT, LOOM_SCROLLER_HEIGHT,
-        LOOM_SCROLLER_MAX_OFFSET, LOOM_SCROLLER_WIDTH, LOOM_SCROLLER_X, LOOM_SCROLLER_Y,
-        LOOM_SELECTED_PATTERN_DATA_ID, RECIPE_BOOK_BUTTON_HEIGHT, RECIPE_BOOK_BUTTON_WIDTH,
-        RECIPE_BOOK_FILTER_BUTTON_HEIGHT, RECIPE_BOOK_FILTER_BUTTON_WIDTH,
-        RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y,
+        StatsScreenFocus, LOOM_PATTERN_BUTTON_COLUMNS, LOOM_PATTERN_BUTTON_ROWS,
+        LOOM_PATTERN_BUTTON_SIZE, LOOM_PATTERN_BUTTON_X, LOOM_PATTERN_BUTTON_Y,
+        LOOM_SCROLLER_HEIGHT, LOOM_SCROLLER_MAX_OFFSET, LOOM_SCROLLER_WIDTH, LOOM_SCROLLER_X,
+        LOOM_SCROLLER_Y, LOOM_SELECTED_PATTERN_DATA_ID, RECIPE_BOOK_BUTTON_HEIGHT,
+        RECIPE_BOOK_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_HEIGHT,
+        RECIPE_BOOK_FILTER_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y,
         RECIPE_BOOK_PAGE_BACKWARD_BUTTON_X, RECIPE_BOOK_PAGE_BUTTON_HEIGHT,
         RECIPE_BOOK_PAGE_BUTTON_WIDTH, RECIPE_BOOK_PAGE_BUTTON_Y,
         RECIPE_BOOK_PAGE_FORWARD_BUTTON_X, RECIPE_BOOK_RECIPE_BUTTON_COLUMNS,
@@ -14487,18 +14486,7 @@ fn push_loom_state_layers(
 }
 
 fn loom_selectable_pattern_count(world: &WorldStore) -> Option<i32> {
-    let container = world.inventory().open_container.as_ref()?;
-    if container.menu_type_id != Some(VANILLA_MENU_TYPE_LOOM_ID) {
-        return None;
-    }
-    if !open_container_slot_has_item(world, 0) || !open_container_slot_has_item(world, 1) {
-        return None;
-    }
-    if open_container_slot_has_item(world, 2) {
-        Some(LOOM_PATTERN_ITEM_PATTERN_COUNT)
-    } else {
-        Some(LOOM_NO_ITEM_REQUIRED_PATTERN_COUNT)
-    }
+    i32::try_from(world.loom_selectable_banner_pattern_ids()?.len()).ok()
 }
 
 fn loom_selected_pattern_index(world: &WorldStore) -> Option<i32> {

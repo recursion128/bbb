@@ -30,6 +30,7 @@ use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
     VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID,
     VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
 };
 use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPE_AXOLOTL_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
@@ -18753,6 +18754,25 @@ fn hud_inventory_screen_projects_loom_layout_and_empty_slot_layers() {
 #[test]
 fn hud_inventory_screen_projects_loom_pattern_grid_and_scroller() {
     let mut world = WorldStore::new();
+    world.record_registry_data(bbb_protocol::packets::RegistryData {
+        registry: "minecraft:banner_pattern".to_string(),
+        entries: (0..32)
+            .map(|index| bbb_protocol::packets::RegistryDataEntry {
+                id: format!("example:pattern_{index}"),
+                raw_data: None,
+            })
+            .collect(),
+        raw_payload_len: 0,
+    });
+    world.apply_update_tags(bbb_protocol::packets::UpdateTags {
+        registries: vec![bbb_protocol::packets::RegistryTags {
+            registry: "minecraft:banner_pattern".to_string(),
+            tags: vec![bbb_protocol::packets::TagNetworkPayload {
+                tag: "minecraft:no_item_required".to_string(),
+                entries: (0..32).collect(),
+            }],
+        }],
+    });
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_LOOM_ID,
@@ -18828,6 +18848,84 @@ fn hud_inventory_screen_projects_loom_pattern_grid_and_scroller() {
             [0.0, 0.0],
             [1.0, 1.0],
         )));
+}
+
+#[test]
+fn hud_inventory_screen_uses_the_loom_component_holder_set_size() {
+    let mut world = WorldStore::new();
+    world.record_registry_data(bbb_protocol::packets::RegistryData {
+        registry: "minecraft:banner_pattern".to_string(),
+        entries: (0..6)
+            .map(|index| bbb_protocol::packets::RegistryDataEntry {
+                id: format!("example:pattern_{index}"),
+                raw_data: None,
+            })
+            .collect(),
+        raw_payload_len: 0,
+    });
+    world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_LOOM_ID,
+        title: "Loom".to_string(),
+        title_styled: Vec::new(),
+    });
+    let mut pattern_stack = item_stack(44, 1);
+    pattern_stack.component_patch.added = 1;
+    pattern_stack
+        .component_patch
+        .added_type_ids
+        .push(VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID);
+    pattern_stack
+        .component_patch
+        .provides_banner_pattern_registry_ids = vec![5, 2];
+    let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 40];
+    items[0] = item_stack(42, 1);
+    items[1] = item_stack(43, 1);
+    items[2] = pattern_stack;
+    world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+        container_id: 7,
+        state_id: 12,
+        items,
+        carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+    });
+
+    let screen = hud_inventory_screen_with_local_state(
+        &world,
+        None,
+        &TerrainTextureState::default(),
+        None,
+        InventoryHudLocalState {
+            loom_selected_pattern_index: Some(1),
+            ..InventoryHudLocalState::default()
+        },
+        0.0,
+    )
+    .unwrap();
+    let pattern_buttons = screen
+        .background_layers
+        .iter()
+        .filter(|layer| {
+            matches!(
+                layer.texture,
+                HudInventoryBackgroundTexture::LoomPattern
+                    | HudInventoryBackgroundTexture::LoomPatternSelected
+                    | HudInventoryBackgroundTexture::LoomPatternHighlighted
+            )
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(pattern_buttons.len(), 2);
+    assert_eq!(
+        pattern_buttons[0].texture,
+        HudInventoryBackgroundTexture::LoomPattern
+    );
+    assert_eq!(
+        pattern_buttons[1].texture,
+        HudInventoryBackgroundTexture::LoomPatternSelected
+    );
+    assert!(screen
+        .background_layers
+        .iter()
+        .any(|layer| layer.texture == HudInventoryBackgroundTexture::LoomScrollerDisabled));
 }
 
 #[test]

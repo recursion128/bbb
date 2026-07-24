@@ -5,8 +5,10 @@ use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
     VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
     VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
-    VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID, VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
+    VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID, VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
 };
 use bbb_protocol::equipment_slots::{
@@ -63,7 +65,7 @@ use crate::item_profiles::{clamp_vanilla_item_max_stack_size, ItemProfiles};
 use crate::{
     ClientRecipeBookState, ClientRecipesState, ClientUiState, LocalPlayerAbilitiesState,
     LocalPlayerExperienceState, LocalPlayerState, MountScreenState, RegistrySet, RegistryTagState,
-    WorldCounters, WorldStore,
+    WorldCounters, WorldStore, BANNER_PATTERN_REGISTRY,
 };
 
 mod crafting;
@@ -187,6 +189,7 @@ const MOUNT_PLAYER_MAIN_SLOT_COUNT: i16 = 27;
 const LOOM_BANNER_ITEM_TAG: &str = "minecraft:banners";
 const LOOM_DYE_ITEM_TAG: &str = "minecraft:loom_dyes";
 const LOOM_PATTERN_ITEM_TAG: &str = "minecraft:loom_patterns";
+const LOOM_NO_ITEM_REQUIRED_PATTERN_TAG: &str = "minecraft:no_item_required";
 const MERCHANT_PAYMENT_SLOT_1: i16 = 0;
 const MERCHANT_PAYMENT_SLOT_2: i16 = 1;
 const MERCHANT_RESULT_SLOT: i16 = 2;
@@ -2254,6 +2257,69 @@ impl WorldStore {
 
     pub fn open_container_data_value(&self, id: i16) -> Option<i16> {
         self.inventory.open_container_data_value(id)
+    }
+
+    /// Vanilla `LoomMenu.getSelectablePatterns`: banner and dye inputs gate the
+    /// list; an empty pattern slot resolves `BannerPatternTags.NO_ITEM_REQUIRED`,
+    /// while a pattern item resolves its effective `PROVIDES_BANNER_PATTERNS`
+    /// holder set in current session order. Missing or invalid holder state
+    /// fails closed to an empty list.
+    pub fn loom_selectable_banner_pattern_ids(&self) -> Option<Vec<i32>> {
+        let container = self.inventory.open_container.as_ref()?;
+        if container.menu_type_id != Some(VANILLA_MENU_TYPE_LOOM_ID) {
+            return None;
+        }
+        let slot_item = |slot_num| {
+            container
+                .slots
+                .iter()
+                .find(|slot| slot.slot == slot_num)
+                .map(|slot| &slot.item)
+        };
+        if slot_item(LOOM_BANNER_SLOT).is_none_or(item_stack_is_empty)
+            || slot_item(LOOM_DYE_SLOT).is_none_or(item_stack_is_empty)
+        {
+            return None;
+        }
+
+        let access = self.registries.frozen_access();
+        let pattern_stack = slot_item(LOOM_PATTERN_SLOT);
+        let resolved = if pattern_stack.is_none_or(item_stack_is_empty) {
+            access.holder_set_by_tag(BANNER_PATTERN_REGISTRY, LOOM_NO_ITEM_REQUIRED_PATTERN_TAG)
+        } else {
+            let pattern_stack = pattern_stack?;
+            if !self.item_stack_has_effective_component(
+                pattern_stack,
+                VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
+            ) {
+                return Some(Vec::new());
+            }
+            let explicitly_patched = pattern_stack
+                .component_patch
+                .added_type_ids
+                .contains(&VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID);
+            let effective = self.effective_item_stack(pattern_stack);
+            let patch = &effective.component_patch;
+            match patch.provides_banner_pattern_tag.as_deref() {
+                Some(_)
+                    if explicitly_patched
+                        && !patch.provides_banner_pattern_registry_ids.is_empty() =>
+                {
+                    return Some(Vec::new());
+                }
+                Some(tag) => access.holder_set_by_tag(BANNER_PATTERN_REGISTRY, tag),
+                None => access.holder_set_by_holder_ids(
+                    BANNER_PATTERN_REGISTRY,
+                    &patch.provides_banner_pattern_registry_ids,
+                ),
+            }
+        };
+
+        Some(
+            resolved
+                .map(|set| set.entries.iter().map(|entry| entry.holder_id).collect())
+                .unwrap_or_default(),
+        )
     }
 
     pub fn apply_local_beacon_confirm_effects(
