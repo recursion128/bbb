@@ -54,8 +54,9 @@ use crate::{
         VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
-        VANILLA_DATA_COMPONENT_RABBIT_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_SALMON_SIZE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_SHEEP_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID,
+        VANILLA_DATA_COMPONENT_RABBIT_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_SALMON_SIZE_TYPE_ID, VANILLA_DATA_COMPONENT_SHEEP_COLOR_TYPE_ID,
+        VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_TROPICAL_FISH_BASE_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID,
@@ -1256,6 +1257,11 @@ fn validate_encodable_data_component_patch_summary(
             }
             crate::data_component_types::VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID => {
                 expected.attack_range = patch.attack_range;
+            }
+            VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID => {
+                expected.repairable_item_registry_ids =
+                    patch.repairable_item_registry_ids.clone();
+                expected.repairable_item_tag = patch.repairable_item_tag.clone();
             }
             VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID => {}
             crate::data_component_types::VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID => {

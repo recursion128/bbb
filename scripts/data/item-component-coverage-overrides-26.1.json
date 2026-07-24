@@ -1286,6 +1286,77 @@
         "status": "complete"
       }
     },
+    "REPAIRABLE": {
+      "canonical_retention": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#REPAIRABLE",
+          "vanilla:net/minecraft/world/item/enchantment/Repairable.java#public record Repairable",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub repairable_item_registry_ids",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub repairable_item_tag",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_repairable",
+          "crates/bbb-world/src/client/dialog.rs#projects_repairable_item_component_with_dialog_registry_context"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#REPAIRABLE",
+          "vanilla:net/minecraft/world/item/enchantment/Repairable.java#public static final StreamCodec<RegistryFriendlyByteBuf, Repairable> STREAM_CODEC",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#holderSet",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_repairable",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#repairable_descriptor_round_trips_direct_and_named_holder_sets_and_rejects_invalid_values_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_repairable_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/ItemStack.java#public boolean isValidRepairItem",
+          "vanilla:net/minecraft/world/inventory/AnvilMenu.java#createResult",
+          "crates/bbb-world/src/client/dialog.rs#projects_repairable_item_component_with_dialog_registry_context",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#projects_holder_backed_component_values_into_protocol_summary"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#REPAIRABLE",
+          "vanilla:net/minecraft/world/item/enchantment/Repairable.java#public static final Codec<Repairable> CODEC",
+          "crates/bbb-native/src/input/component_patch.rs#encode_repairable",
+          "crates/bbb-native/src/input/component_patch.rs#fixed_network_holder_set_encoders_follow_tag_revisions_and_reject_missing_tags",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_preserves_repairable_holder_set_shapes",
+          "crates/bbb-world/src/client/dialog.rs#projects_repairable_item_component_with_dialog_registry_context"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_repairable_item_holder_sets",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#repairable_descriptor_round_trips_direct_and_named_holder_sets_and_rejects_invalid_values_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_repairable_component",
+          "crates/bbb-world/src/client/dialog.rs#projects_repairable_item_component_with_dialog_registry_context",
+          "crates/bbb-native/src/input/component_patch.rs#fixed_network_holder_set_encoders_follow_tag_revisions_and_reject_missing_tags",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_preserves_repairable_holder_set_shapes"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#REPAIRABLE",
+          "vanilla:net/minecraft/world/item/enchantment/Repairable.java#public static final StreamCodec<RegistryFriendlyByteBuf, Repairable> STREAM_CODEC",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#holderSet",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_repairable",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_repairable_item_holder_sets"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "ENCHANTMENTS": {
       "canonical_retention": {
         "evidence": [

@@ -49,8 +49,8 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
     VANILLA_DATA_COMPONENT_RABBIT_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,
-    VANILLA_DATA_COMPONENT_SALMON_SIZE_TYPE_ID, VANILLA_DATA_COMPONENT_SHEEP_COLOR_TYPE_ID,
-    VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID,
+    VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID, VANILLA_DATA_COMPONENT_SALMON_SIZE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_SHEEP_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID,
     VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID, VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID,
@@ -302,6 +302,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_TOOL_TYPE_ID => Some(encode_tool),
         VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID => Some(encode_attack_range),
         VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID => Some(encode_equippable),
+        VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID => Some(encode_repairable),
         VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID => Some(encode_glider),
         VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID => Some(encode_death_protection),
         VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID => Some(encode_blocks_attacks),
@@ -3191,6 +3192,23 @@ fn decode_repairable(
     Ok(())
 }
 
+fn encode_repairable(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let mut encoded = Encoder::new();
+    encode_holder_set_summary(
+        &mut encoded,
+        &summary.repairable_item_registry_ids,
+        summary.repairable_item_tag.as_deref(),
+        NetworkHolderSetRegistry::Item,
+        "repairable items",
+    )?;
+    out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
 fn decode_glider(
     _type_id: i32,
     _decoder: &mut Decoder<'_>,
@@ -4158,10 +4176,10 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec![
                 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 22, 23, 24,
-                25, 26, 27, 28, 30, 32, 34, 35, 36, 37, 38, 39, 40, 42, 43, 44, 45, 46, 48, 49, 50,
-                51, 52, 53, 54, 55, 56, 58, 59, 60, 61, 62, 63, 64, 65, 67, 68, 69, 70, 71, 72, 73,
-                74, 75, 76, 77, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96,
-                97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109,
+                25, 26, 27, 28, 30, 32, 33, 34, 35, 36, 37, 38, 39, 40, 42, 43, 44, 45, 46, 48, 49,
+                50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 61, 62, 63, 64, 65, 67, 68, 69, 70, 71, 72,
+                73, 74, 75, 76, 77, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95,
+                96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109,
             ]
         );
     }
@@ -4267,6 +4285,62 @@ mod tests {
             DataComponentPatchSummary {
                 damage_resistant_type_registry_ids: vec![2],
                 damage_resistant_type_tag: Some("minecraft:is_fire".to_string()),
+                ..DataComponentPatchSummary::default()
+            },
+        ] {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            assert!(descriptor.encode(&summary, &mut encoded).is_err());
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
+    }
+
+    #[test]
+    fn repairable_descriptor_round_trips_direct_and_named_holder_sets_and_rejects_invalid_values_atomically(
+    ) {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID).unwrap();
+
+        for summary in [
+            DataComponentPatchSummary {
+                repairable_item_registry_ids: vec![1, 193],
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                repairable_item_tag: Some("minecraft:repairs_leather_armor".to_string()),
+                ..DataComponentPatchSummary::default()
+            },
+        ] {
+            let mut encoded = Encoder::new();
+            descriptor.encode(&summary, &mut encoded).unwrap();
+            let wire = encoded.into_inner();
+            let mut decoder = Decoder::new(&wire);
+            let mut decoded = DataComponentPatchSummary::default();
+            descriptor.decode(&mut decoder, &mut decoded).unwrap();
+            assert!(decoder.is_empty());
+            assert_eq!(
+                decoded.repairable_item_registry_ids,
+                summary.repairable_item_registry_ids
+            );
+            assert_eq!(decoded.repairable_item_tag, summary.repairable_item_tag);
+        }
+
+        for summary in [
+            DataComponentPatchSummary {
+                repairable_item_registry_ids: vec![-1],
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                repairable_item_registry_ids: vec![i32::MAX],
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                repairable_item_tag: Some("repairs_leather_armor".to_string()),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                repairable_item_registry_ids: vec![1],
+                repairable_item_tag: Some("minecraft:repairs_leather_armor".to_string()),
                 ..DataComponentPatchSummary::default()
             },
         ] {
