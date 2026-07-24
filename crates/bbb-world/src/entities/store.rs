@@ -9,6 +9,7 @@ use bbb_protocol::attribute_modifier_types::{
     VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID,
 };
 use bbb_protocol::attribute_types::{vanilla_attribute_type, VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID};
+use bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID;
 use bbb_protocol::entity_data_serializers::{
     VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID, VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
     VANILLA_ENTITY_DATA_SERIALIZER_INT_ID, VANILLA_ENTITY_DATA_SERIALIZER_LONG_ID,
@@ -34,6 +35,7 @@ use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
     VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
 };
+use bbb_protocol::equipment_slots::vanilla_equipment_slot_by_ordinal;
 use bbb_protocol::item_types::{
     VANILLA_ITEM_CARROT_ON_A_STICK_ID, VANILLA_ITEM_DRAGON_HEAD_ID, VANILLA_ITEM_FISHING_ROD_ID,
     VANILLA_ITEM_WARPED_FUNGUS_ON_A_STICK_ID,
@@ -347,6 +349,27 @@ fn equipment_contains_saddle_item(
     equipment_slots: &BTreeMap<i32, ItemEquipmentSlot>,
 ) -> bool {
     equipment_saddle_item(equipment, equipment_slots).is_some()
+}
+
+fn patched_equippable_asset_for_slot<'a>(
+    item: &'a ItemStackSummary,
+    slot: ProtocolEquipmentSlot,
+) -> Option<Option<&'a str>> {
+    // Vanilla `HumanoidArmorLayer.shouldRender` requires both a matching `Equippable.slot` and an
+    // asset. The outer option distinguishes an untouched prototype component from a patch that
+    // explicitly replaces or removes it; the inner option is the resulting asset.
+    if let Some(equippable) = item.component_patch.equippable.as_ref() {
+        let slot_id = vanilla_equipment_slot_by_ordinal(slot.ordinal())?.id;
+        return Some(
+            (equippable.slot_id == slot_id)
+                .then(|| equippable.asset_id.as_deref())
+                .flatten(),
+        );
+    }
+    item.component_patch
+        .removed_type_ids
+        .contains(&VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID)
+        .then_some(None)
 }
 
 fn upsert_metadata_value(metadata: &mut EntityMetadata, value: ProtocolEntityDataValue) {
@@ -3274,7 +3297,13 @@ impl EntityStore {
                 .map(|update| &update.item)
         };
         let armor_material = |slot: ProtocolEquipmentSlot| -> Option<ArmorMaterialKind> {
-            let item_id = armor_item(slot)?.item_id?;
+            let item = armor_item(slot)?;
+            if let Some(patched_asset) = patched_equippable_asset_for_slot(item, slot) {
+                return patched_asset
+                    .and_then(|asset| asset.strip_prefix("minecraft:"))
+                    .and_then(ArmorMaterialKind::from_equipment_asset);
+            }
+            let item_id = item.item_id?;
             armor_materials.get(&item_id).copied()
         };
         // Vanilla `DyedItemColor.getOrDefault`: the per-slot worn item's `dyed_color` component (a

@@ -12,7 +12,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID, VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_DYE_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID, VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
         VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
         VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
         VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
@@ -1761,6 +1761,60 @@ fn encodes_set_creative_mode_slot_attack_range_component() {
     }
     assert!(value.is_empty());
     assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_equippable_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID],
+                equippable: Some(EquippableSummary {
+                    slot_id: 4,
+                    equip_sound: SoundEventSummary {
+                        registry_id: Some(0),
+                        sound_id: None,
+                        fixed_range_bits: None,
+                    },
+                    asset_id: None,
+                    camera_overlay: None,
+                    allowed_entities: None,
+                    dispensable: true,
+                    swappable: false,
+                    damage_on_hurt: true,
+                    equip_on_interact: false,
+                    can_be_sheared: true,
+                    shearing_sound: SoundEventSummary {
+                        registry_id: Some(1),
+                        sound_id: None,
+                        fixed_range_bits: None,
+                    },
+                }),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            1, 0, // patch counts
+            32, 11, // equippable type and delimited value length
+            4,  // head slot id
+            1,  // equip sound registry holder 0
+            0, 0, 0, // absent asset, overlay, and allowed entities
+            1, 0, 1, 0, 1, // behavior flags
+            2, // shearing sound registry holder 1
+        ]
+    );
 }
 
 #[test]

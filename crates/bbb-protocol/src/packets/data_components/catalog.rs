@@ -18,8 +18,9 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID, VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID,
     VANILLA_DATA_COMPONENT_DYE_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
-    VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+    VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID, VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
+    VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
     VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
     VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
     VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID, VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
@@ -273,6 +274,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID => Some(encode_use_cooldown),
         VANILLA_DATA_COMPONENT_TOOL_TYPE_ID => Some(encode_tool),
         VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID => Some(encode_attack_range),
+        VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID => Some(encode_equippable),
         VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID => Some(encode_death_protection),
         VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID => Some(encode_blocks_attacks),
         VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID => Some(encode_piercing_weapon),
@@ -677,6 +679,69 @@ fn encode_attack_range(
     encoded.write_f32(range.mob_factor);
     out.write_bytes(&encoded.into_inner());
     Ok(())
+}
+
+fn encode_equippable(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let equippable = summary.equippable.as_ref().ok_or_else(|| {
+        ProtocolError::InvalidData("missing equippable component value".to_string())
+    })?;
+    if vanilla_equipment_slot_by_id(equippable.slot_id).is_none() {
+        return Err(ProtocolError::InvalidData(format!(
+            "invalid equippable slot id {}",
+            equippable.slot_id
+        )));
+    }
+
+    let mut encoded = Encoder::new();
+    encoded.write_var_i32(equippable.slot_id);
+    encode_sound_event_holder_summary(&mut encoded, &equippable.equip_sound)?;
+    encode_optional_resource_location(
+        &mut encoded,
+        equippable.asset_id.as_deref(),
+        "equippable asset_id",
+    )?;
+    encode_optional_resource_location(
+        &mut encoded,
+        equippable.camera_overlay.as_deref(),
+        "equippable camera_overlay",
+    )?;
+    encode_optional_holder_set_summary(
+        &mut encoded,
+        equippable.allowed_entities.as_ref().map(|entities| {
+            (
+                entities.registry_ids.as_slice(),
+                entities.tag.as_deref(),
+                "equippable allowed_entities",
+            )
+        }),
+        NetworkHolderSetRegistry::EntityType,
+    )?;
+    encoded.write_bool(equippable.dispensable);
+    encoded.write_bool(equippable.swappable);
+    encoded.write_bool(equippable.damage_on_hurt);
+    encoded.write_bool(equippable.equip_on_interact);
+    encoded.write_bool(equippable.can_be_sheared);
+    encode_sound_event_holder_summary(&mut encoded, &equippable.shearing_sound)?;
+    out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
+fn encode_optional_resource_location(
+    out: &mut Encoder,
+    resource_id: Option<&str>,
+    what: &str,
+) -> Result<()> {
+    let Some(resource_id) = resource_id else {
+        out.write_bool(false);
+        return Ok(());
+    };
+    validate_canonical_resource_location(resource_id, what)?;
+    out.write_bool(true);
+    encode_java_string(out, resource_id, MAX_STRING_CHARS)
 }
 
 fn encode_lore(
@@ -3641,8 +3706,8 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec![
                 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 22, 24, 25,
-                26, 28, 30, 36, 37, 38, 39, 40, 42, 43, 44, 45, 46, 48, 49, 50, 51, 52, 53, 54, 55,
-                56, 58, 59, 60, 61, 62, 64, 67, 68, 69, 70, 72, 75, 77, 80, 102,
+                26, 28, 30, 32, 36, 37, 38, 39, 40, 42, 43, 44, 45, 46, 48, 49, 50, 51, 52, 53, 54,
+                55, 56, 58, 59, 60, 61, 62, 64, 67, 68, 69, 70, 72, 75, 77, 80, 102,
             ]
         );
     }
@@ -4114,6 +4179,192 @@ mod tests {
                 ..DataComponentPatchSummary::default()
             },
         ];
+        for summary in cases {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0x7f);
+            assert!(descriptor.encode(&summary, &mut encoded).is_err());
+            assert_eq!(encoded.into_inner(), [0x7f]);
+        }
+    }
+
+    #[test]
+    fn equippable_descriptor_round_trips_options_holders_and_flags_in_wire_order() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID).unwrap();
+        let summary = DataComponentPatchSummary {
+            equippable: Some(EquippableSummary {
+                slot_id: 4,
+                equip_sound: SoundEventSummary {
+                    registry_id: Some(0),
+                    sound_id: None,
+                    fixed_range_bits: None,
+                },
+                asset_id: Some("minecraft:diamond".to_string()),
+                camera_overlay: Some("minecraft:misc/pumpkinblur".to_string()),
+                allowed_entities: Some(EntityTypeHolderSetSummary {
+                    registry_ids: vec![VANILLA_ENTITY_TYPE_BEE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID],
+                    tag: None,
+                }),
+                dispensable: true,
+                swappable: false,
+                damage_on_hurt: true,
+                equip_on_interact: false,
+                can_be_sheared: true,
+                shearing_sound: SoundEventSummary {
+                    registry_id: None,
+                    sound_id: Some("example:item.shear".to_string()),
+                    fixed_range_bits: Some(7.5_f32.to_bits()),
+                },
+            }),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        descriptor.encode(&summary, &mut encoded).unwrap();
+
+        let mut expected = Encoder::new();
+        expected.write_var_i32(4);
+        expected.write_var_i32(1);
+        expected.write_bool(true);
+        expected.write_string("minecraft:diamond");
+        expected.write_bool(true);
+        expected.write_string("minecraft:misc/pumpkinblur");
+        expected.write_bool(true);
+        expected.write_var_i32(3);
+        expected.write_var_i32(VANILLA_ENTITY_TYPE_BEE_ID);
+        expected.write_var_i32(VANILLA_ENTITY_TYPE_ZOMBIE_ID);
+        expected.write_bool(true);
+        expected.write_bool(false);
+        expected.write_bool(true);
+        expected.write_bool(false);
+        expected.write_bool(true);
+        expected.write_var_i32(0);
+        expected.write_string("example:item.shear");
+        expected.write_bool(true);
+        expected.write_f32(7.5);
+        assert_eq!(encoded.clone().into_inner(), expected.into_inner());
+
+        let wire = encoded.into_inner();
+        let mut decoded = DataComponentPatchSummary::default();
+        let mut decoder = Decoder::new(&wire);
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded, summary);
+
+        let tagged = DataComponentPatchSummary {
+            equippable: Some(EquippableSummary {
+                slot_id: 7,
+                equip_sound: SoundEventSummary {
+                    registry_id: None,
+                    sound_id: Some("example:item.equip".to_string()),
+                    fixed_range_bits: None,
+                },
+                asset_id: None,
+                camera_overlay: None,
+                allowed_entities: Some(EntityTypeHolderSetSummary {
+                    registry_ids: Vec::new(),
+                    tag: Some("minecraft:can_equip_saddle".to_string()),
+                }),
+                dispensable: false,
+                swappable: true,
+                damage_on_hurt: false,
+                equip_on_interact: true,
+                can_be_sheared: false,
+                shearing_sound: SoundEventSummary {
+                    registry_id: Some(1),
+                    sound_id: None,
+                    fixed_range_bits: None,
+                },
+            }),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        descriptor.encode(&tagged, &mut encoded).unwrap();
+        let wire = encoded.into_inner();
+        let mut decoded = DataComponentPatchSummary::default();
+        let mut decoder = Decoder::new(&wire);
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded, tagged);
+    }
+
+    #[test]
+    fn equippable_descriptor_rejects_noncanonical_projections_atomically() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID).unwrap();
+        let valid = EquippableSummary {
+            slot_id: 4,
+            equip_sound: SoundEventSummary {
+                registry_id: Some(0),
+                sound_id: None,
+                fixed_range_bits: None,
+            },
+            asset_id: Some("minecraft:diamond".to_string()),
+            camera_overlay: Some("minecraft:misc/pumpkinblur".to_string()),
+            allowed_entities: Some(EntityTypeHolderSetSummary {
+                registry_ids: vec![VANILLA_ENTITY_TYPE_BEE_ID],
+                tag: None,
+            }),
+            dispensable: true,
+            swappable: true,
+            damage_on_hurt: true,
+            equip_on_interact: false,
+            can_be_sheared: false,
+            shearing_sound: SoundEventSummary {
+                registry_id: Some(1),
+                sound_id: None,
+                fixed_range_bits: None,
+            },
+        };
+        let mut cases = vec![DataComponentPatchSummary::default()];
+        for equippable in [
+            EquippableSummary {
+                slot_id: 8,
+                ..valid.clone()
+            },
+            EquippableSummary {
+                asset_id: Some("Example:diamond".to_string()),
+                ..valid.clone()
+            },
+            EquippableSummary {
+                camera_overlay: Some("bad path".to_string()),
+                ..valid.clone()
+            },
+            EquippableSummary {
+                allowed_entities: Some(EntityTypeHolderSetSummary {
+                    registry_ids: vec![VANILLA_ENTITY_TYPE_BEE_ID],
+                    tag: Some("minecraft:bees".to_string()),
+                }),
+                ..valid.clone()
+            },
+            EquippableSummary {
+                allowed_entities: Some(EntityTypeHolderSetSummary {
+                    registry_ids: vec![-1],
+                    tag: None,
+                }),
+                ..valid.clone()
+            },
+            EquippableSummary {
+                equip_sound: SoundEventSummary {
+                    registry_id: Some(0),
+                    sound_id: Some("example:mixed".to_string()),
+                    fixed_range_bits: None,
+                },
+                ..valid.clone()
+            },
+            EquippableSummary {
+                shearing_sound: SoundEventSummary {
+                    registry_id: None,
+                    sound_id: None,
+                    fixed_range_bits: None,
+                },
+                ..valid
+            },
+        ] {
+            cases.push(DataComponentPatchSummary {
+                equippable: Some(equippable),
+                ..DataComponentPatchSummary::default()
+            });
+        }
         for summary in cases {
             let mut encoded = Encoder::new();
             encoded.write_u8(0x7f);

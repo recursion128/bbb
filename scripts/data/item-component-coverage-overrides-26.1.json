@@ -3398,6 +3398,80 @@
         "status": "complete"
       }
     },
+    "EQUIPPABLE": {
+      "canonical_retention": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#pub struct EquippableSummary",
+          "crates/bbb-protocol/src/packets/data_components.rs#fn decode_equippable",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_additional_item_data_components",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#equippable_descriptor_round_trips_options_holders_and_flags_in_wire_order",
+          "crates/bbb-world/src/client/dialog/body/component_value/equippable/tests.rs#projects_equippable_into_protocol_summary"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/equipment/Equippable.java#public static final StreamCodec<RegistryFriendlyByteBuf, Equippable> STREAM_CODEC",
+          "vanilla:net/minecraft/world/entity/EquipmentSlot.java#public static final StreamCodec<ByteBuf, EquipmentSlot> STREAM_CODEC",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, HolderSet<T>> holderSet",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_equippable",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#equippable_descriptor_round_trips_options_holders_and_flags_in_wire_order",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#equippable_descriptor_rejects_noncanonical_projections_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_equippable_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/client/renderer/entity/layers/HumanoidArmorLayer.java#public static boolean shouldRender",
+          "vanilla:net/minecraft/client/renderer/entity/layers/HumanoidArmorLayer.java#private void renderArmorPiece",
+          "crates/bbb-world/src/entities/store.rs#fn patched_equippable_asset_for_slot",
+          "crates/bbb-world/src/entities/store.rs#let armor_material",
+          "crates/bbb-world/src/entities/tests/visibility_equipment_and_mount_projection.rs#entity_model_sources_apply_equippable_asset_and_slot_patches_to_worn_armor"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/equipment/Equippable.java#public static final Codec<Equippable> CODEC",
+          "crates/bbb-native/src/input/component_patch.rs#fn encode_equippable",
+          "crates/bbb-native/src/input/component_patch.rs#equippable_encoder_preserves_holders_and_codec_defaults",
+          "crates/bbb-world/src/client/dialog/body/component_value/equippable/tests.rs#decodes_equippable_defaults_and_optional_fields",
+          "crates/bbb-world/src/client/dialog/body/component_value/equippable/tests.rs#decodes_equippable_entity_tags_and_context_free_empty_sets"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#equippable_descriptor_round_trips_options_holders_and_flags_in_wire_order",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#equippable_descriptor_rejects_noncanonical_projections_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_equippable_component",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_additional_item_data_components",
+          "crates/bbb-native/src/input/component_patch.rs#equippable_encoder_preserves_holders_and_codec_defaults",
+          "crates/bbb-world/src/client/dialog/body/component_value/equippable/tests.rs#rejects_malformed_equippable_records",
+          "crates/bbb-world/src/entities/tests/visibility_equipment_and_mount_projection.rs#entity_model_sources_apply_equippable_asset_and_slot_patches_to_worn_armor"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#EQUIPPABLE",
+          "vanilla:net/minecraft/world/item/equipment/Equippable.java#public static final StreamCodec<RegistryFriendlyByteBuf, Equippable> STREAM_CODEC",
+          "vanilla:net/minecraft/world/entity/EquipmentSlot.java#public static final StreamCodec<ByteBuf, EquipmentSlot> STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_equippable_component",
+          "crates/bbb-protocol/src/packets/data_components.rs#fn decode_equippable",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_additional_item_data_components",
+          "crates/bbb-world/src/client/dialog/body/component_value/equippable/tests.rs#decodes_equippable_defaults_and_optional_fields"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "LODESTONE_TRACKER": {
       "canonical_retention": {
         "evidence": [

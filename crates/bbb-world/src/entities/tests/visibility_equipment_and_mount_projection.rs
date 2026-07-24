@@ -493,6 +493,104 @@ fn entity_model_sources_project_worn_armor_materials() {
 }
 
 #[test]
+fn entity_model_sources_apply_equippable_asset_and_slot_patches_to_worn_armor() {
+    use std::collections::BTreeMap;
+
+    const DEFAULT_IRON_HELMET: i32 = 804;
+    const PATCHED_ITEM: i32 = 805;
+    let mut store = WorldStore::new();
+    store.set_item_armor_materials(BTreeMap::from([(
+        DEFAULT_IRON_HELMET,
+        ArmorMaterialKind::Iron,
+    )]));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        51,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+    ));
+
+    let equip_head = |item: ItemStackSummary| ProtocolSetEquipment {
+        entity_id: 51,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Head,
+            item,
+        }],
+    };
+    let equippable = |slot_id: i32, asset_id: Option<&str>| EquippableSummary {
+        slot_id,
+        equip_sound: SoundEventSummary {
+            registry_id: Some(0),
+            sound_id: None,
+            fixed_range_bits: None,
+        },
+        asset_id: asset_id.map(str::to_string),
+        camera_overlay: None,
+        allowed_entities: None,
+        dispensable: true,
+        swappable: true,
+        damage_on_hurt: true,
+        equip_on_interact: false,
+        can_be_sheared: false,
+        shearing_sound: SoundEventSummary {
+            registry_id: Some(1),
+            sound_id: None,
+            fixed_range_bits: None,
+        },
+    };
+    let source_material = |store: &WorldStore| {
+        store
+            .entity_model_source_at_partial_tick(51, 1.0)
+            .expect("zombie source")
+            .head_armor
+    };
+
+    assert!(store.apply_set_equipment(equip_head(ItemStackSummary {
+        item_id: Some(PATCHED_ITEM),
+        count: 1,
+        component_patch: DataComponentPatchSummary {
+            added_type_ids: vec![
+                bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
+            ],
+            equippable: Some(equippable(4, Some("minecraft:diamond"))),
+            ..Default::default()
+        },
+    })));
+    assert_eq!(source_material(&store), Some(ArmorMaterialKind::Diamond));
+
+    assert!(store.apply_set_equipment(equip_head(ItemStackSummary {
+        item_id: Some(DEFAULT_IRON_HELMET),
+        count: 1,
+        component_patch: DataComponentPatchSummary {
+            added_type_ids: vec![
+                bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
+            ],
+            equippable: Some(equippable(3, Some("minecraft:diamond"))),
+            ..Default::default()
+        },
+    })));
+    assert_eq!(
+        source_material(&store),
+        None,
+        "an equippable component for the chest slot suppresses the item's default head asset"
+    );
+
+    assert!(store.apply_set_equipment(equip_head(ItemStackSummary {
+        item_id: Some(DEFAULT_IRON_HELMET),
+        count: 1,
+        component_patch: DataComponentPatchSummary {
+            removed_type_ids: vec![
+                bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
+            ],
+            ..Default::default()
+        },
+    })));
+    assert_eq!(
+        source_material(&store),
+        None,
+        "removing equippable suppresses the registry-derived default asset"
+    );
+}
+
+#[test]
 fn entity_model_sources_project_named_and_direct_armor_trim_sprites() {
     use std::collections::BTreeMap;
 
