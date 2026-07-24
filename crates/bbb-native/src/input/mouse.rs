@@ -527,8 +527,7 @@ fn continue_destroy_block_tick(
         return true;
     }
 
-    retarget_destroy_block(input, counters, world, net_commands, hit);
-    true
+    retarget_destroy_block(input, counters, world, net_commands, hit)
 }
 
 fn retarget_destroy_block(
@@ -537,7 +536,10 @@ fn retarget_destroy_block(
     world: &mut WorldStore,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     hit: CrosshairBlockHit,
-) {
+) -> bool {
+    if local_player_block_action_is_restricted(world, hit.pos) {
+        return false;
+    }
     if let Some(old_pos) = world.take_local_destroying_block() {
         queue_player_action_command(
             counters,
@@ -548,7 +550,7 @@ fn retarget_destroy_block(
             0,
         );
     }
-    start_destroy_block(input, counters, world, net_commands, hit);
+    start_destroy_block(input, counters, world, net_commands, hit)
 }
 
 fn maybe_play_destroy_hit_sound(
@@ -573,9 +575,11 @@ fn start_destroy_block(
     world: &mut WorldStore,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     hit: CrosshairBlockHit,
-) {
-    if !block_target_within_world_border(world, hit.pos) {
-        return;
+) -> bool {
+    if local_player_block_action_is_restricted(world, hit.pos)
+        || !block_target_within_world_border(world, hit.pos)
+    {
+        return false;
     }
 
     let sequence = world.next_local_prediction_sequence();
@@ -600,6 +604,12 @@ fn start_destroy_block(
         hit.face,
         sequence,
     );
+    true
+}
+
+fn local_player_block_action_is_restricted(world: &WorldStore, pos: WorldBlockPos) -> bool {
+    world.local_player_is_adventure()
+        && !world.local_selected_main_hand_can_break_block_in_adventure_mode(pos)
 }
 
 fn stop_destroy_block(
@@ -754,11 +764,14 @@ fn scroll_signum(value: f64) -> f64 {
 mod tests {
     use super::*;
     use bbb_net::AttackEntityCommand;
-    use bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID;
+    use bbb_protocol::data_component_types::{
+        VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID, VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID,
+    };
     use bbb_protocol::equipment_slots::VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT;
     use bbb_protocol::packets::{
-        AddEntity, AttackEntity, AttackRangeSummary, BlockEntityData,
-        BlockHitResult as ProtocolBlockHitResult, BlockPos as ProtocolBlockPos, BlockUpdate,
+        AddEntity, AdventureModePredicateDataSummary, AdventureModePredicateSummary, AttackEntity,
+        AttackRangeSummary, BlockEntityData, BlockHitResult as ProtocolBlockHitResult,
+        BlockHolderSetSummary, BlockPos as ProtocolBlockPos, BlockPredicateSummary, BlockUpdate,
         CommonPlayerSpawnInfo, EntityEvent as ProtocolEntityEvent, GameEvent as ProtocolGameEvent,
         InitializeBorder, InteractEntity, ItemStackSummary as ProtocolItemStackSummary,
         OpenSignEditor, PickItemFromBlock, PickItemFromEntity, PlayLogin, PlayerAbilities,
@@ -829,6 +842,14 @@ mod tests {
             param: 3.0,
         });
         assert!(world.local_player_is_spectator());
+    }
+
+    fn set_local_adventure(world: &mut WorldStore) {
+        world.apply_game_event(ProtocolGameEvent {
+            event_id: 3,
+            param: 2.0,
+        });
+        assert!(world.local_player_is_adventure());
     }
 
     fn set_flying_abilities(world: &mut WorldStore, flying_speed: f32) {
@@ -1649,6 +1670,67 @@ mod tests {
             rx.try_recv().unwrap(),
             NetCommand::Swing(InteractionHand::MainHand)
         );
+    }
+
+    #[test]
+    fn adventure_mode_block_destroy_requires_matching_can_break_predicate() {
+        let (tx, mut rx) = mpsc::channel(3);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_block();
+        set_local_adventure(&mut world);
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(1, 1),
+        });
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+        );
+
+        assert_eq!(world.local_player().interaction.destroying_block, None);
+        assert_eq!(counters.player_action_commands_queued, 0);
+        assert_eq!(counters.swing_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
+
+        input.destroy_block_held = false;
+        set_selected_can_break(&mut world, "minecraft:grass_block");
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+        );
+
+        assert_eq!(
+            world.local_player().interaction.destroying_block,
+            Some(CROSSHAIR_BLOCK_POS)
+        );
+        assert_eq!(counters.player_action_commands_queued, 1);
+        assert_eq!(counters.swing_commands_queued, 2);
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::PlayerAction(PlayerAction {
+                action: PlayerActionKind::StartDestroyBlock,
+                ..
+            })
+        ));
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
+        assert!(rx.try_recv().is_err());
     }
 
     #[test]
@@ -3793,6 +3875,33 @@ mod tests {
         world.apply_set_player_inventory(ProtocolSetPlayerInventory {
             slot: 0,
             item: item_stack(item_id, 1),
+        });
+    }
+
+    fn set_selected_can_break(world: &mut WorldStore, block: &str) {
+        let block_id = bbb_protocol::block_types::vanilla_block_type_for_resource_id(block)
+            .unwrap()
+            .id;
+        let mut stack = item_stack(1, 1);
+        stack.component_patch.added = 1;
+        stack.component_patch.added_type_ids = vec![VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID];
+        stack.component_patch.can_break = Some(AdventureModePredicateSummary {
+            unknown: false,
+            block_registry_ids: vec![block_id],
+            unresolved_block_tag_count: 0,
+        });
+        stack.component_patch.can_break_persistent = Some(AdventureModePredicateDataSummary {
+            predicates: vec![BlockPredicateSummary {
+                blocks: Some(BlockHolderSetSummary {
+                    registry_ids: vec![block_id],
+                    tag: None,
+                }),
+                ..BlockPredicateSummary::default()
+            }],
+        });
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: stack,
         });
     }
 

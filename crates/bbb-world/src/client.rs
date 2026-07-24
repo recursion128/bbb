@@ -1,3 +1,4 @@
+mod adventure_mode_predicate;
 mod audio;
 mod book;
 mod chat;

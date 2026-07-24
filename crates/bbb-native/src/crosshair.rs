@@ -46,6 +46,12 @@ pub(crate) fn selection_outline_from_camera(
     pose: Option<CameraPose>,
 ) -> Option<SelectionOutline> {
     let hit = crosshair_block_hit_from_camera(world, pose)?;
+    if world.local_player_is_adventure()
+        && !world.local_selected_main_hand_can_break_block_in_adventure_mode(hit.pos)
+        && !world.local_selected_main_hand_can_place_on_block_in_adventure_mode(hit.pos)
+    {
+        return None;
+    }
     match world.probe_block(hit.pos) {
         Some(probe) => selection_outline_for_probe(&probe),
         None => Some(selection_outline_for_block(hit.pos)),
@@ -1074,15 +1080,18 @@ fn look_direction_from_crosshair_ray(ray: CrosshairRay) -> [f64; 3] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID;
+    use bbb_protocol::data_component_types::{
+        VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID, VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID,
+    };
     use bbb_protocol::entity_data_serializers::{
         VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID, VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
         VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
     };
     use bbb_protocol::packets::{
-        AddEntity, AttackRangeSummary, EntityDataValue, EntityDataValueKind, EntityPositionSync,
-        ItemStackSummary, PlayerAbilities, SetEntityData, SetPlayerInventory,
-        Vec3d as ProtocolVec3d,
+        AddEntity, AdventureModePredicateDataSummary, AdventureModePredicateSummary,
+        AttackRangeSummary, BlockHolderSetSummary, BlockPredicateSummary, EntityDataValue,
+        EntityDataValueKind, EntityPositionSync, GameEvent, ItemStackSummary, PlayerAbilities,
+        SetEntityData, SetPlayerInventory, Vec3d as ProtocolVec3d,
     };
     use bbb_world::{
         ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, PaletteDomain, PaletteKind,
@@ -1804,6 +1813,31 @@ mod tests {
     }
 
     #[test]
+    fn adventure_mode_outline_requires_matching_selected_item_predicate() {
+        let mut world = WorldStore::with_dimension(WorldDimension {
+            min_y: 0,
+            height: 16,
+        });
+        insert_air_chunk(&mut world);
+        assert!(
+            world.apply_block_update(bbb_protocol::packets::BlockUpdate {
+                pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+                block_state_id: VANILLA_GRASS_BLOCK_STATE_ID,
+            })
+        );
+        world.apply_game_event(GameEvent {
+            event_id: 3,
+            param: 2.0,
+        });
+        let pose = Some(camera_pose_at([0.0, 0.0, 0.0], 0.0, 0.0));
+
+        assert_eq!(selection_outline_from_camera(&world, pose), None);
+
+        set_selected_can_place_on(&mut world, "minecraft:grass_block");
+        assert!(selection_outline_from_camera(&world, pose).is_some());
+    }
+
+    #[test]
     fn entity_target_outline_is_none_without_crosshair_entity_target() {
         let world = WorldStore::new();
 
@@ -1902,6 +1936,37 @@ mod tests {
                 max_creative_reach,
                 hitbox_margin,
             ),
+        });
+    }
+
+    fn set_selected_can_place_on(world: &mut WorldStore, block: &str) {
+        let block_id = bbb_protocol::block_types::vanilla_block_type_for_resource_id(block)
+            .unwrap()
+            .id;
+        let mut stack = ItemStackSummary {
+            item_id: Some(1),
+            count: 1,
+            component_patch: Default::default(),
+        };
+        stack.component_patch.added = 1;
+        stack.component_patch.added_type_ids = vec![VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID];
+        stack.component_patch.can_place_on = Some(AdventureModePredicateSummary {
+            unknown: false,
+            block_registry_ids: vec![block_id],
+            unresolved_block_tag_count: 0,
+        });
+        stack.component_patch.can_place_on_persistent = Some(AdventureModePredicateDataSummary {
+            predicates: vec![BlockPredicateSummary {
+                blocks: Some(BlockHolderSetSummary {
+                    registry_ids: vec![block_id],
+                    tag: None,
+                }),
+                ..BlockPredicateSummary::default()
+            }],
+        });
+        world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: stack,
         });
     }
 

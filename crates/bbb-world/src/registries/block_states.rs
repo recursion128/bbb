@@ -1,4 +1,5 @@
 use std::{
+    cmp::Ordering,
     collections::{BTreeMap, BTreeSet},
     sync::{Arc, OnceLock},
 };
@@ -111,6 +112,58 @@ impl BlockStateRegistry {
             }
         }
         properties
+    }
+
+    pub(crate) fn compare_block_property_values(
+        &self,
+        name: &str,
+        property: &str,
+        left: &str,
+        right: &str,
+    ) -> Option<Ordering> {
+        let mut values = Vec::new();
+        for state in self
+            .states
+            .iter()
+            .flatten()
+            .filter(|state| state.name == name)
+        {
+            let value = state.properties.get(property)?;
+            if !values.contains(&value.as_str()) {
+                values.push(value.as_str());
+            }
+        }
+        if !values.contains(&left) || !values.contains(&right) {
+            return None;
+        }
+
+        if values.iter().all(|value| value.parse::<i32>().is_ok()) {
+            return Some(left.parse::<i32>().ok()?.cmp(&right.parse::<i32>().ok()?));
+        }
+        if values
+            .iter()
+            .all(|value| matches!(*value, "false" | "true"))
+        {
+            return Some((left == "true").cmp(&(right == "true")));
+        }
+
+        const DIRECTION_ORDER: &[&str] = &["down", "up", "north", "south", "west", "east"];
+        const AXIS_ORDER: &[&str] = &["x", "y", "z"];
+        let comparable_order = match property {
+            "facing" | "vertical_direction"
+                if values.iter().all(|value| DIRECTION_ORDER.contains(value)) =>
+            {
+                DIRECTION_ORDER
+            }
+            "axis" if values.iter().all(|value| AXIS_ORDER.contains(value)) => AXIS_ORDER,
+            _ => values.as_slice(),
+        };
+        Some(
+            comparable_order
+                .iter()
+                .position(|value| *value == left)?
+                .cmp(&comparable_order.iter().position(|value| *value == right)?),
+        )
     }
 
     pub fn block_registry_len(&self) -> usize {
