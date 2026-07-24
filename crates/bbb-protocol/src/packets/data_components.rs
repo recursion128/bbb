@@ -61,7 +61,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID,
         VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
-        VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_WEAPON_TYPE_ID,
         VANILLA_DATA_COMPONENT_WOLF_COLLAR_TYPE_ID,
         VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID,
@@ -1184,6 +1184,11 @@ fn validate_encodable_data_component_patch_summary(
                 expected.damage_resistant_type_registry_ids =
                     patch.damage_resistant_type_registry_ids.clone();
                 expected.damage_resistant_type_tag = patch.damage_resistant_type_tag.clone();
+            }
+            VANILLA_DATA_COMPONENT_WEAPON_TYPE_ID => {
+                expected.weapon_item_damage_per_attack = patch.weapon_item_damage_per_attack;
+                expected.weapon_disable_blocking_seconds_bits =
+                    patch.weapon_disable_blocking_seconds_bits;
             }
             crate::data_component_types::VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID => {
                 expected.death_protection_effects = patch.death_protection_effects.clone();

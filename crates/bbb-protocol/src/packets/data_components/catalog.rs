@@ -60,8 +60,9 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID, VANILLA_DATA_COMPONENT_TYPES,
     VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
     VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID, VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID,
-    VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_WOLF_COLLAR_TYPE_ID,
-    VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID,
+    VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_WEAPON_TYPE_ID,
+    VANILLA_DATA_COMPONENT_WOLF_COLLAR_TYPE_ID, VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID,
+    VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID,
     VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
     VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
     VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID,
@@ -300,6 +301,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID => Some(encode_use_cooldown),
         VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID => Some(encode_damage_resistant),
         VANILLA_DATA_COMPONENT_TOOL_TYPE_ID => Some(encode_tool),
+        VANILLA_DATA_COMPONENT_WEAPON_TYPE_ID => Some(encode_weapon),
         VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID => Some(encode_attack_range),
         VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID => Some(encode_equippable),
         VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID => Some(encode_repairable),
@@ -3172,6 +3174,41 @@ fn decode_weapon_component(
     Ok(())
 }
 
+fn encode_weapon(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let item_damage_per_attack = summary.weapon_item_damage_per_attack.ok_or_else(|| {
+        ProtocolError::InvalidData("missing weapon item_damage_per_attack".to_string())
+    })?;
+    if item_damage_per_attack < 0 {
+        return Err(ProtocolError::InvalidData(format!(
+            "weapon item_damage_per_attack {item_damage_per_attack} is outside persistent range 0.."
+        )));
+    }
+    let disable_blocking_seconds = f32::from_bits(
+        summary
+            .weapon_disable_blocking_seconds_bits
+            .ok_or_else(|| {
+                ProtocolError::InvalidData(
+                    "missing weapon disable_blocking_for_seconds".to_string(),
+                )
+            })?,
+    );
+    if !disable_blocking_seconds.is_finite() || disable_blocking_seconds.total_cmp(&0.0).is_lt() {
+        return Err(ProtocolError::InvalidData(format!(
+            "weapon disable_blocking_for_seconds {disable_blocking_seconds} is outside persistent range 0.."
+        )));
+    }
+
+    let mut encoded = Encoder::new();
+    encoded.write_var_i32(item_damage_per_attack);
+    encoded.write_f32(disable_blocking_seconds);
+    out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
 fn decode_attack_range_component(
     _type_id: i32,
     decoder: &mut Decoder<'_>,
@@ -4176,10 +4213,10 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec![
                 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 22, 23, 24,
-                25, 26, 27, 28, 30, 32, 33, 34, 35, 36, 37, 38, 39, 40, 42, 43, 44, 45, 46, 48, 49,
-                50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 61, 62, 63, 64, 65, 67, 68, 69, 70, 71, 72,
-                73, 74, 75, 76, 77, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95,
-                96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109,
+                25, 26, 27, 28, 29, 30, 32, 33, 34, 35, 36, 37, 38, 39, 40, 42, 43, 44, 45, 46, 48,
+                49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 61, 62, 63, 64, 65, 67, 68, 69, 70, 71,
+                72, 73, 74, 75, 76, 77, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94,
+                95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109,
             ]
         );
     }
@@ -4341,6 +4378,72 @@ mod tests {
             DataComponentPatchSummary {
                 repairable_item_registry_ids: vec![1],
                 repairable_item_tag: Some("minecraft:repairs_leather_armor".to_string()),
+                ..DataComponentPatchSummary::default()
+            },
+        ] {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            assert!(descriptor.encode(&summary, &mut encoded).is_err());
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
+    }
+
+    #[test]
+    fn weapon_descriptor_round_trips_wire_fields_and_rejects_invalid_persistent_values_atomically()
+    {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_WEAPON_TYPE_ID).unwrap();
+        let summary = DataComponentPatchSummary {
+            weapon_item_damage_per_attack: Some(3),
+            weapon_disable_blocking_seconds_bits: Some(5.0_f32.to_bits()),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        descriptor.encode(&summary, &mut encoded).unwrap();
+
+        let mut expected = Encoder::new();
+        expected.write_var_i32(3);
+        expected.write_f32(5.0);
+        assert_eq!(encoded.clone().into_inner(), expected.into_inner());
+
+        let wire = encoded.into_inner();
+        let mut decoder = Decoder::new(&wire);
+        let mut decoded = DataComponentPatchSummary::default();
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded.weapon_item_damage_per_attack, Some(3));
+        assert_eq!(
+            decoded.weapon_disable_blocking_seconds_bits,
+            Some(5.0_f32.to_bits())
+        );
+
+        for summary in [
+            DataComponentPatchSummary {
+                weapon_disable_blocking_seconds_bits: Some(0.0_f32.to_bits()),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                weapon_item_damage_per_attack: Some(1),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                weapon_item_damage_per_attack: Some(-1),
+                weapon_disable_blocking_seconds_bits: Some(0.0_f32.to_bits()),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                weapon_item_damage_per_attack: Some(1),
+                weapon_disable_blocking_seconds_bits: Some((-0.0_f32).to_bits()),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                weapon_item_damage_per_attack: Some(1),
+                weapon_disable_blocking_seconds_bits: Some(f32::NAN.to_bits()),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                weapon_item_damage_per_attack: Some(1),
+                weapon_disable_blocking_seconds_bits: Some(f32::INFINITY.to_bits()),
                 ..DataComponentPatchSummary::default()
             },
         ] {

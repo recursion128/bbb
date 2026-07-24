@@ -1357,6 +1357,74 @@
         "status": "complete"
       }
     },
+    "WEAPON": {
+      "canonical_retention": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#WEAPON",
+          "vanilla:net/minecraft/world/item/component/Weapon.java#public record Weapon",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub weapon_item_damage_per_attack",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub weapon_disable_blocking_seconds_bits",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_weapon_component",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#projects_sound_bearing_weapon_values_into_protocol_summary"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#WEAPON",
+          "vanilla:net/minecraft/world/item/component/Weapon.java#public static final StreamCodec<RegistryFriendlyByteBuf, Weapon> STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_weapon",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#weapon_descriptor_round_trips_wire_fields_and_rejects_invalid_persistent_values_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_weapon_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/ItemStack.java#public void postHurtEnemy",
+          "vanilla:net/minecraft/world/entity/LivingEntity.java#public float getSecondsToDisableBlocking",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_scalar_wrappers_flat_records_and_string_map",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#projects_sound_bearing_weapon_values_into_protocol_summary"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#WEAPON",
+          "vanilla:net/minecraft/world/item/component/Weapon.java#public static final Codec<Weapon> CODEC",
+          "crates/bbb-native/src/input/component_patch.rs#encode_weapon",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_validates_and_omits_default_weapon_fields",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#rejects_invalid_numeric_item_behavior_records"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_additional_item_data_components",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#weapon_descriptor_round_trips_wire_fields_and_rejects_invalid_persistent_values_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_weapon_component",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_scalar_wrappers_flat_records_and_string_map",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#rejects_invalid_numeric_item_behavior_records",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_validates_and_omits_default_weapon_fields"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#WEAPON",
+          "vanilla:net/minecraft/world/item/component/Weapon.java#public static final StreamCodec<RegistryFriendlyByteBuf, Weapon> STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_weapon_component",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_additional_item_data_components"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "ENCHANTMENTS": {
       "canonical_retention": {
         "evidence": [

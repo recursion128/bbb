@@ -66,7 +66,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID,
         VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
         VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID,
-        VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_WEAPON_TYPE_ID,
         VANILLA_DATA_COMPONENT_WOLF_COLLAR_TYPE_ID,
         VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID,
@@ -4341,6 +4341,37 @@ fn encodes_set_creative_mode_slot_repairable_component() {
             1, 0, // patch counts
             33, 4, // repairable type and delimited value length
             3, 1, 0xc1, 0x01, // two direct item holders
+        ]
+    );
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_weapon_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_WEAPON_TYPE_ID],
+                weapon_item_damage_per_attack: Some(3),
+                weapon_disable_blocking_seconds_bits: Some(5.0_f32.to_bits()),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            1, 0, // patch counts
+            29, 5, // weapon type and delimited value length
+            3, 0x40, 0xa0, 0, 0, // damage per attack and five seconds
         ]
     );
 }
