@@ -1,8 +1,10 @@
 use super::*;
 use crate::{
+    builtin_enum_component_values::{VANILLA_DYE_COLOR_BLUE_ID, VANILLA_DYE_COLOR_RED_ID},
     codec::{offline_player_uuid, Decoder, Encoder, ProtocolError},
     data_component_types::{
-        VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID, VANILLA_DATA_COMPONENT_BEES_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID, VANILLA_DATA_COMPONENT_BEES_TYPE_ID,
         VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID,
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
@@ -1969,6 +1971,70 @@ fn encodes_set_creative_mode_slot_direct_instrument_component() {
         decode_nbt_summary_from_decoder(&mut value).unwrap(),
         Some(NbtSummaryValue::String("Custom horn".to_string()))
     );
+    assert!(value.is_empty());
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_banner_patterns_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID],
+                banner_pattern_layers: vec![
+                    BannerPatternLayerSummary {
+                        registry_id: Some(4),
+                        asset_id: None,
+                        translation_key: None,
+                        color_id: VANILLA_DYE_COLOR_RED_ID,
+                    },
+                    BannerPatternLayerSummary {
+                        registry_id: None,
+                        asset_id: Some("minecraft:stripe_bottom".to_string()),
+                        translation_key: Some("block.minecraft.banner.stripe_bottom".to_string()),
+                        color_id: VANILLA_DYE_COLOR_BLUE_ID,
+                    },
+                ],
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_i16().unwrap(), 36);
+    assert_eq!(decoder.read_var_i32().unwrap(), 1);
+    assert_eq!(decoder.read_var_i32().unwrap(), 42);
+    assert_eq!(decoder.read_len().unwrap(), 1);
+    assert_eq!(decoder.read_len().unwrap(), 0);
+    assert_eq!(
+        decoder.read_var_i32().unwrap(),
+        VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID
+    );
+    let value_len = decoder.read_len().unwrap();
+    let mut value = Decoder::new(
+        decoder
+            .read_exact(value_len, "banner_patterns component value")
+            .unwrap(),
+    );
+    assert_eq!(value.read_len().unwrap(), 2);
+    assert_eq!(value.read_var_i32().unwrap(), 5);
+    assert_eq!(value.read_var_i32().unwrap(), VANILLA_DYE_COLOR_RED_ID);
+    assert_eq!(value.read_var_i32().unwrap(), 0);
+    assert_eq!(
+        value.read_string(usize::MAX).unwrap(),
+        "minecraft:stripe_bottom"
+    );
+    assert_eq!(
+        value.read_string(usize::MAX).unwrap(),
+        "block.minecraft.banner.stripe_bottom"
+    );
+    assert_eq!(value.read_var_i32().unwrap(), VANILLA_DYE_COLOR_BLUE_ID);
     assert!(value.is_empty());
     assert!(decoder.is_empty());
 }

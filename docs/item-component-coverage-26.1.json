@@ -4995,34 +4995,88 @@
       "constant_name": "BANNER_PATTERNS",
       "coverage": {
         "canonical_retention": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components.rs#pub banner_pattern_layers",
+            "crates/bbb-protocol/src/packets/data_components.rs#pub struct BannerPatternLayerSummary",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_banner_patterns",
+            "crates/bbb-protocol/src/packets/data_components.rs#decode_banner_pattern_layers_summary",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_banner_pattern_layers_component_summary",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_banner_pattern_layers_with_named_holders_and_dye_colors"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "network_encode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#BANNER_PATTERNS",
+            "vanilla:net/minecraft/world/level/block/entity/BannerPatternLayers.java#STREAM_CODEC",
+            "vanilla:net/minecraft/world/level/block/entity/BannerPatternLayers.java#public static final StreamCodec<RegistryFriendlyByteBuf, BannerPatternLayers.Layer> STREAM_CODEC",
+            "vanilla:net/minecraft/world/level/block/entity/BannerPattern.java#DIRECT_STREAM_CODEC",
+            "vanilla:net/minecraft/world/level/block/entity/BannerPattern.java#STREAM_CODEC",
+            "vanilla:net/minecraft/world/item/DyeColor.java#STREAM_CODEC",
+            "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#holder",
+            "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#list",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_banner_patterns",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#banner_patterns_descriptor_round_trips_reference_and_direct_layers_in_wire_order",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_banner_patterns_component"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "observable_consumers": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/level/block/entity/BannerPatternLayers.java#addToTooltip",
+            "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_banner_pattern_tooltip_lines",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+            "crates/bbb-world/src/registries/banner_patterns.rs#synchronized_presentations_follow_server_order_and_direct_codec_fields",
+            "crates/bbb-world/src/registries/banner_patterns.rs#named_and_direct_block_entity_holders_share_typed_projection"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "persistent_projection": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#BANNER_PATTERNS",
+            "vanilla:net/minecraft/world/level/block/entity/BannerPatternLayers.java#CODEC",
+            "vanilla:net/minecraft/world/level/block/entity/BannerPatternLayers.java#public static final Codec<BannerPatternLayers.Layer> CODEC",
+            "vanilla:net/minecraft/world/level/block/entity/BannerPattern.java#DIRECT_CODEC",
+            "vanilla:net/minecraft/world/level/block/entity/BannerPattern.java#CODEC",
+            "crates/bbb-native/src/input/component_patch.rs#encode_banner_patterns",
+            "crates/bbb-native/src/input/component_patch.rs#banner_pattern_encoders_use_session_order_or_fixed_catalog",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_banner_pattern_layers_with_named_holders_and_dye_colors"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#banner_patterns_descriptor_round_trips_reference_and_direct_layers_in_wire_order",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#banner_patterns_descriptor_rejects_noncanonical_layers_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_banner_patterns_component",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_banner_pattern_layers_component_summary",
+            "crates/bbb-native/src/input/component_patch.rs#banner_pattern_encoders_use_session_order_or_fixed_catalog",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+            "crates/bbb-world/src/registries/banner_patterns.rs#synchronized_presentations_follow_server_order_and_direct_codec_fields",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_banner_pattern_layers_with_named_holders_and_dye_colors"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "typed_decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#BANNER_PATTERNS",
+            "vanilla:net/minecraft/world/level/block/entity/BannerPatternLayers.java#STREAM_CODEC",
+            "vanilla:net/minecraft/world/level/block/entity/BannerPattern.java#DIRECT_STREAM_CODEC",
+            "vanilla:net/minecraft/world/level/block/entity/BannerPattern.java#STREAM_CODEC",
+            "vanilla:net/minecraft/world/item/DyeColor.java#STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_banner_patterns",
+            "crates/bbb-protocol/src/packets/data_components.rs#decode_banner_pattern_layers_summary",
+            "crates/bbb-protocol/src/packets/data_components.rs#decode_banner_pattern_holder",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_banner_pattern_layers_component_summary"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "resource_id": "minecraft:banner_patterns",

@@ -4,7 +4,8 @@ use std::sync::OnceLock;
 use crate::block_entity_types::vanilla_block_entity_type;
 use crate::data_component_types::{
     DataComponentTypeCatalogEntry, VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID, VANILLA_DATA_COMPONENT_BEES_TYPE_ID,
+    VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID, VANILLA_DATA_COMPONENT_BEES_TYPE_ID,
     VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
     VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
     VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
@@ -288,6 +289,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID => Some(encode_instrument),
         VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID => Some(encode_jukebox_playable),
         VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID => Some(encode_profile),
+        VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID => Some(encode_banner_patterns),
         VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID => Some(encode_container),
         VANILLA_DATA_COMPONENT_BEES_TYPE_ID => Some(encode_bees),
         _ => None,
@@ -2202,6 +2204,59 @@ fn decode_persistent_positive_float(bits: u32, what: &str) -> Result<f32> {
     )))
 }
 
+fn encode_banner_patterns(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    if summary.banner_pattern_layers.len() > MAX_DATA_COMPONENT_LIST_ITEMS {
+        return Err(ProtocolError::PacketTooLarge(
+            summary.banner_pattern_layers.len(),
+            MAX_DATA_COMPONENT_LIST_ITEMS,
+        ));
+    }
+
+    let mut encoded = Encoder::new();
+    encoded.write_var_i32(summary.banner_pattern_layers.len() as i32);
+    for layer in &summary.banner_pattern_layers {
+        encode_banner_pattern_holder(&mut encoded, layer)?;
+        if normalize_vanilla_dye_color_id(layer.color_id) != layer.color_id {
+            return Err(ProtocolError::InvalidData(format!(
+                "banner pattern has noncanonical dye color id {}",
+                layer.color_id
+            )));
+        }
+        encoded.write_var_i32(layer.color_id);
+    }
+    out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
+fn encode_banner_pattern_holder(
+    out: &mut Encoder,
+    layer: &BannerPatternLayerSummary,
+) -> Result<()> {
+    match (
+        layer.registry_id,
+        layer.asset_id.as_deref(),
+        layer.translation_key.as_deref(),
+    ) {
+        (Some(registry_id), None, None) if (0..i32::MAX).contains(&registry_id) => {
+            out.write_var_i32(registry_id + 1);
+            Ok(())
+        }
+        (None, Some(asset_id), Some(translation_key)) => {
+            validate_canonical_resource_location(asset_id, "banner pattern asset id")?;
+            out.write_var_i32(0);
+            encode_java_string(out, asset_id, MAX_STRING_CHARS)?;
+            encode_java_string(out, translation_key, MAX_STRING_CHARS)
+        }
+        _ => Err(ProtocolError::InvalidData(
+            "banner pattern holder projections are not canonical".to_string(),
+        )),
+    }
+}
+
 fn encode_container(
     _type_id: i32,
     summary: &DataComponentPatchSummary,
@@ -3296,6 +3351,7 @@ mod tests {
         block_entity_types::{
             VANILLA_BLOCK_ENTITY_TYPES, VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID,
         },
+        builtin_enum_component_values::{VANILLA_DYE_COLOR_BLUE_ID, VANILLA_DYE_COLOR_RED_ID},
         codec::Encoder,
         entity_types::{
             VANILLA_ENTITY_TYPES, VANILLA_ENTITY_TYPE_BEE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
@@ -3339,7 +3395,7 @@ mod tests {
             vec![
                 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 22, 24, 25,
                 28, 30, 36, 37, 38, 39, 40, 42, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 61, 64,
-                68, 69, 70, 75, 77,
+                68, 69, 70, 72, 75, 77,
             ]
         );
     }
@@ -5382,6 +5438,203 @@ mod tests {
             assert!(descriptor.encode(&summary, &mut encoded).is_err());
             assert_eq!(encoded.into_inner(), [0xaa]);
         }
+    }
+
+    fn banner_pattern_layers() -> Vec<BannerPatternLayerSummary> {
+        vec![
+            BannerPatternLayerSummary {
+                registry_id: Some(4),
+                asset_id: None,
+                translation_key: None,
+                color_id: VANILLA_DYE_COLOR_RED_ID,
+            },
+            BannerPatternLayerSummary {
+                registry_id: None,
+                asset_id: Some("minecraft:stripe_bottom".to_string()),
+                translation_key: Some("block.minecraft.banner.stripe_bottom".to_string()),
+                color_id: VANILLA_DYE_COLOR_BLUE_ID,
+            },
+        ]
+    }
+
+    #[test]
+    fn banner_patterns_descriptor_round_trips_reference_and_direct_layers_in_wire_order() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID)
+                .unwrap();
+        let empty = DataComponentPatchSummary::default();
+        let mut encoded = Encoder::new();
+        descriptor.encode(&empty, &mut encoded).unwrap();
+        assert_eq!(encoded.clone().into_inner(), [0]);
+        let wire = encoded.into_inner();
+        let mut decoder = Decoder::new(&wire);
+        let mut decoded = DataComponentPatchSummary::default();
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded, empty);
+
+        let summary = DataComponentPatchSummary {
+            banner_pattern_layers: banner_pattern_layers(),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        descriptor.encode(&summary, &mut encoded).unwrap();
+        let mut expected = Encoder::new();
+        expected.write_var_i32(2);
+        expected.write_var_i32(5);
+        expected.write_var_i32(VANILLA_DYE_COLOR_RED_ID);
+        expected.write_var_i32(0);
+        expected.write_string("minecraft:stripe_bottom");
+        expected.write_string("block.minecraft.banner.stripe_bottom");
+        expected.write_var_i32(VANILLA_DYE_COLOR_BLUE_ID);
+        assert_eq!(encoded.clone().into_inner(), expected.into_inner());
+
+        let wire = encoded.into_inner();
+        let mut decoder = Decoder::new(&wire);
+        let mut decoded = DataComponentPatchSummary::default();
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded, summary);
+
+        let maximal_translation =
+            format!("{}a", "😀".repeat((MAX_STRING_CHARS.saturating_sub(1)) / 2));
+        assert_eq!(maximal_translation.encode_utf16().count(), MAX_STRING_CHARS);
+        let boundary = DataComponentPatchSummary {
+            banner_pattern_layers: vec![
+                BannerPatternLayerSummary {
+                    registry_id: Some(i32::MAX - 1),
+                    color_id: VANILLA_DYE_COLOR_RED_ID,
+                    ..BannerPatternLayerSummary::default()
+                },
+                BannerPatternLayerSummary {
+                    asset_id: Some("example:signal".to_string()),
+                    translation_key: Some(maximal_translation),
+                    color_id: VANILLA_DYE_COLOR_BLUE_ID,
+                    ..BannerPatternLayerSummary::default()
+                },
+            ],
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        descriptor.encode(&boundary, &mut encoded).unwrap();
+        let wire = encoded.into_inner();
+        let mut decoder = Decoder::new(&wire);
+        let mut decoded = DataComponentPatchSummary::default();
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded, boundary);
+
+        let maximal = DataComponentPatchSummary {
+            banner_pattern_layers: vec![
+                BannerPatternLayerSummary {
+                    registry_id: Some(0),
+                    color_id: VANILLA_DYE_COLOR_RED_ID,
+                    ..BannerPatternLayerSummary::default()
+                };
+                MAX_DATA_COMPONENT_LIST_ITEMS
+            ],
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        descriptor.encode(&maximal, &mut encoded).unwrap();
+        let wire = encoded.into_inner();
+        let mut decoder = Decoder::new(&wire);
+        let mut decoded = DataComponentPatchSummary::default();
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded, maximal);
+    }
+
+    #[test]
+    fn banner_patterns_descriptor_rejects_noncanonical_layers_atomically() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID)
+                .unwrap();
+        let valid = DataComponentPatchSummary {
+            banner_pattern_layers: banner_pattern_layers(),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut cases = Vec::new();
+        for invalid_layer in [
+            BannerPatternLayerSummary {
+                registry_id: Some(-1),
+                color_id: VANILLA_DYE_COLOR_RED_ID,
+                ..BannerPatternLayerSummary::default()
+            },
+            BannerPatternLayerSummary {
+                registry_id: Some(i32::MAX),
+                color_id: VANILLA_DYE_COLOR_RED_ID,
+                ..BannerPatternLayerSummary::default()
+            },
+            BannerPatternLayerSummary {
+                registry_id: Some(0),
+                asset_id: Some("example:mixed".to_string()),
+                color_id: VANILLA_DYE_COLOR_RED_ID,
+                ..BannerPatternLayerSummary::default()
+            },
+            BannerPatternLayerSummary {
+                color_id: VANILLA_DYE_COLOR_RED_ID,
+                ..BannerPatternLayerSummary::default()
+            },
+            BannerPatternLayerSummary {
+                asset_id: Some("example:missing_translation".to_string()),
+                color_id: VANILLA_DYE_COLOR_RED_ID,
+                ..BannerPatternLayerSummary::default()
+            },
+            BannerPatternLayerSummary {
+                asset_id: Some("Bad:asset".to_string()),
+                translation_key: Some("block.example.bad".to_string()),
+                color_id: VANILLA_DYE_COLOR_RED_ID,
+                ..BannerPatternLayerSummary::default()
+            },
+            BannerPatternLayerSummary {
+                asset_id: Some("example:oversized".to_string()),
+                translation_key: Some("x".repeat(MAX_STRING_CHARS + 1)),
+                color_id: VANILLA_DYE_COLOR_RED_ID,
+                ..BannerPatternLayerSummary::default()
+            },
+            BannerPatternLayerSummary {
+                registry_id: Some(0),
+                color_id: -1,
+                ..BannerPatternLayerSummary::default()
+            },
+            BannerPatternLayerSummary {
+                registry_id: Some(0),
+                color_id: 16,
+                ..BannerPatternLayerSummary::default()
+            },
+        ] {
+            cases.push(DataComponentPatchSummary {
+                banner_pattern_layers: vec![banner_pattern_layers()[0].clone(), invalid_layer],
+                ..DataComponentPatchSummary::default()
+            });
+        }
+
+        for summary in cases {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            assert!(descriptor.encode(&summary, &mut encoded).is_err());
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
+
+        let oversized = DataComponentPatchSummary {
+            banner_pattern_layers: vec![
+                banner_pattern_layers()[0].clone();
+                MAX_DATA_COMPONENT_LIST_ITEMS + 1
+            ],
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        encoded.write_u8(0xaa);
+        assert!(matches!(
+            descriptor.encode(&oversized, &mut encoded),
+            Err(ProtocolError::PacketTooLarge(count, max))
+                if count == MAX_DATA_COMPONENT_LIST_ITEMS + 1
+                    && max == MAX_DATA_COMPONENT_LIST_ITEMS
+        ));
+        assert_eq!(encoded.into_inner(), [0xaa]);
+
+        descriptor.encode(&valid, &mut Encoder::new()).unwrap();
     }
 
     fn bee_occupant() -> BeeOccupantSummary {
