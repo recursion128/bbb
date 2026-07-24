@@ -433,3 +433,8 @@
   twinkle、raw flight VarInt 与最多 256 个嵌套爆炸；creative 持久化范围、
   framing、SNBT、tooltip/tint、rocket 状态及粒子/声音证据齐备，合同见
   `docs/archive/firework-components-roundtrip-design.md`。
+- **2026-07-23（Potion effect component 家族六维闭环）**：
+  `POTION_CONTENTS` 与 `SUSPICIOUS_STEW_EFFECTS` 现精确重编码可选 potion
+  holder、颜色、递归 mob-effect、名称及 stew effect/duration 列表；creative
+  framing、SNBT、tint/tooltip、谓词与配方证据齐备，合同见
+  `docs/archive/potion-effect-components-roundtrip-design.md`。

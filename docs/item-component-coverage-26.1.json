@@ -2786,34 +2786,74 @@
       "constant_name": "POTION_CONTENTS",
       "coverage": {
         "canonical_retention": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components.rs#pub potion_id",
+            "crates/bbb-protocol/src/packets/data_components.rs#pub potion_custom_effects",
+            "crates/bbb-protocol/src/packets/data_components.rs#decode_potion_contents",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_additional_item_data_components",
+            "crates/bbb-world/src/client/dialog/body/component_value/potion_contents/tests.rs#decodes_full_potion_contents_and_recursive_mob_effect_details"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "network_encode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/alchemy/PotionContents.java#public static final StreamCodec<RegistryFriendlyByteBuf, PotionContents> STREAM_CODEC",
+            "vanilla:net/minecraft/world/effect/MobEffectInstance.java#public static final StreamCodec<RegistryFriendlyByteBuf, MobEffectInstance> STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_potion_contents",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#potion_effect_descriptors_round_trip_exact_wire_values",
+            "crates/bbb-protocol/src/packets/data_components.rs#encodes_potion_effect_family_patch_with_independent_delimiters",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_potion_effect_family_components"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "observable_consumers": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/alchemy/PotionContents.java#getColor",
+            "vanilla:net/minecraft/world/item/alchemy/PotionContents.java#addToTooltip",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#item_tint_sources_use_stack_component_colors_when_available",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_component_condition_predicates",
+            "crates/bbb-world/src/recipes/slot_display/tests.rs#with_any_potion_uses_potion_outer_order_and_replaces_custom_contents"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "persistent_projection": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/alchemy/PotionContents.java#public static final Codec<PotionContents> CODEC",
+            "crates/bbb-native/src/input/component_patch.rs#encode_potion_contents",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_preserves_potion_contents_and_omits_unknown_potions",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+            "crates/bbb-world/src/client/dialog/body/component_value/potion_contents/tests.rs#decodes_potion_contents_compact_holder_and_empty_full_defaults"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#potion_effect_descriptors_round_trip_exact_wire_values",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#potion_effect_descriptors_enforce_bounds_and_presence_atomically",
+            "crates/bbb-protocol/src/packets/data_components.rs#encodes_potion_effect_family_patch_with_independent_delimiters",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_potion_effect_family_components",
+            "crates/bbb-world/src/client/dialog/body/component_value/potion_contents/tests.rs#rejects_malformed_potion_contents_holders_effects_and_ranges",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_component_condition_predicates"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "typed_decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#POTION_CONTENTS",
+            "vanilla:net/minecraft/world/item/alchemy/PotionContents.java#public record PotionContents",
+            "vanilla:net/minecraft/world/effect/MobEffectInstance.java#private record Details",
+            "crates/bbb-protocol/src/packets/data_components.rs#decode_potion_contents",
+            "crates/bbb-protocol/src/packets/data_components.rs#decode_mob_effect_instance",
+            "crates/bbb-world/src/client/dialog/body/component_value/potion_contents/tests.rs#decodes_full_potion_contents_and_recursive_mob_effect_details"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "resource_id": "minecraft:potion_contents",
@@ -2878,34 +2918,72 @@
       "constant_name": "SUSPICIOUS_STEW_EFFECTS",
       "coverage": {
         "canonical_retention": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components.rs#pub suspicious_stew_effects",
+            "crates/bbb-protocol/src/packets/data_components.rs#decode_suspicious_stew_effects",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_suspicious_stew_effects_summary",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_suspicious_stew_effects_with_builtin_holders_and_lenient_duration"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "network_encode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/SuspiciousStewEffects.java#public static final StreamCodec<RegistryFriendlyByteBuf, SuspiciousStewEffects> STREAM_CODEC",
+            "vanilla:net/minecraft/world/item/component/SuspiciousStewEffects.java#public static final StreamCodec<RegistryFriendlyByteBuf, SuspiciousStewEffects.Entry> STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_suspicious_stew_effects",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#potion_effect_descriptors_round_trip_exact_wire_values",
+            "crates/bbb-protocol/src/packets/data_components.rs#encodes_potion_effect_family_patch_with_independent_delimiters",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_potion_effect_family_components"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "observable_consumers": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/SuspiciousStewEffects.java#addToTooltip",
+            "vanilla:net/minecraft/world/item/component/SuspiciousStewEffects.java#onConsume",
+            "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_suspicious_stew_tooltip_lines",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+            "crates/bbb-world/src/entities/status.rs#apply_update_mob_effect"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "persistent_projection": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/SuspiciousStewEffects.java#public static final Codec<SuspiciousStewEffects> CODEC",
+            "crates/bbb-native/src/input/component_patch.rs#encode_suspicious_stew_effects",
+            "crates/bbb-native/src/input/component_patch.rs#suspicious_stew_effects_use_codec_defaults_and_omit_unknown_holders",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#suspicious_stew_fields_follow_compound_last_wins_semantics"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#potion_effect_descriptors_round_trip_exact_wire_values",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#potion_effect_descriptors_enforce_bounds_and_presence_atomically",
+            "crates/bbb-protocol/src/packets/data_components.rs#encodes_potion_effect_family_patch_with_independent_delimiters",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_potion_effect_family_components",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_suspicious_stew_effects_with_builtin_holders_and_lenient_duration",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "typed_decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#SUSPICIOUS_STEW_EFFECTS",
+            "vanilla:net/minecraft/world/item/component/SuspiciousStewEffects.java#public record SuspiciousStewEffects",
+            "vanilla:net/minecraft/world/item/component/SuspiciousStewEffects.java#public record Entry",
+            "crates/bbb-protocol/src/packets/data_components.rs#decode_suspicious_stew_effects",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_suspicious_stew_effects_summary",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_suspicious_stew_effects_with_builtin_holders_and_lenient_duration"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "resource_id": "minecraft:suspicious_stew_effects",

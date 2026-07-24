@@ -12,9 +12,10 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID, VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
     VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
     VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID, VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
-    VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID, VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
-    VANILLA_DATA_COMPONENT_TRIM_TYPE_ID, VANILLA_DATA_COMPONENT_TYPES,
-    VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID, VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
+    VANILLA_DATA_COMPONENT_TYPES, VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
     VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
 };
 use crate::nbt_summary::{encode_nbt_summary_bounded, MAX_NBT_DEPTH};
@@ -233,6 +234,10 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_TRIM_TYPE_ID => Some(encode_trim),
         VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID => Some(encode_firework_explosion),
         VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID => Some(encode_fireworks),
+        VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID => Some(encode_potion_contents),
+        VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID => {
+            Some(encode_suspicious_stew_effects)
+        }
         VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID => Some(encode_entity_data),
         VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID => Some(encode_bucket_entity_data),
         VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID => Some(encode_block_entity_data),
@@ -536,6 +541,77 @@ fn encode_mob_effect_details(
             depth + 1,
         )?;
     }
+    Ok(())
+}
+
+fn encode_potion_contents(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let custom_effect_count = summary.potion_custom_effect_count.ok_or_else(|| {
+        ProtocolError::InvalidData("missing potion custom effect count".to_string())
+    })?;
+    if custom_effect_count != summary.potion_custom_effects.len() {
+        return Err(ProtocolError::InvalidData(format!(
+            "potion custom effect count {custom_effect_count} does not match {} effects",
+            summary.potion_custom_effects.len()
+        )));
+    }
+    if custom_effect_count > MAX_DATA_COMPONENT_LIST_ITEMS {
+        return Err(ProtocolError::PacketTooLarge(
+            custom_effect_count,
+            MAX_DATA_COMPONENT_LIST_ITEMS,
+        ));
+    }
+
+    let mut encoded = Encoder::new();
+    encoded.write_bool(summary.potion_id.is_some());
+    if let Some(potion_id) = summary.potion_id {
+        if vanilla_potion(potion_id).is_none() {
+            return Err(ProtocolError::InvalidData(format!(
+                "invalid vanilla potion holder id {potion_id}"
+            )));
+        }
+        encoded.write_var_i32(potion_id);
+    }
+    encoded.write_bool(summary.potion_custom_color.is_some());
+    if let Some(custom_color) = summary.potion_custom_color {
+        encoded.write_i32(custom_color);
+    }
+    encoded.write_var_i32(custom_effect_count as i32);
+    for effect in &summary.potion_custom_effects {
+        encode_mob_effect_instance(&mut encoded, effect)?;
+    }
+    encode_optional_java_string(
+        &mut encoded,
+        summary.potion_custom_name.as_deref(),
+        MAX_STRING_CHARS,
+    )?;
+    out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
+fn encode_suspicious_stew_effects(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    if summary.suspicious_stew_effects.len() > MAX_DATA_COMPONENT_LIST_ITEMS {
+        return Err(ProtocolError::PacketTooLarge(
+            summary.suspicious_stew_effects.len(),
+            MAX_DATA_COMPONENT_LIST_ITEMS,
+        ));
+    }
+
+    let mut encoded = Encoder::new();
+    encoded.write_var_i32(summary.suspicious_stew_effects.len() as i32);
+    for effect in &summary.suspicious_stew_effects {
+        client_state::validate_mob_effect_holder_id(effect.effect_id)?;
+        encoded.write_var_i32(effect.effect_id);
+        encoded.write_var_i32(effect.duration);
+    }
+    out.write_bytes(&encoded.into_inner());
     Ok(())
 }
 
@@ -2341,7 +2417,9 @@ mod tests {
                 .filter(|descriptor| descriptor.can_encode())
                 .map(|descriptor| descriptor.type_id())
                 .collect::<Vec<_>>(),
-            vec![0, 1, 2, 3, 4, 16, 24, 36, 37, 38, 39, 40, 55, 56, 58, 59, 60, 68, 69, 70,]
+            vec![
+                0, 1, 2, 3, 4, 16, 24, 36, 37, 38, 39, 40, 51, 53, 55, 56, 58, 59, 60, 68, 69, 70,
+            ]
         );
     }
 
@@ -3790,6 +3868,301 @@ mod tests {
                 "{error} did not contain {expected_error:?}"
             );
         }
+    }
+
+    #[test]
+    fn potion_effect_descriptors_round_trip_exact_wire_values() {
+        let potion_descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID)
+                .unwrap();
+        let potion = DataComponentPatchSummary {
+            potion_id: Some(3),
+            potion_custom_color: Some(i32::MIN),
+            potion_custom_effect_count: Some(1),
+            potion_custom_effects: vec![MobEffectInstanceSummary {
+                effect_id: 2,
+                amplifier: 255,
+                duration: -1,
+                ambient: true,
+                show_particles: false,
+                show_icon: true,
+                hidden_effect: Some(Box::new(MobEffectDetailsSummary {
+                    amplifier: 1,
+                    duration: i32::MAX,
+                    ambient: false,
+                    show_particles: true,
+                    show_icon: false,
+                    hidden_effect: None,
+                })),
+            }],
+            potion_custom_name: Some("swift😀".to_string()),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        potion_descriptor.encode(&potion, &mut encoded).unwrap();
+        let encoded = encoded.into_inner();
+        let mut expected = Encoder::new();
+        expected.write_bool(true);
+        expected.write_var_i32(3);
+        expected.write_bool(true);
+        expected.write_i32(i32::MIN);
+        expected.write_var_i32(1);
+        expected.write_var_i32(2);
+        expected.write_var_i32(255);
+        expected.write_var_i32(-1);
+        expected.write_bool(true);
+        expected.write_bool(false);
+        expected.write_bool(true);
+        expected.write_bool(true);
+        expected.write_var_i32(1);
+        expected.write_var_i32(i32::MAX);
+        expected.write_bool(false);
+        expected.write_bool(true);
+        expected.write_bool(false);
+        expected.write_bool(false);
+        expected.write_bool(true);
+        expected.write_string("swift😀");
+        assert_eq!(encoded, expected.into_inner());
+
+        let mut decoded = DataComponentPatchSummary::default();
+        let mut decoder = Decoder::new(&encoded);
+        potion_descriptor
+            .decode(&mut decoder, &mut decoded)
+            .unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded.potion_id, potion.potion_id);
+        assert_eq!(decoded.potion_custom_color, potion.potion_custom_color);
+        assert_eq!(
+            decoded.potion_custom_effect_count,
+            potion.potion_custom_effect_count
+        );
+        assert_eq!(decoded.potion_custom_effects, potion.potion_custom_effects);
+        assert_eq!(decoded.potion_custom_name, potion.potion_custom_name);
+
+        let stew_descriptor = vanilla_data_component_descriptor(
+            VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
+        )
+        .unwrap();
+        let stew = DataComponentPatchSummary {
+            suspicious_stew_effects: vec![
+                SuspiciousStewEffectSummary {
+                    effect_id: 0,
+                    duration: i32::MIN,
+                },
+                SuspiciousStewEffectSummary {
+                    effect_id: 1,
+                    duration: i32::MAX,
+                },
+            ],
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        stew_descriptor.encode(&stew, &mut encoded).unwrap();
+        let encoded = encoded.into_inner();
+        let mut expected = Encoder::new();
+        expected.write_var_i32(2);
+        expected.write_var_i32(0);
+        expected.write_var_i32(i32::MIN);
+        expected.write_var_i32(1);
+        expected.write_var_i32(i32::MAX);
+        assert_eq!(encoded, expected.into_inner());
+
+        let mut decoded = DataComponentPatchSummary::default();
+        let mut decoder = Decoder::new(&encoded);
+        stew_descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(
+            decoded.suspicious_stew_effects,
+            stew.suspicious_stew_effects
+        );
+    }
+
+    #[test]
+    fn potion_effect_descriptors_enforce_bounds_and_presence_atomically() {
+        fn hidden_effect_chain(depth: usize) -> Option<Box<MobEffectDetailsSummary>> {
+            let mut hidden = None;
+            for _ in 0..depth {
+                hidden = Some(Box::new(MobEffectDetailsSummary {
+                    amplifier: 0,
+                    duration: 1,
+                    ambient: false,
+                    show_particles: true,
+                    show_icon: true,
+                    hidden_effect: hidden,
+                }));
+            }
+            hidden
+        }
+
+        let effect = MobEffectInstanceSummary {
+            effect_id: 0,
+            amplifier: 0,
+            duration: 1,
+            ambient: false,
+            show_particles: true,
+            show_icon: true,
+            hidden_effect: None,
+        };
+        let potion_descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID)
+                .unwrap();
+        let empty_potion = DataComponentPatchSummary {
+            potion_custom_effect_count: Some(0),
+            ..DataComponentPatchSummary::default()
+        };
+        potion_descriptor
+            .encode(&empty_potion, &mut Encoder::new())
+            .unwrap();
+
+        let maximal_name = format!("{}a", "😀".repeat((MAX_STRING_CHARS.saturating_sub(1)) / 2));
+        assert_eq!(maximal_name.encode_utf16().count(), MAX_STRING_CHARS);
+        let maximal_potion = DataComponentPatchSummary {
+            potion_custom_effect_count: Some(MAX_DATA_COMPONENT_LIST_ITEMS),
+            potion_custom_effects: vec![effect.clone(); MAX_DATA_COMPONENT_LIST_ITEMS],
+            potion_custom_name: Some(maximal_name.clone()),
+            ..DataComponentPatchSummary::default()
+        };
+        potion_descriptor
+            .encode(&maximal_potion, &mut Encoder::new())
+            .unwrap();
+
+        let mut oversized_wire_name = Encoder::new();
+        oversized_wire_name.write_bool(false);
+        oversized_wire_name.write_bool(false);
+        oversized_wire_name.write_var_i32(0);
+        oversized_wire_name.write_bool(true);
+        oversized_wire_name.write_string(&"😀".repeat(MAX_STRING_CHARS / 2 + 1));
+        let decode_error = potion_descriptor
+            .decode(
+                &mut Decoder::new(&oversized_wire_name.into_inner()),
+                &mut DataComponentPatchSummary::default(),
+            )
+            .unwrap_err();
+        assert!(decode_error.to_string().contains("max is 32767"));
+
+        let mut potion_cases = Vec::new();
+        let mut missing_count = empty_potion.clone();
+        missing_count.potion_custom_effect_count = None;
+        potion_cases.push((missing_count, "missing potion custom effect count"));
+        let mut mismatched_count = empty_potion.clone();
+        mismatched_count.potion_custom_effect_count = Some(1);
+        potion_cases.push((mismatched_count, "does not match 0 effects"));
+        let mut invalid_potion = empty_potion.clone();
+        invalid_potion.potion_id = Some(crate::potion_types::VANILLA_POTIONS.len() as i32);
+        potion_cases.push((invalid_potion, "invalid vanilla potion holder id"));
+        let mut invalid_effect = empty_potion.clone();
+        invalid_effect.potion_custom_effect_count = Some(1);
+        invalid_effect.potion_custom_effects = vec![MobEffectInstanceSummary {
+            effect_id: crate::mob_effect_types::VANILLA_MOB_EFFECT_TYPES.len() as i32,
+            ..effect.clone()
+        }];
+        potion_cases.push((invalid_effect, "invalid vanilla mob effect holder id"));
+        for amplifier in [-1, 256] {
+            let mut invalid_amplifier = empty_potion.clone();
+            invalid_amplifier.potion_custom_effect_count = Some(1);
+            invalid_amplifier.potion_custom_effects = vec![MobEffectInstanceSummary {
+                amplifier,
+                ..effect.clone()
+            }];
+            potion_cases.push((invalid_amplifier, "outside 0..=255"));
+        }
+        let mut excessive_depth = empty_potion.clone();
+        excessive_depth.potion_custom_effect_count = Some(1);
+        excessive_depth.potion_custom_effects = vec![MobEffectInstanceSummary {
+            hidden_effect: hidden_effect_chain(MAX_MOB_EFFECT_DETAILS_DEPTH + 1),
+            ..effect.clone()
+        }];
+        potion_cases.push((excessive_depth, "exceeded max depth"));
+        let mut oversized_name = empty_potion.clone();
+        oversized_name.potion_custom_name = Some(format!("{maximal_name}b"));
+        potion_cases.push((oversized_name, "max is 32767"));
+
+        for (summary, expected_error) in potion_cases {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            let error = potion_descriptor
+                .encode(&summary, &mut encoded)
+                .unwrap_err();
+            assert!(
+                error.to_string().contains(expected_error),
+                "{error} did not contain {expected_error:?}"
+            );
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
+
+        let oversized_potion = DataComponentPatchSummary {
+            potion_custom_effect_count: Some(MAX_DATA_COMPONENT_LIST_ITEMS + 1),
+            potion_custom_effects: vec![effect; MAX_DATA_COMPONENT_LIST_ITEMS + 1],
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        encoded.write_u8(0xaa);
+        assert!(matches!(
+            potion_descriptor.encode(&oversized_potion, &mut encoded),
+            Err(ProtocolError::PacketTooLarge(actual, max))
+                if actual == MAX_DATA_COMPONENT_LIST_ITEMS + 1
+                    && max == MAX_DATA_COMPONENT_LIST_ITEMS
+        ));
+        assert_eq!(encoded.into_inner(), [0xaa]);
+
+        let stew_descriptor = vanilla_data_component_descriptor(
+            VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
+        )
+        .unwrap();
+        let stew_effect = SuspiciousStewEffectSummary {
+            effect_id: 0,
+            duration: 160,
+        };
+        stew_descriptor
+            .encode(
+                &DataComponentPatchSummary {
+                    suspicious_stew_effects: vec![
+                        stew_effect.clone();
+                        MAX_DATA_COMPONENT_LIST_ITEMS
+                    ],
+                    ..DataComponentPatchSummary::default()
+                },
+                &mut Encoder::new(),
+            )
+            .unwrap();
+
+        let mut invalid_stew_effect = stew_effect.clone();
+        invalid_stew_effect.effect_id =
+            crate::mob_effect_types::VANILLA_MOB_EFFECT_TYPES.len() as i32;
+        let mut encoded = Encoder::new();
+        encoded.write_u8(0xaa);
+        let error = stew_descriptor
+            .encode(
+                &DataComponentPatchSummary {
+                    suspicious_stew_effects: vec![invalid_stew_effect],
+                    ..DataComponentPatchSummary::default()
+                },
+                &mut encoded,
+            )
+            .unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("invalid vanilla mob effect holder id"));
+        assert_eq!(encoded.into_inner(), [0xaa]);
+
+        let mut encoded = Encoder::new();
+        encoded.write_u8(0xaa);
+        assert!(matches!(
+            stew_descriptor.encode(
+                &DataComponentPatchSummary {
+                    suspicious_stew_effects: vec![
+                        stew_effect;
+                        MAX_DATA_COMPONENT_LIST_ITEMS + 1
+                    ],
+                    ..DataComponentPatchSummary::default()
+                },
+                &mut encoded,
+            ),
+            Err(ProtocolError::PacketTooLarge(actual, max))
+                if actual == MAX_DATA_COMPONENT_LIST_ITEMS + 1
+                    && max == MAX_DATA_COMPONENT_LIST_ITEMS
+        ));
+        assert_eq!(encoded.into_inner(), [0xaa]);
     }
 
     #[test]

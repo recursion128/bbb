@@ -11,7 +11,9 @@ use crate::{
         VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
+        VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID,
+        VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID, VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
         VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
@@ -1799,6 +1801,69 @@ fn encodes_set_creative_mode_slot_firework_family_components() {
             4, 1, 0xff, 0xff, 0xff, 0xff, // burst and one signed color
             1, 0, 0x44, 0x55, 0x66, // one fade color
             0, 1, // no trail, twinkle
+        ]
+    );
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_potion_effect_family_components() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 2,
+                added_type_ids: vec![
+                    VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
+                    VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
+                ],
+                potion_id: Some(3),
+                potion_custom_color: Some(0x11_22_33),
+                potion_custom_effect_count: Some(1),
+                potion_custom_effects: vec![MobEffectInstanceSummary {
+                    effect_id: 2,
+                    amplifier: 1,
+                    duration: 200,
+                    ambient: false,
+                    show_particles: true,
+                    show_icon: false,
+                    hidden_effect: None,
+                }],
+                potion_custom_name: Some("swift".to_string()),
+                suspicious_stew_effects: vec![
+                    SuspiciousStewEffectSummary {
+                        effect_id: 0,
+                        duration: 160,
+                    },
+                    SuspiciousStewEffectSummary {
+                        effect_id: 1,
+                        duration: -1,
+                    },
+                ],
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            2, 0, // patch counts
+            51, 23, // potion_contents type and delimited value length
+            1, 3, // present potion holder
+            1, 0, 0x11, 0x22, 0x33, // present custom color
+            1,    // one custom effect
+            2, 1, 0xc8, 1, // effect holder, amplifier, duration
+            0, 1, 0, 0, // ambient, particles, icon, no hidden effect
+            1, 5, b's', b'w', b'i', b'f', b't', // present custom name
+            53, 10, // suspicious_stew_effects type and delimited value length
+            2, 0, 0xa0, 1, // two entries, first holder and duration
+            1, 0xff, 0xff, 0xff, 0xff, 0x0f, // second holder and -1 duration
         ]
     );
 }

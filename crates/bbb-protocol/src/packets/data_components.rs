@@ -1080,6 +1080,16 @@ fn validate_encodable_data_component_patch_summary(
                 expected.fireworks_explosions_count = patch.fireworks_explosions_count;
                 expected.fireworks_explosions = patch.fireworks_explosions.clone();
             }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID => {
+                expected.potion_id = patch.potion_id;
+                expected.potion_custom_color = patch.potion_custom_color;
+                expected.potion_custom_effect_count = patch.potion_custom_effect_count;
+                expected.potion_custom_effects = patch.potion_custom_effects.clone();
+                expected.potion_custom_name = patch.potion_custom_name.clone();
+            }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID => {
+                expected.suspicious_stew_effects = patch.suspicious_stew_effects.clone();
+            }
             VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID => {
                 expected.entity_data_entity_type_id = patch.entity_data_entity_type_id;
                 expected.entity_data_tag = patch.entity_data_tag.clone();
@@ -2504,7 +2514,7 @@ fn decode_potion_contents(decoder: &mut Decoder<'_>) -> Result<PotionContentsSum
     for _ in 0..effect_count {
         custom_effects.push(decode_mob_effect_instance(decoder)?);
     }
-    let custom_name = decode_optional_string_value(decoder, MAX_STRING_CHARS)?;
+    let custom_name = decode_optional_java_string(decoder, MAX_STRING_CHARS)?;
     Ok(PotionContentsSummary {
         potion_id,
         custom_color,
@@ -3400,6 +3410,92 @@ mod tests {
             patch.fireworks_explosions_count
         );
         assert_eq!(decoded.fireworks_explosions, patch.fireworks_explosions);
+    }
+
+    #[test]
+    fn encodes_potion_effect_family_patch_with_independent_delimiters() {
+        let patch = DataComponentPatchSummary {
+            added: 2,
+            added_type_ids: vec![
+                crate::data_component_types::VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
+                crate::data_component_types::VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
+            ],
+            removed_type_ids: vec![VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID],
+            potion_id: Some(3),
+            potion_custom_color: Some(i32::MIN),
+            potion_custom_effect_count: Some(1),
+            potion_custom_effects: vec![MobEffectInstanceSummary {
+                effect_id: 2,
+                amplifier: 1,
+                duration: -1,
+                ambient: true,
+                show_particles: false,
+                show_icon: true,
+                hidden_effect: Some(Box::new(MobEffectDetailsSummary {
+                    amplifier: 0,
+                    duration: 20,
+                    ambient: false,
+                    show_particles: true,
+                    show_icon: false,
+                    hidden_effect: None,
+                })),
+            }],
+            potion_custom_name: Some("swift😀".to_string()),
+            suspicious_stew_effects: vec![
+                SuspiciousStewEffectSummary {
+                    effect_id: 0,
+                    duration: i32::MIN,
+                },
+                SuspiciousStewEffectSummary {
+                    effect_id: 1,
+                    duration: i32::MAX,
+                },
+            ],
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        encode_delimited_data_component_patch_summary(&mut encoded, &patch).unwrap();
+        let encoded = encoded.into_inner();
+
+        let mut decoder = Decoder::new(&encoded);
+        assert_eq!(decoder.read_len().unwrap(), 2);
+        assert_eq!(decoder.read_len().unwrap(), 1);
+        let mut decoded = DataComponentPatchSummary::default();
+        for expected_type_id in [
+            crate::data_component_types::VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
+            crate::data_component_types::VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
+        ] {
+            let type_id = decoder.read_var_i32().unwrap();
+            assert_eq!(type_id, expected_type_id);
+            let value_len = decoder.read_len().unwrap();
+            let mut value_decoder = Decoder::new(
+                decoder
+                    .read_exact(value_len, "potion effect value")
+                    .unwrap(),
+            );
+            data_component_descriptor_or_error(type_id)
+                .unwrap()
+                .decode(&mut value_decoder, &mut decoded)
+                .unwrap();
+            assert!(value_decoder.is_empty());
+        }
+        assert_eq!(
+            decoder.read_var_i32().unwrap(),
+            VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID
+        );
+        assert!(decoder.is_empty());
+        assert_eq!(decoded.potion_id, patch.potion_id);
+        assert_eq!(decoded.potion_custom_color, patch.potion_custom_color);
+        assert_eq!(
+            decoded.potion_custom_effect_count,
+            patch.potion_custom_effect_count
+        );
+        assert_eq!(decoded.potion_custom_effects, patch.potion_custom_effects);
+        assert_eq!(decoded.potion_custom_name, patch.potion_custom_name);
+        assert_eq!(
+            decoded.suspicious_stew_effects,
+            patch.suspicious_stew_effects
+        );
     }
 
     #[test]
