@@ -470,3 +470,6 @@
 - **2026-07-23（Tooltip style component 六维闭环）**：`TOOLTIP_STYLE` 现按
   Identifier 精确编解码并驱动全部 ItemStack HUD tooltip；资源包同命名空间的
   background/frame 精灵对保留 stretch、tile、nine-slice 语义并精确选样式。
+- **2026-07-23（Banner pattern provider component 六维闭环）**：
+  `PROVIDES_BANNER_PATTERNS` 现按 named/direct holder-set 精确重编码，并以
+  session registry 顺序驱动 Loom 输入与 HUD（`211acc28c`、`7984a8162`）。

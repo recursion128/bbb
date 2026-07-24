@@ -4346,6 +4346,83 @@
         "status": "complete"
       }
     },
+    "PROVIDES_BANNER_PATTERNS": {
+      "canonical_retention": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#PROVIDES_BANNER_PATTERNS",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub provides_banner_pattern_registry_ids",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub provides_banner_pattern_tag",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_provides_banner_patterns",
+          "crates/bbb-world/src/client/inventory.rs#loom_selectable_banner_pattern_ids",
+          "crates/bbb-world/src/client/inventory/tests.rs#loom_selectable_patterns_honor_effective_defaults_overrides_and_removals"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#PROVIDES_BANNER_PATTERNS",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#holderSet",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_provides_banner_patterns",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#provides_banner_patterns_descriptor_round_trips_direct_and_named_holder_sets",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#provides_banner_patterns_descriptor_rejects_noncanonical_sets_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_provides_banner_patterns_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/inventory/LoomMenu.java#getSelectablePatterns",
+          "crates/bbb-world/src/client/inventory.rs#loom_selectable_banner_pattern_ids",
+          "crates/bbb-world/src/client/inventory/tests.rs#loom_selectable_patterns_follow_direct_and_named_session_holder_order",
+          "crates/bbb-world/src/client/inventory/tests.rs#loom_selectable_patterns_honor_effective_defaults_overrides_and_removals",
+          "crates/bbb-native/src/input/inventory.rs#loom_selectable_pattern_count",
+          "crates/bbb-native/src/input/inventory/tests.rs#loom_pattern_click_targets_use_the_component_holder_set_size",
+          "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_uses_the_loom_component_holder_set_size"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#PROVIDES_BANNER_PATTERNS",
+          "vanilla:net/minecraft/core/RegistryCodecs.java#homogeneousList",
+          "crates/bbb-native/src/input/component_patch.rs#encode_provides_banner_patterns",
+          "crates/bbb-native/src/input/component_patch.rs#banner_pattern_encoders_use_session_order_or_fixed_catalog",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_preserves_resolvable_banner_pattern_holder_sets",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_provides_banner_patterns_from_session_and_context_free_inputs"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_provides_banner_pattern_direct_holders",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#provides_banner_patterns_descriptor_round_trips_direct_and_named_holder_sets",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#provides_banner_patterns_descriptor_rejects_noncanonical_sets_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_provides_banner_patterns_component",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_provides_banner_patterns_from_session_and_context_free_inputs",
+          "crates/bbb-world/src/client/inventory/tests.rs#loom_selectable_patterns_follow_direct_and_named_session_holder_order",
+          "crates/bbb-world/src/client/inventory/tests.rs#loom_selectable_patterns_honor_effective_defaults_overrides_and_removals",
+          "crates/bbb-native/src/input/inventory/tests.rs#loom_pattern_click_targets_use_the_component_holder_set_size",
+          "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_uses_the_loom_component_holder_set_size"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#PROVIDES_BANNER_PATTERNS",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#holderSet",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_provides_banner_patterns",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_provides_banner_pattern_direct_holders",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_provides_banner_patterns_from_session_and_context_free_inputs"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "POT_DECORATIONS": {
       "canonical_retention": {
         "evidence": [

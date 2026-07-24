@@ -1072,8 +1072,8 @@ back into a todo. Do not delete these.
   disabled/highlight coloring, hover tooltips.
 - `CartographyTableMenu`: live map pixels and decorations in the preview area,
   invalid-transform prediction when item runtime or map state is unavailable.
-- `LoomMenu`: pattern-item component/tag lists beyond the single-pattern vanilla
-  items, highlighted pattern buttons, banner preview, max-pattern error overlay.
+- `LoomMenu`: render each ordered selectable-pattern banner thumbnail, the
+  composited banner preview, and the max-pattern error overlay.
 - `LecternMenu`: rich text styles and click events, exact vanilla font wrapping,
   text filtering toggle behavior.
 - `SmithingMenu`: generic held-item / non-skull head-item projection for the
@@ -1178,7 +1178,7 @@ back into a todo. Do not delete these.
 - **Full item component payload encoding for
   `ServerboundSetCreativeModeSlotPacket`.** Add descriptor-owned encoders for
   component value types 19 through 20, 23, 27, 29, 31,
-  33 through 35, 41, 47, 57, 63, 65 through 66, 71,
+  33 through 35, 41, 47, 57, 63, 66, 71,
   73 through 74,
   76, 78 through 79, 81 through 101, and 103 through 109;
   preserve Vanilla's per-value length framing and persistent range checks, and
