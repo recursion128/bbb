@@ -6,15 +6,18 @@ use crate::data_component_types::{
     DataComponentTypeCatalogEntry, VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
     VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
     VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
-    VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID,
-    VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
-    VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
-    VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
-    VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
-    VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
+    VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID, VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID,
+    VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID,
+    VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
+    VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID, VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID,
+    VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID, VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
+    VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID, VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
+    VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
+    VANILLA_DATA_COMPONENT_LORE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
     VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
     VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
@@ -22,7 +25,7 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID, VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
     VANILLA_DATA_COMPONENT_TYPES, VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID, VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID,
     VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
     VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
 };
@@ -245,6 +248,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         }
         VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID => Some(encode_attribute_modifiers),
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID => Some(encode_consumable),
+        VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID => Some(encode_use_remainder),
         VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID => Some(encode_death_protection),
         VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID => Some(encode_blocks_attacks),
         VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID => Some(encode_piercing_weapon),
@@ -255,6 +259,8 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_TRIM_TYPE_ID => Some(encode_trim),
         VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID => Some(encode_firework_explosion),
         VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID => Some(encode_fireworks),
+        VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID => Some(encode_charged_projectiles),
+        VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID => Some(encode_bundle_contents),
         VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID => Some(encode_potion_contents),
         VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID => Some(encode_potion_duration_scale),
         VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID => {
@@ -264,6 +270,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID => Some(encode_bucket_entity_data),
         VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID => Some(encode_block_entity_data),
         VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID => Some(encode_profile),
+        VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID => Some(encode_container),
         _ => None,
     }
 }
@@ -829,6 +836,18 @@ fn encode_consumable(
     encode_consume_effect_list(&mut encoded, &summary.consumable_effects)?;
     out.write_bytes(&encoded.into_inner());
     Ok(())
+}
+
+fn encode_use_remainder(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let template = summary.use_remainder.as_deref().ok_or_else(|| {
+        ProtocolError::InvalidData("use_remainder is missing item stack template".to_string())
+    })?;
+    validate_item_stack_template_forest(std::iter::once(template))?;
+    encode_item_stack_template(out, template)
 }
 
 fn encode_death_protection(
@@ -1465,6 +1484,41 @@ fn encode_fireworks(
     Ok(())
 }
 
+fn encode_charged_projectiles(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    encode_item_stack_template_list(
+        out,
+        &summary.charged_projectiles_items,
+        MAX_DATA_COMPONENT_LIST_ITEMS,
+        "charged_projectiles",
+    )
+}
+
+fn encode_bundle_contents(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let item_count = summary.bundle_contents_item_count.ok_or_else(|| {
+        ProtocolError::InvalidData("bundle_contents is missing item count".to_string())
+    })?;
+    if item_count != summary.bundle_contents_items.len() {
+        return Err(ProtocolError::InvalidData(format!(
+            "bundle_contents item count {item_count} does not match {} items",
+            summary.bundle_contents_items.len()
+        )));
+    }
+    encode_item_stack_template_list(
+        out,
+        &summary.bundle_contents_items,
+        MAX_DATA_COMPONENT_LIST_ITEMS,
+        "bundle_contents",
+    )
+}
+
 fn encode_firework_explosion_value(
     out: &mut Encoder,
     explosion: &FireworkExplosionSummary,
@@ -1794,6 +1848,14 @@ fn encode_profile(
     encode_player_skin_patch(&mut encoded, &profile.skin_patch)?;
     out.write_bytes(&encoded.into_inner());
     Ok(())
+}
+
+fn encode_container(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    encode_item_container_contents(out, summary)
 }
 
 fn encode_game_profile_properties(
@@ -2572,6 +2634,7 @@ fn decode_container(
     summary.container_item_count = Some(container.items.len());
     summary.container_items = container.items;
     summary.container_slots = container.slots;
+    summary.container_slot_count = Some(container.slot_count);
     Ok(())
 }
 
@@ -2886,8 +2949,8 @@ mod tests {
                 .map(|descriptor| descriptor.type_id())
                 .collect::<Vec<_>>(),
             vec![
-                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 13, 14, 15, 16, 24, 36, 37, 38, 39, 40, 42, 51,
-                52, 53, 54, 55, 56, 58, 59, 60, 68, 69, 70,
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 13, 14, 15, 16, 24, 25, 36, 37, 38, 39, 40, 42,
+                49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 68, 69, 70, 75,
             ]
         );
     }

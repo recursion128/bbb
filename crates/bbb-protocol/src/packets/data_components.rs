@@ -251,6 +251,13 @@ pub struct DataComponentPatchSummary {
     pub container_slots: Vec<ItemContainerSlotSummary>,
     #[serde(default)]
     pub container_item_count: Option<usize>,
+    /// Exact `ItemContainerContents.STREAM_CODEC` optional-slot list length.
+    ///
+    /// `container_item_count` remains the non-empty projection used by item
+    /// predicates and tooltips; this span additionally retains trailing empty
+    /// slots so the network value can be reproduced exactly.
+    #[serde(default)]
+    pub container_slot_count: Option<usize>,
     #[serde(default)]
     pub container_loot: bool,
     #[serde(default)]
@@ -944,23 +951,54 @@ pub(crate) fn encode_delimited_data_component_patch_summary(
     out: &mut Encoder,
     patch: &DataComponentPatchSummary,
 ) -> Result<()> {
+    encode_data_component_patch_summary_with_framing(
+        out,
+        patch,
+        ComponentValueFraming::LengthPrefixed,
+    )
+}
+
+#[derive(Clone, Copy)]
+enum ComponentValueFraming {
+    Direct,
+    LengthPrefixed,
+}
+
+fn encode_data_component_patch_summary(
+    out: &mut Encoder,
+    patch: &DataComponentPatchSummary,
+) -> Result<()> {
+    encode_data_component_patch_summary_with_framing(out, patch, ComponentValueFraming::Direct)
+}
+
+fn encode_data_component_patch_summary_with_framing(
+    out: &mut Encoder,
+    patch: &DataComponentPatchSummary,
+    framing: ComponentValueFraming,
+) -> Result<()> {
+    validate_data_component_patch_recursive_templates(patch)?;
     let added_descriptors = validate_encodable_data_component_patch_summary(patch)?;
     let mut encoded = Encoder::new();
     encoded.write_var_i32(patch.added as i32);
     encoded.write_var_i32(patch.removed_type_ids.len() as i32);
 
     for (type_id, descriptor) in added_descriptors {
-        let mut value = Encoder::new();
-        descriptor.encode(patch, &mut value)?;
-        let value = value.into_inner();
-        let value_len = i32::try_from(value.len()).map_err(|_| {
-            ProtocolError::InvalidData(format!(
-                "encoded data component type id {type_id} value length does not fit i32"
-            ))
-        })?;
         encoded.write_var_i32(type_id);
-        encoded.write_var_i32(value_len);
-        encoded.write_bytes(&value);
+        match framing {
+            ComponentValueFraming::Direct => descriptor.encode(patch, &mut encoded)?,
+            ComponentValueFraming::LengthPrefixed => {
+                let mut value = Encoder::new();
+                descriptor.encode(patch, &mut value)?;
+                let value = value.into_inner();
+                let value_len = i32::try_from(value.len()).map_err(|_| {
+                    ProtocolError::InvalidData(format!(
+                        "encoded data component type id {type_id} value length does not fit i32"
+                    ))
+                })?;
+                encoded.write_var_i32(value_len);
+                encoded.write_bytes(&value);
+            }
+        }
     }
 
     for type_id in &patch.removed_type_ids {
@@ -1076,6 +1114,9 @@ fn validate_encodable_data_component_patch_summary(
                 expected.consumable_effect_count = patch.consumable_effect_count;
                 expected.consumable_effects = patch.consumable_effects.clone();
             }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID => {
+                expected.use_remainder = patch.use_remainder.clone();
+            }
             crate::data_component_types::VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID => {
                 expected.death_protection_effects = patch.death_protection_effects.clone();
             }
@@ -1115,6 +1156,13 @@ fn validate_encodable_data_component_patch_summary(
                 expected.fireworks_flight_duration = patch.fireworks_flight_duration;
                 expected.fireworks_explosions_count = patch.fireworks_explosions_count;
                 expected.fireworks_explosions = patch.fireworks_explosions.clone();
+            }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID => {
+                expected.charged_projectiles_items = patch.charged_projectiles_items.clone();
+            }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID => {
+                expected.bundle_contents_items = patch.bundle_contents_items.clone();
+                expected.bundle_contents_item_count = patch.bundle_contents_item_count;
             }
             crate::data_component_types::VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID => {
                 expected.stored_enchantments = patch.stored_enchantments.clone();
@@ -1157,6 +1205,12 @@ fn validate_encodable_data_component_patch_summary(
                     .as_ref()
                     .map(canonical_resolvable_profile_summary)
                     .transpose()?;
+            }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID => {
+                expected.container_items = patch.container_items.clone();
+                expected.container_slots = patch.container_slots.clone();
+                expected.container_item_count = patch.container_item_count;
+                expected.container_slot_count = patch.container_slot_count;
             }
             _ => unreachable!("encodable descriptor set is limited to owned component callbacks"),
         }
@@ -1764,6 +1818,162 @@ fn decode_item_stack_template(decoder: &mut Decoder<'_>) -> Result<ItemStackTemp
     )
 }
 
+fn validate_item_stack_template_forest<'a>(
+    roots: impl IntoIterator<Item = &'a ItemStackTemplateSummary>,
+) -> Result<()> {
+    let mut pending = roots
+        .into_iter()
+        .map(|template| (template, 1_usize))
+        .collect::<Vec<_>>();
+    while let Some((template, depth)) = pending.pop() {
+        if depth > MAX_ITEM_STACK_TEMPLATE_NESTING_DEPTH {
+            return Err(ProtocolError::InvalidData(format!(
+                "item stack template nesting exceeds {MAX_ITEM_STACK_TEMPLATE_NESTING_DEPTH}"
+            )));
+        }
+        inventory::validate_item_holder_id(template.item_id)?;
+        if template.item_id == crate::item_types::VANILLA_ITEM_AIR_ID {
+            return Err(ProtocolError::InvalidData(
+                "item stack template holder must not be minecraft:air".to_string(),
+            ));
+        }
+        if template.count == 0 {
+            return Err(ProtocolError::InvalidData(
+                "invalid item stack template count 0".to_string(),
+            ));
+        }
+
+        let child_depth = depth + 1;
+        let patch = &template.component_patch;
+        if let Some(remainder) = patch.use_remainder.as_deref() {
+            pending.push((remainder, child_depth));
+        }
+        pending.extend(
+            patch
+                .charged_projectiles_items
+                .iter()
+                .map(|item| (item, child_depth)),
+        );
+        pending.extend(
+            patch
+                .bundle_contents_items
+                .iter()
+                .map(|item| (item, child_depth)),
+        );
+        pending.extend(
+            patch
+                .container_slots
+                .iter()
+                .map(|slot| (&slot.item, child_depth)),
+        );
+        pending.extend(patch.container_items.iter().map(|item| (item, child_depth)));
+    }
+    Ok(())
+}
+
+fn validate_data_component_patch_recursive_templates(
+    patch: &DataComponentPatchSummary,
+) -> Result<()> {
+    let mut roots = Vec::new();
+    if let Some(remainder) = patch.use_remainder.as_deref() {
+        roots.push(remainder);
+    }
+    roots.extend(patch.charged_projectiles_items.iter());
+    roots.extend(patch.bundle_contents_items.iter());
+    roots.extend(patch.container_slots.iter().map(|slot| &slot.item));
+    roots.extend(patch.container_items.iter());
+    validate_item_stack_template_forest(roots)
+}
+
+fn encode_item_stack_template(
+    out: &mut Encoder,
+    template: &ItemStackTemplateSummary,
+) -> Result<()> {
+    out.write_var_i32(template.item_id);
+    out.write_var_i32(template.count);
+    encode_data_component_patch_summary(out, &template.component_patch)
+}
+
+fn encode_item_stack_template_list(
+    out: &mut Encoder,
+    templates: &[ItemStackTemplateSummary],
+    max: usize,
+    what: &str,
+) -> Result<()> {
+    if templates.len() > max {
+        return Err(ProtocolError::PacketTooLarge(templates.len(), max));
+    }
+    if templates.len() > i32::MAX as usize {
+        return Err(ProtocolError::InvalidData(format!(
+            "{what} item count does not fit i32"
+        )));
+    }
+    validate_item_stack_template_forest(templates)?;
+    out.write_var_i32(templates.len() as i32);
+    for template in templates {
+        encode_item_stack_template(out, template)?;
+    }
+    Ok(())
+}
+
+fn encode_item_container_contents(
+    out: &mut Encoder,
+    patch: &DataComponentPatchSummary,
+) -> Result<()> {
+    let item_count = patch.container_item_count.ok_or_else(|| {
+        ProtocolError::InvalidData("container is missing non-empty item count".to_string())
+    })?;
+    if item_count != patch.container_items.len() || item_count != patch.container_slots.len() {
+        return Err(ProtocolError::InvalidData(
+            "container non-empty item projections disagree".to_string(),
+        ));
+    }
+    let slot_count = patch.container_slot_count.ok_or_else(|| {
+        ProtocolError::InvalidData("container is missing exact slot count".to_string())
+    })?;
+    if slot_count > MAX_CONTAINER_ITEMS {
+        return Err(ProtocolError::PacketTooLarge(
+            slot_count,
+            MAX_CONTAINER_ITEMS,
+        ));
+    }
+
+    let mut previous_slot = None;
+    for (index, slot) in patch.container_slots.iter().enumerate() {
+        if slot.slot >= slot_count {
+            return Err(ProtocolError::InvalidData(format!(
+                "container slot {} is outside exact slot count {slot_count}",
+                slot.slot
+            )));
+        }
+        if previous_slot.is_some_and(|previous| previous >= slot.slot) {
+            return Err(ProtocolError::InvalidData(
+                "container slots must be strictly increasing".to_string(),
+            ));
+        }
+        if patch.container_items.get(index) != Some(&slot.item) {
+            return Err(ProtocolError::InvalidData(
+                "container non-empty item list does not match sparse slots".to_string(),
+            ));
+        }
+        previous_slot = Some(slot.slot);
+    }
+    validate_item_stack_template_forest(patch.container_slots.iter().map(|slot| &slot.item))?;
+
+    out.write_var_i32(slot_count as i32);
+    let mut slots = patch.container_slots.iter().peekable();
+    for slot_index in 0..slot_count {
+        if slots.peek().is_some_and(|slot| slot.slot == slot_index) {
+            let slot = slots.next().expect("peeked container slot");
+            out.write_bool(true);
+            encode_item_stack_template(out, &slot.item)?;
+        } else {
+            out.write_bool(false);
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 thread_local! {
     static ITEM_STACK_TEMPLATE_STACK_EXTREMES: std::cell::Cell<(usize, usize)> =
@@ -1805,6 +2015,7 @@ fn decode_optional_item_stack_template(
 struct ItemContainerContentsSummary {
     items: Vec<ItemStackTemplateSummary>,
     slots: Vec<ItemContainerSlotSummary>,
+    slot_count: usize,
 }
 
 fn decode_item_container_contents(
@@ -1819,7 +2030,11 @@ fn decode_item_container_contents(
             slots.push(ItemContainerSlotSummary { slot, item });
         }
     }
-    Ok(ItemContainerContentsSummary { items, slots })
+    Ok(ItemContainerContentsSummary {
+        items,
+        slots,
+        slot_count: count,
+    })
 }
 
 fn decode_tool(decoder: &mut Decoder<'_>) -> Result<ToolSummary> {
@@ -2870,11 +3085,280 @@ mod tests {
     use crate::{
         codec::Encoder,
         data_component_types::{
-            VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+            VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID,
+            VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID,
+            VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
+            VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID,
+            VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
             VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID,
+            VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID,
         },
     };
     use uuid::Uuid;
+
+    fn template_with_patch(
+        item_id: i32,
+        count: i32,
+        component_patch: DataComponentPatchSummary,
+    ) -> ItemStackTemplateSummary {
+        ItemStackTemplateSummary {
+            item_id,
+            count,
+            component_patch,
+        }
+    }
+
+    fn plain_template(item_id: i32, count: i32) -> ItemStackTemplateSummary {
+        template_with_patch(item_id, count, DataComponentPatchSummary::default())
+    }
+
+    fn nested_use_remainder_template(depth: usize) -> ItemStackTemplateSummary {
+        let mut template = plain_template(42, 1);
+        for _ in 1..depth {
+            template = template_with_patch(
+                42,
+                1,
+                DataComponentPatchSummary {
+                    added: 1,
+                    added_type_ids: vec![VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID],
+                    use_remainder: Some(Box::new(template)),
+                    ..DataComponentPatchSummary::default()
+                },
+            );
+        }
+        template
+    }
+
+    #[test]
+    fn recursive_item_component_descriptors_round_trip_ordinary_nested_patches() {
+        let nested_patch = DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID],
+            max_stack_size: Some(64),
+            ..DataComponentPatchSummary::default()
+        };
+        let remainder = template_with_patch(42, 1, nested_patch);
+        let projectile = plain_template(50, 2);
+        let bundle_item = plain_template(52, 3);
+        let first_container_item = plain_template(53, 4);
+        let last_container_item = plain_template(54, 5);
+        let patch = DataComponentPatchSummary {
+            added: 4,
+            added_type_ids: vec![
+                VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID,
+                VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID,
+                VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID,
+                VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID,
+            ],
+            use_remainder: Some(Box::new(remainder)),
+            charged_projectiles_items: vec![projectile],
+            bundle_contents_items: vec![bundle_item],
+            bundle_contents_item_count: Some(1),
+            container_items: vec![first_container_item.clone(), last_container_item.clone()],
+            container_slots: vec![
+                ItemContainerSlotSummary {
+                    slot: 1,
+                    item: first_container_item,
+                },
+                ItemContainerSlotSummary {
+                    slot: 3,
+                    item: last_container_item,
+                },
+            ],
+            container_item_count: Some(2),
+            container_slot_count: Some(5),
+            ..DataComponentPatchSummary::default()
+        };
+
+        let mut encoded = Encoder::new();
+        encode_delimited_data_component_patch_summary(&mut encoded, &patch).unwrap();
+        let encoded = encoded.into_inner();
+        let mut decoder = Decoder::new(&encoded);
+        let added = decoder.read_len().unwrap();
+        let removed = decoder.read_len().unwrap();
+        assert_eq!((added, removed), (4, 0));
+        let mut decoded = DataComponentPatchSummary {
+            added,
+            ..DataComponentPatchSummary::default()
+        };
+        for expected_type_id in &patch.added_type_ids {
+            let type_id = decoder.read_var_i32().unwrap();
+            assert_eq!(type_id, *expected_type_id);
+            let value_len = decoder.read_len().unwrap();
+            let mut value_decoder = Decoder::new(
+                decoder
+                    .read_exact(value_len, "recursive component value")
+                    .unwrap(),
+            );
+            data_component_descriptor_or_error(type_id)
+                .unwrap()
+                .decode(&mut value_decoder, &mut decoded)
+                .unwrap();
+            assert!(
+                value_decoder.is_empty(),
+                "nested patches must use ordinary, non-delimited framing"
+            );
+            decoded.added_type_ids.push(type_id);
+        }
+        assert!(decoder.is_empty());
+        assert_eq!(decoded, patch);
+        assert_eq!(decoded.container_slot_count, Some(5));
+    }
+
+    #[test]
+    fn recursive_item_component_encoder_enforces_tree_and_projection_invariants_atomically() {
+        let make_remainder_patch = |template| DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID],
+            use_remainder: Some(Box::new(template)),
+            ..DataComponentPatchSummary::default()
+        };
+        let valid_negative = make_remainder_patch(plain_template(42, -1));
+        encode_delimited_data_component_patch_summary(&mut Encoder::new(), &valid_negative)
+            .unwrap();
+        let exact_boundary = make_remainder_patch(nested_use_remainder_template(
+            MAX_ITEM_STACK_TEMPLATE_NESTING_DEPTH,
+        ));
+        encode_delimited_data_component_patch_summary(&mut Encoder::new(), &exact_boundary)
+            .unwrap();
+
+        let invalid_templates = [
+            plain_template(42, 0),
+            plain_template(crate::item_types::VANILLA_ITEM_AIR_ID, 1),
+            plain_template(i32::MAX, 1),
+            nested_use_remainder_template(MAX_ITEM_STACK_TEMPLATE_NESTING_DEPTH + 1),
+        ];
+        for template in invalid_templates {
+            let mut out = Encoder::new();
+            out.write_u8(0x7f);
+            let error = encode_delimited_data_component_patch_summary(
+                &mut out,
+                &make_remainder_patch(template),
+            )
+            .unwrap_err();
+            assert_eq!(out.into_inner(), vec![0x7f]);
+            assert!(
+                error.to_string().contains("item stack template")
+                    || error.to_string().contains("item holder")
+            );
+        }
+
+        let unsupported_inner = make_remainder_patch(template_with_patch(
+            42,
+            1,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID],
+                item_model: Some("minecraft:stone".to_string()),
+                ..DataComponentPatchSummary::default()
+            },
+        ));
+        let error =
+            encode_delimited_data_component_patch_summary(&mut Encoder::new(), &unsupported_inner)
+                .unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("cannot encode unsupported data component"));
+
+        let mismatched_bundle = DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID],
+            bundle_contents_items: vec![plain_template(42, 1)],
+            bundle_contents_item_count: Some(0),
+            ..DataComponentPatchSummary::default()
+        };
+        assert!(encode_delimited_data_component_patch_summary(
+            &mut Encoder::new(),
+            &mismatched_bundle
+        )
+        .unwrap_err()
+        .to_string()
+        .contains("does not match"));
+
+        let oversized_projectiles = DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID],
+            charged_projectiles_items: vec![
+                plain_template(42, 1);
+                MAX_DATA_COMPONENT_LIST_ITEMS + 1
+            ],
+            ..DataComponentPatchSummary::default()
+        };
+        let error = encode_delimited_data_component_patch_summary(
+            &mut Encoder::new(),
+            &oversized_projectiles,
+        )
+        .unwrap_err();
+        assert!(matches!(
+            error,
+            ProtocolError::PacketTooLarge(actual, max)
+                if actual == MAX_DATA_COMPONENT_LIST_ITEMS + 1
+                    && max == MAX_DATA_COMPONENT_LIST_ITEMS
+        ));
+
+        let item = plain_template(42, 1);
+        let invalid_container = DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID],
+            container_items: vec![item.clone(), item.clone()],
+            container_slots: vec![
+                ItemContainerSlotSummary {
+                    slot: 2,
+                    item: item.clone(),
+                },
+                ItemContainerSlotSummary { slot: 1, item },
+            ],
+            container_item_count: Some(2),
+            container_slot_count: Some(3),
+            ..DataComponentPatchSummary::default()
+        };
+        assert!(encode_delimited_data_component_patch_summary(
+            &mut Encoder::new(),
+            &invalid_container
+        )
+        .unwrap_err()
+        .to_string()
+        .contains("strictly increasing"));
+
+        let oversized_container = DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID],
+            container_item_count: Some(0),
+            container_slot_count: Some(MAX_CONTAINER_ITEMS + 1),
+            ..DataComponentPatchSummary::default()
+        };
+        let error = encode_delimited_data_component_patch_summary(
+            &mut Encoder::new(),
+            &oversized_container,
+        )
+        .unwrap_err();
+        assert!(matches!(
+            error,
+            ProtocolError::PacketTooLarge(actual, max)
+                if actual == MAX_CONTAINER_ITEMS + 1 && max == MAX_CONTAINER_ITEMS
+        ));
+    }
+
+    #[test]
+    fn container_component_round_trips_all_empty_trailing_slots() {
+        let patch = DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID],
+            container_item_count: Some(0),
+            container_slot_count: Some(3),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        encode_delimited_data_component_patch_summary(&mut encoded, &patch).unwrap();
+        assert_eq!(
+            encoded.into_inner(),
+            [
+                1, 0, // patch counts
+                75, 4, // component id and delimited value length
+                3, 0, 0, 0, // three absent optional templates
+            ]
+        );
+    }
 
     #[test]
     fn encodes_foundational_data_component_patch_with_delimited_values() {
@@ -7243,6 +7727,7 @@ mod tests {
                     },
                 }],
                 container_item_count: Some(1),
+                container_slot_count: Some(3),
                 armor_trim_material_id: Some(1),
                 armor_trim_pattern_id: Some(2),
                 instrument_description: Some("Instrument".to_string()),

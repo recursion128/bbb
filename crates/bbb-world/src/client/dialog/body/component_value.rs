@@ -922,6 +922,7 @@ pub(super) fn apply_item_patch_value(
                 item_slots.push(ItemContainerSlotSummary { slot, item });
             }
             patch.container_item_count = Some(items.len());
+            patch.container_slot_count = Some(slots.len());
             patch.container_items = items;
             patch.container_slots = item_slots;
         }
