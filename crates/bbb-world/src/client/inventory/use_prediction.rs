@@ -1,6 +1,7 @@
 use super::*;
 use crate::{
     entities::{
+        vanilla_entity_metadata_armor_stand_accessors_for_entity_type,
         vanilla_entity_metadata_interact_owner,
         vanilla_entity_metadata_interaction_accessors_for_entity_type,
         vanilla_entity_metadata_mob_interact_owner, vanilla_entity_metadata_type_is_leashable,
@@ -26,6 +27,7 @@ use bbb_protocol::{
 
 const VANILLA_DEFAULT_ENTITY_INTERACT_OWNER: &str = "net.minecraft.world.entity.Entity";
 const VANILLA_MOB_ENTITY_INTERACT_OWNER: &str = "net.minecraft.world.entity.Mob";
+const VANILLA_ARMOR_STAND_INTERACT_OWNER: &str = "net.minecraft.world.entity.decoration.ArmorStand";
 const VANILLA_BOAT_INTERACT_OWNER: &str = "net.minecraft.world.entity.vehicle.boat.AbstractBoat";
 const VANILLA_CHEST_BOAT_INTERACT_OWNER: &str =
     "net.minecraft.world.entity.vehicle.boat.AbstractChestBoat";
@@ -284,6 +286,8 @@ impl WorldStore {
             self.predict_local_mob_interact(entity_id, entity_type_id, hand)
         } else if owner == VANILLA_DEFAULT_ENTITY_INTERACT_OWNER {
             self.predict_local_base_entity_interact(entity_id, entity_type_id, held_item_id)
+        } else if owner == VANILLA_ARMOR_STAND_INTERACT_OWNER {
+            self.predict_local_armor_stand_interact(entity_id, entity_type_id, held_item_id)
         } else if owner == VANILLA_INTERACTION_ENTITY_INTERACT_OWNER {
             self.predict_local_interaction_entity_interact(entity_id, entity_type_id)
         } else if owner == VANILLA_ITEM_FRAME_INTERACT_OWNER {
@@ -322,6 +326,47 @@ impl WorldStore {
             return LocalTargetUsePrediction::UnsupportedItemInteractLivingEntity(owner);
         }
         LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+    }
+
+    fn predict_local_armor_stand_interact(
+        &self,
+        entity_id: i32,
+        entity_type_id: i32,
+        held_item_id: Option<i32>,
+    ) -> LocalTargetUsePrediction {
+        let Some(accessors) =
+            vanilla_entity_metadata_armor_stand_accessors_for_entity_type(entity_type_id)
+        else {
+            return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+        };
+        let Some(flags) = self.entities.metadata_byte_for_entity(
+            entity_id,
+            accessors.client_flags_data_id,
+            accessors.client_flags_default,
+        ) else {
+            return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+        };
+        let held_item_type = match held_item_id {
+            Some(item_id) => {
+                let Some(item_type) = vanilla_item_type(item_id) else {
+                    return LocalTargetUsePrediction::UnknownItemType(Some(item_id));
+                };
+                Some(item_type)
+            }
+            None => None,
+        };
+        let marker = flags & accessors.marker_mask != 0;
+        let held_is_name_tag = held_item_type.is_some_and(|item_type| {
+            item_type.interact_living_entity_override
+                == Some(VanillaItemInteractLivingEntityOverride::NameTagItem)
+        });
+        if marker || held_is_name_tag {
+            self.predict_local_base_entity_interact(entity_id, entity_type_id, held_item_id)
+        } else {
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::server_item_interaction(),
+            ))
+        }
     }
 
     fn predict_local_interaction_entity_interact(
@@ -577,22 +622,23 @@ mod tests {
             VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
         },
         entity_data_serializers::{
-            VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID, VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+            VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID, VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+            VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
         },
         entity_types::{
-            VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
-            VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_COW_ID,
-            VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
-            VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_ITEM_FRAME_ID,
-            VANILLA_ENTITY_TYPE_MANNEQUIN_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
-            VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
-            VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+            VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
+            VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
+            VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
+            VANILLA_ENTITY_TYPE_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_MANNEQUIN_ID,
+            VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+            VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
         },
         item_types::{
             VanillaItemInteractLivingEntityOverride, VanillaItemUseOnOverride,
             VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID, VANILLA_ITEM_CHORUS_FRUIT_ID,
-            VANILLA_ITEM_LEAD_ID, VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_SHEARS_ID,
-            VANILLA_ITEM_SNOWBALL_ID, VANILLA_ITEM_STONE_ID,
+            VANILLA_ITEM_LEAD_ID, VANILLA_ITEM_NAME_TAG_ID, VANILLA_ITEM_RED_DYE_ID,
+            VANILLA_ITEM_SHEARS_ID, VANILLA_ITEM_SNOWBALL_ID, VANILLA_ITEM_STONE_ID,
         },
         packets::{
             AddEntity, Cooldown, DataComponentPatchSummary, EntityDataValue, EntityDataValueKind,
@@ -1064,6 +1110,47 @@ mod tests {
             LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
                 LocalInteractionSuccess::client_item_interaction()
             ))
+        );
+    }
+
+    #[test]
+    fn armor_stand_interaction_predicts_marker_and_name_tag_routing() {
+        let mut world = WorldStore::new();
+        add_entity(&mut world, 50, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID);
+        let accessors = vanilla_entity_metadata_armor_stand_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+        )
+        .unwrap();
+
+        assert_eq!(
+            world.predict_local_entity_interaction(50, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::server_item_interaction()
+            ))
+        );
+        set_main_hand(&mut world, VANILLA_ITEM_NAME_TAG_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(50, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::UnsupportedItemInteractLivingEntity(
+                VanillaItemInteractLivingEntityOverride::NameTagItem
+            )
+        );
+
+        world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: ItemStackSummary::empty(),
+        });
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 50,
+            values: vec![EntityDataValue {
+                data_id: accessors.client_flags_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                value: EntityDataValueKind::Byte(accessors.marker_mask),
+            }],
+        }));
+        assert_eq!(
+            world.predict_local_entity_interaction(50, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
         );
     }
 }
