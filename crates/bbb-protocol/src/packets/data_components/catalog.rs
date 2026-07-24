@@ -28,7 +28,8 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
     VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_RARITY_TYPE_ID, VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID, VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,
+    VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID, VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID,
     VANILLA_DATA_COMPONENT_TOOL_TYPE_ID, VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
@@ -297,6 +298,9 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID => Some(encode_container),
         VANILLA_DATA_COMPONENT_BEES_TYPE_ID => Some(encode_bees),
         VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID => Some(encode_painting_variant),
+        VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID => {
+            Some(encode_provides_trim_material)
+        }
         _ => None,
     }
 }
@@ -1699,6 +1703,21 @@ fn encode_trim(
         &mut encoded,
         summary.armor_trim_pattern_id,
         summary.armor_trim_pattern_direct.as_deref(),
+    )?;
+    out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
+fn encode_provides_trim_material(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let mut encoded = Encoder::new();
+    encode_trim_material_holder(
+        &mut encoded,
+        summary.provides_trim_material_id,
+        summary.provides_trim_material_direct.as_deref(),
     )?;
     out.write_bytes(&encoded.into_inner());
     Ok(())
@@ -3536,7 +3555,7 @@ mod tests {
             vec![
                 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 22, 24, 25,
                 26, 28, 30, 36, 37, 38, 39, 40, 42, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 61,
-                64, 67, 68, 69, 70, 72, 75, 77, 102,
+                62, 64, 67, 68, 69, 70, 72, 75, 77, 102,
             ]
         );
     }
@@ -6568,6 +6587,125 @@ mod tests {
                 decal: true,
             })),
             ..DataComponentPatchSummary::default()
+        }
+    }
+
+    #[test]
+    fn provides_trim_material_descriptor_round_trips_reference_and_direct_holders_in_wire_order() {
+        let descriptor = vanilla_data_component_descriptor(
+            VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
+        )
+        .unwrap();
+        for holder_id in [0, i32::MAX - 1] {
+            let referenced = DataComponentPatchSummary {
+                provides_trim_material_id: Some(holder_id),
+                ..DataComponentPatchSummary::default()
+            };
+            let mut encoded = Encoder::new();
+            descriptor.encode(&referenced, &mut encoded).unwrap();
+            let wire = encoded.into_inner();
+            let mut expected = Encoder::new();
+            expected.write_var_i32(holder_id + 1);
+            assert_eq!(wire, expected.into_inner());
+
+            let mut decoded = DataComponentPatchSummary::default();
+            let mut decoder = Decoder::new(&wire);
+            descriptor.decode(&mut decoder, &mut decoded).unwrap();
+            assert!(decoder.is_empty());
+            assert_eq!(decoded, referenced);
+        }
+
+        let material = direct_trim_patch()
+            .armor_trim_material_direct
+            .expect("direct trim fixture has a material");
+        let direct = DataComponentPatchSummary {
+            provides_trim_material_direct: Some(material.clone()),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        descriptor.encode(&direct, &mut encoded).unwrap();
+        let wire = encoded.into_inner();
+        let mut expected = Encoder::new();
+        expected.write_var_i32(0);
+        expected.write_string(&material.asset_name);
+        expected.write_var_i32(material.override_armor_assets.len() as i32);
+        for (equipment_asset, suffix) in &material.override_armor_assets {
+            expected.write_string(equipment_asset);
+            expected.write_string(suffix);
+        }
+        expected.write_bytes(
+            &encode_nbt_summary_bounded(
+                material.description_nbt.as_deref(),
+                i32::MAX as usize,
+                MAX_NBT_DEPTH,
+            )
+            .unwrap(),
+        );
+        assert_eq!(wire, expected.into_inner());
+
+        let mut decoded = DataComponentPatchSummary::default();
+        let mut decoder = Decoder::new(&wire);
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded, direct);
+    }
+
+    #[test]
+    fn provides_trim_material_descriptor_rejects_noncanonical_values_atomically() {
+        let descriptor = vanilla_data_component_descriptor(
+            VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
+        )
+        .unwrap();
+        let material = direct_trim_patch()
+            .armor_trim_material_direct
+            .expect("direct trim fixture has a material");
+        let mut cases = vec![
+            DataComponentPatchSummary::default(),
+            DataComponentPatchSummary {
+                provides_trim_material_id: Some(-1),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                provides_trim_material_id: Some(i32::MAX),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                provides_trim_material_id: Some(0),
+                provides_trim_material_direct: Some(material.clone()),
+                ..DataComponentPatchSummary::default()
+            },
+        ];
+        for invalid in [
+            TrimMaterialSummary {
+                asset_name: "Ruby".to_string(),
+                ..material.as_ref().clone()
+            },
+            TrimMaterialSummary {
+                description_nbt: None,
+                ..material.as_ref().clone()
+            },
+            TrimMaterialSummary {
+                description: "Stale".to_string(),
+                ..material.as_ref().clone()
+            },
+            TrimMaterialSummary {
+                override_armor_assets: (0..=MAX_DATA_COMPONENT_LIST_ITEMS)
+                    .map(|index| (format!("example:asset_{index}"), "ruby".to_string()))
+                    .collect(),
+                ..material.as_ref().clone()
+            },
+        ] {
+            cases.push(DataComponentPatchSummary {
+                provides_trim_material_direct: Some(Box::new(invalid)),
+                ..DataComponentPatchSummary::default()
+            });
+        }
+
+        for summary in cases {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            assert!(descriptor.encode(&summary, &mut encoded).is_err());
+            assert_eq!(encoded.into_inner(), [0xaa]);
         }
     }
 

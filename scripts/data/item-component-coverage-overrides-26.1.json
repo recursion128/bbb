@@ -3547,6 +3547,85 @@
         "status": "complete"
       }
     },
+    "PROVIDES_TRIM_MATERIAL": {
+      "canonical_retention": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#pub struct TrimMaterialSummary",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub provides_trim_material_id",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub provides_trim_material_direct",
+          "crates/bbb-protocol/src/packets/data_components.rs#decode_trim_material_holder_summary",
+          "crates/bbb-protocol/src/packets/data_components.rs#decode_direct_trim_material_summary",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#provides_trim_material_descriptor_round_trips_reference_and_direct_holders_in_wire_order"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/equipment/trim/TrimMaterial.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<TrimMaterial>> STREAM_CODEC",
+          "vanilla:net/minecraft/world/item/equipment/trim/TrimMaterial.java#public static final StreamCodec<RegistryFriendlyByteBuf, TrimMaterial> DIRECT_STREAM_CODEC",
+          "vanilla:net/minecraft/world/item/equipment/trim/MaterialAssetGroup.java#public static final StreamCodec<ByteBuf, MaterialAssetGroup> STREAM_CODEC",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, Holder<T>> holder",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_provides_trim_material",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#provides_trim_material_descriptor_round_trips_reference_and_direct_holders_in_wire_order",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#provides_trim_material_descriptor_rejects_noncanonical_values_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_direct_provides_trim_material_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/crafting/SmithingTrimRecipe.java#DataComponents.PROVIDES_TRIM_MATERIAL",
+          "crates/bbb-world/src/recipes/slot_display.rs#validate_item_stack_trim_holders",
+          "crates/bbb-world/src/recipes/slot_display.rs#validate_trim_material",
+          "crates/bbb-world/src/recipes/slot_display/tests.rs#smithing_trim_uses_reordered_dynamic_holders_and_stable_sampling",
+          "crates/bbb-world/src/recipes/slot_display/tests.rs#direct_trim_values_and_candidate_budget_are_validated",
+          "crates/bbb-native/src/resource_reload.rs#item_runtime_projects_complete_component_scalar_and_trim_defaults_into_world"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/equipment/trim/TrimMaterial.java#public static final Codec<Holder<TrimMaterial>> CODEC",
+          "vanilla:net/minecraft/resources/RegistryFileCodec.java#public static <E> RegistryFileCodec<E> create",
+          "crates/bbb-native/src/input/component_patch.rs#encode_provides_trim_material",
+          "crates/bbb-native/src/input/component_patch.rs#encode_direct_trim_material",
+          "crates/bbb-native/src/input/component_patch.rs#provides_trim_material_encoder_supports_named_and_exact_direct_holders",
+          "crates/bbb-world/src/client/dialog/body/component_value/trim/tests.rs#decodes_direct_provides_trim_material_with_assets_and_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#provides_trim_material_descriptor_round_trips_reference_and_direct_holders_in_wire_order",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#provides_trim_material_descriptor_rejects_noncanonical_values_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_direct_provides_trim_material_component",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_provides_trim_material_named_holder",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_provides_trim_material_direct_holder",
+          "crates/bbb-native/src/input/component_patch.rs#provides_trim_material_encoder_supports_named_and_exact_direct_holders",
+          "crates/bbb-world/src/recipes/slot_display/tests.rs#smithing_trim_uses_reordered_dynamic_holders_and_stable_sampling",
+          "crates/bbb-world/src/recipes/slot_display/tests.rs#direct_trim_values_and_candidate_budget_are_validated"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#PROVIDES_TRIM_MATERIAL",
+          "vanilla:net/minecraft/world/item/equipment/trim/TrimMaterial.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<TrimMaterial>> STREAM_CODEC",
+          "vanilla:net/minecraft/world/item/equipment/trim/MaterialAssetGroup.java#public static final StreamCodec<ByteBuf, MaterialAssetGroup> STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_provides_trim_material",
+          "crates/bbb-protocol/src/packets/data_components.rs#decode_trim_material_holder_summary",
+          "crates/bbb-protocol/src/packets/data_components.rs#decode_direct_trim_material_summary",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_provides_trim_material_direct_holder"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "PAINTING_VARIANT": {
       "canonical_retention": {
         "evidence": [

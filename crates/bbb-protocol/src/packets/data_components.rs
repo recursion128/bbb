@@ -30,6 +30,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
         VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
     },
     entity_types::vanilla_entity_type,
@@ -1262,6 +1263,11 @@ fn validate_encodable_data_component_patch_summary(
             VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID => {
                 expected.painting_variant_id = patch.painting_variant_id;
                 expected.painting_variant_direct = patch.painting_variant_direct.clone();
+            }
+            VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID => {
+                expected.provides_trim_material_id = patch.provides_trim_material_id;
+                expected.provides_trim_material_direct =
+                    patch.provides_trim_material_direct.clone();
             }
             VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID => {
                 expected.profile = patch
