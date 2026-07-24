@@ -4,6 +4,8 @@ use std::sync::OnceLock;
 use bbb_render_types::{vanilla_map_decoration_type, vanilla_map_decoration_type_for_resource_id};
 
 use crate::block_entity_types::vanilla_block_entity_type;
+use crate::block_state_types::vanilla_block_has_property;
+use crate::block_types::{vanilla_block_type, vanilla_block_type_for_resource_id};
 use crate::data_component_types::{
     DataComponentTypeCatalogEntry, VANILLA_DATA_COMPONENT_ADDITIONAL_TRADE_COST_TYPE_ID,
     VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
@@ -25,8 +27,9 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
     VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
     VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID, VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID,
-    VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID, VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID,
+    VANILLA_DATA_COMPONENT_DYE_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
     VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
     VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID, VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
@@ -185,7 +188,7 @@ static WIRE_DECODE_HANDLERS: &[WireDecodeHandler] = &[
     decode_writable_book_content_component,
     decode_written_book_content_component,
     decode_trim,
-    decode_codec_backed_nbt,
+    decode_debug_stick_state,
     decode_entity_data,
     decode_bucket_entity_data,
     decode_block_entity_data,
@@ -324,6 +327,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID => Some(encode_writable_book_content),
         VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID => Some(encode_written_book_content),
         VANILLA_DATA_COMPONENT_TRIM_TYPE_ID => Some(encode_trim),
+        VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID => Some(encode_debug_stick_state),
         VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID => Some(encode_firework_explosion),
         VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID => Some(encode_fireworks),
         VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID => Some(encode_charged_projectiles),
@@ -3708,6 +3712,119 @@ fn decode_codec_backed_nbt(
     Ok(())
 }
 
+fn decode_debug_stick_state(
+    _type_id: i32,
+    decoder: &mut Decoder<'_>,
+    summary: &mut DataComponentPatchSummary,
+) -> Result<()> {
+    let value = decode_required_compound_tag(decoder, "debug_stick_state")?;
+    summary.debug_stick_properties = decode_debug_stick_properties(&value)?;
+    Ok(())
+}
+
+fn decode_debug_stick_properties(
+    value: &NbtSummaryValue,
+) -> Result<Vec<DebugStickPropertySummary>> {
+    let NbtSummaryValue::Compound(entries) = value else {
+        return Err(ProtocolError::InvalidData(
+            "debug_stick_state network value must be a non-null compound tag".to_string(),
+        ));
+    };
+    if entries.len() > MAX_DATA_COMPONENT_LIST_ITEMS {
+        return Err(ProtocolError::PacketTooLarge(
+            entries.len(),
+            MAX_DATA_COMPONENT_LIST_ITEMS,
+        ));
+    }
+
+    let mut compound_entries = Vec::<&NbtSummaryEntry>::with_capacity(entries.len());
+    for entry in entries {
+        if let Some(existing) = compound_entries
+            .iter_mut()
+            .find(|existing| existing.name == entry.name)
+        {
+            *existing = entry;
+        } else {
+            compound_entries.push(entry);
+        }
+    }
+
+    let mut seen_blocks = BTreeSet::new();
+    compound_entries
+        .into_iter()
+        .map(|entry| {
+            let resource_id = normalize_resource_location(entry.name.clone())?;
+            let block = vanilla_block_type_for_resource_id(&resource_id).ok_or_else(|| {
+                ProtocolError::InvalidData(format!(
+                    "debug_stick_state references unknown block {resource_id}"
+                ))
+            })?;
+            if !seen_blocks.insert(block.id) {
+                return Err(ProtocolError::InvalidData(format!(
+                    "debug_stick_state contains duplicate block {resource_id}"
+                )));
+            }
+            let NbtSummaryValue::String(property) = &entry.value else {
+                return Err(ProtocolError::InvalidData(format!(
+                    "debug_stick_state property for block {resource_id} is not a string"
+                )));
+            };
+            if !vanilla_block_has_property(block.resource_id, property) {
+                return Err(ProtocolError::InvalidData(format!(
+                    "block {resource_id} has no property {property} for debug_stick_state"
+                )));
+            }
+            Ok(DebugStickPropertySummary {
+                block_registry_id: block.id,
+                property: property.clone(),
+            })
+        })
+        .collect()
+}
+
+fn encode_debug_stick_state(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    if summary.debug_stick_properties.len() > MAX_DATA_COMPONENT_LIST_ITEMS {
+        return Err(ProtocolError::PacketTooLarge(
+            summary.debug_stick_properties.len(),
+            MAX_DATA_COMPONENT_LIST_ITEMS,
+        ));
+    }
+    let mut seen_blocks = BTreeSet::new();
+    let mut entries = Vec::with_capacity(summary.debug_stick_properties.len());
+    for property in &summary.debug_stick_properties {
+        let block = vanilla_block_type(property.block_registry_id).ok_or_else(|| {
+            ProtocolError::InvalidData(format!(
+                "debug_stick_state has invalid block holder id {}",
+                property.block_registry_id
+            ))
+        })?;
+        if !seen_blocks.insert(block.id) {
+            return Err(ProtocolError::InvalidData(format!(
+                "debug_stick_state contains duplicate block {}",
+                block.resource_id
+            )));
+        }
+        if !vanilla_block_has_property(block.resource_id, &property.property) {
+            return Err(ProtocolError::InvalidData(format!(
+                "block {} has no property {} for debug_stick_state",
+                block.resource_id, property.property
+            )));
+        }
+        entries.push(NbtSummaryEntry {
+            name: block.resource_id.to_string(),
+            value: NbtSummaryValue::String(property.property.clone()),
+        });
+    }
+    let value = NbtSummaryValue::Compound(entries);
+    let encoded = encode_nbt_summary_bounded(Some(&value), i32::MAX as usize, MAX_NBT_DEPTH)?;
+    out.write_bytes(&encoded);
+    Ok(())
+}
+
 fn decode_bucket_entity_data(
     type_id: i32,
     decoder: &mut Decoder<'_>,
@@ -4681,10 +4798,10 @@ mod tests {
             vec![
                 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
                 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43,
-                44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 61, 62, 63, 64, 65,
-                66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 79, 80, 81, 82, 83, 84, 85, 86, 87,
-                88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106,
-                107, 108, 109,
+                44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64,
+                65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 79, 80, 81, 82, 83, 84, 85, 86,
+                87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105,
+                106, 107, 108, 109,
             ]
         );
     }
@@ -4875,6 +4992,122 @@ mod tests {
             .to_string()
             .contains("missing creative_slot_lock component value"));
         assert_eq!(encoded.into_inner(), [0xaa]);
+    }
+
+    #[test]
+    fn debug_stick_state_descriptor_round_trips_validated_block_property_maps() {
+        let oak_log = vanilla_block_type_for_resource_id("minecraft:oak_log").unwrap();
+        let lever = vanilla_block_type_for_resource_id("minecraft:lever").unwrap();
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID)
+                .unwrap();
+        let summary = DataComponentPatchSummary {
+            debug_stick_properties: vec![
+                DebugStickPropertySummary {
+                    block_registry_id: oak_log.id,
+                    property: "axis".to_string(),
+                },
+                DebugStickPropertySummary {
+                    block_registry_id: lever.id,
+                    property: "powered".to_string(),
+                },
+            ],
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        descriptor.encode(&summary, &mut encoded).unwrap();
+
+        let wire = encoded.into_inner();
+        let mut decoder = Decoder::new(&wire);
+        let mut decoded = DataComponentPatchSummary::default();
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(
+            decoded.debug_stick_properties,
+            summary.debug_stick_properties
+        );
+
+        let mut empty = Encoder::new();
+        descriptor
+            .encode(&DataComponentPatchSummary::default(), &mut empty)
+            .unwrap();
+        assert_eq!(empty.into_inner(), [10, 0]);
+    }
+
+    #[test]
+    fn debug_stick_state_descriptor_rejects_invalid_maps_atomically() {
+        let oak_log = vanilla_block_type_for_resource_id("minecraft:oak_log")
+            .unwrap()
+            .id;
+        let stone = vanilla_block_type_for_resource_id("minecraft:stone")
+            .unwrap()
+            .id;
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID)
+                .unwrap();
+        for properties in [
+            vec![DebugStickPropertySummary {
+                block_registry_id: i32::MAX,
+                property: "axis".to_string(),
+            }],
+            vec![DebugStickPropertySummary {
+                block_registry_id: stone,
+                property: "axis".to_string(),
+            }],
+            vec![
+                DebugStickPropertySummary {
+                    block_registry_id: oak_log,
+                    property: "axis".to_string(),
+                },
+                DebugStickPropertySummary {
+                    block_registry_id: oak_log,
+                    property: "axis".to_string(),
+                },
+            ],
+        ] {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            assert!(descriptor
+                .encode(
+                    &DataComponentPatchSummary {
+                        debug_stick_properties: properties,
+                        ..DataComponentPatchSummary::default()
+                    },
+                    &mut encoded,
+                )
+                .is_err());
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
+
+        for invalid in [
+            NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                name: "minecraft:missing".to_string(),
+                value: NbtSummaryValue::String("axis".to_string()),
+            }]),
+            NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                name: "minecraft:stone".to_string(),
+                value: NbtSummaryValue::String("axis".to_string()),
+            }]),
+            NbtSummaryValue::Compound(vec![
+                NbtSummaryEntry {
+                    name: "oak_log".to_string(),
+                    value: NbtSummaryValue::String("axis".to_string()),
+                },
+                NbtSummaryEntry {
+                    name: "minecraft:oak_log".to_string(),
+                    value: NbtSummaryValue::String("axis".to_string()),
+                },
+            ]),
+        ] {
+            let wire = encode_nbt_summary_bounded(Some(&invalid), i32::MAX as usize, MAX_NBT_DEPTH)
+                .unwrap();
+            assert!(descriptor
+                .decode(
+                    &mut Decoder::new(&wire),
+                    &mut DataComponentPatchSummary::default(),
+                )
+                .is_err());
+        }
     }
 
     #[test]

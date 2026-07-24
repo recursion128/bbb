@@ -473,3 +473,6 @@
 - **2026-07-23（Banner pattern provider component 六维闭环）**：
   `PROVIDES_BANNER_PATTERNS` 现按 named/direct holder-set 精确重编码，并以
   session registry 顺序驱动 Loom 输入与 HUD（`211acc28c`、`7984a8162`）。
+- **2026-07-23（Debug stick state component 六维闭环）**：`DEBUG_STICK_STATE`
+  现按内建 block holder 与 StateDefinition property 精确编解码，并覆盖
+  creative framing、canonical 对话投影和持久化 SNBT。

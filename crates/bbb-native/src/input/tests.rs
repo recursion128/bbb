@@ -10460,13 +10460,6 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         codec_backed_nbt: BTreeMap::from([
             (47, NbtSummaryValue::Compound(Vec::new())),
             (
-                57,
-                NbtSummaryValue::Compound(vec![NbtSummaryEntry {
-                    name: "minecraft:stone".to_string(),
-                    value: NbtSummaryValue::String("facing".to_string()),
-                }]),
-            ),
-            (
                 59,
                 NbtSummaryValue::Compound(vec![NbtSummaryEntry {
                     name: "Health".to_string(),
@@ -10497,6 +10490,10 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
                 ]),
             ),
         ]),
+        debug_stick_properties: vec![bbb_protocol::packets::DebugStickPropertySummary {
+            block_registry_id: bbb_protocol::block_types::VANILLA_BLOCK_OAK_LOG_ID,
+            property: "axis".to_string(),
+        }],
         entity_data_entity_type_id: Some(bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ZOMBIE_ID),
         entity_data_tag: Some(NbtSummaryValue::Compound(vec![
             NbtSummaryEntry {
@@ -10912,7 +10909,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
          [{raw: \"Chapter one\"}, {raw: {text: \"Raw chapter two\"}, filtered: \
          \"Filtered chapter two\"}], resolved: 1b}, \
          \"minecraft:trim\": {material: \"minecraft:iron\", pattern: \"minecraft:bolt\"}, \
-         \"minecraft:debug_stick_state\": {\"minecraft:stone\": \"facing\"}, \
+         \"minecraft:debug_stick_state\": {\"minecraft:oak_log\": \"axis\"}, \
          \"minecraft:entity_data\": {NoAI: 1b, Health: 20.0f, \
          id: \"minecraft:zombie\"}, \
          \"minecraft:bucket_entity_data\": {Health: 5s}, \

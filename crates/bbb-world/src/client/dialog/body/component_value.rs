@@ -17,15 +17,16 @@ use bbb_protocol::packets::{
         AttributeModifierSummary, BannerPatternLayerSummary, BeeOccupantSummary,
         BlockHolderSetSummary, BlockPredicateSummary, BlocksAttacksSummary, ConsumableSummary,
         ConsumeEffectSummary, DamageReductionSummary, DamageTypeHolderSetSummary,
-        DataComponentPatchSummary, DataComponentPredicateTypeSummary, EntityTypeHolderSetSummary,
-        EquippableSummary, FireworkExplosionSummary, ItemContainerSlotSummary,
-        ItemDamageFunctionSummary, ItemEnchantmentSummary, ItemMapDecorationSummary,
-        ItemStackTemplateSummary, KineticWeaponConditionSummary, KineticWeaponSummary,
-        LodestoneTargetSummary, MobEffectDetailsSummary, MobEffectInstanceSummary,
-        PartialDataComponentPredicateSummary, PiercingWeaponSummary, ResolvableProfileSummary,
-        SoundEventSummary, StatePropertyMatcherSummary, StatePropertyValueMatcherSummary,
-        SuspiciousStewEffectSummary, SwingAnimationSummary, ToolRuleSummary, ToolSummary,
-        TrimMaterialSummary, TrimPatternSummary, UseEffectsSummary, WrittenBookContentSummary,
+        DataComponentPatchSummary, DataComponentPredicateTypeSummary, DebugStickPropertySummary,
+        EntityTypeHolderSetSummary, EquippableSummary, FireworkExplosionSummary,
+        ItemContainerSlotSummary, ItemDamageFunctionSummary, ItemEnchantmentSummary,
+        ItemMapDecorationSummary, ItemStackTemplateSummary, KineticWeaponConditionSummary,
+        KineticWeaponSummary, LodestoneTargetSummary, MobEffectDetailsSummary,
+        MobEffectInstanceSummary, PartialDataComponentPredicateSummary, PiercingWeaponSummary,
+        ResolvableProfileSummary, SoundEventSummary, StatePropertyMatcherSummary,
+        StatePropertyValueMatcherSummary, SuspiciousStewEffectSummary, SwingAnimationSummary,
+        ToolRuleSummary, ToolSummary, TrimMaterialSummary, TrimPatternSummary, UseEffectsSummary,
+        WrittenBookContentSummary,
     },
 };
 use bbb_protocol::{
@@ -1012,18 +1013,13 @@ pub(super) fn apply_item_patch_value(
             VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID,
             Value::DebugStickState { properties },
         ) => {
-            patch.codec_backed_nbt.insert(
-                type_id,
-                NbtSummaryValue::Compound(
-                    properties
-                        .iter()
-                        .map(|property| NbtSummaryEntry {
-                            name: property.block.resource_id.clone(),
-                            value: NbtSummaryValue::String(property.property.clone()),
-                        })
-                        .collect(),
-                ),
-            );
+            patch.debug_stick_properties = properties
+                .iter()
+                .map(|property| DebugStickPropertySummary {
+                    block_registry_id: property.block.holder_id,
+                    property: property.property.clone(),
+                })
+                .collect();
         }
         (VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID, Value::Recipes { resource_ids }) => {
             patch.recipe_keys = Some(resource_ids.clone());

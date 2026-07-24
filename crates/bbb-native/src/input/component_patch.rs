@@ -340,7 +340,7 @@ static PERSISTENT_SNBT_ENCODERS: &[PersistentSnbtEncoderDescriptor] = &[
     ),
     encoder(
         component_id::VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID,
-        encode_codec_backed_nbt,
+        encode_debug_stick_state,
     ),
     encoder(
         component_id::VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
@@ -1413,6 +1413,31 @@ fn encode_codec_backed_nbt(
     Some(debug_nbt_summary_snbt(
         patch.codec_backed_nbt.get(&type_id)?,
     ))
+}
+
+fn encode_debug_stick_state(
+    _type_id: i32,
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+    _context: PersistentSnbtContext<'_>,
+) -> Option<String> {
+    let mut seen_blocks = BTreeSet::new();
+    let mut entries = Vec::with_capacity(patch.debug_stick_properties.len());
+    for property in &patch.debug_stick_properties {
+        let block = bbb_protocol::block_types::vanilla_block_type(property.block_registry_id)?;
+        if !seen_blocks.insert(block.id)
+            || !bbb_protocol::block_state_types::vanilla_block_has_property(
+                block.resource_id,
+                &property.property,
+            )
+        {
+            return None;
+        }
+        entries.push(bbb_protocol::packets::NbtSummaryEntry {
+            name: block.resource_id.to_string(),
+            value: NbtSummaryValue::String(property.property.clone()),
+        });
+    }
+    Some(debug_nbt_summary_snbt(&NbtSummaryValue::Compound(entries)))
 }
 
 fn encode_bucket_entity_data(
@@ -3624,6 +3649,55 @@ mod tests {
                 Some(debug_nbt_summary_snbt(&persistent))
             );
         }
+    }
+
+    #[test]
+    fn debug_stick_state_encoder_validates_builtin_block_properties() {
+        let oak_log = bbb_protocol::block_types::VANILLA_BLOCK_OAK_LOG_ID;
+        let stone = bbb_protocol::block_types::VANILLA_BLOCK_STONE_ID;
+        let mut patch = bbb_protocol::packets::DataComponentPatchSummary {
+            debug_stick_properties: vec![bbb_protocol::packets::DebugStickPropertySummary {
+                block_registry_id: oak_log,
+                property: "axis".to_string(),
+            }],
+            ..Default::default()
+        };
+        assert_eq!(
+            encode_added_component_value_snbt(
+                component_id::VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID,
+                &patch,
+                None,
+            ),
+            Some("{\"minecraft:oak_log\": \"axis\"}".to_string())
+        );
+
+        patch.debug_stick_properties[0].block_registry_id = stone;
+        assert_eq!(
+            encode_added_component_value_snbt(
+                component_id::VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID,
+                &patch,
+                None,
+            ),
+            None
+        );
+        patch.debug_stick_properties = vec![
+            bbb_protocol::packets::DebugStickPropertySummary {
+                block_registry_id: oak_log,
+                property: "axis".to_string(),
+            },
+            bbb_protocol::packets::DebugStickPropertySummary {
+                block_registry_id: oak_log,
+                property: "axis".to_string(),
+            },
+        ];
+        assert_eq!(
+            encode_added_component_value_snbt(
+                component_id::VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID,
+                &patch,
+                None,
+            ),
+            None
+        );
     }
 
     #[test]

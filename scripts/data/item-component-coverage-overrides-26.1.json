@@ -933,6 +933,77 @@
         "status": "complete"
       }
     },
+    "DEBUG_STICK_STATE": {
+      "canonical_retention": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/component/DebugStickState.java#public record DebugStickState",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub debug_stick_properties",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub struct DebugStickPropertySummary",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_codec_backed_nbt_component_values",
+          "crates/bbb-world/src/client/dialog/body/component_value/debug_stick/tests.rs#decodes_debug_stick_block_property_map_from_builtin_registry"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponentType.java#build",
+          "vanilla:net/minecraft/world/item/component/DebugStickState.java#CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_debug_stick_state",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#debug_stick_state_descriptor_round_trips_validated_block_property_maps",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_debug_stick_state_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/DebugStickItem.java#handleInteraction",
+          "crates/bbb-world/src/client/dialog/body/component_value/canonical_json.rs#canonicalizes_debug_stick_dispatched_map",
+          "crates/bbb-world/src/client/dialog/body/component_value/debug_stick/tests.rs#decodes_debug_stick_block_property_map_from_builtin_registry",
+          "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_projects_dialog_item_body_structured_patches"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/component/DebugStickState.java#CODEC",
+          "crates/bbb-protocol/src/block_state_types.rs#vanilla_block_has_property",
+          "crates/bbb-native/src/input/component_patch.rs#encode_debug_stick_state",
+          "crates/bbb-native/src/input/component_patch.rs#debug_stick_state_encoder_validates_builtin_block_properties",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-world/src/client/dialog/body/component_value/debug_stick/tests.rs#rejects_unknown_blocks_properties_and_malformed_debug_stick_maps"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#debug_stick_state_descriptor_round_trips_validated_block_property_maps",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#debug_stick_state_descriptor_rejects_invalid_maps_atomically",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_codec_backed_nbt_component_values",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_debug_stick_state_component",
+          "crates/bbb-world/src/client/dialog/body/component_value/debug_stick/tests.rs#decodes_debug_stick_block_property_map_from_builtin_registry",
+          "crates/bbb-world/src/client/dialog/body/component_value/debug_stick/tests.rs#rejects_unknown_blocks_properties_and_malformed_debug_stick_maps",
+          "crates/bbb-native/src/input/component_patch.rs#debug_stick_state_encoder_validates_builtin_block_properties"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#DEBUG_STICK_STATE",
+          "vanilla:net/minecraft/world/item/component/DebugStickState.java#public record DebugStickState",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub struct DebugStickPropertySummary",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_debug_stick_state",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_codec_backed_nbt_component_values",
+          "crates/bbb-world/src/client/dialog/body/component_value/debug_stick/tests.rs#decodes_debug_stick_block_property_map_from_builtin_registry"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "FIREWORK_EXPLOSION": {
       "canonical_retention": {
         "evidence": [

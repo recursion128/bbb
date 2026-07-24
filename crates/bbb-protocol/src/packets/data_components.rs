@@ -37,6 +37,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_CREATIVE_SLOT_LOCK_TYPE_ID,
         VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID,
         VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
         VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID, VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID, VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
@@ -394,6 +395,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub block_state_properties: BTreeMap<String, String>,
     #[serde(default)]
+    pub debug_stick_properties: Vec<DebugStickPropertySummary>,
+    #[serde(default)]
     pub profile: Option<ResolvableProfileSummary>,
     #[serde(default)]
     pub villager_variant_id: Option<i32>,
@@ -596,6 +599,12 @@ pub struct BlockHolderSetSummary {
 pub struct StatePropertyMatcherSummary {
     pub name: String,
     pub value: StatePropertyValueMatcherSummary,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DebugStickPropertySummary {
+    pub block_registry_id: i32,
+    pub property: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1440,6 +1449,9 @@ fn validate_encodable_data_component_patch_summary(
             }
             VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID => {
                 expected.block_state_properties = patch.block_state_properties.clone();
+            }
+            VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID => {
+                expected.debug_stick_properties = patch.debug_stick_properties.clone();
             }
             VANILLA_DATA_COMPONENT_BEES_TYPE_ID => {
                 expected.bees_present = patch.bees_present;
@@ -3645,7 +3657,7 @@ mod tests {
             DataComponentPatchSummary {
                 added: 1,
                 added_type_ids: vec![
-                    crate::data_component_types::VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID,
+                    crate::data_component_types::VANILLA_DATA_COMPONENT_LOCK_TYPE_ID,
                 ],
                 ..DataComponentPatchSummary::default()
             },
@@ -5205,7 +5217,7 @@ mod tests {
         payload.write_var_i32(47);
         payload.write_bytes(&empty_nbt_compound_root());
         payload.write_var_i32(57);
-        payload.write_bytes(&empty_nbt_compound_root());
+        payload.write_bytes(&nbt_string_map_root(&[("minecraft:oak_log", "axis")]));
         payload.write_var_i32(59);
         payload.write_bytes(&custom_data_nbt_root());
         payload.write_var_i32(66);
@@ -5228,9 +5240,12 @@ mod tests {
                     "minecraft:bread".to_string(),
                     "minecraft:torch".to_string(),
                 ]),
+                debug_stick_properties: vec![DebugStickPropertySummary {
+                    block_registry_id: crate::block_types::VANILLA_BLOCK_OAK_LOG_ID,
+                    property: "axis".to_string(),
+                }],
                 codec_backed_nbt: BTreeMap::from([
                     (47, NbtSummaryValue::Compound(Vec::new())),
-                    (57, NbtSummaryValue::Compound(Vec::new())),
                     (
                         59,
                         NbtSummaryValue::Compound(vec![
@@ -8449,6 +8464,15 @@ mod tests {
         for value in values {
             write_mutf8(&mut out, value);
         }
+        out
+    }
+
+    fn nbt_string_map_root(values: &[(&str, &str)]) -> Vec<u8> {
+        let mut out = vec![10];
+        for (name, value) in values {
+            write_named_nbt_string(&mut out, name, value);
+        }
+        out.push(0);
         out
     }
 
