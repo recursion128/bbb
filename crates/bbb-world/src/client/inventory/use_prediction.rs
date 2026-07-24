@@ -1,6 +1,8 @@
 use super::*;
 use crate::{
     entities::{
+        vanilla_entity_metadata_abstract_horse_accessors_for_entity_type,
+        vanilla_entity_metadata_age_locked_accessor_for_entity_type,
         vanilla_entity_metadata_armor_stand_accessors_for_entity_type,
         vanilla_entity_metadata_interact_owner,
         vanilla_entity_metadata_interaction_accessors_for_entity_type,
@@ -52,6 +54,7 @@ const VANILLA_MINECART_FURNACE_INTERACT_OWNER: &str =
     "net.minecraft.world.entity.vehicle.minecart.MinecartFurnace";
 const VANILLA_ZOMBIE_HORSE_INTERACT_OWNER: &str =
     "net.minecraft.world.entity.animal.equine.ZombieHorse";
+const VANILLA_ZOMBIE_HORSE_FOOD_TAG: &str = "minecraft:zombie_horse_food";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LocalInteractionSwingSource {
@@ -565,6 +568,16 @@ impl WorldStore {
         {
             return self.predict_local_camel_husk_mob_interact(held_item_id, secondary_use_active);
         }
+        if interact_owner == VANILLA_ZOMBIE_HORSE_INTERACT_OWNER
+            && owner == VANILLA_ZOMBIE_HORSE_INTERACT_OWNER
+        {
+            return self.predict_local_zombie_horse_mob_interact(
+                entity_id,
+                entity_type_id,
+                held_item_id,
+                secondary_use_active,
+            );
+        }
         if owner != VANILLA_MOB_ENTITY_INTERACT_OWNER {
             return LocalTargetUsePrediction::UnsupportedEntityInteract(owner);
         }
@@ -608,6 +621,106 @@ impl WorldStore {
                 LocalInteractionSuccess::consume(false),
             ))
         }
+    }
+
+    fn predict_local_zombie_horse_mob_interact(
+        &self,
+        entity_id: i32,
+        entity_type_id: i32,
+        held_item_id: Option<i32>,
+        secondary_use_active: bool,
+    ) -> LocalTargetUsePrediction {
+        let Some(is_baby) = self.entities.is_baby(entity_id) else {
+            return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+        };
+        let Some(accessors) =
+            vanilla_entity_metadata_abstract_horse_accessors_for_entity_type(entity_type_id)
+        else {
+            return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+        };
+        let Some(flags) = self.entities.metadata_byte_for_entity(
+            entity_id,
+            accessors.flags_data_id,
+            accessors.flags_default,
+        ) else {
+            return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+        };
+        let is_tamed = flags & accessors.tame_mask != 0;
+        let is_vehicle = self.entities.entity_has_passengers(entity_id);
+
+        // `ZombieHorse.mobInteract` reaches `AbstractHorse.mobInteract` for this
+        // case, which opens the inventory before consulting the held item.
+        if !is_baby && !is_vehicle && is_tamed && secondary_use_active {
+            return LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction(),
+            ));
+        }
+
+        let Some(item_id) = held_item_id else {
+            return if is_baby || is_vehicle {
+                LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+            } else {
+                LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                    LocalInteractionSuccess::client_item_interaction(),
+                ))
+            };
+        };
+        let Some(food_item_ids) =
+            self.registry_holder_ids_for_tag("minecraft:item", VANILLA_ZOMBIE_HORSE_FOOD_TAG)
+        else {
+            return LocalTargetUsePrediction::UnsupportedEntityInteract(
+                VANILLA_ZOMBIE_HORSE_INTERACT_OWNER,
+            );
+        };
+        if food_item_ids.contains(&item_id) {
+            if !is_baby && !is_vehicle {
+                return LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                    LocalInteractionSuccess::server_item_interaction(),
+                ));
+            }
+            if is_baby {
+                let Some((data_id, default)) =
+                    vanilla_entity_metadata_age_locked_accessor_for_entity_type(entity_type_id)
+                else {
+                    return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+                };
+                let Some(age_locked) = self
+                    .entities
+                    .metadata_bool_for_entity(entity_id, data_id, default)
+                else {
+                    return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+                };
+                if !age_locked {
+                    return LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                        LocalInteractionSuccess::client_item_interaction(),
+                    ));
+                }
+            }
+            return LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::consume(false),
+            ));
+        }
+
+        if !is_baby && !is_vehicle {
+            if !is_tamed {
+                return LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                    LocalInteractionSuccess::client_item_interaction(),
+                ));
+            }
+            let Some(item_type) = vanilla_item_type(item_id) else {
+                return LocalTargetUsePrediction::UnknownItemType(Some(item_id));
+            };
+            if let Some(owner) = item_type.interact_living_entity_override {
+                return LocalTargetUsePrediction::UnsupportedItemInteractLivingEntity(owner);
+            }
+            return LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction(),
+            ));
+        }
+
+        // Zombie horses are in `EntityTypeTags.CANNOT_BE_AGE_LOCKED`, so their
+        // baby/vehicle `AgeableMob` fallback has no golden-dandelion success.
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
     }
 
     fn predict_local_base_entity_interact(
@@ -1266,8 +1379,13 @@ mod tests {
             add_entity(&mut world, entity_id, entity_type_id);
         }
 
+        assert_eq!(
+            world.predict_local_entity_interaction(71, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction()
+            ))
+        );
         for (entity_id, owner) in [
-            (71, "net.minecraft.world.entity.animal.equine.ZombieHorse"),
             (
                 72,
                 "net.minecraft.world.entity.animal.nautilus.AbstractNautilus",
@@ -1289,6 +1407,152 @@ mod tests {
             LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
                 LocalInteractionSuccess::server_item_interaction()
             ))
+        );
+    }
+
+    #[test]
+    fn zombie_horse_mob_interaction_uses_synced_age_tame_vehicle_and_food_state() {
+        let mut world = WorldStore::new();
+        add_entity(&mut world, 81, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID);
+        add_entity(&mut world, 82, VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID);
+        let horse_accessors = vanilla_entity_metadata_abstract_horse_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+        )
+        .unwrap();
+        let (baby_data_id, baby_default) =
+            crate::entities::vanilla_entity_metadata_baby_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+            )
+            .unwrap();
+        let (age_locked_data_id, age_locked_default) =
+            vanilla_entity_metadata_age_locked_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+            )
+            .unwrap();
+        assert!(!baby_default);
+        assert!(!age_locked_default);
+
+        let client_success = LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+            LocalInteractionSuccess::client_item_interaction(),
+        ));
+        assert_eq!(
+            world.predict_local_entity_interaction(81, InteractionHand::MainHand, false),
+            client_success
+        );
+
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 81,
+            values: vec![EntityDataValue {
+                data_id: horse_accessors.flags_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                value: EntityDataValueKind::Byte(horse_accessors.tame_mask),
+            }],
+        }));
+        assert_eq!(
+            world.predict_local_entity_interaction(81, InteractionHand::MainHand, true),
+            client_success
+        );
+
+        set_main_hand(&mut world, VANILLA_ITEM_STONE_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(81, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::UnsupportedEntityInteract(
+                VANILLA_ZOMBIE_HORSE_INTERACT_OWNER
+            )
+        );
+        world.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: "minecraft:item".to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: VANILLA_ZOMBIE_HORSE_FOOD_TAG.to_string(),
+                    entries: vec![VANILLA_ITEM_STONE_ID],
+                }],
+            }],
+        });
+        assert_eq!(
+            world.predict_local_entity_interaction(81, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::server_item_interaction()
+            ))
+        );
+
+        set_main_hand(&mut world, VANILLA_ITEM_RED_DYE_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(81, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::UnsupportedItemInteractLivingEntity(
+                VanillaItemInteractLivingEntityOverride::DyeItem
+            )
+        );
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 81,
+            values: vec![EntityDataValue {
+                data_id: horse_accessors.flags_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                value: EntityDataValueKind::Byte(horse_accessors.flags_default),
+            }],
+        }));
+        assert_eq!(
+            world.predict_local_entity_interaction(81, InteractionHand::MainHand, false),
+            client_success
+        );
+
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 81,
+            values: vec![EntityDataValue {
+                data_id: baby_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                value: EntityDataValueKind::Boolean(true),
+            }],
+        }));
+        set_main_hand(&mut world, VANILLA_ITEM_STONE_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(81, InteractionHand::MainHand, false),
+            client_success
+        );
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 81,
+            values: vec![EntityDataValue {
+                data_id: age_locked_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                value: EntityDataValueKind::Boolean(true),
+            }],
+        }));
+        assert_eq!(
+            world.predict_local_entity_interaction(81, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::consume(false)
+            ))
+        );
+
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 81,
+            values: vec![EntityDataValue {
+                data_id: baby_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                value: EntityDataValueKind::Boolean(false),
+            }],
+        }));
+        assert!(world.apply_set_passengers(SetPassengers {
+            vehicle_id: 81,
+            passenger_ids: vec![82],
+        }));
+        assert_eq!(
+            world.predict_local_entity_interaction(81, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::consume(false)
+            ))
+        );
+        set_main_hand(&mut world, VANILLA_ITEM_RED_DYE_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(81, InteractionHand::MainHand, true),
+            LocalTargetUsePrediction::UnsupportedItemInteractLivingEntity(
+                VanillaItemInteractLivingEntityOverride::DyeItem
+            )
+        );
+        set_main_hand(&mut world, VANILLA_ITEM_APPLE_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(81, InteractionHand::MainHand, true),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
         );
     }
 
