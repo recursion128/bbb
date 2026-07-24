@@ -6226,6 +6226,40 @@ fn debug_supported_component_patch_snbt_with_context(
     (!fields.is_empty()).then(|| format!("{{{}}}", fields.join(", ")))
 }
 
+fn debug_exact_component_patch_snbt_with_context(
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+    context: PersistentSnbtContext<'_>,
+) -> Option<String> {
+    if patch.added != patch.added_type_ids.len() {
+        return None;
+    }
+
+    let mut component_type_ids = BTreeSet::new();
+    let mut fields = Vec::with_capacity(patch.added_type_ids.len() + patch.removed_type_ids.len());
+    for type_id in &patch.added_type_ids {
+        let descriptor =
+            bbb_protocol::data_component_types::vanilla_data_component_descriptor(*type_id)?;
+        if !descriptor.is_persistent() || !component_type_ids.insert(*type_id) {
+            return None;
+        }
+        fields.push(debug_supported_added_component_snbt(
+            *type_id, patch, context,
+        )?);
+    }
+    for type_id in &patch.removed_type_ids {
+        let descriptor =
+            bbb_protocol::data_component_types::vanilla_data_component_descriptor(*type_id)?;
+        if !descriptor.is_persistent() || !component_type_ids.insert(*type_id) {
+            return None;
+        }
+        fields.push(format!(
+            "{}: {{}}",
+            debug_snbt_string(&format!("!{}", descriptor.resource_id()))
+        ));
+    }
+    Some(format!("{{{}}}", fields.join(", ")))
+}
+
 fn debug_supported_added_component_snbt(
     type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
@@ -7029,8 +7063,10 @@ fn debug_item_stack_template_snbt(
     if template.count != 1 {
         fields.push(format!("count: {}", template.count));
     }
-    if let Some(components) =
-        debug_supported_component_patch_snbt_with_context(&template.component_patch, context)
+    let components =
+        debug_exact_component_patch_snbt_with_context(&template.component_patch, context)?;
+    if !template.component_patch.added_type_ids.is_empty()
+        || !template.component_patch.removed_type_ids.is_empty()
     {
         fields.push(format!("components: {components}"));
     }

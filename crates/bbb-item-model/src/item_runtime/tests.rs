@@ -5750,6 +5750,49 @@ fn native_item_runtime_resolves_component_condition_predicates() {
             uv(&format!("{model_id}_absent"))
         );
     }
+    for (item_resource_id, component_id, model_id) in [
+        (
+            "minecraft:component_condition_use_remainder",
+            bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID,
+            "component_condition_use_remainder",
+        ),
+        (
+            "minecraft:component_condition_charged_projectiles",
+            bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID,
+            "component_condition_charged_projectiles",
+        ),
+    ] {
+        let item_id = runtime
+            .registry
+            .as_ref()
+            .and_then(|registry| registry.protocol_id(item_resource_id))
+            .unwrap();
+        assert_eq!(
+            selected(item_id, DataComponentPatchSummary::default()),
+            uv(&format!("{model_id}_absent"))
+        );
+        assert_eq!(
+            selected(
+                item_id,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![component_id],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv(&format!("{model_id}_present"))
+        );
+        assert_eq!(
+            selected(
+                item_id,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![component_id],
+                    removed_type_ids: vec![component_id],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv(&format!("{model_id}_absent"))
+        );
+    }
 
     assert_eq!(
         selected(9, DataComponentPatchSummary::default()),
@@ -11735,6 +11778,8 @@ fn write_component_condition_fixture(root: &Path) {
         "component_condition_bundle_exact_lodestone_tracker",
         "component_condition_bundle_exact_attribute_modifiers",
         "component_condition_bundle_exact_written_book",
+        "component_condition_use_remainder",
+        "component_condition_charged_projectiles",
     ];
     write_item_registry_fixture(root, &item_ids);
     let mut catalog = item_registry_override_value(&item_ids);
@@ -11956,6 +12001,14 @@ fn write_component_condition_fixture(root: &Path) {
             "minecraft:jukebox_playable",
         ),
         ("component_condition_container", "minecraft:container"),
+        (
+            "component_condition_use_remainder",
+            "minecraft:use_remainder",
+        ),
+        (
+            "component_condition_charged_projectiles",
+            "minecraft:charged_projectiles",
+        ),
     ] {
         write_json(
             &assets.join("items").join(format!("{item_id}.json")),
@@ -15132,6 +15185,22 @@ fn write_component_condition_fixture(root: &Path) {
         ),
         ("component_condition_container_present", [80, 180, 120, 255]),
         ("component_condition_container_absent", [30, 80, 40, 255]),
+        (
+            "component_condition_use_remainder_present",
+            [180, 100, 160, 255],
+        ),
+        (
+            "component_condition_use_remainder_absent",
+            [70, 30, 60, 255],
+        ),
+        (
+            "component_condition_charged_projectiles_present",
+            [100, 180, 180, 255],
+        ),
+        (
+            "component_condition_charged_projectiles_absent",
+            [30, 70, 70, 255],
+        ),
         (
             "component_condition_bundle_contents_constrained_present",
             [200, 200, 80, 255],

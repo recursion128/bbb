@@ -1141,78 +1141,112 @@ fn encode_item_stack_summary(out: &mut Encoder, item: &ItemStackSummary) -> Resu
 }
 
 fn validate_creative_item_component_ranges(patch: &DataComponentPatchSummary) -> Result<()> {
-    if patch
-        .max_stack_size
-        .is_some_and(|value| !(1..=VANILLA_ITEM_ABSOLUTE_MAX_STACK_SIZE).contains(&value))
-    {
-        return Err(ProtocolError::InvalidData(
-            "creative mode max_stack_size must be in 1..=99".to_string(),
-        ));
-    }
-    if patch.max_damage.is_some_and(|value| value <= 0) {
-        return Err(ProtocolError::InvalidData(
-            "creative mode max_damage must be positive".to_string(),
-        ));
-    }
-    if patch.damage.is_some_and(|value| value < 0) {
-        return Err(ProtocolError::InvalidData(
-            "creative mode damage must be non-negative".to_string(),
-        ));
-    }
-    if patch.use_effects.is_some_and(|effects| {
-        effects.speed_multiplier.total_cmp(&0.0).is_lt()
-            || effects.speed_multiplier.total_cmp(&1.0).is_gt()
-    }) {
-        return Err(ProtocolError::InvalidData(
-            "creative mode use_effects speed_multiplier must be in 0.0..=1.0".to_string(),
-        ));
-    }
-    if patch.minimum_attack_charge_bits.is_some_and(|bits| {
-        let value = f32::from_bits(bits);
-        value.total_cmp(&0.0).is_lt() || value.total_cmp(&1.0).is_gt()
-    }) {
-        return Err(ProtocolError::InvalidData(
-            "creative mode minimum_attack_charge must be in 0.0..=1.0".to_string(),
-        ));
-    }
-    for (what, enchantments) in [
-        ("enchantments", patch.enchantments.as_slice()),
-        ("stored_enchantments", patch.stored_enchantments.as_slice()),
-    ] {
-        if enchantments
-            .iter()
-            .any(|enchantment| !(1..=u8::MAX.into()).contains(&enchantment.level))
+    let mut pending = vec![patch];
+    while let Some(patch) = pending.pop() {
+        if patch
+            .max_stack_size
+            .is_some_and(|value| !(1..=VANILLA_ITEM_ABSOLUTE_MAX_STACK_SIZE).contains(&value))
         {
-            return Err(ProtocolError::InvalidData(format!(
-                "creative mode {what} levels must be in 1..=255"
-            )));
+            return Err(ProtocolError::InvalidData(
+                "creative mode max_stack_size must be in 1..=99".to_string(),
+            ));
         }
-    }
-    if patch
-        .fireworks_flight_duration
-        .is_some_and(|value| !(0..=u8::MAX.into()).contains(&value))
-    {
-        return Err(ProtocolError::InvalidData(
-            "creative mode fireworks flight_duration must be in 0..=255".to_string(),
-        ));
-    }
-    if patch.potion_duration_scale_bits.is_some_and(|bits| {
-        let value = f32::from_bits(bits);
-        !value.is_finite() || value.total_cmp(&0.0).is_lt()
-    }) {
-        return Err(ProtocolError::InvalidData(
-            "creative mode potion_duration_scale must be in 0.0..=Float.MAX_VALUE".to_string(),
-        ));
-    }
-    for (what, predicate) in [
-        ("can_place_on", patch.can_place_on_persistent.as_ref()),
-        ("can_break", patch.can_break_persistent.as_ref()),
-    ] {
-        if let Some(predicate) = predicate {
-            validate_creative_adventure_mode_predicate(what, predicate, 0)?;
+        if patch.max_damage.is_some_and(|value| value <= 0) {
+            return Err(ProtocolError::InvalidData(
+                "creative mode max_damage must be positive".to_string(),
+            ));
+        }
+        if patch.damage.is_some_and(|value| value < 0) {
+            return Err(ProtocolError::InvalidData(
+                "creative mode damage must be non-negative".to_string(),
+            ));
+        }
+        if patch.use_effects.is_some_and(|effects| {
+            effects.speed_multiplier.total_cmp(&0.0).is_lt()
+                || effects.speed_multiplier.total_cmp(&1.0).is_gt()
+        }) {
+            return Err(ProtocolError::InvalidData(
+                "creative mode use_effects speed_multiplier must be in 0.0..=1.0".to_string(),
+            ));
+        }
+        if patch.minimum_attack_charge_bits.is_some_and(|bits| {
+            let value = f32::from_bits(bits);
+            value.total_cmp(&0.0).is_lt() || value.total_cmp(&1.0).is_gt()
+        }) {
+            return Err(ProtocolError::InvalidData(
+                "creative mode minimum_attack_charge must be in 0.0..=1.0".to_string(),
+            ));
+        }
+        for (what, enchantments) in [
+            ("enchantments", patch.enchantments.as_slice()),
+            ("stored_enchantments", patch.stored_enchantments.as_slice()),
+        ] {
+            if enchantments
+                .iter()
+                .any(|enchantment| !(1..=u8::MAX.into()).contains(&enchantment.level))
+            {
+                return Err(ProtocolError::InvalidData(format!(
+                    "creative mode {what} levels must be in 1..=255"
+                )));
+            }
+        }
+        if patch
+            .fireworks_flight_duration
+            .is_some_and(|value| !(0..=u8::MAX.into()).contains(&value))
+        {
+            return Err(ProtocolError::InvalidData(
+                "creative mode fireworks flight_duration must be in 0..=255".to_string(),
+            ));
+        }
+        if patch.potion_duration_scale_bits.is_some_and(|bits| {
+            let value = f32::from_bits(bits);
+            !value.is_finite() || value.total_cmp(&0.0).is_lt()
+        }) {
+            return Err(ProtocolError::InvalidData(
+                "creative mode potion_duration_scale must be in 0.0..=Float.MAX_VALUE".to_string(),
+            ));
+        }
+        for (what, predicate) in [
+            ("can_place_on", patch.can_place_on_persistent.as_ref()),
+            ("can_break", patch.can_break_persistent.as_ref()),
+        ] {
+            if let Some(predicate) = predicate {
+                validate_creative_adventure_mode_predicate(what, predicate, 0)?;
+            }
+        }
+
+        if let Some(template) = patch.use_remainder.as_deref() {
+            validate_creative_item_stack_template_count(template.count)?;
+            pending.push(&template.component_patch);
+        }
+        for template in &patch.charged_projectiles_items {
+            validate_creative_item_stack_template_count(template.count)?;
+            pending.push(&template.component_patch);
+        }
+        for template in &patch.bundle_contents_items {
+            validate_creative_item_stack_template_count(template.count)?;
+            pending.push(&template.component_patch);
+        }
+        for slot in &patch.container_slots {
+            validate_creative_item_stack_template_count(slot.item.count)?;
+            pending.push(&slot.item.component_patch);
+        }
+        for template in &patch.container_items {
+            validate_creative_item_stack_template_count(template.count)?;
+            pending.push(&template.component_patch);
         }
     }
     Ok(())
+}
+
+fn validate_creative_item_stack_template_count(count: i32) -> Result<()> {
+    if (1..=VANILLA_ITEM_ABSOLUTE_MAX_STACK_SIZE).contains(&count) {
+        Ok(())
+    } else {
+        Err(ProtocolError::InvalidData(format!(
+            "creative mode nested item stack count {count} must be in 1..=99"
+        )))
+    }
 }
 
 fn validate_creative_adventure_mode_predicate(

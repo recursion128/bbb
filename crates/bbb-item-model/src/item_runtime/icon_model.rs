@@ -7479,6 +7479,12 @@ fn data_component_type_id(component: &str) -> Option<i32> {
         "minecraft:stored_enchantments" => {
             Some(component_id::VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID)
         }
+        "minecraft:use_remainder" => {
+            Some(component_id::VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID)
+        }
+        "minecraft:charged_projectiles" => {
+            Some(component_id::VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID)
+        }
         "minecraft:bundle_contents" => {
             Some(component_id::VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID)
         }

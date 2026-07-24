@@ -2672,6 +2672,82 @@ fn set_creative_mode_slot_accepts_untrusted_stack_codec_boundaries() {
 }
 
 #[test]
+fn set_creative_mode_slot_enforces_persistent_counts_for_recursive_item_components() {
+    fn recursive_patch(component_type_id: i32, count: i32) -> DataComponentPatchSummary {
+        let template = crate::packets::ItemStackTemplateSummary {
+            item_id: 42,
+            count,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        let mut patch = DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![component_type_id],
+            ..DataComponentPatchSummary::default()
+        };
+        match component_type_id {
+            crate::data_component_types::VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID => {
+                patch.use_remainder = Some(Box::new(template));
+            }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID => {
+                patch.charged_projectiles_items = vec![template];
+            }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID => {
+                patch.bundle_contents_items = vec![template];
+                patch.bundle_contents_item_count = Some(1);
+            }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID => {
+                patch.container_slots = vec![crate::packets::ItemContainerSlotSummary {
+                    slot: 0,
+                    item: template.clone(),
+                }];
+                patch.container_items = vec![template];
+                patch.container_item_count = Some(1);
+                patch.container_slot_count = Some(1);
+            }
+            _ => unreachable!("recursive component type"),
+        }
+        patch
+    }
+
+    let component_type_ids = [
+        crate::data_component_types::VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID,
+        crate::data_component_types::VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID,
+        crate::data_component_types::VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID,
+        crate::data_component_types::VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID,
+    ];
+    for component_type_id in component_type_ids {
+        for count in [1, 99] {
+            encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+                slot_num: 36,
+                item: ItemStackSummary {
+                    item_id: Some(42),
+                    count: 1,
+                    component_patch: recursive_patch(component_type_id, count),
+                },
+            })
+            .unwrap();
+        }
+        for count in [-1, 0, 100] {
+            let error = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+                slot_num: 36,
+                item: ItemStackSummary {
+                    item_id: Some(42),
+                    count: 1,
+                    component_patch: recursive_patch(component_type_id, count),
+                },
+            })
+            .unwrap_err();
+            assert!(
+                error.to_string().contains(&format!(
+                    "nested item stack count {count} must be in 1..=99"
+                )),
+                "{error}"
+            );
+        }
+    }
+}
+
+#[test]
 fn set_creative_mode_slot_rejects_an_out_of_range_builtin_item_holder() {
     let invalid_item_id = crate::item_types::VANILLA_ITEM_TYPES.len() as i32;
     let error = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {

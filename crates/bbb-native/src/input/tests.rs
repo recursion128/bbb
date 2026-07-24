@@ -11275,6 +11275,97 @@ fn item_stack_snbt_rejects_invalid_stack_and_template_shapes() {
 }
 
 #[test]
+fn recursive_item_component_snbt_requires_an_exact_persistent_nested_patch() {
+    let registry: ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
+        "resource_ids": ["minecraft:air", "minecraft:arrow", "minecraft:stone"],
+        "protocol_ids": {
+            "minecraft:air": 0,
+            "minecraft:arrow": 1,
+            "minecraft:stone": 2
+        }
+    }))
+    .unwrap();
+    let item_runtime = NativeItemRuntime::for_test_with_registry_and_equipment_assets(
+        registry,
+        EquipmentAssetCatalog::default(),
+    );
+    let stack_with_nested_patch = |component_patch| ProtocolItemStackSummary {
+        item_id: Some(2),
+        count: 1,
+        component_patch: DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![
+                bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID,
+            ],
+            use_remainder: Some(Box::new(bbb_protocol::packets::ItemStackTemplateSummary {
+                item_id: 1,
+                count: 2,
+                component_patch,
+            })),
+            ..DataComponentPatchSummary::default()
+        },
+    };
+
+    let supported = stack_with_nested_patch(DataComponentPatchSummary {
+        added: 1,
+        added_type_ids: vec![
+            bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+        ],
+        max_stack_size: Some(64),
+        ..DataComponentPatchSummary::default()
+    });
+    assert_eq!(
+        debug_item_stack_snbt(
+            "minecraft:stone",
+            supported.count,
+            Some(&supported),
+            Some(&item_runtime),
+        ),
+        Some(
+            "{id: \"minecraft:stone\", components: {\"minecraft:use_remainder\": \
+             {id: \"minecraft:arrow\", count: 2, components: \
+             {\"minecraft:max_stack_size\": 64}}}}"
+                .to_string()
+        )
+    );
+
+    for nested_patch in [
+        DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![
+                bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_CREATIVE_SLOT_LOCK_TYPE_ID,
+            ],
+            ..DataComponentPatchSummary::default()
+        },
+        DataComponentPatchSummary {
+            removed_type_ids: vec![
+                bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_CREATIVE_SLOT_LOCK_TYPE_ID,
+            ],
+            ..DataComponentPatchSummary::default()
+        },
+        DataComponentPatchSummary {
+            added: 2,
+            added_type_ids: vec![
+                bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+            ],
+            max_stack_size: Some(64),
+            ..DataComponentPatchSummary::default()
+        },
+    ] {
+        let stack = stack_with_nested_patch(nested_patch);
+        assert_eq!(
+            debug_item_stack_snbt(
+                "minecraft:stone",
+                stack.count,
+                Some(&stack),
+                Some(&item_runtime),
+            ),
+            Some("{id: \"minecraft:stone\"}".to_string())
+        );
+    }
+}
+
+#[test]
 fn item_stack_snbt_bounds_recursive_template_projection() {
     const STACK_BUDGET_BYTES: usize = 4 * 1024 * 1024;
 
