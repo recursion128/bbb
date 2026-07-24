@@ -76,25 +76,40 @@ def item_factory_class(declaration: dict) -> str:
     return "BlockItem" if name == "registerBlock" else "Item"
 
 
-def _is_item_use_method(source: JavaSource, method) -> bool:
-    if method.is_constructor or method.name != "use" or len(method.parameters) != 3:
+def _is_item_behavior_method(
+    source: JavaSource,
+    method,
+    method_name: str,
+    parameter_types: tuple[str, ...],
+) -> bool:
+    if (
+        method.is_constructor
+        or method.name != method_name
+        or len(method.parameters) != len(parameter_types)
+    ):
         return False
     return_type = method.node.child_by_field_name("type")
-    parameter_types = [
+    actual_parameter_types = [
         parameter.node.child_by_field_name("type") for parameter in method.parameters
     ]
     return (
         return_type is not None
-        and all(parameter_type is not None for parameter_type in parameter_types)
+        and all(
+            parameter_type is not None for parameter_type in actual_parameter_types
+        )
         and source.text(return_type) == "InteractionResult"
-        and tuple(source.text(parameter_type) for parameter_type in parameter_types)
-        == ("Level", "Player", "InteractionHand")
+        and tuple(
+            source.text(parameter_type) for parameter_type in actual_parameter_types
+        )
+        == parameter_types
     )
 
 
-def extract_item_use_override_owners(
+def _extract_item_behavior_override_owners(
     declarations: Sequence[dict],
     item_class_sources: Sequence[JavaSource],
+    method_name: str,
+    parameter_types: tuple[str, ...],
 ) -> dict[str, str | None]:
     types = [item for source in item_class_sources for item in source.types]
     resolve_class_hierarchy(types)
@@ -102,11 +117,13 @@ def extract_item_use_override_owners(
     by_simple_name: dict[str, list] = {}
     for item in types:
         by_simple_name.setdefault(item.simple_name, []).append(item)
-    item_use_owners = {
+    behavior_owners = {
         method.owner
         for source in item_class_sources
         for method in source.methods
-        if _is_item_use_method(source, method)
+        if _is_item_behavior_method(
+            source, method, method_name, parameter_types
+        )
     }
 
     owners: dict[str, str | None] = {}
@@ -121,14 +138,15 @@ def extract_item_use_override_owners(
         seen = set()
         while item_type.fqcn not in seen:
             seen.add(item_type.fqcn)
-            if item_type.fqcn in item_use_owners:
+            if item_type.fqcn in behavior_owners:
                 owners[factory_class] = (
                     None if item_type.simple_name == "Item" else item_type.simple_name
                 )
                 break
             if item_type.superclass is None or item_type.superclass not in by_fqcn:
                 raise ItemRegistryCatalogExtractionError(
-                    f"{item_type.source_path}: {factory_class} does not resolve to Item.use"
+                    f"{item_type.source_path}: {factory_class} does not resolve to "
+                    f"Item.{method_name}"
                 )
             item_type = by_fqcn[item_type.superclass]
         else:
@@ -136,6 +154,42 @@ def extract_item_use_override_owners(
                 f"superclass cycle while resolving {factory_class}.use"
             )
     return owners
+
+
+def extract_item_use_override_owners(
+    declarations: Sequence[dict],
+    item_class_sources: Sequence[JavaSource],
+) -> dict[str, str | None]:
+    return _extract_item_behavior_override_owners(
+        declarations,
+        item_class_sources,
+        "use",
+        ("Level", "Player", "InteractionHand"),
+    )
+
+
+def extract_item_use_on_override_owners(
+    declarations: Sequence[dict],
+    item_class_sources: Sequence[JavaSource],
+) -> dict[str, str | None]:
+    return _extract_item_behavior_override_owners(
+        declarations,
+        item_class_sources,
+        "useOn",
+        ("UseOnContext",),
+    )
+
+
+def extract_item_interact_living_entity_override_owners(
+    declarations: Sequence[dict],
+    item_class_sources: Sequence[JavaSource],
+) -> dict[str, str | None]:
+    return _extract_item_behavior_override_owners(
+        declarations,
+        item_class_sources,
+        "interactLivingEntity",
+        ("ItemStack", "Player", "LivingEntity", "InteractionHand"),
+    )
 
 
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:

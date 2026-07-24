@@ -10,7 +10,9 @@ sys.path.insert(0, str(SCRIPTS))
 
 from item_registry_catalog_extractor import (  # noqa: E402
     ItemRegistryCatalogExtractionError,
+    extract_item_interact_living_entity_override_owners,
     extract_item_registry_catalog,
+    extract_item_use_on_override_owners,
     extract_item_use_override_owners,
     item_factory_class,
 )
@@ -184,6 +186,13 @@ class Item {
   public InteractionResult use(Level level, Player player, InteractionHand hand) {
     return InteractionResult.PASS;
   }
+  public InteractionResult useOn(UseOnContext context) {
+    return InteractionResult.PASS;
+  }
+  public InteractionResult interactLivingEntity(
+      ItemStack stack, Player player, LivingEntity target, InteractionHand hand) {
+    return InteractionResult.PASS;
+  }
 }
 """,
         )
@@ -193,6 +202,9 @@ class Item {
 package net.minecraft.world.item;
 class BlockItem extends Item {
   public void use(int first, int second, int third) {}
+  public InteractionResult useOn(UseOnContext context) {
+    return InteractionResult.SUCCESS;
+  }
 }
 """,
         )
@@ -218,6 +230,18 @@ class FoodOnAStickItem<T> extends Item {
 }
 """,
         )
+        dye_source = parse(
+            "net/minecraft/world/item/DyeItem.java",
+            """
+package net.minecraft.world.item;
+class DyeItem extends Item {
+  public InteractionResult interactLivingEntity(
+      ItemStack stack, Player player, LivingEntity target, InteractionHand hand) {
+    return InteractionResult.SUCCESS;
+  }
+}
+""",
+        )
         items = parse(
             "net/minecraft/world/item/Items.java",
             """
@@ -232,6 +256,8 @@ class Items {
           "carrot_on_a_stick",
           properties -> new FoodOnAStickItem<>(EntityType.PIG, 7, properties),
           new Item.Properties());
+  public static final Item RED_DYE =
+      registerItem("red_dye", properties -> new DyeItem(DyeColor.RED, properties));
 }
 """,
         )
@@ -244,23 +270,51 @@ class Items {
         declarations = extracted.declarations
         self.assertEqual(
             [item_factory_class(item) for item in declarations],
-            ["BlockItem", "Item", "SnowballItem", "FoodOnAStickItem"],
+            [
+                "BlockItem",
+                "Item",
+                "SnowballItem",
+                "FoodOnAStickItem",
+                "DyeItem",
+            ],
         )
+        sources = [
+            item_source,
+            block_item_source,
+            snowball_source,
+            food_on_a_stick_source,
+            dye_source,
+        ]
         self.assertEqual(
-            extract_item_use_override_owners(
-                declarations,
-                [
-                    item_source,
-                    block_item_source,
-                    snowball_source,
-                    food_on_a_stick_source,
-                ],
-            ),
+            extract_item_use_override_owners(declarations, sources),
             {
                 "BlockItem": None,
+                "DyeItem": None,
                 "FoodOnAStickItem": "FoodOnAStickItem",
                 "Item": None,
                 "SnowballItem": "SnowballItem",
+            },
+        )
+        self.assertEqual(
+            extract_item_use_on_override_owners(declarations, sources),
+            {
+                "BlockItem": "BlockItem",
+                "DyeItem": None,
+                "FoodOnAStickItem": None,
+                "Item": None,
+                "SnowballItem": None,
+            },
+        )
+        self.assertEqual(
+            extract_item_interact_living_entity_override_owners(
+                declarations, sources
+            ),
+            {
+                "BlockItem": None,
+                "DyeItem": "DyeItem",
+                "FoodOnAStickItem": None,
+                "Item": None,
+                "SnowballItem": None,
             },
         )
 

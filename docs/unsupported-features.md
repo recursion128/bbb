@@ -658,8 +658,11 @@ Commands:
 - Complete targeted local-use parity from `Minecraft.startUseItem`,
   `MultiPlayerGameMode.interact`, and `useItemOn`: exact main/offhand iteration
   until a local `InteractionResult.Success`, enabled-item gates per hand, local
-  entity/block prediction, swing-source handling, and held-item presentation.
-  Entity, block, and inventory corrections remain server-authoritative.
+  entity/block prediction (including item-side `useOn` and
+  `interactLivingEntity` behavior), swing-source handling, and held-item
+  presentation. Interaction override ownership must stay generated from local
+  vanilla classes. Entity, block, and inventory corrections remain
+  server-authoritative.
 - Complete no-target `Item.use` prediction for the source-derived specialized
   override families and swappable `Equippable` behavior. Override ownership must
   stay generated from local vanilla item classes instead of being inferred from
