@@ -23,6 +23,7 @@ use crate::{
 };
 use bbb_protocol::{
     codec::Decoder,
+    data_component_types::VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
     ids,
     packets::{
         AttackEntity, BlockEntityTagQuery, BlockPos, ChangeDifficultyCommand,
@@ -2120,7 +2121,7 @@ async fn send_set_creative_mode_slot_encodes_componentless_item() {
 }
 
 #[tokio::test]
-async fn send_set_creative_mode_slot_rejects_summarized_components() {
+async fn send_set_creative_mode_slot_rejects_unsupported_components() {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
@@ -2139,7 +2140,7 @@ async fn send_set_creative_mode_slot_rejects_summarized_components() {
                 count: 1,
                 component_patch: DataComponentPatchSummary {
                     added: 1,
-                    added_type_ids: vec![6],
+                    added_type_ids: vec![VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID],
                     custom_name: Some("Renamed".to_string()),
                     ..DataComponentPatchSummary::default()
                 },
@@ -2149,9 +2150,9 @@ async fn send_set_creative_mode_slot_rejects_summarized_components() {
     .await
     .unwrap_err();
 
-    assert!(err
-        .to_string()
-        .contains("cannot encode summarized item component patch"));
+    assert!(err.to_string().contains(&format!(
+        "cannot encode unsupported data component minecraft:custom_name ({VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID})"
+    )));
     server.await.unwrap();
 }
 
