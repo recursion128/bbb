@@ -15,7 +15,6 @@ use crate::{
     },
     codec::{Decoder, Encoder, ProtocolError, Result},
     component::{
-        decode_styled_component_summary_from_decoder,
         decode_styled_component_summary_with_nbt_from_decoder, skip_nbt_tag_from_decoder,
         styled_runs_summary_text, StyledTextRun,
     },
@@ -30,8 +29,8 @@ use crate::{
         VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID, VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
     },
     entity_types::vanilla_entity_type,
     equipment_slots::{
@@ -492,9 +491,13 @@ pub struct PaintingVariantSummary {
     #[serde(default)]
     pub title_styled: Option<Vec<StyledTextRun>>,
     #[serde(default)]
+    pub title_nbt: Option<Box<NbtSummaryValue>>,
+    #[serde(default)]
     pub author: Option<String>,
     #[serde(default)]
     pub author_styled: Option<Vec<StyledTextRun>>,
+    #[serde(default)]
+    pub author_nbt: Option<Box<NbtSummaryValue>>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -1255,6 +1258,10 @@ fn validate_encodable_data_component_patch_summary(
             VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID => {
                 expected.lodestone_target = patch.lodestone_target.clone();
                 expected.lodestone_tracked = patch.lodestone_tracked;
+            }
+            VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID => {
+                expected.painting_variant_id = patch.painting_variant_id;
+                expected.painting_variant_direct = patch.painting_variant_direct.clone();
             }
             VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID => {
                 expected.profile = patch
@@ -2836,8 +2843,10 @@ fn decode_direct_painting_variant_summary(
     let width = decoder.read_var_i32()?;
     let height = decoder.read_var_i32()?;
     let asset_id = read_resource_location(decoder)?;
-    let title_styled = decode_optional_component_summary(decoder)?;
-    let author_styled = decode_optional_component_summary(decoder)?;
+    let (title_styled, title_nbt) =
+        decode_optional_component_summary_with_nbt(decoder, "painting variant title")?;
+    let (author_styled, author_nbt) =
+        decode_optional_component_summary_with_nbt(decoder, "painting variant author")?;
     Ok(PaintingVariantSummary {
         width,
         height,
@@ -2846,10 +2855,12 @@ fn decode_direct_painting_variant_summary(
             .as_ref()
             .map(|runs| styled_runs_summary_text(runs)),
         title_styled,
+        title_nbt,
         author: author_styled
             .as_ref()
             .map(|runs| styled_runs_summary_text(runs)),
         author_styled,
+        author_nbt,
     })
 }
 
@@ -3055,13 +3066,18 @@ fn decode_filterable_component_summary(
     })
 }
 
-fn decode_optional_component_summary(
+fn decode_optional_component_summary_with_nbt(
     decoder: &mut Decoder<'_>,
-) -> Result<Option<Vec<StyledTextRun>>> {
-    if decoder.read_bool()? {
-        return decode_styled_component_summary_from_decoder(decoder).map(Some);
+    what: &str,
+) -> Result<(Option<Vec<StyledTextRun>>, Option<Box<NbtSummaryValue>>)> {
+    if !decoder.read_bool()? {
+        return Ok((None, None));
     }
-    Ok(None)
+    let (styled, nbt) = decode_styled_component_summary_with_nbt_from_decoder(decoder)?;
+    let nbt = nbt.ok_or_else(|| {
+        ProtocolError::InvalidData(format!("{what} is missing its component NBT root"))
+    })?;
+    Ok((Some(styled), Some(Box::new(nbt))))
 }
 
 struct FireworksComponentSummary {
@@ -7845,8 +7861,10 @@ mod tests {
                     asset_id: "minecraft:kebab".to_string(),
                     title: None,
                     title_styled: None,
+                    title_nbt: None,
                     author: Some("Painter".to_string()),
                     author_styled: Some(plain_runs("Painter")),
+                    author_nbt: Some(Box::new(NbtSummaryValue::String("Painter".to_string()))),
                 }),
                 ..DataComponentPatchSummary::default()
             }

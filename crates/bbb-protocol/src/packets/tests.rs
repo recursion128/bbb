@@ -22,6 +22,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID, VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
         VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
         VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
@@ -37,7 +38,7 @@ use crate::{
     entity_types::VANILLA_ENTITY_TYPE_BEE_ID,
     ids,
     nbt_summary::decode_nbt_summary_from_decoder,
-    NbtSummaryEntry, NbtSummaryValue,
+    NbtSummaryEntry, NbtSummaryValue, StyledTextRun,
 };
 use std::collections::{BTreeMap, BTreeSet};
 use uuid::Uuid;
@@ -2188,6 +2189,68 @@ fn encodes_set_creative_mode_slot_lodestone_tracker_component() {
     assert_eq!(
         chunks::decode_block_pos(value.read_i64().unwrap()),
         target.pos
+    );
+    assert!(!value.read_bool().unwrap());
+    assert!(value.is_empty());
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_direct_painting_variant_component() {
+    let title_nbt = NbtSummaryValue::String("Gallery".to_string());
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID],
+                painting_variant_direct: Some(PaintingVariantSummary {
+                    width: 4,
+                    height: 2,
+                    asset_id: "minecraft:gallery".to_string(),
+                    title: Some("Gallery".to_string()),
+                    title_styled: Some(vec![StyledTextRun {
+                        text: "Gallery".to_string(),
+                        style: Default::default(),
+                    }]),
+                    title_nbt: Some(Box::new(title_nbt.clone())),
+                    author: None,
+                    author_styled: None,
+                    author_nbt: None,
+                }),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_i16().unwrap(), 36);
+    assert_eq!(decoder.read_var_i32().unwrap(), 1);
+    assert_eq!(decoder.read_var_i32().unwrap(), 42);
+    assert_eq!(decoder.read_len().unwrap(), 1);
+    assert_eq!(decoder.read_len().unwrap(), 0);
+    assert_eq!(
+        decoder.read_var_i32().unwrap(),
+        VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID
+    );
+    let value_len = decoder.read_len().unwrap();
+    let mut value = Decoder::new(
+        decoder
+            .read_exact(value_len, "painting_variant component value")
+            .unwrap(),
+    );
+    assert_eq!(value.read_var_i32().unwrap(), 0);
+    assert_eq!(value.read_var_i32().unwrap(), 4);
+    assert_eq!(value.read_var_i32().unwrap(), 2);
+    assert_eq!(value.read_string(usize::MAX).unwrap(), "minecraft:gallery");
+    assert!(value.read_bool().unwrap());
+    assert_eq!(
+        decode_nbt_summary_from_decoder(&mut value).unwrap(),
+        Some(title_nbt)
     );
     assert!(!value.read_bool().unwrap());
     assert!(value.is_empty());

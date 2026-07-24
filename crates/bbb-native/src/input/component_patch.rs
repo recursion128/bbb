@@ -3630,8 +3630,10 @@ mod tests {
             asset_id: "example:custom".to_string(),
             title: Some("Custom".to_string()),
             title_styled: None,
+            title_nbt: None,
             author: None,
             author_styled: None,
+            author_nbt: None,
         });
         assert_eq!(encode_added_component_value_snbt(102, &patch, None), None);
     }

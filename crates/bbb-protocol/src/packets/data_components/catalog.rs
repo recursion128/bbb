@@ -25,6 +25,7 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID, VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
     VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
     VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
     VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
     VANILLA_DATA_COMPONENT_RARITY_TYPE_ID, VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID,
@@ -295,6 +296,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID => Some(encode_banner_patterns),
         VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID => Some(encode_container),
         VANILLA_DATA_COMPONENT_BEES_TYPE_ID => Some(encode_bees),
+        VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID => Some(encode_painting_variant),
         _ => None,
     }
 }
@@ -2360,6 +2362,84 @@ fn encode_bees(
     Ok(())
 }
 
+fn encode_painting_variant(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let mut encoded = Encoder::new();
+    match (
+        summary.painting_variant_id,
+        summary.painting_variant_direct.as_ref(),
+    ) {
+        (Some(holder_id), None) if (0..i32::MAX).contains(&holder_id) => {
+            encoded.write_var_i32(holder_id + 1);
+        }
+        (None, Some(variant)) => {
+            if !(1..=16).contains(&variant.width) || !(1..=16).contains(&variant.height) {
+                return Err(ProtocolError::InvalidData(format!(
+                    "painting variant dimensions {}x{} are outside 1..=16",
+                    variant.width, variant.height
+                )));
+            }
+            validate_canonical_resource_location(&variant.asset_id, "painting variant asset id")?;
+            encoded.write_var_i32(0);
+            encoded.write_var_i32(variant.width);
+            encoded.write_var_i32(variant.height);
+            encode_java_string(&mut encoded, &variant.asset_id, MAX_STRING_CHARS)?;
+            encode_optional_painting_component(
+                &mut encoded,
+                variant.title.as_deref(),
+                variant.title_styled.as_deref(),
+                variant.title_nbt.as_deref(),
+                "painting variant title",
+            )?;
+            encode_optional_painting_component(
+                &mut encoded,
+                variant.author.as_deref(),
+                variant.author_styled.as_deref(),
+                variant.author_nbt.as_deref(),
+                "painting variant author",
+            )?;
+        }
+        _ => {
+            return Err(ProtocolError::InvalidData(
+                "painting variant holder projections are not canonical".to_string(),
+            ));
+        }
+    }
+    out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
+fn encode_optional_painting_component(
+    out: &mut Encoder,
+    text: Option<&str>,
+    styled: Option<&[StyledTextRun]>,
+    nbt: Option<&NbtSummaryValue>,
+    what: &str,
+) -> Result<()> {
+    match (text, styled, nbt) {
+        (None, None, None) => {
+            out.write_bool(false);
+            Ok(())
+        }
+        (Some(text), Some(styled), Some(nbt)) => {
+            out.write_bool(true);
+            out.write_bytes(&encode_canonical_component_projection(
+                Some(nbt),
+                text,
+                Some(styled),
+                what,
+            )?);
+            Ok(())
+        }
+        _ => Err(ProtocolError::InvalidData(format!(
+            "{what} optional component projections are not aligned"
+        ))),
+    }
+}
+
 fn encode_game_profile_properties(
     out: &mut Encoder,
     properties: &[GameProfilePropertySummary],
@@ -3456,7 +3536,7 @@ mod tests {
             vec![
                 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 22, 24, 25,
                 26, 28, 30, 36, 37, 38, 39, 40, 42, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 61,
-                64, 67, 68, 69, 70, 72, 75, 77,
+                64, 67, 68, 69, 70, 72, 75, 77, 102,
             ]
         );
     }
@@ -5944,6 +6024,177 @@ mod tests {
                     pos,
                 }),
                 lodestone_tracked: Some(false),
+                ..DataComponentPatchSummary::default()
+            });
+        }
+
+        for summary in cases {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            assert!(descriptor.encode(&summary, &mut encoded).is_err());
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
+    }
+
+    fn direct_painting_variant() -> PaintingVariantSummary {
+        PaintingVariantSummary {
+            width: 4,
+            height: 2,
+            asset_id: "minecraft:gallery".to_string(),
+            title: Some("Gallery".to_string()),
+            title_styled: Some(vec![StyledTextRun {
+                text: "Gallery".to_string(),
+                style: Default::default(),
+            }]),
+            title_nbt: Some(Box::new(NbtSummaryValue::String("Gallery".to_string()))),
+            author: None,
+            author_styled: None,
+            author_nbt: None,
+        }
+    }
+
+    #[test]
+    fn painting_variant_descriptor_round_trips_reference_and_direct_holders_in_wire_order() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID)
+                .unwrap();
+        for holder_id in [0, i32::MAX - 1] {
+            let reference = DataComponentPatchSummary {
+                painting_variant_id: Some(holder_id),
+                ..DataComponentPatchSummary::default()
+            };
+            let mut encoded = Encoder::new();
+            descriptor.encode(&reference, &mut encoded).unwrap();
+            let mut expected = Encoder::new();
+            expected.write_var_i32(holder_id + 1);
+            assert_eq!(encoded.clone().into_inner(), expected.into_inner());
+            let wire = encoded.into_inner();
+            let mut decoder = Decoder::new(&wire);
+            let mut decoded = DataComponentPatchSummary::default();
+            descriptor.decode(&mut decoder, &mut decoded).unwrap();
+            assert!(decoder.is_empty());
+            assert_eq!(decoded, reference);
+        }
+
+        let direct = DataComponentPatchSummary {
+            painting_variant_direct: Some(direct_painting_variant()),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        descriptor.encode(&direct, &mut encoded).unwrap();
+        let mut expected = Encoder::new();
+        expected.write_var_i32(0);
+        expected.write_var_i32(4);
+        expected.write_var_i32(2);
+        expected.write_string("minecraft:gallery");
+        expected.write_bool(true);
+        expected.write_bytes(
+            &encode_nbt_summary_bounded(
+                Some(&NbtSummaryValue::String("Gallery".to_string())),
+                i32::MAX as usize,
+                MAX_NBT_DEPTH,
+            )
+            .unwrap(),
+        );
+        expected.write_bool(false);
+        assert_eq!(encoded.clone().into_inner(), expected.into_inner());
+        let wire = encoded.into_inner();
+        let mut decoder = Decoder::new(&wire);
+        let mut decoded = DataComponentPatchSummary::default();
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded, direct);
+
+        for (width, height) in [(1, 16), (16, 1)] {
+            let boundary = DataComponentPatchSummary {
+                painting_variant_direct: Some(PaintingVariantSummary {
+                    width,
+                    height,
+                    ..direct_painting_variant()
+                }),
+                ..DataComponentPatchSummary::default()
+            };
+            let mut encoded = Encoder::new();
+            descriptor.encode(&boundary, &mut encoded).unwrap();
+            let wire = encoded.into_inner();
+            let mut decoder = Decoder::new(&wire);
+            let mut decoded = DataComponentPatchSummary::default();
+            descriptor.decode(&mut decoder, &mut decoded).unwrap();
+            assert!(decoder.is_empty());
+            assert_eq!(decoded, boundary);
+        }
+    }
+
+    #[test]
+    fn painting_variant_descriptor_rejects_noncanonical_holders_atomically() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID)
+                .unwrap();
+        let direct = direct_painting_variant();
+        let mut cases = vec![
+            DataComponentPatchSummary::default(),
+            DataComponentPatchSummary {
+                painting_variant_id: Some(-1),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                painting_variant_id: Some(i32::MAX),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                painting_variant_id: Some(0),
+                painting_variant_direct: Some(direct.clone()),
+                ..DataComponentPatchSummary::default()
+            },
+        ];
+        for invalid in [
+            PaintingVariantSummary {
+                width: 0,
+                ..direct.clone()
+            },
+            PaintingVariantSummary {
+                width: 17,
+                ..direct.clone()
+            },
+            PaintingVariantSummary {
+                height: 0,
+                ..direct.clone()
+            },
+            PaintingVariantSummary {
+                height: 17,
+                ..direct.clone()
+            },
+            PaintingVariantSummary {
+                asset_id: "gallery".to_string(),
+                ..direct.clone()
+            },
+            PaintingVariantSummary {
+                asset_id: "Bad:gallery".to_string(),
+                ..direct.clone()
+            },
+            PaintingVariantSummary {
+                asset_id: format!("minecraft:{}", "a".repeat(MAX_STRING_CHARS + 1)),
+                ..direct.clone()
+            },
+            PaintingVariantSummary {
+                title: Some("Stale".to_string()),
+                ..direct.clone()
+            },
+            PaintingVariantSummary {
+                title_styled: None,
+                ..direct.clone()
+            },
+            PaintingVariantSummary {
+                title_nbt: None,
+                ..direct.clone()
+            },
+            PaintingVariantSummary {
+                author_nbt: Some(Box::new(NbtSummaryValue::String("Dangling".to_string()))),
+                ..direct.clone()
+            },
+        ] {
+            cases.push(DataComponentPatchSummary {
+                painting_variant_direct: Some(invalid),
                 ..DataComponentPatchSummary::default()
             });
         }

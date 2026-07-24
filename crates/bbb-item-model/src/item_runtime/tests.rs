@@ -1091,6 +1091,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 ..bbb_protocol::ComponentStyle::default()
             },
         }]),
+        title_nbt: None,
         author: Some("Artist".to_string()),
         author_styled: Some(vec![bbb_protocol::StyledTextRun {
             text: "Artist".to_string(),
@@ -1099,6 +1100,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 ..bbb_protocol::ComponentStyle::default()
             },
         }]),
+        author_nbt: None,
     };
     assert_eq!(
         runtime.tooltip_lines_for_stack(&ItemStackSummary {

@@ -1175,7 +1175,7 @@ back into a todo. Do not delete these.
   `ServerboundSetCreativeModeSlotPacket`.** Add descriptor-owned encoders for
   component value types 19 through 20, 23, 27, 29, 31
   through 35, 41, 43 through 48, 57, 62 through 63, 65 through 66, 71, 73 through 74,
-  76, and 78 through 109;
+  76, 78 through 101, and 103 through 109;
   preserve Vanilla's per-value length framing and persistent range checks, and
   keep unsupported additions rejected before any packet is sent.
 

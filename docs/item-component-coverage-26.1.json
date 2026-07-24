@@ -6594,34 +6594,76 @@
       "constant_name": "PAINTING_VARIANT",
       "coverage": {
         "canonical_retention": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components.rs#pub struct PaintingVariantSummary",
+            "crates/bbb-protocol/src/packets/data_components.rs#pub title_nbt",
+            "crates/bbb-protocol/src/packets/data_components.rs#pub author_nbt",
+            "crates/bbb-protocol/src/packets/data_components.rs#decode_direct_painting_variant_summary",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#painting_variant_descriptor_round_trips_reference_and_direct_holders_in_wire_order"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "network_encode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/entity/decoration/painting/PaintingVariant.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<PaintingVariant>> STREAM_CODEC",
+            "vanilla:net/minecraft/world/entity/decoration/painting/PaintingVariant.java#public static final StreamCodec<RegistryFriendlyByteBuf, PaintingVariant> DIRECT_STREAM_CODEC",
+            "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, Holder<T>> holder",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_painting_variant",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#painting_variant_descriptor_round_trips_reference_and_direct_holders_in_wire_order",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#painting_variant_descriptor_rejects_noncanonical_holders_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_direct_painting_variant_component"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "observable_consumers": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/HangingEntityItem.java#DataComponents.PAINTING_VARIANT",
+            "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_painting_variant_tooltip_lines",
+            "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_painting_variant_presentation_tooltip_lines",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+            "crates/bbb-world/src/registries/painting_variants.rs#pub struct PaintingVariantPresentation"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "persistent_projection": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/entity/decoration/painting/PaintingVariant.java#public static final Codec<Holder<PaintingVariant>> CODEC",
+            "vanilla:net/minecraft/resources/RegistryFixedCodec.java#Elements from registry",
+            "crates/bbb-native/src/input/component_patch.rs#encode_painting_variant",
+            "crates/bbb-native/src/input/component_patch.rs#painting_variant_encoder_uses_session_order_or_fixed_baseline",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_painting_variant_named_holder_from_session_registry"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#painting_variant_descriptor_round_trips_reference_and_direct_holders_in_wire_order",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#painting_variant_descriptor_rejects_noncanonical_holders_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_direct_painting_variant_component",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values",
+            "crates/bbb-native/src/input/component_patch.rs#painting_variant_encoder_uses_session_order_or_fixed_baseline",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_painting_variant_named_holder_from_session_registry"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "typed_decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#PAINTING_VARIANT",
+            "vanilla:net/minecraft/world/entity/decoration/painting/PaintingVariant.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<PaintingVariant>> STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_painting_variant",
+            "crates/bbb-protocol/src/packets/data_components.rs#decode_painting_variant_holder_summary",
+            "crates/bbb-protocol/src/packets/data_components.rs#decode_direct_painting_variant_summary",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "resource_id": "minecraft:painting/variant",
