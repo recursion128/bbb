@@ -175,11 +175,12 @@ fn decodes_adventure_compact_block_predicate_and_matchers() {
     );
     assert_eq!(exact.max_stack_size, Some(64));
     assert_eq!(
-        exact
-            .codec_backed_nbt
-            .get(&VANILLA_DATA_COMPONENT_LOCK_TYPE_ID),
-        Some(&compound([]))
+        exact.lock_predicate,
+        Some(bbb_protocol::packets::PersistentItemPredicateSummary::default())
     );
+    assert!(!exact
+        .codec_backed_nbt
+        .contains_key(&VANILLA_DATA_COMPONENT_LOCK_TYPE_ID));
 
     let mut rawless = predicate;
     rawless.predicates[0].components.exact[1].persistent_value = None;
@@ -285,12 +286,19 @@ fn decodes_adventure_list_and_lock_recursive_item_collections() {
         Some(&lock),
         &mut patch,
     ));
+    let retained = patch.lock_predicate.as_ref().unwrap();
     assert_eq!(
-        patch
-            .codec_backed_nbt
-            .get(&VANILLA_DATA_COMPONENT_LOCK_TYPE_ID),
-        Some(&lock)
+        retained.items.as_ref().unwrap().registry_ids,
+        vec![
+            bbb_protocol::item_types::VANILLA_ITEM_STONE_ID,
+            bbb_protocol::item_types::VANILLA_ITEM_DIRT_ID,
+        ]
     );
+    assert_eq!((retained.count_min, retained.count_max), (Some(1), Some(2)));
+    assert_eq!(retained.partial_components.len(), 1);
+    assert!(!patch
+        .codec_backed_nbt
+        .contains_key(&VANILLA_DATA_COMPONENT_LOCK_TYPE_ID));
 }
 
 #[test]

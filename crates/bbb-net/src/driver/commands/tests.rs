@@ -23,7 +23,6 @@ use crate::{
 };
 use bbb_protocol::{
     codec::Decoder,
-    data_component_types::VANILLA_DATA_COMPONENT_LOCK_TYPE_ID,
     ids,
     packets::{
         AttackEntity, BlockEntityTagQuery, BlockPos, ChangeDifficultyCommand,
@@ -2121,7 +2120,7 @@ async fn send_set_creative_mode_slot_encodes_componentless_item() {
 }
 
 #[tokio::test]
-async fn send_set_creative_mode_slot_rejects_unsupported_components() {
+async fn send_set_creative_mode_slot_rejects_invalid_component_ids() {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
@@ -2140,7 +2139,7 @@ async fn send_set_creative_mode_slot_rejects_unsupported_components() {
                 count: 1,
                 component_patch: DataComponentPatchSummary {
                     added: 1,
-                    added_type_ids: vec![VANILLA_DATA_COMPONENT_LOCK_TYPE_ID],
+                    added_type_ids: vec![110],
                     ..DataComponentPatchSummary::default()
                 },
             },
@@ -2149,9 +2148,9 @@ async fn send_set_creative_mode_slot_rejects_unsupported_components() {
     .await
     .unwrap_err();
 
-    assert!(err.to_string().contains(&format!(
-        "cannot encode unsupported data component minecraft:lock ({VANILLA_DATA_COMPONENT_LOCK_TYPE_ID})"
-    )));
+    assert!(err
+        .to_string()
+        .contains("unsupported data component type id 110"));
     server.await.unwrap();
 }
 

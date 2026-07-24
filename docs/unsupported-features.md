@@ -1175,12 +1175,6 @@ back into a todo. Do not delete these.
 - **No-collision hazard `entityInside` effects**: sweet berry bush age-gated
   damage, fox/bee exceptions. Restart when locally controlled non-player entities
   are added.
-- **Full item component payload encoding for
-  `ServerboundSetCreativeModeSlotPacket`.** Add descriptor-owned encoders for
-  component value types 23, 34 through 35, 78;
-  preserve Vanilla's per-value length framing and persistent range checks, and
-  keep unsupported additions rejected before any packet is sent.
-
 ## Particles and level events
 
 - **Broader collision-clipping parity** for special contexts beyond the covered

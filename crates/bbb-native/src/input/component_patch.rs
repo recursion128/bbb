@@ -424,7 +424,7 @@ static PERSISTENT_SNBT_ENCODERS: &[PersistentSnbtEncoderDescriptor] = &[
     ),
     encoder(
         component_id::VANILLA_DATA_COMPONENT_LOCK_TYPE_ID,
-        encode_codec_backed_nbt,
+        encode_lock,
     ),
     encoder(
         component_id::VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID,
@@ -1440,6 +1440,16 @@ fn encode_debug_stick_state(
     Some(debug_nbt_summary_snbt(&NbtSummaryValue::Compound(entries)))
 }
 
+fn encode_lock(
+    _type_id: i32,
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+    _context: PersistentSnbtContext<'_>,
+) -> Option<String> {
+    let predicate = patch.lock_predicate.as_ref()?;
+    let value = bbb_protocol::packets::encode_persistent_item_predicate_summary(predicate).ok()?;
+    Some(debug_nbt_summary_snbt(&value))
+}
+
 fn encode_bucket_entity_data(
     type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
@@ -2288,10 +2298,9 @@ mod tests {
                 added: 2,
                 added_type_ids: vec![1, component_id::VANILLA_DATA_COMPONENT_LOCK_TYPE_ID],
                 max_stack_size: Some(64),
-                codec_backed_nbt: std::collections::BTreeMap::from([(
-                    component_id::VANILLA_DATA_COMPONENT_LOCK_TYPE_ID,
-                    NbtSummaryValue::Compound(Vec::new()),
-                )]),
+                lock_predicate: Some(
+                    bbb_protocol::packets::PersistentItemPredicateSummary::default(),
+                ),
                 ..Default::default()
             })),
             partial_components: vec![
@@ -3693,6 +3702,61 @@ mod tests {
         assert_eq!(
             encode_added_component_value_snbt(
                 component_id::VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID,
+                &patch,
+                None,
+            ),
+            None
+        );
+    }
+
+    #[test]
+    fn lock_encoder_projects_canonical_persistent_item_predicates() {
+        let mut patch = bbb_protocol::packets::DataComponentPatchSummary {
+            lock_predicate: Some(bbb_protocol::packets::PersistentItemPredicateSummary {
+                items: Some(bbb_protocol::packets::ItemHolderSetSummary {
+                    registry_ids: vec![bbb_protocol::item_types::VANILLA_ITEM_STONE_ID],
+                    tag: None,
+                }),
+                count_min: Some(1),
+                count_max: Some(3),
+                exact_components: vec![
+                    bbb_protocol::packets::PersistentDataComponentValueSummary {
+                        component_type_id:
+                            component_id::VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+                        value: NbtSummaryValue::Int(16),
+                    },
+                ],
+                partial_components: vec![
+                    bbb_protocol::packets::PartialDataComponentPredicateSummary {
+                        predicate_type:
+                            bbb_protocol::packets::DataComponentPredicateTypeSummary::AnyComponent(
+                                component_id::VANILLA_DATA_COMPONENT_LOCK_TYPE_ID,
+                            ),
+                        wire_value: Some(NbtSummaryValue::Compound(Vec::new())),
+                    },
+                ],
+            }),
+            ..Default::default()
+        };
+        assert_eq!(
+            encode_added_component_value_snbt(
+                component_id::VANILLA_DATA_COMPONENT_LOCK_TYPE_ID,
+                &patch,
+                None,
+            ),
+            Some(
+                "{items: \"minecraft:stone\", count: {min: 1, max: 3}, components: \
+                 {\"minecraft:max_stack_size\": 16}, predicates: {\"minecraft:lock\": {}}}"
+                    .to_string()
+            )
+        );
+
+        let predicate = patch.lock_predicate.as_mut().unwrap();
+        predicate.count_min = Some(4);
+        predicate.count_max = Some(3);
+        assert_eq!(
+            encode_added_component_value_snbt(
+                component_id::VANILLA_DATA_COMPONENT_LOCK_TYPE_ID,
                 &patch,
                 None,
             ),

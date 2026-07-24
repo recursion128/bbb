@@ -10473,7 +10473,6 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
                     NbtSummaryValue::String("minecraft:torch".to_string()),
                 ]),
             ),
-            (78, NbtSummaryValue::Compound(Vec::new())),
             (
                 79,
                 NbtSummaryValue::Compound(vec![
@@ -10494,6 +10493,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
             block_registry_id: bbb_protocol::block_types::VANILLA_BLOCK_OAK_LOG_ID,
             property: "axis".to_string(),
         }],
+        lock_predicate: Some(bbb_protocol::packets::PersistentItemPredicateSummary::default()),
         entity_data_entity_type_id: Some(bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ZOMBIE_ID),
         entity_data_tag: Some(NbtSummaryValue::Compound(vec![
             NbtSummaryEntry {

@@ -403,6 +403,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub debug_stick_properties: Vec<DebugStickPropertySummary>,
     #[serde(default)]
+    pub lock_predicate: Option<PersistentItemPredicateSummary>,
+    #[serde(default)]
     pub profile: Option<ResolvableProfileSummary>,
     #[serde(default)]
     pub villager_variant_id: Option<i32>,
@@ -1458,6 +1460,9 @@ fn validate_encodable_data_component_patch_summary(
             }
             VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID => {
                 expected.debug_stick_properties = patch.debug_stick_properties.clone();
+            }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_LOCK_TYPE_ID => {
+                expected.lock_predicate = patch.lock_predicate.clone();
             }
             VANILLA_DATA_COMPONENT_BEES_TYPE_ID => {
                 expected.bees_present = patch.bees_present;
@@ -3657,23 +3662,21 @@ mod tests {
             );
         }
 
-        let unsupported_inner = make_remainder_patch(template_with_patch(
+        let invalid_inner = make_remainder_patch(template_with_patch(
             42,
             1,
             DataComponentPatchSummary {
                 added: 1,
-                added_type_ids: vec![
-                    crate::data_component_types::VANILLA_DATA_COMPONENT_LOCK_TYPE_ID,
-                ],
+                added_type_ids: vec![110],
                 ..DataComponentPatchSummary::default()
             },
         ));
         let error =
-            encode_delimited_data_component_patch_summary(&mut Encoder::new(), &unsupported_inner)
+            encode_delimited_data_component_patch_summary(&mut Encoder::new(), &invalid_inner)
                 .unwrap_err();
         assert!(error
             .to_string()
-            .contains("cannot encode unsupported data component"));
+            .contains("unsupported data component type id 110"));
 
         let mismatched_bundle = DataComponentPatchSummary {
             added: 1,
@@ -5250,6 +5253,7 @@ mod tests {
                     block_registry_id: crate::block_types::VANILLA_BLOCK_OAK_LOG_ID,
                     property: "axis".to_string(),
                 }],
+                lock_predicate: Some(PersistentItemPredicateSummary::default()),
                 codec_backed_nbt: BTreeMap::from([
                     (47, NbtSummaryValue::Compound(Vec::new())),
                     (
@@ -5286,7 +5290,6 @@ mod tests {
                             NbtSummaryValue::String("minecraft:torch".to_string()),
                         ]),
                     ),
-                    (78, NbtSummaryValue::Compound(Vec::new())),
                 ]),
                 ..DataComponentPatchSummary::default()
             }

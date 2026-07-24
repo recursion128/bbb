@@ -337,11 +337,15 @@ fn decode_partial_components(
         .into_iter()
         .map(|entry| {
             let resource_id = normalize_resource_location(entry.name.clone())?;
-            let predicate_type = if let Some(predicate) = VANILLA_DATA_COMPONENT_PREDICATE_TYPES
-                .iter()
-                .find(|predicate| predicate.resource_id == resource_id)
+            let (predicate_type, wire_value) = if let Some(predicate) =
+                VANILLA_DATA_COMPONENT_PREDICATE_TYPES
+                    .iter()
+                    .find(|predicate| predicate.resource_id == resource_id)
             {
-                DataComponentPredicateTypeSummary::Concrete(predicate.type_id)
+                (
+                    DataComponentPredicateTypeSummary::Concrete(predicate.type_id),
+                    entry.value.clone(),
+                )
             } else {
                 let component = vanilla_data_component_type_for_resource_id(&resource_id)
                     .ok_or_else(|| {
@@ -349,8 +353,10 @@ fn decode_partial_components(
                             "item predicate references unknown partial component {resource_id}"
                         ))
                     })?;
-                require_empty_any_component_value(component.type_id, &entry.value)?;
-                DataComponentPredicateTypeSummary::AnyComponent(component.type_id)
+                (
+                    DataComponentPredicateTypeSummary::AnyComponent(component.type_id),
+                    canonical_any_component_value(component.type_id, &entry.value)?,
+                )
             };
             if !seen.insert(resource_id.clone()) {
                 return Err(ProtocolError::InvalidData(format!(
@@ -359,7 +365,7 @@ fn decode_partial_components(
             }
             Ok(PartialDataComponentPredicateSummary {
                 predicate_type,
-                wire_value: Some(entry.value.clone()),
+                wire_value: Some(wire_value),
             })
         })
         .collect()
@@ -426,6 +432,15 @@ fn require_empty_any_component_value(type_id: i32, value: &NbtSummaryValue) -> R
         )));
     }
     Ok(())
+}
+
+fn canonical_any_component_value(type_id: i32, value: &NbtSummaryValue) -> Result<NbtSummaryValue> {
+    if !matches!(value, NbtSummaryValue::Compound(_)) {
+        return Err(ProtocolError::InvalidData(format!(
+            "item predicate any-component type id {type_id} is not a compound"
+        )));
+    }
+    Ok(NbtSummaryValue::Compound(Vec::new()))
 }
 
 fn canonical_map_entries(entries: &[NbtSummaryEntry]) -> Vec<&NbtSummaryEntry> {

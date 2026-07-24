@@ -3067,6 +3067,63 @@ fn encodes_set_creative_mode_slot_debug_stick_state_component() {
 }
 
 #[test]
+fn encodes_set_creative_mode_slot_lock_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![
+                    crate::data_component_types::VANILLA_DATA_COMPONENT_LOCK_TYPE_ID,
+                ],
+                lock_predicate: Some(crate::packets::PersistentItemPredicateSummary {
+                    items: Some(crate::packets::ItemHolderSetSummary {
+                        registry_ids: vec![crate::item_types::VANILLA_ITEM_STONE_ID],
+                        tag: None,
+                    }),
+                    count_min: Some(2),
+                    count_max: Some(2),
+                    ..crate::packets::PersistentItemPredicateSummary::default()
+                }),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_i16().unwrap(), 36);
+    assert_eq!(decoder.read_var_i32().unwrap(), 1);
+    assert_eq!(decoder.read_var_i32().unwrap(), 42);
+    assert_eq!(decoder.read_len().unwrap(), 1);
+    assert_eq!(decoder.read_len().unwrap(), 0);
+    assert_eq!(
+        decoder.read_var_i32().unwrap(),
+        crate::data_component_types::VANILLA_DATA_COMPONENT_LOCK_TYPE_ID
+    );
+    let value_len = decoder.read_len().unwrap();
+    let mut value = Decoder::new(decoder.read_exact(value_len, "lock value").unwrap());
+    assert_eq!(
+        decode_nbt_summary_from_decoder(&mut value).unwrap(),
+        Some(NbtSummaryValue::Compound(vec![
+            NbtSummaryEntry {
+                name: "items".to_string(),
+                value: NbtSummaryValue::String("minecraft:stone".to_string()),
+            },
+            NbtSummaryEntry {
+                name: "count".to_string(),
+                value: NbtSummaryValue::Int(2),
+            },
+        ]))
+    );
+    assert!(value.is_empty());
+    assert!(decoder.is_empty());
+}
+
+#[test]
 fn encodes_set_creative_mode_slot_direct_provides_trim_material_component() {
     let description_nbt = NbtSummaryValue::String("Ruby".to_string());
     let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {

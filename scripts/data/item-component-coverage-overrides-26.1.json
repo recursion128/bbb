@@ -7886,6 +7886,82 @@
         "gap": null,
         "status": "complete"
       }
+    },
+    "LOCK": {
+      "canonical_retention": {
+        "evidence": [
+          "vanilla:net/minecraft/world/LockCode.java#public record LockCode",
+          "vanilla:net/minecraft/advancements/criterion/ItemPredicate.java#public record ItemPredicate",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub lock_predicate",
+          "crates/bbb-protocol/src/packets/data_components/item_predicate.rs#pub struct PersistentItemPredicateSummary",
+          "crates/bbb-protocol/src/packets/data_components/item_predicate.rs#persistent_item_predicate_round_trips_canonical_codec_fields",
+          "crates/bbb-world/src/client/dialog/body/component_value/predicates/tests.rs#decodes_adventure_list_and_lock_recursive_item_collections"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponentType.java#build",
+          "vanilla:net/minecraft/world/LockCode.java#CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_lock",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#lock_descriptor_round_trips_persistent_item_predicates",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_lock_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/LockCode.java#unlocksWith",
+          "vanilla:net/minecraft/world/LockCode.java#canUnlock",
+          "crates/bbb-world/src/client/dialog/body/component_value/canonical_json/predicates.rs#canonicalizes_recursive_lock_collection_predicates",
+          "crates/bbb-world/src/client/dialog/body/component_value/predicates/tests.rs#decodes_adventure_list_and_lock_recursive_item_collections",
+          "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_projects_dialog_item_body_structured_patches"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/advancements/criterion/ItemPredicate.java#CODEC",
+          "vanilla:net/minecraft/world/LockCode.java#CODEC",
+          "crates/bbb-protocol/src/packets/data_components/item_predicate.rs#encode_persistent_item_predicate_summary",
+          "crates/bbb-native/src/input/component_patch.rs#encode_lock",
+          "crates/bbb-native/src/input/component_patch.rs#lock_encoder_projects_canonical_persistent_item_predicates",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-world/src/client/dialog/body/component_value/predicates/tests.rs#decodes_adventure_list_and_lock_recursive_item_collections"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components/item_predicate.rs#persistent_item_predicate_round_trips_canonical_codec_fields",
+          "crates/bbb-protocol/src/packets/data_components/item_predicate.rs#persistent_item_predicate_rejects_invalid_codec_shapes",
+          "crates/bbb-protocol/src/packets/data_components/item_predicate.rs#persistent_item_predicate_encoder_rejects_noncanonical_summaries",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#lock_descriptor_round_trips_persistent_item_predicates",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#lock_descriptor_rejects_invalid_predicates_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_lock_component",
+          "crates/bbb-world/src/client/dialog/body/component_value/predicates/tests.rs#rejects_malformed_adventure_and_item_predicate_codecs",
+          "crates/bbb-native/src/input/component_patch.rs#lock_encoder_projects_canonical_persistent_item_predicates"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#LOCK",
+          "vanilla:net/minecraft/world/LockCode.java#public record LockCode",
+          "vanilla:net/minecraft/advancements/criterion/ItemPredicate.java#public record ItemPredicate",
+          "crates/bbb-protocol/src/packets/data_components/item_predicate.rs#pub struct PersistentItemPredicateSummary",
+          "crates/bbb-protocol/src/packets/data_components/item_predicate.rs#decode_persistent_item_predicate_summary",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_lock",
+          "crates/bbb-world/src/client/dialog/body/component_value/predicates/tests.rs#decodes_all_concrete_component_predicate_types"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
     }
   },
   "schema_version": 1

@@ -13,16 +13,18 @@ use bbb_protocol::item_types::{
 use bbb_protocol::packets::{
     chunks::BlockPos,
     inventory::{
-        AdventureModePredicateDataSummary, AdventureModePredicateSummary, AttackRangeSummary,
-        AttributeModifierSummary, BannerPatternLayerSummary, BeeOccupantSummary,
-        BlockHolderSetSummary, BlockPredicateSummary, BlocksAttacksSummary, ConsumableSummary,
-        ConsumeEffectSummary, DamageReductionSummary, DamageTypeHolderSetSummary,
-        DataComponentPatchSummary, DataComponentPredicateTypeSummary, DebugStickPropertySummary,
-        EntityTypeHolderSetSummary, EquippableSummary, FireworkExplosionSummary,
-        ItemContainerSlotSummary, ItemDamageFunctionSummary, ItemEnchantmentSummary,
+        decode_persistent_item_predicate_summary, AdventureModePredicateDataSummary,
+        AdventureModePredicateSummary, AttackRangeSummary, AttributeModifierSummary,
+        BannerPatternLayerSummary, BeeOccupantSummary, BlockHolderSetSummary,
+        BlockPredicateSummary, BlocksAttacksSummary, ConsumableSummary, ConsumeEffectSummary,
+        DamageReductionSummary, DamageTypeHolderSetSummary, DataComponentPatchSummary,
+        DataComponentPredicateTypeSummary, DebugStickPropertySummary, EntityTypeHolderSetSummary,
+        EquippableSummary, FireworkExplosionSummary, ItemContainerSlotSummary,
+        ItemDamageFunctionSummary, ItemEnchantmentSummary, ItemHolderSetSummary,
         ItemMapDecorationSummary, ItemStackTemplateSummary, KineticWeaponConditionSummary,
         KineticWeaponSummary, LodestoneTargetSummary, MobEffectDetailsSummary,
-        MobEffectInstanceSummary, PartialDataComponentPredicateSummary, PiercingWeaponSummary,
+        MobEffectInstanceSummary, PartialDataComponentPredicateSummary,
+        PersistentDataComponentValueSummary, PersistentItemPredicateSummary, PiercingWeaponSummary,
         ResolvableProfileSummary, SoundEventSummary, StatePropertyMatcherSummary,
         StatePropertyValueMatcherSummary, SuspiciousStewEffectSummary, SwingAnimationSummary,
         ToolRuleSummary, ToolSummary, TrimMaterialSummary, TrimPatternSummary, UseEffectsSummary,
@@ -461,13 +463,22 @@ pub(super) fn apply_item_patch_entry_value(
     patch: &mut DataComponentPatchSummary,
 ) -> bool {
     if type_id == VANILLA_DATA_COMPONENT_LOCK_TYPE_ID {
-        if !matches!(value, DialogDataComponentValueState::Lock { .. }) {
+        let DialogDataComponentValueState::Lock { predicate } = value else {
             return false;
-        }
+        };
         let Some(persistent @ NbtSummaryValue::Compound(_)) = persistent_value else {
             return false;
         };
-        patch.codec_backed_nbt.insert(type_id, persistent.clone());
+        let Some(projected) = persistent_item_predicate_summary(predicate) else {
+            return false;
+        };
+        let Ok(retained) = decode_persistent_item_predicate_summary(persistent) else {
+            return false;
+        };
+        if retained != projected {
+            return false;
+        }
+        patch.lock_predicate = Some(retained);
         return true;
     }
     let retains_persistent_holder = matches!(
@@ -1459,6 +1470,51 @@ fn adventure_mode_predicate_summaries(
         predicates.push(predicate);
     }
     Some((summary, AdventureModePredicateDataSummary { predicates }))
+}
+
+fn persistent_item_predicate_summary(
+    value: &DialogItemPredicateState,
+) -> Option<PersistentItemPredicateSummary> {
+    let items = match value.items.as_ref() {
+        Some(items) => {
+            let (registry_ids, tag) = holder_set_summary_parts(items)?;
+            Some(ItemHolderSetSummary { registry_ids, tag })
+        }
+        None => None,
+    };
+    let exact_components = value
+        .components
+        .exact
+        .iter()
+        .map(|component| {
+            Some(PersistentDataComponentValueSummary {
+                component_type_id: component.component_type_id,
+                value: component.persistent_value.clone()?,
+            })
+        })
+        .collect::<Option<Vec<_>>>()?;
+    let partial_components = value
+        .components
+        .partial
+        .iter()
+        .map(|predicate| {
+            let mut summary = partial_component_predicate_summary(predicate)?;
+            if matches!(
+                summary.predicate_type,
+                DataComponentPredicateTypeSummary::AnyComponent(_)
+            ) {
+                summary.wire_value = Some(NbtSummaryValue::Compound(Vec::new()));
+            }
+            Some(summary)
+        })
+        .collect::<Option<Vec<_>>>()?;
+    Some(PersistentItemPredicateSummary {
+        items,
+        count_min: value.count.min,
+        count_max: value.count.max,
+        exact_components,
+        partial_components,
+    })
 }
 
 fn block_predicate_summary(value: &DialogBlockPredicateState) -> Option<BlockPredicateSummary> {

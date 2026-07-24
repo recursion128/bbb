@@ -39,11 +39,11 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
     VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
     VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID, VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
-    VANILLA_DATA_COMPONENT_LLAMA_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID,
-    VANILLA_DATA_COMPONENT_LORE_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID,
-    VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID,
-    VANILLA_DATA_COMPONENT_MAP_POST_PROCESSING_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_LLAMA_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_LOCK_TYPE_ID,
+    VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID, VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_POST_PROCESSING_TYPE_ID,
+    VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
     VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
     VANILLA_DATA_COMPONENT_MOOSHROOM_VARIANT_TYPE_ID,
     VANILLA_DATA_COMPONENT_NOTE_BLOCK_SOUND_TYPE_ID,
@@ -209,7 +209,7 @@ static WIRE_DECODE_HANDLERS: &[WireDecodeHandler] = &[
     decode_container,
     decode_block_state,
     decode_bees_component,
-    decode_codec_backed_nbt,
+    decode_lock,
     decode_container_loot,
     decode_break_sound,
     decode_villager_variant,
@@ -361,6 +361,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID => Some(encode_container),
         VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID => Some(encode_block_state),
         VANILLA_DATA_COMPONENT_BEES_TYPE_ID => Some(encode_bees),
+        VANILLA_DATA_COMPONENT_LOCK_TYPE_ID => Some(encode_lock),
         VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID => Some(encode_container_loot),
         VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID => Some(encode_painting_variant),
         VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID => Some(encode_villager_variant),
@@ -3701,17 +3702,6 @@ fn canonical_recipe_keys_nbt(recipe_keys: &[String]) -> NbtSummaryValue {
     )
 }
 
-fn decode_codec_backed_nbt(
-    type_id: i32,
-    decoder: &mut Decoder<'_>,
-    summary: &mut DataComponentPatchSummary,
-) -> Result<()> {
-    if let Some(value) = decode_nbt_summary_from_decoder(decoder)? {
-        summary.codec_backed_nbt.insert(type_id, value);
-    }
-    Ok(())
-}
-
 fn decode_debug_stick_state(
     _type_id: i32,
     decoder: &mut Decoder<'_>,
@@ -4198,6 +4188,31 @@ fn decode_bees_component(
     summary.bees_present = true;
     summary.bees = decode_bees(decoder)?;
     summary.bees_count = summary.bees.len();
+    Ok(())
+}
+
+fn decode_lock(
+    _type_id: i32,
+    decoder: &mut Decoder<'_>,
+    summary: &mut DataComponentPatchSummary,
+) -> Result<()> {
+    let value = decode_required_compound_tag(decoder, "lock")?;
+    summary.lock_predicate = Some(decode_persistent_item_predicate_summary(&value)?);
+    Ok(())
+}
+
+fn encode_lock(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let predicate = summary
+        .lock_predicate
+        .as_ref()
+        .ok_or_else(|| ProtocolError::InvalidData("missing lock component value".to_string()))?;
+    let value = encode_persistent_item_predicate_summary(predicate)?;
+    let encoded = encode_nbt_summary_bounded(Some(&value), i32::MAX as usize, MAX_NBT_DEPTH)?;
+    out.write_bytes(&encoded);
     Ok(())
 }
 
@@ -4799,9 +4814,9 @@ mod tests {
                 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
                 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43,
                 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64,
-                65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 79, 80, 81, 82, 83, 84, 85, 86,
-                87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105,
-                106, 107, 108, 109,
+                65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85,
+                86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104,
+                105, 106, 107, 108, 109,
             ]
         );
     }
@@ -5098,6 +5113,111 @@ mod tests {
                     value: NbtSummaryValue::String("axis".to_string()),
                 },
             ]),
+        ] {
+            let wire = encode_nbt_summary_bounded(Some(&invalid), i32::MAX as usize, MAX_NBT_DEPTH)
+                .unwrap();
+            assert!(descriptor
+                .decode(
+                    &mut Decoder::new(&wire),
+                    &mut DataComponentPatchSummary::default(),
+                )
+                .is_err());
+        }
+    }
+
+    #[test]
+    fn lock_descriptor_round_trips_persistent_item_predicates() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_LOCK_TYPE_ID).unwrap();
+        let summary = DataComponentPatchSummary {
+            lock_predicate: Some(PersistentItemPredicateSummary {
+                items: Some(ItemHolderSetSummary {
+                    registry_ids: vec![crate::item_types::VANILLA_ITEM_STONE_ID],
+                    tag: None,
+                }),
+                count_min: Some(1),
+                count_max: Some(64),
+                exact_components: vec![PersistentDataComponentValueSummary {
+                    component_type_id: VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+                    value: NbtSummaryValue::Int(16),
+                }],
+                partial_components: vec![PartialDataComponentPredicateSummary {
+                    predicate_type: DataComponentPredicateTypeSummary::AnyComponent(
+                        VANILLA_DATA_COMPONENT_LOCK_TYPE_ID,
+                    ),
+                    wire_value: Some(NbtSummaryValue::Compound(Vec::new())),
+                }],
+            }),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        descriptor.encode(&summary, &mut encoded).unwrap();
+
+        let wire = encoded.into_inner();
+        let mut decoder = Decoder::new(&wire);
+        let mut decoded = DataComponentPatchSummary::default();
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded.lock_predicate, summary.lock_predicate);
+
+        let mut empty = Encoder::new();
+        descriptor
+            .encode(
+                &DataComponentPatchSummary {
+                    lock_predicate: Some(PersistentItemPredicateSummary::default()),
+                    ..DataComponentPatchSummary::default()
+                },
+                &mut empty,
+            )
+            .unwrap();
+        assert_eq!(empty.into_inner(), [10, 0]);
+    }
+
+    #[test]
+    fn lock_descriptor_rejects_invalid_predicates_atomically() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_LOCK_TYPE_ID).unwrap();
+        for predicate in [
+            None,
+            Some(PersistentItemPredicateSummary {
+                count_min: Some(2),
+                count_max: Some(1),
+                ..PersistentItemPredicateSummary::default()
+            }),
+            Some(PersistentItemPredicateSummary {
+                items: Some(ItemHolderSetSummary {
+                    registry_ids: vec![crate::item_types::VANILLA_ITEM_STONE_ID],
+                    tag: Some("minecraft:tools".to_string()),
+                }),
+                ..PersistentItemPredicateSummary::default()
+            }),
+        ] {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            assert!(descriptor
+                .encode(
+                    &DataComponentPatchSummary {
+                        lock_predicate: predicate,
+                        ..DataComponentPatchSummary::default()
+                    },
+                    &mut encoded,
+                )
+                .is_err());
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
+
+        for invalid in [
+            NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                name: "items".to_string(),
+                value: NbtSummaryValue::String("minecraft:missing".to_string()),
+            }]),
+            NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                name: "predicates".to_string(),
+                value: NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                    name: "minecraft:lock".to_string(),
+                    value: NbtSummaryValue::Int(1),
+                }]),
+            }]),
         ] {
             let wire = encode_nbt_summary_bounded(Some(&invalid), i32::MAX as usize, MAX_NBT_DEPTH)
                 .unwrap();

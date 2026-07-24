@@ -476,3 +476,6 @@
 - **2026-07-23（Debug stick state component 六维闭环）**：`DEBUG_STICK_STATE`
   现按内建 block holder 与 StateDefinition property 精确编解码，并覆盖
   creative framing、canonical 对话投影和持久化 SNBT。
+- **2026-07-23（Item component coverage milestone 关闭）**：`LOCK` 现由
+  protocol-owned persistent ItemPredicate Codec 驱动 typed NBT、creative
+  framing 与 SNBT；110 个 26.1 ItemStack component 六维账本全部闭环。
