@@ -51,6 +51,7 @@ pub(crate) mod catalog;
 pub(crate) const MAX_DATA_COMPONENT_PATCH_ENTRIES: usize = 1024;
 pub(crate) const MAX_DATA_COMPONENT_PREDICATE_ENTRIES: usize = 1024;
 const MAX_DATA_COMPONENT_LIST_ITEMS: usize = 4096;
+pub(super) const MAX_ADVENTURE_MODE_PREDICATE_NESTING_DEPTH: usize = 32;
 const MAX_BLOCK_STATE_PROPERTIES: usize = 256;
 const MAX_BOOK_PAGES: usize = 100;
 const MAX_CONTAINER_ITEMS: usize = 256;
@@ -1057,6 +1058,14 @@ fn validate_encodable_data_component_patch_summary(
             crate::data_component_types::VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID => {
                 expected.enchantments = patch.enchantments.clone();
             }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID => {
+                expected.can_place_on = patch.can_place_on.clone();
+                expected.can_place_on_persistent = patch.can_place_on_persistent.clone();
+            }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID => {
+                expected.can_break = patch.can_break.clone();
+                expected.can_break_persistent = patch.can_break_persistent.clone();
+            }
             crate::data_component_types::VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID => {
                 expected.attribute_modifiers = patch.attribute_modifiers.clone();
             }
@@ -1232,7 +1241,8 @@ enum NetworkHolderSetRegistry {
 impl NetworkHolderSetRegistry {
     fn validate_holder_id(self, holder_id: i32) -> Result<i32> {
         let valid = match self {
-            Self::BannerPattern | Self::Block | Self::DamageType => holder_id >= 0,
+            Self::BannerPattern | Self::DamageType => holder_id >= 0,
+            Self::Block => crate::block_types::vanilla_block_type(holder_id).is_some(),
             Self::EntityType => vanilla_entity_type(holder_id).is_some(),
             Self::Item => crate::item_types::vanilla_item_type(holder_id).is_some(),
             Self::MobEffect => vanilla_mob_effect_type(holder_id).is_some(),
@@ -1400,25 +1410,31 @@ fn decode_adventure_mode_predicate_summary(
     AdventureModePredicateSummary,
     AdventureModePredicateDataSummary,
 )> {
-    let count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
-    let mut summary = AdventureModePredicateSummary::default();
-    let mut predicates = Vec::with_capacity(count);
-    for _ in 0..count {
-        let predicate = decode_block_predicate_summary(decoder)?;
-        let Some(blocks) = &predicate.blocks else {
-            summary.unknown = true;
-            predicates.push(predicate);
-            continue;
-        };
-        summary.unresolved_block_tag_count += usize::from(blocks.tag.is_some());
-        for registry_id in &blocks.registry_ids {
-            if !summary.block_registry_ids.contains(&registry_id) {
-                summary.block_registry_ids.push(*registry_id);
+    decoder.with_recursion_limit(
+        MAX_ADVENTURE_MODE_PREDICATE_NESTING_DEPTH,
+        "adventure mode predicate",
+        |decoder| {
+            let count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+            let mut summary = AdventureModePredicateSummary::default();
+            let mut predicates = Vec::with_capacity(count);
+            for _ in 0..count {
+                let predicate = decode_block_predicate_summary(decoder)?;
+                let Some(blocks) = &predicate.blocks else {
+                    summary.unknown = true;
+                    predicates.push(predicate);
+                    continue;
+                };
+                summary.unresolved_block_tag_count += usize::from(blocks.tag.is_some());
+                for registry_id in &blocks.registry_ids {
+                    if !summary.block_registry_ids.contains(&registry_id) {
+                        summary.block_registry_ids.push(*registry_id);
+                    }
+                }
+                predicates.push(predicate);
             }
-        }
-        predicates.push(predicate);
-    }
-    Ok((summary, AdventureModePredicateDataSummary { predicates }))
+            Ok((summary, AdventureModePredicateDataSummary { predicates }))
+        },
+    )
 }
 
 #[derive(Default)]
@@ -1443,7 +1459,10 @@ fn decode_block_predicate_summary(decoder: &mut Decoder<'_>) -> Result<BlockPred
         None
     };
     let nbt = if decoder.read_bool()? {
-        decode_nbt_summary_from_decoder(decoder)?
+        Some(catalog::decode_required_compound_tag(
+            decoder,
+            "block predicate nbt",
+        )?)
     } else {
         None
     };
@@ -1503,16 +1522,35 @@ fn decode_data_component_matchers(
 
     let partial_count = read_bounded_len(decoder, MAX_PARTIAL_DATA_COMPONENT_PREDICATES)?;
     let mut partial_components = Vec::with_capacity(partial_count);
+    let mut partial_types = BTreeSet::new();
     for _ in 0..partial_count {
         let concrete = decoder.read_bool()?;
         let type_id = decoder.read_var_i32()?;
+        let predicate_type = if concrete {
+            if crate::data_component_types::vanilla_data_component_predicate_type(type_id).is_none()
+            {
+                return Err(ProtocolError::InvalidData(format!(
+                    "invalid data component predicate type id {type_id}"
+                )));
+            }
+            DataComponentPredicateTypeSummary::Concrete(type_id)
+        } else {
+            data_component_descriptor_or_error(type_id)?;
+            DataComponentPredicateTypeSummary::AnyComponent(type_id)
+        };
+        if !partial_types.insert((concrete, type_id)) {
+            return Err(ProtocolError::InvalidData(format!(
+                "duplicate partial data component predicate type id {type_id}"
+            )));
+        }
+        let wire_value = decode_nbt_summary_from_decoder(decoder)?.ok_or_else(|| {
+            ProtocolError::InvalidData(
+                "partial data component predicate must use non-null nbt".to_string(),
+            )
+        })?;
         partial_components.push(PartialDataComponentPredicateSummary {
-            predicate_type: if concrete {
-                DataComponentPredicateTypeSummary::Concrete(type_id)
-            } else {
-                DataComponentPredicateTypeSummary::AnyComponent(type_id)
-            },
-            wire_value: decode_nbt_summary_from_decoder(decoder)?,
+            predicate_type,
+            wire_value: Some(wire_value),
         });
     }
     Ok((exact_components, partial_components))

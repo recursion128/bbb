@@ -6,7 +6,8 @@ use crate::data_component_types::{
     DataComponentTypeCatalogEntry, VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
     VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
     VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
-    VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID,
+    VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
     VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
     VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
     VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
@@ -239,6 +240,9 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_LORE_TYPE_ID => Some(encode_lore),
         VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID
         | VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID => Some(encode_item_enchantments),
+        VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID | VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID => {
+            Some(encode_adventure_mode_predicate)
+        }
         VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID => Some(encode_attribute_modifiers),
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID => Some(encode_consumable),
         VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID => Some(encode_death_protection),
@@ -433,6 +437,252 @@ fn encode_lore(
         )?);
     }
     out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
+fn encode_adventure_mode_predicate(
+    type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let (tooltip, predicate, what) = match type_id {
+        VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID => (
+            summary.can_place_on.as_ref(),
+            summary.can_place_on_persistent.as_ref(),
+            "can_place_on",
+        ),
+        VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID => (
+            summary.can_break.as_ref(),
+            summary.can_break_persistent.as_ref(),
+            "can_break",
+        ),
+        _ => unreachable!("adventure mode predicate encoder registered for type id {type_id}"),
+    };
+    let tooltip = tooltip
+        .ok_or_else(|| ProtocolError::InvalidData(format!("missing {what} tooltip projection")))?;
+    let predicate = predicate
+        .ok_or_else(|| ProtocolError::InvalidData(format!("missing {what} component value")))?;
+    let canonical_tooltip = adventure_mode_predicate_tooltip_summary(predicate);
+    if tooltip != &canonical_tooltip {
+        return Err(ProtocolError::InvalidData(format!(
+            "{what} contains a noncanonical tooltip projection"
+        )));
+    }
+    validate_adventure_mode_predicate_nesting(predicate, 0)?;
+
+    let mut encoded = Encoder::new();
+    encode_adventure_mode_predicate_value(&mut encoded, predicate)?;
+    out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
+fn adventure_mode_predicate_tooltip_summary(
+    predicate: &AdventureModePredicateDataSummary,
+) -> AdventureModePredicateSummary {
+    let mut summary = AdventureModePredicateSummary::default();
+    for predicate in &predicate.predicates {
+        let Some(blocks) = &predicate.blocks else {
+            summary.unknown = true;
+            continue;
+        };
+        summary.unresolved_block_tag_count += usize::from(blocks.tag.is_some());
+        for registry_id in &blocks.registry_ids {
+            if !summary.block_registry_ids.contains(registry_id) {
+                summary.block_registry_ids.push(*registry_id);
+            }
+        }
+    }
+    summary
+}
+
+fn validate_adventure_mode_predicate_nesting(
+    predicate: &AdventureModePredicateDataSummary,
+    depth: usize,
+) -> Result<()> {
+    if depth >= MAX_ADVENTURE_MODE_PREDICATE_NESTING_DEPTH {
+        return Err(ProtocolError::InvalidData(format!(
+            "adventure mode predicate nesting exceeds \
+             {MAX_ADVENTURE_MODE_PREDICATE_NESTING_DEPTH}"
+        )));
+    }
+    for block in &predicate.predicates {
+        let Some(exact) = block.exact_components.as_deref() else {
+            continue;
+        };
+        if let Some(nested) = exact.can_place_on_persistent.as_ref() {
+            validate_adventure_mode_predicate_nesting(nested, depth + 1)?;
+        }
+        if let Some(nested) = exact.can_break_persistent.as_ref() {
+            validate_adventure_mode_predicate_nesting(nested, depth + 1)?;
+        }
+    }
+    Ok(())
+}
+
+fn encode_adventure_mode_predicate_value(
+    out: &mut Encoder,
+    predicate: &AdventureModePredicateDataSummary,
+) -> Result<()> {
+    if predicate.predicates.len() > MAX_DATA_COMPONENT_LIST_ITEMS {
+        return Err(ProtocolError::PacketTooLarge(
+            predicate.predicates.len(),
+            MAX_DATA_COMPONENT_LIST_ITEMS,
+        ));
+    }
+    out.write_var_i32(predicate.predicates.len() as i32);
+    for block in &predicate.predicates {
+        encode_block_predicate(out, block)?;
+    }
+    Ok(())
+}
+
+fn encode_block_predicate(out: &mut Encoder, predicate: &BlockPredicateSummary) -> Result<()> {
+    match &predicate.blocks {
+        Some(blocks) => {
+            out.write_bool(true);
+            encode_holder_set_summary(
+                out,
+                &blocks.registry_ids,
+                blocks.tag.as_deref(),
+                NetworkHolderSetRegistry::Block,
+                "block predicate holder set",
+            )?;
+        }
+        None => out.write_bool(false),
+    }
+
+    match &predicate.state {
+        Some(properties) => {
+            if properties.len() > MAX_DATA_COMPONENT_LIST_ITEMS {
+                return Err(ProtocolError::PacketTooLarge(
+                    properties.len(),
+                    MAX_DATA_COMPONENT_LIST_ITEMS,
+                ));
+            }
+            out.write_bool(true);
+            out.write_var_i32(properties.len() as i32);
+            for property in properties {
+                encode_java_string(out, &property.name, MAX_STRING_CHARS)?;
+                match &property.value {
+                    StatePropertyValueMatcherSummary::Exact(value) => {
+                        out.write_bool(true);
+                        encode_java_string(out, value, MAX_STRING_CHARS)?;
+                    }
+                    StatePropertyValueMatcherSummary::Range { min, max } => {
+                        out.write_bool(false);
+                        encode_optional_java_string(out, min.as_deref(), MAX_STRING_CHARS)?;
+                        encode_optional_java_string(out, max.as_deref(), MAX_STRING_CHARS)?;
+                    }
+                }
+            }
+        }
+        None => out.write_bool(false),
+    }
+
+    match predicate.nbt.as_ref() {
+        Some(nbt @ NbtSummaryValue::Compound(_)) => {
+            out.write_bool(true);
+            out.write_bytes(&encode_nbt_summary_bounded(
+                Some(nbt),
+                i32::MAX as usize,
+                MAX_NBT_DEPTH,
+            )?);
+        }
+        Some(_) => {
+            return Err(ProtocolError::InvalidData(
+                "block predicate nbt must be a compound tag".to_string(),
+            ));
+        }
+        None => out.write_bool(false),
+    }
+
+    encode_data_component_matchers(
+        out,
+        predicate.exact_components.as_deref(),
+        &predicate.partial_components,
+    )
+}
+
+fn encode_data_component_matchers(
+    out: &mut Encoder,
+    exact: Option<&DataComponentPatchSummary>,
+    partial: &[PartialDataComponentPredicateSummary],
+) -> Result<()> {
+    if let Some(exact) = exact {
+        if !exact.removed_type_ids.is_empty() {
+            return Err(ProtocolError::InvalidData(
+                "exact data component predicate cannot remove components".to_string(),
+            ));
+        }
+        if exact.added == 0 {
+            return Err(ProtocolError::InvalidData(
+                "empty exact data component predicate must use the absent projection".to_string(),
+            ));
+        }
+        if exact.added > MAX_DATA_COMPONENT_PREDICATE_ENTRIES {
+            return Err(ProtocolError::PacketTooLarge(
+                exact.added,
+                MAX_DATA_COMPONENT_PREDICATE_ENTRIES,
+            ));
+        }
+        let descriptors = validate_encodable_data_component_patch_summary(exact)?;
+        out.write_var_i32(exact.added as i32);
+        for (type_id, descriptor) in descriptors {
+            out.write_var_i32(type_id);
+            descriptor.encode(exact, out)?;
+        }
+    } else {
+        out.write_var_i32(0);
+    }
+
+    if partial.len() > MAX_PARTIAL_DATA_COMPONENT_PREDICATES {
+        return Err(ProtocolError::PacketTooLarge(
+            partial.len(),
+            MAX_PARTIAL_DATA_COMPONENT_PREDICATES,
+        ));
+    }
+    out.write_var_i32(partial.len() as i32);
+    let mut seen = BTreeSet::new();
+    for predicate in partial {
+        let (concrete, type_id) = match predicate.predicate_type {
+            DataComponentPredicateTypeSummary::Concrete(type_id) => {
+                if crate::data_component_types::vanilla_data_component_predicate_type(type_id)
+                    .is_none()
+                {
+                    return Err(ProtocolError::InvalidData(format!(
+                        "invalid data component predicate type id {type_id}"
+                    )));
+                }
+                (true, type_id)
+            }
+            DataComponentPredicateTypeSummary::AnyComponent(type_id) => {
+                data_component_descriptor_or_error(type_id)?;
+                (false, type_id)
+            }
+        };
+        if !seen.insert((concrete, type_id)) {
+            return Err(ProtocolError::InvalidData(format!(
+                "duplicate partial data component predicate type id {type_id}"
+            )));
+        }
+        let value = predicate.wire_value.as_ref().ok_or_else(|| {
+            ProtocolError::InvalidData(
+                "partial data component predicate is missing non-null nbt".to_string(),
+            )
+        })?;
+        if !concrete && !matches!(value, NbtSummaryValue::Compound(entries) if entries.is_empty()) {
+            return Err(ProtocolError::InvalidData(format!(
+                "any-component predicate type id {type_id} must use an empty compound value"
+            )));
+        }
+        out.write_bool(concrete);
+        out.write_var_i32(type_id);
+        out.write_bytes(&encode_nbt_summary_bounded(
+            Some(value),
+            i32::MAX as usize,
+            MAX_NBT_DEPTH,
+        )?);
+    }
     Ok(())
 }
 
@@ -2636,10 +2886,285 @@ mod tests {
                 .map(|descriptor| descriptor.type_id())
                 .collect::<Vec<_>>(),
             vec![
-                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 13, 16, 24, 36, 37, 38, 39, 40, 42, 51, 52, 53,
-                54, 55, 56, 58, 59, 60, 68, 69, 70,
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 13, 14, 15, 16, 24, 36, 37, 38, 39, 40, 42, 51,
+                52, 53, 54, 55, 56, 58, 59, 60, 68, 69, 70,
             ]
         );
+    }
+
+    #[test]
+    fn adventure_mode_predicate_descriptor_round_trips_all_stream_fields() {
+        let value = AdventureModePredicateDataSummary {
+            predicates: vec![
+                BlockPredicateSummary {
+                    blocks: Some(BlockHolderSetSummary {
+                        registry_ids: vec![1],
+                        tag: None,
+                    }),
+                    state: Some(vec![
+                        StatePropertyMatcherSummary {
+                            name: "facing".to_string(),
+                            value: StatePropertyValueMatcherSummary::Exact("north".to_string()),
+                        },
+                        StatePropertyMatcherSummary {
+                            name: "age".to_string(),
+                            value: StatePropertyValueMatcherSummary::Range {
+                                min: Some("1".to_string()),
+                                max: Some("3".to_string()),
+                            },
+                        },
+                    ]),
+                    nbt: Some(NbtSummaryValue::Compound(Vec::new())),
+                    exact_components: Some(Box::new(DataComponentPatchSummary {
+                        added: 1,
+                        added_type_ids: vec![VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID],
+                        max_stack_size: Some(64),
+                        ..DataComponentPatchSummary::default()
+                    })),
+                    partial_components: vec![
+                        PartialDataComponentPredicateSummary {
+                            predicate_type: DataComponentPredicateTypeSummary::AnyComponent(
+                                VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+                            ),
+                            wire_value: Some(NbtSummaryValue::Compound(Vec::new())),
+                        },
+                        PartialDataComponentPredicateSummary {
+                            predicate_type: DataComponentPredicateTypeSummary::Concrete(0),
+                            wire_value: Some(NbtSummaryValue::Compound(Vec::new())),
+                        },
+                    ],
+                },
+                BlockPredicateSummary {
+                    blocks: Some(BlockHolderSetSummary {
+                        registry_ids: Vec::new(),
+                        tag: Some("minecraft:mineable/pickaxe".to_string()),
+                    }),
+                    ..BlockPredicateSummary::default()
+                },
+            ],
+        };
+        let tooltip = AdventureModePredicateSummary {
+            unknown: false,
+            block_registry_ids: vec![1],
+            unresolved_block_tag_count: 1,
+        };
+        let summary = DataComponentPatchSummary {
+            can_place_on: Some(tooltip.clone()),
+            can_place_on_persistent: Some(value.clone()),
+            ..DataComponentPatchSummary::default()
+        };
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID).unwrap();
+        let mut encoded = Encoder::new();
+        descriptor.encode(&summary, &mut encoded).unwrap();
+
+        let mut expected = Encoder::new();
+        expected.write_var_i32(2);
+        expected.write_bool(true);
+        expected.write_var_i32(2);
+        expected.write_var_i32(1);
+        expected.write_bool(true);
+        expected.write_var_i32(2);
+        expected.write_string("facing");
+        expected.write_bool(true);
+        expected.write_string("north");
+        expected.write_string("age");
+        expected.write_bool(false);
+        expected.write_bool(true);
+        expected.write_string("1");
+        expected.write_bool(true);
+        expected.write_string("3");
+        expected.write_bool(true);
+        expected.write_bytes(&[10, 0]);
+        expected.write_var_i32(1);
+        expected.write_var_i32(VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID);
+        expected.write_var_i32(64);
+        expected.write_var_i32(2);
+        expected.write_bool(false);
+        expected.write_var_i32(VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID);
+        expected.write_bytes(&[10, 0]);
+        expected.write_bool(true);
+        expected.write_var_i32(0);
+        expected.write_bytes(&[10, 0]);
+        expected.write_bool(true);
+        expected.write_var_i32(0);
+        expected.write_string("minecraft:mineable/pickaxe");
+        expected.write_bool(false);
+        expected.write_bool(false);
+        expected.write_var_i32(0);
+        expected.write_var_i32(0);
+        assert_eq!(encoded.clone().into_inner(), expected.into_inner());
+
+        let mut decoded = DataComponentPatchSummary::default();
+        let wire = encoded.into_inner();
+        let mut decoder = Decoder::new(&wire);
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded.can_place_on, Some(tooltip));
+        assert_eq!(decoded.can_place_on_persistent, Some(value));
+    }
+
+    #[test]
+    fn adventure_mode_predicate_descriptor_rejects_invalid_values_atomically() {
+        let base_value = AdventureModePredicateDataSummary {
+            predicates: vec![BlockPredicateSummary {
+                blocks: Some(BlockHolderSetSummary {
+                    registry_ids: vec![1],
+                    tag: None,
+                }),
+                ..BlockPredicateSummary::default()
+            }],
+        };
+        let base_tooltip = AdventureModePredicateSummary {
+            unknown: false,
+            block_registry_ids: vec![1],
+            unresolved_block_tag_count: 0,
+        };
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID).unwrap();
+        let mut cases = Vec::new();
+
+        cases.push((
+            DataComponentPatchSummary {
+                can_break: Some(AdventureModePredicateSummary {
+                    unknown: true,
+                    ..base_tooltip.clone()
+                }),
+                can_break_persistent: Some(base_value.clone()),
+                ..DataComponentPatchSummary::default()
+            },
+            "noncanonical tooltip projection",
+        ));
+
+        let mut mixed_holder = base_value.clone();
+        mixed_holder.predicates[0].blocks.as_mut().unwrap().tag =
+            Some("minecraft:mineable/pickaxe".to_string());
+        cases.push((
+            DataComponentPatchSummary {
+                can_break: Some(AdventureModePredicateSummary {
+                    unresolved_block_tag_count: 1,
+                    ..base_tooltip.clone()
+                }),
+                can_break_persistent: Some(mixed_holder),
+                ..DataComponentPatchSummary::default()
+            },
+            "cannot contain both holder ids and a tag",
+        ));
+
+        let mut scalar_nbt = base_value.clone();
+        scalar_nbt.predicates[0].nbt = Some(NbtSummaryValue::Int(1));
+        cases.push((
+            DataComponentPatchSummary {
+                can_break: Some(base_tooltip.clone()),
+                can_break_persistent: Some(scalar_nbt),
+                ..DataComponentPatchSummary::default()
+            },
+            "nbt must be a compound tag",
+        ));
+
+        let mut missing_partial_value = base_value.clone();
+        missing_partial_value.predicates[0].partial_components =
+            vec![PartialDataComponentPredicateSummary {
+                predicate_type: DataComponentPredicateTypeSummary::Concrete(0),
+                wire_value: None,
+            }];
+        cases.push((
+            DataComponentPatchSummary {
+                can_break: Some(base_tooltip),
+                can_break_persistent: Some(missing_partial_value),
+                ..DataComponentPatchSummary::default()
+            },
+            "missing non-null nbt",
+        ));
+
+        for (summary, expected_error) in cases {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            let error = descriptor.encode(&summary, &mut encoded).unwrap_err();
+            assert!(error.to_string().contains(expected_error), "{error}");
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
+    }
+
+    #[test]
+    fn adventure_mode_predicate_decode_and_encode_bound_recursive_exact_components() {
+        let mut wire = Encoder::new();
+        write_nested_adventure_mode_predicate(
+            &mut wire,
+            MAX_ADVENTURE_MODE_PREDICATE_NESTING_DEPTH + 1,
+        );
+        let wire = wire.into_inner();
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID).unwrap();
+        let error = descriptor
+            .decode(
+                &mut Decoder::new(&wire),
+                &mut DataComponentPatchSummary::default(),
+            )
+            .unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("adventure mode predicate nesting exceeds"),
+            "{error}"
+        );
+
+        let nested =
+            nested_adventure_mode_predicate_summary(MAX_ADVENTURE_MODE_PREDICATE_NESTING_DEPTH + 1);
+        let summary = DataComponentPatchSummary {
+            can_place_on: Some(AdventureModePredicateSummary {
+                unknown: true,
+                ..AdventureModePredicateSummary::default()
+            }),
+            can_place_on_persistent: Some(nested),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        encoded.write_u8(0xaa);
+        let error = descriptor.encode(&summary, &mut encoded).unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("adventure mode predicate nesting exceeds"),
+            "{error}"
+        );
+        assert_eq!(encoded.into_inner(), [0xaa]);
+    }
+
+    fn write_nested_adventure_mode_predicate(out: &mut Encoder, depth: usize) {
+        out.write_var_i32(1);
+        out.write_bool(false);
+        out.write_bool(false);
+        out.write_bool(false);
+        if depth > 1 {
+            out.write_var_i32(1);
+            out.write_var_i32(VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID);
+            write_nested_adventure_mode_predicate(out, depth - 1);
+        } else {
+            out.write_var_i32(0);
+        }
+        out.write_var_i32(0);
+    }
+
+    fn nested_adventure_mode_predicate_summary(depth: usize) -> AdventureModePredicateDataSummary {
+        let exact_components = (depth > 1).then(|| {
+            Box::new(DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID],
+                can_place_on: Some(AdventureModePredicateSummary {
+                    unknown: true,
+                    ..AdventureModePredicateSummary::default()
+                }),
+                can_place_on_persistent: Some(nested_adventure_mode_predicate_summary(depth - 1)),
+                ..DataComponentPatchSummary::default()
+            })
+        });
+        AdventureModePredicateDataSummary {
+            predicates: vec![BlockPredicateSummary {
+                exact_components,
+                ..BlockPredicateSummary::default()
+            }],
+        }
     }
 
     #[test]

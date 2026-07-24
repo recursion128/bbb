@@ -5891,7 +5891,7 @@
             "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_foundational_component_patch",
             "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_drop_empty_stack",
             "crates/bbb-protocol/src/packets/tests.rs#set_creative_mode_slot_normalizes_air_item_to_empty_stack",
-            "crates/bbb-protocol/src/packets/tests.rs#set_creative_mode_slot_rejects_unsupported_component_patch",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_adventure_mode_predicate_component",
             "crates/bbb-protocol/src/packets/tests.rs#set_creative_mode_slot_rejects_values_rejected_by_the_untrusted_stack_codec",
             "crates/bbb-net/src/driver/commands/tests.rs#send_set_creative_mode_slot_encodes_componentless_item",
             "crates/bbb-net/src/driver/commands/tests.rs#send_set_creative_mode_slot_rejects_unsupported_components",

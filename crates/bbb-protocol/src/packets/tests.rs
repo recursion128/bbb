@@ -2318,8 +2318,8 @@ fn set_creative_mode_slot_normalizes_air_item_to_empty_stack() {
 }
 
 #[test]
-fn set_creative_mode_slot_rejects_unsupported_component_patch() {
-    let err = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+fn encodes_set_creative_mode_slot_adventure_mode_predicate_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
         slot_num: 36,
         item: ItemStackSummary {
             item_id: Some(42),
@@ -2327,16 +2327,43 @@ fn set_creative_mode_slot_rejects_unsupported_component_patch() {
             component_patch: DataComponentPatchSummary {
                 added: 1,
                 added_type_ids: vec![VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID],
+                can_place_on: Some(AdventureModePredicateSummary {
+                    unknown: false,
+                    block_registry_ids: vec![1],
+                    unresolved_block_tag_count: 0,
+                }),
+                can_place_on_persistent: Some(AdventureModePredicateDataSummary {
+                    predicates: vec![BlockPredicateSummary {
+                        blocks: Some(BlockHolderSetSummary {
+                            registry_ids: vec![1],
+                            tag: None,
+                        }),
+                        ..BlockPredicateSummary::default()
+                    }],
+                }),
                 ..DataComponentPatchSummary::default()
             },
         },
     })
-    .unwrap_err();
+    .unwrap();
 
-    assert!(matches!(err, ProtocolError::InvalidData(_)));
-    assert!(err.to_string().contains(&format!(
-        "cannot encode unsupported data component minecraft:can_place_on ({VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID})"
-    )));
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            1, 0, // patch counts
+            14, 8, // can_place_on type and delimited value length
+            1, // predicate count
+            1, // blocks present
+            2, 1, // one direct block holder
+            0, // no state predicate
+            0, // no nbt predicate
+            0, // no exact component predicates
+            0, // no partial component predicates
+        ]
+    );
 }
 
 #[test]
@@ -2419,6 +2446,16 @@ fn set_creative_mode_slot_rejects_values_rejected_by_the_untrusted_stack_codec()
         potion_duration_scale_bits: Some(bits),
         ..DataComponentPatchSummary::default()
     };
+    let adventure_mode_patch =
+        |tooltip: AdventureModePredicateSummary, predicates: Vec<BlockPredicateSummary>| {
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID],
+                can_place_on: Some(tooltip),
+                can_place_on_persistent: Some(AdventureModePredicateDataSummary { predicates }),
+                ..DataComponentPatchSummary::default()
+            }
+        };
 
     for (packet, expected_error) in [
         (
@@ -2540,6 +2577,38 @@ fn set_creative_mode_slot_rejects_values_rejected_by_the_untrusted_stack_codec()
         (
             stack_with_patch(1, potion_duration_scale_patch(f32::NAN.to_bits())),
             "potion_duration_scale must be in 0.0..=Float.MAX_VALUE",
+        ),
+        (
+            stack_with_patch(
+                1,
+                adventure_mode_patch(AdventureModePredicateSummary::default(), Vec::new()),
+            ),
+            "can_place_on predicate list must not be empty",
+        ),
+        (
+            stack_with_patch(
+                1,
+                adventure_mode_patch(
+                    AdventureModePredicateSummary {
+                        unknown: true,
+                        ..AdventureModePredicateSummary::default()
+                    },
+                    vec![BlockPredicateSummary {
+                        state: Some(vec![
+                            StatePropertyMatcherSummary {
+                                name: "axis".to_string(),
+                                value: StatePropertyValueMatcherSummary::Exact("x".to_string()),
+                            },
+                            StatePropertyMatcherSummary {
+                                name: "axis".to_string(),
+                                value: StatePropertyValueMatcherSummary::Exact("y".to_string()),
+                            },
+                        ]),
+                        ..BlockPredicateSummary::default()
+                    }],
+                ),
+            ),
+            "duplicate state property `axis`",
         ),
     ] {
         let error = encode_play_set_creative_mode_slot(&packet).unwrap_err();

@@ -18,7 +18,9 @@ use crate::{
 
 use super::client_features::{RecipeBookType, RecipeDisplayId};
 use super::client_state::Difficulty;
-use super::inventory::{DataComponentPatchSummary, ItemStackSummary};
+use super::inventory::{
+    AdventureModePredicateDataSummary, DataComponentPatchSummary, ItemStackSummary,
+};
 use super::player_info::{GameType, PlayerInfoChatSession};
 use super::{
     chunks,
@@ -1201,6 +1203,57 @@ fn validate_creative_item_component_ranges(patch: &DataComponentPatchSummary) ->
         return Err(ProtocolError::InvalidData(
             "creative mode potion_duration_scale must be in 0.0..=Float.MAX_VALUE".to_string(),
         ));
+    }
+    for (what, predicate) in [
+        ("can_place_on", patch.can_place_on_persistent.as_ref()),
+        ("can_break", patch.can_break_persistent.as_ref()),
+    ] {
+        if let Some(predicate) = predicate {
+            validate_creative_adventure_mode_predicate(what, predicate, 0)?;
+        }
+    }
+    Ok(())
+}
+
+fn validate_creative_adventure_mode_predicate(
+    what: &str,
+    predicate: &AdventureModePredicateDataSummary,
+    depth: usize,
+) -> Result<()> {
+    if depth >= data_components::MAX_ADVENTURE_MODE_PREDICATE_NESTING_DEPTH {
+        return Err(ProtocolError::InvalidData(format!(
+            "creative mode adventure predicate nesting exceeds {}",
+            data_components::MAX_ADVENTURE_MODE_PREDICATE_NESTING_DEPTH
+        )));
+    }
+    if predicate.predicates.is_empty() {
+        return Err(ProtocolError::InvalidData(format!(
+            "creative mode {what} predicate list must not be empty"
+        )));
+    }
+    for block in &predicate.predicates {
+        if let Some(properties) = block.state.as_ref() {
+            let mut names = BTreeSet::new();
+            for property in properties {
+                if !names.insert(property.name.as_str()) {
+                    return Err(ProtocolError::InvalidData(format!(
+                        "creative mode {what} contains duplicate state property `{}`",
+                        property.name
+                    )));
+                }
+            }
+        }
+        let Some(exact) = block.exact_components.as_deref() else {
+            continue;
+        };
+        for (nested_what, nested) in [
+            ("can_place_on", exact.can_place_on_persistent.as_ref()),
+            ("can_break", exact.can_break_persistent.as_ref()),
+        ] {
+            if let Some(nested) = nested {
+                validate_creative_adventure_mode_predicate(nested_what, nested, depth + 1)?;
+            }
+        }
     }
     Ok(())
 }
