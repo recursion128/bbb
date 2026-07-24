@@ -2119,34 +2119,74 @@
       "constant_name": "DAMAGE_RESISTANT",
       "coverage": {
         "canonical_retention": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#DAMAGE_RESISTANT",
+            "vanilla:net/minecraft/world/item/component/DamageResistant.java#public record DamageResistant",
+            "crates/bbb-protocol/src/packets/data_components.rs#pub damage_resistant_type_registry_ids",
+            "crates/bbb-protocol/src/packets/data_components.rs#pub damage_resistant_type_tag",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_damage_resistant",
+            "crates/bbb-world/src/registries/tests.rs#component_initializer_failure_keeps_registry_revision_and_item_defaults_atomic"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "network_encode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#DAMAGE_RESISTANT",
+            "vanilla:net/minecraft/world/item/component/DamageResistant.java#public static final StreamCodec<RegistryFriendlyByteBuf, DamageResistant> STREAM_CODEC",
+            "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#holderSet",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_damage_resistant",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#damage_resistant_descriptor_round_trips_direct_and_named_holder_sets_and_rejects_invalid_values_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_damage_resistant_component"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "observable_consumers": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/ItemStack.java#public boolean canBeHurtBy",
+            "vanilla:net/minecraft/world/entity/item/ItemEntity.java#public final boolean hurtClient",
+            "crates/bbb-world/src/item_profiles.rs#effective_component_patch",
+            "crates/bbb-world/src/registries/tests.rs#component_initializer_failure_keeps_registry_revision_and_item_defaults_atomic",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_damage_resistant_holder_set_from_session_and_context_free_inputs"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "persistent_projection": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#DAMAGE_RESISTANT",
+            "vanilla:net/minecraft/world/item/component/DamageResistant.java#public static final Codec<DamageResistant> CODEC",
+            "crates/bbb-native/src/input/component_patch.rs#encode_damage_resistant",
+            "crates/bbb-native/src/input/component_patch.rs#damage_type_encoders_use_session_order_or_fixed_catalog",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_preserves_resolvable_damage_resistant_holder_sets",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_damage_resistant_holder_set_from_session_and_context_free_inputs"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_damage_resistant_holder_sets",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#damage_resistant_descriptor_round_trips_direct_and_named_holder_sets_and_rejects_invalid_values_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_damage_resistant_component",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_damage_resistant_holder_set_from_session_and_context_free_inputs",
+            "crates/bbb-world/src/registries/tests.rs#component_initializer_failure_keeps_registry_revision_and_item_defaults_atomic",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_preserves_resolvable_damage_resistant_holder_sets"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "typed_decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#DAMAGE_RESISTANT",
+            "vanilla:net/minecraft/world/item/component/DamageResistant.java#public static final StreamCodec<RegistryFriendlyByteBuf, DamageResistant> STREAM_CODEC",
+            "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#holderSet",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_damage_resistant",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_damage_resistant_holder_sets"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "resource_id": "minecraft:damage_resistant",

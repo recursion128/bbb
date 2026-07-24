@@ -21,7 +21,8 @@ use crate::{
         VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
-        VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+        VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
         VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID, VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_DYE_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
@@ -4280,6 +4281,36 @@ fn encodes_set_creative_mode_slot_blocks_attacks_component() {
             0, 0, 0, 0, // item damage base = 0.0
             0x3f, 0x80, 0, 0, // item damage factor = 1.0
             0, 0, 0, // no bypassed-by set or sounds
+        ]
+    );
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_damage_resistant_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID],
+                damage_resistant_type_registry_ids: vec![2, 4],
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            1, 0, // patch counts
+            27, 3, // damage_resistant type and delimited value length
+            3, 2, 4, // two direct damage type holders
         ]
     );
 }

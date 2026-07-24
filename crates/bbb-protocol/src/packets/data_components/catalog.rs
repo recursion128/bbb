@@ -19,9 +19,10 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID, VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID,
     VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
     VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
-    VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID, VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID,
-    VANILLA_DATA_COMPONENT_DYE_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID, VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID,
+    VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
     VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
     VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID, VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
@@ -297,6 +298,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID => Some(encode_consumable),
         VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID => Some(encode_use_remainder),
         VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID => Some(encode_use_cooldown),
+        VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID => Some(encode_damage_resistant),
         VANILLA_DATA_COMPONENT_TOOL_TYPE_ID => Some(encode_tool),
         VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID => Some(encode_attack_range),
         VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID => Some(encode_equippable),
@@ -3142,6 +3144,23 @@ fn decode_damage_resistant(
     Ok(())
 }
 
+fn encode_damage_resistant(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let mut encoded = Encoder::new();
+    encode_holder_set_summary(
+        &mut encoded,
+        &summary.damage_resistant_type_registry_ids,
+        summary.damage_resistant_type_tag.as_deref(),
+        NetworkHolderSetRegistry::DamageType,
+        "damage_resistant types",
+    )?;
+    out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
 fn decode_weapon_component(
     _type_id: i32,
     decoder: &mut Decoder<'_>,
@@ -4139,10 +4158,10 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec![
                 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 22, 23, 24,
-                25, 26, 28, 30, 32, 34, 35, 36, 37, 38, 39, 40, 42, 43, 44, 45, 46, 48, 49, 50, 51,
-                52, 53, 54, 55, 56, 58, 59, 60, 61, 62, 63, 64, 65, 67, 68, 69, 70, 71, 72, 73, 74,
-                75, 76, 77, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97,
-                98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109,
+                25, 26, 27, 28, 30, 32, 34, 35, 36, 37, 38, 39, 40, 42, 43, 44, 45, 46, 48, 49, 50,
+                51, 52, 53, 54, 55, 56, 58, 59, 60, 61, 62, 63, 64, 65, 67, 68, 69, 70, 71, 72, 73,
+                74, 75, 76, 77, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96,
+                97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109,
             ]
         );
     }
@@ -4200,6 +4219,62 @@ mod tests {
             decoded.custom_model_data_colors,
             summary.custom_model_data_colors
         );
+    }
+
+    #[test]
+    fn damage_resistant_descriptor_round_trips_direct_and_named_holder_sets_and_rejects_invalid_values_atomically(
+    ) {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID)
+                .unwrap();
+
+        for summary in [
+            DataComponentPatchSummary {
+                damage_resistant_type_registry_ids: vec![2, 4],
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                damage_resistant_type_tag: Some("minecraft:is_fire".to_string()),
+                ..DataComponentPatchSummary::default()
+            },
+        ] {
+            let mut encoded = Encoder::new();
+            descriptor.encode(&summary, &mut encoded).unwrap();
+            let wire = encoded.into_inner();
+            let mut decoder = Decoder::new(&wire);
+            let mut decoded = DataComponentPatchSummary::default();
+            descriptor.decode(&mut decoder, &mut decoded).unwrap();
+            assert!(decoder.is_empty());
+            assert_eq!(
+                decoded.damage_resistant_type_registry_ids,
+                summary.damage_resistant_type_registry_ids
+            );
+            assert_eq!(
+                decoded.damage_resistant_type_tag,
+                summary.damage_resistant_type_tag
+            );
+        }
+
+        for summary in [
+            DataComponentPatchSummary {
+                damage_resistant_type_registry_ids: vec![-1],
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                damage_resistant_type_tag: Some("is_fire".to_string()),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                damage_resistant_type_registry_ids: vec![2],
+                damage_resistant_type_tag: Some("minecraft:is_fire".to_string()),
+                ..DataComponentPatchSummary::default()
+            },
+        ] {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            assert!(descriptor.encode(&summary, &mut encoded).is_err());
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
     }
 
     #[test]
