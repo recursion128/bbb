@@ -9423,6 +9423,24 @@ fn server_container_open_releases_held_mouse_actions() {
     let mut input = ClientInputState::new(true);
     let mut world = WorldStore::new();
     world.set_local_player_pose(local_player_pose([0.0, 64.0, 0.0], 30.0, -10.0));
+    let apple_id = bbb_protocol::item_types::VANILLA_ITEM_APPLE_ID;
+    world.set_default_item_component_type_ids(BTreeMap::from([(
+        apple_id,
+        BTreeSet::from([
+            bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
+        ]),
+    )]));
+    world.set_default_item_consumables(BTreeMap::from([(
+        apple_id,
+        bbb_protocol::packets::ConsumableSummary {
+            consume_seconds: 1.6,
+            ..bbb_protocol::packets::ConsumableSummary::default()
+        },
+    )]));
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: item_stack(apple_id, 1),
+    });
     let mut counters = NetCounters::default();
 
     crate::input::handle_mouse_input_at_partial_tick(
