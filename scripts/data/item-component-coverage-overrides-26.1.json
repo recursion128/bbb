@@ -62,6 +62,197 @@
         "status": "complete"
       }
     },
+    "ENTITY_DATA": {
+      "canonical_retention": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#pub entity_data_entity_type_id",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub entity_data_tag",
+          "crates/bbb-world/src/client/dialog/body/component_value/typed_data/tests.rs#decodes_builtin_typed_entity_data_and_strips_id"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#ENTITY_DATA",
+          "vanilla:net/minecraft/world/item/component/TypedEntityData.java#streamCodec",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_entity_data",
+          "crates/bbb-protocol/src/packets/data_components.rs#encodes_entity_data_family_patch_with_delimited_values",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_entity_data_components"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/component/TypedEntityData.java#addToTooltip",
+          "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_entity_data_tooltip_lines",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_shows_entity_data_peaceful_warning",
+          "crates/bbb-world/src/client/dialog/body/component_value/typed_data/tests.rs#decodes_builtin_typed_entity_data_and_strips_id"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/component/TypedEntityData.java#public static <T> Codec<TypedEntityData<T>> codec",
+          "crates/bbb-native/src/input/component_patch.rs#encode_entity_data",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_omits_registry_backed_components_with_unknown_ids"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#typed_entity_data_decode_strips_id_and_rejects_invalid_values",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#entity_data_descriptors_encode_exact_holder_and_compound_values",
+          "crates/bbb-protocol/src/packets/data_components.rs#bees_typed_entity_data_strips_id_and_rejects_invalid_values",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_entity_data_components",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_shows_entity_data_peaceful_warning"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#ENTITY_DATA",
+          "vanilla:net/minecraft/world/item/component/TypedEntityData.java#streamCodec",
+          "vanilla:net/minecraft/world/item/component/TypedEntityData.java#stripId",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_entity_data",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#typed_entity_data_decode_strips_id_and_rejects_invalid_values"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
+    "BUCKET_ENTITY_DATA": {
+      "canonical_retention": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#pub codec_backed_nbt",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_bucket_entity_data",
+          "crates/bbb-world/src/client/dialog/body/component_value/typed_data/tests.rs#decodes_bucket_entity_data_as_unmodified_compound"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#BUCKET_ENTITY_DATA",
+          "vanilla:net/minecraft/world/item/component/CustomData.java#STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_bucket_entity_data",
+          "crates/bbb-protocol/src/packets/data_components.rs#encodes_entity_data_family_patch_with_delimited_values",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_entity_data_components"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "crates/bbb-world/src/client/dialog/body/component_value.rs#DialogDataComponentValueState::BucketEntityData",
+          "crates/bbb-world/src/client/dialog/body/component_value/typed_data/tests.rs#decodes_bucket_entity_data_as_unmodified_compound",
+          "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_projects_dialog_item_body_structured_patches"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/component/CustomData.java#CODEC",
+          "crates/bbb-native/src/input/component_patch.rs#encode_bucket_entity_data",
+          "crates/bbb-native/src/input/component_patch.rs#bucket_entity_data_persistent_projection_requires_and_preserves_compounds",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#typed_entity_data_decode_strips_id_and_rejects_invalid_values",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#entity_data_descriptors_encode_exact_holder_and_compound_values",
+          "crates/bbb-protocol/src/packets/data_components.rs#encodes_entity_data_family_patch_with_delimited_values",
+          "crates/bbb-native/src/input/component_patch.rs#bucket_entity_data_persistent_projection_requires_and_preserves_compounds",
+          "crates/bbb-world/src/client/dialog/body/component_value/typed_data/tests.rs#decodes_bucket_entity_data_as_unmodified_compound"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#BUCKET_ENTITY_DATA",
+          "vanilla:net/minecraft/world/item/component/CustomData.java#STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_bucket_entity_data",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#typed_entity_data_decode_strips_id_and_rejects_invalid_values"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
+    "BLOCK_ENTITY_DATA": {
+      "canonical_retention": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#pub block_entity_data_type_id",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub block_entity_data_tag",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub block_entity_spawn_entity_type",
+          "crates/bbb-world/src/client/dialog/body/component_value/typed_data/tests.rs#decodes_builtin_typed_block_entity_data_and_strips_id"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#BLOCK_ENTITY_DATA",
+          "vanilla:net/minecraft/world/item/component/TypedEntityData.java#streamCodec",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_block_entity_data",
+          "crates/bbb-protocol/src/packets/data_components.rs#encodes_entity_data_family_patch_with_delimited_values",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_entity_data_components"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_spawner_block_entity_tooltip_lines",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_shows_spawner_block_entity_tooltips",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_shows_operator_only_nbt_warnings",
+          "crates/bbb-world/src/client/dialog/body/component_value/typed_data/tests.rs#decodes_builtin_typed_block_entity_data_and_strips_id"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/component/TypedEntityData.java#public static <T> Codec<TypedEntityData<T>> codec",
+          "crates/bbb-native/src/input/component_patch.rs#encode_block_entity_data",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_omits_registry_backed_components_with_unknown_ids"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#typed_entity_data_decode_strips_id_and_rejects_invalid_values",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#entity_data_descriptors_encode_exact_holder_and_compound_values",
+          "crates/bbb-protocol/src/packets/data_components.rs#encodes_entity_data_family_patch_with_delimited_values",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_entity_data_components",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_shows_spawner_block_entity_tooltips"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#BLOCK_ENTITY_DATA",
+          "vanilla:net/minecraft/world/item/component/TypedEntityData.java#streamCodec",
+          "vanilla:net/minecraft/world/item/component/TypedEntityData.java#stripId",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_block_entity_data",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#typed_entity_data_decode_strips_id_and_rejects_invalid_values"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "MAX_STACK_SIZE": {
       "canonical_retention": {
         "evidence": [

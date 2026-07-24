@@ -1503,6 +1503,52 @@ fn encodes_set_creative_mode_slot_custom_data_component() {
 }
 
 #[test]
+fn encodes_set_creative_mode_slot_entity_data_components() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 3,
+                added_type_ids: vec![
+                    crate::data_component_types::VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
+                    crate::data_component_types::VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
+                    crate::data_component_types::VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
+                ],
+                entity_data_entity_type_id: Some(
+                    crate::entity_types::VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+                ),
+                entity_data_tag: Some(NbtSummaryValue::Compound(Vec::new())),
+                codec_backed_nbt: BTreeMap::from([(
+                    crate::data_component_types::VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
+                    NbtSummaryValue::Compound(Vec::new()),
+                )]),
+                block_entity_data_type_id: Some(
+                    crate::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID,
+                ),
+                block_entity_data_tag: Some(NbtSummaryValue::Compound(Vec::new())),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            3, 0, // patch counts
+            58, 4, 0x96, 0x01, 10, 0, // entity holder + empty compound
+            59, 2, 10, 0, // bucket compound
+            60, 3, 9, 10, 0, // block entity holder + empty compound
+        ]
+    );
+}
+
+#[test]
 fn encodes_set_creative_mode_slot_drop_empty_stack() {
     let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
         slot_num: -1,

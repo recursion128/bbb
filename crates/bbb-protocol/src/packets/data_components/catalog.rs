@@ -1,11 +1,13 @@
 use super::*;
 use std::sync::OnceLock;
 
+use crate::block_entity_types::vanilla_block_entity_type;
 use crate::data_component_types::{
-    DataComponentTypeCatalogEntry, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
-    VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID, VANILLA_DATA_COMPONENT_TYPES,
-    VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
+    DataComponentTypeCatalogEntry, VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
+    VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
+    VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
+    VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_TYPES, VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
 };
 use crate::nbt_summary::{encode_nbt_summary_bounded, MAX_NBT_DEPTH};
 
@@ -120,7 +122,7 @@ static WIRE_DECODE_HANDLERS: &[WireDecodeHandler] = &[
     decode_trim,
     decode_codec_backed_nbt,
     decode_entity_data,
-    decode_codec_backed_nbt,
+    decode_bucket_entity_data,
     decode_block_entity_data,
     decode_instrument,
     decode_provides_trim_material,
@@ -212,6 +214,9 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID => Some(encode_max_damage),
         VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID => Some(encode_damage),
         VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID => Some(encode_unbreakable),
+        VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID => Some(encode_entity_data),
+        VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID => Some(encode_bucket_entity_data),
+        VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID => Some(encode_block_entity_data),
         _ => None,
     }
 }
@@ -221,13 +226,7 @@ fn decode_custom_data(
     decoder: &mut Decoder<'_>,
     summary: &mut DataComponentPatchSummary,
 ) -> Result<()> {
-    let Some(value @ NbtSummaryValue::Compound(_)) = decode_nbt_summary_from_decoder(decoder)?
-    else {
-        return Err(ProtocolError::InvalidData(
-            "custom_data network value must be a non-null compound tag".to_string(),
-        ));
-    };
-    summary.custom_data = Some(value);
+    summary.custom_data = Some(decode_required_compound_tag(decoder, "custom_data")?);
     Ok(())
 }
 
@@ -236,17 +235,134 @@ fn encode_custom_data(
     summary: &DataComponentPatchSummary,
     out: &mut Encoder,
 ) -> Result<()> {
-    let value = summary.custom_data.as_ref().ok_or_else(|| {
-        ProtocolError::InvalidData("missing custom_data component value".to_string())
+    encode_required_compound_tag(summary.custom_data.as_ref(), "custom_data", out)
+}
+
+pub(super) fn decode_required_compound_tag(
+    decoder: &mut Decoder<'_>,
+    component: &'static str,
+) -> Result<NbtSummaryValue> {
+    let Some(value @ NbtSummaryValue::Compound(_)) = decode_nbt_summary_from_decoder(decoder)?
+    else {
+        return Err(ProtocolError::InvalidData(format!(
+            "{component} network value must be a non-null compound tag"
+        )));
+    };
+    Ok(value)
+}
+
+fn encode_required_compound_tag(
+    value: Option<&NbtSummaryValue>,
+    component: &'static str,
+    out: &mut Encoder,
+) -> Result<()> {
+    let value = value.ok_or_else(|| {
+        ProtocolError::InvalidData(format!("missing {component} component value"))
     })?;
     if !matches!(value, NbtSummaryValue::Compound(_)) {
-        return Err(ProtocolError::InvalidData(
-            "custom_data network value must be a non-null compound tag".to_string(),
-        ));
+        return Err(ProtocolError::InvalidData(format!(
+            "{component} network value must be a non-null compound tag"
+        )));
     }
     let encoded = encode_nbt_summary_bounded(Some(value), i32::MAX as usize, MAX_NBT_DEPTH)?;
     out.write_bytes(&encoded);
     Ok(())
+}
+
+fn encode_entity_data(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    encode_typed_entity_data(
+        summary.entity_data_entity_type_id,
+        summary.entity_data_tag.as_ref(),
+        TypedEntityDataRegistry::EntityType,
+        "entity_data",
+        out,
+    )
+}
+
+fn encode_bucket_entity_data(
+    type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    encode_required_compound_tag(
+        summary.codec_backed_nbt.get(&type_id),
+        "bucket_entity_data",
+        out,
+    )
+}
+
+fn encode_block_entity_data(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    encode_typed_entity_data(
+        summary.block_entity_data_type_id,
+        summary.block_entity_data_tag.as_ref(),
+        TypedEntityDataRegistry::BlockEntityType,
+        "block_entity_data",
+        out,
+    )
+}
+
+fn encode_typed_entity_data(
+    type_id: Option<i32>,
+    tag: Option<&NbtSummaryValue>,
+    registry: TypedEntityDataRegistry,
+    component: &'static str,
+    out: &mut Encoder,
+) -> Result<()> {
+    let type_id = type_id.ok_or_else(|| {
+        ProtocolError::InvalidData(format!("missing {component} registry holder"))
+    })?;
+    registry.validate(type_id)?;
+    if let Some(NbtSummaryValue::Compound(entries)) = tag {
+        if entries.iter().any(|entry| entry.name == "id") {
+            return Err(ProtocolError::InvalidData(format!(
+                "{component} canonical network tag must not contain top-level id"
+            )));
+        }
+    }
+    let mut encoded = Encoder::new();
+    encoded.write_var_i32(type_id);
+    encode_required_compound_tag(tag, component, &mut encoded)?;
+    out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum TypedEntityDataRegistry {
+    EntityType,
+    BlockEntityType,
+}
+
+impl TypedEntityDataRegistry {
+    pub(super) const fn component_name(self) -> &'static str {
+        match self {
+            Self::EntityType => "entity_data",
+            Self::BlockEntityType => "block_entity_data",
+        }
+    }
+
+    pub(super) fn validate(self, type_id: i32) -> Result<()> {
+        let (valid, registry) = match self {
+            Self::EntityType => (vanilla_entity_type(type_id).is_some(), "entity type"),
+            Self::BlockEntityType => (
+                vanilla_block_entity_type(type_id).is_some(),
+                "block entity type",
+            ),
+        };
+        if !valid {
+            return Err(ProtocolError::InvalidData(format!(
+                "invalid vanilla {registry} holder id {type_id}"
+            )));
+        }
+        Ok(())
+    }
 }
 
 macro_rules! decode_var_i32_field {
@@ -674,6 +790,16 @@ fn decode_codec_backed_nbt(
     Ok(())
 }
 
+fn decode_bucket_entity_data(
+    type_id: i32,
+    decoder: &mut Decoder<'_>,
+    summary: &mut DataComponentPatchSummary,
+) -> Result<()> {
+    let value = decode_required_compound_tag(decoder, "bucket_entity_data")?;
+    summary.codec_backed_nbt.insert(type_id, value);
+    Ok(())
+}
+
 fn decode_map_post_processing_component(
     _type_id: i32,
     decoder: &mut Decoder<'_>,
@@ -777,9 +903,10 @@ fn decode_entity_data(
     decoder: &mut Decoder<'_>,
     summary: &mut DataComponentPatchSummary,
 ) -> Result<()> {
-    let entity_data = decode_typed_entity_data_summary(decoder)?;
+    let entity_data =
+        decode_typed_entity_data_summary(decoder, TypedEntityDataRegistry::EntityType)?;
     summary.entity_data_entity_type_id = Some(entity_data.type_id);
-    summary.entity_data_tag = entity_data.tag;
+    summary.entity_data_tag = Some(entity_data.tag);
     Ok(())
 }
 
@@ -788,11 +915,12 @@ fn decode_block_entity_data(
     decoder: &mut Decoder<'_>,
     summary: &mut DataComponentPatchSummary,
 ) -> Result<()> {
-    let block_entity_data = decode_typed_entity_data_summary(decoder)?;
+    let block_entity_data =
+        decode_typed_entity_data_summary(decoder, TypedEntityDataRegistry::BlockEntityType)?;
     summary.block_entity_data_type_id = Some(block_entity_data.type_id);
     summary.block_entity_spawn_entity_type =
-        typed_entity_data_spawn_entity_type(block_entity_data.tag.as_ref());
-    summary.block_entity_data_tag = block_entity_data.tag;
+        typed_entity_data_spawn_entity_type(Some(&block_entity_data.tag));
+    summary.block_entity_data_tag = Some(block_entity_data.tag);
     Ok(())
 }
 
@@ -1198,7 +1326,13 @@ fn decode_provides_trim_material(
 mod tests {
     use std::collections::HashSet;
 
-    use crate::codec::Encoder;
+    use crate::{
+        block_entity_types::{
+            VANILLA_BLOCK_ENTITY_TYPES, VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID,
+        },
+        codec::Encoder,
+        entity_types::{VANILLA_ENTITY_TYPES, VANILLA_ENTITY_TYPE_ZOMBIE_ID},
+    };
 
     use super::*;
 
@@ -1234,7 +1368,7 @@ mod tests {
                 .filter(|descriptor| descriptor.can_encode())
                 .map(|descriptor| descriptor.type_id())
                 .collect::<Vec<_>>(),
-            vec![0, 1, 2, 3, 4]
+            vec![0, 1, 2, 3, 4, 58, 59, 60]
         );
     }
 
@@ -1360,6 +1494,211 @@ mod tests {
                 "{error}"
             );
         }
+    }
+
+    #[test]
+    fn entity_data_descriptors_encode_exact_holder_and_compound_values() {
+        let entity_tag = NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+            name: "Health".to_string(),
+            value: NbtSummaryValue::Short(5),
+        }]);
+        let bucket_tag = NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+            name: "Variant".to_string(),
+            value: NbtSummaryValue::Int(2),
+        }]);
+        let block_tag = NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+            name: "Delay".to_string(),
+            value: NbtSummaryValue::Short(20),
+        }]);
+        let summary = DataComponentPatchSummary {
+            entity_data_entity_type_id: Some(VANILLA_ENTITY_TYPE_ZOMBIE_ID),
+            entity_data_tag: Some(entity_tag),
+            codec_backed_nbt: BTreeMap::from([(
+                VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
+                bucket_tag,
+            )]),
+            block_entity_data_type_id: Some(VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID),
+            block_entity_data_tag: Some(block_tag),
+            ..DataComponentPatchSummary::default()
+        };
+
+        for (type_id, expected) in [
+            (
+                VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
+                vec![
+                    0x96, 0x01, // zombie holder 150
+                    10, 2, 0, 6, b'H', b'e', b'a', b'l', b't', b'h', 0, 5, 0,
+                ],
+            ),
+            (
+                VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
+                vec![
+                    10, 3, 0, 7, b'V', b'a', b'r', b'i', b'a', b'n', b't', 0, 0, 0, 2, 0,
+                ],
+            ),
+            (
+                VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
+                vec![
+                    9, // mob spawner holder
+                    10, 2, 0, 5, b'D', b'e', b'l', b'a', b'y', 0, 20, 0,
+                ],
+            ),
+        ] {
+            let descriptor = vanilla_data_component_descriptor(type_id).unwrap();
+            let mut encoded = Encoder::new();
+            descriptor.encode(&summary, &mut encoded).unwrap();
+            assert_eq!(encoded.into_inner(), expected);
+        }
+    }
+
+    #[test]
+    fn typed_entity_data_decode_strips_id_and_rejects_invalid_values() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID).unwrap();
+        let mut wire = Encoder::new();
+        wire.write_var_i32(VANILLA_ENTITY_TYPE_ZOMBIE_ID);
+        wire.write_bytes(&[
+            10, // compound
+            8, 0, 2, b'i', b'd', 0, 16, b'm', b'i', b'n', b'e', b'c', b'r', b'a', b'f', b't', b':',
+            b'z', b'o', b'm', b'b', b'i', b'e', 2, 0, 6, b'H', b'e', b'a', b'l', b't', b'h', 0, 5,
+            0,
+        ]);
+        let wire = wire.into_inner();
+        let mut decoder = Decoder::new(&wire);
+        let mut summary = DataComponentPatchSummary::default();
+        descriptor.decode(&mut decoder, &mut summary).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(
+            summary.entity_data_tag,
+            Some(NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                name: "Health".to_string(),
+                value: NbtSummaryValue::Short(5),
+            }]))
+        );
+
+        for (type_id, wire, expected_error) in [
+            (
+                VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
+                {
+                    let mut wire = Encoder::new();
+                    wire.write_var_i32(VANILLA_ENTITY_TYPES.len() as i32);
+                    wire.write_bytes(&[10, 0]);
+                    wire.into_inner()
+                },
+                "invalid vanilla entity type holder",
+            ),
+            (
+                VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
+                {
+                    let mut wire = Encoder::new();
+                    wire.write_var_i32(VANILLA_BLOCK_ENTITY_TYPES.len() as i32);
+                    wire.write_bytes(&[10, 0]);
+                    wire.into_inner()
+                },
+                "invalid vanilla block entity type holder",
+            ),
+            (
+                VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
+                vec![3, 0, 0, 0, 42],
+                "must be a non-null compound tag",
+            ),
+            (
+                VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
+                {
+                    let mut wire = Encoder::new();
+                    wire.write_var_i32(VANILLA_ENTITY_TYPE_ZOMBIE_ID);
+                    wire.write_u8(0);
+                    wire.into_inner()
+                },
+                "must be a non-null compound tag",
+            ),
+            (
+                VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
+                {
+                    let mut wire = Encoder::new();
+                    wire.write_var_i32(VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID);
+                    wire.write_bytes(&[3, 0, 0, 0, 42]);
+                    wire.into_inner()
+                },
+                "must be a non-null compound tag",
+            ),
+        ] {
+            let error = vanilla_data_component_descriptor(type_id)
+                .unwrap()
+                .decode(
+                    &mut Decoder::new(&wire),
+                    &mut DataComponentPatchSummary::default(),
+                )
+                .unwrap_err();
+            assert!(error.to_string().contains(expected_error), "{error}");
+        }
+    }
+
+    #[test]
+    fn entity_data_descriptors_reject_missing_scalar_and_embedded_id_summaries() {
+        let compound = NbtSummaryValue::Compound(Vec::new());
+        let cases = [
+            (
+                VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
+                DataComponentPatchSummary {
+                    entity_data_entity_type_id: Some(VANILLA_ENTITY_TYPE_ZOMBIE_ID),
+                    ..DataComponentPatchSummary::default()
+                },
+                "missing entity_data component value",
+            ),
+            (
+                VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
+                DataComponentPatchSummary {
+                    codec_backed_nbt: BTreeMap::from([(
+                        VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
+                        NbtSummaryValue::Int(42),
+                    )]),
+                    ..DataComponentPatchSummary::default()
+                },
+                "must be a non-null compound tag",
+            ),
+            (
+                VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
+                DataComponentPatchSummary {
+                    block_entity_data_type_id: Some(VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID),
+                    block_entity_data_tag: Some(NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                        name: "id".to_string(),
+                        value: NbtSummaryValue::String("minecraft:mob_spawner".to_string()),
+                    }])),
+                    ..DataComponentPatchSummary::default()
+                },
+                "must not contain top-level id",
+            ),
+        ];
+        for (type_id, summary, expected_error) in cases {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            let error = vanilla_data_component_descriptor(type_id)
+                .unwrap()
+                .encode(&summary, &mut encoded)
+                .unwrap_err();
+            assert!(error.to_string().contains(expected_error), "{error}");
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
+
+        let valid_entity = DataComponentPatchSummary {
+            entity_data_entity_type_id: Some(VANILLA_ENTITY_TYPES.len() as i32),
+            entity_data_tag: Some(compound),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        encoded.write_u8(0xaa);
+        let error = vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID)
+            .unwrap()
+            .encode(&valid_entity, &mut encoded)
+            .unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("invalid vanilla entity type holder"),
+            "{error}"
+        );
+        assert_eq!(encoded.into_inner(), [0xaa]);
     }
 
     #[test]

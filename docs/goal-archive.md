@@ -386,3 +386,8 @@
   进入 creative 逐值 framing；canonical publication、持久化 SNBT 与 exact/partial
   item-model predicate 证据齐备，合同见
   `docs/archive/custom-data-component-roundtrip-design.md`。
+- **2026-07-23（Typed entity-data component 六维闭环）**：`ENTITY_DATA`、
+  `BUCKET_ENTITY_DATA`、`BLOCK_ENTITY_DATA` 现严格校验固定 registry holder 与
+  CompoundTag 根、按 Vanilla 剥离网络顶层 `id`，并由 descriptor-owned 编码进入
+  creative 逐值 framing；三行六维 coverage complete，合同见
+  `docs/archive/typed-entity-data-component-roundtrip-design.md`。

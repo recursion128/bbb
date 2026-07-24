@@ -347,7 +347,7 @@ static PERSISTENT_SNBT_ENCODERS: &[PersistentSnbtEncoderDescriptor] = &[
     ),
     encoder(
         component_id::VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
-        encode_codec_backed_nbt,
+        encode_bucket_entity_data,
     ),
     encoder(
         component_id::VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
@@ -1384,6 +1384,18 @@ fn encode_codec_backed_nbt(
     ))
 }
 
+fn encode_bucket_entity_data(
+    type_id: i32,
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+    _context: PersistentSnbtContext<'_>,
+) -> Option<String> {
+    let value = patch.codec_backed_nbt.get(&type_id)?;
+    if !matches!(value, bbb_protocol::packets::NbtSummaryValue::Compound(_)) {
+        return None;
+    }
+    Some(debug_nbt_summary_snbt(value))
+}
+
 fn encode_entity_data(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
@@ -2151,6 +2163,33 @@ mod tests {
                 &patch,
                 None,
             ),
+            None
+        );
+    }
+
+    #[test]
+    fn bucket_entity_data_persistent_projection_requires_and_preserves_compounds() {
+        let type_id = component_id::VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID;
+        let compound = bbb_protocol::packets::NbtSummaryValue::Compound(vec![
+            bbb_protocol::packets::NbtSummaryEntry {
+                name: "Variant".to_string(),
+                value: bbb_protocol::packets::NbtSummaryValue::Int(2),
+            },
+        ]);
+        let mut patch = bbb_protocol::packets::DataComponentPatchSummary {
+            codec_backed_nbt: std::collections::BTreeMap::from([(type_id, compound)]),
+            ..Default::default()
+        };
+        assert_eq!(
+            encode_added_component_value_snbt(type_id, &patch, None),
+            Some("{Variant: 2}".to_string())
+        );
+
+        patch
+            .codec_backed_nbt
+            .insert(type_id, bbb_protocol::packets::NbtSummaryValue::Int(2));
+        assert_eq!(
+            encode_added_component_value_snbt(type_id, &patch, None),
             None
         );
     }
