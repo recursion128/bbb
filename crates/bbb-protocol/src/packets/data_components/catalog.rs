@@ -7,9 +7,10 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
     VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
     VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID, VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
-    VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID, VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
+    VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+    VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID,
+    VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
     VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
     VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
     VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
@@ -225,6 +226,9 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID => Some(encode_max_damage),
         VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID => Some(encode_damage),
         VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID => Some(encode_unbreakable),
+        VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID | VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID => {
+            Some(encode_name_component)
+        }
         VANILLA_DATA_COMPONENT_LORE_TYPE_ID => Some(encode_lore),
         VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID => Some(encode_attribute_modifiers),
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID => Some(encode_consumable),
@@ -266,6 +270,33 @@ fn encode_custom_data(
     out: &mut Encoder,
 ) -> Result<()> {
     encode_required_compound_tag(summary.custom_data.as_ref(), "custom_data", out)
+}
+
+fn encode_name_component(
+    type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let (text, styled, nbt, what) = match type_id {
+        VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID => (
+            summary.custom_name.as_deref(),
+            summary.custom_name_styled.as_deref(),
+            summary.custom_name_nbt.as_ref(),
+            "custom name",
+        ),
+        VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID => (
+            summary.item_name.as_deref(),
+            summary.item_name_styled.as_deref(),
+            summary.item_name_nbt.as_ref(),
+            "item name",
+        ),
+        _ => unreachable!("name component encoder registered for type id {type_id}"),
+    };
+    let text = text.ok_or_else(|| ProtocolError::InvalidData(format!("{what} text is missing")))?;
+    out.write_bytes(&encode_canonical_component_projection(
+        nbt, text, styled, what,
+    )?);
+    Ok(())
 }
 
 fn encode_lore(
@@ -2502,8 +2533,8 @@ mod tests {
                 .map(|descriptor| descriptor.type_id())
                 .collect::<Vec<_>>(),
             vec![
-                0, 1, 2, 3, 4, 11, 16, 24, 36, 37, 38, 39, 40, 51, 52, 53, 54, 55, 56, 58, 59, 60,
-                68, 69, 70,
+                0, 1, 2, 3, 4, 6, 9, 11, 16, 24, 36, 37, 38, 39, 40, 51, 52, 53, 54, 55, 56, 58,
+                59, 60, 68, 69, 70,
             ]
         );
     }
@@ -4531,6 +4562,152 @@ mod tests {
                 fireworks_descriptor.encode(&summary, &mut encoded),
                 Err(ProtocolError::PacketTooLarge(_, max)) if max == expected_max
             ));
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
+    }
+
+    #[test]
+    fn name_component_descriptors_round_trip_exact_component_trees() {
+        let custom_nbt = NbtSummaryValue::Compound(vec![
+            NbtSummaryEntry {
+                name: "text".to_string(),
+                value: NbtSummaryValue::String("Custom".to_string()),
+            },
+            NbtSummaryEntry {
+                name: "bold".to_string(),
+                value: NbtSummaryValue::Byte(1),
+            },
+            NbtSummaryEntry {
+                name: "color".to_string(),
+                value: NbtSummaryValue::String("gold".to_string()),
+            },
+        ]);
+        let cases = [
+            (
+                VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+                DataComponentPatchSummary {
+                    custom_name: Some("Custom".to_string()),
+                    custom_name_styled: Some(vec![StyledTextRun {
+                        text: "Custom".to_string(),
+                        style: crate::ComponentStyle {
+                            bold: Some(true),
+                            color: Some(0xFF_AA_00),
+                            ..Default::default()
+                        },
+                    }]),
+                    custom_name_nbt: Some(custom_nbt),
+                    ..DataComponentPatchSummary::default()
+                },
+            ),
+            (
+                VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
+                DataComponentPatchSummary {
+                    item_name: Some("Item".to_string()),
+                    item_name_styled: Some(vec![StyledTextRun {
+                        text: "Item".to_string(),
+                        style: crate::ComponentStyle::default(),
+                    }]),
+                    item_name_nbt: Some(NbtSummaryValue::String("Item".to_string())),
+                    ..DataComponentPatchSummary::default()
+                },
+            ),
+        ];
+
+        for (type_id, summary) in cases {
+            let descriptor = vanilla_data_component_descriptor(type_id).unwrap();
+            let mut encoded = Encoder::new();
+            descriptor.encode(&summary, &mut encoded).unwrap();
+            let encoded = encoded.into_inner();
+            let mut decoded = DataComponentPatchSummary::default();
+            let mut decoder = Decoder::new(&encoded);
+            descriptor.decode(&mut decoder, &mut decoded).unwrap();
+            assert!(decoder.is_empty());
+            match type_id {
+                VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID => {
+                    assert_eq!(decoded.custom_name, summary.custom_name);
+                    assert_eq!(decoded.custom_name_styled, summary.custom_name_styled);
+                    assert_eq!(decoded.custom_name_nbt, summary.custom_name_nbt);
+                }
+                VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID => {
+                    assert_eq!(
+                        encoded,
+                        [8, 0, 4, b'I', b't', b'e', b'm'],
+                        "item name must be one unwrapped ComponentSerialization root"
+                    );
+                    assert_eq!(decoded.item_name, summary.item_name);
+                    assert_eq!(decoded.item_name_styled, summary.item_name_styled);
+                    assert_eq!(decoded.item_name_nbt, summary.item_name_nbt);
+                }
+                _ => unreachable!(),
+            }
+        }
+    }
+
+    #[test]
+    fn name_component_descriptors_reject_noncanonical_projections_atomically() {
+        let valid_custom = DataComponentPatchSummary {
+            custom_name: Some("Custom".to_string()),
+            custom_name_styled: Some(vec![StyledTextRun {
+                text: "Custom".to_string(),
+                style: crate::ComponentStyle::default(),
+            }]),
+            custom_name_nbt: Some(NbtSummaryValue::String("Custom".to_string())),
+            ..DataComponentPatchSummary::default()
+        };
+        let valid_item = DataComponentPatchSummary {
+            item_name: Some("Item".to_string()),
+            item_name_styled: Some(vec![StyledTextRun {
+                text: "Item".to_string(),
+                style: crate::ComponentStyle::default(),
+            }]),
+            item_name_nbt: Some(NbtSummaryValue::String("Item".to_string())),
+            ..DataComponentPatchSummary::default()
+        };
+        let cases = [
+            (
+                VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+                DataComponentPatchSummary::default(),
+                "text is missing",
+            ),
+            (
+                VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+                DataComponentPatchSummary {
+                    custom_name: Some("Custom".to_string()),
+                    ..DataComponentPatchSummary::default()
+                },
+                "missing component nbt",
+            ),
+            (
+                VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+                DataComponentPatchSummary {
+                    custom_name: Some("stale".to_string()),
+                    ..valid_custom
+                },
+                "noncanonical component projections",
+            ),
+            (
+                VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
+                DataComponentPatchSummary::default(),
+                "text is missing",
+            ),
+            (
+                VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
+                DataComponentPatchSummary {
+                    item_name_styled: Some(Vec::new()),
+                    ..valid_item
+                },
+                "noncanonical component projections",
+            ),
+        ];
+        for (type_id, summary, expected_error) in cases {
+            let descriptor = vanilla_data_component_descriptor(type_id).unwrap();
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            let error = descriptor.encode(&summary, &mut encoded).unwrap_err();
+            assert!(
+                error.to_string().contains(expected_error),
+                "{error} did not contain {expected_error:?}"
+            );
             assert_eq!(encoded.into_inner(), [0xaa]);
         }
     }

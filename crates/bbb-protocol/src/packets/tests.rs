@@ -8,8 +8,9 @@ use crate::{
         VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID,
         VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
         VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
-        VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
+        VANILLA_DATA_COMPONENT_LORE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
         VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
@@ -2011,6 +2012,52 @@ fn encodes_set_creative_mode_slot_lore_component() {
             2,  // line count
             8, 0, 5, b'F', b'i', b'r', b's', b't', // first component
             8, 0, 6, b'S', b'e', b'c', b'o', b'n', b'd', // second component
+        ]
+    );
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_name_components() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 2,
+                added_type_ids: vec![
+                    VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+                    VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
+                ],
+                custom_name: Some("Custom".to_string()),
+                custom_name_styled: Some(vec![crate::StyledTextRun {
+                    text: "Custom".to_string(),
+                    style: crate::ComponentStyle::default(),
+                }]),
+                custom_name_nbt: Some(NbtSummaryValue::String("Custom".to_string())),
+                item_name: Some("Item".to_string()),
+                item_name_styled: Some(vec![crate::StyledTextRun {
+                    text: "Item".to_string(),
+                    style: crate::ComponentStyle::default(),
+                }]),
+                item_name_nbt: Some(NbtSummaryValue::String("Item".to_string())),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            2, 0, // patch counts
+            6, 9, // custom_name type and delimited value length
+            8, 0, 6, b'C', b'u', b's', b't', b'o', b'm', // custom component
+            9, 7, // item_name type and delimited value length
+            8, 0, 4, b'I', b't', b'e', b'm', // item component
         ]
     );
 }

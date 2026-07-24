@@ -1080,6 +1080,148 @@
         "status": "complete"
       }
     },
+    "CUSTOM_NAME": {
+      "canonical_retention": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#pub custom_name",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub custom_name_styled",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub custom_name_nbt",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_custom_name",
+          "crates/bbb-world/src/client/dialog/body/component_value/text_component/tests.rs#decodes_custom_and_item_name_component_alternatives"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#CUSTOM_NAME",
+          "vanilla:net/minecraft/network/chat/ComponentSerialization.java#STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_name_component",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#name_component_descriptors_round_trip_exact_component_trees",
+          "crates/bbb-protocol/src/packets/data_components.rs#encodes_name_component_patch_with_independent_delimiters",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_name_components"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/ItemStack.java#getStyledHoverName",
+          "crates/bbb-item-model/src/item_runtime/tooltip.rs#hover_name_source_runs_for_component_patch",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-item-model/src/item_runtime/icon_model.rs#item_exact_component_matches",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_component_condition_predicates"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/network/chat/ComponentSerialization.java#CODEC",
+          "crates/bbb-native/src/input/component_patch.rs#encode_component_tree",
+          "crates/bbb-native/src/input/component_patch.rs#component_tree_encoders_preserve_exact_nbt_and_omit_missing_trees",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-world/src/client/dialog/body/component_value/text_component/tests.rs#validates_hover_item_positive_component_values_in_names_and_lore"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#name_component_descriptors_round_trip_exact_component_trees",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#name_component_descriptors_reject_noncanonical_projections_atomically",
+          "crates/bbb-protocol/src/packets/data_components.rs#encodes_name_component_patch_with_independent_delimiters",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_name_components",
+          "crates/bbb-world/src/client/dialog/body/component_value/text_component/tests.rs#decodes_custom_and_item_name_component_alternatives",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#CUSTOM_NAME",
+          "vanilla:net/minecraft/network/chat/ComponentSerialization.java#CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_styled_name",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_custom_name",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_styled_name_and_lore_component_runs",
+          "crates/bbb-world/src/client/dialog/body/component_value/text_component/tests.rs#decodes_custom_and_item_name_component_alternatives"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
+    "ITEM_NAME": {
+      "canonical_retention": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#pub item_name",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub item_name_styled",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub item_name_nbt",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_item_name",
+          "crates/bbb-world/src/client/dialog/body/component_value/text_component/tests.rs#decodes_custom_and_item_name_component_alternatives"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#ITEM_NAME",
+          "vanilla:net/minecraft/network/chat/ComponentSerialization.java#STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_name_component",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#name_component_descriptors_round_trip_exact_component_trees",
+          "crates/bbb-protocol/src/packets/data_components.rs#encodes_name_component_patch_with_independent_delimiters",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_name_components"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/ItemStack.java#getHoverName",
+          "crates/bbb-item-model/src/item_runtime/tooltip.rs#hover_name_for_component_patch",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#localized_item_name_prefers_item_key_then_block_key",
+          "crates/bbb-item-model/src/item_runtime/icon_model.rs#item_exact_component_matches",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_component_condition_predicates"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/network/chat/ComponentSerialization.java#CODEC",
+          "crates/bbb-native/src/input/component_patch.rs#encode_component_tree",
+          "crates/bbb-native/src/input/component_patch.rs#component_tree_encoders_preserve_exact_nbt_and_omit_missing_trees",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-world/src/client/dialog/body/component_value/text_component/tests.rs#validates_hover_item_positive_component_values_in_names_and_lore"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#name_component_descriptors_round_trip_exact_component_trees",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#name_component_descriptors_reject_noncanonical_projections_atomically",
+          "crates/bbb-protocol/src/packets/data_components.rs#encodes_name_component_patch_with_independent_delimiters",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_name_components",
+          "crates/bbb-world/src/client/dialog/body/component_value/text_component/tests.rs#decodes_custom_and_item_name_component_alternatives",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#localized_item_name_prefers_item_key_then_block_key"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#ITEM_NAME",
+          "vanilla:net/minecraft/network/chat/ComponentSerialization.java#CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_styled_name",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_item_name",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_hover_text_component_summaries",
+          "crates/bbb-world/src/client/dialog/body/component_value/text_component/tests.rs#decodes_custom_and_item_name_component_alternatives"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "LORE": {
       "canonical_retention": {
         "evidence": [

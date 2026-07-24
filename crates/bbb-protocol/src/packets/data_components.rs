@@ -1030,6 +1030,16 @@ fn validate_encodable_data_component_patch_summary(
             VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID => {
                 expected.unbreakable = patch.unbreakable;
             }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID => {
+                expected.custom_name = patch.custom_name.clone();
+                expected.custom_name_styled = patch.custom_name_styled.clone();
+                expected.custom_name_nbt = patch.custom_name_nbt.clone();
+            }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID => {
+                expected.item_name = patch.item_name.clone();
+                expected.item_name_styled = patch.item_name_styled.clone();
+                expected.item_name_nbt = patch.item_name_nbt.clone();
+            }
             crate::data_component_types::VANILLA_DATA_COMPONENT_LORE_TYPE_ID => {
                 expected.lore = patch.lore.clone();
                 expected.lore_styled = patch.lore_styled.clone();
@@ -3607,6 +3617,59 @@ mod tests {
         assert_eq!(decoded.lore, patch.lore);
         assert_eq!(decoded.lore_styled, patch.lore_styled);
         assert_eq!(decoded.lore_nbt, patch.lore_nbt);
+    }
+
+    #[test]
+    fn encodes_name_component_patch_with_independent_delimiters() {
+        let patch = DataComponentPatchSummary {
+            added: 2,
+            added_type_ids: vec![
+                crate::data_component_types::VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+                crate::data_component_types::VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
+            ],
+            removed_type_ids: vec![VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID],
+            custom_name: Some("Custom".to_string()),
+            custom_name_styled: Some(plain_runs("Custom")),
+            custom_name_nbt: Some(NbtSummaryValue::String("Custom".to_string())),
+            item_name: Some("Item".to_string()),
+            item_name_styled: Some(plain_runs("Item")),
+            item_name_nbt: Some(NbtSummaryValue::String("Item".to_string())),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        encode_delimited_data_component_patch_summary(&mut encoded, &patch).unwrap();
+        let encoded = encoded.into_inner();
+
+        let mut decoder = Decoder::new(&encoded);
+        assert_eq!(decoder.read_len().unwrap(), 2);
+        assert_eq!(decoder.read_len().unwrap(), 1);
+        let mut decoded = DataComponentPatchSummary::default();
+        for expected_type_id in patch.added_type_ids.iter().copied() {
+            let type_id = decoder.read_var_i32().unwrap();
+            assert_eq!(type_id, expected_type_id);
+            let value_len = decoder.read_len().unwrap();
+            let mut value_decoder = Decoder::new(
+                decoder
+                    .read_exact(value_len, "name component value")
+                    .unwrap(),
+            );
+            data_component_descriptor_or_error(type_id)
+                .unwrap()
+                .decode(&mut value_decoder, &mut decoded)
+                .unwrap();
+            assert!(value_decoder.is_empty());
+        }
+        assert_eq!(
+            decoder.read_var_i32().unwrap(),
+            VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID
+        );
+        assert!(decoder.is_empty());
+        assert_eq!(decoded.custom_name, patch.custom_name);
+        assert_eq!(decoded.custom_name_styled, patch.custom_name_styled);
+        assert_eq!(decoded.custom_name_nbt, patch.custom_name_nbt);
+        assert_eq!(decoded.item_name, patch.item_name);
+        assert_eq!(decoded.item_name_styled, patch.item_name_styled);
+        assert_eq!(decoded.item_name_nbt, patch.item_name_nbt);
     }
 
     #[test]
