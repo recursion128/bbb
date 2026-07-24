@@ -20,7 +20,8 @@ use crate::{
         VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
         VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID, VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
         VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
@@ -2677,6 +2678,36 @@ fn encodes_set_creative_mode_slot_direct_break_sound_component() {
     assert_eq!(value.read_f32().unwrap().to_bits(), 12.5_f32.to_bits());
     assert!(value.is_empty());
     assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_map_id_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID],
+                map_id: Some(42),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            1, 0, // patch counts
+            46, 1,  // map_id type and delimited value length
+            42, // map id
+        ]
+    );
 }
 
 #[test]

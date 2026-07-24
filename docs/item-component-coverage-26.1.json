@@ -3246,34 +3246,79 @@
       "constant_name": "MAP_ID",
       "coverage": {
         "canonical_retention": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components.rs#pub map_id",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_map_id",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#map_id_descriptor_round_trips_the_full_signed_domain_in_wire_order"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "network_encode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/level/saveddata/maps/MapId.java#public static final StreamCodec<ByteBuf, MapId> STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_map_id",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#map_id_descriptor_round_trips_the_full_signed_domain_in_wire_order",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#map_id_descriptor_rejects_a_missing_value_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_map_id_component"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "observable_consumers": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/level/saveddata/maps/MapId.java#public void addToTooltip",
+            "vanilla:net/minecraft/client/renderer/ItemInHandRenderer.java#DataComponents.MAP_ID",
+            "vanilla:net/minecraft/client/renderer/entity/ItemFrameRenderer.java#MapId framedMapId",
+            "vanilla:net/minecraft/world/inventory/CartographyTableMenu.java#stack.has(DataComponents.MAP_ID)",
+            "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_map_id_tooltip_lines",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+            "crates/bbb-native/src/item_models/first_person.rs#if let Some(map_id) = stack.component_patch.map_id",
+            "crates/bbb-native/src/item_models/tests.rs#first_person_item_models_render_two_handed_filled_map_surface",
+            "crates/bbb-native/src/item_frames.rs#let map = state.map_id.and_then",
+            "crates/bbb-native/src/item_frames.rs#filled_map_frame_renders_decoded_full_frame_map_when_data_exists",
+            "crates/bbb-world/src/client/inventory/tests.rs#apply_local_cartography_table_player_map_id_quick_move_routes_to_map_slot"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "persistent_projection": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/level/saveddata/maps/MapId.java#public static final Codec<MapId> CODEC",
+            "crates/bbb-native/src/input/component_patch.rs#fn encode_map_id",
+            "crates/bbb-native/src/input/component_patch.rs#map_id_encoder_preserves_the_full_signed_domain",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_scalar_wrappers_flat_records_and_string_map"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#map_id_descriptor_round_trips_the_full_signed_domain_in_wire_order",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#map_id_descriptor_rejects_a_missing_value_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_map_id_component",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values",
+            "crates/bbb-native/src/input/component_patch.rs#map_id_encoder_preserves_the_full_signed_domain",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+            "crates/bbb-native/src/item_models/tests.rs#first_person_item_models_render_two_handed_filled_map_surface",
+            "crates/bbb-native/src/item_frames.rs#filled_map_frame_renders_decoded_full_frame_map_when_data_exists",
+            "crates/bbb-world/src/client/inventory/tests.rs#apply_local_cartography_table_player_map_id_quick_move_routes_to_map_slot"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "typed_decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#MAP_ID",
+            "vanilla:net/minecraft/world/level/saveddata/maps/MapId.java#public static final StreamCodec<ByteBuf, MapId> STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_map_id",
+            "crates/bbb-protocol/src/packets/data_components.rs#pub map_id",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_scalar_wrappers_flat_records_and_string_map"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "resource_id": "minecraft:map_id",
