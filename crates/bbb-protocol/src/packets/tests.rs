@@ -18,7 +18,8 @@ use crate::{
         VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
         VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
         VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
+        VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID, VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
         VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
@@ -2088,6 +2089,60 @@ fn encodes_set_creative_mode_slot_bees_component() {
     );
     assert_eq!(value.read_var_i32().unwrap(), -5);
     assert_eq!(value.read_var_i32().unwrap(), 2400);
+    assert!(value.is_empty());
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_lodestone_tracker_component() {
+    let target = LodestoneTargetSummary {
+        dimension: "minecraft:the_nether".to_string(),
+        pos: chunks::BlockPos {
+            x: 12,
+            y: -64,
+            z: 34,
+        },
+    };
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID],
+                lodestone_target: Some(target.clone()),
+                lodestone_tracked: Some(false),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_i16().unwrap(), 36);
+    assert_eq!(decoder.read_var_i32().unwrap(), 1);
+    assert_eq!(decoder.read_var_i32().unwrap(), 42);
+    assert_eq!(decoder.read_len().unwrap(), 1);
+    assert_eq!(decoder.read_len().unwrap(), 0);
+    assert_eq!(
+        decoder.read_var_i32().unwrap(),
+        VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID
+    );
+    let value_len = decoder.read_len().unwrap();
+    let mut value = Decoder::new(
+        decoder
+            .read_exact(value_len, "lodestone_tracker component value")
+            .unwrap(),
+    );
+    assert!(value.read_bool().unwrap());
+    assert_eq!(value.read_string(usize::MAX).unwrap(), target.dimension);
+    assert_eq!(
+        chunks::decode_block_pos(value.read_i64().unwrap()),
+        target.pos
+    );
+    assert!(!value.read_bool().unwrap());
     assert!(value.is_empty());
     assert!(decoder.is_empty());
 }

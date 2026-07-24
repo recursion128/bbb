@@ -22,8 +22,8 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
     VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
     VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID, VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
-    VANILLA_DATA_COMPONENT_LORE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID, VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
     VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
     VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
@@ -288,6 +288,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID => Some(encode_block_entity_data),
         VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID => Some(encode_instrument),
         VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID => Some(encode_jukebox_playable),
+        VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID => Some(encode_lodestone_tracker),
         VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID => Some(encode_profile),
         VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID => Some(encode_banner_patterns),
         VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID => Some(encode_container),
@@ -2257,6 +2258,36 @@ fn encode_banner_pattern_holder(
     }
 }
 
+fn encode_lodestone_tracker(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let tracked = summary.lodestone_tracked.ok_or_else(|| {
+        ProtocolError::InvalidData("lodestone_tracker is missing tracked projection".to_string())
+    })?;
+    let mut encoded = Encoder::new();
+    encoded.write_bool(summary.lodestone_target.is_some());
+    if let Some(target) = &summary.lodestone_target {
+        validate_canonical_resource_location(
+            &target.dimension,
+            "lodestone_tracker target dimension",
+        )?;
+        encode_java_string(&mut encoded, &target.dimension, MAX_STRING_CHARS)?;
+        let packed = chunks::encode_block_pos(target.pos);
+        if chunks::decode_block_pos(packed) != target.pos {
+            return Err(ProtocolError::InvalidData(format!(
+                "lodestone_tracker target position ({}, {}, {}) is not representable as a packed block position",
+                target.pos.x, target.pos.y, target.pos.z
+            )));
+        }
+        encoded.write_i64(packed);
+    }
+    encoded.write_bool(tracked);
+    out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
 fn encode_container(
     _type_id: i32,
     summary: &DataComponentPatchSummary,
@@ -3395,7 +3426,7 @@ mod tests {
             vec![
                 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 22, 24, 25,
                 28, 30, 36, 37, 38, 39, 40, 42, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 61, 64,
-                68, 69, 70, 72, 75, 77,
+                67, 68, 69, 70, 72, 75, 77,
             ]
         );
     }
@@ -5635,6 +5666,157 @@ mod tests {
         assert_eq!(encoded.into_inner(), [0xaa]);
 
         descriptor.encode(&valid, &mut Encoder::new()).unwrap();
+    }
+
+    #[test]
+    fn lodestone_tracker_descriptor_round_trips_optional_global_position_in_wire_order() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID)
+                .unwrap();
+        let untargeted = DataComponentPatchSummary {
+            lodestone_tracked: Some(true),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        descriptor.encode(&untargeted, &mut encoded).unwrap();
+        assert_eq!(encoded.clone().into_inner(), [0, 1]);
+        let wire = encoded.into_inner();
+        let mut decoder = Decoder::new(&wire);
+        let mut decoded = DataComponentPatchSummary::default();
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded, untargeted);
+
+        let targeted = DataComponentPatchSummary {
+            lodestone_target: Some(LodestoneTargetSummary {
+                dimension: "minecraft:the_nether".to_string(),
+                pos: chunks::BlockPos {
+                    x: 12,
+                    y: -64,
+                    z: 34,
+                },
+            }),
+            lodestone_tracked: Some(false),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        descriptor.encode(&targeted, &mut encoded).unwrap();
+        let mut expected = Encoder::new();
+        expected.write_bool(true);
+        expected.write_string("minecraft:the_nether");
+        expected.write_i64(chunks::encode_block_pos(chunks::BlockPos {
+            x: 12,
+            y: -64,
+            z: 34,
+        }));
+        expected.write_bool(false);
+        assert_eq!(encoded.clone().into_inner(), expected.into_inner());
+        let wire = encoded.into_inner();
+        let mut decoder = Decoder::new(&wire);
+        let mut decoded = DataComponentPatchSummary::default();
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded, targeted);
+
+        for pos in [
+            chunks::BlockPos {
+                x: -33_554_432,
+                y: -2_048,
+                z: -33_554_432,
+            },
+            chunks::BlockPos {
+                x: 33_554_431,
+                y: 2_047,
+                z: 33_554_431,
+            },
+        ] {
+            let boundary = DataComponentPatchSummary {
+                lodestone_target: Some(LodestoneTargetSummary {
+                    dimension: "minecraft:overworld".to_string(),
+                    pos,
+                }),
+                lodestone_tracked: Some(true),
+                ..DataComponentPatchSummary::default()
+            };
+            let mut encoded = Encoder::new();
+            descriptor.encode(&boundary, &mut encoded).unwrap();
+            let wire = encoded.into_inner();
+            let mut decoder = Decoder::new(&wire);
+            let mut decoded = DataComponentPatchSummary::default();
+            descriptor.decode(&mut decoder, &mut decoded).unwrap();
+            assert!(decoder.is_empty());
+            assert_eq!(decoded, boundary);
+        }
+    }
+
+    #[test]
+    fn lodestone_tracker_descriptor_rejects_noncanonical_projections_atomically() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID)
+                .unwrap();
+        let mut cases = vec![DataComponentPatchSummary::default()];
+        for dimension in [
+            "overworld".to_string(),
+            "Bad:dimension".to_string(),
+            format!("minecraft:{}", "a".repeat(MAX_STRING_CHARS + 1)),
+        ] {
+            cases.push(DataComponentPatchSummary {
+                lodestone_target: Some(LodestoneTargetSummary {
+                    dimension,
+                    pos: chunks::BlockPos { x: 0, y: 0, z: 0 },
+                }),
+                lodestone_tracked: Some(true),
+                ..DataComponentPatchSummary::default()
+            });
+        }
+        for pos in [
+            chunks::BlockPos {
+                x: -33_554_433,
+                y: 0,
+                z: 0,
+            },
+            chunks::BlockPos {
+                x: 33_554_432,
+                y: 0,
+                z: 0,
+            },
+            chunks::BlockPos {
+                x: 0,
+                y: -2_049,
+                z: 0,
+            },
+            chunks::BlockPos {
+                x: 0,
+                y: 2_048,
+                z: 0,
+            },
+            chunks::BlockPos {
+                x: 0,
+                y: 0,
+                z: -33_554_433,
+            },
+            chunks::BlockPos {
+                x: 0,
+                y: 0,
+                z: 33_554_432,
+            },
+        ] {
+            cases.push(DataComponentPatchSummary {
+                lodestone_target: Some(LodestoneTargetSummary {
+                    dimension: "minecraft:overworld".to_string(),
+                    pos,
+                }),
+                lodestone_tracked: Some(false),
+                ..DataComponentPatchSummary::default()
+            });
+        }
+
+        for summary in cases {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            assert!(descriptor.encode(&summary, &mut encoded).is_err());
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
     }
 
     fn bee_occupant() -> BeeOccupantSummary {

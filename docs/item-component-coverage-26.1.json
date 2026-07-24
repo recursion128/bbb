@@ -4653,34 +4653,75 @@
       "constant_name": "LODESTONE_TRACKER",
       "coverage": {
         "canonical_retention": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components.rs#pub struct LodestoneTargetSummary",
+            "crates/bbb-protocol/src/packets/data_components.rs#pub lodestone_target",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_lodestone_tracker_component",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_lodestone_tracker_global_position_and_defaults",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#rejects_invalid_lodestone_tracker_global_positions"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "network_encode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/LodestoneTracker.java#public static final StreamCodec<ByteBuf, LodestoneTracker> STREAM_CODEC",
+            "vanilla:net/minecraft/core/GlobalPos.java#public static final StreamCodec<ByteBuf, GlobalPos> STREAM_CODEC",
+            "vanilla:net/minecraft/core/BlockPos.java#public static long asLong",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_lodestone_tracker",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#lodestone_tracker_descriptor_round_trips_optional_global_position_in_wire_order",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#lodestone_tracker_descriptor_rejects_noncanonical_projections_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_lodestone_tracker_component"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "observable_consumers": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-item-model/src/item_runtime/icon_model.rs#lodestone_target_for_patch",
+            "crates/bbb-item-model/src/item_runtime/icon_model.rs#lodestone_tracker_exact_match",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_selects_has_component_icon_from_lodestone_tracker",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_component_condition_predicates",
+            "crates/bbb-native/src/runtime/tests.rs#hotbar_item_icons_project_lodestone_compass_range_dispatch"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "persistent_projection": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/LodestoneTracker.java#public static final Codec<LodestoneTracker> CODEC",
+            "crates/bbb-native/src/input/component_patch.rs#encode_lodestone_tracker",
+            "crates/bbb-native/src/input.rs#debug_lodestone_tracker_component_snbt",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_lodestone_tracker_global_position_and_defaults"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#lodestone_tracker_descriptor_round_trips_optional_global_position_in_wire_order",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#lodestone_tracker_descriptor_rejects_noncanonical_projections_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_lodestone_tracker_component",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_lodestone_tracker_global_position_and_defaults",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#rejects_invalid_lodestone_tracker_global_positions",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_component_condition_predicates",
+            "crates/bbb-native/src/runtime/tests.rs#hotbar_item_icons_project_lodestone_compass_range_dispatch"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "typed_decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#LODESTONE_TRACKER",
+            "vanilla:net/minecraft/world/item/component/LodestoneTracker.java#public static final StreamCodec<ByteBuf, LodestoneTracker> STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_lodestone_tracker_component",
+            "crates/bbb-protocol/src/packets/data_components.rs#decode_lodestone_tracker",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_lodestone_tracker_target_component",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_lodestone_tracker_global_position_and_defaults"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "resource_id": "minecraft:lodestone_tracker",
