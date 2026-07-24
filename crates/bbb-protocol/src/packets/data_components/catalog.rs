@@ -4,6 +4,7 @@ use std::sync::OnceLock;
 use crate::block_entity_types::vanilla_block_entity_type;
 use crate::data_component_types::{
     DataComponentTypeCatalogEntry, VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
     VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
     VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
     VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
@@ -218,6 +219,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID => Some(encode_damage),
         VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID => Some(encode_unbreakable),
         VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID => Some(encode_attribute_modifiers),
+        VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID => Some(encode_blocks_attacks),
         VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID => Some(encode_written_book_content),
         VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID => Some(encode_entity_data),
         VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID => Some(encode_bucket_entity_data),
@@ -353,6 +355,157 @@ fn encode_attribute_modifier_display(
         }
     }
     Ok(())
+}
+
+fn encode_blocks_attacks(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let value = summary.blocks_attacks.as_ref().ok_or_else(|| {
+        ProtocolError::InvalidData("missing blocks_attacks component value".to_string())
+    })?;
+    if value.damage_reductions.len() > MAX_DATA_COMPONENT_LIST_ITEMS {
+        return Err(ProtocolError::PacketTooLarge(
+            value.damage_reductions.len(),
+            MAX_DATA_COMPONENT_LIST_ITEMS,
+        ));
+    }
+
+    let mut encoded = Encoder::new();
+    encoded.write_f32(f32::from_bits(value.block_delay_seconds_bits));
+    encoded.write_f32(f32::from_bits(value.disable_cooldown_scale_bits));
+    encoded.write_var_i32(value.damage_reductions.len() as i32);
+    for reduction in &value.damage_reductions {
+        encoded.write_f32(f32::from_bits(reduction.horizontal_blocking_angle_bits));
+        encode_optional_holder_set_summary(
+            &mut encoded,
+            reduction.damage_types.as_ref().map(|types| {
+                (
+                    types.registry_ids.as_slice(),
+                    types.tag.as_deref(),
+                    "blocks_attacks damage reduction type",
+                )
+            }),
+            NetworkHolderSetRegistry::DamageType,
+        )?;
+        encoded.write_f32(f32::from_bits(reduction.base_bits));
+        encoded.write_f32(f32::from_bits(reduction.factor_bits));
+    }
+    encoded.write_f32(f32::from_bits(value.item_damage.threshold_bits));
+    encoded.write_f32(f32::from_bits(value.item_damage.base_bits));
+    encoded.write_f32(f32::from_bits(value.item_damage.factor_bits));
+    encode_optional_holder_set_summary(
+        &mut encoded,
+        value.bypassed_by.as_ref().map(|types| {
+            (
+                types.registry_ids.as_slice(),
+                types.tag.as_deref(),
+                "blocks_attacks bypassed_by",
+            )
+        }),
+        NetworkHolderSetRegistry::DamageType,
+    )?;
+    encode_optional_sound_event_holder_summary(&mut encoded, value.block_sound.as_ref())?;
+    encode_optional_sound_event_holder_summary(&mut encoded, value.disable_sound.as_ref())?;
+
+    out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
+fn encode_optional_holder_set_summary(
+    out: &mut Encoder,
+    value: Option<(&[i32], Option<&str>, &'static str)>,
+    registry: NetworkHolderSetRegistry,
+) -> Result<()> {
+    let Some((registry_ids, tag, what)) = value else {
+        out.write_bool(false);
+        return Ok(());
+    };
+    out.write_bool(true);
+    encode_holder_set_summary(out, registry_ids, tag, registry, what)
+}
+
+fn encode_holder_set_summary(
+    out: &mut Encoder,
+    registry_ids: &[i32],
+    tag: Option<&str>,
+    registry: NetworkHolderSetRegistry,
+    what: &str,
+) -> Result<()> {
+    if registry_ids.len() > MAX_DATA_COMPONENT_LIST_ITEMS {
+        return Err(ProtocolError::PacketTooLarge(
+            registry_ids.len(),
+            MAX_DATA_COMPONENT_LIST_ITEMS,
+        ));
+    }
+    match (registry_ids.is_empty(), tag) {
+        (true, Some(tag)) => {
+            if normalize_resource_location(tag.to_string())? != tag {
+                return Err(ProtocolError::InvalidData(format!(
+                    "{what} has noncanonical tag resource location `{tag}`"
+                )));
+            }
+            out.write_var_i32(0);
+            encode_java_string(out, tag, MAX_STRING_CHARS)
+        }
+        (_, None) => {
+            out.write_var_i32(registry_ids.len() as i32 + 1);
+            for holder_id in registry_ids {
+                registry.validate_holder_id(*holder_id)?;
+                out.write_var_i32(*holder_id);
+            }
+            Ok(())
+        }
+        (false, Some(_)) => Err(ProtocolError::InvalidData(format!(
+            "{what} cannot contain both holder ids and a tag"
+        ))),
+    }
+}
+
+fn encode_optional_sound_event_holder_summary(
+    out: &mut Encoder,
+    sound: Option<&SoundEventSummary>,
+) -> Result<()> {
+    let Some(sound) = sound else {
+        out.write_bool(false);
+        return Ok(());
+    };
+    out.write_bool(true);
+    encode_sound_event_holder_summary(out, sound)
+}
+
+fn encode_sound_event_holder_summary(out: &mut Encoder, sound: &SoundEventSummary) -> Result<()> {
+    match (
+        sound.registry_id,
+        sound.sound_id.as_deref(),
+        sound.fixed_range_bits,
+    ) {
+        (Some(registry_id), None, None) if registry_id >= 0 && registry_id < i32::MAX => {
+            out.write_var_i32(registry_id + 1);
+            Ok(())
+        }
+        (None, Some(sound_id), fixed_range_bits) => {
+            if normalize_resource_location(sound_id.to_string())? != sound_id {
+                return Err(ProtocolError::InvalidData(format!(
+                    "sound event has noncanonical resource location `{sound_id}`"
+                )));
+            }
+            out.write_var_i32(0);
+            encode_java_string(out, sound_id, MAX_STRING_CHARS)?;
+            match fixed_range_bits {
+                Some(range_bits) => {
+                    out.write_bool(true);
+                    out.write_f32(f32::from_bits(range_bits));
+                }
+                None => out.write_bool(false),
+            }
+            Ok(())
+        }
+        _ => Err(ProtocolError::InvalidData(
+            "sound event holder projections are not canonical".to_string(),
+        )),
+    }
 }
 
 fn encode_written_book_content(
@@ -1694,7 +1847,7 @@ mod tests {
                 .filter(|descriptor| descriptor.can_encode())
                 .map(|descriptor| descriptor.type_id())
                 .collect::<Vec<_>>(),
-            vec![0, 1, 2, 3, 4, 16, 55, 58, 59, 60, 70]
+            vec![0, 1, 2, 3, 4, 16, 37, 55, 58, 59, 60, 70]
         );
     }
 
@@ -1948,6 +2101,283 @@ mod tests {
         assert!(matches!(
             error,
             ProtocolError::PacketTooLarge(actual, max)
+                if actual == MAX_DATA_COMPONENT_LIST_ITEMS + 1
+                    && max == MAX_DATA_COMPONENT_LIST_ITEMS
+        ));
+        assert_eq!(encoded.into_inner(), [0xaa]);
+    }
+
+    #[test]
+    fn blocks_attacks_descriptor_round_trips_holder_and_sound_unions_in_wire_order() {
+        let nan_bits = 0x7fc0_1234;
+        let summary = DataComponentPatchSummary {
+            blocks_attacks: Some(BlocksAttacksSummary {
+                block_delay_seconds_bits: (-0.0_f32).to_bits(),
+                disable_cooldown_scale_bits: f32::INFINITY.to_bits(),
+                damage_reductions: vec![
+                    DamageReductionSummary {
+                        horizontal_blocking_angle_bits: 45.0_f32.to_bits(),
+                        damage_types: Some(DamageTypeHolderSetSummary {
+                            registry_ids: Vec::new(),
+                            tag: Some("minecraft:bypasses_shield".to_string()),
+                        }),
+                        base_bits: nan_bits,
+                        factor_bits: (-1.25_f32).to_bits(),
+                    },
+                    DamageReductionSummary {
+                        horizontal_blocking_angle_bits: 180.0_f32.to_bits(),
+                        damage_types: Some(DamageTypeHolderSetSummary {
+                            registry_ids: vec![0, 47],
+                            tag: None,
+                        }),
+                        base_bits: 2.0_f32.to_bits(),
+                        factor_bits: 0.5_f32.to_bits(),
+                    },
+                ],
+                item_damage: ItemDamageFunctionSummary {
+                    threshold_bits: (-2.0_f32).to_bits(),
+                    base_bits: 3.0_f32.to_bits(),
+                    factor_bits: nan_bits,
+                },
+                bypassed_by: Some(DamageTypeHolderSetSummary {
+                    registry_ids: Vec::new(),
+                    tag: None,
+                }),
+                block_sound: Some(SoundEventSummary {
+                    registry_id: Some(11),
+                    sound_id: None,
+                    fixed_range_bits: None,
+                }),
+                disable_sound: Some(SoundEventSummary {
+                    registry_id: None,
+                    sound_id: Some("example:shield_disable".to_string()),
+                    fixed_range_bits: Some((-0.0_f32).to_bits()),
+                }),
+            }),
+            ..DataComponentPatchSummary::default()
+        };
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID)
+                .unwrap();
+        let mut encoded = Encoder::new();
+        descriptor.encode(&summary, &mut encoded).unwrap();
+        let encoded = encoded.into_inner();
+
+        let mut expected = Encoder::new();
+        expected.write_f32(-0.0);
+        expected.write_f32(f32::INFINITY);
+        expected.write_var_i32(2);
+        expected.write_f32(45.0);
+        expected.write_bool(true);
+        expected.write_var_i32(0);
+        expected.write_string("minecraft:bypasses_shield");
+        expected.write_f32(f32::from_bits(nan_bits));
+        expected.write_f32(-1.25);
+        expected.write_f32(180.0);
+        expected.write_bool(true);
+        expected.write_var_i32(3);
+        expected.write_var_i32(0);
+        expected.write_var_i32(47);
+        expected.write_f32(2.0);
+        expected.write_f32(0.5);
+        expected.write_f32(-2.0);
+        expected.write_f32(3.0);
+        expected.write_f32(f32::from_bits(nan_bits));
+        expected.write_bool(true);
+        expected.write_var_i32(1);
+        expected.write_bool(true);
+        expected.write_var_i32(12);
+        expected.write_bool(true);
+        expected.write_var_i32(0);
+        expected.write_string("example:shield_disable");
+        expected.write_bool(true);
+        expected.write_f32(-0.0);
+        assert_eq!(encoded, expected.into_inner());
+
+        let mut decoded = DataComponentPatchSummary::default();
+        let mut decoder = Decoder::new(&encoded);
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert_eq!(decoded.blocks_attacks, summary.blocks_attacks);
+    }
+
+    #[test]
+    fn blocks_attacks_descriptor_enforces_bounds_and_canonical_unions_atomically() {
+        let reduction = DamageReductionSummary {
+            horizontal_blocking_angle_bits: 90.0_f32.to_bits(),
+            damage_types: None,
+            base_bits: 0.0_f32.to_bits(),
+            factor_bits: 1.0_f32.to_bits(),
+        };
+        let valid = DataComponentPatchSummary {
+            blocks_attacks: Some(BlocksAttacksSummary {
+                block_delay_seconds_bits: 0.0_f32.to_bits(),
+                disable_cooldown_scale_bits: 1.0_f32.to_bits(),
+                damage_reductions: vec![reduction.clone()],
+                item_damage: ItemDamageFunctionSummary {
+                    threshold_bits: 1.0_f32.to_bits(),
+                    base_bits: 0.0_f32.to_bits(),
+                    factor_bits: 1.0_f32.to_bits(),
+                },
+                bypassed_by: None,
+                block_sound: None,
+                disable_sound: None,
+            }),
+            ..DataComponentPatchSummary::default()
+        };
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID)
+                .unwrap();
+
+        let mut empty = valid.clone();
+        empty
+            .blocks_attacks
+            .as_mut()
+            .unwrap()
+            .damage_reductions
+            .clear();
+        descriptor.encode(&empty, &mut Encoder::new()).unwrap();
+        let mut maximal = valid.clone();
+        maximal.blocks_attacks.as_mut().unwrap().damage_reductions =
+            vec![reduction; MAX_DATA_COMPONENT_LIST_ITEMS];
+        descriptor.encode(&maximal, &mut Encoder::new()).unwrap();
+        let mut maximal_holder_set = valid.clone();
+        maximal_holder_set
+            .blocks_attacks
+            .as_mut()
+            .unwrap()
+            .bypassed_by = Some(DamageTypeHolderSetSummary {
+            registry_ids: vec![0; MAX_DATA_COMPONENT_LIST_ITEMS],
+            tag: None,
+        });
+        descriptor
+            .encode(&maximal_holder_set, &mut Encoder::new())
+            .unwrap();
+
+        let mut cases = Vec::new();
+        cases.push((
+            DataComponentPatchSummary::default(),
+            "missing blocks_attacks",
+        ));
+        let mut holder_union = valid.clone();
+        holder_union.blocks_attacks.as_mut().unwrap().bypassed_by =
+            Some(DamageTypeHolderSetSummary {
+                registry_ids: vec![0],
+                tag: Some("minecraft:bypasses_shield".to_string()),
+            });
+        cases.push((holder_union, "both holder ids and a tag"));
+        let mut negative_holder = valid.clone();
+        negative_holder
+            .blocks_attacks
+            .as_mut()
+            .unwrap()
+            .damage_reductions[0]
+            .damage_types = Some(DamageTypeHolderSetSummary {
+            registry_ids: vec![-1],
+            tag: None,
+        });
+        cases.push((negative_holder, "invalid damage type holder id -1"));
+        let mut noncanonical_tag = valid.clone();
+        noncanonical_tag
+            .blocks_attacks
+            .as_mut()
+            .unwrap()
+            .bypassed_by = Some(DamageTypeHolderSetSummary {
+            registry_ids: Vec::new(),
+            tag: Some("bypasses_shield".to_string()),
+        });
+        cases.push((noncanonical_tag, "noncanonical tag resource location"));
+        let mut mixed_sound = valid.clone();
+        mixed_sound.blocks_attacks.as_mut().unwrap().block_sound = Some(SoundEventSummary {
+            registry_id: Some(0),
+            sound_id: Some("minecraft:item.shield.block".to_string()),
+            fixed_range_bits: None,
+        });
+        cases.push((mixed_sound, "sound event holder projections"));
+        let mut missing_sound = valid.clone();
+        missing_sound.blocks_attacks.as_mut().unwrap().block_sound = Some(SoundEventSummary {
+            registry_id: None,
+            sound_id: None,
+            fixed_range_bits: None,
+        });
+        cases.push((missing_sound, "sound event holder projections"));
+        let mut invalid_sound_id = valid.clone();
+        invalid_sound_id
+            .blocks_attacks
+            .as_mut()
+            .unwrap()
+            .block_sound = Some(SoundEventSummary {
+            registry_id: None,
+            sound_id: Some("Invalid Path".to_string()),
+            fixed_range_bits: None,
+        });
+        cases.push((invalid_sound_id, "invalid resource"));
+        let mut noncanonical_sound_id = valid.clone();
+        noncanonical_sound_id
+            .blocks_attacks
+            .as_mut()
+            .unwrap()
+            .block_sound = Some(SoundEventSummary {
+            registry_id: None,
+            sound_id: Some("item.shield.block".to_string()),
+            fixed_range_bits: None,
+        });
+        cases.push((noncanonical_sound_id, "noncanonical resource location"));
+        let mut overflowing_sound_holder = valid.clone();
+        overflowing_sound_holder
+            .blocks_attacks
+            .as_mut()
+            .unwrap()
+            .block_sound = Some(SoundEventSummary {
+            registry_id: Some(i32::MAX),
+            sound_id: None,
+            fixed_range_bits: None,
+        });
+        cases.push((overflowing_sound_holder, "sound event holder projections"));
+
+        for (summary, expected_error) in cases {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            let error = descriptor.encode(&summary, &mut encoded).unwrap_err();
+            assert!(error.to_string().contains(expected_error), "{error}");
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
+
+        let mut oversized_holder_set = valid.clone();
+        oversized_holder_set
+            .blocks_attacks
+            .as_mut()
+            .unwrap()
+            .bypassed_by = Some(DamageTypeHolderSetSummary {
+            registry_ids: vec![0; MAX_DATA_COMPONENT_LIST_ITEMS + 1],
+            tag: None,
+        });
+        let mut encoded = Encoder::new();
+        encoded.write_u8(0xaa);
+        assert!(matches!(
+            descriptor.encode(&oversized_holder_set, &mut encoded),
+            Err(ProtocolError::PacketTooLarge(actual, max))
+                if actual == MAX_DATA_COMPONENT_LIST_ITEMS + 1
+                    && max == MAX_DATA_COMPONENT_LIST_ITEMS
+        ));
+        assert_eq!(encoded.into_inner(), [0xaa]);
+
+        let mut oversized = valid;
+        oversized.blocks_attacks.as_mut().unwrap().damage_reductions = vec![
+            DamageReductionSummary {
+                horizontal_blocking_angle_bits: 90.0_f32.to_bits(),
+                damage_types: None,
+                base_bits: 0.0_f32.to_bits(),
+                factor_bits: 1.0_f32.to_bits(),
+            };
+            MAX_DATA_COMPONENT_LIST_ITEMS
+                + 1
+        ];
+        let mut encoded = Encoder::new();
+        encoded.write_u8(0xaa);
+        assert!(matches!(
+            descriptor.encode(&oversized, &mut encoded),
+            Err(ProtocolError::PacketTooLarge(actual, max))
                 if actual == MAX_DATA_COMPONENT_LIST_ITEMS + 1
                     && max == MAX_DATA_COMPONENT_LIST_ITEMS
         ));

@@ -3,9 +3,9 @@ use crate::{
     codec::{offline_player_uuid, Decoder, Encoder, ProtocolError},
     data_component_types::{
         VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
-        VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
-        VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
         VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
     },
@@ -1598,6 +1598,54 @@ fn encodes_set_creative_mode_slot_attribute_modifiers_component() {
             0, // any slot group
             2, // override display
             8, 0, 8, b'O', b'v', b'e', b'r', b'r', b'i', b'd', b'e', // component NBT
+        ]
+    );
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_blocks_attacks_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID],
+                blocks_attacks: Some(BlocksAttacksSummary {
+                    block_delay_seconds_bits: 0.25_f32.to_bits(),
+                    disable_cooldown_scale_bits: 1.0_f32.to_bits(),
+                    damage_reductions: Vec::new(),
+                    item_damage: ItemDamageFunctionSummary {
+                        threshold_bits: 1.0_f32.to_bits(),
+                        base_bits: 0.0_f32.to_bits(),
+                        factor_bits: 1.0_f32.to_bits(),
+                    },
+                    bypassed_by: None,
+                    block_sound: None,
+                    disable_sound: None,
+                }),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            1, 0, // patch counts
+            37, 24, // blocks_attacks type and delimited value length
+            0x3e, 0x80, 0, 0, // block delay = 0.25
+            0x3f, 0x80, 0, 0, // disable cooldown scale = 1.0
+            0, // no damage reductions
+            0x3f, 0x80, 0, 0, // item damage threshold = 1.0
+            0, 0, 0, 0, // item damage base = 0.0
+            0x3f, 0x80, 0, 0, // item damage factor = 1.0
+            0, 0, 0, // no bypassed-by set or sounds
         ]
     );
 }

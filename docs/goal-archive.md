@@ -406,3 +406,8 @@
   author、raw/filtered Component pages 与 resolved；creative framing、持久化
   SNBT、富页面屏幕、tooltip 与 predicate 证据齐备，合同见
   `docs/archive/written-book-content-component-roundtrip-design.md`。
+- **2026-07-23（Blocks attacks component 六维闭环）**：
+  `BLOCKS_ATTACKS` 现逐位重编码全部 float、damage-type holder-set 与
+  sound-holder union；creative framing、持久化 Codec/SNBT、动态 shield 默认值
+  及第一/第三人称格挡姿势证据齐备，合同见
+  `docs/archive/blocks-attacks-component-roundtrip-design.md`。

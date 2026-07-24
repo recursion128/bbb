@@ -323,6 +323,76 @@
         "status": "complete"
       }
     },
+    "BLOCKS_ATTACKS": {
+      "canonical_retention": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#pub blocks_attacks",
+          "crates/bbb-protocol/src/packets/data_components.rs#decode_blocks_attacks",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_combat_item_data_components",
+          "crates/bbb-world/src/client/dialog/body/component_value/blocks_attacks/tests.rs#decodes_blocks_attacks_nested_records_holders_and_sounds"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/component/BlocksAttacks.java#public static final StreamCodec<RegistryFriendlyByteBuf, BlocksAttacks> STREAM_CODEC",
+          "vanilla:net/minecraft/world/item/component/BlocksAttacks.java#public static final StreamCodec<RegistryFriendlyByteBuf, BlocksAttacks.DamageReduction> STREAM_CODEC",
+          "vanilla:net/minecraft/world/item/component/BlocksAttacks.java#public static final StreamCodec<ByteBuf, BlocksAttacks.ItemDamageFunction> STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_blocks_attacks",
+          "crates/bbb-protocol/src/packets/data_components.rs#encodes_blocks_attacks_patch_with_delimited_holders",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_blocks_attacks_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/Item.java#public ItemUseAnimation getUseAnimation",
+          "crates/bbb-world/src/registries/item_component_initializers.rs#effective_stack_applies_defaults_without_overriding_patch_or_remove",
+          "crates/bbb-native/src/entity_scene/hands.rs#entity_hand_blocks_attacks",
+          "crates/bbb-native/src/entity_scene/tests.rs#entity_model_instances_block_pose_uses_shield_or_blocks_attacks_component",
+          "crates/bbb-native/src/item_models/tests.rs#first_person_item_models_apply_block_use_pose_for_shield_and_blocks_attacks"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/component/BlocksAttacks.java#public static final Codec<BlocksAttacks> CODEC",
+          "crates/bbb-native/src/input/component_patch.rs#encode_blocks_attacks",
+          "crates/bbb-native/src/input/component_patch.rs#blocks_attacks_encoder_preserves_reductions_holders_and_defaults",
+          "crates/bbb-world/src/client/dialog/body/component_value/blocks_attacks/tests.rs#decodes_blocks_attacks_nested_records_holders_and_sounds",
+          "crates/bbb-world/src/client/dialog/body/component_value/blocks_attacks/tests.rs#rejects_malformed_blocks_attacks_records_and_ranges"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#blocks_attacks_descriptor_round_trips_holder_and_sound_unions_in_wire_order",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#blocks_attacks_descriptor_enforces_bounds_and_canonical_unions_atomically",
+          "crates/bbb-protocol/src/packets/data_components.rs#encodes_blocks_attacks_patch_with_delimited_holders",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_blocks_attacks_component",
+          "crates/bbb-world/src/registries/item_component_initializers.rs#resolves_all_initializer_families_through_candidate_holder_order_and_tags",
+          "crates/bbb-native/src/entity_scene/tests.rs#entity_model_instances_block_pose_uses_shield_or_blocks_attacks_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#BLOCKS_ATTACKS",
+          "vanilla:net/minecraft/world/item/component/BlocksAttacks.java#public record BlocksAttacks",
+          "vanilla:net/minecraft/world/item/component/BlocksAttacks.java#public record DamageReduction",
+          "vanilla:net/minecraft/world/item/component/BlocksAttacks.java#public record ItemDamageFunction",
+          "crates/bbb-protocol/src/packets/data_components.rs#decode_blocks_attacks",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_combat_item_data_components"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "WRITTEN_BOOK_CONTENT": {
       "canonical_retention": {
         "evidence": [

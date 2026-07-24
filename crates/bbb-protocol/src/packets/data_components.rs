@@ -1032,6 +1032,9 @@ fn validate_encodable_data_component_patch_summary(
             crate::data_component_types::VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID => {
                 expected.attribute_modifiers = patch.attribute_modifiers.clone();
             }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID => {
+                expected.blocks_attacks = patch.blocks_attacks.clone();
+            }
             crate::data_component_types::VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID => {
                 expected.written_book = patch.written_book.clone();
                 expected.written_book_pages_nbt = patch.written_book_pages_nbt.clone();
@@ -2970,6 +2973,77 @@ mod tests {
         );
         assert!(decoder.is_empty());
         assert_eq!(decoded.attribute_modifiers, patch.attribute_modifiers);
+    }
+
+    #[test]
+    fn encodes_blocks_attacks_patch_with_delimited_holders() {
+        let patch = DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![
+                crate::data_component_types::VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
+            ],
+            removed_type_ids: vec![VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID],
+            blocks_attacks: Some(BlocksAttacksSummary {
+                block_delay_seconds_bits: 0.25_f32.to_bits(),
+                disable_cooldown_scale_bits: 1.5_f32.to_bits(),
+                damage_reductions: vec![DamageReductionSummary {
+                    horizontal_blocking_angle_bits: 90.0_f32.to_bits(),
+                    damage_types: Some(DamageTypeHolderSetSummary {
+                        registry_ids: Vec::new(),
+                        tag: Some("minecraft:bypasses_shield".to_string()),
+                    }),
+                    base_bits: 0.0_f32.to_bits(),
+                    factor_bits: 1.0_f32.to_bits(),
+                }],
+                item_damage: ItemDamageFunctionSummary {
+                    threshold_bits: 3.0_f32.to_bits(),
+                    base_bits: 1.0_f32.to_bits(),
+                    factor_bits: 1.0_f32.to_bits(),
+                },
+                bypassed_by: None,
+                block_sound: Some(SoundEventSummary {
+                    registry_id: None,
+                    sound_id: Some("minecraft:item.shield.block".to_string()),
+                    fixed_range_bits: None,
+                }),
+                disable_sound: Some(SoundEventSummary {
+                    registry_id: Some(7),
+                    sound_id: None,
+                    fixed_range_bits: None,
+                }),
+            }),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        encode_delimited_data_component_patch_summary(&mut encoded, &patch).unwrap();
+        let encoded = encoded.into_inner();
+
+        let mut decoder = Decoder::new(&encoded);
+        assert_eq!(decoder.read_len().unwrap(), 1);
+        assert_eq!(decoder.read_len().unwrap(), 1);
+        let type_id = decoder.read_var_i32().unwrap();
+        assert_eq!(
+            type_id,
+            crate::data_component_types::VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID
+        );
+        let value_len = decoder.read_len().unwrap();
+        let mut value_decoder = Decoder::new(
+            decoder
+                .read_exact(value_len, "blocks attacks value")
+                .unwrap(),
+        );
+        let mut decoded = DataComponentPatchSummary::default();
+        data_component_descriptor_or_error(type_id)
+            .unwrap()
+            .decode(&mut value_decoder, &mut decoded)
+            .unwrap();
+        assert!(value_decoder.is_empty());
+        assert_eq!(
+            decoder.read_var_i32().unwrap(),
+            VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID
+        );
+        assert!(decoder.is_empty());
+        assert_eq!(decoded.blocks_attacks, patch.blocks_attacks);
     }
 
     #[test]

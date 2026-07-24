@@ -1227,9 +1227,9 @@ fn encode_blocks_attacks(
     let blocks_attacks = patch.blocks_attacks.as_ref()?;
     let block_delay = f32::from_bits(blocks_attacks.block_delay_seconds_bits);
     let disable_cooldown = f32::from_bits(blocks_attacks.disable_cooldown_scale_bits);
-    if block_delay < 0.0
+    if block_delay.total_cmp(&0.0).is_lt()
         || !block_delay.is_finite()
-        || disable_cooldown < 0.0
+        || disable_cooldown.total_cmp(&0.0).is_lt()
         || !disable_cooldown.is_finite()
     {
         return None;
@@ -1266,7 +1266,7 @@ fn encode_blocks_attacks(
     }
     let item_damage = &blocks_attacks.item_damage;
     let threshold = f32::from_bits(item_damage.threshold_bits);
-    if threshold < 0.0 || !threshold.is_finite() {
+    if threshold.total_cmp(&0.0).is_lt() || !threshold.is_finite() {
         return None;
     }
     let default_item_damage = item_damage.threshold_bits == 1.0_f32.to_bits()
@@ -1276,8 +1276,8 @@ fn encode_blocks_attacks(
         fields.push(format!(
             "item_damage: {{threshold: {}, base: {}, factor: {}}}",
             debug_snbt_float(threshold)?,
-            debug_snbt_float(f32::from_bits(item_damage.base_bits))?,
-            debug_snbt_float(f32::from_bits(item_damage.factor_bits))?
+            debug_codec_float_snbt(item_damage.base_bits),
+            debug_codec_float_snbt(item_damage.factor_bits)
         ));
     }
     if let Some(bypassed_by) = &blocks_attacks.bypassed_by {
@@ -1332,13 +1332,17 @@ fn damage_reduction_snbt(
     }
     fields.push(format!(
         "base: {}",
-        debug_snbt_float(f32::from_bits(reduction.base_bits))?
+        debug_codec_float_snbt(reduction.base_bits)
     ));
     fields.push(format!(
         "factor: {}",
-        debug_snbt_float(f32::from_bits(reduction.factor_bits))?
+        debug_codec_float_snbt(reduction.factor_bits)
     ));
     Some(format!("{{{}}}", fields.join(", ")))
+}
+
+fn debug_codec_float_snbt(bits: u32) -> String {
+    format!("{}f", debug_nbt_java_float_string(f32::from_bits(bits)))
 }
 
 fn encode_piercing_weapon(
@@ -2677,6 +2681,36 @@ mod tests {
             .unwrap()
             .item_damage
             .threshold_bits = f32::INFINITY.to_bits();
+        assert_eq!(encode_added_component_value_snbt(37, &patch, None), None);
+
+        let blocks_attacks = patch.blocks_attacks.as_mut().unwrap();
+        blocks_attacks.item_damage.threshold_bits = 1.0_f32.to_bits();
+        blocks_attacks.item_damage.base_bits = f32::INFINITY.to_bits();
+        blocks_attacks.item_damage.factor_bits = f32::NEG_INFINITY.to_bits();
+        blocks_attacks.damage_reductions[0].base_bits = (-0.0_f32).to_bits();
+        blocks_attacks.damage_reductions[0].factor_bits = f32::NAN.to_bits();
+        assert_eq!(
+            encode_added_component_value_snbt(37, &patch, None),
+            Some(
+                "{damage_reductions: [{base: -0.0f, factor: NaNf}], item_damage: \
+                 {threshold: 1.0f, base: Infinityf, factor: -Infinityf}}"
+                    .to_string()
+            )
+        );
+
+        patch
+            .blocks_attacks
+            .as_mut()
+            .unwrap()
+            .block_delay_seconds_bits = (-0.0_f32).to_bits();
+        assert_eq!(encode_added_component_value_snbt(37, &patch, None), None);
+        let blocks_attacks = patch.blocks_attacks.as_mut().unwrap();
+        blocks_attacks.block_delay_seconds_bits = 0.0_f32.to_bits();
+        blocks_attacks.disable_cooldown_scale_bits = (-0.0_f32).to_bits();
+        assert_eq!(encode_added_component_value_snbt(37, &patch, None), None);
+        let blocks_attacks = patch.blocks_attacks.as_mut().unwrap();
+        blocks_attacks.disable_cooldown_scale_bits = 1.0_f32.to_bits();
+        blocks_attacks.item_damage.threshold_bits = (-0.0_f32).to_bits();
         assert_eq!(encode_added_component_value_snbt(37, &patch, None), None);
     }
 
