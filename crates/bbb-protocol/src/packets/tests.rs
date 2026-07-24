@@ -13,7 +13,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_DYE_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
         VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID, VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
-        VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
+        VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID, VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
         VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
         VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
         VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
@@ -2474,6 +2474,40 @@ fn encodes_set_creative_mode_slot_attribute_modifiers_component() {
             0, // any slot group
             2, // override display
             8, 0, 8, b'O', b'v', b'e', b'r', b'r', b'i', b'd', b'e', // component NBT
+        ]
+    );
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_food_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_FOOD_TYPE_ID],
+                food_nutrition: Some(6),
+                food_saturation_bits: Some(7.2_f32.to_bits()),
+                food_can_always_eat: true,
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    assert_eq!(
+        payload,
+        [
+            0, 36, // slot
+            1, 42, // count and item holder
+            1, 0, // patch counts
+            23, 6, // food type and delimited value length
+            6, // nutrition
+            0x40, 0xe6, 0x66, 0x66, // saturation = 7.2
+            1,    // can always eat
         ]
     );
 }

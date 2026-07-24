@@ -464,3 +464,6 @@
 - **2026-07-23（Equippable component 六维闭环）**：`EQUIPPABLE` 现按 slot、
   sound-holder、资源键、entity holder-set 与五个 flag 精确重编码；栈补丁的
   asset/slot 覆盖默认装备材质投影，六维证据见 item component coverage。
+- **2026-07-23（Food component 六维闭环）**：`FOOD` 现按 VarInt、raw float
+  与 bool 精确重编码；`Foods.java` 默认值经资源重载进入 world 有效补丁，
+  并按 `Player.canEat` 门控无目标本地使用与双手回退。

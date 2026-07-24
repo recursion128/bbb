@@ -27,7 +27,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
         VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
         VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
         VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID,
@@ -1125,6 +1125,11 @@ fn validate_encodable_data_component_patch_summary(
             }
             crate::data_component_types::VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID => {
                 expected.attribute_modifiers = patch.attribute_modifiers.clone();
+            }
+            VANILLA_DATA_COMPONENT_FOOD_TYPE_ID => {
+                expected.food_nutrition = patch.food_nutrition;
+                expected.food_saturation_bits = patch.food_saturation_bits;
+                expected.food_can_always_eat = patch.food_can_always_eat;
             }
             crate::data_component_types::VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID => {
                 expected.consumable = patch.consumable;

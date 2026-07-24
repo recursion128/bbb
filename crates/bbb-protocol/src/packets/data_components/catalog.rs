@@ -20,7 +20,7 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
     VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
     VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID, VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
-    VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+    VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
     VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
     VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
     VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID, VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
@@ -269,6 +269,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
             Some(encode_enchantment_glint_override)
         }
         VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID => Some(encode_intangible_projectile),
+        VANILLA_DATA_COMPONENT_FOOD_TYPE_ID => Some(encode_food),
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID => Some(encode_consumable),
         VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID => Some(encode_use_remainder),
         VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID => Some(encode_use_cooldown),
@@ -2944,6 +2945,23 @@ fn decode_food_component(
     Ok(())
 }
 
+fn encode_food(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let nutrition = summary.food_nutrition.ok_or_else(|| {
+        ProtocolError::InvalidData("missing food component nutrition".to_string())
+    })?;
+    let saturation_bits = summary.food_saturation_bits.ok_or_else(|| {
+        ProtocolError::InvalidData("missing food component saturation".to_string())
+    })?;
+    out.write_var_i32(nutrition);
+    out.write_f32(f32::from_bits(saturation_bits));
+    out.write_bool(summary.food_can_always_eat);
+    Ok(())
+}
+
 fn decode_consumable_component(
     _type_id: i32,
     decoder: &mut Decoder<'_>,
@@ -3705,9 +3723,9 @@ mod tests {
                 .map(|descriptor| descriptor.type_id())
                 .collect::<Vec<_>>(),
             vec![
-                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 22, 24, 25,
-                26, 28, 30, 32, 36, 37, 38, 39, 40, 42, 43, 44, 45, 46, 48, 49, 50, 51, 52, 53, 54,
-                55, 56, 58, 59, 60, 61, 62, 64, 67, 68, 69, 70, 72, 75, 77, 80, 102,
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 22, 23, 24,
+                25, 26, 28, 30, 32, 36, 37, 38, 39, 40, 42, 43, 44, 45, 46, 48, 49, 50, 51, 52, 53,
+                54, 55, 56, 58, 59, 60, 61, 62, 64, 67, 68, 69, 70, 72, 75, 77, 80, 102,
             ]
         );
     }
@@ -5009,6 +5027,61 @@ mod tests {
                     && max == MAX_DATA_COMPONENT_LIST_ITEMS
         ));
         assert_eq!(encoded.into_inner(), [0xaa]);
+    }
+
+    #[test]
+    fn food_descriptor_round_trips_raw_network_values_in_wire_order() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_FOOD_TYPE_ID).unwrap();
+        for (nutrition, saturation_bits, can_always_eat) in [
+            (6, 7.2_f32.to_bits(), true),
+            (-1, f32::from_bits(0x7fc0_1234).to_bits(), false),
+        ] {
+            let summary = DataComponentPatchSummary {
+                food_nutrition: Some(nutrition),
+                food_saturation_bits: Some(saturation_bits),
+                food_can_always_eat: can_always_eat,
+                ..DataComponentPatchSummary::default()
+            };
+            let mut encoded = Encoder::new();
+            descriptor.encode(&summary, &mut encoded).unwrap();
+
+            let mut expected = Encoder::new();
+            expected.write_var_i32(nutrition);
+            expected.write_f32(f32::from_bits(saturation_bits));
+            expected.write_bool(can_always_eat);
+            let encoded = encoded.into_inner();
+            assert_eq!(encoded, expected.into_inner());
+
+            let mut decoded = DataComponentPatchSummary::default();
+            let mut decoder = Decoder::new(&encoded);
+            descriptor.decode(&mut decoder, &mut decoded).unwrap();
+            assert!(decoder.is_empty());
+            assert_eq!(decoded.food_nutrition, Some(nutrition));
+            assert_eq!(decoded.food_saturation_bits, Some(saturation_bits));
+            assert_eq!(decoded.food_can_always_eat, can_always_eat);
+        }
+    }
+
+    #[test]
+    fn food_descriptor_rejects_incomplete_projection_atomically() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_FOOD_TYPE_ID).unwrap();
+        for summary in [
+            DataComponentPatchSummary {
+                food_saturation_bits: Some(0.0_f32.to_bits()),
+                ..DataComponentPatchSummary::default()
+            },
+            DataComponentPatchSummary {
+                food_nutrition: Some(0),
+                ..DataComponentPatchSummary::default()
+            },
+        ] {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            assert!(descriptor.encode(&summary, &mut encoded).is_err());
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
     }
 
     #[test]

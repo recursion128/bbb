@@ -832,7 +832,7 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   blocks-attacks (damage-reduction/item-damage/damage-type-holder/sound)/
   attribute-modifiers-named-holder-default-hidden-display/
   simple-resource (including tooltip-style/note-block-sound)/
-  food/consumable/death-protection/potion-contents/
+  consumable/death-protection/potion-contents/
   weapon/
   tool-block-holder-rules/
   use-remainder/

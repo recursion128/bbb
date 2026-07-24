@@ -334,8 +334,10 @@ pub(super) fn start_use_item(
         }
         None => {
             if let Some(pose) = player_pose {
+                let Some(hand) = no_target_item_use_hand(world) else {
+                    return true;
+                };
                 let sequence = world.next_local_prediction_sequence();
-                let hand = item_use_hand(world);
                 let using_item = queue_use_item_command(
                     counters,
                     net_commands,
@@ -364,6 +366,17 @@ fn item_use_hand(world: &WorldStore) -> InteractionHand {
     } else {
         InteractionHand::MainHand
     }
+}
+
+fn no_target_item_use_hand(world: &WorldStore) -> Option<InteractionHand> {
+    let preferred = item_use_hand(world);
+    if world.local_item_in_hand_can_start_consuming(preferred) {
+        return Some(preferred);
+    }
+    (preferred == InteractionHand::MainHand
+        && world.local_item_in_hand(InteractionHand::OffHand).is_some()
+        && world.local_item_in_hand_can_start_consuming(InteractionHand::OffHand))
+    .then_some(InteractionHand::OffHand)
 }
 
 fn block_use_hand(world: &WorldStore) -> InteractionHand {
@@ -768,6 +781,7 @@ mod tests {
     use bbb_net::AttackEntityCommand;
     use bbb_protocol::data_component_types::{
         VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID, VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID, VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
         VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
     };
     use bbb_protocol::equipment_slots::VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT;
@@ -778,14 +792,15 @@ mod tests {
         CommonPlayerSpawnInfo, EntityEvent as ProtocolEntityEvent, GameEvent as ProtocolGameEvent,
         InitializeBorder, InteractEntity, ItemStackSummary as ProtocolItemStackSummary,
         OpenSignEditor, PickItemFromBlock, PickItemFromEntity, PlayLogin, PlayerAbilities,
-        PlayerAction, RemoveEntities, SetPassengers,
+        PlayerAction, PlayerHealth, RemoveEntities, SetPassengers,
         SetPlayerInventory as ProtocolSetPlayerInventory, ToolSummary, UseItem, UseItemOn,
         Vec3d as ProtocolVec3d,
     };
     use bbb_world::{
-        BlockEntityRecord, BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData,
-        LocalPlayerPoseState, PaletteDomain, PaletteKind, PalettedContainerData,
-        SignBlockEntityTextState, WorldBlockDestroyProfile, WorldBlockSoundProfile, WorldDimension,
+        BlockEntityRecord, BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState,
+        ItemFoodProperties, LightData, LocalPlayerPoseState, PaletteDomain, PaletteKind,
+        PalettedContainerData, SignBlockEntityTextState, WorldBlockDestroyProfile,
+        WorldBlockSoundProfile, WorldDimension,
     };
     use std::collections::{BTreeMap, BTreeSet};
     use uuid::Uuid;
@@ -1092,6 +1107,92 @@ mod tests {
                 x_rot: -20.0,
             })
         );
+    }
+
+    #[test]
+    fn full_food_consumable_blocks_main_hand_and_falls_through_to_offhand() {
+        fn full_food_world() -> WorldStore {
+            let mut world = WorldStore::new();
+            world.set_local_player_pose(LocalPlayerPoseState {
+                y_rot: 45.0,
+                x_rot: -20.0,
+                ..LocalPlayerPoseState::default()
+            });
+            world.set_default_item_component_type_ids(BTreeMap::from([(
+                42,
+                BTreeSet::from([
+                    VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
+                    VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
+                ]),
+            )]));
+            world.set_default_item_food_properties(BTreeMap::from([(
+                42,
+                ItemFoodProperties {
+                    nutrition: 4,
+                    saturation_bits: 2.4_f32.to_bits(),
+                    can_always_eat: false,
+                },
+            )]));
+            world.apply_player_health(PlayerHealth {
+                health: 20.0,
+                food: 20,
+                saturation: 5.0,
+            });
+            world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+                slot: 0,
+                item: item_stack(42, 1),
+            });
+            world
+        }
+
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = full_food_world();
+        let mut counters = NetCounters::default();
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+        );
+        assert_eq!(
+            input.use_item_repeat_delay_ticks,
+            USE_ITEM_REPEAT_DELAY_TICKS
+        );
+        assert!(!world.local_player().interaction.using_item);
+        assert_eq!(counters.use_item_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
+
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = full_food_world();
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+            item: item_stack(99, 1),
+        });
+        let mut counters = NetCounters::default();
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+        );
+        assert!(world.local_player().interaction.using_item);
+        assert_eq!(counters.use_item_commands_queued, 1);
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::UseItem(UseItem {
+                hand: InteractionHand::OffHand,
+                sequence: 1,
+                ..
+            })
+        ));
     }
 
     #[test]

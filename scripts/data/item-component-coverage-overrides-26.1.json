@@ -4203,6 +4203,78 @@
         "gap": null,
         "status": "complete"
       }
+    },
+    "FOOD": {
+      "canonical_retention": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#pub food_nutrition",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub food_saturation_bits",
+          "crates/bbb-protocol/src/packets/data_components.rs#pub food_can_always_eat",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_food_component",
+          "crates/bbb-world/src/client/inventory/tests.rs#effective_food_properties_apply_default_patch_and_removal_precedence"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/world/food/FoodProperties.java#public static final StreamCodec<RegistryFriendlyByteBuf, FoodProperties> DIRECT_STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_food",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#food_descriptor_round_trips_raw_network_values_in_wire_order",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#food_descriptor_rejects_incomplete_projection_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_food_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/component/Consumable.java#public boolean canConsume",
+          "vanilla:net/minecraft/world/entity/player/Player.java#public boolean canEat",
+          "crates/bbb-world/src/client/inventory.rs#local_item_in_hand_can_start_consuming",
+          "crates/bbb-world/src/client/inventory/tests.rs#local_food_consumption_gate_matches_player_can_eat_and_component_precedence",
+          "crates/bbb-native/src/input/mouse.rs#no_target_item_use_hand",
+          "crates/bbb-native/src/input/mouse.rs#full_food_consumable_blocks_main_hand_and_falls_through_to_offhand"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "persistent_projection": {
+        "evidence": [
+          "vanilla:net/minecraft/world/food/FoodProperties.java#public static final Codec<FoodProperties> DIRECT_CODEC",
+          "crates/bbb-native/src/input/component_patch.rs#encode_food",
+          "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+          "crates/bbb-world/src/client/dialog/body/component_value.rs#decode_food",
+          "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#projects_holder_backed_component_values_into_protocol_summary"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#food_descriptor_round_trips_raw_network_values_in_wire_order",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#food_descriptor_rejects_incomplete_projection_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_food_component",
+          "crates/bbb-pack/src/item_registry.rs#loads_checked_in_vanilla_item_registry",
+          "crates/bbb-native/src/resource_reload.rs#item_runtime_projects_complete_component_scalar_and_trim_defaults_into_world",
+          "crates/bbb-world/src/client/inventory/tests.rs#effective_food_properties_apply_default_patch_and_removal_precedence",
+          "crates/bbb-world/src/client/inventory/tests.rs#local_food_consumption_gate_matches_player_can_eat_and_component_precedence",
+          "crates/bbb-native/src/input/mouse.rs#full_food_consumable_blocks_main_hand_and_falls_through_to_offhand"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#FOOD",
+          "vanilla:net/minecraft/world/food/FoodProperties.java#public static final StreamCodec<RegistryFriendlyByteBuf, FoodProperties> DIRECT_STREAM_CODEC",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_food_component",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_additional_item_data_components",
+          "crates/bbb-world/src/client/dialog/body/component_value.rs#decode_food"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
     }
   },
   "schema_version": 1

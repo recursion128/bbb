@@ -1,5 +1,6 @@
 use bbb_protocol::data_component_types::{
-    VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
     VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
     VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
     VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
@@ -2304,6 +2305,32 @@ impl WorldStore {
     pub fn local_item_in_hand(&self, hand: InteractionHand) -> Option<&ProtocolItemStackSummary> {
         self.inventory
             .local_item_in_hand(inventory_ctx!(self), hand)
+    }
+
+    /// Vanilla `Consumable.canConsume`: FOOD only gates an effective
+    /// CONSUMABLE, creative/invulnerable players and `can_always_eat` bypass
+    /// the full-food check, and an absent health packet uses FoodData's
+    /// initial full level.
+    pub fn local_item_in_hand_can_start_consuming(&self, hand: InteractionHand) -> bool {
+        let Some(stack) = self.local_item_in_hand(hand) else {
+            return true;
+        };
+        if !self
+            .item_stack_has_effective_component(stack, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID)
+            || !self.item_stack_has_effective_component(stack, VANILLA_DATA_COMPONENT_FOOD_TYPE_ID)
+        {
+            return true;
+        }
+
+        let effective = self.effective_item_stack(stack);
+        self.local_player
+            .abilities
+            .is_some_and(|abilities| abilities.invulnerable)
+            || effective.component_patch.food_can_always_eat
+            || self
+                .local_player
+                .health
+                .is_some_and(|health| health.food < 20)
     }
 
     pub fn local_selected_main_hand_has_piercing_weapon(&self) -> bool {

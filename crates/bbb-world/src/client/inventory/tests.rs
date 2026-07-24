@@ -4,8 +4,7 @@ use crate::entities::{
     VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_LLAMA_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
 };
 use bbb_protocol::data_component_types::{
-    VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID,
-    VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
 };
 use bbb_protocol::menu_types::{
     VANILLA_MENU_TYPES, VANILLA_MENU_TYPE_GENERIC_9X2_ID, VANILLA_MENU_TYPE_GENERIC_9X3_ID,
@@ -1113,6 +1112,87 @@ fn effective_food_properties_apply_default_patch_and_removal_precedence() {
     assert!(
         !store.item_stack_has_effective_component(&patched, VANILLA_DATA_COMPONENT_FOOD_TYPE_ID)
     );
+}
+
+#[test]
+fn local_food_consumption_gate_matches_player_can_eat_and_component_precedence() {
+    let mut store = WorldStore::new();
+    store.set_default_item_component_type_ids(BTreeMap::from([(
+        42,
+        BTreeSet::from([
+            VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
+            VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
+        ]),
+    )]));
+    store.set_default_item_food_properties(BTreeMap::from([(
+        42,
+        ItemFoodProperties {
+            nutrition: 4,
+            saturation_bits: 2.4_f32.to_bits(),
+            can_always_eat: false,
+        },
+    )]));
+    store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: item_stack(42, 1),
+    });
+
+    assert!(!store.local_item_in_hand_can_start_consuming(InteractionHand::MainHand));
+
+    store.apply_player_health(bbb_protocol::packets::PlayerHealth {
+        health: 20.0,
+        food: 19,
+        saturation: 5.0,
+    });
+    assert!(store.local_item_in_hand_can_start_consuming(InteractionHand::MainHand));
+
+    store.apply_player_health(bbb_protocol::packets::PlayerHealth {
+        health: 20.0,
+        food: 20,
+        saturation: 5.0,
+    });
+    let mut always_edible = item_stack(42, 1);
+    always_edible.component_patch.added = 1;
+    always_edible.component_patch.added_type_ids = vec![VANILLA_DATA_COMPONENT_FOOD_TYPE_ID];
+    always_edible.component_patch.food_nutrition = Some(1);
+    always_edible.component_patch.food_saturation_bits = Some(0.0_f32.to_bits());
+    always_edible.component_patch.food_can_always_eat = true;
+    store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: always_edible,
+    });
+    assert!(store.local_item_in_hand_can_start_consuming(InteractionHand::MainHand));
+
+    let mut removed_food = item_stack(42, 1);
+    removed_food.component_patch.removed_type_ids = vec![VANILLA_DATA_COMPONENT_FOOD_TYPE_ID];
+    store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: removed_food,
+    });
+    assert!(store.local_item_in_hand_can_start_consuming(InteractionHand::MainHand));
+
+    let mut removed_consumable = item_stack(42, 1);
+    removed_consumable.component_patch.removed_type_ids =
+        vec![VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID];
+    store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: removed_consumable,
+    });
+    assert!(store.local_item_in_hand_can_start_consuming(InteractionHand::MainHand));
+
+    store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: item_stack(42, 1),
+    });
+    store.apply_player_abilities(ProtocolPlayerAbilities {
+        invulnerable: true,
+        flying: false,
+        can_fly: true,
+        instabuild: true,
+        flying_speed: 0.05,
+        walking_speed: 0.1,
+    });
+    assert!(store.local_item_in_hand_can_start_consuming(InteractionHand::MainHand));
 }
 
 #[test]
