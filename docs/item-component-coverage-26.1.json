@@ -1372,34 +1372,66 @@
       "constant_name": "TOOLTIP_DISPLAY",
       "coverage": {
         "canonical_retention": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components.rs#pub tooltip_hide_tooltip",
+            "crates/bbb-protocol/src/packets/data_components.rs#pub tooltip_hidden_component_type_ids",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#tooltip_display_descriptor_round_trips_order_and_collapses_wire_duplicates",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_resource_key_and_component_catalog_metadata"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "network_encode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/TooltipDisplay.java#STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_tooltip_display",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#tooltip_display_descriptor_round_trips_order_and_collapses_wire_duplicates",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_tooltip_display_component"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "observable_consumers": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/TooltipDisplay.java#shows",
+            "crates/bbb-item-model/src/item_runtime/tooltip.rs#tooltip_display_shows",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "persistent_projection": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/item/component/TooltipDisplay.java#CODEC",
+            "crates/bbb-native/src/input/component_patch.rs#encode_tooltip_display",
+            "crates/bbb-native/src/input.rs#debug_tooltip_display_component_snbt",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+            "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_resource_key_and_component_catalog_metadata"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#tooltip_display_descriptor_round_trips_order_and_collapses_wire_duplicates",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#tooltip_display_descriptor_rejects_noncanonical_values_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_tooltip_display_component",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "typed_decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#TOOLTIP_DISPLAY",
+            "vanilla:net/minecraft/world/item/component/TooltipDisplay.java#STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_tooltip_display_component",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#tooltip_display_descriptor_round_trips_order_and_collapses_wire_duplicates",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_common_complex_data_components"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "resource_id": "minecraft:tooltip_display",

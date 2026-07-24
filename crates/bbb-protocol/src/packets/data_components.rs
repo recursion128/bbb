@@ -1173,6 +1173,11 @@ fn validate_encodable_data_component_patch_summary(
                 expected.custom_model_data_strings = patch.custom_model_data_strings.clone();
                 expected.custom_model_data_colors = patch.custom_model_data_colors.clone();
             }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID => {
+                expected.tooltip_hide_tooltip = patch.tooltip_hide_tooltip;
+                expected.tooltip_hidden_component_type_ids =
+                    patch.tooltip_hidden_component_type_ids.clone();
+            }
             crate::data_component_types::VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID => {
                 expected.potion_id = patch.potion_id;
                 expected.potion_custom_color = patch.potion_custom_color;
@@ -3071,8 +3076,13 @@ fn decode_tooltip_display_summary(decoder: &mut Decoder<'_>) -> Result<(bool, Ve
     let hide_tooltip = decoder.read_bool()?;
     let hidden_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
     let mut hidden_components = Vec::with_capacity(hidden_count);
+    let mut seen = BTreeSet::new();
     for _ in 0..hidden_count {
-        hidden_components.push(decoder.read_var_i32()?);
+        let type_id = decoder.read_var_i32()?;
+        data_component_descriptor_or_error(type_id)?;
+        if seen.insert(type_id) {
+            hidden_components.push(type_id);
+        }
     }
     Ok((hide_tooltip, hidden_components))
 }

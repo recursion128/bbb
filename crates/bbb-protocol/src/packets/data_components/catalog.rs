@@ -23,9 +23,10 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
     VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID,
     VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
-    VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID, VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
-    VANILLA_DATA_COMPONENT_TYPES, VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID, VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID,
+    VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID, VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID,
+    VANILLA_DATA_COMPONENT_TRIM_TYPE_ID, VANILLA_DATA_COMPONENT_TYPES,
+    VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID, VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID,
     VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
     VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
 };
@@ -248,6 +249,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         }
         VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID => Some(encode_attribute_modifiers),
         VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID => Some(encode_custom_model_data),
+        VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID => Some(encode_tooltip_display),
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID => Some(encode_consumable),
         VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID => Some(encode_use_remainder),
         VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID => Some(encode_death_protection),
@@ -449,6 +451,43 @@ fn encode_custom_model_data(
     encoded.write_var_i32(summary.custom_model_data_colors.len() as i32);
     for value in &summary.custom_model_data_colors {
         encoded.write_i32(*value);
+    }
+    out.write_bytes(&encoded.into_inner());
+    Ok(())
+}
+
+fn encode_tooltip_display(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    let hidden_components = &summary.tooltip_hidden_component_type_ids;
+    if hidden_components.len() > MAX_DATA_COMPONENT_LIST_ITEMS {
+        return Err(ProtocolError::PacketTooLarge(
+            hidden_components.len(),
+            MAX_DATA_COMPONENT_LIST_ITEMS,
+        ));
+    }
+
+    let mut seen = BTreeSet::new();
+    for type_id in hidden_components {
+        if crate::data_component_types::vanilla_data_component_type(*type_id).is_none() {
+            return Err(ProtocolError::InvalidData(format!(
+                "tooltip_display has invalid hidden component type id {type_id}"
+            )));
+        }
+        if !seen.insert(*type_id) {
+            return Err(ProtocolError::InvalidData(format!(
+                "tooltip_display has duplicate hidden component type id {type_id}"
+            )));
+        }
+    }
+
+    let mut encoded = Encoder::new();
+    encoded.write_bool(summary.tooltip_hide_tooltip);
+    encoded.write_var_i32(hidden_components.len() as i32);
+    for type_id in hidden_components {
+        encoded.write_var_i32(*type_id);
     }
     out.write_bytes(&encoded.into_inner());
     Ok(())
@@ -2990,8 +3029,8 @@ mod tests {
                 .map(|descriptor| descriptor.type_id())
                 .collect::<Vec<_>>(),
             vec![
-                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 13, 14, 15, 16, 17, 24, 25, 36, 37, 38, 39, 40,
-                42, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 68, 69, 70, 75,
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 13, 14, 15, 16, 17, 18, 24, 25, 36, 37, 38, 39,
+                40, 42, 49, 50, 51, 52, 53, 54, 55, 56, 58, 59, 60, 68, 69, 70, 75,
             ]
         );
     }
@@ -3128,6 +3167,89 @@ mod tests {
                 actual,
                 max: MAX_STRING_CHARS
             } if actual == MAX_STRING_CHARS + 1
+        ));
+    }
+
+    #[test]
+    fn tooltip_display_descriptor_round_trips_order_and_collapses_wire_duplicates() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID)
+                .unwrap();
+        let summary = DataComponentPatchSummary {
+            tooltip_hide_tooltip: true,
+            tooltip_hidden_component_type_ids: vec![11, 20, 109],
+            ..DataComponentPatchSummary::default()
+        };
+        let mut encoded = Encoder::new();
+        descriptor.encode(&summary, &mut encoded).unwrap();
+        assert_eq!(encoded.into_inner(), [1, 3, 11, 20, 109]);
+
+        let mut wire = Encoder::new();
+        wire.write_bool(false);
+        wire.write_var_i32(5);
+        for type_id in [13, 11, 13, 20, 11] {
+            wire.write_var_i32(type_id);
+        }
+        let wire = wire.into_inner();
+        let mut decoded = DataComponentPatchSummary::default();
+        let mut decoder = Decoder::new(&wire);
+        descriptor.decode(&mut decoder, &mut decoded).unwrap();
+        assert!(decoder.is_empty());
+        assert!(!decoded.tooltip_hide_tooltip);
+        assert_eq!(decoded.tooltip_hidden_component_type_ids, [13, 11, 20]);
+    }
+
+    #[test]
+    fn tooltip_display_descriptor_rejects_noncanonical_values_atomically() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID)
+                .unwrap();
+        for hidden_components in [
+            vec![-1],
+            vec![i32::try_from(VANILLA_DATA_COMPONENT_TYPES.len()).unwrap()],
+            vec![11, 11],
+            vec![11; MAX_DATA_COMPONENT_LIST_ITEMS + 1],
+        ] {
+            let summary = DataComponentPatchSummary {
+                tooltip_hidden_component_type_ids: hidden_components,
+                ..DataComponentPatchSummary::default()
+            };
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0x7f);
+            assert!(descriptor.encode(&summary, &mut encoded).is_err());
+            assert_eq!(encoded.into_inner(), [0x7f]);
+        }
+
+        for invalid_type_id in [
+            -1,
+            i32::try_from(VANILLA_DATA_COMPONENT_TYPES.len()).unwrap(),
+        ] {
+            let mut wire = Encoder::new();
+            wire.write_bool(true);
+            wire.write_var_i32(2);
+            wire.write_var_i32(11);
+            wire.write_var_i32(invalid_type_id);
+            let wire = wire.into_inner();
+            let mut decoded = DataComponentPatchSummary::default();
+            assert!(descriptor
+                .decode(&mut Decoder::new(&wire), &mut decoded)
+                .is_err());
+            assert_eq!(decoded, DataComponentPatchSummary::default());
+        }
+
+        let mut oversized = Encoder::new();
+        oversized.write_bool(false);
+        oversized.write_var_i32((MAX_DATA_COMPONENT_LIST_ITEMS + 1) as i32);
+        let wire = oversized.into_inner();
+        assert!(matches!(
+            descriptor.decode(
+                &mut Decoder::new(&wire),
+                &mut DataComponentPatchSummary::default()
+            ),
+            Err(ProtocolError::PacketTooLarge(
+                _,
+                MAX_DATA_COMPONENT_LIST_ITEMS
+            ))
         ));
     }
 

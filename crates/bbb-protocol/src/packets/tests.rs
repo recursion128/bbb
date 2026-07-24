@@ -1577,6 +1577,65 @@ fn encodes_set_creative_mode_slot_custom_model_data_component() {
 }
 
 #[test]
+fn encodes_set_creative_mode_slot_tooltip_display_component() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![
+                    crate::data_component_types::VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID,
+                ],
+                tooltip_hide_tooltip: true,
+                tooltip_hidden_component_type_ids: vec![
+                    crate::data_component_types::VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
+                    crate::data_component_types::VANILLA_DATA_COMPONENT_CREATIVE_SLOT_LOCK_TYPE_ID,
+                    crate::data_component_types::VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID,
+                ],
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_i16().unwrap(), 36);
+    assert_eq!(decoder.read_var_i32().unwrap(), 1);
+    assert_eq!(decoder.read_var_i32().unwrap(), 42);
+    assert_eq!(decoder.read_len().unwrap(), 1);
+    assert_eq!(decoder.read_len().unwrap(), 0);
+    assert_eq!(
+        decoder.read_var_i32().unwrap(),
+        crate::data_component_types::VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID
+    );
+    let value_len = decoder.read_len().unwrap();
+    let mut value = Decoder::new(
+        decoder
+            .read_exact(value_len, "tooltip_display value")
+            .unwrap(),
+    );
+    assert!(value.read_bool().unwrap());
+    assert_eq!(value.read_len().unwrap(), 3);
+    assert_eq!(
+        value.read_var_i32().unwrap(),
+        crate::data_component_types::VANILLA_DATA_COMPONENT_LORE_TYPE_ID
+    );
+    assert_eq!(
+        value.read_var_i32().unwrap(),
+        crate::data_component_types::VANILLA_DATA_COMPONENT_CREATIVE_SLOT_LOCK_TYPE_ID
+    );
+    assert_eq!(
+        value.read_var_i32().unwrap(),
+        crate::data_component_types::VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID
+    );
+    assert!(value.is_empty());
+    assert!(decoder.is_empty());
+}
+
+#[test]
 fn encodes_set_creative_mode_slot_entity_data_components() {
     let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
         slot_num: 36,
