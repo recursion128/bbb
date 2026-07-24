@@ -39,6 +39,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
         VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
+        VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID,
     },
     entity_types::vanilla_entity_type,
     equipment_slots::{
@@ -1339,6 +1340,9 @@ fn validate_encodable_data_component_patch_summary(
                 expected.bees_present = patch.bees_present;
                 expected.bees_count = patch.bees_count;
                 expected.bees = patch.bees.clone();
+            }
+            VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID => {
+                expected.villager_variant_id = patch.villager_variant_id;
             }
             _ => unreachable!("encodable descriptor set is limited to owned component callbacks"),
         }

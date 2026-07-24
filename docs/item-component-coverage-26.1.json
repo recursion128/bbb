@@ -6236,34 +6236,75 @@
       "constant_name": "VILLAGER_VARIANT",
       "coverage": {
         "canonical_retention": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#VILLAGER_VARIANT",
+            "vanilla:net/minecraft/world/entity/npc/villager/VillagerType.java#STREAM_CODEC",
+            "crates/bbb-protocol/src/packets/data_components.rs#pub villager_variant_id",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_villager_variant",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_villager_variant_holder_registry_id",
+            "crates/bbb-world/src/client/dialog/body/component_value/holder_set/tests.rs#decodes_builtin_villager_variant_without_session_remapping"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "network_encode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#VILLAGER_VARIANT",
+            "vanilla:net/minecraft/world/entity/npc/villager/VillagerType.java#STREAM_CODEC",
+            "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#holderRegistry",
+            "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#registry",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_villager_variant",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#villager_variant_descriptor_round_trips_ids_and_rejects_invalid_values_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_villager_variant_component"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "observable_consumers": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/predicates/VillagerTypePredicate.java#componentType",
+            "vanilla:net/minecraft/core/component/predicates/VillagerTypePredicate.java#matches",
+            "crates/bbb-item-model/src/item_runtime/icon_model.rs#item_stack_matches_villager_variant_value",
+            "crates/bbb-item-model/src/item_runtime/icon_model.rs#villager_variant_exact_match",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_component_condition_predicates"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "persistent_projection": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/world/entity/npc/villager/VillagerType.java#CODEC",
+            "crates/bbb-native/src/input/component_patch.rs#encode_named_variant",
+            "crates/bbb-native/src/input/component_patch.rs#named_variant_encoders_use_session_order_or_fixed_catalog",
+            "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
+            "crates/bbb-world/src/client/dialog/body/component_value/holder_set/tests.rs#decodes_builtin_villager_variant_without_session_remapping"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_villager_variant_holder_registry_id",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#villager_variant_descriptor_round_trips_ids_and_rejects_invalid_values_atomically",
+            "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_villager_variant_component",
+            "crates/bbb-native/src/input/component_patch.rs#named_variant_encoders_use_session_order_or_fixed_catalog",
+            "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_component_condition_predicates",
+            "crates/bbb-world/src/client/dialog/body/component_value/holder_set/tests.rs#decodes_builtin_villager_variant_without_session_remapping"
+          ],
+          "gap": null,
+          "status": "complete"
         },
         "typed_decode": {
-          "evidence": [],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "evidence": [
+            "vanilla:net/minecraft/core/component/DataComponents.java#VILLAGER_VARIANT",
+            "vanilla:net/minecraft/world/entity/npc/villager/VillagerType.java#STREAM_CODEC",
+            "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#holderRegistry",
+            "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_villager_variant",
+            "crates/bbb-protocol/src/packets/data_components.rs#decodes_villager_variant_holder_registry_id",
+            "crates/bbb-world/src/client/dialog/body/component_value/holder_set/tests.rs#decodes_builtin_villager_variant_without_session_remapping"
+          ],
+          "gap": null,
+          "status": "complete"
         }
       },
       "resource_id": "minecraft:villager/variant",

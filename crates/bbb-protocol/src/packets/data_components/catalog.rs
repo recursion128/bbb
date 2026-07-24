@@ -43,6 +43,7 @@ use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_TRIM_TYPE_ID, VANILLA_DATA_COMPONENT_TYPES,
     VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
     VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID, VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID,
+    VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID,
     VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
     VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
 };
@@ -321,6 +322,7 @@ const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
         VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID => Some(encode_block_state),
         VANILLA_DATA_COMPONENT_BEES_TYPE_ID => Some(encode_bees),
         VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID => Some(encode_painting_variant),
+        VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID => Some(encode_villager_variant),
         VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID => {
             Some(encode_provides_trim_material)
         }
@@ -404,12 +406,20 @@ fn encode_damage_type(
     summary: &DataComponentPatchSummary,
     out: &mut Encoder,
 ) -> Result<()> {
-    let holder_id = summary.damage_type_id.ok_or_else(|| {
-        ProtocolError::InvalidData("missing damage_type component value".to_string())
+    encode_registry_holder_id(summary.damage_type_id, "damage_type", out)
+}
+
+fn encode_registry_holder_id(
+    holder_id: Option<i32>,
+    component: &'static str,
+    out: &mut Encoder,
+) -> Result<()> {
+    let holder_id = holder_id.ok_or_else(|| {
+        ProtocolError::InvalidData(format!("missing {component} component value"))
     })?;
     if holder_id < 0 {
         return Err(ProtocolError::InvalidData(format!(
-            "damage_type has negative holder id {holder_id}"
+            "{component} has negative holder id {holder_id}"
         )));
     }
     out.write_var_i32(holder_id);
@@ -3577,6 +3587,14 @@ fn decode_villager_variant(
     Ok(())
 }
 
+fn encode_villager_variant(
+    _type_id: i32,
+    summary: &DataComponentPatchSummary,
+    out: &mut Encoder,
+) -> Result<()> {
+    encode_registry_holder_id(summary.villager_variant_id, "villager_variant", out)
+}
+
 fn decode_wolf_sound_variant(
     _type_id: i32,
     decoder: &mut Decoder<'_>,
@@ -3849,7 +3867,7 @@ mod tests {
                 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 22, 23, 24,
                 25, 26, 28, 30, 32, 34, 35, 36, 37, 38, 39, 40, 42, 43, 44, 45, 46, 48, 49, 50, 51,
                 52, 53, 54, 55, 56, 58, 59, 60, 61, 62, 64, 65, 67, 68, 69, 70, 72, 73, 74, 75, 76,
-                77, 80, 102,
+                77, 80, 81, 102,
             ]
         );
     }
@@ -8721,6 +8739,45 @@ mod tests {
             },
             DataComponentPatchSummary {
                 base_color_id: Some(16),
+                ..DataComponentPatchSummary::default()
+            },
+        ] {
+            let mut encoded = Encoder::new();
+            encoded.write_u8(0xaa);
+            assert!(descriptor.encode(&summary, &mut encoded).is_err());
+            assert_eq!(encoded.into_inner(), [0xaa]);
+        }
+    }
+
+    #[test]
+    fn villager_variant_descriptor_round_trips_ids_and_rejects_invalid_values_atomically() {
+        let descriptor =
+            vanilla_data_component_descriptor(VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID)
+                .unwrap();
+        for holder_id in [0, 2, i32::MAX] {
+            let summary = DataComponentPatchSummary {
+                villager_variant_id: Some(holder_id),
+                ..DataComponentPatchSummary::default()
+            };
+            let mut encoded = Encoder::new();
+            descriptor.encode(&summary, &mut encoded).unwrap();
+
+            let mut expected = Encoder::new();
+            expected.write_var_i32(holder_id);
+            assert_eq!(encoded.clone().into_inner(), expected.into_inner());
+
+            let wire = encoded.into_inner();
+            let mut decoder = Decoder::new(&wire);
+            let mut decoded = DataComponentPatchSummary::default();
+            descriptor.decode(&mut decoder, &mut decoded).unwrap();
+            assert!(decoder.is_empty());
+            assert_eq!(decoded.villager_variant_id, Some(holder_id));
+        }
+
+        for summary in [
+            DataComponentPatchSummary::default(),
+            DataComponentPatchSummary {
+                villager_variant_id: Some(-1),
                 ..DataComponentPatchSummary::default()
             },
         ] {
