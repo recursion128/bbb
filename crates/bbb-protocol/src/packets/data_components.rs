@@ -1105,6 +1105,9 @@ fn validate_encodable_data_component_patch_summary(
             crate::data_component_types::VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID => {
                 expected.item_model = patch.item_model.clone();
             }
+            crate::data_component_types::VANILLA_DATA_COMPONENT_TOOLTIP_STYLE_TYPE_ID => {
+                expected.tooltip_style = patch.tooltip_style.clone();
+            }
             crate::data_component_types::VANILLA_DATA_COMPONENT_LORE_TYPE_ID => {
                 expected.lore = patch.lore.clone();
                 expected.lore_styled = patch.lore_styled.clone();
