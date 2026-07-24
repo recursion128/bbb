@@ -92,6 +92,7 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID,
         VANILLA_DATA_COMPONENT_TOOLTIP_STYLE_TYPE_ID, VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
         VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
+        VANILLA_DATA_COMPONENT_TROPICAL_FISH_BASE_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID,
         VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
@@ -616,6 +617,12 @@ pub(super) fn apply_item_patch_value(
             Value::StringEnum { value_id, .. },
         ) => {
             patch.tropical_fish_pattern_id = Some(*value_id);
+        }
+        (
+            VANILLA_DATA_COMPONENT_TROPICAL_FISH_BASE_COLOR_TYPE_ID,
+            Value::StringEnum { value_id, .. },
+        ) => {
+            patch.tropical_fish_base_color_id = Some(*value_id);
         }
         (
             VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_COLOR_TYPE_ID,

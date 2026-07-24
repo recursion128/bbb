@@ -16,6 +16,7 @@ use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
     VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID,
     VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID, VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
+    VANILLA_DATA_COMPONENT_TROPICAL_FISH_BASE_COLOR_TYPE_ID,
     VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_COLOR_TYPE_ID,
     VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID,
 };
@@ -268,6 +269,24 @@ fn tropical_fish_pattern_color_string_enum_projects_to_owned_patch_field() {
     assert_eq!(
         patch.tropical_fish_pattern_color_id,
         Some(VANILLA_DYE_COLOR_PURPLE_ID)
+    );
+    assert!(patch.builtin_enum_component_ids.is_empty());
+}
+
+#[test]
+fn tropical_fish_base_color_string_enum_projects_to_owned_patch_field() {
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_TROPICAL_FISH_BASE_COLOR_TYPE_ID,
+        &DialogDataComponentValueState::StringEnum {
+            value_id: VANILLA_DYE_COLOR_BLUE_ID,
+            serialized_name: "blue".to_string(),
+        },
+        &mut patch,
+    ));
+    assert_eq!(
+        patch.tropical_fish_base_color_id,
+        Some(VANILLA_DYE_COLOR_BLUE_ID)
     );
     assert!(patch.builtin_enum_component_ids.is_empty());
 }
