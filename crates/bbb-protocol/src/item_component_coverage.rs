@@ -188,20 +188,17 @@ mod tests {
             "CLIENTBOUND_SET_EQUIPMENT",
             "CLIENTBOUND_SET_PLAYER_INVENTORY",
         ];
-        if has_partial_component_dimension(
-            &components,
-            &["typed_decode", "canonical_retention", "tests"],
-        ) {
+        if has_partial_component_dimension(&components, &["typed_decode", "canonical_retention"]) {
             for constant_name in clientbound_packets {
                 assert_packet_dimension_partial(&packets, constant_name, "canonical_apply");
             }
         }
-        if has_partial_component_dimension(&components, &["observable_consumers", "tests"]) {
+        if has_partial_component_dimension(&components, &["observable_consumers"]) {
             for constant_name in clientbound_packets {
                 assert_packet_dimension_partial(&packets, constant_name, "runtime_side_effect");
             }
         }
-        if has_partial_component_dimension(&components, &["network_encode", "tests"]) {
+        if has_partial_component_dimension(&components, &["network_encode"]) {
             assert_packet_dimension_partial(
                 &packets,
                 "SERVERBOUND_SET_CREATIVE_MODE_SLOT",
