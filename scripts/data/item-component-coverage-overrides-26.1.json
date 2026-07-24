@@ -3624,6 +3624,67 @@
         "status": "complete"
       }
     },
+    "MAP_POST_PROCESSING": {
+      "canonical_retention": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components.rs#pub map_post_processing",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_map_post_processing_component",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_map_post_processing_out_of_bounds_as_lock",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#map_post_processing_descriptor_round_trips_both_wire_ids"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "network_encode": {
+        "evidence": [
+          "vanilla:net/minecraft/world/item/component/MapPostProcessing.java#public static final StreamCodec<ByteBuf, MapPostProcessing> STREAM_CODEC",
+          "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<ByteBuf, T> idMapper",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#encode_map_post_processing",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#map_post_processing_descriptor_round_trips_both_wire_ids",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#map_post_processing_descriptor_rejects_a_missing_value_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_map_post_processing_component"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "observable_consumers": {
+        "evidence": [
+          "vanilla:net/minecraft/world/level/saveddata/maps/MapId.java#DataComponents.MAP_POST_PROCESSING",
+          "vanilla:net/minecraft/world/inventory/CartographyTableMenu.java#result.set(DataComponents.MAP_POST_PROCESSING",
+          "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_map_id_tooltip_lines",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-native/src/runtime.rs#fn cartography_result_mode",
+          "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_projects_cartography_table_result_modes"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "tests": {
+        "evidence": [
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#map_post_processing_descriptor_round_trips_both_wire_ids",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#map_post_processing_descriptor_rejects_a_missing_value_atomically",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_map_post_processing_component",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_map_post_processing_out_of_bounds_as_lock",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_projects_cartography_table_result_modes"
+        ],
+        "gap": null,
+        "status": "complete"
+      },
+      "typed_decode": {
+        "evidence": [
+          "vanilla:net/minecraft/core/component/DataComponents.java#MAP_POST_PROCESSING",
+          "vanilla:net/minecraft/world/item/component/MapPostProcessing.java#public static final StreamCodec<ByteBuf, MapPostProcessing> STREAM_CODEC",
+          "vanilla:net/minecraft/util/ByIdMap.java#case ZERO",
+          "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_map_post_processing_component",
+          "crates/bbb-protocol/src/packets/data_components.rs#fn decode_map_post_processing",
+          "crates/bbb-protocol/src/packets/data_components.rs#decodes_map_post_processing_out_of_bounds_as_lock"
+        ],
+        "gap": null,
+        "status": "complete"
+      }
+    },
     "BREAK_SOUND": {
       "canonical_retention": {
         "evidence": [

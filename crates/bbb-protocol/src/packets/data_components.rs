@@ -29,6 +29,7 @@ use crate::{
         VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
         VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID,
+        VANILLA_DATA_COMPONENT_MAP_POST_PROCESSING_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
@@ -1266,6 +1267,9 @@ fn validate_encodable_data_component_patch_summary(
             }
             VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID => {
                 expected.map_id = patch.map_id;
+            }
+            VANILLA_DATA_COMPONENT_MAP_POST_PROCESSING_TYPE_ID => {
+                expected.map_post_processing = patch.map_post_processing;
             }
             VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID => {
                 expected.painting_variant_id = patch.painting_variant_id;
