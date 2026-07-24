@@ -4191,6 +4191,7 @@ def render(result: ExtractionResult) -> str:
     can_use_every_slot_cache: dict[str, bool] = {}
     illager_celebrating_cache: dict[str, bool] = {}
     handle_entity_event_owner_cache: dict[str, str] = {}
+    interact_owner_cache: dict[str, str] = {}
     passenger_attachment_owner_cache: dict[str, str] = {}
     vehicle_attachment_owner_cache: dict[str, str] = {}
     controlling_passenger_owner_cache: dict[str, str] = {}
@@ -4887,6 +4888,7 @@ def render(result: ExtractionResult) -> str:
                 )
                 + "],",
                 f"        handle_entity_event_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'handleEntityEvent', 1, handle_entity_event_owner_cache) if item.runtime_class is not None else None)},",
+                f"        interact_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'interact', 3, interact_owner_cache) if item.runtime_class is not None else None)},",
                 f"        passenger_attachment_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'getPassengerAttachmentPoint', 3, passenger_attachment_owner_cache) if item.runtime_class is not None else None)},",
                 f"        vehicle_attachment_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'getVehicleAttachmentPoint', 1, vehicle_attachment_owner_cache) if item.runtime_class is not None else None)},",
                 f"        controlling_passenger_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'getControllingPassenger', 0, controlling_passenger_owner_cache) if item.runtime_class is not None else None)},",
@@ -5101,6 +5103,32 @@ def render(result: ExtractionResult) -> str:
             "        assert_eq!(owner(\"minecraft:arrow\").block_effect_tick_policy, super::VanillaEntityBlockEffectTickPolicy::AbstractArrowSegments);",
             "        assert_eq!(owner(\"minecraft:firework_rocket\").block_effect_tick_policy, super::VanillaEntityBlockEffectTickPolicy::DetachedFirework);",
             "        assert_eq!(owner(\"minecraft:end_crystal\").block_effect_tick_policy, super::VanillaEntityBlockEffectTickPolicy::OnceAfterMovement);",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn interaction_owner_inventory_covers_every_entity_type() {",
+            "        let mut owners = std::collections::BTreeSet::new();",
+            "        for entry in super::VANILLA_ENTITY_TYPE_METADATA_26_1 {",
+            "            owners.insert(entry.interact_owner.expect(\"interaction owner\"));",
+            "        }",
+            "        assert_eq!(owners, std::collections::BTreeSet::from([",
+            "            \"net.minecraft.world.entity.Entity\",",
+            "            \"net.minecraft.world.entity.Interaction\",",
+            "            \"net.minecraft.world.entity.Mob\",",
+            "            \"net.minecraft.world.entity.animal.camel.CamelHusk\",",
+            "            \"net.minecraft.world.entity.animal.equine.ZombieHorse\",",
+            "            \"net.minecraft.world.entity.animal.nautilus.AbstractNautilus\",",
+            "            \"net.minecraft.world.entity.decoration.ArmorStand\",",
+            "            \"net.minecraft.world.entity.decoration.ItemFrame\",",
+            "            \"net.minecraft.world.entity.decoration.LeashFenceKnotEntity\",",
+            "            \"net.minecraft.world.entity.vehicle.boat.AbstractBoat\",",
+            "            \"net.minecraft.world.entity.vehicle.boat.AbstractChestBoat\",",
+            "            \"net.minecraft.world.entity.vehicle.minecart.AbstractMinecartContainer\",",
+            "            \"net.minecraft.world.entity.vehicle.minecart.Minecart\",",
+            "            \"net.minecraft.world.entity.vehicle.minecart.MinecartChest\",",
+            "            \"net.minecraft.world.entity.vehicle.minecart.MinecartCommandBlock\",",
+            "            \"net.minecraft.world.entity.vehicle.minecart.MinecartFurnace\",",
+            "        ]));",
             "    }",
             "",
             "    #[test]",

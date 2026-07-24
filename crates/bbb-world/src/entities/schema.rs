@@ -797,6 +797,9 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub default_attributes: &'static [VanillaEntityDefaultAttribute],
     /// Nearest vanilla class that declares `handleEntityEvent(byte)` for this runtime type.
     pub handle_entity_event_owner: Option<&'static str>,
+    /// Nearest vanilla class that declares
+    /// `interact(Player, InteractionHand, Vec3)` for this runtime type.
+    pub interact_owner: Option<&'static str>,
     /// Nearest runtime-class declarations for the two attachment hooks and
     /// the controller decision. These close the fixed-type reverse inventory
     /// without duplicating family membership in handwritten code.
