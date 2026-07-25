@@ -515,3 +515,6 @@
   全玩家库存和无限材料执行 use 门禁，释放保留客户端无弹药/耐久突变及抑制声音
   随机顺序；望远镜覆盖 use/release/自然完成声音，二者共同进入 vanilla camera
   FOV target 与既有逐 tick easing。
+- **2026-07-23（Bundle 无目标 use 工程关闭）**：Bundle 现按 selected-first
+  与 tick 0/延迟后偶数节奏移除完整内容模板，客户端只预测主手挥动而不生成物品
+  实体，并保留 remove-one 实播与 drop-contents 抑制音效的 pitch/seed 顺序。

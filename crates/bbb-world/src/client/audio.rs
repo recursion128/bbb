@@ -1693,10 +1693,11 @@ impl WorldStore {
     /// Vanilla flint-and-steel and instruments pass the local player as
     /// `except`, so `ClientLevel.playSeededSound` plays them immediately.
     /// Instrument playback is entity-bound; flint-and-steel is positioned.
-    /// Spyglass start/stop calls use `LocalPlayer.playSound`, so they are
-    /// immediate positioned sounds. Bow release, thrown projectiles, fire
-    /// charges, lodestone compasses, and both potion mud-conversion sounds pass
-    /// `null`, so their local calls only advance the random streams.
+    /// Spyglass start/stop and bundle removal call `LocalPlayer.playSound`, so
+    /// they are immediate positioned sounds. Bundle content-drop, bow release,
+    /// thrown projectiles, fire charges, lodestone compasses, and both potion
+    /// mud-conversion sounds pass `null`, so their local calls only advance the
+    /// random streams.
     pub fn apply_local_interaction_sound_action(
         &mut self,
         action: LocalInteractionSoundAction,
@@ -1735,6 +1736,25 @@ impl WorldStore {
                     state,
                     position: self.local_player_pose().map(|pose| pose.position),
                 });
+            }
+            LocalInteractionSoundAction::BundleRemoveOne => {
+                let position = self.local_player_pose()?.position;
+                let mut state = local_player_sound_state(
+                    position,
+                    "minecraft:item.bundle.remove_one",
+                    0.8,
+                    0.8 + random.next_float() * 0.4,
+                    SoundSource::Players.as_str(),
+                );
+                state.seed = self.next_sound_seed();
+                return Some(LocalInteractionSoundEffect::Positioned(
+                    self.record_positioned_sound(state),
+                ));
+            }
+            LocalInteractionSoundAction::SuppressedBundleDropContents => {
+                let _discarded_drop_pitch = 0.8 + random.next_float() * 0.4;
+                let _discarded_drop_seed = self.next_sound_seed();
+                return None;
             }
             LocalInteractionSoundAction::SpyglassUse => local_player_sound_state(
                 self.local_player_pose()?.position,

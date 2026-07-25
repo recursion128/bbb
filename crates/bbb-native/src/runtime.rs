@@ -121,10 +121,9 @@ use crate::{
     },
     game_test_highlights::game_test_highlight_gizmos,
     input::{
-        advance_destroying_block_at_partial_tick, advance_player_input_for_client_ticks,
-        advance_using_item_at_partial_tick_with_effects,
+        advance_destroying_block_at_partial_tick, advance_local_using_item_ticks_with_effects,
+        advance_player_input_for_client_ticks, advance_using_item_at_partial_tick_with_effects,
         death_screen::DeathScreenRuntime,
-        flush_local_interaction_sound_actions,
         game_event_screen::{DemoHelpFocus, DemoLinkConfirmationFocus, GameEventScreenRuntime},
         inventory_screen_layout_for_surface, inventory_screen_selected_hotbar_slot_id,
         pause_screen_advancements_button_contains, pause_screen_disconnect_button_contains,
@@ -2595,8 +2594,14 @@ pub(crate) fn advance_simulation(
         level_event_sound_random,
         &mut audio_events,
     );
-    world.advance_local_using_item_ticks(advanced_ticks);
-    flush_local_interaction_sound_actions(world, level_event_sound_random, &mut audio_events);
+    advance_local_using_item_ticks_with_effects(
+        world,
+        net_counters,
+        net_commands,
+        advanced_ticks,
+        level_event_sound_random,
+        &mut audio_events,
+    );
     let particle_camera_pose = camera_pose_from_world_at_partial_tick(world, entity_partial_tick);
     let particle_scope_context =
         particle_local_player_scope_context(world, item_runtime.as_ref(), particle_camera_pose);

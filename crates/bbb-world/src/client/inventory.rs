@@ -1,9 +1,10 @@
 use bbb_protocol::data_component_types::{
-    VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID,
-    VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID,
-    VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID, VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID, VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
+    VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID, VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID,
+    VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
     VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
     VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
@@ -19,8 +20,8 @@ use bbb_protocol::equipment_slots::{
     VANILLA_PLAYER_INVENTORY_SADDLE_SLOT,
 };
 use bbb_protocol::item_types::{
-    vanilla_item_type, VANILLA_ITEM_COMPASS_ID, VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE,
-    VANILLA_ITEM_GLASS_BOTTLE_ID, VANILLA_ITEM_POTION_ID,
+    vanilla_item_type, VanillaItemUseOverride, VANILLA_ITEM_COMPASS_ID,
+    VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE, VANILLA_ITEM_GLASS_BOTTLE_ID, VANILLA_ITEM_POTION_ID,
 };
 use bbb_protocol::menu_types::{
     VANILLA_MENU_TYPE_ANVIL_ID, VANILLA_MENU_TYPE_BEACON_ID, VANILLA_MENU_TYPE_BLAST_FURNACE_ID,
@@ -82,6 +83,7 @@ mod use_prediction;
 pub use use_prediction::{
     LocalInteractionResult, LocalInteractionSoundAction, LocalInteractionSuccess,
     LocalInteractionSwingSource, LocalItemUsePrediction, LocalTargetUsePrediction,
+    LocalUsingItemTickActions,
 };
 #[cfg(test)]
 mod tests;
@@ -1119,6 +1121,74 @@ impl InventoryState {
             }
         }
         applied
+    }
+
+    /// Applies the client-side half of `BundleContents.Mutable.removeOne`.
+    ///
+    /// `BundleContents` defaults to empty, so a non-empty value must be an
+    /// explicit stack patch. The transient selected index is kept beside the
+    /// inventory slot because vanilla's bundle stream codec does not serialize
+    /// it. Removing an invalid selection falls back to the first entry and
+    /// always clears the selection.
+    pub(crate) fn remove_one_local_bundle_item(
+        &mut self,
+        selected_hotbar_slot: u8,
+        hand: InteractionHand,
+    ) -> bool {
+        let slot_id = match hand {
+            InteractionHand::MainHand => {
+                if selected_hotbar_slot > 8 {
+                    return false;
+                }
+                i32::from(selected_hotbar_slot)
+            }
+            InteractionHand::OffHand => VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+        };
+        let mut slot = self.player_inventory_slot(slot_id);
+        if !slot.item.item_id.is_some_and(|item_id| {
+            vanilla_item_type(item_id).and_then(|item_type| item_type.use_override)
+                == Some(VanillaItemUseOverride::BundleItem)
+        }) || slot
+            .item
+            .component_patch
+            .removed_type_ids
+            .contains(&VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID)
+            || !slot
+                .item
+                .component_patch
+                .added_type_ids
+                .contains(&VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID)
+        {
+            return false;
+        }
+
+        let patch = &mut slot.item.component_patch;
+        let Some(item_count) = patch.bundle_contents_item_count else {
+            return false;
+        };
+        if item_count == 0
+            || item_count != patch.bundle_contents_items.len()
+            || patch.bundle_contents_items.is_empty()
+        {
+            return false;
+        }
+        let selected = usize::try_from(slot.local_selected_bundle_item_index)
+            .ok()
+            .filter(|selected| *selected < item_count)
+            .unwrap_or(0);
+        patch.bundle_contents_items.remove(selected);
+        if patch.bundle_contents_items.is_empty() {
+            patch
+                .added_type_ids
+                .retain(|type_id| *type_id != VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID);
+            patch.added = patch.added_type_ids.len();
+            patch.bundle_contents_item_count = None;
+        } else {
+            patch.bundle_contents_item_count = Some(patch.bundle_contents_items.len());
+        }
+        slot.local_selected_bundle_item_index = NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX;
+        self.set_player_inventory_slot_and_menu_slot(slot);
+        true
     }
 
     pub(crate) fn local_item_use_prefers_offhand(&self, ctx: InventoryCtx<'_>) -> bool {

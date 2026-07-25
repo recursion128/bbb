@@ -328,6 +328,33 @@ pub(crate) fn advance_using_item_at_partial_tick_with_effects(
     }
 }
 
+pub(crate) fn advance_local_using_item_ticks_with_effects(
+    world: &mut WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    use_ticks: u32,
+    level_random: &mut LevelEventSoundRandomState,
+    audio_events: &mut Option<&mut dyn AudioEventSink>,
+) {
+    let actions = world.advance_local_using_item_ticks_with_actions(use_ticks);
+    flush_local_interaction_sound_actions(world, level_random, audio_events);
+    for _ in 0..actions.bundle_drops {
+        apply_local_interaction_sound_action(
+            world,
+            bbb_world::LocalInteractionSoundAction::BundleRemoveOne,
+            level_random,
+            audio_events,
+        );
+        queue_swing_command(world, counters, net_commands, InteractionHand::MainHand);
+        apply_local_interaction_sound_action(
+            world,
+            bbb_world::LocalInteractionSoundAction::SuppressedBundleDropContents,
+            level_random,
+            audio_events,
+        );
+    }
+}
+
 #[cfg(test)]
 pub(super) fn start_use_item(
     input: &mut ClientInputState,
@@ -983,7 +1010,8 @@ mod tests {
     use bbb_protocol::block_types::VANILLA_BLOCK_DIRT_ID;
     use bbb_protocol::builtin_enum_component_values::VANILLA_DYE_COLOR_RED_ID;
     use bbb_protocol::data_component_types::{
-        VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID, VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID, VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID,
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
         VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID, VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
         VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
@@ -997,21 +1025,23 @@ mod tests {
     };
     use bbb_protocol::item_types::{
         VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_ARROW_ID, VANILLA_ITEM_BONE_MEAL_ID,
-        VANILLA_ITEM_BOW_ID, VANILLA_ITEM_BRUSH_ID, VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID,
-        VANILLA_ITEM_COMPASS_ID, VANILLA_ITEM_ENDER_PEARL_ID, VANILLA_ITEM_FIREWORK_ROCKET_ID,
-        VANILLA_ITEM_FIRE_CHARGE_ID, VANILLA_ITEM_FLINT_AND_STEEL_ID, VANILLA_ITEM_GLASS_BOTTLE_ID,
-        VANILLA_ITEM_GOAT_HORN_ID, VANILLA_ITEM_POTION_ID, VANILLA_ITEM_RED_DYE_ID,
-        VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_SPYGLASS_ID, VANILLA_ITEM_STONE_ID,
+        VANILLA_ITEM_BOW_ID, VANILLA_ITEM_BRUSH_ID, VANILLA_ITEM_BUNDLE_ID,
+        VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID, VANILLA_ITEM_COMPASS_ID, VANILLA_ITEM_ENDER_PEARL_ID,
+        VANILLA_ITEM_FIREWORK_ROCKET_ID, VANILLA_ITEM_FIRE_CHARGE_ID,
+        VANILLA_ITEM_FLINT_AND_STEEL_ID, VANILLA_ITEM_GLASS_BOTTLE_ID, VANILLA_ITEM_GOAT_HORN_ID,
+        VANILLA_ITEM_POTION_ID, VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_SHIELD_ID,
+        VANILLA_ITEM_SPYGLASS_ID, VANILLA_ITEM_STONE_ID,
     };
     use bbb_protocol::packets::{
         AddEntity, AdventureModePredicateDataSummary, AdventureModePredicateSummary, AttackEntity,
         AttackRangeSummary, BlockEntityData, BlockHitResult as ProtocolBlockHitResult,
         BlockHolderSetSummary, BlockPos as ProtocolBlockPos, BlockPredicateSummary, BlockUpdate,
-        CommonPlayerSpawnInfo, ConsumableSummary, EntityEvent as ProtocolEntityEvent,
-        EquippableSummary, GameEvent as ProtocolGameEvent, InitializeBorder, InstrumentSummary,
-        InteractEntity, ItemStackSummary as ProtocolItemStackSummary, LodestoneTargetSummary,
-        OpenSignEditor, PickItemFromBlock, PickItemFromEntity, PlayLogin, PlayerAbilities,
-        PlayerAction, PlayerHealth, RegistryTags, RemoveEntities, SetPassengers,
+        CommonPlayerSpawnInfo, ConsumableSummary, DataComponentPatchSummary,
+        EntityEvent as ProtocolEntityEvent, EquippableSummary, GameEvent as ProtocolGameEvent,
+        InitializeBorder, InstrumentSummary, InteractEntity,
+        ItemStackSummary as ProtocolItemStackSummary, ItemStackTemplateSummary,
+        LodestoneTargetSummary, OpenSignEditor, PickItemFromBlock, PickItemFromEntity, PlayLogin,
+        PlayerAbilities, PlayerAction, PlayerHealth, RegistryTags, RemoveEntities, SetPassengers,
         SetPlayerInventory as ProtocolSetPlayerInventory, SoundEventSummary, TagNetworkPayload,
         ToolSummary, UpdateTags, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
     };
@@ -1742,6 +1772,129 @@ mod tests {
         assert!(audio.positioned_sounds.is_empty());
         assert!(audio.entity_sounds.is_empty());
         assert_eq!(random.next_float(), expected_random.next_float());
+        assert_eq!(world.next_sound_seed(), expected_next_seed);
+    }
+
+    #[test]
+    fn offhand_bundle_use_tick_drops_content_with_main_hand_swing_and_ordered_sound_random() {
+        let (tx, mut rx) = mpsc::channel(3);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        let position = ProtocolVec3d {
+            x: 1.5,
+            y: 64.0,
+            z: -2.25,
+        };
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position,
+            y_rot: 20.0,
+            x_rot: -10.0,
+            ..LocalPlayerPoseState::default()
+        });
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+            item: ProtocolItemStackSummary {
+                item_id: Some(VANILLA_ITEM_BUNDLE_ID),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    added: 1,
+                    added_type_ids: vec![VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID],
+                    bundle_contents_items: vec![ItemStackTemplateSummary {
+                        item_id: VANILLA_ITEM_STONE_ID,
+                        count: 3,
+                        component_patch: DataComponentPatchSummary::default(),
+                    }],
+                    bundle_contents_item_count: Some(1),
+                    ..DataComponentPatchSummary::default()
+                },
+            },
+        });
+        let mut counters = NetCounters::default();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+        let expected_pitch = 0.8 + expected_random.next_float() * 0.4;
+        let _discarded_drop_pitch = 0.8 + expected_random.next_float() * 0.4;
+        let expected_next_random = expected_random.next_float();
+        let mut expected_seed_world = WorldStore::new();
+        let expected_sound_seed = expected_seed_world.next_sound_seed();
+        let _discarded_drop_seed = expected_seed_world.next_sound_seed();
+        let expected_next_seed = expected_seed_world.next_sound_seed();
+        let mut audio = RecordingAudioSink::default();
+        let mut audio_events = Some(&mut audio as &mut dyn crate::audio_runtime::AudioEventSink);
+
+        handle_mouse_input_at_partial_tick_with_effects(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+            1.0,
+            &mut random,
+            &mut audio_events,
+        );
+        assert!(world.local_player().interaction.using_item);
+        assert_eq!(
+            world.local_player().interaction.using_item_hand,
+            Some(InteractionHand::OffHand)
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::UseItem(UseItemCommand {
+                packet: UseItem {
+                    hand: InteractionHand::OffHand,
+                    sequence: 1,
+                    y_rot: 20.0,
+                    x_rot: -10.0,
+                },
+                selected_hotbar_slot: 0,
+            })
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::OffHand)
+        );
+
+        advance_local_using_item_ticks_with_effects(
+            &mut world,
+            &mut counters,
+            &commands,
+            1,
+            &mut random,
+            &mut audio_events,
+        );
+        drop(audio_events);
+
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
+        assert!(rx.try_recv().is_err());
+        assert_eq!(counters.use_item_commands_queued, 1);
+        assert_eq!(counters.swing_commands_queued, 2);
+        assert_eq!(world.local_player().interaction.using_item_ticks, 1);
+        let bundle = world
+            .local_item_in_hand(InteractionHand::OffHand)
+            .expect("offhand bundle");
+        assert_eq!(bundle.component_patch.bundle_contents_item_count, None);
+        assert!(bundle.component_patch.bundle_contents_items.is_empty());
+        assert!(!bundle
+            .component_patch
+            .added_type_ids
+            .contains(&VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID));
+        assert_eq!(audio.positioned_sounds.len(), 1);
+        assert_eq!(
+            audio.positioned_sounds[0].sound.location.as_deref(),
+            Some("minecraft:item.bundle.remove_one")
+        );
+        assert_eq!(audio.positioned_sounds[0].source, "player");
+        assert_eq!(audio.positioned_sounds[0].position, position);
+        assert_eq!(audio.positioned_sounds[0].volume, 0.8);
+        assert_eq!(audio.positioned_sounds[0].pitch, expected_pitch);
+        assert_eq!(audio.positioned_sounds[0].seed, expected_sound_seed);
+        assert!(audio.entity_sounds.is_empty());
+        assert_eq!(random.next_float(), expected_next_random);
         assert_eq!(world.next_sound_seed(), expected_next_seed);
     }
 

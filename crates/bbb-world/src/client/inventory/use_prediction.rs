@@ -50,6 +50,7 @@ use bbb_protocol::{
 };
 
 mod bone_meal;
+mod bundle;
 mod equippable;
 mod ignition;
 mod instrument;
@@ -122,6 +123,8 @@ pub enum LocalInteractionSwingSource {
 pub enum LocalInteractionSoundAction {
     FlintAndSteelUse { pos: BlockPos },
     InstrumentUse { hand: InteractionHand },
+    BundleRemoveOne,
+    SuppressedBundleDropContents,
     SpyglassUse,
     SpyglassStopUsing,
     SuppressedBowRelease { power_bits: u32 },
@@ -169,6 +172,11 @@ pub enum LocalTargetUsePrediction {
     UnknownBlockType(Option<i32>),
     UnknownEntityType(Option<i32>),
     UnknownItemType(Option<i32>),
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct LocalUsingItemTickActions {
+    pub bundle_drops: u32,
 }
 
 impl LocalInteractionSuccess {
@@ -303,6 +311,16 @@ impl LocalInteractionSuccess {
             sound_action: Some(LocalInteractionSoundAction::SpyglassUse),
         }
     }
+
+    const fn bundle_use() -> Self {
+        Self {
+            swing_source: LocalInteractionSwingSource::Client,
+            was_item_interaction: true,
+            starts_using_item: true,
+            extra_swing: None,
+            sound_action: None,
+        }
+    }
 }
 
 impl WorldStore {
@@ -328,6 +346,9 @@ impl WorldStore {
                     self.predict_local_instrument_item_use(hand, &stack)
                 }
                 VanillaItemUseOverride::BowItem => self.predict_local_bow_item_use(),
+                VanillaItemUseOverride::BundleItem => LocalItemUsePrediction::Result(
+                    LocalInteractionResult::Success(LocalInteractionSuccess::bundle_use()),
+                ),
                 VanillaItemUseOverride::SpyglassItem => LocalItemUsePrediction::Result(
                     LocalInteractionResult::Success(LocalInteractionSuccess::spyglass_use()),
                 ),
