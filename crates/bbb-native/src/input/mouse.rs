@@ -616,6 +616,9 @@ fn apply_local_interaction_sound_action(
         return;
     };
     match effect {
+        LocalInteractionSoundEffect::Local(state) => {
+            audio_events.play_local_sound(&state);
+        }
         LocalInteractionSoundEffect::Positioned(state) => {
             audio_events.play_positioned_sound(&state);
         }

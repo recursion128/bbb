@@ -3,8 +3,10 @@ use crate::entities::{
     vanilla_entity_metadata_baby_accessor_for_entity_type, VANILLA_ENTITY_TYPE_DONKEY_ID,
     VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_LLAMA_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
 };
+use crate::{LevelEventSoundRandomState, LocalInteractionSoundEffect};
 use bbb_pack::RegistryDependentItemComponentInitializer;
 use bbb_protocol::data_component_types::{
+    VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
     VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_LOCK_TYPE_ID,
     VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
@@ -12,6 +14,7 @@ use bbb_protocol::data_component_types::{
 use bbb_protocol::item_types::VANILLA_ITEM_ELYTRA_ID;
 use bbb_protocol::menu_types::{
     VANILLA_MENU_TYPES, VANILLA_MENU_TYPE_GENERIC_9X2_ID, VANILLA_MENU_TYPE_GENERIC_9X3_ID,
+    VANILLA_MENU_TYPE_LECTERN_ID,
 };
 use bbb_protocol::packets::{
     AddEntity as ProtocolAddEntity, CraftingRecipeDisplaySummary,
@@ -5407,6 +5410,270 @@ fn loom_selectable_patterns_honor_effective_defaults_overrides_and_removals() {
         .push(VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID);
     open_loom_with_pattern_stack(&mut store, removed);
     assert_eq!(store.loom_selectable_banner_pattern_ids(), Some(Vec::new()));
+}
+
+#[test]
+fn local_container_button_click_reproduces_loom_result_and_ui_sound() {
+    let mut store = WorldStore::new();
+    install_loom_banner_pattern_registry(&mut store);
+    store.apply_open_screen(ProtocolOpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_LOOM_ID,
+        title: "Loom".to_string(),
+        title_styled: Vec::new(),
+    });
+    let mut banner = item_stack(42, 3);
+    banner.component_patch.added = 1;
+    banner
+        .component_patch
+        .added_type_ids
+        .push(VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID);
+    banner.component_patch.banner_pattern_layers.push(
+        bbb_protocol::packets::BannerPatternLayerSummary {
+            registry_id: Some(1),
+            asset_id: None,
+            translation_key: None,
+            color_id: 4,
+        },
+    );
+    let mut dye = item_stack(43, 2);
+    dye.component_patch.added = 1;
+    dye.component_patch
+        .added_type_ids
+        .push(VANILLA_DATA_COMPONENT_DYE_TYPE_ID);
+    dye.component_patch.dye_color_id = Some(14);
+    let mut items = vec![ProtocolItemStackSummary::empty(); LOOM_TOTAL_SLOT_COUNT as usize];
+    items[LOOM_BANNER_SLOT as usize] = banner.clone();
+    items[LOOM_DYE_SLOT as usize] = dye;
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: 7,
+        state_id: 13,
+        items,
+        carried_item: ProtocolItemStackSummary::empty(),
+    });
+    store.apply_container_set_data(ProtocolContainerSetData {
+        container_id: 7,
+        id: 0,
+        value: -1,
+    });
+
+    assert_eq!(store.apply_local_container_button_click(1), Some(7));
+    assert_eq!(store.open_container_data_value(0), Some(1));
+    let result = open_container_slot_item(&store, LOOM_RESULT_SLOT);
+    assert_eq!(result.item_id, banner.item_id);
+    assert_eq!(result.count, 1);
+    assert_eq!(
+        result.component_patch.banner_pattern_layers,
+        vec![
+            bbb_protocol::packets::BannerPatternLayerSummary {
+                registry_id: Some(1),
+                asset_id: None,
+                translation_key: None,
+                color_id: 4,
+            },
+            bbb_protocol::packets::BannerPatternLayerSummary {
+                registry_id: Some(0),
+                asset_id: None,
+                translation_key: None,
+                color_id: 14,
+            },
+        ]
+    );
+    assert_eq!(
+        store.take_pending_local_interaction_sound_actions(),
+        vec![LocalInteractionSoundAction::LoomSelectPattern]
+    );
+
+    let effect = store
+        .apply_local_interaction_sound_action(
+            LocalInteractionSoundAction::LoomSelectPattern,
+            &mut LevelEventSoundRandomState::default(),
+        )
+        .unwrap();
+    let LocalInteractionSoundEffect::Local(sound) = effect else {
+        panic!("loom selection must be a non-attenuated UI sound");
+    };
+    assert_eq!(
+        sound.sound.location.as_deref(),
+        Some("minecraft:ui.loom.select_pattern")
+    );
+    assert_eq!(sound.source, "ui");
+    assert_eq!(sound.volume, 0.25);
+    assert_eq!(sound.pitch, 1.0);
+}
+
+#[test]
+fn local_container_button_click_rejects_loom_screen_at_six_pattern_limit() {
+    let mut store = WorldStore::new();
+    install_loom_banner_pattern_registry(&mut store);
+    store.apply_open_screen(ProtocolOpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_LOOM_ID,
+        title: "Loom".to_string(),
+        title_styled: Vec::new(),
+    });
+    let mut banner = item_stack(42, 1);
+    banner.component_patch.added = 1;
+    banner
+        .component_patch
+        .added_type_ids
+        .push(VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID);
+    banner.component_patch.banner_pattern_layers =
+        vec![bbb_protocol::packets::BannerPatternLayerSummary::default(); 6];
+    let mut dye = item_stack(43, 1);
+    dye.component_patch.added = 1;
+    dye.component_patch
+        .added_type_ids
+        .push(VANILLA_DATA_COMPONENT_DYE_TYPE_ID);
+    dye.component_patch.dye_color_id = Some(14);
+    let mut items = vec![ProtocolItemStackSummary::empty(); LOOM_TOTAL_SLOT_COUNT as usize];
+    items[LOOM_BANNER_SLOT as usize] = banner;
+    items[LOOM_DYE_SLOT as usize] = dye;
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: 7,
+        state_id: 13,
+        items,
+        carried_item: ProtocolItemStackSummary::empty(),
+    });
+
+    assert_eq!(store.apply_local_container_button_click(0), None);
+    assert!(store
+        .take_pending_local_interaction_sound_actions()
+        .is_empty());
+}
+
+#[test]
+fn local_container_button_click_matches_stonecutter_client_recipe_projection() {
+    let mut store = WorldStore::new();
+    store.apply_update_recipes(update_stonecutter_recipes(vec![
+        stonecutter_recipe(vec![42]),
+        stonecutter_recipe(vec![42, 43]),
+    ]));
+    store.apply_open_screen(ProtocolOpenScreen {
+        container_id: 8,
+        menu_type_id: VANILLA_MENU_TYPE_STONECUTTER_ID,
+        title: "Stonecutter".to_string(),
+        title_styled: Vec::new(),
+    });
+    let mut items = vec![ProtocolItemStackSummary::empty(); STONECUTTER_TOTAL_SLOT_COUNT as usize];
+    items[STONECUTTER_INPUT_SLOT as usize] = item_stack(42, 4);
+    items[STONECUTTER_RESULT_SLOT as usize] = item_stack(99, 1);
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: 8,
+        state_id: 14,
+        items,
+        carried_item: ProtocolItemStackSummary::empty(),
+    });
+    store.apply_container_set_data(ProtocolContainerSetData {
+        container_id: 8,
+        id: 0,
+        value: -1,
+    });
+
+    assert_eq!(store.stonecutter_visible_recipe_count(), Some(2));
+    assert_eq!(store.apply_local_container_button_click(1), Some(8));
+    assert_eq!(store.open_container_data_value(0), Some(1));
+    assert_eq!(
+        open_container_slot_item(&store, STONECUTTER_RESULT_SLOT),
+        ProtocolItemStackSummary::empty()
+    );
+    assert_eq!(store.apply_local_container_button_click(1), None);
+    assert_eq!(
+        store.take_pending_local_interaction_sound_actions(),
+        vec![LocalInteractionSoundAction::StonecutterSelectRecipe]
+    );
+
+    // Vanilla returns true for a non-selected id outside recipesForInput,
+    // leaving selection/result untouched while still playing and sending.
+    assert_eq!(store.apply_local_container_button_click(11), Some(8));
+    assert_eq!(store.open_container_data_value(0), Some(1));
+    assert_eq!(
+        store.take_pending_local_interaction_sound_actions(),
+        vec![LocalInteractionSoundAction::StonecutterSelectRecipe]
+    );
+}
+
+#[test]
+fn local_container_button_click_enforces_enchantment_client_eligibility_only() {
+    let mut store = WorldStore::new();
+    store.apply_open_screen(ProtocolOpenScreen {
+        container_id: 9,
+        menu_type_id: VANILLA_MENU_TYPE_ENCHANTMENT_ID,
+        title: "Enchant".to_string(),
+        title_styled: Vec::new(),
+    });
+    let mut items = vec![ProtocolItemStackSummary::empty(); ENCHANTMENT_TOTAL_SLOT_COUNT as usize];
+    items[ENCHANTMENT_INPUT_SLOT as usize] = item_stack(42, 1);
+    items[ENCHANTMENT_LAPIS_SLOT as usize] = item_stack(43, 2);
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: 9,
+        state_id: 15,
+        items: items.clone(),
+        carried_item: ProtocolItemStackSummary::empty(),
+    });
+    store.apply_container_set_data(ProtocolContainerSetData {
+        container_id: 9,
+        id: 1,
+        value: 12,
+    });
+    store.apply_player_experience(ProtocolPlayerExperience {
+        progress: 0.5,
+        level: 30,
+        total: 200,
+    });
+
+    assert_eq!(store.apply_local_container_button_click(1), Some(9));
+    assert_eq!(
+        open_container_slot_item(&store, ENCHANTMENT_INPUT_SLOT),
+        items[ENCHANTMENT_INPUT_SLOT as usize]
+    );
+    assert_eq!(
+        open_container_slot_item(&store, ENCHANTMENT_LAPIS_SLOT),
+        items[ENCHANTMENT_LAPIS_SLOT as usize]
+    );
+    assert_eq!(store.local_player().experience.unwrap().level, 30);
+    assert_eq!(store.apply_local_container_button_click(2), None);
+
+    apply_player_instabuild(&mut store, true);
+    store.apply_container_set_data(ProtocolContainerSetData {
+        container_id: 9,
+        id: 2,
+        value: 18,
+    });
+    assert_eq!(store.apply_local_container_button_click(2), Some(9));
+}
+
+#[test]
+fn local_container_button_click_keeps_lectern_state_server_owned() {
+    let mut store = WorldStore::new();
+    store.apply_open_screen(ProtocolOpenScreen {
+        container_id: 10,
+        menu_type_id: VANILLA_MENU_TYPE_LECTERN_ID,
+        title: "Lectern".to_string(),
+        title_styled: Vec::new(),
+    });
+    let mut items = vec![ProtocolItemStackSummary::empty(); 1];
+    items[0] = item_stack(42, 1);
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: 10,
+        state_id: 16,
+        items,
+        carried_item: ProtocolItemStackSummary::empty(),
+    });
+    store.apply_container_set_data(ProtocolContainerSetData {
+        container_id: 10,
+        id: 0,
+        value: 4,
+    });
+
+    assert_eq!(store.apply_local_container_button_click(2), Some(10));
+    assert_eq!(store.open_container_data_value(0), Some(4));
+    assert_eq!(store.apply_local_container_button_click(3), Some(10));
+    assert_eq!(
+        open_container_slot_item(&store, 0),
+        item_stack(42, 1),
+        "LecternScreen does not invoke its local menu before sending"
+    );
 }
 
 #[test]

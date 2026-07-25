@@ -131,6 +131,8 @@ pub enum LocalInteractionSwingSource {
 pub enum LocalInteractionSoundAction {
     FlintAndSteelUse { pos: BlockPos },
     InstrumentUse { hand: InteractionHand },
+    LoomSelectPattern,
+    StonecutterSelectRecipe,
     BundleRemoveOne,
     SuppressedBundleDropContents,
     SuppressedFishingRodUse { retrieving: bool },

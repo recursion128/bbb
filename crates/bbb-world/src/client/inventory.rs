@@ -73,6 +73,7 @@ use crate::{
     WorldCounters, WorldStore, BANNER_PATTERN_REGISTRY,
 };
 
+mod container_button;
 mod crafting;
 mod grindstone;
 mod merchant;

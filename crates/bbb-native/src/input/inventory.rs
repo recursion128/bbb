@@ -2,6 +2,10 @@ use std::time::{Duration, Instant};
 
 use bbb_control::NetCounters;
 use bbb_net::NetCommand;
+use bbb_protocol::data_component_types::{
+    VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
+    VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
+};
 use bbb_protocol::menu_types::{
     VANILLA_MENU_TYPE_ANVIL_ID, VANILLA_MENU_TYPE_BEACON_ID, VANILLA_MENU_TYPE_BLAST_FURNACE_ID,
     VANILLA_MENU_TYPE_BREWING_STAND_ID, VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
@@ -1031,12 +1035,7 @@ fn maybe_queue_lectern_button_click(
     match target {
         LecternClickTarget::Done => queue_container_close_command(counters, world, net_commands),
         LecternClickTarget::MenuButton(button_id) => {
-            let Some(container_id) = world
-                .inventory()
-                .open_container
-                .as_ref()
-                .map(|container| container.container_id)
-            else {
+            let Some(container_id) = world.apply_local_container_button_click(button_id) else {
                 return false;
             };
             queue_container_button_click_command(counters, net_commands, container_id, button_id);
@@ -1108,7 +1107,7 @@ fn maybe_queue_merchant_trade_click(
 }
 
 fn maybe_queue_enchantment_button_click(
-    world: &WorldStore,
+    world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     cursor_position: Option<PhysicalPosition<f64>>,
@@ -1118,19 +1117,7 @@ fn maybe_queue_enchantment_button_click(
     else {
         return false;
     };
-    if world
-        .open_container_data_value(button_id as i16)
-        .unwrap_or_default()
-        <= 0
-    {
-        return false;
-    }
-    let Some(container_id) = world
-        .inventory()
-        .open_container
-        .as_ref()
-        .map(|container| container.container_id)
-    else {
+    let Some(container_id) = world.apply_local_container_button_click(button_id) else {
         return false;
     };
     queue_container_button_click_command(counters, net_commands, container_id, button_id);
@@ -1139,7 +1126,7 @@ fn maybe_queue_enchantment_button_click(
 
 fn maybe_queue_loom_pattern_click(
     input: &mut ClientInputState,
-    world: &WorldStore,
+    world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     cursor_position: Option<PhysicalPosition<f64>>,
@@ -1152,12 +1139,7 @@ fn maybe_queue_loom_pattern_click(
     else {
         return false;
     };
-    let Some(container_id) = world
-        .inventory()
-        .open_container
-        .as_ref()
-        .map(|container| container.container_id)
-    else {
+    let Some(container_id) = world.apply_local_container_button_click(button_id) else {
         return false;
     };
     input.loom_selected_pattern_index = Some(button_id);
@@ -1168,7 +1150,7 @@ fn maybe_queue_loom_pattern_click(
 
 fn maybe_queue_stonecutter_recipe_click(
     input: &mut ClientInputState,
-    world: &WorldStore,
+    world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     cursor_position: Option<PhysicalPosition<f64>>,
@@ -1181,17 +1163,7 @@ fn maybe_queue_stonecutter_recipe_click(
     else {
         return false;
     };
-    if world.open_container_data_value(STONECUTTER_SELECTED_RECIPE_DATA_ID)
-        == Some(button_id as i16)
-    {
-        return false;
-    }
-    let Some(container_id) = world
-        .inventory()
-        .open_container
-        .as_ref()
-        .map(|container| container.container_id)
-    else {
+    let Some(container_id) = world.apply_local_container_button_click(button_id) else {
         return false;
     };
     queue_container_button_click_command(counters, net_commands, container_id, button_id);
@@ -3046,15 +3018,21 @@ fn lectern_button_at_position(
     if y >= f64::from(LECTERN_MENU_BUTTON_Y)
         && y < f64::from(LECTERN_MENU_BUTTON_Y + LECTERN_MENU_BUTTON_HEIGHT)
     {
-        if x >= f64::from(LECTERN_MENU_DONE_BUTTON_X)
-            && x < f64::from(LECTERN_MENU_DONE_BUTTON_X + LECTERN_MENU_BUTTON_WIDTH)
+        if local_player_may_build(world) {
+            if x >= f64::from(LECTERN_MENU_DONE_BUTTON_X)
+                && x < f64::from(LECTERN_MENU_DONE_BUTTON_X + LECTERN_MENU_BUTTON_WIDTH)
+            {
+                return Some(LecternClickTarget::Done);
+            }
+            if x >= f64::from(LECTERN_MENU_TAKE_BOOK_BUTTON_X)
+                && x < f64::from(LECTERN_MENU_TAKE_BOOK_BUTTON_X + LECTERN_MENU_BUTTON_WIDTH)
+            {
+                return Some(LecternClickTarget::MenuButton(LECTERN_BUTTON_TAKE_BOOK));
+            }
+        } else if x >= f64::from(LECTERN_MENU_DONE_BUTTON_X)
+            && x < f64::from(LECTERN_MENU_DONE_BUTTON_X + 200)
         {
             return Some(LecternClickTarget::Done);
-        }
-        if x >= f64::from(LECTERN_MENU_TAKE_BOOK_BUTTON_X)
-            && x < f64::from(LECTERN_MENU_TAKE_BOOK_BUTTON_X + LECTERN_MENU_BUTTON_WIDTH)
-        {
-            return Some(LecternClickTarget::MenuButton(LECTERN_BUTTON_TAKE_BOOK));
         }
         return None;
     }
@@ -3063,17 +3041,60 @@ fn lectern_button_at_position(
     {
         return None;
     }
-    if x >= f64::from(LECTERN_PAGE_BACK_BUTTON_X)
+    let (current_page, page_count) = lectern_page_state(world)?;
+    if current_page > 0
+        && x >= f64::from(LECTERN_PAGE_BACK_BUTTON_X)
         && x < f64::from(LECTERN_PAGE_BACK_BUTTON_X + LECTERN_PAGE_BUTTON_WIDTH)
     {
         return Some(LecternClickTarget::MenuButton(LECTERN_BUTTON_PREV_PAGE));
     }
-    if x >= f64::from(LECTERN_PAGE_FORWARD_BUTTON_X)
+    if current_page + 1 < page_count
+        && x >= f64::from(LECTERN_PAGE_FORWARD_BUTTON_X)
         && x < f64::from(LECTERN_PAGE_FORWARD_BUTTON_X + LECTERN_PAGE_BUTTON_WIDTH)
     {
         return Some(LecternClickTarget::MenuButton(LECTERN_BUTTON_NEXT_PAGE));
     }
     None
+}
+
+fn local_player_may_build(world: &WorldStore) -> bool {
+    !world.local_player_is_adventure() && !world.local_player_is_spectator()
+}
+
+fn lectern_page_state(world: &WorldStore) -> Option<(usize, usize)> {
+    let container = world
+        .inventory()
+        .open_container
+        .as_ref()
+        .filter(|container| container.menu_type_id == Some(VANILLA_MENU_TYPE_LECTERN_ID))?;
+    let book = container
+        .slots
+        .iter()
+        .find(|slot| slot.slot == 0)
+        .map(|slot| &slot.item)?;
+    let page_count = if world.item_stack_has_effective_component(
+        book,
+        VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
+    ) {
+        book.component_patch
+            .written_book
+            .as_ref()
+            .map(|book| book.pages.len())
+            .unwrap_or_default()
+    } else if world.item_stack_has_effective_component(
+        book,
+        VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
+    ) {
+        book.component_patch.writable_book_pages.len()
+    } else {
+        0
+    };
+    let current_page = world
+        .open_container_data_value(0)
+        .map(i32::from)
+        .unwrap_or_default()
+        .clamp(0, page_count.saturating_sub(1) as i32) as usize;
+    Some((current_page, page_count))
 }
 
 fn beacon_button_at_position(
@@ -3265,20 +3286,7 @@ fn update_stonecutter_recipe_scroll_from_cursor(
 }
 
 fn stonecutter_visible_recipe_count(world: &WorldStore) -> Option<i32> {
-    let input_item_id = stonecutter_input_item_id(world)?;
-    Some(stonecutter_visible_recipe_count_for_input(
-        world,
-        input_item_id,
-    ))
-}
-
-fn stonecutter_visible_recipe_count_for_input(world: &WorldStore, input_item_id: i32) -> i32 {
-    world
-        .recipes()
-        .stonecutter_recipes
-        .iter()
-        .filter(|recipe| recipe.input.item_ids.contains(&input_item_id))
-        .count() as i32
+    i32::try_from(world.stonecutter_visible_recipe_count()?).ok()
 }
 
 fn stonecutter_recipe_max_scroll_row(world: &WorldStore) -> Option<i32> {

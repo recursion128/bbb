@@ -29,7 +29,7 @@ use crate::{
     code_of_conduct::CodeOfConductAcceptance,
     code_of_conduct_overlay::{CodeOfConductOverlayProjection, CodeOfConductOverlayState},
     input::{
-        death_screen::DeathScreenPlatformRequest,
+        death_screen::DeathScreenPlatformRequest, flush_local_interaction_sound_actions,
         game_event_screen::GameEventScreenPlatformRequest, handle_advancements_screen_cursor_moved,
         handle_advancements_screen_mouse_input, handle_advancements_screen_mouse_wheel,
         handle_focus_change, handle_inventory_cursor_moved,
@@ -1410,6 +1410,11 @@ impl SimulationInputRuntime {
                 state,
                 self.cursor_position,
                 self.surface_size,
+            );
+            flush_local_interaction_sound_actions(
+                context.world,
+                context.level_random,
+                context.audio_events,
             );
             return;
         }

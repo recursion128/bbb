@@ -307,6 +307,7 @@ pub struct SoundEntityEventState {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum LocalInteractionSoundEffect {
+    Local(LocalSoundEventState),
     Positioned(SoundEventState),
     Entity {
         state: SoundEntityEventState,
@@ -1737,6 +1738,16 @@ impl WorldStore {
                     position: self.local_player_pose().map(|pose| pose.position),
                 });
             }
+            LocalInteractionSoundAction::LoomSelectPattern => {
+                return Some(LocalInteractionSoundEffect::Local(self.record_local_sound(
+                    ui_sound_state("minecraft:ui.loom.select_pattern", 0.25, 1.0),
+                )));
+            }
+            LocalInteractionSoundAction::StonecutterSelectRecipe => {
+                return Some(LocalInteractionSoundEffect::Local(self.record_local_sound(
+                    ui_sound_state("minecraft:ui.stonecutter.select_recipe", 0.25, 1.0),
+                )));
+            }
             LocalInteractionSoundAction::BundleRemoveOne => {
                 let position = self.local_player_pose()?.position;
                 let mut state = local_player_sound_state(
@@ -2734,6 +2745,23 @@ fn local_player_sound_state(
         pitch,
         seed: 0,
         distance_delay: false,
+    }
+}
+
+fn ui_sound_state(sound: &str, volume: f32, pitch: f32) -> LocalSoundEventState {
+    LocalSoundEventState {
+        sound: SoundHolderState {
+            kind: "direct".to_string(),
+            registry_id: None,
+            location: Some(sound.to_string()),
+            fixed_range: None,
+        },
+        source: SoundSource::Ui.as_str().to_string(),
+        volume,
+        pitch,
+        // `SimpleSoundInstance.forUI` owns an unseeded random source rather
+        // than advancing ClientLevel's shared sound seed.
+        seed: 0,
     }
 }
 

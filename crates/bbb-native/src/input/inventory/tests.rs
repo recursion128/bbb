@@ -8,12 +8,14 @@ use bbb_protocol::data_component_types::{
 };
 use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_DONKEY_ID;
 use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_NAUTILUS_ID;
+use bbb_protocol::game_event_types::VANILLA_CLIENT_GAME_EVENT_CHANGE_GAME_MODE_ID;
+use bbb_protocol::game_types::VANILLA_GAME_TYPE_ADVENTURE_ID;
 use bbb_protocol::mob_effect_types::{
     VANILLA_MOB_EFFECT_REGENERATION_ID, VANILLA_MOB_EFFECT_SPEED_ID, VANILLA_MOB_EFFECT_STRENGTH_ID,
 };
 use bbb_protocol::packets::{
     AddEntity, ContainerButtonClick, ContainerClick, ContainerCloseRequest, ContainerSetContent,
-    ContainerSetData, ContainerSlotStateChanged, EntityDataValue, EntityDataValueKind,
+    ContainerSetData, ContainerSlotStateChanged, EntityDataValue, EntityDataValueKind, GameEvent,
     HashedComponentPatch, HashedItemStack, HashedStack, IngredientSummary, ItemCostSummary,
     ItemStackSummary, MerchantOffer, MerchantOffers, MountScreenOpen, OpenScreen,
     PlaceRecipeCommand, PlayerAbilities, PlayerExperience, RecipeBookChangeSettingsCommand,
@@ -1919,6 +1921,17 @@ fn lectern_hit_test_uses_book_screen_and_page_buttons() {
         title: "Lectern".to_string(),
         title_styled: Vec::new(),
     });
+    world.apply_container_set_content(ContainerSetContent {
+        container_id: 7,
+        state_id: 12,
+        items: vec![lectern_writable_book(3)],
+        carried_item: ItemStackSummary::empty(),
+    });
+    world.apply_container_set_data(ContainerSetData {
+        container_id: 7,
+        id: 0,
+        value: 1,
+    });
 
     assert_eq!(
         inventory_screen_click_target(&world, Some(PhysicalPosition::new(545.0, 265.0)), size),
@@ -1943,6 +1956,35 @@ fn lectern_hit_test_uses_book_screen_and_page_buttons() {
     assert_eq!(
         lectern_button_at_position(&world, Some(PhysicalPosition::new(660.0, 464.0)), size),
         Some(LecternClickTarget::MenuButton(LECTERN_BUTTON_TAKE_BOOK))
+    );
+
+    world.apply_container_set_data(ContainerSetData {
+        container_id: 7,
+        id: 0,
+        value: 0,
+    });
+    assert_eq!(
+        lectern_button_at_position(&world, Some(PhysicalPosition::new(588.0, 422.0)), size),
+        None
+    );
+    world.apply_container_set_data(ContainerSetData {
+        container_id: 7,
+        id: 0,
+        value: 2,
+    });
+    assert_eq!(
+        lectern_button_at_position(&world, Some(PhysicalPosition::new(661.0, 422.0)), size),
+        None
+    );
+
+    world.apply_game_event(GameEvent {
+        event_id: VANILLA_CLIENT_GAME_EVENT_CHANGE_GAME_MODE_ID,
+        param: VANILLA_GAME_TYPE_ADVENTURE_ID as f32,
+    });
+    assert_eq!(
+        lectern_button_at_position(&world, Some(PhysicalPosition::new(660.0, 464.0)), size),
+        Some(LecternClickTarget::Done),
+        "adventure uses BookViewScreen's single full-width Done button"
     );
 }
 
@@ -2031,6 +2073,14 @@ fn loom_pattern_click_queues_container_button_command() {
     ));
 
     assert_eq!(input.loom_selected_pattern_index(), Some(5));
+    assert_eq!(
+        world.open_container_data_value(LOOM_SELECTED_PATTERN_DATA_ID),
+        Some(5)
+    );
+    assert_eq!(
+        world.take_pending_local_interaction_sound_actions(),
+        vec![bbb_world::LocalInteractionSoundAction::LoomSelectPattern]
+    );
     assert_eq!(counters.container_button_click_commands_queued, 1);
     assert_eq!(counters.container_click_commands_queued, 0);
     assert_eq!(
@@ -2405,6 +2455,14 @@ fn stonecutter_recipe_button_click_queues_container_button_command() {
         PhysicalSize::new(1280, 720),
     ));
 
+    assert_eq!(
+        world.open_container_data_value(STONECUTTER_SELECTED_RECIPE_DATA_ID),
+        Some(5)
+    );
+    assert_eq!(
+        world.take_pending_local_interaction_sound_actions(),
+        vec![bbb_world::LocalInteractionSoundAction::StonecutterSelectRecipe]
+    );
     assert_eq!(counters.container_button_click_commands_queued, 1);
     assert_eq!(counters.container_click_commands_queued, 0);
     assert_eq!(
@@ -2853,16 +2911,24 @@ fn enchantment_table_option_click_queues_button_command_when_cost_is_available()
         title: "Enchanting Table".to_string(),
         title_styled: Vec::new(),
     });
+    let mut items = vec![ItemStackSummary::empty(); 38];
+    items[0] = item_stack(42, 1);
+    items[1] = item_stack(43, 3);
     world.apply_container_set_content(ContainerSetContent {
         container_id: 7,
         state_id: 12,
-        items: vec![ItemStackSummary::empty(); 38],
+        items: items.clone(),
         carried_item: ItemStackSummary::empty(),
     });
     world.apply_container_set_data(ContainerSetData {
         container_id: 7,
         id: 2,
         value: 30,
+    });
+    world.apply_player_experience(PlayerExperience {
+        progress: 0.5,
+        level: 30,
+        total: 200,
     });
 
     assert!(handle_inventory_mouse_input(
@@ -2885,6 +2951,11 @@ fn enchantment_table_option_click_queues_button_command_when_cost_is_available()
         })
     );
     assert_eq!(counters.container_click_commands_queued, 0);
+    assert_eq!(
+        world.inventory().open_container.as_ref().unwrap().slots[0].item,
+        items[0]
+    );
+    assert_eq!(world.local_player().experience.unwrap().level, 30);
 }
 
 #[test]
@@ -3212,6 +3283,17 @@ fn lectern_page_button_click_queues_container_button_command() {
         title: "Lectern".to_string(),
         title_styled: Vec::new(),
     });
+    world.apply_container_set_content(ContainerSetContent {
+        container_id: 7,
+        state_id: 12,
+        items: vec![lectern_writable_book(3)],
+        carried_item: ItemStackSummary::empty(),
+    });
+    world.apply_container_set_data(ContainerSetData {
+        container_id: 7,
+        id: 0,
+        value: 1,
+    });
 
     assert!(handle_inventory_mouse_input(
         &mut input,
@@ -3226,6 +3308,7 @@ fn lectern_page_button_click_queues_container_button_command() {
 
     assert_eq!(counters.container_button_click_commands_queued, 1);
     assert_eq!(counters.container_click_commands_queued, 0);
+    assert_eq!(world.open_container_data_value(0), Some(1));
     assert_eq!(
         rx.try_recv().unwrap(),
         NetCommand::ContainerButtonClick(ContainerButtonClick {
@@ -8201,6 +8284,18 @@ fn item_stack(item_id: i32, count: i32) -> ItemStackSummary {
         count,
         component_patch: Default::default(),
     }
+}
+
+fn lectern_writable_book(page_count: usize) -> ItemStackSummary {
+    let mut book = item_stack(42, 1);
+    book.component_patch.added = 1;
+    book.component_patch
+        .added_type_ids
+        .push(VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID);
+    book.component_patch.writable_book_pages =
+        (0..page_count).map(|page| format!("Page {page}")).collect();
+    book.component_patch.writable_book_page_filters = vec![None; page_count];
+    book
 }
 
 fn crafting_recipe_book_entry(
