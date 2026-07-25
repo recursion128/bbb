@@ -39,6 +39,8 @@ const VANILLA_CAMEL_MOB_INTERACT_OWNER: &str = "net.minecraft.world.entity.anima
 const VANILLA_CAMEL_HUSK_FOOD_TAG: &str = "minecraft:camel_husk_food";
 const VANILLA_CHEST_BOAT_INTERACT_OWNER: &str =
     "net.minecraft.world.entity.vehicle.boat.AbstractChestBoat";
+const VANILLA_CREEPER_MOB_INTERACT_OWNER: &str = "net.minecraft.world.entity.monster.Creeper";
+const VANILLA_CREEPER_IGNITERS_TAG: &str = "minecraft:creeper_igniters";
 const VANILLA_INTERACTION_ENTITY_INTERACT_OWNER: &str = "net.minecraft.world.entity.Interaction";
 const VANILLA_IRON_GOLEM_MOB_INTERACT_OWNER: &str =
     "net.minecraft.world.entity.animal.golem.IronGolem";
@@ -602,6 +604,13 @@ impl WorldStore {
                 held_item_id,
             );
         }
+        if owner == VANILLA_CREEPER_MOB_INTERACT_OWNER {
+            return self.predict_local_tagged_client_success_mob_interact(
+                held_item_id,
+                VANILLA_CREEPER_IGNITERS_TAG,
+                VANILLA_CREEPER_MOB_INTERACT_OWNER,
+            );
+        }
         if owner != VANILLA_MOB_ENTITY_INTERACT_OWNER {
             return LocalTargetUsePrediction::UnsupportedEntityInteract(owner);
         }
@@ -892,6 +901,27 @@ impl WorldStore {
         }
     }
 
+    fn predict_local_tagged_client_success_mob_interact(
+        &self,
+        held_item_id: Option<i32>,
+        item_tag: &'static str,
+        owner: &'static str,
+    ) -> LocalTargetUsePrediction {
+        let Some(item_id) = held_item_id else {
+            return LocalTargetUsePrediction::Result(LocalInteractionResult::Pass);
+        };
+        let Some(item_ids) = self.registry_holder_ids_for_tag("minecraft:item", item_tag) else {
+            return LocalTargetUsePrediction::UnsupportedEntityInteract(owner);
+        };
+        if item_ids.contains(&item_id) {
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction(),
+            ))
+        } else {
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        }
+    }
+
     fn predict_local_base_entity_interact(
         &self,
         entity_id: i32,
@@ -982,13 +1012,14 @@ mod tests {
             VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
             VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
             VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_COW_ID,
-            VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
-            VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
-            VANILLA_ENTITY_TYPE_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_LEASH_KNOT_ID,
-            VANILLA_ENTITY_TYPE_MANNEQUIN_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
-            VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
-            VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
-            VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+            VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
+            VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
+            VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_ITEM_FRAME_ID,
+            VANILLA_ENTITY_TYPE_LEASH_KNOT_ID, VANILLA_ENTITY_TYPE_MANNEQUIN_ID,
+            VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+            VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
+            VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
         },
         item_types::{
             VanillaItemInteractLivingEntityOverride, VanillaItemUseOnOverride,
@@ -1803,6 +1834,50 @@ mod tests {
             LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
         );
         assert_eq!(world.entities.living_entity_health(92), Some(0.0));
+    }
+
+    #[test]
+    fn creeper_interaction_uses_synced_igniter_tag_for_client_success() {
+        let mut world = WorldStore::new();
+        add_entity(&mut world, 93, VANILLA_ENTITY_TYPE_CREEPER_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(93, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+
+        set_main_hand(&mut world, VANILLA_ITEM_STONE_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(93, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::UnsupportedEntityInteract(VANILLA_CREEPER_MOB_INTERACT_OWNER)
+        );
+        world.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: "minecraft:item".to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: VANILLA_CREEPER_IGNITERS_TAG.to_string(),
+                    entries: vec![VANILLA_ITEM_STONE_ID],
+                }],
+            }],
+        });
+        assert_eq!(
+            world.predict_local_entity_interaction(93, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction()
+            ))
+        );
+
+        set_main_hand(&mut world, VANILLA_ITEM_RED_DYE_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(93, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::UnsupportedItemInteractLivingEntity(
+                VanillaItemInteractLivingEntityOverride::DyeItem
+            )
+        );
+        set_main_hand(&mut world, VANILLA_ITEM_APPLE_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(93, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
     }
 
     #[test]
