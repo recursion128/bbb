@@ -24,7 +24,8 @@ use bbb_protocol::{
     },
     item_types::{
         VanillaItemInteractLivingEntityOverride, VanillaItemUseOnOverride, VanillaItemUseOverride,
-        VANILLA_ITEM_GOLDEN_DANDELION_ID, VANILLA_ITEM_LEAD_ID, VANILLA_ITEM_SHEARS_ID,
+        VANILLA_ITEM_GOLDEN_DANDELION_ID, VANILLA_ITEM_IRON_INGOT_ID, VANILLA_ITEM_LEAD_ID,
+        VANILLA_ITEM_SHEARS_ID,
     },
     packets::ConsumableSummary,
 };
@@ -39,6 +40,8 @@ const VANILLA_CAMEL_HUSK_FOOD_TAG: &str = "minecraft:camel_husk_food";
 const VANILLA_CHEST_BOAT_INTERACT_OWNER: &str =
     "net.minecraft.world.entity.vehicle.boat.AbstractChestBoat";
 const VANILLA_INTERACTION_ENTITY_INTERACT_OWNER: &str = "net.minecraft.world.entity.Interaction";
+const VANILLA_IRON_GOLEM_MOB_INTERACT_OWNER: &str =
+    "net.minecraft.world.entity.animal.golem.IronGolem";
 const VANILLA_ITEM_FRAME_INTERACT_OWNER: &str = "net.minecraft.world.entity.decoration.ItemFrame";
 const VANILLA_LEASH_KNOT_INTERACT_OWNER: &str =
     "net.minecraft.world.entity.decoration.LeashFenceKnotEntity";
@@ -592,6 +595,13 @@ impl WorldStore {
                 secondary_use_active,
             );
         }
+        if owner == VANILLA_IRON_GOLEM_MOB_INTERACT_OWNER {
+            return self.predict_local_iron_golem_mob_interact(
+                entity_id,
+                entity_type_id,
+                held_item_id,
+            );
+        }
         if owner != VANILLA_MOB_ENTITY_INTERACT_OWNER {
             return LocalTargetUsePrediction::UnsupportedEntityInteract(owner);
         }
@@ -861,6 +871,27 @@ impl WorldStore {
         LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
     }
 
+    fn predict_local_iron_golem_mob_interact(
+        &mut self,
+        entity_id: i32,
+        entity_type_id: i32,
+        held_item_id: Option<i32>,
+    ) -> LocalTargetUsePrediction {
+        if held_item_id != Some(VANILLA_ITEM_IRON_INGOT_ID) {
+            return LocalTargetUsePrediction::Result(LocalInteractionResult::Pass);
+        }
+        let Some(healed) = self.entities.apply_local_living_heal(entity_id, 25.0) else {
+            return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+        };
+        if healed {
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction(),
+            ))
+        } else {
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        }
+    }
+
     fn predict_local_base_entity_interact(
         &self,
         entity_id: i32,
@@ -952,12 +983,12 @@ mod tests {
             VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
             VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_COW_ID,
             VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
-            VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_ITEM_FRAME_ID,
-            VANILLA_ENTITY_TYPE_LEASH_KNOT_ID, VANILLA_ENTITY_TYPE_MANNEQUIN_ID,
-            VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
-            VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
-            VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
-            VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+            VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
+            VANILLA_ENTITY_TYPE_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_LEASH_KNOT_ID,
+            VANILLA_ENTITY_TYPE_MANNEQUIN_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
+            VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+            VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
         },
         item_types::{
             VanillaItemInteractLivingEntityOverride, VanillaItemUseOnOverride,
@@ -1716,6 +1747,62 @@ mod tests {
             state.advance_age_lock_particle_timer_tick();
             assert_eq!(state.age_lock_particle_timer_ticks(), expected);
         }
+    }
+
+    #[test]
+    fn iron_golem_interaction_applies_client_heal_before_selecting_result() {
+        let mut world = WorldStore::new();
+        add_entity(&mut world, 92, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(92, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+
+        let client_success = LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+            LocalInteractionSuccess::client_item_interaction(),
+        ));
+        set_main_hand(&mut world, VANILLA_ITEM_IRON_INGOT_ID);
+        for expected_health in [26.0, 51.0, 76.0, 100.0] {
+            assert_eq!(
+                world.predict_local_entity_interaction(92, InteractionHand::MainHand, false),
+                client_success
+            );
+            assert_eq!(
+                world.entities.living_entity_health(92),
+                Some(expected_health)
+            );
+        }
+        assert_eq!(
+            world.predict_local_entity_interaction(92, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+
+        set_main_hand(&mut world, VANILLA_ITEM_RED_DYE_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(92, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::UnsupportedItemInteractLivingEntity(
+                VanillaItemInteractLivingEntityOverride::DyeItem
+            )
+        );
+        let living_accessors =
+            crate::entities::vanilla_entity_metadata_living_entity_accessors_for_entity_type(
+                VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
+            )
+            .unwrap();
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 92,
+            values: vec![EntityDataValue {
+                data_id: living_accessors.health_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
+                value: EntityDataValueKind::Float(0.0),
+            }],
+        }));
+        set_main_hand(&mut world, VANILLA_ITEM_IRON_INGOT_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(92, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+        assert_eq!(world.entities.living_entity_health(92), Some(0.0));
     }
 
     #[test]

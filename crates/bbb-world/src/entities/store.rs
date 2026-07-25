@@ -8,7 +8,9 @@ use bbb_protocol::attribute_modifier_types::{
     VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_BASE_ID,
     VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID,
 };
-use bbb_protocol::attribute_types::{vanilla_attribute_type, VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID};
+use bbb_protocol::attribute_types::{
+    vanilla_attribute_type, VANILLA_ATTRIBUTE_MAX_HEALTH_ID, VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
+};
 use bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID;
 use bbb_protocol::entity_data_serializers::{
     VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID, VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
@@ -1695,6 +1697,34 @@ impl EntityStore {
         let accessors =
             vanilla_entity_metadata_living_entity_accessors_for_entity_type(entity_type_id)?;
         self.metadata_float(id, accessors.health_data_id, accessors.health_default)
+    }
+
+    /// Applies Vanilla `LivingEntity.heal`/`setHealth` to canonical client state and reports
+    /// whether the synchronized health float changed. Server metadata remains authoritative.
+    pub(crate) fn apply_local_living_heal(&mut self, id: i32, amount: f32) -> Option<bool> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let entity_type_id = self.ecs.get::<&EntityIdentity>(entity).ok()?.entity_type_id;
+        let accessors =
+            vanilla_entity_metadata_living_entity_accessors_for_entity_type(entity_type_id)?;
+        let health = self.metadata_float(id, accessors.health_data_id, accessors.health_default)?;
+        if health <= 0.0 {
+            return Some(false);
+        }
+        let max_health = self.attribute_value(id, VANILLA_ATTRIBUTE_MAX_HEALTH_ID)? as f32;
+        let healed = (health + amount).min(max_health).max(0.0);
+        if healed == health {
+            return Some(false);
+        }
+        let mut metadata = self.ecs.get::<&mut EntityMetadata>(entity).ok()?;
+        upsert_metadata_value(
+            &mut metadata,
+            ProtocolEntityDataValue {
+                data_id: accessors.health_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
+                value: EntityDataValueKind::Float(healed),
+            },
+        );
+        Some(true)
     }
 
     pub(crate) fn living_entity_dead(&self, id: i32) -> Option<bool> {
