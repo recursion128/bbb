@@ -30,6 +30,7 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID, VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID,
         VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
         VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
         VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID,
@@ -42,11 +43,13 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID, VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
         VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
         VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
+        VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
-        VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID,
-        VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID,
-        VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID, VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
         VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_NOTE_BLOCK_SOUND_TYPE_ID,
         VANILLA_DATA_COMPONENT_OMINOUS_BOTTLE_AMPLIFIER_TYPE_ID,
@@ -223,7 +226,20 @@ fn hash_component_value(
         VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID => {
             hash_registry_holder(ctx, "minecraft:damage_type", patch.damage_type_id?)?
         }
+        VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID => {
+            hash_simple_component(patch.custom_name_nbt.as_ref()?)?
+        }
+        VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID => {
+            hash_simple_component(patch.item_name_nbt.as_ref()?)?
+        }
         VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID => hash_string(patch.item_model.as_deref()?),
+        VANILLA_DATA_COMPONENT_LORE_TYPE_ID => hash_list(
+            patch
+                .lore_nbt
+                .iter()
+                .map(hash_simple_component)
+                .collect::<Option<Vec<_>>>()?,
+        ),
         VANILLA_DATA_COMPONENT_RARITY_TYPE_ID => hash_string(patch.rarity?.as_str()),
         VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID => hash_enchantments(ctx, &patch.enchantments)?,
         VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID => hash_attribute_modifiers(ctx, patch)?,
@@ -1078,7 +1094,20 @@ fn hash_attribute_modifiers(
                 }
                 if entry.display_id != VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_DEFAULT_ID {
                     if entry.display_id == VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID {
-                        return None;
+                        fields.push((
+                            "display",
+                            hash_record(vec![
+                                (
+                                    "type",
+                                    hash_string(attribute_modifier_display_name(entry.display_id)?),
+                                ),
+                                (
+                                    "value",
+                                    hash_simple_component(entry.display_text_nbt.as_ref()?)?,
+                                ),
+                            ]),
+                        ));
+                        return Some(hash_record(fields));
                     }
                     fields.push((
                         "display",
@@ -1799,6 +1828,7 @@ mod tests {
     use bbb_protocol::{
         attribute_modifier_types::{
             VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_HIDDEN_ID,
+            VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID,
             VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
         },
         builtin_enum_component_values::VANILLA_DYE_COLOR_RED_ID,
@@ -1811,7 +1841,7 @@ mod tests {
             PiercingWeaponSummary, PlayerSkinPatchSummary, ResourceTextureSummary,
             SuspiciousStewEffectSummary, ToolSummary, UseEffectsSummary, WrittenBookContentSummary,
         },
-        NbtSummaryEntry,
+        ComponentStyle, NbtSummaryEntry, StyledTextRun,
     };
 
     use super::*;
@@ -2351,17 +2381,33 @@ mod tests {
                 effect_id,
                 duration: 160,
             }],
-            attribute_modifiers: vec![AttributeModifierSummary {
-                attribute_id,
-                modifier_id: "example:damage".to_string(),
-                amount_bits: 1.5_f64.to_bits(),
-                operation_id: VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
-                slot_id: VANILLA_EQUIPMENT_SLOT_GROUP_MAINHAND_ID,
-                display_id: VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_HIDDEN_ID,
-                display_text: None,
-                display_text_styled: None,
-                display_text_nbt: None,
-            }],
+            attribute_modifiers: vec![
+                AttributeModifierSummary {
+                    attribute_id,
+                    modifier_id: "example:damage".to_string(),
+                    amount_bits: 1.5_f64.to_bits(),
+                    operation_id: VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
+                    slot_id: VANILLA_EQUIPMENT_SLOT_GROUP_MAINHAND_ID,
+                    display_id: VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_HIDDEN_ID,
+                    display_text: None,
+                    display_text_styled: None,
+                    display_text_nbt: None,
+                },
+                AttributeModifierSummary {
+                    attribute_id,
+                    modifier_id: "example:override".to_string(),
+                    amount_bits: 2.0_f64.to_bits(),
+                    operation_id: VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
+                    slot_id: VANILLA_EQUIPMENT_SLOT_GROUP_MAINHAND_ID,
+                    display_id: VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID,
+                    display_text: Some("Override".to_string()),
+                    display_text_styled: Some(vec![StyledTextRun {
+                        text: "Override".to_string(),
+                        style: ComponentStyle::default(),
+                    }]),
+                    display_text_nbt: Some(NbtSummaryValue::String("Override".to_string())),
+                },
+            ],
             ..DataComponentPatchSummary::default()
         };
 
@@ -2400,17 +2446,33 @@ mod tests {
                 ),
                 (
                     VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
-                    hash_list([hash_record(vec![
-                        ("type", hash_string("minecraft:attack_damage")),
-                        ("id", hash_string("example:damage")),
-                        ("amount", hash_double(1.5_f64.to_bits())),
-                        ("operation", hash_string("add_value")),
-                        ("slot", hash_string("mainhand")),
-                        (
-                            "display",
-                            hash_record(vec![("type", hash_string("hidden"))]),
-                        ),
-                    ])])
+                    hash_list([
+                        hash_record(vec![
+                            ("type", hash_string("minecraft:attack_damage")),
+                            ("id", hash_string("example:damage")),
+                            ("amount", hash_double(1.5_f64.to_bits())),
+                            ("operation", hash_string("add_value")),
+                            ("slot", hash_string("mainhand")),
+                            (
+                                "display",
+                                hash_record(vec![("type", hash_string("hidden"))]),
+                            ),
+                        ]),
+                        hash_record(vec![
+                            ("type", hash_string("minecraft:attack_damage")),
+                            ("id", hash_string("example:override")),
+                            ("amount", hash_double(2.0_f64.to_bits())),
+                            ("operation", hash_string("add_value")),
+                            ("slot", hash_string("mainhand")),
+                            (
+                                "display",
+                                hash_record(vec![
+                                    ("type", hash_string("override")),
+                                    ("value", hash_string("Override")),
+                                ]),
+                            ),
+                        ]),
+                    ])
                     .0 as i32,
                 ),
             ])
@@ -2553,6 +2615,58 @@ mod tests {
                         ("resolved", hash_boolean(true)),
                     ])
                     .0 as i32,
+                ),
+            ])
+        );
+    }
+
+    #[test]
+    fn hashes_simple_name_and_lore_component_codecs() {
+        let store = crate::WorldStore::new();
+        let plain_runs = |text: &str| {
+            vec![StyledTextRun {
+                text: text.to_string(),
+                style: ComponentStyle::default(),
+            }]
+        };
+        let patch = DataComponentPatchSummary {
+            added: 3,
+            added_type_ids: vec![
+                VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+                VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
+                VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
+            ],
+            custom_name: Some("Custom".to_string()),
+            custom_name_styled: Some(plain_runs("Custom")),
+            custom_name_nbt: Some(NbtSummaryValue::String("Custom".to_string())),
+            item_name: Some("Item".to_string()),
+            item_name_styled: Some(plain_runs("Item")),
+            item_name_nbt: Some(NbtSummaryValue::String("Item".to_string())),
+            lore: vec!["First".to_string(), "Second".to_string()],
+            lore_styled: vec![plain_runs("First"), plain_runs("Second")],
+            lore_nbt: vec![
+                NbtSummaryValue::String("First".to_string()),
+                NbtSummaryValue::String("Second".to_string()),
+            ],
+            ..DataComponentPatchSummary::default()
+        };
+
+        let hashed = hashed_component_patch_from_summary(test_ctx(&store), &patch).unwrap();
+
+        assert_eq!(
+            hashed.added_components,
+            BTreeMap::from([
+                (
+                    VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+                    hash_string("Custom").0 as i32,
+                ),
+                (
+                    VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
+                    hash_string("Item").0 as i32,
+                ),
+                (
+                    VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
+                    hash_list([hash_string("First"), hash_string("Second")]).0 as i32,
                 ),
             ])
         );
