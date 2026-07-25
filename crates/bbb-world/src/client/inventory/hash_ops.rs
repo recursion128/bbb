@@ -10,8 +10,8 @@ use std::collections::BTreeMap;
 
 use bbb_protocol::{
     attribute_modifier_types::{
-        attribute_modifier_display_name, attribute_modifier_operation_name,
-        VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_DEFAULT_ID,
+        attribute_modifier_display_name, attribute_modifier_operation_id,
+        attribute_modifier_operation_name, VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_DEFAULT_ID,
         VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID,
     },
     builtin_enum_component_values::builtin_enum_component_value_name,
@@ -61,14 +61,20 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
         VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID,
         VANILLA_DATA_COMPONENT_PREDICATE_ARMOR_TRIM_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PREDICATE_ATTRIBUTE_MODIFIERS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PREDICATE_BUNDLE_CONTENTS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PREDICATE_CONTAINER_TYPE_ID,
         VANILLA_DATA_COMPONENT_PREDICATE_CUSTOM_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_PREDICATE_DAMAGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PREDICATE_ENCHANTMENTS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PREDICATE_FIREWORKS_TYPE_ID,
         VANILLA_DATA_COMPONENT_PREDICATE_FIREWORK_EXPLOSION_TYPE_ID,
         VANILLA_DATA_COMPONENT_PREDICATE_JUKEBOX_PLAYABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PREDICATE_POTIONS_TYPE_ID,
         VANILLA_DATA_COMPONENT_PREDICATE_STORED_ENCHANTMENTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_PREDICATE_VILLAGER_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PREDICATE_WRITABLE_BOOK_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PREDICATE_WRITTEN_BOOK_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
@@ -91,18 +97,18 @@ use bbb_protocol::{
     },
     equipment_slots::{
         vanilla_equipment_slot_by_id, vanilla_equipment_slot_group,
-        VANILLA_EQUIPMENT_SLOT_GROUP_ANY_ID,
+        vanilla_equipment_slot_group_for_serialized_name, VANILLA_EQUIPMENT_SLOT_GROUP_ANY_ID,
     },
     packets::{
-        validate_data_component_patch_summary, AdventureModePredicateDataSummary,
-        BlockPredicateSummary, BlocksAttacksSummary, ConsumeEffectSummary,
-        DataComponentPatchSummary, DataComponentPredicateTypeSummary, FireworkExplosionSummary,
-        HashedComponentPatch, HashedItemStack, HashedStack, ItemEnchantmentSummary,
-        ItemStackSummary, ItemStackTemplateSummary, KineticWeaponConditionSummary,
-        MobEffectDetailsSummary, MobEffectInstanceSummary, NbtSummaryEntry, NbtSummaryValue,
-        PartialDataComponentPredicateSummary, PersistentItemPredicateSummary,
-        PlayerModelTypeSummary, ResolvableProfileKindSummary, ResolvableProfileSummary,
-        SoundEventSummary, StatePropertyValueMatcherSummary,
+        decode_persistent_item_predicate_summary, validate_data_component_patch_summary,
+        AdventureModePredicateDataSummary, BlockPredicateSummary, BlocksAttacksSummary,
+        ConsumeEffectSummary, DataComponentPatchSummary, DataComponentPredicateTypeSummary,
+        FireworkExplosionSummary, HashedComponentPatch, HashedItemStack, HashedStack,
+        ItemEnchantmentSummary, ItemStackSummary, ItemStackTemplateSummary,
+        KineticWeaponConditionSummary, MobEffectDetailsSummary, MobEffectInstanceSummary,
+        NbtSummaryEntry, NbtSummaryValue, PartialDataComponentPredicateSummary,
+        PersistentItemPredicateSummary, PlayerModelTypeSummary, ResolvableProfileKindSummary,
+        ResolvableProfileSummary, SoundEventSummary, StatePropertyValueMatcherSummary,
     },
     tropical_fish_patterns::vanilla_tropical_fish_pattern,
 };
@@ -1224,6 +1230,18 @@ fn hash_concrete_component_predicate(
         VANILLA_DATA_COMPONENT_PREDICATE_FIREWORK_EXPLOSION_TYPE_ID => {
             hash_firework_explosion_predicate(value)
         }
+        VANILLA_DATA_COMPONENT_PREDICATE_CONTAINER_TYPE_ID
+        | VANILLA_DATA_COMPONENT_PREDICATE_BUNDLE_CONTENTS_TYPE_ID => {
+            hash_item_collection_component_predicate(ctx, value)
+        }
+        VANILLA_DATA_COMPONENT_PREDICATE_FIREWORKS_TYPE_ID => hash_fireworks_predicate(value),
+        VANILLA_DATA_COMPONENT_PREDICATE_WRITABLE_BOOK_TYPE_ID => {
+            hash_writable_book_predicate(value)
+        }
+        VANILLA_DATA_COMPONENT_PREDICATE_WRITTEN_BOOK_TYPE_ID => hash_written_book_predicate(value),
+        VANILLA_DATA_COMPONENT_PREDICATE_ATTRIBUTE_MODIFIERS_TYPE_ID => {
+            hash_attribute_modifiers_predicate(ctx, value)
+        }
         VANILLA_DATA_COMPONENT_PREDICATE_ARMOR_TRIM_TYPE_ID => {
             let fields = nbt_record_fields(value, &["material", "pattern"])?;
             let mut hashed = Vec::new();
@@ -1318,6 +1336,200 @@ fn hash_firework_explosion_predicate(value: &NbtSummaryValue) -> Option<Hash32> 
     }
     if let Some(trail) = fields.get("has_trail") {
         hashed.push(("has_trail", hash_boolean(nbt_boolean(trail)?)));
+    }
+    Some(hash_record(hashed))
+}
+
+fn hash_item_collection_component_predicate(
+    ctx: InventoryCtx<'_>,
+    value: &NbtSummaryValue,
+) -> Option<Hash32> {
+    let fields = nbt_record_fields(value, &["items"])?;
+    let mut hashed = Vec::new();
+    if let Some(items) = fields.get("items") {
+        hashed.push((
+            "items",
+            hash_collection_predicate(items, |item| {
+                let predicate = decode_persistent_item_predicate_summary(item).ok()?;
+                hash_persistent_item_predicate(ctx, &predicate)
+            })?,
+        ));
+    }
+    Some(hash_record(hashed))
+}
+
+fn hash_fireworks_predicate(value: &NbtSummaryValue) -> Option<Hash32> {
+    let fields = nbt_record_fields(value, &["explosions", "flight_duration"])?;
+    let mut hashed = Vec::new();
+    if let Some(explosions) = fields.get("explosions") {
+        hashed.push((
+            "explosions",
+            hash_collection_predicate(explosions, hash_firework_explosion_predicate)?,
+        ));
+    }
+    if let Some(flight_duration) = fields.get("flight_duration") {
+        let bounds = IntBounds::from_nbt(flight_duration)?;
+        if !bounds.is_any() {
+            hashed.push(("flight_duration", bounds.hash()));
+        }
+    }
+    Some(hash_record(hashed))
+}
+
+fn hash_writable_book_predicate(value: &NbtSummaryValue) -> Option<Hash32> {
+    let fields = nbt_record_fields(value, &["pages"])?;
+    let mut hashed = Vec::new();
+    if let Some(pages) = fields.get("pages") {
+        hashed.push((
+            "pages",
+            hash_collection_predicate(pages, |page| {
+                let NbtSummaryValue::String(page) = page else {
+                    return None;
+                };
+                Some(hash_string(page))
+            })?,
+        ));
+    }
+    Some(hash_record(hashed))
+}
+
+fn hash_written_book_predicate(value: &NbtSummaryValue) -> Option<Hash32> {
+    let fields = nbt_record_fields(
+        value,
+        &["pages", "author", "title", "generation", "resolved"],
+    )?;
+    let mut hashed = Vec::new();
+    if let Some(pages) = fields.get("pages") {
+        hashed.push((
+            "pages",
+            hash_collection_predicate(pages, hash_simple_component)?,
+        ));
+    }
+    for name in ["author", "title"] {
+        let Some(value) = fields.get(name) else {
+            continue;
+        };
+        let NbtSummaryValue::String(value) = value else {
+            return None;
+        };
+        hashed.push((name, hash_string(value)));
+    }
+    if let Some(generation) = fields.get("generation") {
+        let bounds = IntBounds::from_nbt(generation)?;
+        if !bounds.is_any() {
+            hashed.push(("generation", bounds.hash()));
+        }
+    }
+    if let Some(resolved) = fields.get("resolved") {
+        hashed.push(("resolved", hash_boolean(nbt_boolean(resolved)?)));
+    }
+    Some(hash_record(hashed))
+}
+
+fn hash_attribute_modifiers_predicate(
+    ctx: InventoryCtx<'_>,
+    value: &NbtSummaryValue,
+) -> Option<Hash32> {
+    let fields = nbt_record_fields(value, &["modifiers"])?;
+    let mut hashed = Vec::new();
+    if let Some(modifiers) = fields.get("modifiers") {
+        hashed.push((
+            "modifiers",
+            hash_collection_predicate(modifiers, |entry| {
+                hash_attribute_modifier_entry_predicate(ctx, entry)
+            })?,
+        ));
+    }
+    Some(hash_record(hashed))
+}
+
+fn hash_attribute_modifier_entry_predicate(
+    ctx: InventoryCtx<'_>,
+    value: &NbtSummaryValue,
+) -> Option<Hash32> {
+    let fields = nbt_record_fields(value, &["attribute", "id", "amount", "operation", "slot"])?;
+    let mut hashed = Vec::new();
+    if let Some(attribute) = fields.get("attribute") {
+        hashed.push((
+            "attribute",
+            hash_persistent_holder_set(ctx, "minecraft:attribute", attribute)?,
+        ));
+    }
+    if let Some(id) = fields.get("id") {
+        let NbtSummaryValue::String(id) = id else {
+            return None;
+        };
+        let normalized = crate::registries::normalize_codec_identifier(id)?;
+        if normalized != *id {
+            return None;
+        }
+        hashed.push(("id", hash_string(id)));
+    }
+    if let Some(amount) = fields.get("amount") {
+        let bounds = DoubleBounds::from_nbt(amount)?;
+        if !bounds.is_any() {
+            hashed.push(("amount", bounds.hash()));
+        }
+    }
+    if let Some(operation) = fields.get("operation") {
+        let NbtSummaryValue::String(operation) = operation else {
+            return None;
+        };
+        attribute_modifier_operation_id(operation)?;
+        hashed.push(("operation", hash_string(operation)));
+    }
+    if let Some(slot) = fields.get("slot") {
+        let NbtSummaryValue::String(slot) = slot else {
+            return None;
+        };
+        vanilla_equipment_slot_group_for_serialized_name(slot)?;
+        hashed.push(("slot", hash_string(slot)));
+    }
+    Some(hash_record(hashed))
+}
+
+fn hash_collection_predicate(
+    value: &NbtSummaryValue,
+    hash_element: impl Fn(&NbtSummaryValue) -> Option<Hash32>,
+) -> Option<Hash32> {
+    let fields = nbt_record_fields(value, &["contains", "count", "size"])?;
+    let mut hashed = Vec::new();
+    if let Some(contains) = fields.get("contains") {
+        let NbtSummaryValue::List(elements) = contains else {
+            return None;
+        };
+        hashed.push((
+            "contains",
+            hash_list(
+                elements
+                    .iter()
+                    .map(&hash_element)
+                    .collect::<Option<Vec<_>>>()?,
+            ),
+        ));
+    }
+    if let Some(counts) = fields.get("count") {
+        let NbtSummaryValue::List(counts) = counts else {
+            return None;
+        };
+        hashed.push((
+            "count",
+            hash_list(
+                counts
+                    .iter()
+                    .map(|entry| {
+                        let fields = nbt_record_fields(entry, &["test", "count"])?;
+                        Some(hash_record(vec![
+                            ("test", hash_element(fields.get("test")?)?),
+                            ("count", IntBounds::from_nbt(fields.get("count")?)?.hash()),
+                        ]))
+                    })
+                    .collect::<Option<Vec<_>>>()?,
+            ),
+        ));
+    }
+    if let Some(size) = fields.get("size") {
+        hashed.push(("size", IntBounds::from_nbt(size)?.hash()));
     }
     Some(hash_record(hashed))
 }
@@ -1442,6 +1654,78 @@ fn nbt_boolean(value: &NbtSummaryValue) -> Option<bool> {
     match value {
         NbtSummaryValue::Byte(0) => Some(false),
         NbtSummaryValue::Byte(1) => Some(true),
+        _ => None,
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct DoubleBounds {
+    min: Option<u64>,
+    max: Option<u64>,
+}
+
+impl DoubleBounds {
+    fn from_nbt(value: &NbtSummaryValue) -> Option<Self> {
+        let bounds = match value {
+            NbtSummaryValue::Float(bits) => Self::exact(f64::from(f32::from_bits(*bits)).to_bits()),
+            NbtSummaryValue::Double(bits) => Self::exact(*bits),
+            NbtSummaryValue::Compound(_) => {
+                let fields = nbt_record_fields(value, &["min", "max"])?;
+                Self {
+                    min: optional_nbt_f64_bits(fields.get("min"))?,
+                    max: optional_nbt_f64_bits(fields.get("max"))?,
+                }
+            }
+            _ => return None,
+        };
+        if let (Some(min), Some(max)) = (bounds.min, bounds.max) {
+            let (min, max) = (f64::from_bits(min), f64::from_bits(max));
+            if !min.is_finite() || !max.is_finite() || min > max {
+                return None;
+            }
+        }
+        Some(bounds)
+    }
+
+    fn exact(bits: u64) -> Self {
+        Self {
+            min: Some(bits),
+            max: Some(bits),
+        }
+    }
+
+    fn is_any(self) -> bool {
+        self.min.is_none() && self.max.is_none()
+    }
+
+    fn hash(self) -> Hash32 {
+        if let (Some(min), Some(max)) = (self.min, self.max) {
+            if min == max {
+                return hash_double(min);
+            }
+        }
+        let mut fields = Vec::new();
+        if let Some(min) = self.min {
+            fields.push(("min", hash_double(min)));
+        }
+        if let Some(max) = self.max {
+            fields.push(("max", hash_double(max)));
+        }
+        hash_record(fields)
+    }
+}
+
+fn optional_nbt_f64_bits(value: Option<&&NbtSummaryValue>) -> Option<Option<u64>> {
+    match value {
+        Some(value) => Some(Some(nbt_f64_bits(value)?)),
+        None => Some(None),
+    }
+}
+
+fn nbt_f64_bits(value: &NbtSummaryValue) -> Option<u64> {
+    match value {
+        NbtSummaryValue::Float(bits) => Some(f64::from(f32::from_bits(*bits)).to_bits()),
+        NbtSummaryValue::Double(bits) => Some(*bits),
         _ => None,
     }
 }
@@ -3425,6 +3709,216 @@ mod tests {
                     hash_string("minecraft:plains"),
                 ),
             ]))
+        );
+    }
+
+    #[test]
+    fn hashes_collection_backed_concrete_component_predicates() {
+        let mut store = crate::WorldStore::new();
+        let mut attributes = crate::RegistryContentState::new("minecraft:attribute");
+        attributes.entries = vec![crate::RegistryPacketEntry::stub("minecraft:attack_damage")];
+        store
+            .registries
+            .contents
+            .insert("minecraft:attribute".to_string(), attributes);
+        let entry = |name: &str, value| NbtSummaryEntry {
+            name: name.to_string(),
+            value,
+        };
+
+        let container = NbtSummaryValue::Compound(vec![entry(
+            "items",
+            NbtSummaryValue::Compound(vec![entry(
+                "contains",
+                NbtSummaryValue::List(vec![NbtSummaryValue::Compound(vec![
+                    entry(
+                        "items",
+                        NbtSummaryValue::String("minecraft:stone".to_string()),
+                    ),
+                    entry("count", NbtSummaryValue::Int(2)),
+                ])]),
+            )]),
+        )]);
+        assert_eq!(
+            hash_concrete_component_predicate(
+                test_ctx(&store),
+                VANILLA_DATA_COMPONENT_PREDICATE_CONTAINER_TYPE_ID,
+                &container,
+            ),
+            Some(hash_record(vec![(
+                "items",
+                hash_record(vec![(
+                    "contains",
+                    hash_list([hash_record(vec![
+                        ("items", hash_string("minecraft:stone")),
+                        ("count", hash_int(2)),
+                    ])]),
+                )]),
+            )]))
+        );
+        assert_eq!(
+            hash_concrete_component_predicate(
+                test_ctx(&store),
+                VANILLA_DATA_COMPONENT_PREDICATE_BUNDLE_CONTENTS_TYPE_ID,
+                &NbtSummaryValue::Compound(Vec::new()),
+            ),
+            Some(hash_record(Vec::new()))
+        );
+
+        let fireworks = NbtSummaryValue::Compound(vec![
+            entry(
+                "explosions",
+                NbtSummaryValue::Compound(vec![
+                    entry(
+                        "contains",
+                        NbtSummaryValue::List(vec![NbtSummaryValue::Compound(vec![entry(
+                            "shape",
+                            NbtSummaryValue::String("star".to_string()),
+                        )])]),
+                    ),
+                    entry(
+                        "count",
+                        NbtSummaryValue::List(vec![NbtSummaryValue::Compound(vec![
+                            entry(
+                                "test",
+                                NbtSummaryValue::Compound(vec![entry(
+                                    "has_trail",
+                                    NbtSummaryValue::Byte(1),
+                                )]),
+                            ),
+                            entry("count", NbtSummaryValue::Int(1)),
+                        ])]),
+                    ),
+                    entry(
+                        "size",
+                        NbtSummaryValue::Compound(vec![entry("min", NbtSummaryValue::Int(1))]),
+                    ),
+                ]),
+            ),
+            entry("flight_duration", NbtSummaryValue::Int(2)),
+        ]);
+        assert_eq!(
+            hash_concrete_component_predicate(
+                test_ctx(&store),
+                VANILLA_DATA_COMPONENT_PREDICATE_FIREWORKS_TYPE_ID,
+                &fireworks,
+            ),
+            Some(hash_record(vec![
+                (
+                    "explosions",
+                    hash_record(vec![
+                        (
+                            "contains",
+                            hash_list([hash_record(vec![("shape", hash_string("star"))])]),
+                        ),
+                        (
+                            "count",
+                            hash_list([hash_record(vec![
+                                ("test", hash_record(vec![("has_trail", hash_boolean(true))]),),
+                                ("count", hash_int(1)),
+                            ])]),
+                        ),
+                        ("size", hash_record(vec![("min", hash_int(1))])),
+                    ]),
+                ),
+                ("flight_duration", hash_int(2)),
+            ]))
+        );
+
+        let writable = NbtSummaryValue::Compound(vec![entry(
+            "pages",
+            NbtSummaryValue::Compound(vec![
+                entry(
+                    "contains",
+                    NbtSummaryValue::List(vec![NbtSummaryValue::String("hello".to_string())]),
+                ),
+                entry("size", NbtSummaryValue::Int(1)),
+            ]),
+        )]);
+        assert_eq!(
+            hash_concrete_component_predicate(
+                test_ctx(&store),
+                VANILLA_DATA_COMPONENT_PREDICATE_WRITABLE_BOOK_TYPE_ID,
+                &writable,
+            ),
+            Some(hash_record(vec![(
+                "pages",
+                hash_record(vec![
+                    ("contains", hash_list([hash_string("hello")])),
+                    ("size", hash_int(1)),
+                ]),
+            )]))
+        );
+
+        let written = NbtSummaryValue::Compound(vec![
+            entry(
+                "pages",
+                NbtSummaryValue::Compound(vec![entry(
+                    "contains",
+                    NbtSummaryValue::List(vec![NbtSummaryValue::String("hello".to_string())]),
+                )]),
+            ),
+            entry("author", NbtSummaryValue::String("Alex".to_string())),
+            entry("title", NbtSummaryValue::String("Guide".to_string())),
+            entry("generation", NbtSummaryValue::Int(1)),
+            entry("resolved", NbtSummaryValue::Byte(1)),
+        ]);
+        assert_eq!(
+            hash_concrete_component_predicate(
+                test_ctx(&store),
+                VANILLA_DATA_COMPONENT_PREDICATE_WRITTEN_BOOK_TYPE_ID,
+                &written,
+            ),
+            Some(hash_record(vec![
+                (
+                    "pages",
+                    hash_record(vec![("contains", hash_list([hash_string("hello")]),)]),
+                ),
+                ("author", hash_string("Alex")),
+                ("title", hash_string("Guide")),
+                ("generation", hash_int(1)),
+                ("resolved", hash_boolean(true)),
+            ]))
+        );
+
+        let modifiers = NbtSummaryValue::Compound(vec![entry(
+            "modifiers",
+            NbtSummaryValue::Compound(vec![entry(
+                "contains",
+                NbtSummaryValue::List(vec![NbtSummaryValue::Compound(vec![
+                    entry(
+                        "attribute",
+                        NbtSummaryValue::String("minecraft:attack_damage".to_string()),
+                    ),
+                    entry("id", NbtSummaryValue::String("example:damage".to_string())),
+                    entry("amount", NbtSummaryValue::Double(1.5_f64.to_bits())),
+                    entry(
+                        "operation",
+                        NbtSummaryValue::String("add_value".to_string()),
+                    ),
+                    entry("slot", NbtSummaryValue::String("mainhand".to_string())),
+                ])]),
+            )]),
+        )]);
+        assert_eq!(
+            hash_concrete_component_predicate(
+                test_ctx(&store),
+                VANILLA_DATA_COMPONENT_PREDICATE_ATTRIBUTE_MODIFIERS_TYPE_ID,
+                &modifiers,
+            ),
+            Some(hash_record(vec![(
+                "modifiers",
+                hash_record(vec![(
+                    "contains",
+                    hash_list([hash_record(vec![
+                        ("attribute", hash_string("minecraft:attack_damage")),
+                        ("id", hash_string("example:damage")),
+                        ("amount", hash_double(1.5_f64.to_bits())),
+                        ("operation", hash_string("add_value")),
+                        ("slot", hash_string("mainhand")),
+                    ])]),
+                )]),
+            )]))
         );
     }
 
