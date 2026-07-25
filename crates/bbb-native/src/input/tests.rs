@@ -21265,7 +21265,7 @@ fn server_opened_container_hovered_drop_key_queues_throw_click() {
             slot_num: 0,
             button_num: 0,
             input: ContainerInput::Throw,
-            changed_slots: [].into(),
+            changed_slots: [(0, test_hashed_item_stack(42, 2))].into(),
             carried_item: HashedStack::Empty,
         })
     );
@@ -21280,7 +21280,7 @@ fn server_opened_container_hovered_drop_key_queues_throw_click() {
             .find(|slot| slot.slot == 0)
             .unwrap()
             .item,
-        test_item_stack(42, 3)
+        test_item_stack(42, 2)
     );
 }
 
@@ -21312,9 +21312,13 @@ fn server_opened_container_hovered_control_drop_key_queues_throw_stack_click() {
             slot_num: 0,
             button_num: 1,
             input: ContainerInput::Throw,
-            changed_slots: [].into(),
+            changed_slots: [(0, HashedStack::Empty)].into(),
             carried_item: HashedStack::Empty,
         })
+    );
+    assert_eq!(
+        test_open_container_slot_item(&world, 0),
+        ProtocolItemStackSummary::empty()
     );
 }
 
