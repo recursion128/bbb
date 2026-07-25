@@ -20,7 +20,7 @@ use bbb_protocol::equipment_slots::{
     VANILLA_PLAYER_INVENTORY_SADDLE_SLOT,
 };
 use bbb_protocol::item_types::{
-    vanilla_item_type, VanillaItemUseOverride, VANILLA_ITEM_COMPASS_ID,
+    vanilla_item_type, VanillaItemUseOverride, VANILLA_ITEM_BUCKET_ID, VANILLA_ITEM_COMPASS_ID,
     VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE, VANILLA_ITEM_GLASS_BOTTLE_ID, VANILLA_ITEM_POTION_ID,
 };
 use bbb_protocol::menu_types::{
@@ -30,8 +30,9 @@ use bbb_protocol::menu_types::{
     VANILLA_MENU_TYPE_ENCHANTMENT_ID, VANILLA_MENU_TYPE_FURNACE_ID,
     VANILLA_MENU_TYPE_GENERIC_3X3_ID, VANILLA_MENU_TYPE_GENERIC_9X1_ID,
     VANILLA_MENU_TYPE_GENERIC_9X6_ID, VANILLA_MENU_TYPE_GRINDSTONE_ID, VANILLA_MENU_TYPE_HOPPER_ID,
-    VANILLA_MENU_TYPE_LOOM_ID, VANILLA_MENU_TYPE_MERCHANT_ID, VANILLA_MENU_TYPE_SHULKER_BOX_ID,
-    VANILLA_MENU_TYPE_SMITHING_ID, VANILLA_MENU_TYPE_SMOKER_ID, VANILLA_MENU_TYPE_STONECUTTER_ID,
+    VANILLA_MENU_TYPE_LECTERN_ID, VANILLA_MENU_TYPE_LOOM_ID, VANILLA_MENU_TYPE_MERCHANT_ID,
+    VANILLA_MENU_TYPE_SHULKER_BOX_ID, VANILLA_MENU_TYPE_SMITHING_ID, VANILLA_MENU_TYPE_SMOKER_ID,
+    VANILLA_MENU_TYPE_STONECUTTER_ID,
 };
 use bbb_protocol::mob_effect_types::{
     VANILLA_MOB_EFFECT_CONDUIT_POWER_ID, VANILLA_MOB_EFFECT_HASTE_ID,
@@ -108,7 +109,7 @@ use self::{
     },
     smithing::{
         apply_smithing_menu_quick_move_to_slots, apply_smithing_result_pickup_to_slots,
-        smithing_quick_move_requires_server_authority,
+        smithing_input_slot_accepts_stack, smithing_quick_move_requires_server_authority,
     },
     stonecutter::{
         apply_stonecutter_menu_quick_move_to_slots, apply_stonecutter_result_pickup_to_slots,
@@ -223,6 +224,9 @@ const SMITHING_TOTAL_SLOT_COUNT: i16 = 40;
 const SMITHING_TEMPLATE_PROPERTY_SET: &str = "minecraft:smithing_template";
 const SMITHING_BASE_PROPERTY_SET: &str = "minecraft:smithing_base";
 const SMITHING_ADDITION_PROPERTY_SET: &str = "minecraft:smithing_addition";
+const FURNACE_INPUT_SLOT: i16 = 0;
+const FURNACE_FUEL_SLOT: i16 = 1;
+const FURNACE_RESULT_SLOT: i16 = 2;
 const FURNACE_CONTAINER_SLOT_COUNT: i16 = 3;
 const HOPPER_CONTAINER_SLOT_COUNT: i16 = 5;
 const SHULKER_BOX_CONTAINER_SLOT_COUNT: i16 = 27;
@@ -1945,14 +1949,33 @@ impl InventoryState {
                         ));
                     }
                 }
-                ProtocolContainerInput::Pickup => apply_pickup_click_to_slots(
-                    container_id,
-                    &mut slots_after,
-                    &mut cursor_after,
-                    request.slot_num,
-                    request.button_num,
-                    &ctx.items.default_item_max_stack_sizes,
-                ),
+                ProtocolContainerInput::Pickup => {
+                    let slot_access = if request.slot_num >= 0 {
+                        let Some(access) = local_container_slot_access(
+                            ctx,
+                            container_id,
+                            menu_type_id,
+                            &data_values,
+                            request.slot_num,
+                            &cursor_after,
+                        ) else {
+                            return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+                                ProtocolContainerInput::Pickup,
+                            ));
+                        };
+                        Some(access)
+                    } else {
+                        None
+                    };
+                    apply_pickup_click_to_slots(
+                        &mut slots_after,
+                        &mut cursor_after,
+                        request.slot_num,
+                        request.button_num,
+                        slot_access,
+                        &ctx.items.default_item_max_stack_sizes,
+                    )
+                }
                 ProtocolContainerInput::Clone => apply_clone_click_to_slots(
                     &slots_after,
                     &mut cursor_after,

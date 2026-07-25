@@ -256,25 +256,8 @@ impl WorldStore {
         stack: &ItemStackSummary,
         component_id: i32,
     ) -> bool {
-        if stack
-            .component_patch
-            .removed_type_ids
-            .contains(&component_id)
-        {
-            return false;
-        }
-        stack.component_patch.added_type_ids.contains(&component_id)
-            || stack.item_id.is_some_and(|item_id| {
-                self.items
-                    .default_component_type_ids
-                    .get(&item_id)
-                    .is_some_and(|defaults| defaults.contains(&component_id))
-                    || self
-                        .items
-                        .registry_dependent_item_defaults
-                        .get(&item_id)
-                        .is_some_and(|defaults| defaults.added_type_ids.contains(&component_id))
-            })
+        self.items
+            .item_stack_has_effective_component(stack, component_id)
     }
 
     /// Returns the synchronized tooltip-style resource id only when its patch

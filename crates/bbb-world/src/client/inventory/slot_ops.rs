@@ -103,6 +103,247 @@ pub(super) fn container_click_slot_is_valid(container: &ContainerState, slot_num
     matches!(slot_num, -1 | -999) || container.slots.iter().any(|slot| slot.slot == slot_num)
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct LocalContainerSlotAccess {
+    pub(super) may_place: bool,
+    pub(super) may_pickup: bool,
+    pub(super) max_stack_size: i32,
+}
+
+impl LocalContainerSlotAccess {
+    fn unrestricted(max_stack_size: i32) -> Self {
+        Self {
+            may_place: true,
+            may_pickup: true,
+            max_stack_size,
+        }
+    }
+
+    fn input(may_place: bool, max_stack_size: i32) -> Self {
+        Self {
+            may_place,
+            may_pickup: true,
+            max_stack_size,
+        }
+    }
+
+    fn result(may_pickup: bool, max_stack_size: i32) -> Self {
+        Self {
+            may_place: false,
+            may_pickup,
+            max_stack_size,
+        }
+    }
+}
+
+pub(super) fn local_container_slot_access(
+    ctx: InventoryCtx<'_>,
+    container_id: i32,
+    menu_type_id: Option<i32>,
+    data_values: &[ContainerDataValue],
+    slot_num: i16,
+    stack_to_place: &ProtocolItemStackSummary,
+) -> Option<LocalContainerSlotAccess> {
+    let item_max_stack_size =
+        item_stack_max_stack_size(stack_to_place, &ctx.items.default_item_max_stack_sizes);
+    if container_id == INVENTORY_MENU_CONTAINER_ID {
+        return Some(LocalContainerSlotAccess::unrestricted(
+            container_slot_max_stack_size(
+                container_id,
+                slot_num,
+                stack_to_place,
+                &ctx.items.default_item_max_stack_sizes,
+            ),
+        ));
+    }
+    if menu_type_has_unrestricted_slot_rules(menu_type_id) || menu_type_id.is_none() {
+        return Some(LocalContainerSlotAccess::unrestricted(item_max_stack_size));
+    }
+
+    let item_tags = ctx.registries.tags.get("minecraft:item");
+    let access = match menu_type_id? {
+        VANILLA_MENU_TYPE_CRAFTER_3X3_ID => match slot_num {
+            0..=8 => LocalContainerSlotAccess::input(
+                !crafter_disabled_slots(data_values).contains(&slot_num),
+                item_max_stack_size,
+            ),
+            CRAFTER_RESULT_SLOT => LocalContainerSlotAccess::result(false, item_max_stack_size),
+            _ => LocalContainerSlotAccess::unrestricted(item_max_stack_size),
+        },
+        VANILLA_MENU_TYPE_ANVIL_ID => match slot_num {
+            ANVIL_INPUT_SLOT | ANVIL_ADDITIONAL_SLOT => {
+                LocalContainerSlotAccess::input(true, item_max_stack_size)
+            }
+            ANVIL_RESULT_SLOT => LocalContainerSlotAccess::result(
+                anvil_result_may_pickup(
+                    data_values,
+                    ctx.local_player.abilities,
+                    ctx.local_player.experience,
+                ),
+                item_max_stack_size,
+            ),
+            _ => LocalContainerSlotAccess::unrestricted(item_max_stack_size),
+        },
+        VANILLA_MENU_TYPE_BEACON_ID => match slot_num {
+            BEACON_PAYMENT_SLOT => LocalContainerSlotAccess::input(
+                item_stack_in_item_tag(stack_to_place, item_tags, BEACON_PAYMENT_ITEM_TAG),
+                item_max_stack_size.min(1),
+            ),
+            _ => LocalContainerSlotAccess::unrestricted(item_max_stack_size),
+        },
+        VANILLA_MENU_TYPE_BLAST_FURNACE_ID
+        | VANILLA_MENU_TYPE_FURNACE_ID
+        | VANILLA_MENU_TYPE_SMOKER_ID => match slot_num {
+            FURNACE_INPUT_SLOT => LocalContainerSlotAccess::input(true, item_max_stack_size),
+            FURNACE_FUEL_SLOT => LocalContainerSlotAccess::input(
+                furnace_is_fuel(stack_to_place, &ctx.items.furnace_fuel_item_ids)
+                    || stack_to_place.item_id == Some(VANILLA_ITEM_BUCKET_ID),
+                if stack_to_place.item_id == Some(VANILLA_ITEM_BUCKET_ID) {
+                    item_max_stack_size.min(1)
+                } else {
+                    item_max_stack_size
+                },
+            ),
+            FURNACE_RESULT_SLOT => LocalContainerSlotAccess::result(true, item_max_stack_size),
+            _ => LocalContainerSlotAccess::unrestricted(item_max_stack_size),
+        },
+        VANILLA_MENU_TYPE_BREWING_STAND_ID => match slot_num {
+            BREWING_STAND_BOTTLE_SLOT_START..BREWING_STAND_BOTTLE_SLOT_END => {
+                LocalContainerSlotAccess::input(
+                    item_stack_item_id_in_set(stack_to_place, &ctx.items.brewing_potion_item_ids),
+                    item_max_stack_size.min(1),
+                )
+            }
+            BREWING_STAND_INGREDIENT_SLOT => LocalContainerSlotAccess::input(
+                item_stack_item_id_in_set(stack_to_place, &ctx.items.brewing_ingredient_item_ids),
+                item_max_stack_size,
+            ),
+            BREWING_STAND_FUEL_SLOT => LocalContainerSlotAccess::input(
+                item_stack_in_item_tag(stack_to_place, item_tags, BREWING_STAND_FUEL_ITEM_TAG),
+                item_max_stack_size,
+            ),
+            _ => LocalContainerSlotAccess::unrestricted(item_max_stack_size),
+        },
+        VANILLA_MENU_TYPE_CRAFTING_ID => match slot_num {
+            CRAFTING_MENU_RESULT_SLOT => {
+                LocalContainerSlotAccess::result(true, item_max_stack_size)
+            }
+            CRAFTING_MENU_CRAFT_SLOT_START..CRAFTING_MENU_CRAFT_SLOT_END => {
+                LocalContainerSlotAccess::input(true, item_max_stack_size)
+            }
+            _ => LocalContainerSlotAccess::unrestricted(item_max_stack_size),
+        },
+        VANILLA_MENU_TYPE_ENCHANTMENT_ID => match slot_num {
+            ENCHANTMENT_INPUT_SLOT => {
+                LocalContainerSlotAccess::input(true, item_max_stack_size.min(1))
+            }
+            ENCHANTMENT_LAPIS_SLOT => LocalContainerSlotAccess::input(
+                item_stack_item_id_in_set(
+                    stack_to_place,
+                    &ctx.items.enchantment_lapis_lazuli_item_ids,
+                ),
+                item_max_stack_size,
+            ),
+            _ => LocalContainerSlotAccess::unrestricted(item_max_stack_size),
+        },
+        VANILLA_MENU_TYPE_GRINDSTONE_ID => match slot_num {
+            GRINDSTONE_INPUT_SLOT | GRINDSTONE_ADDITIONAL_SLOT => LocalContainerSlotAccess::input(
+                item_stack_is_damageable_or_enchanted(
+                    stack_to_place,
+                    &ctx.items.default_damageable_item_ids,
+                ),
+                item_max_stack_size,
+            ),
+            GRINDSTONE_RESULT_SLOT => LocalContainerSlotAccess::result(true, item_max_stack_size),
+            _ => LocalContainerSlotAccess::unrestricted(item_max_stack_size),
+        },
+        VANILLA_MENU_TYPE_LECTERN_ID => LocalContainerSlotAccess::input(true, item_max_stack_size),
+        VANILLA_MENU_TYPE_LOOM_ID => match slot_num {
+            LOOM_BANNER_SLOT => LocalContainerSlotAccess::input(
+                item_stack_in_item_tag(stack_to_place, item_tags, LOOM_BANNER_ITEM_TAG),
+                item_max_stack_size,
+            ),
+            LOOM_DYE_SLOT => LocalContainerSlotAccess::input(
+                item_stack_in_item_tag(stack_to_place, item_tags, LOOM_DYE_ITEM_TAG),
+                item_max_stack_size,
+            ),
+            LOOM_PATTERN_SLOT => LocalContainerSlotAccess::input(
+                item_stack_in_item_tag(stack_to_place, item_tags, LOOM_PATTERN_ITEM_TAG)
+                    && ctx.items.item_stack_has_effective_component(
+                        stack_to_place,
+                        VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
+                    ),
+                item_max_stack_size,
+            ),
+            LOOM_RESULT_SLOT => LocalContainerSlotAccess::result(true, item_max_stack_size),
+            _ => LocalContainerSlotAccess::unrestricted(item_max_stack_size),
+        },
+        VANILLA_MENU_TYPE_MERCHANT_ID => match slot_num {
+            MERCHANT_PAYMENT_SLOT_1 | MERCHANT_PAYMENT_SLOT_2 => {
+                LocalContainerSlotAccess::input(true, item_max_stack_size)
+            }
+            MERCHANT_RESULT_SLOT => LocalContainerSlotAccess::result(true, item_max_stack_size),
+            _ => LocalContainerSlotAccess::unrestricted(item_max_stack_size),
+        },
+        VANILLA_MENU_TYPE_SMITHING_ID => match slot_num {
+            SMITHING_TEMPLATE_SLOT | SMITHING_BASE_SLOT | SMITHING_ADDITIONAL_SLOT => {
+                LocalContainerSlotAccess::input(
+                    smithing_input_slot_accepts_stack(
+                        slot_num,
+                        stack_to_place,
+                        &ctx.recipes.property_sets,
+                    ),
+                    item_max_stack_size,
+                )
+            }
+            SMITHING_RESULT_SLOT => LocalContainerSlotAccess::result(true, item_max_stack_size),
+            _ => LocalContainerSlotAccess::unrestricted(item_max_stack_size),
+        },
+        VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID => match slot_num {
+            CARTOGRAPHY_TABLE_MAP_SLOT => LocalContainerSlotAccess::input(
+                item_stack_has_map_id(stack_to_place),
+                item_max_stack_size,
+            ),
+            CARTOGRAPHY_TABLE_ADDITIONAL_SLOT => LocalContainerSlotAccess::input(
+                item_stack_item_id_in_set(
+                    stack_to_place,
+                    &ctx.items.cartography_additional_item_ids,
+                ),
+                item_max_stack_size,
+            ),
+            CARTOGRAPHY_TABLE_RESULT_SLOT => {
+                LocalContainerSlotAccess::result(true, item_max_stack_size)
+            }
+            _ => LocalContainerSlotAccess::unrestricted(item_max_stack_size),
+        },
+        VANILLA_MENU_TYPE_STONECUTTER_ID => match slot_num {
+            STONECUTTER_INPUT_SLOT => LocalContainerSlotAccess::input(true, item_max_stack_size),
+            STONECUTTER_RESULT_SLOT => LocalContainerSlotAccess::result(true, item_max_stack_size),
+            _ => LocalContainerSlotAccess::unrestricted(item_max_stack_size),
+        },
+        _ => return None,
+    };
+    Some(access)
+}
+
+fn item_stack_is_damageable_or_enchanted(
+    stack: &ProtocolItemStackSummary,
+    default_damageable_item_ids: &BTreeSet<i32>,
+) -> bool {
+    if item_stack_is_empty(stack) {
+        return false;
+    }
+    let patch = &stack.component_patch;
+    let damageable = !patch
+        .removed_type_ids
+        .contains(&VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID)
+        && (patch.max_damage.is_some()
+            || stack
+                .item_id
+                .is_some_and(|item_id| default_damageable_item_ids.contains(&item_id)));
+    damageable || !patch.enchantments.is_empty() || !patch.stored_enchantments.is_empty()
+}
+
 pub(super) fn hashed_stack_from_summary(
     stack: &ProtocolItemStackSummary,
 ) -> Option<ProtocolHashedStack> {
@@ -1175,11 +1416,11 @@ pub(super) fn container_slot_item(
 }
 
 pub(super) fn apply_pickup_click_to_slots(
-    container_id: i32,
     slots: &mut [ContainerSlot],
     cursor: &mut ProtocolItemStackSummary,
     slot_num: i16,
     button_num: i8,
+    slot_access: Option<LocalContainerSlotAccess>,
     default_item_max_stack_sizes: &BTreeMap<i32, i32>,
 ) {
     match slot_num {
@@ -1190,12 +1431,14 @@ pub(super) fn apply_pickup_click_to_slots(
             let Some(slot) = slots.iter_mut().find(|slot| slot.slot == slot_num) else {
                 return;
             };
+            let Some(slot_access) = slot_access else {
+                return;
+            };
             apply_slot_pickup_click(
-                container_id,
-                slot_num,
                 &mut slot.item,
                 cursor,
                 button_num,
+                slot_access,
                 default_item_max_stack_sizes,
             );
             slot.local_selected_bundle_item_index = normalize_local_selected_bundle_item_index(
@@ -1307,12 +1550,19 @@ pub(super) fn finish_quick_craft(
     let quickcraft_type = quick_craft.quickcraft_type;
     if selected_slots.len() == 1 {
         quick_craft.reset();
-        apply_pickup_click_to_slots(
+        let slot_num = selected_slots[0];
+        let slot_access = LocalContainerSlotAccess::unrestricted(container_slot_max_stack_size(
             container_id,
+            slot_num,
+            cursor,
+            default_item_max_stack_sizes,
+        ));
+        apply_pickup_click_to_slots(
             slots,
             cursor,
-            selected_slots[0],
+            slot_num,
             quickcraft_type,
+            Some(slot_access),
             default_item_max_stack_sizes,
         );
         return;
@@ -3355,11 +3605,10 @@ pub(super) fn apply_outside_pickup_click(cursor: &mut ProtocolItemStackSummary, 
 }
 
 pub(super) fn apply_slot_pickup_click(
-    container_id: i32,
-    slot_num: i16,
     slot: &mut ProtocolItemStackSummary,
     cursor: &mut ProtocolItemStackSummary,
     button_num: i8,
+    access: LocalContainerSlotAccess,
     default_item_max_stack_sizes: &BTreeMap<i32, i32>,
 ) {
     if !matches!(button_num, 0 | 1) {
@@ -3367,21 +3616,18 @@ pub(super) fn apply_slot_pickup_click(
     }
 
     if item_stack_is_empty(slot) {
-        if item_stack_is_empty(cursor) {
+        if item_stack_is_empty(cursor) || !access.may_place {
             return;
         }
         let amount = if button_num == 0 { cursor.count } else { 1 };
-        let amount = amount.min(container_slot_max_stack_size(
-            container_id,
-            slot_num,
-            cursor,
-            default_item_max_stack_sizes,
-        ));
+        let amount = amount.min(access.max_stack_size);
         move_stack_count(cursor, slot, amount);
         return;
     }
 
-    if item_stack_is_empty(cursor) {
+    if !access.may_pickup {
+        return;
+    } else if item_stack_is_empty(cursor) {
         let amount = if button_num == 0 {
             slot.count
         } else {
@@ -3391,29 +3637,28 @@ pub(super) fn apply_slot_pickup_click(
         return;
     }
 
-    if same_item_same_components(slot, cursor) {
-        let amount = if button_num == 0 { cursor.count } else { 1 };
-        let max_stack_size = container_slot_max_stack_size(
-            container_id,
-            slot_num,
-            slot,
-            default_item_max_stack_sizes,
-        );
-        let moved = amount.min((max_stack_size - slot.count).max(0));
-        if moved > 0 {
-            slot.count += moved;
-            cursor.count -= moved;
-            normalize_item_stack(cursor);
+    if access.may_place {
+        if same_item_same_components(slot, cursor) {
+            let amount = if button_num == 0 { cursor.count } else { 1 };
+            let moved = amount.min((access.max_stack_size - slot.count).max(0));
+            if moved > 0 {
+                slot.count += moved;
+                cursor.count -= moved;
+                normalize_item_stack(cursor);
+            }
+        } else if cursor.count <= access.max_stack_size {
+            std::mem::swap(slot, cursor);
         }
-    } else if cursor.count
-        <= container_slot_max_stack_size(
-            container_id,
-            slot_num,
-            cursor,
-            default_item_max_stack_sizes,
-        )
-    {
-        std::mem::swap(slot, cursor);
+    } else if same_item_same_components(slot, cursor) {
+        let cursor_max_stack_size = item_stack_max_stack_size(cursor, default_item_max_stack_sizes);
+        let amount = slot
+            .count
+            .min((cursor_max_stack_size - cursor.count).max(0));
+        if amount > 0 {
+            slot.count -= amount;
+            cursor.count += amount;
+            normalize_item_stack(slot);
+        }
     }
 }
 

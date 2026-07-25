@@ -265,7 +265,7 @@ fn smithing_can_move_into_input_slots(
     })
 }
 
-fn smithing_input_slot_accepts_stack(
+pub(super) fn smithing_input_slot_accepts_stack(
     slot_num: i16,
     stack: &ProtocolItemStackSummary,
     recipe_property_sets: &BTreeMap<String, Vec<i32>>,

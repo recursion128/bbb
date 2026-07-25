@@ -2273,6 +2273,368 @@ fn apply_local_container_click_slot_picks_up_and_places_stack() {
 }
 
 #[test]
+fn apply_local_beacon_pickup_enforces_payment_tag_and_single_item_limit() {
+    let mut store = WorldStore::new();
+    apply_item_tags(&mut store, vec![(BEACON_PAYMENT_ITEM_TAG, vec![42])]);
+    store.apply_open_screen(ProtocolOpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_BEACON_ID,
+        title: "Beacon".to_string(),
+        title_styled: Vec::new(),
+    });
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: 7,
+        state_id: 13,
+        items: vec![ProtocolItemStackSummary::empty(); BEACON_TOTAL_SLOT_COUNT as usize],
+        carried_item: item_stack(43, 3),
+    });
+
+    let rejected = store
+        .apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: BEACON_PAYMENT_SLOT,
+            button_num: 0,
+            input: ProtocolContainerInput::Pickup,
+        })
+        .unwrap();
+    assert_eq!(rejected.changed_slots, BTreeMap::new());
+    assert_eq!(rejected.carried_item, hashed_item_stack(43, 3));
+    assert_eq!(
+        open_container_slot_item(&store, BEACON_PAYMENT_SLOT),
+        ProtocolItemStackSummary::empty()
+    );
+
+    store.apply_set_cursor_item(ProtocolSetCursorItem {
+        item: item_stack(42, 3),
+    });
+    let placed = store
+        .apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: BEACON_PAYMENT_SLOT,
+            button_num: 0,
+            input: ProtocolContainerInput::Pickup,
+        })
+        .unwrap();
+
+    assert_eq!(
+        placed.changed_slots,
+        BTreeMap::from([(BEACON_PAYMENT_SLOT, hashed_item_stack(42, 1))])
+    );
+    assert_eq!(placed.carried_item, hashed_item_stack(42, 2));
+    assert_eq!(
+        open_container_slot_item(&store, BEACON_PAYMENT_SLOT),
+        item_stack(42, 1)
+    );
+    assert_eq!(store.inventory().cursor_item, item_stack(42, 2));
+}
+
+#[test]
+fn apply_local_enchantment_pickup_enforces_input_and_lapis_slot_rules() {
+    let mut store = WorldStore::new();
+    store.set_enchantment_lapis_lazuli_item_ids(BTreeSet::from([43]));
+    store.apply_open_screen(ProtocolOpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_ENCHANTMENT_ID,
+        title: "Enchanting Table".to_string(),
+        title_styled: Vec::new(),
+    });
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: 7,
+        state_id: 13,
+        items: vec![ProtocolItemStackSummary::empty(); ENCHANTMENT_TOTAL_SLOT_COUNT as usize],
+        carried_item: item_stack(42, 3),
+    });
+
+    let input_place = store
+        .apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: ENCHANTMENT_INPUT_SLOT,
+            button_num: 0,
+            input: ProtocolContainerInput::Pickup,
+        })
+        .unwrap();
+    assert_eq!(
+        input_place.changed_slots,
+        BTreeMap::from([(ENCHANTMENT_INPUT_SLOT, hashed_item_stack(42, 1))])
+    );
+    assert_eq!(input_place.carried_item, hashed_item_stack(42, 2));
+
+    let rejected_lapis = store
+        .apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: ENCHANTMENT_LAPIS_SLOT,
+            button_num: 0,
+            input: ProtocolContainerInput::Pickup,
+        })
+        .unwrap();
+    assert_eq!(rejected_lapis.changed_slots, BTreeMap::new());
+    assert_eq!(rejected_lapis.carried_item, hashed_item_stack(42, 2));
+
+    store.apply_set_cursor_item(ProtocolSetCursorItem {
+        item: item_stack(43, 2),
+    });
+    let lapis_place = store
+        .apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: ENCHANTMENT_LAPIS_SLOT,
+            button_num: 0,
+            input: ProtocolContainerInput::Pickup,
+        })
+        .unwrap();
+    assert_eq!(
+        lapis_place.changed_slots,
+        BTreeMap::from([(ENCHANTMENT_LAPIS_SLOT, hashed_item_stack(43, 2))])
+    );
+    assert_eq!(lapis_place.carried_item, ProtocolHashedStack::Empty);
+}
+
+#[test]
+fn local_container_slot_access_matches_specialized_input_predicates() {
+    let mut store = WorldStore::new();
+    store.set_furnace_fuel_item_ids(BTreeSet::from([43]));
+    store.set_brewing_potion_item_ids(BTreeSet::from([44]));
+    store.set_brewing_ingredient_item_ids(BTreeSet::from([45]));
+    store.set_enchantment_lapis_lazuli_item_ids(BTreeSet::from([47]));
+    store.set_cartography_additional_item_ids(BTreeSet::from([55]));
+    store.set_default_damageable_item_ids(BTreeSet::from([48]));
+    store.apply_update_recipes(update_recipes(vec![
+        (SMITHING_TEMPLATE_PROPERTY_SET, vec![52]),
+        (SMITHING_BASE_PROPERTY_SET, vec![53]),
+        (SMITHING_ADDITION_PROPERTY_SET, vec![54]),
+    ]));
+    apply_item_tags(
+        &mut store,
+        vec![
+            (BEACON_PAYMENT_ITEM_TAG, vec![42]),
+            (BREWING_STAND_FUEL_ITEM_TAG, vec![46]),
+            (LOOM_BANNER_ITEM_TAG, vec![49]),
+            (LOOM_DYE_ITEM_TAG, vec![50]),
+            (LOOM_PATTERN_ITEM_TAG, vec![51]),
+        ],
+    );
+
+    let plain = item_stack(41, 2);
+    let beacon_payment = item_stack(42, 2);
+    let furnace_fuel = item_stack(43, 2);
+    let potion = item_stack(44, 2);
+    let brewing_ingredient = item_stack(45, 2);
+    let brewing_fuel = item_stack(46, 2);
+    let lapis = item_stack(47, 2);
+    let damageable = item_stack(48, 2);
+    let banner = item_stack(49, 2);
+    let dye = item_stack(50, 2);
+    let pattern = item_stack_with_component_summary(
+        51,
+        2,
+        VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
+    );
+    let pattern_without_component = item_stack(51, 2);
+    let smithing_template = item_stack(52, 2);
+    let smithing_base = item_stack(53, 2);
+    let smithing_addition = item_stack(54, 2);
+    let cartography_additional = item_stack(55, 2);
+    let map = map_id_item_stack(56, 2, 7);
+    let bucket = item_stack(VANILLA_ITEM_BUCKET_ID, 2);
+    let ctx = InventoryCtx {
+        items: &store.items,
+        local_player: &store.local_player,
+        entities: &store.entities,
+        recipes: &store.recipes,
+        recipe_book: &store.recipe_book,
+        registries: &store.registries,
+    };
+    let access = |menu_type_id, slot_num, stack: &ProtocolItemStackSummary| {
+        local_container_slot_access(ctx, 7, Some(menu_type_id), &[], slot_num, stack).unwrap()
+    };
+
+    for (menu_type_id, slot_num, stack, expected_max_stack_size) in [
+        (
+            VANILLA_MENU_TYPE_BEACON_ID,
+            BEACON_PAYMENT_SLOT,
+            &beacon_payment,
+            1,
+        ),
+        (
+            VANILLA_MENU_TYPE_FURNACE_ID,
+            FURNACE_FUEL_SLOT,
+            &furnace_fuel,
+            VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE,
+        ),
+        (VANILLA_MENU_TYPE_FURNACE_ID, FURNACE_FUEL_SLOT, &bucket, 1),
+        (
+            VANILLA_MENU_TYPE_BREWING_STAND_ID,
+            BREWING_STAND_BOTTLE_SLOT_START,
+            &potion,
+            1,
+        ),
+        (
+            VANILLA_MENU_TYPE_BREWING_STAND_ID,
+            BREWING_STAND_INGREDIENT_SLOT,
+            &brewing_ingredient,
+            VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE,
+        ),
+        (
+            VANILLA_MENU_TYPE_BREWING_STAND_ID,
+            BREWING_STAND_FUEL_SLOT,
+            &brewing_fuel,
+            VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE,
+        ),
+        (
+            VANILLA_MENU_TYPE_ENCHANTMENT_ID,
+            ENCHANTMENT_LAPIS_SLOT,
+            &lapis,
+            VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE,
+        ),
+        (
+            VANILLA_MENU_TYPE_GRINDSTONE_ID,
+            GRINDSTONE_INPUT_SLOT,
+            &damageable,
+            VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE,
+        ),
+        (
+            VANILLA_MENU_TYPE_LOOM_ID,
+            LOOM_BANNER_SLOT,
+            &banner,
+            VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE,
+        ),
+        (
+            VANILLA_MENU_TYPE_LOOM_ID,
+            LOOM_DYE_SLOT,
+            &dye,
+            VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE,
+        ),
+        (
+            VANILLA_MENU_TYPE_LOOM_ID,
+            LOOM_PATTERN_SLOT,
+            &pattern,
+            VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE,
+        ),
+        (
+            VANILLA_MENU_TYPE_SMITHING_ID,
+            SMITHING_TEMPLATE_SLOT,
+            &smithing_template,
+            VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE,
+        ),
+        (
+            VANILLA_MENU_TYPE_SMITHING_ID,
+            SMITHING_BASE_SLOT,
+            &smithing_base,
+            VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE,
+        ),
+        (
+            VANILLA_MENU_TYPE_SMITHING_ID,
+            SMITHING_ADDITIONAL_SLOT,
+            &smithing_addition,
+            VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE,
+        ),
+        (
+            VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
+            CARTOGRAPHY_TABLE_MAP_SLOT,
+            &map,
+            VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE,
+        ),
+        (
+            VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
+            CARTOGRAPHY_TABLE_ADDITIONAL_SLOT,
+            &cartography_additional,
+            VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE,
+        ),
+    ] {
+        let access = access(menu_type_id, slot_num, stack);
+        assert!(access.may_place, "menu {menu_type_id} slot {slot_num}");
+        assert_eq!(
+            access.max_stack_size, expected_max_stack_size,
+            "menu {menu_type_id} slot {slot_num}"
+        );
+    }
+
+    for (menu_type_id, slot_num, stack) in [
+        (VANILLA_MENU_TYPE_BEACON_ID, BEACON_PAYMENT_SLOT, &plain),
+        (VANILLA_MENU_TYPE_FURNACE_ID, FURNACE_FUEL_SLOT, &plain),
+        (
+            VANILLA_MENU_TYPE_BREWING_STAND_ID,
+            BREWING_STAND_BOTTLE_SLOT_START,
+            &plain,
+        ),
+        (
+            VANILLA_MENU_TYPE_BREWING_STAND_ID,
+            BREWING_STAND_INGREDIENT_SLOT,
+            &plain,
+        ),
+        (
+            VANILLA_MENU_TYPE_BREWING_STAND_ID,
+            BREWING_STAND_FUEL_SLOT,
+            &plain,
+        ),
+        (
+            VANILLA_MENU_TYPE_ENCHANTMENT_ID,
+            ENCHANTMENT_LAPIS_SLOT,
+            &plain,
+        ),
+        (
+            VANILLA_MENU_TYPE_GRINDSTONE_ID,
+            GRINDSTONE_INPUT_SLOT,
+            &plain,
+        ),
+        (VANILLA_MENU_TYPE_LOOM_ID, LOOM_BANNER_SLOT, &plain),
+        (VANILLA_MENU_TYPE_LOOM_ID, LOOM_DYE_SLOT, &plain),
+        (
+            VANILLA_MENU_TYPE_LOOM_ID,
+            LOOM_PATTERN_SLOT,
+            &pattern_without_component,
+        ),
+        (
+            VANILLA_MENU_TYPE_SMITHING_ID,
+            SMITHING_TEMPLATE_SLOT,
+            &plain,
+        ),
+        (VANILLA_MENU_TYPE_SMITHING_ID, SMITHING_BASE_SLOT, &plain),
+        (
+            VANILLA_MENU_TYPE_SMITHING_ID,
+            SMITHING_ADDITIONAL_SLOT,
+            &plain,
+        ),
+        (
+            VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
+            CARTOGRAPHY_TABLE_MAP_SLOT,
+            &plain,
+        ),
+        (
+            VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
+            CARTOGRAPHY_TABLE_ADDITIONAL_SLOT,
+            &plain,
+        ),
+    ] {
+        assert!(
+            !access(menu_type_id, slot_num, stack).may_place,
+            "menu {menu_type_id} slot {slot_num}"
+        );
+    }
+
+    let disabled_crafter_access = local_container_slot_access(
+        ctx,
+        7,
+        Some(VANILLA_MENU_TYPE_CRAFTER_3X3_ID),
+        &[ContainerDataValue { id: 4, value: 1 }],
+        4,
+        &plain,
+    )
+    .unwrap();
+    assert!(!disabled_crafter_access.may_place);
+
+    for (menu_type_id, result_slot) in [
+        (VANILLA_MENU_TYPE_CRAFTING_ID, CRAFTING_MENU_RESULT_SLOT),
+        (VANILLA_MENU_TYPE_FURNACE_ID, FURNACE_RESULT_SLOT),
+        (VANILLA_MENU_TYPE_GRINDSTONE_ID, GRINDSTONE_RESULT_SLOT),
+        (VANILLA_MENU_TYPE_LOOM_ID, LOOM_RESULT_SLOT),
+        (VANILLA_MENU_TYPE_MERCHANT_ID, MERCHANT_RESULT_SLOT),
+        (VANILLA_MENU_TYPE_SMITHING_ID, SMITHING_RESULT_SLOT),
+        (
+            VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
+            CARTOGRAPHY_TABLE_RESULT_SLOT,
+        ),
+        (VANILLA_MENU_TYPE_STONECUTTER_ID, STONECUTTER_RESULT_SLOT),
+    ] {
+        assert!(!access(menu_type_id, result_slot, &plain).may_place);
+    }
+}
+
+#[test]
 fn apply_local_container_click_slot_hashes_removed_only_component_patch() {
     let mut store = WorldStore::new();
     open_test_container(&mut store, 7);

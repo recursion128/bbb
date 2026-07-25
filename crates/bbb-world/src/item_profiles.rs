@@ -22,7 +22,9 @@ use bbb_protocol::data_component_types::{
 use bbb_protocol::item_types::{
     VANILLA_ITEM_ABSOLUTE_MAX_STACK_SIZE, VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE,
 };
-use bbb_protocol::packets::{ConsumableSummary, DataComponentPatchSummary};
+use bbb_protocol::packets::{
+    ConsumableSummary, DataComponentPatchSummary, ItemStackSummary as ProtocolItemStackSummary,
+};
 
 use crate::{
     ItemAttackRange, ItemEquipmentSlot, ItemFoodProperties, ItemUseEffects, MountArmorSlotKind,
@@ -265,6 +267,30 @@ impl ItemProfiles {
             })
             .collect::<BTreeMap<_, _>>()
             .into();
+    }
+
+    pub(crate) fn item_stack_has_effective_component(
+        &self,
+        stack: &ProtocolItemStackSummary,
+        component_id: i32,
+    ) -> bool {
+        if stack
+            .component_patch
+            .removed_type_ids
+            .contains(&component_id)
+        {
+            return false;
+        }
+        stack.component_patch.added_type_ids.contains(&component_id)
+            || stack.item_id.is_some_and(|item_id| {
+                self.default_component_type_ids
+                    .get(&item_id)
+                    .is_some_and(|defaults| defaults.contains(&component_id))
+                    || self
+                        .registry_dependent_item_defaults
+                        .get(&item_id)
+                        .is_some_and(|defaults| defaults.added_type_ids.contains(&component_id))
+            })
     }
 
     pub(crate) fn effective_component_patch(
