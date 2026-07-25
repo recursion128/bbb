@@ -29,6 +29,47 @@ fn legacy_random_float_matches_java_samples() {
 }
 
 #[test]
+fn lever_activation_particle_uses_vanilla_attachment_offsets_and_dust_options() {
+    let pos = WorldBlockPos { x: 2, y: 8, z: -3 };
+    let cases = [
+        (
+            LocalLeverAttachFace::Floor,
+            ProtocolDirection::North,
+            [2.5, 8.3, -2.4],
+        ),
+        (
+            LocalLeverAttachFace::Wall,
+            ProtocolDirection::North,
+            [2.5, 8.5, -2.2],
+        ),
+        (
+            LocalLeverAttachFace::Ceiling,
+            ProtocolDirection::East,
+            [2.4, 8.7, -2.5],
+        ),
+    ];
+    for (face, facing, expected_position) in cases {
+        let mut resolver = test_resolver(0);
+        let batch = resolver.local_interaction_particle_batch(
+            LocalInteractionParticleAction::LeverActivation { pos, facing, face },
+        );
+        let [command] = batch.commands.as_slice() else {
+            panic!("lever activation should emit one particle");
+        };
+        for (actual, expected) in command.position.iter().zip(expected_position) {
+            assert_close(*actual, expected);
+        }
+        assert_eq!(command.velocity, [0.0; 3]);
+        assert_eq!(command.particle_type_id, VANILLA_PARTICLE_TYPE_DUST_ID);
+        assert_eq!(command.particle_id, "minecraft:dust");
+        assert_eq!(command.raw_options_len, 8);
+        assert_eq!(command.option_color, Some([1.0, 0.0, 0.0, 1.0]));
+        assert_eq!(command.option_scale, Some(1.0));
+        assert!(!command.always_show);
+    }
+}
+
+#[test]
 fn local_destroy_hit_particle_uses_vanilla_shape_face_power_and_scale() {
     let pos = WorldBlockPos { x: 0, y: 8, z: 0 };
     let slab = test_block_state_id(

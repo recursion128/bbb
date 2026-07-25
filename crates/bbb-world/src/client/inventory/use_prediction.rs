@@ -49,6 +49,7 @@ use bbb_protocol::{
     },
 };
 
+mod block_use_without_item;
 mod bone_meal;
 mod book;
 mod bundle;
@@ -143,12 +144,29 @@ pub enum LocalInteractionSoundAction {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LocalLeverAttachFace {
+    Floor,
+    Wall,
+    Ceiling,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LocalInteractionParticleAction {
+    LeverActivation {
+        pos: BlockPos,
+        facing: ProtocolDirection,
+        face: LocalLeverAttachFace,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LocalInteractionSuccess {
     pub swing_source: LocalInteractionSwingSource,
     pub was_item_interaction: bool,
     pub starts_using_item: bool,
     pub extra_swing: Option<InteractionHand>,
     pub sound_action: Option<LocalInteractionSoundAction>,
+    pub particle_action: Option<LocalInteractionParticleAction>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -195,6 +213,7 @@ impl LocalInteractionSuccess {
             starts_using_item,
             extra_swing: None,
             sound_action: None,
+            particle_action: None,
         }
     }
 
@@ -205,6 +224,7 @@ impl LocalInteractionSuccess {
             starts_using_item: false,
             extra_swing: None,
             sound_action: None,
+            particle_action: None,
         }
     }
 
@@ -215,6 +235,7 @@ impl LocalInteractionSuccess {
             starts_using_item: false,
             extra_swing: None,
             sound_action: None,
+            particle_action: None,
         }
     }
 
@@ -225,6 +246,7 @@ impl LocalInteractionSuccess {
             starts_using_item: false,
             extra_swing: None,
             sound_action: None,
+            particle_action: None,
         }
     }
 
@@ -235,6 +257,7 @@ impl LocalInteractionSuccess {
             starts_using_item: false,
             extra_swing: None,
             sound_action: None,
+            particle_action: None,
         }
     }
 
@@ -249,6 +272,7 @@ impl LocalInteractionSuccess {
                 None
             },
             sound_action: Some(LocalInteractionSoundAction::SuppressedLodestoneCompassUse),
+            particle_action: None,
         }
     }
 
@@ -259,6 +283,7 @@ impl LocalInteractionSuccess {
             starts_using_item: false,
             extra_swing: None,
             sound_action: Some(sound_action),
+            particle_action: None,
         }
     }
 
@@ -273,6 +298,7 @@ impl LocalInteractionSuccess {
                 None
             },
             sound_action: Some(LocalInteractionSoundAction::SuppressedPotionMudConversion),
+            particle_action: None,
         }
     }
 
@@ -283,6 +309,7 @@ impl LocalInteractionSuccess {
             starts_using_item: true,
             extra_swing: None,
             sound_action: Some(LocalInteractionSoundAction::InstrumentUse { hand }),
+            particle_action: None,
         }
     }
 
@@ -297,6 +324,7 @@ impl LocalInteractionSuccess {
                 None
             },
             sound_action: None,
+            particle_action: None,
         }
     }
 
@@ -307,6 +335,7 @@ impl LocalInteractionSuccess {
             starts_using_item: false,
             extra_swing: None,
             sound_action: Some(LocalInteractionSoundAction::SuppressedProjectileThrow),
+            particle_action: None,
         }
     }
 
@@ -317,6 +346,7 @@ impl LocalInteractionSuccess {
             starts_using_item: true,
             extra_swing: None,
             sound_action: Some(LocalInteractionSoundAction::SpyglassUse),
+            particle_action: None,
         }
     }
 
@@ -327,6 +357,7 @@ impl LocalInteractionSuccess {
             starts_using_item: true,
             extra_swing: None,
             sound_action: None,
+            particle_action: None,
         }
     }
 
@@ -337,6 +368,7 @@ impl LocalInteractionSuccess {
             starts_using_item: false,
             extra_swing: None,
             sound_action: Some(LocalInteractionSoundAction::SuppressedFishingRodUse { retrieving }),
+            particle_action: None,
         }
     }
 }
@@ -493,7 +525,20 @@ impl WorldStore {
         if hand == InteractionHand::MainHand {
             if let Some(owner) = block_type.use_without_item_override {
                 if !ignition_reaches_item_use {
-                    return LocalTargetUsePrediction::UnsupportedBlockUseWithoutItem(owner);
+                    let Some(context) = context else {
+                        return LocalTargetUsePrediction::UnsupportedBlockUseWithoutItem(owner);
+                    };
+                    let prediction =
+                        self.predict_local_block_use_without_item(owner, block_type, context);
+                    if !matches!(
+                        prediction,
+                        LocalTargetUsePrediction::Result(
+                            LocalInteractionResult::Pass
+                                | LocalInteractionResult::TryEmptyHandInteraction
+                        )
+                    ) {
+                        return prediction;
+                    }
                 }
             }
         }

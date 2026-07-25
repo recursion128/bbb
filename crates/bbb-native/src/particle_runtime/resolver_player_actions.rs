@@ -37,6 +37,70 @@ pub(crate) fn local_destroy_hit_particle_state(
 }
 
 impl ParticleCommandResolver {
+    pub(super) fn local_interaction_particle_batch(
+        &mut self,
+        action: LocalInteractionParticleAction,
+    ) -> ParticleSpawnBatch {
+        match action {
+            LocalInteractionParticleAction::LeverActivation { pos, facing, face } => {
+                self.lever_activation_particle_batch(pos, facing, face)
+            }
+        }
+    }
+
+    fn lever_activation_particle_batch(
+        &mut self,
+        pos: WorldBlockPos,
+        facing: ProtocolDirection,
+        face: LocalLeverAttachFace,
+    ) -> ParticleSpawnBatch {
+        let template = match self.simple_particle_template(VANILLA_PARTICLE_TYPE_DUST_ID) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let facing_opposite = direction_step(opposite_direction(facing));
+        let connection_opposite = direction_step(match face {
+            LocalLeverAttachFace::Floor => ProtocolDirection::Down,
+            LocalLeverAttachFace::Ceiling => ProtocolDirection::Up,
+            LocalLeverAttachFace::Wall => opposite_direction(facing),
+        });
+        let position = Vec3d {
+            x: f64::from(pos.x)
+                + 0.5
+                + 0.1 * f64::from(facing_opposite.0)
+                + 0.2 * f64::from(connection_opposite.0),
+            y: f64::from(pos.y)
+                + 0.5
+                + 0.1 * f64::from(facing_opposite.1)
+                + 0.2 * f64::from(connection_opposite.1),
+            z: f64::from(pos.z)
+                + 0.5
+                + 0.1 * f64::from(facing_opposite.2)
+                + 0.2 * f64::from(connection_opposite.2),
+        };
+        ParticleSpawnBatch {
+            commands: vec![self.command_for_type(
+                template.particle_type,
+                &template.sprite_ids,
+                position,
+                Vec3d::default(),
+                template.particle_type.override_limiter,
+                false,
+                8,
+                0,
+                ParticleOptionRenderState {
+                    color: Some([1.0, 0.0, 0.0, 1.0]),
+                    scale: Some(1.0),
+                    ..ParticleOptionRenderState::default()
+                },
+                None,
+                None,
+            )],
+            missing_sprite_count: template.missing_sprite_count,
+            ..ParticleSpawnBatch::default()
+        }
+    }
+
     pub(super) fn local_destroy_hit_particle_batch(
         &mut self,
         state: LocalDestroyHitParticleState,
@@ -277,6 +341,28 @@ impl ParticleCommandResolver {
             .copied()
             .unwrap_or(false);
         crate::block_outline::block_probe_has_full_block_occlusion_shape(&probe, can_occlude)
+    }
+}
+
+fn opposite_direction(direction: ProtocolDirection) -> ProtocolDirection {
+    match direction {
+        ProtocolDirection::Down => ProtocolDirection::Up,
+        ProtocolDirection::Up => ProtocolDirection::Down,
+        ProtocolDirection::North => ProtocolDirection::South,
+        ProtocolDirection::South => ProtocolDirection::North,
+        ProtocolDirection::West => ProtocolDirection::East,
+        ProtocolDirection::East => ProtocolDirection::West,
+    }
+}
+
+fn direction_step(direction: ProtocolDirection) -> (i32, i32, i32) {
+    match direction {
+        ProtocolDirection::Down => (0, -1, 0),
+        ProtocolDirection::Up => (0, 1, 0),
+        ProtocolDirection::North => (0, 0, -1),
+        ProtocolDirection::South => (0, 0, 1),
+        ProtocolDirection::West => (-1, 0, 0),
+        ProtocolDirection::East => (1, 0, 0),
     }
 }
 

@@ -34,13 +34,13 @@ use bbb_world::{
     GuardianAmbientParticleState, GuardianAttackParticleState, HoneyBlockParticleState,
     LevelEventSoundRandomState, LivingEntityDrownParticleState, LivingEntityItemBreakState,
     LivingEntityPoofParticleState, LivingEntityPortalParticleState,
-    LlamaSpitRecreationParticleState, LocalBlockAttackEffect, OminousItemSpawnerParticleState,
-    PowderSnowFlakeParticleState, RabbitSprintParticleState, RavagerRoarParticleState,
-    ShulkerBulletTrailParticleState, SlimeLandingParticleKind, SlimeLandingParticleState,
-    SnowballHitParticleState, TakeItemEntityPickupParticleState,
-    TakeItemEntityPickupProjectileModel, TerrainLight, ThrownEggHitParticleState,
-    VaultConnectionParticleState, VillagerParticleKind, VillagerParticleState,
-    WitchMagicParticleState, WorldStore,
+    LlamaSpitRecreationParticleState, LocalBlockAttackEffect, LocalInteractionParticleAction,
+    LocalLeverAttachFace, OminousItemSpawnerParticleState, PowderSnowFlakeParticleState,
+    RabbitSprintParticleState, RavagerRoarParticleState, ShulkerBulletTrailParticleState,
+    SlimeLandingParticleKind, SlimeLandingParticleState, SnowballHitParticleState,
+    TakeItemEntityPickupParticleState, TakeItemEntityPickupProjectileModel, TerrainLight,
+    ThrownEggHitParticleState, VaultConnectionParticleState, VillagerParticleKind,
+    VillagerParticleState, WitchMagicParticleState, WorldStore,
 };
 
 use crate::terrain_runtime::{
@@ -74,6 +74,7 @@ pub(crate) struct LocalDestroyHitParticleState {
 pub(crate) enum LocalPlayerActionParticleState {
     BlockAttack(LocalBlockAttackEffect),
     DestroyHit(LocalDestroyHitParticleState),
+    Interaction(LocalInteractionParticleAction),
 }
 
 pub(crate) trait ParticleEventSink {
@@ -427,6 +428,13 @@ impl NativeParticleRuntime {
     ) -> ParticleSpawnBatch {
         self.resolver
             .local_block_attack_particle_batch(world, effect)
+    }
+
+    pub(crate) fn local_interaction_particle_batch(
+        &mut self,
+        action: LocalInteractionParticleAction,
+    ) -> ParticleSpawnBatch {
+        self.resolver.local_interaction_particle_batch(action)
     }
 
     pub(crate) fn tick_explosion_particles(

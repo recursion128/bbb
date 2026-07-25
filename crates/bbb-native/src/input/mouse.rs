@@ -482,6 +482,7 @@ fn start_use_item_with_effects(
             match prediction {
                 LocalTargetUsePrediction::Result(LocalInteractionResult::Success(success)) => {
                     apply_local_interaction_success(
+                        input,
                         world,
                         counters,
                         net_commands,
@@ -539,6 +540,7 @@ fn start_use_item_with_effects(
         match prediction {
             LocalItemUsePrediction::Result(LocalInteractionResult::Success(success)) => {
                 apply_local_interaction_success(
+                    input,
                     world,
                     counters,
                     net_commands,
@@ -567,6 +569,7 @@ fn start_use_item_with_effects(
 }
 
 fn apply_local_interaction_success(
+    input: &mut ClientInputState,
     world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
@@ -580,6 +583,9 @@ fn apply_local_interaction_success(
     }
     if let Some(extra_swing) = success.extra_swing {
         queue_swing_command(world, counters, net_commands, extra_swing);
+    }
+    if let Some(action) = success.particle_action {
+        input.queue_local_interaction_particle_action(action);
     }
     world.set_local_using_item_with_hand(success.starts_using_item, hand);
     if success.swing_source == LocalInteractionSwingSource::Client {
@@ -3899,6 +3905,63 @@ mod tests {
             rx.try_recv().unwrap(),
             NetCommand::Swing(InteractionHand::MainHand)
         );
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn right_click_lever_queues_vanilla_client_particle_and_swing() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_block();
+        let lever = test_block_state_id(
+            "minecraft:lever",
+            &[
+                ("face", "ceiling"),
+                ("facing", "east"),
+                ("powered", "false"),
+            ],
+        );
+        assert!(world.apply_block_update(BlockUpdate {
+            pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+            block_state_id: lever,
+        }));
+        let mut counters = NetCounters::default();
+
+        let player_pose = world.local_player_pose();
+        assert!(start_use_item(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            Some(CrosshairTarget::Block(CrosshairBlockHit {
+                pos: CROSSHAIR_BLOCK_POS,
+                face: ProtocolDirection::North,
+                cursor: [0.5; 3],
+                inside: false,
+            })),
+            player_pose,
+        ));
+
+        assert_eq!(
+            input.pending_local_player_action_particles,
+            [
+                crate::particle_runtime::LocalPlayerActionParticleState::Interaction(
+                    bbb_world::LocalInteractionParticleAction::LeverActivation {
+                        pos: CROSSHAIR_BLOCK_POS,
+                        facing: ProtocolDirection::East,
+                        face: bbb_world::LocalLeverAttachFace::Ceiling,
+                    },
+                )
+            ]
+        );
+        assert!(matches!(rx.try_recv(), Ok(NetCommand::UseItemOn(_))));
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
+        assert_eq!(counters.use_item_on_commands_queued, 1);
+        assert_eq!(counters.swing_commands_queued, 1);
         assert!(rx.try_recv().is_err());
     }
 

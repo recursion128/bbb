@@ -59,11 +59,11 @@ pub use crate::client::hud::{
 pub use crate::client::inventory::{
     ContainerClickBuildError, ContainerClickSlotRequest, ContainerDataValue, ContainerSlot,
     ContainerState, HotbarItemState, InventorySlot, InventoryState, ItemAttackRange,
-    ItemEquipmentSlot, ItemFoodProperties, ItemUseEffects, LocalInteractionResult,
-    LocalInteractionSoundAction, LocalInteractionSuccess, LocalInteractionSwingSource,
-    LocalItemUsePrediction, LocalTargetUsePrediction, LocalUsingItemTickActions,
-    MerchantOfferState, MerchantOffersState, MountArmorSlotKind, MountEquipmentSlotVisibility,
-    MountInventoryKind,
+    ItemEquipmentSlot, ItemFoodProperties, ItemUseEffects, LocalInteractionParticleAction,
+    LocalInteractionResult, LocalInteractionSoundAction, LocalInteractionSuccess,
+    LocalInteractionSwingSource, LocalItemUsePrediction, LocalLeverAttachFace,
+    LocalTargetUsePrediction, LocalUsingItemTickActions, MerchantOfferState, MerchantOffersState,
+    MountArmorSlotKind, MountEquipmentSlotVisibility, MountInventoryKind,
 };
 pub use crate::client::local_player::{
     CameraState, DefaultSpawnState, LocalPlayerAbilitiesState, LocalPlayerAttackState,

@@ -1162,6 +1162,14 @@ impl ClientInputState {
             .push(LocalPlayerActionParticleState::DestroyHit(state));
     }
 
+    fn queue_local_interaction_particle_action(
+        &mut self,
+        action: bbb_world::LocalInteractionParticleAction,
+    ) {
+        self.pending_local_player_action_particles
+            .push(LocalPlayerActionParticleState::Interaction(action));
+    }
+
     pub(crate) fn take_pending_local_player_action_particles(
         &mut self,
     ) -> Vec<LocalPlayerActionParticleState> {
