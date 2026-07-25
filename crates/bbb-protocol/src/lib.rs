@@ -2,19 +2,19 @@ mod component;
 mod nbt_summary;
 
 pub use component::{
-    canonical_component_json_utf16_len, canonical_component_json_utf16_len_with_owner,
-    canonical_f32_json_utf16_len, canonical_f64_json_utf16_len, canonical_json_string_utf16_len,
-    canonical_nbt_json_utf16_len, canonical_resolvable_profile_json_utf16_len,
-    component_node_style_from_nbt_value, component_style_from_nbt_value,
-    decode_sign_block_entity_nbt, decode_styled_component_summary, java_float_to_string,
-    parse_command_coordinates_prefix, parse_command_entity_selector_prefix,
+    canonical_component_codec_value, canonical_component_json_utf16_len,
+    canonical_component_json_utf16_len_with_owner, canonical_f32_json_utf16_len,
+    canonical_f64_json_utf16_len, canonical_json_string_utf16_len, canonical_nbt_json_utf16_len,
+    canonical_resolvable_profile_json_utf16_len, component_node_style_from_nbt_value,
+    component_style_from_nbt_value, decode_sign_block_entity_nbt, decode_styled_component_summary,
+    java_float_to_string, parse_command_coordinates_prefix, parse_command_entity_selector_prefix,
     parse_command_nbt_path_prefix, parse_command_snbt_prefix, parse_command_snbt_value_prefix,
     parse_command_uuid_prefix, styled_component_runs_from_nbt_value, styled_runs_summary_text,
-    validate_component_nbt, visit_component_payloads, CanonicalComponentOwnerValue,
-    CommandCoordinatesKind, CommandEntitySelectorOption, CommandEntitySelectorOptionKind,
-    CommandEntitySelectorPrefix, CommandSnbtKind, ComponentClickEvent, ComponentHoverEvent,
-    ComponentPayload, ComponentStyle, RichTextComponent, SignBlockEntityNbt, SignTextNbt,
-    StyledTextRun, VANILLA_COMMAND_ENTITY_SELECTOR_OPTIONS,
+    validate_component_nbt, visit_component_payloads, CanonicalComponentCodecValue,
+    CanonicalComponentOwnerValue, CommandCoordinatesKind, CommandEntitySelectorOption,
+    CommandEntitySelectorOptionKind, CommandEntitySelectorPrefix, CommandSnbtKind,
+    ComponentClickEvent, ComponentHoverEvent, ComponentPayload, ComponentStyle, RichTextComponent,
+    SignBlockEntityNbt, SignTextNbt, StyledTextRun, VANILLA_COMMAND_ENTITY_SELECTOR_OPTIONS,
 };
 pub use nbt_summary::{
     canonical_snbt_string, decode_nbt_summary, parse_snbt_compound, NbtSummaryEntry,

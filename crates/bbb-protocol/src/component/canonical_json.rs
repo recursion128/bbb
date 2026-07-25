@@ -50,7 +50,7 @@ pub fn canonical_component_json_utf16_len_with_owner(
         &NbtSummaryValue,
     ) -> Result<Option<usize>, String>,
 ) -> Result<Option<usize>, String> {
-    validate_component_nbt(value, "component")?;
+    let value = canonical_component_codec_value(value)?;
     let mut owner_error = None;
     let mut owner_adapter = |kind, value: &NbtSummaryValue| match owner_value_utf16_len(kind, value)
     {
@@ -60,17 +60,50 @@ pub fn canonical_component_json_utf16_len_with_owner(
             None
         }
     };
-    let value = canonical_component(value, &mut owner_adapter);
-    if let Some(error) = owner_error {
-        return Err(error);
-    }
-    let Some(value) = value else {
-        return Ok(None);
-    };
     if value.has_non_finite_number() {
         return Err("canonical JsonWriter rejects non-finite Float/Double values".to_string());
     }
-    Ok(Some(value.utf16_len()))
+    let length = value.json_utf16_len(&mut owner_adapter);
+    if let Some(error) = owner_error {
+        return Err(error);
+    }
+    Ok(length)
+}
+
+/// Canonical value emitted by vanilla 26.1 `ComponentSerialization.CODEC`
+/// before a concrete `DynamicOps` chooses its wire representation.
+///
+/// Numeric variants remain distinct so consumers such as `HashOps` do not
+/// lose the primitive type through the JsonOps representation. Owner nodes
+/// preserve values whose codecs belong to a surrounding registry-aware
+/// subsystem.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CanonicalComponentCodecValue {
+    Boolean(bool),
+    Byte(i8),
+    Short(i16),
+    Int(i32),
+    Long(i64),
+    Float(u32),
+    Double(u64),
+    String(String),
+    List(Vec<CanonicalComponentCodecValue>),
+    ByteArray(Vec<i8>),
+    IntArray(Vec<i32>),
+    LongArray(Vec<i64>),
+    Object(Vec<(&'static str, CanonicalComponentCodecValue)>),
+    Map(Vec<(String, CanonicalComponentCodecValue)>),
+    Owner(CanonicalComponentOwnerValue, NbtSummaryValue),
+}
+
+/// Decodes and canonically re-encodes one Component into a typed,
+/// `DynamicOps`-independent value tree.
+pub fn canonical_component_codec_value(
+    value: &NbtSummaryValue,
+) -> Result<CanonicalComponentCodecValue, String> {
+    validate_component_nbt(value, "component")?;
+    canonical_component(value)
+        .ok_or_else(|| "validated component could not be canonically encoded".to_string())
 }
 
 /// Exact JsonOps encoding length for a `ResolvableProfile` that has already been decoded and
@@ -78,7 +111,7 @@ pub fn canonical_component_json_utf16_len_with_owner(
 pub fn canonical_resolvable_profile_json_utf16_len(
     profile: &ResolvableProfileSummary,
 ) -> Option<usize> {
-    canonical_resolvable_profile(profile).map(|value| value.utf16_len())
+    canonical_resolvable_profile(profile).and_then(|value| value.json_utf16_len(&mut |_, _| None))
 }
 
 /// Exact JsonOps/Gson length for a finite Java `float` value that has already passed its semantic
@@ -119,60 +152,97 @@ pub fn canonical_nbt_json_utf16_len(value: &NbtSummaryValue) -> Result<usize, St
     if value.has_non_finite_number() {
         return Err("canonical JsonWriter rejects non-finite Float/Double values".to_string());
     }
-    Ok(value.utf16_len())
+    value
+        .json_utf16_len(&mut |_, _| None)
+        .ok_or_else(|| "canonical NBT value unexpectedly requires an owner".to_string())
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum JsonValue {
-    Bool(bool),
-    Number(String),
-    String(String),
-    Array(Vec<JsonValue>),
-    Object(Vec<(&'static str, JsonValue)>),
-    Map(Vec<(String, JsonValue)>),
-    EncodedLen(usize),
-}
-
-impl JsonValue {
+impl CanonicalComponentCodecValue {
     fn has_non_finite_number(&self) -> bool {
         match self {
-            Self::Number(value) => matches!(value.as_str(), "NaN" | "Infinity" | "-Infinity"),
-            Self::Array(values) => values.iter().any(Self::has_non_finite_number),
+            Self::Float(bits) => !f32::from_bits(*bits).is_finite(),
+            Self::Double(bits) => !f64::from_bits(*bits).is_finite(),
+            Self::List(values) => values.iter().any(Self::has_non_finite_number),
             Self::Object(fields) => fields
                 .iter()
                 .any(|(_, value)| value.has_non_finite_number()),
             Self::Map(fields) => fields
                 .iter()
                 .any(|(_, value)| value.has_non_finite_number()),
-            Self::Bool(_) | Self::String(_) | Self::EncodedLen(_) => false,
+            Self::Boolean(_)
+            | Self::Byte(_)
+            | Self::Short(_)
+            | Self::Int(_)
+            | Self::Long(_)
+            | Self::String(_)
+            | Self::ByteArray(_)
+            | Self::IntArray(_)
+            | Self::LongArray(_)
+            | Self::Owner(_, _) => false,
         }
     }
 
-    fn utf16_len(&self) -> usize {
-        match self {
-            Self::Bool(true) => 4,
-            Self::Bool(false) => 5,
-            Self::Number(value) => value.len(),
+    fn json_utf16_len(
+        &self,
+        owner_value_utf16_len: &mut dyn FnMut(
+            CanonicalComponentOwnerValue,
+            &NbtSummaryValue,
+        ) -> Option<usize>,
+    ) -> Option<usize> {
+        Some(match self {
+            Self::Boolean(true) => 4,
+            Self::Boolean(false) => 5,
+            Self::Byte(value) => value.to_string().len(),
+            Self::Short(value) => value.to_string().len(),
+            Self::Int(value) => value.to_string().len(),
+            Self::Long(value) => value.to_string().len(),
+            Self::Float(bits) => java_float_string(f32::from_bits(*bits)).len(),
+            Self::Double(bits) => java_double_string(f64::from_bits(*bits)).len(),
             Self::String(value) => json_string_utf16_len(value),
-            Self::Array(values) => collection_utf16_len(values.iter().map(Self::utf16_len)),
+            Self::List(values) => collection_utf16_len(
+                values
+                    .iter()
+                    .map(|value| value.json_utf16_len(owner_value_utf16_len))
+                    .collect::<Option<Vec<_>>>()?
+                    .into_iter(),
+            ),
+            Self::ByteArray(values) => {
+                collection_utf16_len(values.iter().map(|value| value.to_string().len()))
+            }
+            Self::IntArray(values) => {
+                collection_utf16_len(values.iter().map(|value| value.to_string().len()))
+            }
+            Self::LongArray(values) => {
+                collection_utf16_len(values.iter().map(|value| value.to_string().len()))
+            }
             Self::Object(fields) => {
-                let entries = fields.iter().map(|(name, value)| {
-                    json_string_utf16_len(name)
-                        .saturating_add(1)
-                        .saturating_add(value.utf16_len())
-                });
-                collection_utf16_len(entries)
+                let entries = fields
+                    .iter()
+                    .map(|(name, value)| {
+                        Some(
+                            json_string_utf16_len(name)
+                                .saturating_add(1)
+                                .saturating_add(value.json_utf16_len(owner_value_utf16_len)?),
+                        )
+                    })
+                    .collect::<Option<Vec<_>>>()?;
+                collection_utf16_len(entries.into_iter())
             }
             Self::Map(fields) => {
-                let entries = fields.iter().map(|(name, value)| {
-                    json_string_utf16_len(name)
-                        .saturating_add(1)
-                        .saturating_add(value.utf16_len())
-                });
-                collection_utf16_len(entries)
+                let entries = fields
+                    .iter()
+                    .map(|(name, value)| {
+                        Some(
+                            json_string_utf16_len(name)
+                                .saturating_add(1)
+                                .saturating_add(value.json_utf16_len(owner_value_utf16_len)?),
+                        )
+                    })
+                    .collect::<Option<Vec<_>>>()?;
+                collection_utf16_len(entries.into_iter())
             }
-            Self::EncodedLen(length) => *length,
-        }
+            Self::Owner(kind, value) => owner_value_utf16_len(*kind, value)?,
+        })
     }
 }
 
@@ -184,14 +254,8 @@ fn collection_utf16_len(entries: impl Iterator<Item = usize>) -> usize {
     })
 }
 
-type OwnerValueLength<'a> =
-    dyn FnMut(CanonicalComponentOwnerValue, &NbtSummaryValue) -> Option<usize> + 'a;
-
-fn canonical_component(
-    value: &NbtSummaryValue,
-    owner_value_utf16_len: &mut OwnerValueLength<'_>,
-) -> Option<JsonValue> {
-    canonical_component_at(value, 0, owner_value_utf16_len)
+fn canonical_component(value: &NbtSummaryValue) -> Option<CanonicalComponentCodecValue> {
+    canonical_component_at(value, 0)
 }
 
 type ComponentRef<'a> = (&'a NbtSummaryValue, usize);
@@ -199,28 +263,23 @@ type ComponentRef<'a> = (&'a NbtSummaryValue, usize);
 fn canonical_component_at(
     value: &NbtSummaryValue,
     depth: usize,
-    owner_value_utf16_len: &mut OwnerValueLength<'_>,
-) -> Option<JsonValue> {
-    canonical_component_with_siblings(value, depth, Vec::new(), owner_value_utf16_len)
+) -> Option<CanonicalComponentCodecValue> {
+    canonical_component_with_siblings(value, depth, Vec::new())
 }
 
 fn canonical_component_with_siblings<'a>(
     value: &'a NbtSummaryValue,
     depth: usize,
     appended_siblings: Vec<ComponentRef<'a>>,
-    owner_value_utf16_len: &mut OwnerValueLength<'_>,
-) -> Option<JsonValue> {
+) -> Option<CanonicalComponentCodecValue> {
     match value {
         NbtSummaryValue::String(text) => {
             if appended_siblings.is_empty() {
-                Some(JsonValue::String(text.clone()))
+                Some(CanonicalComponentCodecValue::String(text.clone()))
             } else {
-                Some(JsonValue::Object(vec![
-                    ("text", JsonValue::String(text.clone())),
-                    (
-                        "extra",
-                        canonical_component_list(&appended_siblings, owner_value_utf16_len)?,
-                    ),
+                Some(CanonicalComponentCodecValue::Object(vec![
+                    ("text", CanonicalComponentCodecValue::String(text.clone())),
+                    ("extra", canonical_component_list(&appended_siblings)?),
                 ]))
             }
         }
@@ -229,10 +288,10 @@ fn canonical_component_with_siblings<'a>(
             let mut siblings = Vec::with_capacity(rest.len() + appended_siblings.len());
             siblings.extend(rest.iter().map(|value| (value, depth + 1)));
             siblings.extend(appended_siblings);
-            canonical_component_with_siblings(first, depth + 1, siblings, owner_value_utf16_len)
+            canonical_component_with_siblings(first, depth + 1, siblings)
         }
         NbtSummaryValue::Compound(entries) => {
-            canonical_full_component(entries, depth, appended_siblings, owner_value_utf16_len)
+            canonical_full_component(entries, depth, appended_siblings)
         }
         _ => None,
     }
@@ -242,10 +301,9 @@ fn canonical_full_component<'a>(
     entries: &'a [NbtSummaryEntry],
     depth: usize,
     appended_siblings: Vec<ComponentRef<'a>>,
-    owner_value_utf16_len: &mut OwnerValueLength<'_>,
-) -> Option<JsonValue> {
+) -> Option<CanonicalComponentCodecValue> {
     let content_type = decoded_content_type(entries, "component", depth);
-    let mut fields = canonical_content_fields(content_type, entries, depth, owner_value_utf16_len)?;
+    let mut fields = canonical_content_fields(content_type, entries, depth)?;
     let mut siblings = match find_entry(entries, "extra") {
         Some(NbtSummaryValue::List(values)) => values
             .iter()
@@ -254,62 +312,52 @@ fn canonical_full_component<'a>(
         _ => Vec::new(),
     };
     siblings.extend(appended_siblings);
-    let style = canonical_style_fields(entries, depth, owner_value_utf16_len)?;
+    let style = canonical_style_fields(entries, depth)?;
 
     if content_type == "text" && siblings.is_empty() && style.is_empty() {
         let NbtSummaryValue::String(text) = find_entry(entries, "text")? else {
             unreachable!("plain text content was validated before canonical encoding")
         };
-        return Some(JsonValue::String(text.clone()));
+        return Some(CanonicalComponentCodecValue::String(text.clone()));
     }
     if !siblings.is_empty() {
-        fields.push((
-            "extra",
-            canonical_component_list(&siblings, owner_value_utf16_len)?,
-        ));
+        fields.push(("extra", canonical_component_list(&siblings)?));
     }
     fields.extend(style);
-    Some(JsonValue::Object(fields))
+    Some(CanonicalComponentCodecValue::Object(fields))
 }
 
-fn canonical_component_list(
-    values: &[ComponentRef<'_>],
-    owner_value_utf16_len: &mut OwnerValueLength<'_>,
-) -> Option<JsonValue> {
+fn canonical_component_list(values: &[ComponentRef<'_>]) -> Option<CanonicalComponentCodecValue> {
     values
         .iter()
-        .map(|(value, depth)| canonical_component_at(value, *depth, owner_value_utf16_len))
+        .map(|(value, depth)| canonical_component_at(value, *depth))
         .collect::<Option<Vec<_>>>()
-        .map(JsonValue::Array)
+        .map(CanonicalComponentCodecValue::List)
 }
 
 fn canonical_content_fields(
     content_type: &str,
     entries: &[NbtSummaryEntry],
     depth: usize,
-    owner_value_utf16_len: &mut OwnerValueLength<'_>,
-) -> Option<Vec<(&'static str, JsonValue)>> {
+) -> Option<Vec<(&'static str, CanonicalComponentCodecValue)>> {
     let mut fields = Vec::new();
     match content_type {
         "text" => fields.push(("text", string_field(entries, "text")?)),
         "translatable" => {
             fields.push(("translate", string_field(entries, "translate")?));
             if let Some(NbtSummaryValue::String(fallback)) = find_entry(entries, "fallback") {
-                fields.push(("fallback", JsonValue::String(fallback.clone())));
+                fields.push((
+                    "fallback",
+                    CanonicalComponentCodecValue::String(fallback.clone()),
+                ));
             }
             if let Some(NbtSummaryValue::List(arguments)) = find_entry(entries, "with") {
                 if !arguments.is_empty() {
                     let arguments = arguments
                         .iter()
-                        .map(|argument| {
-                            canonical_translation_argument(
-                                argument,
-                                depth + 1,
-                                owner_value_utf16_len,
-                            )
-                        })
+                        .map(|argument| canonical_translation_argument(argument, depth + 1))
                         .collect::<Option<Vec<_>>>()?;
-                    fields.push(("with", JsonValue::Array(arguments)));
+                    fields.push(("with", CanonicalComponentCodecValue::List(arguments)));
                 }
             }
         }
@@ -320,7 +368,7 @@ fn canonical_content_fields(
             };
             fields.push((
                 "score",
-                JsonValue::Object(vec![
+                CanonicalComponentCodecValue::Object(vec![
                     ("name", string_field(score, "name")?),
                     ("objective", string_field(score, "objective")?),
                 ]),
@@ -329,10 +377,7 @@ fn canonical_content_fields(
         "selector" => {
             fields.push(("selector", string_field(entries, "selector")?));
             if let Some(separator) = find_entry(entries, "separator") {
-                fields.push((
-                    "separator",
-                    canonical_component_at(separator, depth + 1, owner_value_utf16_len)?,
-                ));
+                fields.push(("separator", canonical_component_at(separator, depth + 1)?));
             }
         }
         "nbt" => {
@@ -341,20 +386,17 @@ fn canonical_content_fields(
                 .and_then(component_bool)
                 .unwrap_or(false)
             {
-                fields.push(("interpret", JsonValue::Bool(true)));
+                fields.push(("interpret", CanonicalComponentCodecValue::Boolean(true)));
             }
             if find_entry(entries, "plain")
                 .and_then(component_bool)
                 .unwrap_or(false)
             {
-                fields.push(("plain", JsonValue::Bool(true)));
+                fields.push(("plain", CanonicalComponentCodecValue::Boolean(true)));
             }
             if let Some(separator) = find_entry(entries, "separator") {
                 if validate_component(separator, "component separator", depth + 1).is_ok() {
-                    fields.push((
-                        "separator",
-                        canonical_component_at(separator, depth + 1, owner_value_utf16_len)?,
-                    ));
+                    fields.push(("separator", canonical_component_at(separator, depth + 1)?));
                 }
             }
             match decoded_data_source_type(entries, "component") {
@@ -371,32 +413,36 @@ fn canonical_content_fields(
                 "atlas" => {
                     let atlas = match find_entry(entries, "atlas") {
                         Some(_) => normalized_identifier_field(entries, "atlas")?,
-                        None => JsonValue::String("minecraft:blocks".to_string()),
+                        None => {
+                            CanonicalComponentCodecValue::String("minecraft:blocks".to_string())
+                        }
                     };
-                    if atlas != JsonValue::String("minecraft:blocks".to_string()) {
+                    if atlas != CanonicalComponentCodecValue::String("minecraft:blocks".to_string())
+                    {
                         fields.push(("atlas", atlas));
                     }
                     fields.push(("sprite", normalized_identifier_field(entries, "sprite")?));
                 }
                 "player" => {
                     let player = find_entry(entries, "player")?;
-                    let encoded_len =
-                        owner_value_utf16_len(CanonicalComponentOwnerValue::PlayerProfile, player)?;
-                    fields.push(("player", JsonValue::EncodedLen(encoded_len)));
+                    fields.push((
+                        "player",
+                        CanonicalComponentCodecValue::Owner(
+                            CanonicalComponentOwnerValue::PlayerProfile,
+                            player.clone(),
+                        ),
+                    ));
                     if !find_entry(entries, "hat")
                         .and_then(component_bool)
                         .unwrap_or(true)
                     {
-                        fields.push(("hat", JsonValue::Bool(false)));
+                        fields.push(("hat", CanonicalComponentCodecValue::Boolean(false)));
                     }
                 }
                 _ => unreachable!("component object was validated before canonical encoding"),
             }
             if let Some(fallback) = find_entry(entries, "fallback") {
-                fields.push((
-                    "fallback",
-                    canonical_component_at(fallback, depth + 1, owner_value_utf16_len)?,
-                ));
+                fields.push(("fallback", canonical_component_at(fallback, depth + 1)?));
             }
         }
         _ => unreachable!("component content was validated before canonical encoding"),
@@ -407,25 +453,23 @@ fn canonical_content_fields(
 fn canonical_translation_argument(
     value: &NbtSummaryValue,
     depth: usize,
-    owner_value_utf16_len: &mut OwnerValueLength<'_>,
-) -> Option<JsonValue> {
+) -> Option<CanonicalComponentCodecValue> {
     match value {
-        NbtSummaryValue::Byte(value) => Some(number(i64::from(*value))),
-        NbtSummaryValue::Short(value) => Some(number(i64::from(*value))),
-        NbtSummaryValue::Int(value) => Some(number(i64::from(*value))),
-        NbtSummaryValue::Long(value) => Some(number(*value)),
-        NbtSummaryValue::Float(bits) => Some(java_float(f32::from_bits(*bits))),
-        NbtSummaryValue::Double(bits) => Some(java_double(f64::from_bits(*bits))),
-        NbtSummaryValue::String(value) => Some(JsonValue::String(value.clone())),
-        _ => canonical_component_at(value, depth, owner_value_utf16_len),
+        NbtSummaryValue::Byte(value) => Some(CanonicalComponentCodecValue::Byte(*value)),
+        NbtSummaryValue::Short(value) => Some(CanonicalComponentCodecValue::Short(*value)),
+        NbtSummaryValue::Int(value) => Some(CanonicalComponentCodecValue::Int(*value)),
+        NbtSummaryValue::Long(value) => Some(CanonicalComponentCodecValue::Long(*value)),
+        NbtSummaryValue::Float(bits) => Some(CanonicalComponentCodecValue::Float(*bits)),
+        NbtSummaryValue::Double(bits) => Some(CanonicalComponentCodecValue::Double(*bits)),
+        NbtSummaryValue::String(value) => Some(CanonicalComponentCodecValue::String(value.clone())),
+        _ => canonical_component_at(value, depth),
     }
 }
 
 fn canonical_style_fields(
     entries: &[NbtSummaryEntry],
     depth: usize,
-    owner_value_utf16_len: &mut OwnerValueLength<'_>,
-) -> Option<Vec<(&'static str, JsonValue)>> {
+) -> Option<Vec<(&'static str, CanonicalComponentCodecValue)>> {
     let mut fields = Vec::new();
     if let Some(NbtSummaryValue::String(color)) = find_entry(entries, "color") {
         let encoded = if color.starts_with('#') {
@@ -433,13 +477,13 @@ fn canonical_style_fields(
         } else {
             color.clone()
         };
-        fields.push(("color", JsonValue::String(encoded)));
+        fields.push(("color", CanonicalComponentCodecValue::String(encoded)));
     }
     if let Some(shadow) = find_entry(entries, "shadow_color") {
         // `ARGB_COLOR_CODEC` always re-encodes through its primary `Codec.INT` branch. Numeric
         // NBT values and the vector4f alternative therefore both normalize to one signed int.
         let shadow = canonical_argb_color(shadow)?;
-        fields.push(("shadow_color", number(i64::from(shadow))));
+        fields.push(("shadow_color", CanonicalComponentCodecValue::Int(shadow)));
     }
     for field in [
         "bold",
@@ -449,23 +493,23 @@ fn canonical_style_fields(
         "obfuscated",
     ] {
         if let Some(value) = find_entry(entries, field) {
-            fields.push((field, JsonValue::Bool(component_bool(value)?)));
+            fields.push((
+                field,
+                CanonicalComponentCodecValue::Boolean(component_bool(value)?),
+            ));
         }
     }
     if let Some(click_event) = find_entry(entries, "click_event") {
-        fields.push((
-            "click_event",
-            canonical_click_event(click_event, owner_value_utf16_len)?,
-        ));
+        fields.push(("click_event", canonical_click_event(click_event)?));
     }
     if let Some(hover_event) = find_entry(entries, "hover_event") {
-        fields.push((
-            "hover_event",
-            canonical_hover_event(hover_event, depth, owner_value_utf16_len)?,
-        ));
+        fields.push(("hover_event", canonical_hover_event(hover_event, depth)?));
     }
     if let Some(NbtSummaryValue::String(insertion)) = find_entry(entries, "insertion") {
-        fields.push(("insertion", JsonValue::String(insertion.clone())));
+        fields.push((
+            "insertion",
+            CanonicalComponentCodecValue::String(insertion.clone()),
+        ));
     }
     if find_entry(entries, "font").is_some() {
         fields.push(("font", normalized_identifier_field(entries, "font")?));
@@ -473,15 +517,15 @@ fn canonical_style_fields(
     Some(fields)
 }
 
-fn canonical_click_event(
-    value: &NbtSummaryValue,
-    owner_value_utf16_len: &mut OwnerValueLength<'_>,
-) -> Option<JsonValue> {
+fn canonical_click_event(value: &NbtSummaryValue) -> Option<CanonicalComponentCodecValue> {
     let NbtSummaryValue::Compound(entries) = value else {
         return None;
     };
     let action = string_value(find_entry(entries, "action")?)?;
-    let mut fields = vec![("action", JsonValue::String(action.to_string()))];
+    let mut fields = vec![(
+        "action",
+        CanonicalComponentCodecValue::String(action.to_string()),
+    )];
     match action {
         "open_url" => fields.push(("url", string_field(entries, "url")?)),
         "run_command" | "suggest_command" => {
@@ -489,12 +533,17 @@ fn canonical_click_event(
         }
         "show_dialog" => {
             let dialog = find_entry(entries, "dialog")?;
-            let encoded_len = owner_value_utf16_len(CanonicalComponentOwnerValue::Dialog, dialog)?;
-            fields.push(("dialog", JsonValue::EncodedLen(encoded_len)));
+            fields.push((
+                "dialog",
+                CanonicalComponentCodecValue::Owner(
+                    CanonicalComponentOwnerValue::Dialog,
+                    dialog.clone(),
+                ),
+            ));
         }
         "change_page" => fields.push((
             "page",
-            number(i64::from(component_i32(find_entry(entries, "page")?)?)),
+            CanonicalComponentCodecValue::Int(component_i32(find_entry(entries, "page")?)?),
         )),
         "copy_to_clipboard" => fields.push(("value", string_field(entries, "value")?)),
         "custom" => {
@@ -505,59 +554,56 @@ fn canonical_click_event(
         }
         _ => return None,
     }
-    Some(JsonValue::Object(fields))
+    Some(CanonicalComponentCodecValue::Object(fields))
 }
 
 fn canonical_hover_event(
     value: &NbtSummaryValue,
     depth: usize,
-    owner_value_utf16_len: &mut OwnerValueLength<'_>,
-) -> Option<JsonValue> {
+) -> Option<CanonicalComponentCodecValue> {
     let NbtSummaryValue::Compound(entries) = value else {
         return None;
     };
     let action = string_value(find_entry(entries, "action")?)?;
-    let mut fields = vec![("action", JsonValue::String(action.to_string()))];
+    let mut fields = vec![(
+        "action",
+        CanonicalComponentCodecValue::String(action.to_string()),
+    )];
     match action {
         "show_text" => fields.push((
             "value",
-            canonical_component_at(
-                find_entry(entries, "value")?,
-                depth + 1,
-                owner_value_utf16_len,
-            )?,
+            canonical_component_at(find_entry(entries, "value")?, depth + 1)?,
         )),
         "show_item" => {
             fields.push(("id", normalized_identifier_field(entries, "id")?));
             if let Some(count) = find_entry(entries, "count").and_then(component_i32) {
                 if count != 1 {
-                    fields.push(("count", number(i64::from(count))));
+                    fields.push(("count", CanonicalComponentCodecValue::Int(count)));
                 }
             }
             if let Some(components) = find_entry(entries, "components") {
-                let encoded_len = owner_value_utf16_len(
-                    CanonicalComponentOwnerValue::ItemComponentPatch,
-                    components,
-                )?;
-                fields.push(("components", JsonValue::EncodedLen(encoded_len)));
+                fields.push((
+                    "components",
+                    CanonicalComponentCodecValue::Owner(
+                        CanonicalComponentOwnerValue::ItemComponentPatch,
+                        components.clone(),
+                    ),
+                ));
             }
         }
         "show_entity" => {
             fields.push(("id", normalized_identifier_field(entries, "id")?));
             fields.push(("uuid", canonical_uuid(find_entry(entries, "uuid")?)?));
             if let Some(name) = find_entry(entries, "name") {
-                fields.push((
-                    "name",
-                    canonical_component_at(name, depth + 1, owner_value_utf16_len)?,
-                ));
+                fields.push(("name", canonical_component_at(name, depth + 1)?));
             }
         }
         _ => return None,
     }
-    Some(JsonValue::Object(fields))
+    Some(CanonicalComponentCodecValue::Object(fields))
 }
 
-fn canonical_uuid(value: &NbtSummaryValue) -> Option<JsonValue> {
+fn canonical_uuid(value: &NbtSummaryValue) -> Option<CanonicalComponentCodecValue> {
     let values = match value {
         NbtSummaryValue::IntArray(values) if values.len() == 4 => values.clone(),
         NbtSummaryValue::ByteArray(values) if values.len() == 4 => {
@@ -573,24 +619,24 @@ fn canonical_uuid(value: &NbtSummaryValue) -> Option<JsonValue> {
         NbtSummaryValue::String(value) => java_uuid_int_array(value)?,
         _ => return None,
     };
-    Some(JsonValue::Array(
-        values
-            .into_iter()
-            .map(|value| number(i64::from(value)))
-            .collect(),
-    ))
+    Some(CanonicalComponentCodecValue::IntArray(values))
 }
 
-fn canonical_resolvable_profile(profile: &ResolvableProfileSummary) -> Option<JsonValue> {
+fn canonical_resolvable_profile(
+    profile: &ResolvableProfileSummary,
+) -> Option<CanonicalComponentCodecValue> {
     let mut fields = Vec::new();
     match profile.kind {
         ResolvableProfileKindSummary::GameProfile => {
             fields.push(("id", canonical_uuid_value(profile.uuid?)));
-            fields.push(("name", JsonValue::String(profile.name.clone()?)));
+            fields.push((
+                "name",
+                CanonicalComponentCodecValue::String(profile.name.clone()?),
+            ));
         }
         ResolvableProfileKindSummary::Partial => {
             if let Some(name) = &profile.name {
-                fields.push(("name", JsonValue::String(name.clone())));
+                fields.push(("name", CanonicalComponentCodecValue::String(name.clone())));
             }
             if let Some(uuid) = profile.uuid {
                 fields.push(("id", canonical_uuid_value(uuid)));
@@ -600,7 +646,7 @@ fn canonical_resolvable_profile(profile: &ResolvableProfileSummary) -> Option<Js
     if !profile.properties.is_empty() {
         fields.push((
             "properties",
-            JsonValue::Array(
+            CanonicalComponentCodecValue::List(
                 profile
                     .properties
                     .iter()
@@ -610,37 +656,43 @@ fn canonical_resolvable_profile(profile: &ResolvableProfileSummary) -> Option<Js
         ));
     }
     append_skin_patch_fields(&mut fields, &profile.skin_patch);
-    Some(JsonValue::Object(fields))
+    Some(CanonicalComponentCodecValue::Object(fields))
 }
 
-fn canonical_uuid_value(uuid: uuid::Uuid) -> JsonValue {
+fn canonical_uuid_value(uuid: uuid::Uuid) -> CanonicalComponentCodecValue {
     let bits = uuid.as_u128();
-    JsonValue::Array(
-        [
-            (bits >> 96) as u32 as i32,
-            (bits >> 64) as u32 as i32,
-            (bits >> 32) as u32 as i32,
-            bits as u32 as i32,
-        ]
-        .into_iter()
-        .map(|value| number(i64::from(value)))
-        .collect(),
-    )
+    CanonicalComponentCodecValue::IntArray(vec![
+        (bits >> 96) as u32 as i32,
+        (bits >> 64) as u32 as i32,
+        (bits >> 32) as u32 as i32,
+        bits as u32 as i32,
+    ])
 }
 
-fn canonical_profile_property(property: &GameProfilePropertySummary) -> JsonValue {
+fn canonical_profile_property(
+    property: &GameProfilePropertySummary,
+) -> CanonicalComponentCodecValue {
     let mut fields = vec![
-        ("name", JsonValue::String(property.name.clone())),
-        ("value", JsonValue::String(property.value.clone())),
+        (
+            "name",
+            CanonicalComponentCodecValue::String(property.name.clone()),
+        ),
+        (
+            "value",
+            CanonicalComponentCodecValue::String(property.value.clone()),
+        ),
     ];
     if let Some(signature) = &property.signature {
-        fields.push(("signature", JsonValue::String(signature.clone())));
+        fields.push((
+            "signature",
+            CanonicalComponentCodecValue::String(signature.clone()),
+        ));
     }
-    JsonValue::Object(fields)
+    CanonicalComponentCodecValue::Object(fields)
 }
 
 fn append_skin_patch_fields(
-    fields: &mut Vec<(&'static str, JsonValue)>,
+    fields: &mut Vec<(&'static str, CanonicalComponentCodecValue)>,
     patch: &PlayerSkinPatchSummary,
 ) {
     for (field, texture) in [
@@ -649,13 +701,16 @@ fn append_skin_patch_fields(
         ("elytra", patch.elytra.as_ref()),
     ] {
         if let Some(texture) = texture {
-            fields.push((field, JsonValue::String(texture.asset_id.clone())));
+            fields.push((
+                field,
+                CanonicalComponentCodecValue::String(texture.asset_id.clone()),
+            ));
         }
     }
     if let Some(model) = patch.model {
         fields.push((
             "model",
-            JsonValue::String(
+            CanonicalComponentCodecValue::String(
                 match model {
                     PlayerModelTypeSummary::Slim => "slim",
                     PlayerModelTypeSummary::Wide => "wide",
@@ -697,42 +752,39 @@ fn component_f32(value: &NbtSummaryValue) -> Option<f32> {
     })
 }
 
-fn canonical_nbt(value: &NbtSummaryValue) -> Option<JsonValue> {
+fn canonical_nbt(value: &NbtSummaryValue) -> Option<CanonicalComponentCodecValue> {
     Some(match value {
-        NbtSummaryValue::Byte(value) => number(i64::from(*value)),
-        NbtSummaryValue::Short(value) => number(i64::from(*value)),
-        NbtSummaryValue::Int(value) => number(i64::from(*value)),
-        NbtSummaryValue::Long(value) => number(*value),
-        NbtSummaryValue::Float(bits) => java_float(f32::from_bits(*bits)),
-        NbtSummaryValue::Double(bits) => java_double(f64::from_bits(*bits)),
-        NbtSummaryValue::ByteArray(values) => JsonValue::Array(
-            values
-                .iter()
-                .map(|value| number(i64::from(*value)))
-                .collect(),
-        ),
-        NbtSummaryValue::String(value) => JsonValue::String(value.clone()),
-        NbtSummaryValue::List(values) => JsonValue::Array(
+        NbtSummaryValue::Byte(value) => CanonicalComponentCodecValue::Byte(*value),
+        NbtSummaryValue::Short(value) => CanonicalComponentCodecValue::Short(*value),
+        NbtSummaryValue::Int(value) => CanonicalComponentCodecValue::Int(*value),
+        NbtSummaryValue::Long(value) => CanonicalComponentCodecValue::Long(*value),
+        NbtSummaryValue::Float(bits) => CanonicalComponentCodecValue::Float(*bits),
+        NbtSummaryValue::Double(bits) => CanonicalComponentCodecValue::Double(*bits),
+        NbtSummaryValue::ByteArray(values) => {
+            CanonicalComponentCodecValue::ByteArray(values.clone())
+        }
+        NbtSummaryValue::String(value) => CanonicalComponentCodecValue::String(value.clone()),
+        NbtSummaryValue::List(values) => CanonicalComponentCodecValue::List(
             values
                 .iter()
                 .map(canonical_nbt)
                 .collect::<Option<Vec<_>>>()?,
         ),
-        NbtSummaryValue::Compound(entries) => JsonValue::Map(canonical_nbt_map(entries)?),
-        NbtSummaryValue::IntArray(values) => JsonValue::Array(
-            values
-                .iter()
-                .map(|value| number(i64::from(*value)))
-                .collect(),
-        ),
+        NbtSummaryValue::Compound(entries) => {
+            CanonicalComponentCodecValue::Map(canonical_nbt_map(entries)?)
+        }
+        NbtSummaryValue::IntArray(values) => CanonicalComponentCodecValue::IntArray(values.clone()),
         NbtSummaryValue::LongArray(values) => {
-            JsonValue::Array(values.iter().map(|value| number(*value)).collect())
+            CanonicalComponentCodecValue::LongArray(values.clone())
         }
     })
 }
 
-fn canonical_nbt_map(entries: &[NbtSummaryEntry]) -> Option<Vec<(String, JsonValue)>> {
-    let mut normalized = Vec::<(String, JsonValue)>::with_capacity(entries.len());
+fn canonical_nbt_map(
+    entries: &[NbtSummaryEntry],
+) -> Option<Vec<(String, CanonicalComponentCodecValue)>> {
+    let mut normalized =
+        Vec::<(String, CanonicalComponentCodecValue)>::with_capacity(entries.len());
     for entry in entries {
         let value = canonical_nbt(&entry.value)?;
         if let Some((_, existing)) = normalized.iter_mut().find(|(name, _)| name == &entry.name) {
@@ -762,15 +814,19 @@ fn java_uuid_int_array(value: &str) -> Option<Vec<i32>> {
     ])
 }
 
-fn normalized_identifier_field(entries: &[NbtSummaryEntry], field: &str) -> Option<JsonValue> {
+fn normalized_identifier_field(
+    entries: &[NbtSummaryEntry],
+    field: &str,
+) -> Option<CanonicalComponentCodecValue> {
     let value = string_value(find_entry(entries, field)?)?;
     normalize_resource_location(value.to_string())
         .ok()
-        .map(JsonValue::String)
+        .map(CanonicalComponentCodecValue::String)
 }
 
-fn string_field(entries: &[NbtSummaryEntry], field: &str) -> Option<JsonValue> {
-    string_value(find_entry(entries, field)?).map(|value| JsonValue::String(value.to_string()))
+fn string_field(entries: &[NbtSummaryEntry], field: &str) -> Option<CanonicalComponentCodecValue> {
+    string_value(find_entry(entries, field)?)
+        .map(|value| CanonicalComponentCodecValue::String(value.to_string()))
 }
 
 fn string_value(value: &NbtSummaryValue) -> Option<&str> {
@@ -778,18 +834,6 @@ fn string_value(value: &NbtSummaryValue) -> Option<&str> {
         return None;
     };
     Some(value)
-}
-
-fn number(value: i64) -> JsonValue {
-    JsonValue::Number(value.to_string())
-}
-
-fn java_float(value: f32) -> JsonValue {
-    JsonValue::Number(java_float_string(value))
-}
-
-fn java_double(value: f64) -> JsonValue {
-    JsonValue::Number(java_double_string(value))
 }
 
 fn find_entry<'a>(entries: &'a [NbtSummaryEntry], field: &str) -> Option<&'a NbtSummaryValue> {
@@ -897,6 +941,145 @@ mod tests {
         assert_eq!(
             exact(&value),
             r#"{"text":"x","shadow_color":-33024,"click_event":{"action":"custom","id":"minecraft:test","payload":{"a":1,"bytes":[-1,2],"nested":["z"]}}}"#.len()
+        );
+    }
+
+    #[test]
+    fn retains_typed_numbers_and_native_arrays_for_dynamic_ops() {
+        let value = compound(vec![
+            ("type", string("translatable")),
+            ("translate", string("key")),
+            (
+                "with",
+                list(vec![
+                    NbtSummaryValue::Byte(-1),
+                    NbtSummaryValue::Short(-2),
+                    NbtSummaryValue::Int(-3),
+                    NbtSummaryValue::Long(-4),
+                    NbtSummaryValue::Float(1.5f32.to_bits()),
+                    NbtSummaryValue::Double(2.5f64.to_bits()),
+                ]),
+            ),
+            (
+                "click_event",
+                compound(vec![
+                    ("action", string("custom")),
+                    ("id", string("test")),
+                    (
+                        "payload",
+                        compound(vec![
+                            ("bytes", NbtSummaryValue::ByteArray(vec![-1, 2])),
+                            ("ints", NbtSummaryValue::IntArray(vec![-3, 4])),
+                            ("longs", NbtSummaryValue::LongArray(vec![-5, 6])),
+                        ]),
+                    ),
+                ]),
+            ),
+        ]);
+        assert_eq!(
+            canonical_component_codec_value(&value).unwrap(),
+            CanonicalComponentCodecValue::Object(vec![
+                (
+                    "translate",
+                    CanonicalComponentCodecValue::String("key".to_string()),
+                ),
+                (
+                    "with",
+                    CanonicalComponentCodecValue::List(vec![
+                        CanonicalComponentCodecValue::Byte(-1),
+                        CanonicalComponentCodecValue::Short(-2),
+                        CanonicalComponentCodecValue::Int(-3),
+                        CanonicalComponentCodecValue::Long(-4),
+                        CanonicalComponentCodecValue::Float(1.5f32.to_bits()),
+                        CanonicalComponentCodecValue::Double(2.5f64.to_bits()),
+                    ]),
+                ),
+                (
+                    "click_event",
+                    CanonicalComponentCodecValue::Object(vec![
+                        (
+                            "action",
+                            CanonicalComponentCodecValue::String("custom".to_string()),
+                        ),
+                        (
+                            "id",
+                            CanonicalComponentCodecValue::String("minecraft:test".to_string()),
+                        ),
+                        (
+                            "payload",
+                            CanonicalComponentCodecValue::Map(vec![
+                                (
+                                    "bytes".to_string(),
+                                    CanonicalComponentCodecValue::ByteArray(vec![-1, 2]),
+                                ),
+                                (
+                                    "ints".to_string(),
+                                    CanonicalComponentCodecValue::IntArray(vec![-3, 4]),
+                                ),
+                                (
+                                    "longs".to_string(),
+                                    CanonicalComponentCodecValue::LongArray(vec![-5, 6]),
+                                ),
+                            ]),
+                        ),
+                    ]),
+                ),
+            ])
+        );
+    }
+
+    #[test]
+    fn retains_uuid_array_and_semantic_owner_nodes() {
+        let entity = compound(vec![
+            ("text", string("entity")),
+            (
+                "hover_event",
+                compound(vec![
+                    ("action", string("show_entity")),
+                    ("id", string("pig")),
+                    ("uuid", string("1-2-3-4-5")),
+                ]),
+            ),
+        ]);
+        let encoded = canonical_component_codec_value(&entity).unwrap();
+        let CanonicalComponentCodecValue::Object(fields) = encoded else {
+            panic!("styled text component should encode as a map");
+        };
+        assert_eq!(
+            fields[1],
+            (
+                "hover_event",
+                CanonicalComponentCodecValue::Object(vec![
+                    (
+                        "action",
+                        CanonicalComponentCodecValue::String("show_entity".to_string()),
+                    ),
+                    (
+                        "id",
+                        CanonicalComponentCodecValue::String("minecraft:pig".to_string()),
+                    ),
+                    (
+                        "uuid",
+                        CanonicalComponentCodecValue::IntArray(vec![1, 131_075, 262_144, 5]),
+                    ),
+                ]),
+            )
+        );
+
+        let player = string("Alex");
+        let object = compound(vec![
+            ("object", string("player")),
+            ("player", player.clone()),
+        ]);
+        assert_eq!(
+            canonical_component_codec_value(&object).unwrap(),
+            CanonicalComponentCodecValue::Object(vec![(
+                "player",
+                CanonicalComponentCodecValue::Owner(
+                    CanonicalComponentOwnerValue::PlayerProfile,
+                    player,
+                ),
+            )])
         );
     }
 
