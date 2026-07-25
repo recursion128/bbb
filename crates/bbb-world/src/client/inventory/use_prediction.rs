@@ -21,7 +21,7 @@ use bbb_protocol::{
     block_types::{
         vanilla_block_type, vanilla_block_type_for_resource_id, BlockTypeCatalogEntry,
         VanillaBlockUseItemOnOverride, VanillaBlockUseWithoutItemOverride, VANILLA_BLOCK_AIR_ID,
-        VANILLA_BLOCK_BEDROCK_ID, VANILLA_BLOCK_OBSIDIAN_ID,
+        VANILLA_BLOCK_BEDROCK_ID, VANILLA_BLOCK_END_PORTAL_FRAME_ID, VANILLA_BLOCK_OBSIDIAN_ID,
     },
     builtin_enum_component_values::normalize_vanilla_dye_color_id,
     data_component_types::{
@@ -335,6 +335,9 @@ impl WorldStore {
                 if let Some(result) = self.predict_local_tool_item_use_on(owner, hand, context) {
                     return result;
                 }
+                if let Some(result) = self.predict_local_client_owned_item_use_on(owner, context) {
+                    return result;
+                }
                 if let Some(result) =
                     self.predict_local_entity_spawning_item_use_on(owner, hand, context)
                 {
@@ -482,6 +485,65 @@ impl WorldStore {
                     == Some(VanillaBlockUseItemOnOverride::CampfireBlock)
                     && properties.get("lit").is_some_and(|value| value == "true");
                 Some(if lit_campfire { success() } else { pass() })
+            }
+            _ => None,
+        }
+    }
+
+    fn predict_local_client_owned_item_use_on(
+        &self,
+        owner: VanillaItemUseOnOverride,
+        context: LocalBlockUseContext,
+    ) -> Option<LocalTargetUsePrediction> {
+        let client_success = || {
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction(),
+            ))
+        };
+        let consume = || {
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::consume(true),
+            ))
+        };
+        let pass = || LocalTargetUsePrediction::Result(LocalInteractionResult::Pass);
+        match owner {
+            // `BrushItem.useOn` always consumes the action and its block hit
+            // starts the fixed-duration brushing use animation.
+            VanillaItemUseOnOverride::BrushItem => Some(consume()),
+            // The permission, component, and block-property work is confined
+            // to `ServerPlayer`; the client returns success immediately.
+            VanillaItemUseOnOverride::DebugStickItem => Some(client_success()),
+            // `LeadItem` only binds mobs on the logical server, while the
+            // targeted entry point of `PlaceOnWaterBlockItem` always passes.
+            VanillaItemUseOnOverride::LeadItem
+            | VanillaItemUseOnOverride::PlaceOnWaterBlockItem => Some(pass()),
+            VanillaItemUseOnOverride::EnderEyeItem => {
+                let block = self.probe_block(context.pos)?;
+                let block_name = block.block_name.as_deref()?;
+                let block_type = vanilla_block_type_for_resource_id(block_name)?;
+                if block_type.id != VANILLA_BLOCK_END_PORTAL_FRAME_ID {
+                    return Some(pass());
+                }
+                match block.block_properties.get("eye").map(String::as_str) {
+                    Some("false") => Some(client_success()),
+                    Some("true") => Some(pass()),
+                    _ => Some(LocalTargetUsePrediction::UnsupportedItemUseOn(owner)),
+                }
+            }
+            VanillaItemUseOnOverride::MapItem => {
+                let block = self.probe_block(context.pos)?;
+                let block_name = block.block_name.as_deref()?;
+                let block_type = vanilla_block_type_for_resource_id(block_name)?;
+                let Some(banners) =
+                    self.registry_holder_ids_for_tag("minecraft:block", "minecraft:banners")
+                else {
+                    return Some(LocalTargetUsePrediction::UnsupportedItemUseOn(owner));
+                };
+                Some(if banners.contains(&block_type.id) {
+                    client_success()
+                } else {
+                    pass()
+                })
             }
             _ => None,
         }
@@ -1768,7 +1830,7 @@ mod tests {
         block_types::{
             vanilla_block_type, VanillaBlockUseItemOnOverride, VanillaBlockUseWithoutItemOverride,
             VANILLA_BLOCK_CAKE_ID, VANILLA_BLOCK_CHEST_ID, VANILLA_BLOCK_RAIL_ID,
-            VANILLA_BLOCK_STONE_ID,
+            VANILLA_BLOCK_STONE_ID, VANILLA_BLOCK_WHITE_BANNER_ID,
         },
         builtin_enum_component_values::VANILLA_DYE_COLOR_RED_ID,
         data_component_types::{
@@ -1800,13 +1862,15 @@ mod tests {
         equipment_slots::EquipmentSlot,
         item_types::{
             VanillaItemInteractLivingEntityOverride, VanillaItemUseOnOverride,
-            VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID, VANILLA_ITEM_CHORUS_FRUIT_ID,
-            VANILLA_ITEM_END_CRYSTAL_ID, VANILLA_ITEM_FIREWORK_ROCKET_ID,
-            VANILLA_ITEM_HONEYCOMB_ID, VANILLA_ITEM_IRON_AXE_ID, VANILLA_ITEM_IRON_HOE_ID,
-            VANILLA_ITEM_IRON_SHOVEL_ID, VANILLA_ITEM_LEAD_ID, VANILLA_ITEM_MINECART_ID,
-            VANILLA_ITEM_NAME_TAG_ID, VANILLA_ITEM_POPPY_ID, VANILLA_ITEM_RED_DYE_ID,
-            VANILLA_ITEM_SADDLE_ID, VANILLA_ITEM_SHEARS_ID, VANILLA_ITEM_SHIELD_ID,
-            VANILLA_ITEM_SNOWBALL_ID, VANILLA_ITEM_STONE_ID,
+            VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_BRUSH_ID, VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID,
+            VANILLA_ITEM_CHORUS_FRUIT_ID, VANILLA_ITEM_DEBUG_STICK_ID, VANILLA_ITEM_ENDER_EYE_ID,
+            VANILLA_ITEM_END_CRYSTAL_ID, VANILLA_ITEM_FILLED_MAP_ID,
+            VANILLA_ITEM_FIREWORK_ROCKET_ID, VANILLA_ITEM_HONEYCOMB_ID, VANILLA_ITEM_IRON_AXE_ID,
+            VANILLA_ITEM_IRON_HOE_ID, VANILLA_ITEM_IRON_SHOVEL_ID, VANILLA_ITEM_LEAD_ID,
+            VANILLA_ITEM_LILY_PAD_ID, VANILLA_ITEM_MINECART_ID, VANILLA_ITEM_NAME_TAG_ID,
+            VANILLA_ITEM_POPPY_ID, VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_SADDLE_ID,
+            VANILLA_ITEM_SHEARS_ID, VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_SNOWBALL_ID,
+            VANILLA_ITEM_STONE_ID,
         },
         packets::{
             AddEntity, AdventureModePredicateDataSummary, BlockHolderSetSummary,
@@ -2569,6 +2633,127 @@ mod tests {
                 3,
             ),
             LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+    }
+
+    #[test]
+    fn client_owned_item_use_on_predicts_fixed_and_block_gated_results() {
+        let pos = BlockPos { x: 0, y: 0, z: 0 };
+        let client_success = LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+            LocalInteractionSuccess::client_item_interaction(),
+        ));
+        let consume = LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+            LocalInteractionSuccess::consume(true),
+        ));
+        let pass = LocalTargetUsePrediction::Result(LocalInteractionResult::Pass);
+        let mut world = tool_use_world(block_state_id("minecraft:stone", []));
+
+        for (item_id, expected) in [
+            (VANILLA_ITEM_BRUSH_ID, consume),
+            (VANILLA_ITEM_DEBUG_STICK_ID, client_success),
+            (VANILLA_ITEM_LEAD_ID, pass),
+            (VANILLA_ITEM_LILY_PAD_ID, pass),
+        ] {
+            set_main_hand(&mut world, item_id);
+            assert_eq!(
+                world.predict_local_block_use(
+                    pos,
+                    ProtocolDirection::Up,
+                    InteractionHand::MainHand,
+                    false,
+                    1,
+                ),
+                expected
+            );
+        }
+
+        let mut frame_world = tool_use_world(block_state_id(
+            "minecraft:end_portal_frame",
+            [("eye", "false"), ("facing", "north")],
+        ));
+        set_main_hand(&mut frame_world, VANILLA_ITEM_ENDER_EYE_ID);
+        assert_eq!(
+            frame_world.predict_local_block_use(
+                pos,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                false,
+                2,
+            ),
+            client_success
+        );
+        assert_eq!(
+            frame_world
+                .local_item_in_hand(InteractionHand::MainHand)
+                .unwrap()
+                .count,
+            1
+        );
+        assert!(frame_world.apply_block_update(BlockUpdate {
+            pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+            block_state_id: block_state_id(
+                "minecraft:end_portal_frame",
+                [("eye", "true"), ("facing", "north")],
+            ),
+        }));
+        assert_eq!(
+            frame_world.predict_local_block_use(
+                pos,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                false,
+                3,
+            ),
+            pass
+        );
+
+        let mut map_world = tool_use_world(block_state_id(
+            "minecraft:white_banner",
+            [("rotation", "0")],
+        ));
+        set_main_hand(&mut map_world, VANILLA_ITEM_FILLED_MAP_ID);
+        assert_eq!(
+            map_world.predict_local_block_use(
+                pos,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                false,
+                4,
+            ),
+            LocalTargetUsePrediction::UnsupportedItemUseOn(VanillaItemUseOnOverride::MapItem)
+        );
+        map_world.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: "minecraft:block".to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: "minecraft:banners".to_string(),
+                    entries: vec![VANILLA_BLOCK_WHITE_BANNER_ID],
+                }],
+            }],
+        });
+        assert_eq!(
+            map_world.predict_local_block_use(
+                pos,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                false,
+                5,
+            ),
+            client_success
+        );
+        assert!(map_world.apply_block_update(BlockUpdate {
+            pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+            block_state_id: block_state_id("minecraft:stone", []),
+        }));
+        assert_eq!(
+            map_world.predict_local_block_use(
+                pos,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                false,
+                6,
+            ),
+            pass
         );
     }
 
