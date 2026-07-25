@@ -1748,10 +1748,34 @@ impl InventoryState {
         })
     }
 
-    fn active_container_uses_unrestricted_slot_rules(&self) -> bool {
-        self.open_container
-            .as_ref()
-            .is_some_and(|container| menu_type_has_unrestricted_slot_rules(container.menu_type_id))
+    fn active_container_slot_can_quick_craft(&self, ctx: InventoryCtx<'_>, slot_num: i16) -> bool {
+        let Some(container) = self.active_container() else {
+            return false;
+        };
+        if container.container_id != INVENTORY_MENU_CONTAINER_ID
+            && !menu_type_has_known_slot_rules(container.menu_type_id)
+        {
+            return false;
+        }
+        let Some(slot) = container.slots.iter().find(|slot| slot.slot == slot_num) else {
+            return false;
+        };
+        let Some(slot_access) = local_container_slot_access(
+            ctx,
+            container.container_id,
+            container.menu_type_id,
+            &container.data_values,
+            slot_num,
+            &self.cursor_item,
+        ) else {
+            return false;
+        };
+        quick_craft_slot_can_accept(
+            &slot.item,
+            &self.cursor_item,
+            slot_access,
+            &ctx.items.default_item_max_stack_sizes,
+        )
     }
 
     pub(crate) fn apply_local_container_click_slot(
@@ -2248,18 +2272,32 @@ impl InventoryState {
                 }
                 ProtocolContainerInput::Throw
                     if container_id == INVENTORY_MENU_CONTAINER_ID
-                        || menu_type_has_unrestricted_slot_rules(menu_type_id) =>
+                        || menu_type_has_known_slot_rules(menu_type_id) =>
                 {
+                    let slot_access = slots_after
+                        .iter()
+                        .find(|slot| slot.slot == request.slot_num)
+                        .and_then(|slot| {
+                            local_container_slot_access(
+                                ctx,
+                                container_id,
+                                menu_type_id,
+                                &data_values,
+                                request.slot_num,
+                                &slot.item,
+                            )
+                        });
                     apply_throw_click_to_slots(
                         &mut slots_after,
                         &cursor_after,
                         request.slot_num,
                         request.button_num,
+                        slot_access,
                     )
                 }
                 ProtocolContainerInput::Swap
                     if (container_id == INVENTORY_MENU_CONTAINER_ID
-                        || menu_type_has_unrestricted_slot_rules(menu_type_id))
+                        || menu_type_has_known_slot_rules(menu_type_id))
                         && swap_button_container_slot(
                             container_id,
                             &slots_after,
@@ -2267,21 +2305,43 @@ impl InventoryState {
                         )
                         .is_some() =>
                 {
+                    let source_slot_num =
+                        swap_button_container_slot(container_id, &slots_after, request.button_num)
+                            .expect("guarded swap source slot");
+                    let source_item = container_slot_item(&slots_after, source_slot_num)
+                        .cloned()
+                        .unwrap_or_else(ProtocolItemStackSummary::empty);
+                    let Some(target_access) = local_container_slot_access(
+                        ctx,
+                        container_id,
+                        menu_type_id,
+                        &data_values,
+                        request.slot_num,
+                        &source_item,
+                    ) else {
+                        return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+                            ProtocolContainerInput::Swap,
+                        ));
+                    };
                     apply_swap_click_to_slots(
                         container_id,
                         &mut slots_after,
                         &cursor_after,
                         request.slot_num,
                         request.button_num,
+                        target_access,
                         &ctx.items.default_item_max_stack_sizes,
                     )
                 }
                 ProtocolContainerInput::QuickCraft
                     if container_id == INVENTORY_MENU_CONTAINER_ID
-                        || menu_type_has_unrestricted_slot_rules(menu_type_id) =>
+                        || menu_type_has_known_slot_rules(menu_type_id) =>
                 {
                     apply_quick_craft_to_slots(
+                        ctx,
                         container_id,
+                        menu_type_id,
+                        &data_values,
                         &mut slots_after,
                         &mut cursor_after,
                         &mut quick_craft_after,
@@ -2292,13 +2352,65 @@ impl InventoryState {
                 }
                 ProtocolContainerInput::PickupAll
                     if container_id == INVENTORY_MENU_CONTAINER_ID
-                        || menu_type_has_unrestricted_slot_rules(menu_type_id) =>
+                        || menu_type_has_known_slot_rules(menu_type_id) =>
                 {
+                    let Some(slot_access) = local_container_slot_accesses(
+                        ctx,
+                        container_id,
+                        menu_type_id,
+                        &data_values,
+                        &slots_after,
+                        &cursor_after,
+                    ) else {
+                        return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+                            ProtocolContainerInput::PickupAll,
+                        ));
+                    };
+                    let pickup_all_will_scan = !item_stack_is_empty(&cursor_after)
+                        && container_slot_item(&slots_after, request.slot_num).is_some_and(
+                            |clicked| {
+                                item_stack_is_empty(clicked)
+                                    || !slot_access
+                                        .get(&request.slot_num)
+                                        .is_some_and(|access| access.may_pickup)
+                            },
+                        )
+                        && cursor_after.count
+                            < item_stack_max_stack_size(
+                                &cursor_after,
+                                &ctx.items.default_item_max_stack_sizes,
+                            );
+                    if pickup_all_will_scan
+                        && slots_after.iter().any(|slot| {
+                            !item_stack_is_empty(&slot.item)
+                                && same_item_same_components(&slot.item, &cursor_after)
+                                && slot_access
+                                    .get(&slot.slot)
+                                    .is_some_and(|access| access.may_pickup)
+                                && menu_slot_can_take_item_for_pick_all(
+                                    container_id,
+                                    menu_type_id,
+                                    slot.slot,
+                                )
+                                && menu_result_slot_requires_server_authority(
+                                    menu_type_id,
+                                    slot.slot,
+                                    ProtocolContainerInput::PickupAll,
+                                )
+                        })
+                    {
+                        return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+                            ProtocolContainerInput::PickupAll,
+                        ));
+                    }
                     apply_pickup_all_to_slots(
                         &mut slots_after,
                         &mut cursor_after,
                         request.slot_num,
                         request.button_num,
+                        &slot_access,
+                        container_id,
+                        menu_type_id,
                         &ctx.items.default_item_max_stack_sizes,
                     )
                 }
@@ -3349,9 +3461,9 @@ impl WorldStore {
         self.inventory.build_container_click_slot(request)
     }
 
-    pub fn active_container_uses_unrestricted_slot_rules(&self) -> bool {
+    pub fn active_container_slot_can_quick_craft(&self, slot_num: i16) -> bool {
         self.inventory
-            .active_container_uses_unrestricted_slot_rules()
+            .active_container_slot_can_quick_craft(inventory_ctx!(self), slot_num)
     }
 
     pub fn apply_local_container_click_slot(

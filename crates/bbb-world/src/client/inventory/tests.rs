@@ -3126,6 +3126,45 @@ fn apply_local_container_pickup_all_collects_matching_stacks() {
 }
 
 #[test]
+fn apply_local_container_pickup_all_excludes_crafting_result_slot() {
+    let mut store = WorldStore::new();
+    store.apply_open_screen(ProtocolOpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
+        title: "Crafting".to_string(),
+        title_styled: Vec::new(),
+    });
+    let mut items =
+        vec![ProtocolItemStackSummary::empty(); CRAFTING_MENU_TOTAL_SLOT_COUNT as usize];
+    items[CRAFTING_MENU_RESULT_SLOT as usize] = item_stack(42, 1);
+    items[CRAFTING_MENU_PLAYER_MAIN_START as usize] = item_stack(42, 2);
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: 7,
+        state_id: 3,
+        items,
+        carried_item: item_stack(42, 1),
+    });
+
+    let pickup_all = store
+        .apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: CRAFTING_MENU_PLAYER_MAIN_START + 1,
+            button_num: 0,
+            input: ProtocolContainerInput::PickupAll,
+        })
+        .unwrap();
+
+    assert_eq!(
+        pickup_all.changed_slots,
+        BTreeMap::from([(CRAFTING_MENU_PLAYER_MAIN_START, ProtocolHashedStack::Empty)])
+    );
+    assert_eq!(pickup_all.carried_item, hashed_item_stack(42, 3));
+    assert_eq!(
+        open_container_slot_item(&store, CRAFTING_MENU_RESULT_SLOT),
+        item_stack(42, 1)
+    );
+}
+
+#[test]
 fn apply_local_container_pickup_all_button_one_collects_in_reverse_order() {
     let mut store = WorldStore::new();
     store.set_default_item_max_stack_sizes(BTreeMap::from([(42, 16)]));
@@ -3262,6 +3301,84 @@ fn apply_local_container_pickup_all_predicts_generic_menu() {
         ProtocolItemStackSummary::empty()
     );
     assert_eq!(store.inventory().cursor_item, item_stack(42, 8));
+}
+
+#[test]
+fn apply_local_brewing_stand_pickup_all_collects_matching_menu_and_player_stacks() {
+    let mut store = WorldStore::new();
+    store.set_brewing_potion_item_ids(BTreeSet::from([42]));
+    store.apply_open_screen(ProtocolOpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_BREWING_STAND_ID,
+        title: "Brewing Stand".to_string(),
+        title_styled: Vec::new(),
+    });
+    let mut items =
+        vec![ProtocolItemStackSummary::empty(); BREWING_STAND_TOTAL_SLOT_COUNT as usize];
+    items[BREWING_STAND_BOTTLE_SLOT_START as usize] = item_stack(42, 2);
+    items[BREWING_STAND_PLAYER_MAIN_START as usize] = item_stack(42, 3);
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: 7,
+        state_id: 3,
+        items,
+        carried_item: item_stack(42, 1),
+    });
+
+    let pickup_all = store
+        .apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: BREWING_STAND_PLAYER_MAIN_START + 1,
+            button_num: 0,
+            input: ProtocolContainerInput::PickupAll,
+        })
+        .unwrap();
+
+    assert_eq!(
+        pickup_all.changed_slots,
+        BTreeMap::from([
+            (BREWING_STAND_BOTTLE_SLOT_START, ProtocolHashedStack::Empty),
+            (BREWING_STAND_PLAYER_MAIN_START, ProtocolHashedStack::Empty),
+        ])
+    );
+    assert_eq!(pickup_all.carried_item, hashed_item_stack(42, 6));
+}
+
+#[test]
+fn apply_local_merchant_pickup_all_honors_menu_wide_exclusion() {
+    let mut store = WorldStore::new();
+    store.apply_open_screen(ProtocolOpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
+        title: "Merchant".to_string(),
+        title_styled: Vec::new(),
+    });
+    let mut items = vec![ProtocolItemStackSummary::empty(); MERCHANT_TOTAL_SLOT_COUNT as usize];
+    items[MERCHANT_PAYMENT_SLOT_1 as usize] = item_stack(42, 2);
+    items[MERCHANT_PLAYER_MAIN_START as usize] = item_stack(42, 3);
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: 7,
+        state_id: 3,
+        items,
+        carried_item: item_stack(42, 1),
+    });
+
+    let pickup_all = store
+        .apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: MERCHANT_PLAYER_MAIN_START + 1,
+            button_num: 0,
+            input: ProtocolContainerInput::PickupAll,
+        })
+        .unwrap();
+
+    assert_eq!(pickup_all.changed_slots, BTreeMap::new());
+    assert_eq!(pickup_all.carried_item, hashed_item_stack(42, 1));
+    assert_eq!(
+        open_container_slot_item(&store, MERCHANT_PAYMENT_SLOT_1),
+        item_stack(42, 2)
+    );
+    assert_eq!(
+        open_container_slot_item(&store, MERCHANT_PLAYER_MAIN_START),
+        item_stack(42, 3)
+    );
 }
 
 #[test]
@@ -3551,6 +3668,132 @@ fn apply_local_container_quick_craft_predicts_generic_menu() {
     assert_eq!(open_container_slot_item(&store, 1), item_stack(42, 4));
     assert_eq!(
         store.inventory().cursor_item,
+        ProtocolItemStackSummary::empty()
+    );
+}
+
+#[test]
+fn apply_local_brewing_stand_quick_craft_only_selects_matching_bottle_slots() {
+    let mut store = WorldStore::new();
+    store.set_brewing_potion_item_ids(BTreeSet::from([42]));
+    store.apply_open_screen(ProtocolOpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_BREWING_STAND_ID,
+        title: "Brewing Stand".to_string(),
+        title_styled: Vec::new(),
+    });
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: 7,
+        state_id: 3,
+        items: vec![ProtocolItemStackSummary::empty(); BREWING_STAND_TOTAL_SLOT_COUNT as usize],
+        carried_item: item_stack(42, 3),
+    });
+
+    store
+        .apply_local_container_click_slot(quick_craft_request(
+            -999,
+            QUICKCRAFT_HEADER_START,
+            QUICKCRAFT_TYPE_CHARITABLE,
+        ))
+        .unwrap();
+    for slot_num in [
+        BREWING_STAND_BOTTLE_SLOT_START,
+        BREWING_STAND_BOTTLE_SLOT_START + 1,
+        BREWING_STAND_INGREDIENT_SLOT,
+    ] {
+        store
+            .apply_local_container_click_slot(quick_craft_request(
+                slot_num,
+                QUICKCRAFT_HEADER_CONTINUE,
+                QUICKCRAFT_TYPE_CHARITABLE,
+            ))
+            .unwrap();
+    }
+    let finish = store
+        .apply_local_container_click_slot(quick_craft_request(
+            -999,
+            QUICKCRAFT_HEADER_END,
+            QUICKCRAFT_TYPE_CHARITABLE,
+        ))
+        .unwrap();
+
+    assert_eq!(
+        finish.changed_slots,
+        BTreeMap::from([
+            (BREWING_STAND_BOTTLE_SLOT_START, hashed_item_stack(42, 1)),
+            (
+                BREWING_STAND_BOTTLE_SLOT_START + 1,
+                hashed_item_stack(42, 1)
+            ),
+        ])
+    );
+    assert_eq!(finish.carried_item, hashed_item_stack(42, 1));
+    assert_eq!(
+        open_container_slot_item(&store, BREWING_STAND_BOTTLE_SLOT_START),
+        item_stack(42, 1)
+    );
+    assert_eq!(
+        open_container_slot_item(&store, BREWING_STAND_BOTTLE_SLOT_START + 1),
+        item_stack(42, 1)
+    );
+    assert_eq!(
+        open_container_slot_item(&store, BREWING_STAND_INGREDIENT_SLOT),
+        ProtocolItemStackSummary::empty()
+    );
+}
+
+#[test]
+fn apply_local_crafter_quick_craft_skips_disabled_grid_slots() {
+    let mut store = WorldStore::new();
+    store.apply_open_screen(ProtocolOpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_CRAFTER_3X3_ID,
+        title: "Crafter".to_string(),
+        title_styled: Vec::new(),
+    });
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: 7,
+        state_id: 3,
+        items: vec![ProtocolItemStackSummary::empty(); CRAFTER_TOTAL_SLOT_COUNT as usize],
+        carried_item: item_stack(42, 6),
+    });
+    store.apply_container_set_data(ProtocolContainerSetData {
+        container_id: 7,
+        id: 1,
+        value: 1,
+    });
+
+    store
+        .apply_local_container_click_slot(quick_craft_request(
+            -999,
+            QUICKCRAFT_HEADER_START,
+            QUICKCRAFT_TYPE_CHARITABLE,
+        ))
+        .unwrap();
+    for slot_num in [0, 1, 2] {
+        store
+            .apply_local_container_click_slot(quick_craft_request(
+                slot_num,
+                QUICKCRAFT_HEADER_CONTINUE,
+                QUICKCRAFT_TYPE_CHARITABLE,
+            ))
+            .unwrap();
+    }
+    let finish = store
+        .apply_local_container_click_slot(quick_craft_request(
+            -999,
+            QUICKCRAFT_HEADER_END,
+            QUICKCRAFT_TYPE_CHARITABLE,
+        ))
+        .unwrap();
+
+    assert_eq!(
+        finish.changed_slots,
+        BTreeMap::from([(0, hashed_item_stack(42, 3)), (2, hashed_item_stack(42, 3))])
+    );
+    assert_eq!(finish.carried_item, ProtocolHashedStack::Empty);
+    assert_eq!(
+        open_container_slot_item(&store, 1),
         ProtocolItemStackSummary::empty()
     );
 }
@@ -9950,6 +10193,53 @@ fn apply_local_container_throw_predicts_generic_menu() {
 }
 
 #[test]
+fn apply_local_anvil_throw_predicts_inputs_and_keeps_result_actions_authoritative() {
+    let mut store = WorldStore::new();
+    store.apply_open_screen(ProtocolOpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_ANVIL_ID,
+        title: "Anvil".to_string(),
+        title_styled: Vec::new(),
+    });
+    let mut items = vec![ProtocolItemStackSummary::empty(); ANVIL_TOTAL_SLOT_COUNT as usize];
+    items[ANVIL_INPUT_SLOT as usize] = item_stack(42, 3);
+    items[ANVIL_RESULT_SLOT as usize] = item_stack(90, 1);
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: 7,
+        state_id: 3,
+        items,
+        carried_item: ProtocolItemStackSummary::empty(),
+    });
+
+    let throw_input = store
+        .apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: ANVIL_INPUT_SLOT,
+            button_num: 0,
+            input: ProtocolContainerInput::Throw,
+        })
+        .unwrap();
+    assert_eq!(
+        throw_input.changed_slots,
+        BTreeMap::from([(ANVIL_INPUT_SLOT, hashed_item_stack(42, 2))])
+    );
+
+    assert_eq!(
+        store.apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: ANVIL_RESULT_SLOT,
+            button_num: 0,
+            input: ProtocolContainerInput::Throw,
+        }),
+        Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+            ProtocolContainerInput::Throw
+        ))
+    );
+    assert_eq!(
+        open_container_slot_item(&store, ANVIL_RESULT_SLOT),
+        item_stack(90, 1)
+    );
+}
+
+#[test]
 fn apply_local_container_swap_exchanges_hovered_slot_with_hotbar_button() {
     let mut store = WorldStore::new();
     store.apply_set_player_inventory(ProtocolSetPlayerInventory {
@@ -10135,6 +10425,66 @@ fn apply_local_container_swap_requires_empty_cursor_and_predicts_generic_menu() 
     assert_eq!(open_container_slot_item(&store, 0), item_stack(43, 2));
     assert_eq!(open_container_slot_item(&store, 45), item_stack(42, 3));
     assert_eq!(player_slot_item(&store, 0), item_stack(42, 3));
+}
+
+#[test]
+fn apply_local_beacon_swap_enforces_payment_tag_and_single_item_limit() {
+    let mut store = WorldStore::new();
+    apply_item_tags(&mut store, vec![(BEACON_PAYMENT_ITEM_TAG, vec![42])]);
+    store.apply_open_screen(ProtocolOpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_BEACON_ID,
+        title: "Beacon".to_string(),
+        title_styled: Vec::new(),
+    });
+    let mut items = vec![ProtocolItemStackSummary::empty(); BEACON_TOTAL_SLOT_COUNT as usize];
+    let hotbar_slot = BEACON_HOTBAR_START;
+    items[hotbar_slot as usize] = item_stack(43, 2);
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: 7,
+        state_id: 3,
+        items,
+        carried_item: ProtocolItemStackSummary::empty(),
+    });
+
+    let rejected = store
+        .apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: BEACON_PAYMENT_SLOT,
+            button_num: 0,
+            input: ProtocolContainerInput::Swap,
+        })
+        .unwrap();
+    assert_eq!(rejected.changed_slots, BTreeMap::new());
+
+    store.apply_container_set_slot(ProtocolContainerSetSlot {
+        container_id: 7,
+        state_id: 4,
+        slot: hotbar_slot,
+        item: item_stack(42, 3),
+    });
+    let accepted = store
+        .apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: BEACON_PAYMENT_SLOT,
+            button_num: 0,
+            input: ProtocolContainerInput::Swap,
+        })
+        .unwrap();
+
+    assert_eq!(
+        accepted.changed_slots,
+        BTreeMap::from([
+            (BEACON_PAYMENT_SLOT, hashed_item_stack(42, 1)),
+            (hotbar_slot, hashed_item_stack(42, 2)),
+        ])
+    );
+    assert_eq!(
+        open_container_slot_item(&store, BEACON_PAYMENT_SLOT),
+        item_stack(42, 1)
+    );
+    assert_eq!(
+        open_container_slot_item(&store, hotbar_slot),
+        item_stack(42, 2)
+    );
 }
 
 #[test]

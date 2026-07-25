@@ -326,6 +326,30 @@ pub(super) fn local_container_slot_access(
     Some(access)
 }
 
+pub(super) fn local_container_slot_accesses(
+    ctx: InventoryCtx<'_>,
+    container_id: i32,
+    menu_type_id: Option<i32>,
+    data_values: &[ContainerDataValue],
+    slots: &[ContainerSlot],
+    stack_to_place: &ProtocolItemStackSummary,
+) -> Option<BTreeMap<i16, LocalContainerSlotAccess>> {
+    slots
+        .iter()
+        .map(|slot| {
+            local_container_slot_access(
+                ctx,
+                container_id,
+                menu_type_id,
+                data_values,
+                slot.slot,
+                stack_to_place,
+            )
+            .map(|access| (slot.slot, access))
+        })
+        .collect()
+}
+
 fn item_stack_is_damageable_or_enchanted(
     stack: &ProtocolItemStackSummary,
     default_damageable_item_ids: &BTreeSet<i32>,
@@ -1451,7 +1475,10 @@ pub(super) fn apply_pickup_click_to_slots(
 }
 
 pub(super) fn apply_quick_craft_to_slots(
+    ctx: InventoryCtx<'_>,
     container_id: i32,
+    menu_type_id: Option<i32>,
+    data_values: &[ContainerDataValue],
     slots: &mut [ContainerSlot],
     cursor: &mut ProtocolItemStackSummary,
     quick_craft: &mut LocalQuickCraftState,
@@ -1487,11 +1514,20 @@ pub(super) fn apply_quick_craft_to_slots(
             let Some(slot) = slots.iter().find(|slot| slot.slot == slot_num) else {
                 return;
             };
-            if quick_craft_slot_can_accept(
+            let Some(slot_access) = local_container_slot_access(
+                ctx,
                 container_id,
+                menu_type_id,
+                data_values,
                 slot_num,
+                cursor,
+            ) else {
+                return;
+            };
+            if quick_craft_slot_can_accept(
                 &slot.item,
                 cursor,
+                slot_access,
                 default_item_max_stack_sizes,
             ) && cursor.count > quick_craft.slots.len() as i32
                 && !quick_craft.slots.contains(&slot_num)
@@ -1501,7 +1537,10 @@ pub(super) fn apply_quick_craft_to_slots(
         }
         QUICKCRAFT_HEADER_END => {
             finish_quick_craft(
+                ctx,
                 container_id,
+                menu_type_id,
+                data_values,
                 slots,
                 cursor,
                 quick_craft,
@@ -1535,7 +1574,10 @@ pub(super) fn apply_clone_click_to_slots(
 }
 
 pub(super) fn finish_quick_craft(
+    ctx: InventoryCtx<'_>,
     container_id: i32,
+    menu_type_id: Option<i32>,
+    data_values: &[ContainerDataValue],
     slots: &mut [ContainerSlot],
     cursor: &mut ProtocolItemStackSummary,
     quick_craft: &mut LocalQuickCraftState,
@@ -1551,12 +1593,16 @@ pub(super) fn finish_quick_craft(
     if selected_slots.len() == 1 {
         quick_craft.reset();
         let slot_num = selected_slots[0];
-        let slot_access = LocalContainerSlotAccess::unrestricted(container_slot_max_stack_size(
+        let Some(slot_access) = local_container_slot_access(
+            ctx,
             container_id,
+            menu_type_id,
+            data_values,
             slot_num,
             cursor,
-            default_item_max_stack_sizes,
-        ));
+        ) else {
+            return;
+        };
         apply_pickup_click_to_slots(
             slots,
             cursor,
@@ -1587,11 +1633,20 @@ pub(super) fn finish_quick_craft(
         let Some(slot_index) = slots.iter().position(|slot| slot.slot == selected_slot) else {
             continue;
         };
-        if !quick_craft_slot_can_accept(
+        let Some(slot_access) = local_container_slot_access(
+            ctx,
             container_id,
+            menu_type_id,
+            data_values,
             selected_slot,
+            cursor,
+        ) else {
+            continue;
+        };
+        if !quick_craft_slot_can_accept(
             &slots[slot_index].item,
             cursor,
+            slot_access,
             default_item_max_stack_sizes,
         ) {
             continue;
@@ -1602,14 +1657,8 @@ pub(super) fn finish_quick_craft(
         } else {
             slots[slot_index].item.count
         };
-        let max_size = item_stack_max_stack_size(&source, default_item_max_stack_sizes).min(
-            container_slot_max_stack_size(
-                container_id,
-                selected_slot,
-                &source,
-                default_item_max_stack_sizes,
-            ),
-        );
+        let max_size = item_stack_max_stack_size(&source, default_item_max_stack_sizes)
+            .min(slot_access.max_stack_size);
         let place_count = quickcraft_place_count(
             slot_count,
             quickcraft_type,
@@ -1632,15 +1681,12 @@ pub(super) fn finish_quick_craft(
 }
 
 pub(super) fn quick_craft_slot_can_accept(
-    container_id: i32,
-    slot_num: i16,
     slot_item: &ProtocolItemStackSummary,
     cursor: &ProtocolItemStackSummary,
+    slot_access: LocalContainerSlotAccess,
     default_item_max_stack_sizes: &BTreeMap<i32, i32>,
 ) -> bool {
-    if container_slot_max_stack_size(container_id, slot_num, cursor, default_item_max_stack_sizes)
-        <= 0
-    {
+    if !slot_access.may_place || slot_access.max_stack_size <= 0 {
         return false;
     }
     if item_stack_is_empty(slot_item) {
@@ -1684,6 +1730,7 @@ pub(super) fn apply_throw_click_to_slots(
     cursor: &ProtocolItemStackSummary,
     slot_num: i16,
     button_num: i8,
+    slot_access: Option<LocalContainerSlotAccess>,
 ) {
     if !item_stack_is_empty(cursor) || slot_num < 0 || !matches!(button_num, 0 | 1) {
         return;
@@ -1691,7 +1738,7 @@ pub(super) fn apply_throw_click_to_slots(
     let Some(slot) = slots.iter_mut().find(|slot| slot.slot == slot_num) else {
         return;
     };
-    if item_stack_is_empty(&slot.item) {
+    if item_stack_is_empty(&slot.item) || slot_access.is_none_or(|access| !access.may_pickup) {
         return;
     }
     if button_num == 0 {
@@ -1708,6 +1755,9 @@ pub(super) fn apply_pickup_all_to_slots(
     cursor: &mut ProtocolItemStackSummary,
     slot_num: i16,
     button_num: i8,
+    slot_access: &BTreeMap<i16, LocalContainerSlotAccess>,
+    container_id: i32,
+    menu_type_id: Option<i32>,
     default_item_max_stack_sizes: &BTreeMap<i32, i32>,
 ) {
     if slot_num < 0 || item_stack_is_empty(cursor) {
@@ -1716,7 +1766,10 @@ pub(super) fn apply_pickup_all_to_slots(
     let Some(clicked_index) = slots.iter().position(|slot| slot.slot == slot_num) else {
         return;
     };
-    if !item_stack_is_empty(&slots[clicked_index].item) {
+    let clicked_may_pickup = slot_access
+        .get(&slot_num)
+        .is_some_and(|access| access.may_pickup);
+    if !item_stack_is_empty(&slots[clicked_index].item) && clicked_may_pickup {
         return;
     }
 
@@ -1737,6 +1790,13 @@ pub(super) fn apply_pickup_all_to_slots(
             }
             let slot = &mut slots[index];
             if item_stack_is_empty(&slot.item) || !same_item_same_components(&slot.item, cursor) {
+                continue;
+            }
+            if !slot_access
+                .get(&slot.slot)
+                .is_some_and(|access| access.may_pickup)
+                || !menu_slot_can_take_item_for_pick_all(container_id, menu_type_id, slot.slot)
+            {
                 continue;
             }
             if pass == 0
@@ -1764,6 +1824,7 @@ pub(super) fn apply_swap_click_to_slots(
     cursor: &ProtocolItemStackSummary,
     slot_num: i16,
     button_num: i8,
+    target_access: LocalContainerSlotAccess,
     default_item_max_stack_sizes: &BTreeMap<i32, i32>,
 ) {
     if !item_stack_is_empty(cursor) || slot_num < 0 {
@@ -1789,13 +1850,7 @@ pub(super) fn apply_swap_click_to_slots(
     }
 
     if item_stack_is_empty(&source_item) {
-        if container_slot_max_stack_size(
-            container_id,
-            source_slot_num,
-            &target_item,
-            default_item_max_stack_sizes,
-        ) <= 0
-        {
+        if !target_access.may_pickup {
             return;
         }
         slots[source_index].item = target_item;
@@ -1805,13 +1860,8 @@ pub(super) fn apply_swap_click_to_slots(
         return;
     }
 
-    let target_max_stack_size = container_slot_max_stack_size(
-        container_id,
-        slot_num,
-        &source_item,
-        default_item_max_stack_sizes,
-    );
-    if target_max_stack_size <= 0 {
+    let target_max_stack_size = target_access.max_stack_size;
+    if !target_access.may_place || target_max_stack_size <= 0 {
         return;
     }
 
@@ -1830,6 +1880,9 @@ pub(super) fn apply_swap_click_to_slots(
         return;
     }
 
+    if !target_access.may_pickup {
+        return;
+    }
     if source_item.count <= target_max_stack_size && target_item.count <= source_max_stack_size {
         slots[source_index].item = target_item;
         slots[target_index].item = source_item;
@@ -1850,16 +1903,50 @@ pub(super) fn apply_swap_click_to_slots(
     normalize_container_slot_selection(&mut slots[target_index]);
 
     let mut displaced = target_item;
+    let (player_start, player_end) = visible_player_slot_range(container_id, slots);
     move_item_stack_to_slots(
         container_id,
         slots,
         target_index,
         &mut displaced,
-        INVENTORY_MENU_MAIN_START,
-        INVENTORY_MENU_HOTBAR_END,
+        player_start,
+        player_end,
         false,
         default_item_max_stack_sizes,
     );
+}
+
+fn visible_player_slot_range(container_id: i32, slots: &[ContainerSlot]) -> (i16, i16) {
+    if container_id == INVENTORY_MENU_CONTAINER_ID {
+        return (INVENTORY_MENU_MAIN_START, INVENTORY_MENU_HOTBAR_END);
+    }
+    let total_slots = slots
+        .iter()
+        .map(|slot| slot.slot.saturating_add(1))
+        .max()
+        .unwrap_or_default();
+    (
+        total_slots.saturating_sub(GENERIC_CONTAINER_PLAYER_SLOT_COUNT),
+        total_slots,
+    )
+}
+
+pub(super) fn menu_slot_can_take_item_for_pick_all(
+    container_id: i32,
+    menu_type_id: Option<i32>,
+    slot_num: i16,
+) -> bool {
+    if container_id == INVENTORY_MENU_CONTAINER_ID && slot_num == 0 {
+        return false;
+    }
+    match menu_type_id {
+        Some(VANILLA_MENU_TYPE_MERCHANT_ID) => false,
+        Some(VANILLA_MENU_TYPE_CRAFTING_ID) => slot_num != CRAFTING_MENU_RESULT_SLOT,
+        Some(VANILLA_MENU_TYPE_SMITHING_ID) => slot_num != SMITHING_RESULT_SLOT,
+        Some(VANILLA_MENU_TYPE_STONECUTTER_ID) => slot_num != STONECUTTER_RESULT_SLOT,
+        Some(VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID) => slot_num != CARTOGRAPHY_TABLE_RESULT_SLOT,
+        _ => true,
+    }
 }
 
 pub(super) fn move_between_container_slots(
@@ -1915,6 +2002,31 @@ pub(super) fn menu_type_has_unrestricted_slot_rules(menu_type_id: Option<i32>) -
         || shulker_box_container_slot_count(menu_type_id).is_some()
 }
 
+pub(super) fn menu_type_has_known_slot_rules(menu_type_id: Option<i32>) -> bool {
+    menu_type_has_unrestricted_slot_rules(menu_type_id)
+        || matches!(
+            menu_type_id,
+            Some(
+                VANILLA_MENU_TYPE_CRAFTER_3X3_ID
+                    | VANILLA_MENU_TYPE_ANVIL_ID
+                    | VANILLA_MENU_TYPE_BEACON_ID
+                    | VANILLA_MENU_TYPE_BLAST_FURNACE_ID
+                    | VANILLA_MENU_TYPE_BREWING_STAND_ID
+                    | VANILLA_MENU_TYPE_CRAFTING_ID
+                    | VANILLA_MENU_TYPE_ENCHANTMENT_ID
+                    | VANILLA_MENU_TYPE_FURNACE_ID
+                    | VANILLA_MENU_TYPE_GRINDSTONE_ID
+                    | VANILLA_MENU_TYPE_LECTERN_ID
+                    | VANILLA_MENU_TYPE_LOOM_ID
+                    | VANILLA_MENU_TYPE_MERCHANT_ID
+                    | VANILLA_MENU_TYPE_SMITHING_ID
+                    | VANILLA_MENU_TYPE_SMOKER_ID
+                    | VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID
+                    | VANILLA_MENU_TYPE_STONECUTTER_ID
+            )
+        )
+}
+
 pub(super) fn generic_9x_container_slot_count(menu_type_id: Option<i32>) -> Option<i16> {
     let menu_type_id = menu_type_id?;
     (VANILLA_MENU_TYPE_GENERIC_9X1_ID..=VANILLA_MENU_TYPE_GENERIC_9X6_ID)
@@ -1942,83 +2054,7 @@ pub(super) fn menu_result_slot_requires_server_authority(
     slot_num: i16,
     input: ProtocolContainerInput,
 ) -> bool {
-    if !matches!(
-        input,
-        ProtocolContainerInput::Pickup | ProtocolContainerInput::QuickMove
-    ) {
-        return false;
-    }
-    if matches!(
-        (menu_type_id, slot_num, input),
-        (
-            Some(VANILLA_MENU_TYPE_ANVIL_ID),
-            ANVIL_RESULT_SLOT,
-            ProtocolContainerInput::QuickMove
-        ) | (
-            Some(VANILLA_MENU_TYPE_ANVIL_ID),
-            ANVIL_RESULT_SLOT,
-            ProtocolContainerInput::Pickup
-        ) | (
-            Some(VANILLA_MENU_TYPE_CRAFTING_ID),
-            CRAFTING_MENU_RESULT_SLOT,
-            ProtocolContainerInput::QuickMove
-        ) | (
-            Some(VANILLA_MENU_TYPE_CRAFTING_ID),
-            CRAFTING_MENU_RESULT_SLOT,
-            ProtocolContainerInput::Pickup
-        ) | (
-            Some(VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID),
-            CARTOGRAPHY_TABLE_RESULT_SLOT,
-            ProtocolContainerInput::QuickMove
-        ) | (
-            Some(VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID),
-            CARTOGRAPHY_TABLE_RESULT_SLOT,
-            ProtocolContainerInput::Pickup
-        ) | (
-            Some(VANILLA_MENU_TYPE_STONECUTTER_ID),
-            STONECUTTER_RESULT_SLOT,
-            ProtocolContainerInput::QuickMove
-        ) | (
-            Some(VANILLA_MENU_TYPE_STONECUTTER_ID),
-            STONECUTTER_RESULT_SLOT,
-            ProtocolContainerInput::Pickup
-        ) | (
-            Some(VANILLA_MENU_TYPE_GRINDSTONE_ID),
-            GRINDSTONE_RESULT_SLOT,
-            ProtocolContainerInput::QuickMove
-        ) | (
-            Some(VANILLA_MENU_TYPE_GRINDSTONE_ID),
-            GRINDSTONE_RESULT_SLOT,
-            ProtocolContainerInput::Pickup
-        ) | (
-            Some(VANILLA_MENU_TYPE_LOOM_ID),
-            LOOM_RESULT_SLOT,
-            ProtocolContainerInput::QuickMove
-        ) | (
-            Some(VANILLA_MENU_TYPE_LOOM_ID),
-            LOOM_RESULT_SLOT,
-            ProtocolContainerInput::Pickup
-        ) | (
-            Some(VANILLA_MENU_TYPE_SMITHING_ID),
-            SMITHING_RESULT_SLOT,
-            ProtocolContainerInput::QuickMove
-        ) | (
-            Some(VANILLA_MENU_TYPE_SMITHING_ID),
-            SMITHING_RESULT_SLOT,
-            ProtocolContainerInput::Pickup
-        ) | (
-            Some(VANILLA_MENU_TYPE_MERCHANT_ID),
-            MERCHANT_RESULT_SLOT,
-            ProtocolContainerInput::QuickMove
-        ) | (
-            Some(VANILLA_MENU_TYPE_MERCHANT_ID),
-            MERCHANT_RESULT_SLOT,
-            ProtocolContainerInput::Pickup
-        )
-    ) {
-        return false;
-    }
-    matches!(
+    let result_slot = matches!(
         (menu_type_id, slot_num),
         (Some(VANILLA_MENU_TYPE_ANVIL_ID), ANVIL_RESULT_SLOT)
             | (
@@ -2041,7 +2077,20 @@ pub(super) fn menu_result_slot_requires_server_authority(
                 Some(VANILLA_MENU_TYPE_STONECUTTER_ID),
                 STONECUTTER_RESULT_SLOT
             )
-    )
+    );
+    if !result_slot {
+        return false;
+    }
+    if matches!(
+        input,
+        ProtocolContainerInput::Clone | ProtocolContainerInput::QuickCraft
+    ) {
+        return false;
+    }
+    !(matches!(
+        input,
+        ProtocolContainerInput::Pickup | ProtocolContainerInput::QuickMove
+    ) && menu_type_id != Some(VANILLA_MENU_TYPE_CRAFTER_3X3_ID))
 }
 
 pub(super) fn furnace_family_menu_type(menu_type_id: Option<i32>) -> Option<i32> {

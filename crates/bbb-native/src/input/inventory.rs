@@ -1411,9 +1411,6 @@ fn local_inventory_can_add_quick_craft_slot(
     {
         return false;
     }
-    if !world.local_inventory_is_open() && !world.active_container_uses_unrestricted_slot_rules() {
-        return false;
-    }
     let Some(button_num) = input.inventory_quick_craft_button_num else {
         return false;
     };
@@ -1425,16 +1422,7 @@ fn local_inventory_can_add_quick_craft_slot(
     {
         return false;
     }
-    let Some(slot_item) = local_inventory_slot_item(world, slot_num) else {
-        return false;
-    };
-    if item_stack_is_empty(slot_item) {
-        return inventory_slot_max_stack_size(world, slot_num, &world.inventory().cursor_item) > 0;
-    }
-    if !same_item_same_components(slot_item, &world.inventory().cursor_item) {
-        return false;
-    }
-    slot_item.count < inventory_slot_max_stack_size(world, slot_num, slot_item)
+    world.active_container_slot_can_quick_craft(slot_num)
 }
 
 fn local_inventory_slot_item(world: &WorldStore, slot_num: i16) -> Option<&ItemStackSummary> {
@@ -3497,47 +3485,6 @@ fn inventory_slot_has_item(world: &WorldStore, slot_num: i16) -> bool {
 
 fn item_stack_is_empty(stack: &ItemStackSummary) -> bool {
     stack.item_id.is_none() || stack.count <= 0
-}
-
-fn same_item_same_components(left: &ItemStackSummary, right: &ItemStackSummary) -> bool {
-    left.item_id == right.item_id && left.component_patch == right.component_patch
-}
-
-fn local_inventory_slot_max_stack_size(slot_num: i16, stack: &ItemStackSummary) -> i32 {
-    let item_max_stack_size = local_inventory_item_max_stack_size(stack);
-    let slot_max_stack_size = match slot_num {
-        0 => 0,
-        5..=8 => 1,
-        _ => 64,
-    };
-    item_max_stack_size.min(slot_max_stack_size)
-}
-
-fn inventory_slot_max_stack_size(
-    world: &WorldStore,
-    slot_num: i16,
-    stack: &ItemStackSummary,
-) -> i32 {
-    if world.local_inventory_is_open() {
-        local_inventory_slot_max_stack_size(slot_num, stack)
-    } else if world.active_container_uses_unrestricted_slot_rules() {
-        local_inventory_item_max_stack_size(stack)
-    } else {
-        0
-    }
-}
-
-fn local_inventory_item_max_stack_size(stack: &ItemStackSummary) -> i32 {
-    if item_stack_is_empty(stack) {
-        return 0;
-    }
-    if let Some(max_stack_size) = stack.component_patch.max_stack_size {
-        return max_stack_size.clamp(1, 99);
-    }
-    if stack.component_patch.max_damage.is_some() || stack.component_patch.damage.is_some() {
-        return 1;
-    }
-    64
 }
 
 #[cfg(test)]

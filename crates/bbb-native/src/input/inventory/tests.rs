@@ -7916,6 +7916,49 @@ fn generic_container_left_drag_queues_predicted_quick_craft_sequence() {
 }
 
 #[test]
+fn specialized_container_drag_selection_uses_world_slot_rules() {
+    let mut input = ClientInputState::new(true);
+    input.inventory_quick_craft_button_num = Some(0);
+    let mut world = WorldStore::new();
+    world.set_enchantment_lapis_lazuli_item_ids(BTreeSet::from([43]));
+    world.apply_open_screen(OpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_ENCHANTMENT_ID,
+        title: "Enchanting Table".to_string(),
+        title_styled: Vec::new(),
+    });
+    world.apply_container_set_content(ContainerSetContent {
+        container_id: 7,
+        state_id: 12,
+        items: vec![ItemStackSummary::empty(); 38],
+        carried_item: item_stack(42, 3),
+    });
+    let slots = inventory_screen_layout(&world).unwrap().slots;
+    let enchantment_input_slot = slots[0].slot_id;
+    let enchantment_lapis_slot = slots[1].slot_id;
+
+    assert!(local_inventory_can_add_quick_craft_slot(
+        &input,
+        &world,
+        enchantment_input_slot,
+    ));
+    assert!(!local_inventory_can_add_quick_craft_slot(
+        &input,
+        &world,
+        enchantment_lapis_slot,
+    ));
+
+    world.apply_set_cursor_item(SetCursorItem {
+        item: item_stack(43, 3),
+    });
+    assert!(local_inventory_can_add_quick_craft_slot(
+        &input,
+        &world,
+        enchantment_lapis_slot,
+    ));
+}
+
+#[test]
 fn inventory_right_drag_queues_quick_craft_one_per_slot() {
     let (tx, mut rx) = mpsc::channel(8);
     let commands = Some(tx);
