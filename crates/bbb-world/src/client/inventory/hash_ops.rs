@@ -9,20 +9,30 @@
 use std::collections::BTreeMap;
 
 use bbb_protocol::{
+    attribute_modifier_types::{
+        attribute_modifier_display_name, attribute_modifier_operation_name,
+        VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_DEFAULT_ID,
+        VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID,
+    },
     builtin_enum_component_values::builtin_enum_component_value_name,
     data_component_types::{
         vanilla_data_component_animal_variant_registry,
         vanilla_data_component_resource_id_for_type_id, vanilla_data_component_type_is_persistent,
         VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
         VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID, VANILLA_DATA_COMPONENT_BASE_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_BEES_TYPE_ID, VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
         VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID, VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
         VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
-        VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
+        VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID, VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID,
         VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID,
         VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
         VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
@@ -42,6 +52,7 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_OMINOUS_BOTTLE_AMPLIFIER_TYPE_ID,
         VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
+        VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
         VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
@@ -49,6 +60,7 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_RARITY_TYPE_ID, VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID,
         VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID, VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID,
         VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
         VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID,
         VANILLA_DATA_COMPONENT_TOOLTIP_STYLE_TYPE_ID, VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
@@ -57,15 +69,19 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID,
         VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
-        VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID, VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID,
         VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_WEAPON_TYPE_ID,
     },
-    equipment_slots::vanilla_equipment_slot_by_id,
+    equipment_slots::{
+        vanilla_equipment_slot_by_id, vanilla_equipment_slot_group,
+        VANILLA_EQUIPMENT_SLOT_GROUP_ANY_ID,
+    },
     packets::{
-        validate_data_component_patch_summary, BlocksAttacksSummary, DataComponentPatchSummary,
-        FireworkExplosionSummary, HashedComponentPatch, HashedItemStack, HashedStack,
-        ItemEnchantmentSummary, ItemStackSummary, KineticWeaponConditionSummary, NbtSummaryEntry,
-        NbtSummaryValue, SoundEventSummary,
+        validate_data_component_patch_summary, BlocksAttacksSummary, ConsumeEffectSummary,
+        DataComponentPatchSummary, FireworkExplosionSummary, HashedComponentPatch, HashedItemStack,
+        HashedStack, ItemEnchantmentSummary, ItemStackSummary, ItemStackTemplateSummary,
+        KineticWeaponConditionSummary, MobEffectDetailsSummary, MobEffectInstanceSummary,
+        NbtSummaryEntry, NbtSummaryValue, SoundEventSummary,
     },
     tropical_fish_patterns::vanilla_tropical_fish_pattern,
 };
@@ -207,6 +223,7 @@ fn hash_component_value(
         VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID => hash_string(patch.item_model.as_deref()?),
         VANILLA_DATA_COMPONENT_RARITY_TYPE_ID => hash_string(patch.rarity?.as_str()),
         VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID => hash_enchantments(ctx, &patch.enchantments)?,
+        VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID => hash_attribute_modifiers(ctx, patch)?,
         VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID => {
             let mut fields = Vec::new();
             if !patch.custom_model_data_floats.is_empty() {
@@ -291,6 +308,39 @@ fn hash_component_value(
                 false,
             );
             hash_record(fields)
+        }
+        VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID => {
+            let value = patch.consumable?;
+            let mut fields = Vec::new();
+            push_non_default_float(
+                &mut fields,
+                "consume_seconds",
+                value.consume_seconds.to_bits(),
+                1.6_f32.to_bits(),
+            );
+            if value.animation != bbb_protocol::packets::ItemUseAnimationSummary::Eat {
+                fields.push(("animation", hash_string(value.animation.as_str())));
+            }
+            let sound = patch.consumable_sound.as_ref()?;
+            if !sound_event_is_registry_resource(ctx, sound, "minecraft:entity.generic.eat") {
+                fields.push(("sound", hash_sound_event(ctx, sound)?));
+            }
+            push_non_default_bool(
+                &mut fields,
+                "has_consume_particles",
+                patch.consumable_has_consume_particles?,
+                true,
+            );
+            if !patch.consumable_effects.is_empty() {
+                fields.push((
+                    "on_consume_effects",
+                    hash_consume_effects(ctx, &patch.consumable_effects)?,
+                ));
+            }
+            hash_record(fields)
+        }
+        VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID => {
+            hash_item_stack_template(ctx, patch.use_remainder.as_deref()?)?
         }
         VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID => {
             let mut fields = vec![("seconds", hash_float(patch.use_cooldown_seconds_bits?))];
@@ -396,6 +446,16 @@ fn hash_component_value(
         VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID => {
             hash_blocks_attacks(ctx, patch.blocks_attacks.as_ref()?)?
         }
+        VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID => {
+            let mut fields = Vec::new();
+            if !patch.death_protection_effects.is_empty() {
+                fields.push((
+                    "death_effects",
+                    hash_consume_effects(ctx, &patch.death_protection_effects)?,
+                ));
+            }
+            hash_record(fields)
+        }
         VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID => {
             let value = patch.piercing_weapon.as_ref()?;
             let mut fields = Vec::new();
@@ -476,9 +536,65 @@ fn hash_component_value(
                 })
                 .collect(),
         ),
+        VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID => {
+            let mut fields = Vec::new();
+            if let Some(potion_id) = patch.potion_id {
+                fields.push((
+                    "potion",
+                    hash_registry_holder(ctx, "minecraft:potion", potion_id)?,
+                ));
+            }
+            if let Some(color) = patch.potion_custom_color {
+                fields.push(("custom_color", hash_int(color)));
+            }
+            if !patch.potion_custom_effects.is_empty() {
+                fields.push((
+                    "custom_effects",
+                    hash_list(
+                        patch
+                            .potion_custom_effects
+                            .iter()
+                            .map(|effect| hash_mob_effect_instance(ctx, effect))
+                            .collect::<Option<Vec<_>>>()?,
+                    ),
+                ));
+            }
+            if let Some(name) = &patch.potion_custom_name {
+                fields.push(("custom_name", hash_string(name)));
+            }
+            hash_record(fields)
+        }
         VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID => {
             hash_float(patch.potion_duration_scale_bits?)
         }
+        VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID => hash_list(
+            patch
+                .suspicious_stew_effects
+                .iter()
+                .map(|effect| {
+                    let mut fields = vec![(
+                        "id",
+                        hash_registry_holder(ctx, "minecraft:mob_effect", effect.effect_id)?,
+                    )];
+                    push_non_default_int(&mut fields, "duration", effect.duration, 160);
+                    Some(hash_record(fields))
+                })
+                .collect::<Option<Vec<_>>>()?,
+        ),
+        VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID => hash_list(
+            patch
+                .charged_projectiles_items
+                .iter()
+                .map(|item| hash_item_stack_template(ctx, item))
+                .collect::<Option<Vec<_>>>()?,
+        ),
+        VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID => hash_list(
+            patch
+                .bundle_contents_items
+                .iter()
+                .map(|item| hash_item_stack_template(ctx, item))
+                .collect::<Option<Vec<_>>>()?,
+        ),
         VANILLA_DATA_COMPONENT_OMINOUS_BOTTLE_AMPLIFIER_TYPE_ID => {
             hash_int(patch.ominous_bottle_amplifier?)
         }
@@ -641,6 +757,18 @@ fn hash_component_value(
                 .pot_decorations_item_ids
                 .iter()
                 .map(|item_id| hash_registry_holder(ctx, "minecraft:item", *item_id))
+                .collect::<Option<Vec<_>>>()?,
+        ),
+        VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID => hash_list(
+            patch
+                .container_slots
+                .iter()
+                .map(|slot| {
+                    Some(hash_record(vec![
+                        ("slot", hash_int(i32::try_from(slot.slot).ok()?)),
+                        ("item", hash_item_stack_template(ctx, &slot.item)?),
+                    ]))
+                })
                 .collect::<Option<Vec<_>>>()?,
         ),
         VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID => hash_map(
@@ -824,6 +952,216 @@ fn hash_enchantments(
                         .map(hash_string)?,
                     hash_int(enchantment.level),
                 ))
+            })
+            .collect::<Option<Vec<_>>>()?,
+    ))
+}
+
+fn hash_item_stack_template(
+    ctx: InventoryCtx<'_>,
+    item: &ItemStackTemplateSummary,
+) -> Option<Hash32> {
+    let mut fields = vec![(
+        "id",
+        hash_registry_holder(ctx, "minecraft:item", item.item_id)?,
+    )];
+    push_non_default_int(&mut fields, "count", item.count, 1);
+    if item.component_patch != DataComponentPatchSummary::default() {
+        fields.push((
+            "components",
+            hash_data_component_patch_codec(ctx, &item.component_patch)?,
+        ));
+    }
+    Some(hash_record(fields))
+}
+
+fn hash_data_component_patch_codec(
+    ctx: InventoryCtx<'_>,
+    patch: &DataComponentPatchSummary,
+) -> Option<Hash32> {
+    let mut entries = Vec::new();
+    for type_id in &patch.added_type_ids {
+        if !vanilla_data_component_type_is_persistent(*type_id) {
+            continue;
+        }
+        entries.push((
+            hash_string(vanilla_data_component_resource_id_for_type_id(*type_id)?),
+            hash_component_value(ctx, patch, *type_id)?,
+        ));
+    }
+    for type_id in &patch.removed_type_ids {
+        if !vanilla_data_component_type_is_persistent(*type_id) {
+            continue;
+        }
+        entries.push((
+            hash_string(&format!(
+                "!{}",
+                vanilla_data_component_resource_id_for_type_id(*type_id)?
+            )),
+            hash_record(Vec::new()),
+        ));
+    }
+    Some(hash_map(entries))
+}
+
+fn hash_attribute_modifiers(
+    ctx: InventoryCtx<'_>,
+    patch: &DataComponentPatchSummary,
+) -> Option<Hash32> {
+    Some(hash_list(
+        patch
+            .attribute_modifiers
+            .iter()
+            .map(|entry| {
+                let mut fields = vec![
+                    (
+                        "type",
+                        hash_registry_holder(ctx, "minecraft:attribute", entry.attribute_id)?,
+                    ),
+                    ("id", hash_string(&entry.modifier_id)),
+                    ("amount", hash_double(entry.amount_bits)),
+                    (
+                        "operation",
+                        hash_string(attribute_modifier_operation_name(entry.operation_id)?),
+                    ),
+                ];
+                if entry.slot_id != VANILLA_EQUIPMENT_SLOT_GROUP_ANY_ID {
+                    fields.push((
+                        "slot",
+                        hash_string(vanilla_equipment_slot_group(entry.slot_id)?.serialized_name),
+                    ));
+                }
+                if entry.display_id != VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_DEFAULT_ID {
+                    if entry.display_id == VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID {
+                        return None;
+                    }
+                    fields.push((
+                        "display",
+                        hash_record(vec![(
+                            "type",
+                            hash_string(attribute_modifier_display_name(entry.display_id)?),
+                        )]),
+                    ));
+                }
+                Some(hash_record(fields))
+            })
+            .collect::<Option<Vec<_>>>()?,
+    ))
+}
+
+fn hash_mob_effect_instance(
+    ctx: InventoryCtx<'_>,
+    effect: &MobEffectInstanceSummary,
+) -> Option<Hash32> {
+    let mut fields = vec![(
+        "id",
+        hash_registry_holder(ctx, "minecraft:mob_effect", effect.effect_id)?,
+    )];
+    append_mob_effect_details(
+        &mut fields,
+        effect.amplifier,
+        effect.duration,
+        effect.ambient,
+        effect.show_particles,
+        effect.show_icon,
+        effect.hidden_effect.as_deref(),
+    );
+    Some(hash_record(fields))
+}
+
+fn append_mob_effect_details<'a>(
+    fields: &mut Vec<(&'a str, Hash32)>,
+    amplifier: i32,
+    duration: i32,
+    ambient: bool,
+    show_particles: bool,
+    show_icon: bool,
+    hidden_effect: Option<&MobEffectDetailsSummary>,
+) {
+    push_non_default_int(fields, "amplifier", amplifier, 0);
+    push_non_default_int(fields, "duration", duration, 0);
+    push_non_default_bool(fields, "ambient", ambient, false);
+    push_non_default_bool(fields, "show_particles", show_particles, true);
+    fields.push(("show_icon", hash_boolean(show_icon)));
+    if let Some(hidden) = hidden_effect {
+        let mut hidden_fields = Vec::new();
+        append_mob_effect_details(
+            &mut hidden_fields,
+            hidden.amplifier,
+            hidden.duration,
+            hidden.ambient,
+            hidden.show_particles,
+            hidden.show_icon,
+            hidden.hidden_effect.as_deref(),
+        );
+        fields.push(("hidden_effect", hash_record(hidden_fields)));
+    }
+}
+
+fn hash_consume_effects(ctx: InventoryCtx<'_>, effects: &[ConsumeEffectSummary]) -> Option<Hash32> {
+    Some(hash_list(
+        effects
+            .iter()
+            .map(|effect| {
+                let hash = match effect {
+                    ConsumeEffectSummary::ApplyEffects {
+                        effects,
+                        probability_bits,
+                    } => {
+                        let mut fields = vec![
+                            ("type", hash_string("minecraft:apply_effects")),
+                            (
+                                "effects",
+                                hash_list(
+                                    effects
+                                        .iter()
+                                        .map(|effect| hash_mob_effect_instance(ctx, effect))
+                                        .collect::<Option<Vec<_>>>()?,
+                                ),
+                            ),
+                        ];
+                        push_non_default_float(
+                            &mut fields,
+                            "probability",
+                            *probability_bits,
+                            1.0_f32.to_bits(),
+                        );
+                        hash_record(fields)
+                    }
+                    ConsumeEffectSummary::RemoveEffects {
+                        effect_registry_ids,
+                        effect_tag,
+                    } => hash_record(vec![
+                        ("type", hash_string("minecraft:remove_effects")),
+                        (
+                            "effects",
+                            hash_registry_holder_set(
+                                ctx,
+                                "minecraft:mob_effect",
+                                effect_registry_ids,
+                                effect_tag.as_deref(),
+                            )?,
+                        ),
+                    ]),
+                    ConsumeEffectSummary::ClearAllEffects => {
+                        hash_record(vec![("type", hash_string("minecraft:clear_all_effects"))])
+                    }
+                    ConsumeEffectSummary::TeleportRandomly { diameter_bits } => {
+                        let mut fields = vec![("type", hash_string("minecraft:teleport_randomly"))];
+                        push_non_default_float(
+                            &mut fields,
+                            "diameter",
+                            *diameter_bits,
+                            16.0_f32.to_bits(),
+                        );
+                        hash_record(fields)
+                    }
+                    ConsumeEffectSummary::PlaySound { sound } => hash_record(vec![
+                        ("type", hash_string("minecraft:play_sound")),
+                        ("sound", hash_sound_event(ctx, sound)?),
+                    ]),
+                };
+                Some(hash)
             })
             .collect::<Option<Vec<_>>>()?,
     ))
@@ -1308,12 +1646,18 @@ pub(super) fn crc32c(bytes: &[u8]) -> u32 {
 #[cfg(test)]
 mod tests {
     use bbb_protocol::{
+        attribute_modifier_types::{
+            VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_HIDDEN_ID,
+            VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
+        },
         builtin_enum_component_values::VANILLA_DYE_COLOR_RED_ID,
+        equipment_slots::VANILLA_EQUIPMENT_SLOT_GROUP_MAINHAND_ID,
         packets::{
-            chunks::BlockPos, DamageReductionSummary, EquippableSummary,
-            FireworkExplosionShapeSummary, ItemDamageFunctionSummary, ItemRaritySummary,
-            KineticWeaponSummary, LodestoneTargetSummary, PiercingWeaponSummary, ToolSummary,
-            UseEffectsSummary,
+            chunks::BlockPos, AttributeModifierSummary, ConsumableSummary, DamageReductionSummary,
+            EquippableSummary, FireworkExplosionShapeSummary, ItemContainerSlotSummary,
+            ItemDamageFunctionSummary, ItemRaritySummary, ItemUseAnimationSummary,
+            KineticWeaponSummary, LodestoneTargetSummary, PiercingWeaponSummary,
+            SuspiciousStewEffectSummary, ToolSummary, UseEffectsSummary,
         },
         NbtSummaryEntry,
     };
@@ -1795,6 +2139,206 @@ mod tests {
                 (
                     VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
                     hash_record(Vec::new()).0 as i32,
+                ),
+            ])
+        );
+    }
+
+    #[test]
+    fn hashes_effect_and_attribute_component_codec_shapes() {
+        let store = crate::WorldStore::new();
+        let potion_id = store
+            .registries
+            .holder_id_by_resource_id("minecraft:potion", "minecraft:water")
+            .unwrap();
+        let effect_id = store
+            .registries
+            .holder_id_by_resource_id("minecraft:mob_effect", "minecraft:speed")
+            .unwrap();
+        let attribute_id = store
+            .registries
+            .holder_id_by_resource_id("minecraft:attribute", "minecraft:attack_damage")
+            .unwrap();
+        let eat_sound_id = store
+            .registries
+            .holder_id_by_resource_id("minecraft:sound_event", "minecraft:entity.generic.eat")
+            .unwrap();
+        let custom_effect = MobEffectInstanceSummary {
+            effect_id,
+            amplifier: 0,
+            duration: 200,
+            ambient: false,
+            show_particles: true,
+            show_icon: true,
+            hidden_effect: None,
+        };
+        let patch = DataComponentPatchSummary {
+            added: 5,
+            added_type_ids: vec![
+                VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
+                VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID,
+                VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
+                VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
+                VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
+            ],
+            consumable: Some(ConsumableSummary {
+                consume_seconds: 1.6,
+                animation: ItemUseAnimationSummary::Eat,
+            }),
+            consumable_sound: Some(SoundEventSummary {
+                registry_id: Some(eat_sound_id),
+                sound_id: None,
+                fixed_range_bits: None,
+            }),
+            consumable_has_consume_particles: Some(true),
+            consumable_effect_count: Some(0),
+            potion_id: Some(potion_id),
+            potion_custom_effect_count: Some(1),
+            potion_custom_effects: vec![custom_effect.clone()],
+            suspicious_stew_effects: vec![SuspiciousStewEffectSummary {
+                effect_id,
+                duration: 160,
+            }],
+            attribute_modifiers: vec![AttributeModifierSummary {
+                attribute_id,
+                modifier_id: "example:damage".to_string(),
+                amount_bits: 1.5_f64.to_bits(),
+                operation_id: VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
+                slot_id: VANILLA_EQUIPMENT_SLOT_GROUP_MAINHAND_ID,
+                display_id: VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_HIDDEN_ID,
+                display_text: None,
+                display_text_styled: None,
+                display_text_nbt: None,
+            }],
+            ..DataComponentPatchSummary::default()
+        };
+
+        let hashed = hashed_component_patch_from_summary(test_ctx(&store), &patch).unwrap();
+
+        assert_eq!(
+            hashed.added_components,
+            BTreeMap::from([
+                (
+                    VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
+                    hash_record(Vec::new()).0 as i32,
+                ),
+                (
+                    VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID,
+                    hash_record(Vec::new()).0 as i32,
+                ),
+                (
+                    VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
+                    hash_record(vec![
+                        ("potion", hash_string("minecraft:water")),
+                        (
+                            "custom_effects",
+                            hash_list([hash_record(vec![
+                                ("id", hash_string("minecraft:speed")),
+                                ("duration", hash_int(200)),
+                                ("show_icon", hash_boolean(true)),
+                            ])]),
+                        ),
+                    ])
+                    .0 as i32,
+                ),
+                (
+                    VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
+                    hash_list([hash_record(vec![("id", hash_string("minecraft:speed"),)])]).0
+                        as i32,
+                ),
+                (
+                    VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
+                    hash_list([hash_record(vec![
+                        ("type", hash_string("minecraft:attack_damage")),
+                        ("id", hash_string("example:damage")),
+                        ("amount", hash_double(1.5_f64.to_bits())),
+                        ("operation", hash_string("add_value")),
+                        ("slot", hash_string("mainhand")),
+                        (
+                            "display",
+                            hash_record(vec![("type", hash_string("hidden"))]),
+                        ),
+                    ])])
+                    .0 as i32,
+                ),
+            ])
+        );
+    }
+
+    #[test]
+    fn hashes_recursive_item_stack_template_component_codecs() {
+        let store = crate::WorldStore::new();
+        let item_id = store
+            .registries
+            .holder_id_by_resource_id("minecraft:item", "minecraft:stick")
+            .unwrap();
+        let template = ItemStackTemplateSummary {
+            item_id,
+            count: 2,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID],
+                max_stack_size: Some(16),
+                ..DataComponentPatchSummary::default()
+            },
+        };
+        let patch = DataComponentPatchSummary {
+            added: 4,
+            added_type_ids: vec![
+                VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID,
+                VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID,
+                VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID,
+                VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID,
+            ],
+            use_remainder: Some(Box::new(template.clone())),
+            charged_projectiles_items: vec![template.clone()],
+            bundle_contents_item_count: Some(1),
+            bundle_contents_items: vec![template.clone()],
+            container_item_count: Some(1),
+            container_slot_count: Some(4),
+            container_items: vec![template.clone()],
+            container_slots: vec![ItemContainerSlotSummary {
+                slot: 3,
+                item: template,
+            }],
+            ..DataComponentPatchSummary::default()
+        };
+        let template_hash = hash_record(vec![
+            ("id", hash_string("minecraft:stick")),
+            ("count", hash_int(2)),
+            (
+                "components",
+                hash_map(vec![(
+                    hash_string("minecraft:max_stack_size"),
+                    hash_int(16),
+                )]),
+            ),
+        ]);
+
+        let hashed = hashed_component_patch_from_summary(test_ctx(&store), &patch).unwrap();
+
+        assert_eq!(
+            hashed.added_components,
+            BTreeMap::from([
+                (
+                    VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID,
+                    template_hash.0 as i32,
+                ),
+                (
+                    VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID,
+                    hash_list([template_hash]).0 as i32,
+                ),
+                (
+                    VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID,
+                    hash_list([template_hash]).0 as i32,
+                ),
+                (
+                    VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID,
+                    hash_list([hash_record(vec![
+                        ("slot", hash_int(3)),
+                        ("item", template_hash),
+                    ])])
+                    .0 as i32,
                 ),
             ])
         );
