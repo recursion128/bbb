@@ -49,6 +49,8 @@ use bbb_protocol::{
     },
 };
 
+mod ignition;
+
 const VANILLA_DEFAULT_ENTITY_INTERACT_OWNER: &str = "net.minecraft.world.entity.Entity";
 const VANILLA_MOB_ENTITY_INTERACT_OWNER: &str = "net.minecraft.world.entity.Mob";
 const VANILLA_ARMOR_STAND_INTERACT_OWNER: &str = "net.minecraft.world.entity.decoration.ArmorStand";
@@ -111,11 +113,19 @@ pub enum LocalInteractionSwingSource {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LocalInteractionSoundAction {
+    FlintAndSteelUse { pos: BlockPos },
+    SuppressedFireChargeUse,
+    SuppressedLodestoneCompassUse,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LocalInteractionSuccess {
     pub swing_source: LocalInteractionSwingSource,
     pub was_item_interaction: bool,
     pub starts_using_item: bool,
     pub extra_swing: Option<InteractionHand>,
+    pub sound_action: Option<LocalInteractionSoundAction>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -155,6 +165,7 @@ impl LocalInteractionSuccess {
             was_item_interaction: true,
             starts_using_item,
             extra_swing: None,
+            sound_action: None,
         }
     }
 
@@ -164,6 +175,7 @@ impl LocalInteractionSuccess {
             was_item_interaction: false,
             starts_using_item: false,
             extra_swing: None,
+            sound_action: None,
         }
     }
 
@@ -173,6 +185,7 @@ impl LocalInteractionSuccess {
             was_item_interaction: true,
             starts_using_item: false,
             extra_swing: None,
+            sound_action: None,
         }
     }
 
@@ -182,6 +195,7 @@ impl LocalInteractionSuccess {
             was_item_interaction: false,
             starts_using_item: false,
             extra_swing: None,
+            sound_action: None,
         }
     }
 
@@ -191,6 +205,7 @@ impl LocalInteractionSuccess {
             was_item_interaction: true,
             starts_using_item: false,
             extra_swing: None,
+            sound_action: None,
         }
     }
 
@@ -204,6 +219,17 @@ impl LocalInteractionSuccess {
             } else {
                 None
             },
+            sound_action: Some(LocalInteractionSoundAction::SuppressedLodestoneCompassUse),
+        }
+    }
+
+    const fn ignition(sound_action: LocalInteractionSoundAction) -> Self {
+        Self {
+            swing_source: LocalInteractionSwingSource::Client,
+            was_item_interaction: true,
+            starts_using_item: false,
+            extra_swing: None,
+            sound_action: Some(sound_action),
         }
     }
 }
@@ -318,15 +344,56 @@ impl WorldStore {
         if !self.is_feature_enabled("minecraft:vanilla") {
             return LocalTargetUsePrediction::Result(LocalInteractionResult::Fail);
         }
+        let ignition_reaches_item_use =
+            self.local_ignition_item_reaches_use_on(block_type.use_item_on_override, hand);
         if let Some(owner) = block_type.use_item_on_override {
-            return LocalTargetUsePrediction::UnsupportedBlockUseItemOn(owner);
+            if !ignition_reaches_item_use {
+                return LocalTargetUsePrediction::UnsupportedBlockUseItemOn(owner);
+            }
         }
         if hand == InteractionHand::MainHand {
             if let Some(owner) = block_type.use_without_item_override {
-                return LocalTargetUsePrediction::UnsupportedBlockUseWithoutItem(owner);
+                if !ignition_reaches_item_use {
+                    return LocalTargetUsePrediction::UnsupportedBlockUseWithoutItem(owner);
+                }
             }
         }
         self.predict_local_item_use_on(hand, context)
+    }
+
+    fn local_ignition_item_reaches_use_on(
+        &self,
+        block_owner: Option<VanillaBlockUseItemOnOverride>,
+        hand: InteractionHand,
+    ) -> bool {
+        let Some(item_id) = self
+            .local_item_in_hand(hand)
+            .and_then(|stack| stack.item_id)
+        else {
+            return false;
+        };
+        let ignition = vanilla_item_type(item_id)
+            .and_then(|item| item.use_on_override)
+            .is_some_and(|owner| {
+                matches!(
+                    owner,
+                    VanillaItemUseOnOverride::FlintAndSteelItem
+                        | VanillaItemUseOnOverride::FireChargeItem
+                )
+            });
+        if !ignition {
+            return false;
+        }
+        match block_owner {
+            Some(VanillaBlockUseItemOnOverride::CandleBlock)
+            | Some(VanillaBlockUseItemOnOverride::CandleCakeBlock) => true,
+            Some(VanillaBlockUseItemOnOverride::CampfireBlock) => !self
+                .recipes()
+                .property_sets
+                .get("minecraft:campfire_input")
+                .is_some_and(|items| items.contains(&item_id)),
+            _ => false,
+        }
     }
 
     fn predict_local_item_use_on(
@@ -571,6 +638,10 @@ impl WorldStore {
                         LocalInteractionSuccess::lodestone_compass_lock(dropped),
                     ),
                 ))
+            }
+            VanillaItemUseOnOverride::FlintAndSteelItem
+            | VanillaItemUseOnOverride::FireChargeItem => {
+                Some(self.predict_local_ignition_item_use_on(owner, hand, context))
             }
             VanillaItemUseOnOverride::EnderEyeItem => {
                 let block = self.probe_block(context.pos)?;
@@ -1922,7 +1993,8 @@ mod tests {
             VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_BRUSH_ID, VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID,
             VANILLA_ITEM_CHORUS_FRUIT_ID, VANILLA_ITEM_COMPASS_ID, VANILLA_ITEM_DEBUG_STICK_ID,
             VANILLA_ITEM_ENDER_EYE_ID, VANILLA_ITEM_END_CRYSTAL_ID, VANILLA_ITEM_FILLED_MAP_ID,
-            VANILLA_ITEM_FIREWORK_ROCKET_ID, VANILLA_ITEM_HONEYCOMB_ID, VANILLA_ITEM_IRON_AXE_ID,
+            VANILLA_ITEM_FIREWORK_ROCKET_ID, VANILLA_ITEM_FIRE_CHARGE_ID,
+            VANILLA_ITEM_FLINT_AND_STEEL_ID, VANILLA_ITEM_HONEYCOMB_ID, VANILLA_ITEM_IRON_AXE_ID,
             VANILLA_ITEM_IRON_HOE_ID, VANILLA_ITEM_IRON_SHOVEL_ID, VANILLA_ITEM_LEAD_ID,
             VANILLA_ITEM_LILY_PAD_ID, VANILLA_ITEM_MINECART_ID, VANILLA_ITEM_NAME_TAG_ID,
             VANILLA_ITEM_POPPY_ID, VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_SADDLE_ID,
@@ -2062,6 +2134,17 @@ mod tests {
 
     fn add_entity(world: &mut WorldStore, id: i32, entity_type_id: i32) {
         add_entity_at(world, id, entity_type_id, Vec3d::default());
+    }
+
+    fn set_block(world: &mut WorldStore, pos: BlockPos, block_state_id: i32) {
+        assert!(world.apply_block_update(BlockUpdate {
+            pos: ProtocolBlockPos {
+                x: pos.x,
+                y: pos.y,
+                z: pos.z,
+            },
+            block_state_id,
+        }));
     }
 
     fn add_entity_at(world: &mut WorldStore, id: i32, entity_type_id: i32, position: Vec3d) {
@@ -3029,6 +3112,293 @@ mod tests {
                 .added_type_ids
                 .contains(&VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID)
         }));
+    }
+
+    #[test]
+    fn ignition_items_light_blocks_with_exact_client_mutation_and_consumption() {
+        let pos = BlockPos { x: 0, y: 0, z: 0 };
+        let unlit_campfire = block_state_id(
+            "minecraft:campfire",
+            [
+                ("facing", "north"),
+                ("lit", "false"),
+                ("signal_fire", "false"),
+                ("waterlogged", "false"),
+            ],
+        );
+        let lit_campfire = block_state_id(
+            "minecraft:campfire",
+            [
+                ("facing", "north"),
+                ("lit", "true"),
+                ("signal_fire", "false"),
+                ("waterlogged", "false"),
+            ],
+        );
+        let mut flint = tool_use_world(unlit_campfire);
+        set_main_hand(&mut flint, VANILLA_ITEM_FLINT_AND_STEEL_ID);
+        assert_eq!(
+            flint.predict_local_block_use(
+                pos,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                false,
+                1,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::ignition(LocalInteractionSoundAction::FlintAndSteelUse {
+                    pos
+                })
+            ))
+        );
+        assert_eq!(flint.probe_block(pos).unwrap().block_state_id, lit_campfire);
+        assert_eq!(player_inventory_item(&flint, 0).count, 1);
+
+        let mut charge = tool_use_world(unlit_campfire);
+        charge.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: ItemStackSummary {
+                count: 2,
+                ..stack(VANILLA_ITEM_FIRE_CHARGE_ID)
+            },
+        });
+        assert_eq!(
+            charge.predict_local_block_use(
+                pos,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                false,
+                2,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::ignition(
+                    LocalInteractionSoundAction::SuppressedFireChargeUse
+                )
+            ))
+        );
+        assert_eq!(
+            charge.probe_block(pos).unwrap().block_state_id,
+            lit_campfire
+        );
+        assert_eq!(player_inventory_item(&charge, 0).count, 1);
+
+        let mut creative = tool_use_world_with_login(
+            unlit_campfire,
+            Some(("minecraft:overworld", VANILLA_GAME_TYPE_CREATIVE_ID as i8)),
+        );
+        creative.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: ItemStackSummary {
+                count: 2,
+                ..stack(VANILLA_ITEM_FIRE_CHARGE_ID)
+            },
+        });
+        assert!(matches!(
+            creative.predict_local_block_use(
+                pos,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                false,
+                3,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(player_inventory_item(&creative, 0).count, 2);
+
+        let lightable_states = [
+            (
+                block_state_id(
+                    "minecraft:candle",
+                    [("candles", "1"), ("lit", "false"), ("waterlogged", "false")],
+                ),
+                block_state_id(
+                    "minecraft:candle",
+                    [("candles", "1"), ("lit", "true"), ("waterlogged", "false")],
+                ),
+            ),
+            (
+                block_state_id("minecraft:candle_cake", [("lit", "false")]),
+                block_state_id("minecraft:candle_cake", [("lit", "true")]),
+            ),
+        ];
+        for (unlit, lit) in lightable_states {
+            let mut world = tool_use_world(unlit);
+            set_main_hand(&mut world, VANILLA_ITEM_FLINT_AND_STEEL_ID);
+            assert!(matches!(
+                world.predict_local_block_use(
+                    pos,
+                    ProtocolDirection::Up,
+                    InteractionHand::MainHand,
+                    false,
+                    4,
+                ),
+                LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+            ));
+            assert_eq!(world.probe_block(pos).unwrap().block_state_id, lit);
+        }
+    }
+
+    #[test]
+    fn ignition_items_predict_ordinary_and_soul_fire_or_fail_closed() {
+        let clicked = BlockPos { x: 8, y: 0, z: 8 };
+        let fire_pos = BlockPos { x: 8, y: 1, z: 8 };
+        let mut ordinary = tool_use_world_with_login(
+            block_state_id("minecraft:air", []),
+            Some(("minecraft:the_end", VANILLA_GAME_TYPE_SURVIVAL_ID as i8)),
+        );
+        set_block(
+            &mut ordinary,
+            clicked,
+            block_state_id("minecraft:oak_planks", []),
+        );
+        set_main_hand(&mut ordinary, VANILLA_ITEM_FLINT_AND_STEEL_ID);
+        assert_eq!(
+            ordinary.predict_local_block_use(
+                clicked,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                false,
+                3,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::ignition(LocalInteractionSoundAction::FlintAndSteelUse {
+                    pos: fire_pos
+                })
+            ))
+        );
+        assert_eq!(
+            ordinary.probe_block(fire_pos).unwrap().block_state_id,
+            block_state_id(
+                "minecraft:fire",
+                [
+                    ("age", "0"),
+                    ("east", "false"),
+                    ("north", "false"),
+                    ("south", "false"),
+                    ("up", "false"),
+                    ("west", "false"),
+                ],
+            )
+        );
+
+        let mut soul = tool_use_world_with_login(
+            block_state_id("minecraft:air", []),
+            Some(("minecraft:the_end", VANILLA_GAME_TYPE_SURVIVAL_ID as i8)),
+        );
+        set_block(
+            &mut soul,
+            clicked,
+            block_state_id("minecraft:soul_sand", []),
+        );
+        set_main_hand(&mut soul, VANILLA_ITEM_FLINT_AND_STEEL_ID);
+        assert!(matches!(
+            soul.predict_local_block_use(
+                clicked,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                false,
+                4,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(
+            soul.probe_block(fire_pos).unwrap().block_state_id,
+            block_state_id("minecraft:soul_fire", [])
+        );
+
+        let mut missing_level = tool_use_world(block_state_id("minecraft:air", []));
+        set_block(
+            &mut missing_level,
+            clicked,
+            block_state_id("minecraft:stone", []),
+        );
+        set_main_hand(&mut missing_level, VANILLA_ITEM_FLINT_AND_STEEL_ID);
+        assert_eq!(
+            missing_level.predict_local_block_use(
+                clicked,
+                ProtocolDirection::East,
+                InteractionHand::MainHand,
+                false,
+                5,
+            ),
+            LocalTargetUsePrediction::UnsupportedItemUseOn(
+                VanillaItemUseOnOverride::FlintAndSteelItem
+            ),
+            "without level identity the client must not guess portal eligibility"
+        );
+
+        let mut fail = tool_use_world_with_login(
+            block_state_id("minecraft:air", []),
+            Some(("minecraft:the_end", VANILLA_GAME_TYPE_SURVIVAL_ID as i8)),
+        );
+        set_block(&mut fail, clicked, block_state_id("minecraft:stone", []));
+        set_main_hand(&mut fail, VANILLA_ITEM_FLINT_AND_STEEL_ID);
+        assert_eq!(
+            fail.predict_local_block_use(
+                clicked,
+                ProtocolDirection::East,
+                InteractionHand::MainHand,
+                false,
+                6,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
+        );
+    }
+
+    #[test]
+    fn ignition_creates_empty_obsidian_portal_with_vanilla_axis_priority() {
+        let air = block_state_id("minecraft:air", []);
+        let obsidian = block_state_id("minecraft:obsidian", []);
+        let mut world = tool_use_world_with_login(
+            air,
+            Some(("minecraft:overworld", VANILLA_GAME_TYPE_SURVIVAL_ID as i8)),
+        );
+        // Axis.X uses WEST as PortalShape.rightDir. The two-wide interior is
+        // x=7,6 with sides at x=8,5 and a three-block interior height.
+        for x in 5..=8 {
+            set_block(&mut world, BlockPos { x, y: 0, z: 8 }, obsidian);
+            set_block(&mut world, BlockPos { x, y: 4, z: 8 }, obsidian);
+        }
+        for y in 1..=3 {
+            set_block(&mut world, BlockPos { x: 5, y, z: 8 }, obsidian);
+            set_block(&mut world, BlockPos { x: 8, y, z: 8 }, obsidian);
+        }
+        world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: ItemStackSummary {
+                count: 2,
+                ..stack(VANILLA_ITEM_FIRE_CHARGE_ID)
+            },
+        });
+        assert_eq!(
+            world.predict_local_block_use(
+                BlockPos { x: 7, y: 0, z: 8 },
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                false,
+                7,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::ignition(
+                    LocalInteractionSoundAction::SuppressedFireChargeUse
+                )
+            ))
+        );
+        let portal = block_state_id("minecraft:nether_portal", [("axis", "x")]);
+        for x in [6, 7] {
+            for y in 1..=3 {
+                assert_eq!(
+                    world
+                        .probe_block(BlockPos { x, y, z: 8 })
+                        .unwrap()
+                        .block_state_id,
+                    portal,
+                    "missing portal prediction at x={x}, y={y}"
+                );
+            }
+        }
+        assert_eq!(player_inventory_item(&world, 0).count, 1);
+        assert_eq!(world.local_block_predictions().len(), 6);
     }
 
     #[test]

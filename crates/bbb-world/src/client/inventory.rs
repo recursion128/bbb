@@ -79,8 +79,8 @@ mod smithing;
 mod stonecutter;
 mod use_prediction;
 pub use use_prediction::{
-    LocalInteractionResult, LocalInteractionSuccess, LocalInteractionSwingSource,
-    LocalItemUsePrediction, LocalTargetUsePrediction,
+    LocalInteractionResult, LocalInteractionSoundAction, LocalInteractionSuccess,
+    LocalInteractionSwingSource, LocalItemUsePrediction, LocalTargetUsePrediction,
 };
 #[cfg(test)]
 mod tests;

@@ -13,19 +13,19 @@ use generated_26_1::{
     VANILLA_CANDLE_CAKE_BLOCKS, VANILLA_CAULDRON_BLOCKS, VANILLA_CHAIN_BLOCKS,
     VANILLA_CHEST_BLOCKS, VANILLA_COPPER_GOLEM_STATUE_BLOCKS, VANILLA_COPPER_GRATE_BLOCKS,
     VANILLA_CROP_BLOCKS, VANILLA_DOOR_BLOCKS, VANILLA_FENCE_BLOCKS, VANILLA_FENCE_GATE_BLOCKS,
-    VANILLA_FIXED_SOURCE_WATER_BLOCKS, VANILLA_FLOOR_SKULL_BLOCKS, VANILLA_FLOOR_TORCH_BLOCKS,
-    VANILLA_FLOWER_POT_BLOCKS, VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS,
-    VANILLA_HANGING_SIGN_BLOCKS, VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS,
-    VANILLA_IRON_BARS_CLASS_BLOCKS, VANILLA_LANTERN_BLOCKS, VANILLA_LEAVES_BLOCKS,
-    VANILLA_LIGHTNING_ROD_BLOCKS, VANILLA_LOG_BLOCKS, VANILLA_NO_COLLISION_BLOCKS,
-    VANILLA_NO_TERRAIN_PARTICLE_BLOCKS, VANILLA_ORE_BLOCKS, VANILLA_PALE_OAK_LOG_BLOCKS,
-    VANILLA_PLANK_BLOCKS, VANILLA_PRESSURE_PLATE_BLOCKS, VANILLA_RAIL_BLOCKS,
-    VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS,
+    VANILLA_FIRE_FLAMMABLE_BLOCKS, VANILLA_FIXED_SOURCE_WATER_BLOCKS, VANILLA_FLOOR_SKULL_BLOCKS,
+    VANILLA_FLOOR_TORCH_BLOCKS, VANILLA_FLOWER_POT_BLOCKS,
+    VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS, VANILLA_HANGING_SIGN_BLOCKS,
+    VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS, VANILLA_IRON_BARS_CLASS_BLOCKS, VANILLA_LANTERN_BLOCKS,
+    VANILLA_LEAVES_BLOCKS, VANILLA_LIGHTNING_ROD_BLOCKS, VANILLA_LOG_BLOCKS,
+    VANILLA_NO_COLLISION_BLOCKS, VANILLA_NO_TERRAIN_PARTICLE_BLOCKS, VANILLA_ORE_BLOCKS,
+    VANILLA_PALE_OAK_LOG_BLOCKS, VANILLA_PLANK_BLOCKS, VANILLA_PRESSURE_PLATE_BLOCKS,
+    VANILLA_RAIL_BLOCKS, VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS,
     VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS, VANILLA_SAPLING_BLOCKS,
-    VANILLA_SHELF_BLOCKS, VANILLA_SHULKER_BOX_BLOCKS, VANILLA_SLAB_BLOCKS, VANILLA_STAIR_BLOCKS,
-    VANILLA_STANDING_SIGN_BLOCKS, VANILLA_TRAPDOOR_BLOCKS, VANILLA_WALL_BLOCKS,
-    VANILLA_WALL_SIGN_BLOCKS, VANILLA_WALL_SKULL_BLOCKS, VANILLA_WALL_TORCH_BLOCKS,
-    VANILLA_WOOL_CARPET_BLOCKS,
+    VANILLA_SHELF_BLOCKS, VANILLA_SHULKER_BOX_BLOCKS, VANILLA_SLAB_BLOCKS,
+    VANILLA_SOUL_FIRE_BASE_BLOCKS, VANILLA_STAIR_BLOCKS, VANILLA_STANDING_SIGN_BLOCKS,
+    VANILLA_TRAPDOOR_BLOCKS, VANILLA_WALL_BLOCKS, VANILLA_WALL_SIGN_BLOCKS,
+    VANILLA_WALL_SKULL_BLOCKS, VANILLA_WALL_TORCH_BLOCKS, VANILLA_WOOL_CARPET_BLOCKS,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -321,6 +321,14 @@ pub fn classify_terrain_skip_rendering(
 
 pub fn block_name_is_air(name: &str) -> bool {
     VANILLA_AIR_BLOCKS.contains(&name)
+}
+
+pub(crate) fn block_name_is_fire_flammable(name: &str) -> bool {
+    VANILLA_FIRE_FLAMMABLE_BLOCKS.contains(&name)
+}
+
+pub(crate) fn block_name_is_soul_fire_base(name: &str) -> bool {
+    VANILLA_SOUL_FIRE_BASE_BLOCKS.contains(&name)
 }
 
 /// Vanilla `BlockBehaviour.Properties.friction`: `0.6F` unless the generated
@@ -704,6 +712,27 @@ mod tests {
         ] {
             assert!(block_name_should_spawn_terrain_particles(name), "{name}");
         }
+    }
+
+    #[test]
+    fn identifies_generated_fire_flammability_without_name_guessing() {
+        for name in [
+            "minecraft:oak_planks",
+            "minecraft:tnt",
+            "minecraft:short_grass",
+        ] {
+            assert!(block_name_is_fire_flammable(name), "{name}");
+        }
+        for name in [
+            "minecraft:stone",
+            "minecraft:crimson_planks",
+            "minecraft:custom_planks",
+        ] {
+            assert!(!block_name_is_fire_flammable(name), "{name}");
+        }
+        assert!(block_name_is_soul_fire_base("minecraft:soul_sand"));
+        assert!(block_name_is_soul_fire_base("minecraft:soul_soil"));
+        assert!(!block_name_is_soul_fire_base("minecraft:sand"));
     }
 
     #[test]

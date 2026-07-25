@@ -487,4 +487,9 @@
   prediction sequence、本地方块/物品突变、冒险与创造门控贯通 world/native。
 - **2026-07-23（磁石指南针 useOn 工程关闭）**：`CompassItem.useOn` 现按当前
   维度写入磁石目标，覆盖生存/创造分栈与满背包丢弃分支及精确挥手序列；
-  `null` excluded-player 的定位音效保持由服务端声音包驱动，避免客户端重复播放。
+  `null` excluded-player 的定位音效不在本地播放但仍推进声音种子，实际播放由
+  服务端声音包驱动。
+- **2026-07-23（点火 useOn 预测工程关闭）**：`FlintAndSteelItem` 与
+  `FireChargeItem` 现覆盖可点亮方块、普通/灵魂火与空黑曜石门框；`FireBlock`
+  易燃注册和灵魂火基座由 Vanilla 源/标签生成，音效随机流保留
+  excluded-player 语义。

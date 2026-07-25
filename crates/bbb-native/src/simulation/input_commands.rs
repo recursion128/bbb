@@ -25,6 +25,7 @@ use super::{
     effects::{PlatformEffect, PlatformEffectCollector, ScreenNarrationScheduleInput},
 };
 use crate::{
+    audio_runtime::AudioEventSink,
     code_of_conduct::CodeOfConductAcceptance,
     code_of_conduct_overlay::{CodeOfConductOverlayProjection, CodeOfConductOverlayState},
     input::{
@@ -33,7 +34,7 @@ use crate::{
         handle_advancements_screen_mouse_input, handle_advancements_screen_mouse_wheel,
         handle_focus_change, handle_inventory_cursor_moved,
         handle_inventory_mouse_input_with_item_runtime, handle_inventory_mouse_wheel,
-        handle_key_input_with_item_runtime, handle_mouse_input_at_partial_tick,
+        handle_key_input_with_item_runtime, handle_mouse_input_at_partial_tick_with_effects,
         handle_mouse_motion, handle_mouse_wheel, handle_text_input_with_item_runtime,
         queue_chat_command, queue_debug_recreate_server_query_request, release_active_input,
         social::SocialInteractionsPlatformRequest, CommandSuggestionTextMeasurer, DebugClipboard,
@@ -45,7 +46,7 @@ use crate::{
         handle_dialog_cursor_moved_with_measurer,
         handle_dialog_key_input_with_modifiers_for_surface_and_measurer,
         handle_dialog_mouse_input_with_modifiers_and_measurer, handle_dialog_mouse_wheel,
-        handle_dialog_text_input_with_measurer, pump_control_input_requests,
+        handle_dialog_text_input_with_measurer, pump_control_input_requests_with_effects,
         pump_control_net_requests, request_net_disconnect, DialogTextMeasurer,
     },
 };
@@ -126,7 +127,7 @@ impl SimulationInputRuntime {
     pub(crate) fn apply_commands(
         &mut self,
         commands: Vec<SequencedSimulationCommand>,
-        context: &mut SimulationInputContext<'_, '_>,
+        context: &mut SimulationInputContext<'_, '_, '_>,
     ) {
         for command in commands {
             if self.shutdown_requested {
@@ -171,7 +172,7 @@ impl SimulationInputRuntime {
     fn apply_command(
         &mut self,
         command: SimulationCommand,
-        context: &mut SimulationInputContext<'_, '_>,
+        context: &mut SimulationInputContext<'_, '_, '_>,
     ) {
         match command {
             SimulationCommand::FocusChanged(focused) => self.apply_focus(focused, context),
@@ -294,7 +295,7 @@ impl SimulationInputRuntime {
         }
     }
 
-    fn apply_focus(&mut self, focused: bool, context: &mut SimulationInputContext<'_, '_>) {
+    fn apply_focus(&mut self, focused: bool, context: &mut SimulationInputContext<'_, '_, '_>) {
         if !focused {
             self.request_cursor_capture(false, context.platform);
         }
@@ -313,7 +314,7 @@ impl SimulationInputRuntime {
         death_screen_target: Option<HudDeathScreenHitTarget>,
         game_event_target: Option<HudGameEventHitTarget>,
         social_interactions_target: Option<HudSocialInteractionsHitTarget>,
-        context: &mut SimulationInputContext<'_, '_>,
+        context: &mut SimulationInputContext<'_, '_, '_>,
     ) {
         let previous_cursor_position = self.cursor_position;
         self.cursor_position = Some(position);
@@ -483,7 +484,7 @@ impl SimulationInputRuntime {
         physical_key: PhysicalKey,
         state: ElementState,
         clipboard_text: Option<String>,
-        context: &mut SimulationInputContext<'_, '_>,
+        context: &mut SimulationInputContext<'_, '_, '_>,
     ) {
         if self.code_of_conduct_overlay.is_visible(context.world) {
             self.request_cursor_capture(false, context.platform);
@@ -769,7 +770,7 @@ impl SimulationInputRuntime {
         }
     }
 
-    fn apply_debug_requests(&mut self, context: &mut SimulationInputContext<'_, '_>) {
+    fn apply_debug_requests(&mut self, context: &mut SimulationInputContext<'_, '_, '_>) {
         if simulation_wants_cursor(context.input, context.world) {
             self.request_cursor_capture(false, context.platform);
         }
@@ -910,7 +911,7 @@ impl SimulationInputRuntime {
         &mut self,
         text: &str,
         cursor_range: Option<(usize, usize)>,
-        context: &mut SimulationInputContext<'_, '_>,
+        context: &mut SimulationInputContext<'_, '_, '_>,
     ) {
         if self.code_of_conduct_overlay.is_visible(context.world) {
             context.input.clear_dialog_ime_preedit();
@@ -941,7 +942,7 @@ impl SimulationInputRuntime {
         }
     }
 
-    fn apply_ime_commit(&mut self, text: &str, context: &mut SimulationInputContext<'_, '_>) {
+    fn apply_ime_commit(&mut self, text: &str, context: &mut SimulationInputContext<'_, '_, '_>) {
         context.input.clear_dialog_ime_preedit();
         context.input.clear_sign_editor_ime_preedit();
         if self.code_of_conduct_overlay.is_visible(context.world) {
@@ -1033,7 +1034,7 @@ impl SimulationInputRuntime {
         death_screen_target: Option<HudDeathScreenHitTarget>,
         game_event_target: Option<HudGameEventHitTarget>,
         social_interactions_target: Option<HudSocialInteractionsHitTarget>,
-        context: &mut SimulationInputContext<'_, '_>,
+        context: &mut SimulationInputContext<'_, '_, '_>,
     ) {
         if self.code_of_conduct_overlay.is_visible(context.world) {
             let overlay_input = self.code_of_conduct_overlay.handle_mouse_input(
@@ -1423,7 +1424,7 @@ impl SimulationInputRuntime {
         if !self.cursor_captured {
             return;
         }
-        handle_mouse_input_at_partial_tick(
+        handle_mouse_input_at_partial_tick_with_effects(
             context.input,
             context.world,
             context.net_counters,
@@ -1431,13 +1432,15 @@ impl SimulationInputRuntime {
             button,
             state,
             context.entity_partial_tick,
+            context.level_random,
+            context.audio_events,
         );
     }
 
     fn apply_chat_hit_target(
         &mut self,
         target: Option<HudChatHitTarget>,
-        context: &mut SimulationInputContext<'_, '_>,
+        context: &mut SimulationInputContext<'_, '_, '_>,
     ) -> bool {
         let Some(target) = target else {
             return false;
@@ -1489,7 +1492,7 @@ impl SimulationInputRuntime {
     fn apply_book_hit_target(
         &mut self,
         target: Option<HudBookHitTarget>,
-        context: &mut SimulationInputContext<'_, '_>,
+        context: &mut SimulationInputContext<'_, '_, '_>,
     ) -> bool {
         let Some(target) = target else {
             return false;
@@ -1522,7 +1525,7 @@ impl SimulationInputRuntime {
     fn apply_mouse_wheel(
         &mut self,
         delta: MouseScrollDelta,
-        context: &mut SimulationInputContext<'_, '_>,
+        context: &mut SimulationInputContext<'_, '_, '_>,
     ) {
         if self.code_of_conduct_overlay.is_visible(context.world) {
             self.request_cursor_capture(false, context.platform);
@@ -1651,7 +1654,7 @@ impl SimulationInputRuntime {
     fn apply_mouse_motion(
         &mut self,
         delta: (f64, f64),
-        context: &mut SimulationInputContext<'_, '_>,
+        context: &mut SimulationInputContext<'_, '_, '_>,
     ) {
         if self.code_of_conduct_overlay.is_visible(context.world)
             || simulation_wants_cursor(context.input, context.world)
@@ -1668,7 +1671,7 @@ impl SimulationInputRuntime {
     fn apply_control(
         &mut self,
         request: ControlWriteRequest,
-        context: &mut SimulationInputContext<'_, '_>,
+        context: &mut SimulationInputContext<'_, '_, '_>,
     ) {
         match request {
             ControlWriteRequest::Shutdown => self.request_shutdown(context),
@@ -1692,7 +1695,7 @@ impl SimulationInputRuntime {
         code_of_conduct: Option<CodeOfConductControlRequest>,
         net: Option<bbb_control::NetControlRequest>,
         input_request: Option<InputControlRequest>,
-        context: &mut SimulationInputContext<'_, '_>,
+        context: &mut SimulationInputContext<'_, '_, '_>,
     ) {
         // The individual request handlers remain shared with their focused
         // tests while the external producer has already joined this mailbox.
@@ -1723,7 +1726,7 @@ impl SimulationInputRuntime {
             context.input.sync_game_rules_screen(context.world);
             self.request_cursor_capture(false, context.platform);
         }
-        pump_control_input_requests(
+        pump_control_input_requests_with_effects(
             &requests,
             context.input,
             context.net_counters,
@@ -1733,6 +1736,8 @@ impl SimulationInputRuntime {
             self.code_of_conduct_overlay.is_visible(context.world),
             self.surface_size,
             context.entity_partial_tick,
+            context.level_random,
+            context.audio_events,
         );
     }
 
@@ -1748,12 +1753,12 @@ impl SimulationInputRuntime {
         platform.submit(PlatformEffect::SetCursorCapture(captured));
     }
 
-    fn request_shutdown(&mut self, context: &mut SimulationInputContext<'_, '_>) {
+    fn request_shutdown(&mut self, context: &mut SimulationInputContext<'_, '_, '_>) {
         self.request_network_terminal_shutdown(context.net_commands, context.platform);
     }
 }
 
-pub(crate) struct SimulationInputContext<'a, 'collector> {
+pub(crate) struct SimulationInputContext<'a, 'audio, 'collector> {
     pub(crate) input: &'a mut crate::input::ClientInputState,
     pub(crate) world: &'a mut WorldStore,
     pub(crate) net_counters: &'a mut bbb_control::NetCounters,
@@ -1766,12 +1771,14 @@ pub(crate) struct SimulationInputContext<'a, 'collector> {
     pub(crate) win_screen_resources:
         &'a mut std::sync::Arc<crate::win_screen_resources::WinScreenResources>,
     pub(crate) entity_partial_tick: f32,
+    pub(crate) level_random: &'a mut bbb_world::LevelEventSoundRandomState,
+    pub(crate) audio_events: &'a mut Option<&'audio mut dyn AudioEventSink>,
     pub(crate) platform: &'a mut PlatformEffectCollector<'collector>,
 }
 
 fn apply_resource_reload_ack(
     ack: crate::resource_reload::ResourceReloadAck,
-    context: &mut SimulationInputContext<'_, '_>,
+    context: &mut SimulationInputContext<'_, '_, '_>,
 ) {
     let status = ack.result.as_ref().map(|_| ()).map_err(ToString::to_string);
     if !context

@@ -17,6 +17,7 @@ from block_membership_catalog_extractor import (  # noqa: E402
     block_tag_membership,
     constructor_family_blocks,
     constructor_types_extending,
+    fire_flammable_blocks,
     invisible_render_shape_constructor_types,
     no_collision_blocks,
     no_terrain_particle_blocks,
@@ -116,6 +117,52 @@ class Blocks {
             r"Blocks\.java: expected 2 noTerrainParticles blocks, extracted 1",
         ):
             no_terrain_particle_blocks(source)
+
+    def test_fire_flammable_membership_uses_bootstrap_call_order(self) -> None:
+        source = parse_source(
+            "net/minecraft/world/level/block/FireBlock.java",
+            b"""package net.minecraft.world.level.block;
+class FireBlock {
+  public static void bootStrap() {
+    FireBlock fire = (FireBlock)Blocks.FIRE;
+    fire.setFlammable(Blocks.OAK_PLANKS, 5, 20);
+    fire.setFlammable(Blocks.TNT, 15, 100);
+  }
+  private void setFlammable(Block block, int igniteOdds, int burnOdds) {}
+}""",
+        )
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.resource_id)
+                for entry in fire_flammable_blocks(
+                    source,
+                    {"OAK_PLANKS": "oak_planks", "TNT": "tnt"},
+                    2,
+                )
+            ],
+            [
+                ("OAK_PLANKS", "minecraft:oak_planks"),
+                ("TNT", "minecraft:tnt"),
+            ],
+        )
+
+    def test_fire_flammable_membership_rejects_nonliteral_odds(self) -> None:
+        source = parse_source(
+            "net/minecraft/world/level/block/FireBlock.java",
+            b"""package net.minecraft.world.level.block;
+class FireBlock {
+  public static void bootStrap() {
+    FireBlock fire = (FireBlock)Blocks.FIRE;
+    fire.setFlammable(Blocks.OAK_PLANKS, DEFAULT_ODDS, 20);
+  }
+  private void setFlammable(Block block, int igniteOdds, int burnOdds) {}
+}""",
+        )
+        with self.assertRaisesRegex(
+            BlockMembershipCatalogExtractionError,
+            "setFlammable odds must be integer literals",
+        ):
+            fire_flammable_blocks(source, {"OAK_PLANKS": "oak_planks"}, 1)
 
     def test_friction_overrides_preserve_registration_order_and_values(self) -> None:
         source = parse_source(

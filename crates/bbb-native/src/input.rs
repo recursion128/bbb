@@ -267,9 +267,11 @@ pub(crate) use inventory::{
     STONECUTTER_VISIBLE_RECIPE_BUTTON_COUNT,
 };
 use minecart_command_block::MinecartCommandBlockEditorInputState;
+#[cfg(test)]
+pub(crate) use mouse::handle_mouse_input_at_partial_tick;
 pub(crate) use mouse::{
-    advance_destroying_block_at_partial_tick, advance_using_item_at_partial_tick,
-    handle_mouse_input_at_partial_tick, handle_mouse_motion, handle_mouse_wheel,
+    advance_destroying_block_at_partial_tick, advance_using_item_at_partial_tick_with_effects,
+    handle_mouse_input_at_partial_tick_with_effects, handle_mouse_motion, handle_mouse_wheel,
 };
 #[cfg(test)]
 pub(crate) use movement::advance_player_input;

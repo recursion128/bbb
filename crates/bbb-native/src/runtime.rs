@@ -122,7 +122,7 @@ use crate::{
     game_test_highlights::game_test_highlight_gizmos,
     input::{
         advance_destroying_block_at_partial_tick, advance_player_input_for_client_ticks,
-        advance_using_item_at_partial_tick,
+        advance_using_item_at_partial_tick_with_effects,
         death_screen::DeathScreenRuntime,
         game_event_screen::{DemoHelpFocus, DemoLinkConfirmationFocus, GameEventScreenRuntime},
         inventory_screen_layout_for_surface, inventory_screen_selected_hotbar_slot_id,
@@ -652,7 +652,9 @@ struct InventoryHudLocalState {
 }
 
 use advancement_toast::AdvancementToastRuntime;
-pub(crate) use control_requests::{pump_control_input_requests, pump_control_net_requests};
+pub(crate) use control_requests::{
+    pump_control_input_requests_with_effects, pump_control_net_requests,
+};
 pub(crate) use events::LevelEventSoundRandomState;
 
 const HUD_DEBUG_FRAME_TIME_SAMPLE_CAPACITY: usize = 240;
@@ -2394,6 +2396,8 @@ pub(crate) fn advance_simulation(
             code_of_conduct: Some(code_of_conduct),
             win_screen_resources,
             entity_partial_tick: client_animation_ticks.entity_partial_tick(),
+            level_random: level_event_sound_random,
+            audio_events: &mut audio_events,
             platform: platform_effects,
         },
     );
@@ -2580,13 +2584,15 @@ pub(crate) fn advance_simulation(
         advanced_ticks,
     );
     submit_local_player_action_particles(particle_batches, world, input, particle_runtime.as_mut());
-    advance_using_item_at_partial_tick(
+    advance_using_item_at_partial_tick_with_effects(
         input,
         world,
         net_counters,
         net_commands,
         entity_partial_tick,
         advanced_ticks,
+        level_event_sound_random,
+        &mut audio_events,
     );
     world.advance_local_using_item_ticks(advanced_ticks);
     let particle_camera_pose = camera_pose_from_world_at_partial_tick(world, entity_partial_tick);

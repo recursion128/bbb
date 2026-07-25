@@ -279,6 +279,87 @@ def block_speed_factor_overrides(
     )
 
 
+def fire_flammable_blocks(
+    source: JavaSource,
+    block_resource_paths: dict[str, str],
+    expected_count: int = 207,
+) -> list[BlockMembershipEntry]:
+    """Extract the exact ``FireBlock.bootStrap`` flammability membership."""
+
+    methods = [
+        method
+        for method in source.methods_for(
+            "net.minecraft.world.level.block.FireBlock"
+        )
+        if method.name == "bootStrap"
+    ]
+    if len(methods) != 1 or methods[0].body is None:
+        raise BlockMembershipCatalogExtractionError(
+            f"{source.relative_path}: expected one FireBlock.bootStrap body"
+        )
+    method = methods[0]
+    calls = [
+        call
+        for call in source.calls
+        if method.span.start_byte <= call.span.start_byte
+        and call.span.end_byte <= method.span.end_byte
+        and call.name == "setFlammable"
+    ]
+    entries: list[BlockMembershipEntry] = []
+    for call in calls:
+        if call.qualifier is None or call.qualifier.canonical.replace(" ", "") != "fire":
+            _fail(
+                source,
+                source.expression(call.node),
+                "setFlammable must target the bootstrap fire",
+            )
+        if len(call.arguments) != 3:
+            _fail(
+                source,
+                source.expression(call.node),
+                "setFlammable must have block and two odds",
+            )
+        constant_name = field_constant(source, call.arguments[0], "Blocks")
+        if constant_name is None:
+            _fail(
+                source,
+                call.arguments[0],
+                "setFlammable block must be a Blocks constant",
+            )
+        resource_path = block_resource_paths.get(constant_name)
+        if resource_path is None:
+            _fail(
+                source,
+                call.arguments[0],
+                f"unresolved Blocks.{constant_name}",
+            )
+        for odds in call.arguments[1:]:
+            try:
+                value = int(odds.canonical)
+            except ValueError:
+                _fail(source, odds, "setFlammable odds must be integer literals")
+            if value <= 0:
+                _fail(source, odds, "setFlammable odds must be positive")
+        entries.append(
+            BlockMembershipEntry(constant_name, f"minecraft:{resource_path}")
+        )
+
+    if len(entries) != expected_count:
+        raise BlockMembershipCatalogExtractionError(
+            f"{source.relative_path}: expected {expected_count} flammable blocks, "
+            f"extracted {len(entries)}"
+        )
+    if len({entry.constant_name for entry in entries}) != len(entries):
+        raise BlockMembershipCatalogExtractionError(
+            f"{source.relative_path}: duplicate flammable block constant"
+        )
+    if len({entry.resource_id for entry in entries}) != len(entries):
+        raise BlockMembershipCatalogExtractionError(
+            f"{source.relative_path}: duplicate flammable block resource id"
+        )
+    return entries
+
+
 def _constructed_type_name(source: JavaSource, node) -> str | None:
     if node.type == "object_creation_expression":
         type_node = node.child_by_field_name("type")

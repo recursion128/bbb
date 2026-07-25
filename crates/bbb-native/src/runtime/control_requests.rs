@@ -25,6 +25,15 @@ use winit::{
 };
 
 use crate::{
+    audio_runtime::AudioEventSink,
+    input::{
+        handle_focus_change, handle_key_input_with_item_runtime,
+        handle_mouse_input_at_partial_tick_with_effects, handle_mouse_motion, ClientInputState,
+    },
+    runtime::LevelEventSoundRandomState,
+    NativeItemRuntime,
+};
+use crate::{
     code_of_conduct::CodeOfConductAcceptance,
     input::{
         queue_block_entity_tag_query_command, queue_change_difficulty_command,
@@ -42,13 +51,6 @@ use crate::{
         select_hotbar_slot,
     },
 };
-use crate::{
-    input::{
-        handle_focus_change, handle_key_input_with_item_runtime,
-        handle_mouse_input_at_partial_tick, handle_mouse_motion, ClientInputState,
-    },
-    NativeItemRuntime,
-};
 
 /// Replays control-plane synthetic input through the same handlers the real
 /// window events use, so screen interception, sprint triggers and focus
@@ -56,6 +58,7 @@ use crate::{
 /// window input before those handlers run, so its visibility drops synthetic
 /// input here too. Look deltas mirror the real mouse-motion gates; a captured
 /// cursor is implied for control-driven sessions.
+#[cfg(test)]
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn pump_control_input_requests(
     control_requests: &SharedControlRequests,
@@ -67,6 +70,37 @@ pub(crate) fn pump_control_input_requests(
     code_of_conduct_overlay_visible: bool,
     surface_size: PhysicalSize<u32>,
     entity_partial_tick: f32,
+) {
+    let mut random = LevelEventSoundRandomState::default();
+    let mut audio_events = None;
+    pump_control_input_requests_with_effects(
+        control_requests,
+        input,
+        counters,
+        world,
+        net_commands,
+        item_runtime,
+        code_of_conduct_overlay_visible,
+        surface_size,
+        entity_partial_tick,
+        &mut random,
+        &mut audio_events,
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn pump_control_input_requests_with_effects(
+    control_requests: &SharedControlRequests,
+    input: &mut ClientInputState,
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    item_runtime: Option<&NativeItemRuntime>,
+    code_of_conduct_overlay_visible: bool,
+    surface_size: PhysicalSize<u32>,
+    entity_partial_tick: f32,
+    level_random: &mut LevelEventSoundRandomState,
+    audio_events: &mut Option<&mut dyn AudioEventSink>,
 ) {
     let input_requests = control_requests
         .lock()
@@ -121,7 +155,7 @@ pub(crate) fn pump_control_input_requests(
                 } else {
                     ElementState::Released
                 };
-                handle_mouse_input_at_partial_tick(
+                handle_mouse_input_at_partial_tick_with_effects(
                     input,
                     world,
                     counters,
@@ -129,6 +163,8 @@ pub(crate) fn pump_control_input_requests(
                     input_mouse_button(button),
                     state,
                     entity_partial_tick,
+                    level_random,
+                    audio_events,
                 );
             }
         }

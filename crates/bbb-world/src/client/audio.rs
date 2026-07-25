@@ -19,6 +19,7 @@ use bbb_protocol::{
 };
 use serde::{Deserialize, Serialize};
 
+use crate::client::inventory::LocalInteractionSoundAction;
 use crate::entities::{
     is_vanilla_minecart_type, vanilla_entity_metadata_armadillo_state_accessor_for_entity_type,
     vanilla_entity_metadata_companion_variant_accessors_for_entity_type,
@@ -1644,6 +1645,42 @@ impl WorldStore {
     /// seed instead of a wall-clock one.
     pub fn next_sound_seed(&mut self) -> i64 {
         self.client_audio.sound_seed_random.next_long()
+    }
+
+    /// Applies the ordered client-level random and sound-seed side effects of
+    /// an item interaction sound.
+    ///
+    /// Vanilla `FlintAndSteelItem` passes the local player as `except`, so
+    /// `ClientLevel.playSeededSound` plays it immediately. The pitch consumes
+    /// `ClientLevel.random`; the sound instance seed comes from Level's
+    /// separate `soundSeedGenerator`. Fire charges and lodestone compasses pass
+    /// `null`, so their local call advances the same random streams without
+    /// emitting a client sound; the server packet performs the actual playback.
+    pub fn apply_local_interaction_sound_action(
+        &mut self,
+        action: LocalInteractionSoundAction,
+        random: &mut LevelEventSoundRandomState,
+    ) -> Option<SoundEventState> {
+        let mut state = match action {
+            LocalInteractionSoundAction::FlintAndSteelUse { pos } => block_sound_state(
+                pos,
+                "minecraft:item.flintandsteel.use",
+                1.0,
+                random.next_float() * 0.4 + 0.8,
+                SoundSource::Blocks.as_str(),
+            ),
+            LocalInteractionSoundAction::SuppressedFireChargeUse => {
+                let _discarded_pitch = (random.next_float() - random.next_float()) * 0.2 + 1.0;
+                let _discarded_seed = self.next_sound_seed();
+                return None;
+            }
+            LocalInteractionSoundAction::SuppressedLodestoneCompassUse => {
+                let _discarded_seed = self.next_sound_seed();
+                return None;
+            }
+        };
+        state.seed = self.next_sound_seed();
+        Some(self.record_positioned_sound(state))
     }
 
     /// Resolves a narrow entity-movement sound into the same positioned sound

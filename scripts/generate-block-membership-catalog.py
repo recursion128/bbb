@@ -16,11 +16,15 @@ from block_membership_catalog_extractor import (
     block_tag_membership,
     constructor_family_blocks,
     constructor_types_extending,
+    fire_flammable_blocks,
     invisible_render_shape_constructor_types,
     no_collision_blocks,
     no_terrain_particle_blocks,
 )
-from block_registry_catalog_extractor import extract_block_id_constants
+from block_registry_catalog_extractor import (
+    extract_block_id_constants,
+    extract_block_registry_catalog,
+)
 from vanilla_java_source import parse_source
 from vanilla_tag_source import load_tag_resources
 
@@ -29,7 +33,11 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SOURCE_ROOT = Path.home() / "Work/mc-code/sources/26.1"
 DEFAULT_OUTPUT = REPO_ROOT / "crates/bbb-world/src/terrain/generated_26_1.rs"
 BLOCKS_SOURCE = Path("net/minecraft/world/level/block/Blocks.java")
+FIRE_BLOCK_SOURCE = Path("net/minecraft/world/level/block/FireBlock.java")
 BLOCK_IDS_SOURCE = Path("net/minecraft/references/BlockIds.java")
+BLOCK_ENTITY_TYPES_SOURCE = Path(
+    "net/minecraft/world/level/block/entity/BlockEntityType.java"
+)
 BLOCK_TAG_SOURCE_DIR = Path("data/minecraft/tags/block")
 BLOCK_CLASS_SOURCE_DIR = Path("net/minecraft/world/level/block")
 
@@ -61,6 +69,11 @@ BLOCK_TAG_CATALOGS = (
     ("VANILLA_SHULKER_BOX_BLOCKS", "minecraft:shulker_boxes", 17),
     ("VANILLA_ANVIL_BLOCKS", "minecraft:anvil", 3),
     ("VANILLA_CAMPFIRE_BLOCKS", "minecraft:campfires", 2),
+    (
+        "VANILLA_SOUL_FIRE_BASE_BLOCKS",
+        "minecraft:soul_fire_base_blocks",
+        2,
+    ),
     ("VANILLA_CAULDRON_BLOCKS", "minecraft:cauldrons", 4),
     ("VANILLA_LOG_BLOCKS", "minecraft:logs", 44),
     ("VANILLA_PALE_OAK_LOG_BLOCKS", "minecraft:pale_oak_logs", 4),
@@ -159,6 +172,20 @@ def generate(source_root: Path) -> str:
         BLOCK_IDS_SOURCE.as_posix(), (source_root / BLOCK_IDS_SOURCE).read_bytes()
     )
     block_id_constants = extract_block_id_constants(block_ids_source)
+    block_entity_types_source = parse_source(
+        BLOCK_ENTITY_TYPES_SOURCE.as_posix(),
+        (source_root / BLOCK_ENTITY_TYPES_SOURCE).read_bytes(),
+    )
+    block_registry = extract_block_registry_catalog(
+        source, block_ids_source, block_entity_types_source
+    )
+    block_resource_paths = {
+        declaration["field"]: declaration["resource_id"].removeprefix("minecraft:")
+        for declaration in block_registry.declarations
+    }
+    fire_source = parse_source(
+        FIRE_BLOCK_SOURCE.as_posix(), (source_root / FIRE_BLOCK_SOURCE).read_bytes()
+    )
     block_class_sources = [
         parse_source(path.relative_to(source_root).as_posix(), path.read_bytes())
         for path in sorted((source_root / BLOCK_CLASS_SOURCE_DIR).rglob("*.java"))
@@ -211,6 +238,7 @@ def generate(source_root: Path) -> str:
     air_entries = air_blocks(source)
     friction_entries = block_friction_overrides(source, block_id_constants)
     speed_factor_entries = block_speed_factor_overrides(source, block_id_constants)
+    flammable_entries = fire_flammable_blocks(fire_source, block_resource_paths)
     constructor_catalogs = [
         (
             name,
@@ -264,6 +292,7 @@ def generate(source_root: Path) -> str:
         "VANILLA_NO_TERRAIN_PARTICLE_BLOCKS",
         "VANILLA_NO_COLLISION_BLOCKS",
         "VANILLA_AIR_BLOCKS",
+        "VANILLA_FIRE_FLAMMABLE_BLOCKS",
         *(name for name, _ in constructor_catalogs),
         *(name for name, _ in tag_catalogs),
     )
@@ -283,6 +312,10 @@ def generate(source_root: Path) -> str:
         "",
         "pub(super) const VANILLA_AIR_BLOCKS: &[&str] = &[",
         *(f'    "{entry.resource_id}",' for entry in air_entries),
+        "];",
+        "",
+        "pub(super) const VANILLA_FIRE_FLAMMABLE_BLOCKS: &[&str] = &[",
+        *(f'    "{entry.resource_id}",' for entry in flammable_entries),
         "];",
         "",
         "pub(super) const VANILLA_BLOCK_FRICTION_OVERRIDES: &[(&str, u32)] = &[",
@@ -331,6 +364,7 @@ def generate(source_root: Path) -> str:
             '        assert_eq!(VANILLA_NO_TERRAIN_PARTICLE_BLOCKS, &["minecraft:barrier", "minecraft:structure_void"]);',
             "        assert_eq!(VANILLA_NO_COLLISION_BLOCKS.len(), 255);",
             '        assert_eq!(VANILLA_AIR_BLOCKS, &["minecraft:air", "minecraft:void_air", "minecraft:cave_air"]);',
+            "        assert_eq!(VANILLA_FIRE_FLAMMABLE_BLOCKS.len(), 207);",
             "        assert_eq!(VANILLA_BLOCK_FRICTION_OVERRIDES.len(), 5);",
             "        assert_eq!(VANILLA_BLOCK_SPEED_FACTOR_OVERRIDES.len(), 2);",
             '        assert_eq!(VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS, &["minecraft:powder_snow"]);',
@@ -368,6 +402,7 @@ def generate(source_root: Path) -> str:
             "        assert_eq!(VANILLA_SHULKER_BOX_BLOCKS.len(), 17);",
             "        assert_eq!(VANILLA_ANVIL_BLOCKS.len(), 3);",
             "        assert_eq!(VANILLA_CAMPFIRE_BLOCKS.len(), 2);",
+            '        assert_eq!(VANILLA_SOUL_FIRE_BASE_BLOCKS, &["minecraft:soul_sand", "minecraft:soul_soil"]);',
             "        assert_eq!(VANILLA_CAULDRON_BLOCKS.len(), 4);",
             "        assert_eq!(VANILLA_LOG_BLOCKS.len(), 44);",
             "        assert_eq!(VANILLA_PLANK_BLOCKS.len(), 12);",
