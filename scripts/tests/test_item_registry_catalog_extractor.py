@@ -10,6 +10,7 @@ sys.path.insert(0, str(SCRIPTS))
 
 from item_registry_catalog_extractor import (  # noqa: E402
     ItemRegistryCatalogExtractionError,
+    extract_bucket_item_behaviors,
     extract_item_interact_living_entity_override_owners,
     extract_item_registry_catalog,
     extract_item_use_on_override_owners,
@@ -127,6 +128,47 @@ class Items {
         nodes = list(walk(seed))
         self.assertTrue(any(node.get("name") == "ShovelItem" for node in nodes))
         self.assertTrue(any(node.get("name") == "component" for node in nodes))
+
+    def test_extracts_bucket_fluid_and_mob_empty_sound_constructor_facts(self) -> None:
+        items = parse(
+            "net/minecraft/world/item/Items.java",
+            """
+package net.minecraft.world.item;
+class Items {
+  public static final Item BUCKET = registerItem(
+      "bucket", p -> new BucketItem(Fluids.EMPTY, p));
+  public static final Item WATER_BUCKET = registerItem(
+      "water_bucket", p -> new BucketItem(Fluids.WATER, p));
+  public static final Item LAVA_BUCKET = registerItem(
+      "lava_bucket", p -> new BucketItem(Fluids.LAVA, p));
+  public static final Item COD_BUCKET = registerItem(
+      "cod_bucket",
+      p -> new MobBucketItem(
+          EntityType.COD, Fluids.WATER, SoundEvents.BUCKET_EMPTY_FISH, p));
+  public static final Item STICK = registerItem("stick");
+}
+""",
+        )
+        extracted = extract_item_registry_catalog(
+            items,
+            parse("net/minecraft/references/ItemIds.java", ITEM_IDS),
+            parse("net/minecraft/world/item/Item.java", ITEM),
+            foods(),
+        )
+
+        self.assertEqual(
+            extract_bucket_item_behaviors(extracted.declarations),
+            {
+                "BUCKET": {"fluid": "EMPTY", "mob_empty_sound": None},
+                "WATER_BUCKET": {"fluid": "WATER", "mob_empty_sound": None},
+                "LAVA_BUCKET": {"fluid": "LAVA", "mob_empty_sound": None},
+                "COD_BUCKET": {
+                    "fluid": "WATER",
+                    "mob_empty_sound": "BUCKET_EMPTY_FISH",
+                },
+                "STICK": None,
+            },
+        )
 
     def test_whitespace_and_comments_do_not_change_expression_facts(self) -> None:
         compact = parse(

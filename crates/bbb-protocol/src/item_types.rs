@@ -74,6 +74,19 @@ pub enum VanillaItemEquipOnInteract {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VanillaBucketFluid {
+    Empty,
+    Water,
+    Lava,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaBucketItemBehavior {
+    pub fluid: VanillaBucketFluid,
+    pub mob_empty_sound_resource_id: Option<&'static str>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ItemTypeCatalogEntry {
     pub id: i32,
     pub resource_id: &'static str,
@@ -81,6 +94,7 @@ pub struct ItemTypeCatalogEntry {
     pub use_on_override: Option<VanillaItemUseOnOverride>,
     pub interact_living_entity_override: Option<VanillaItemInteractLivingEntityOverride>,
     pub equip_on_interact: Option<VanillaItemEquipOnInteract>,
+    pub bucket_behavior: Option<VanillaBucketItemBehavior>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -2451,6 +2465,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1,
@@ -2459,6 +2474,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 2,
@@ -2467,6 +2483,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 3,
@@ -2475,6 +2492,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 4,
@@ -2483,6 +2501,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 5,
@@ -2491,6 +2510,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 6,
@@ -2499,6 +2519,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 7,
@@ -2507,6 +2528,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 8,
@@ -2515,6 +2537,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 9,
@@ -2523,6 +2546,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 10,
@@ -2531,6 +2555,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 11,
@@ -2539,6 +2564,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 12,
@@ -2547,6 +2573,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 13,
@@ -2555,6 +2582,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 14,
@@ -2563,6 +2591,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 15,
@@ -2571,6 +2600,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 16,
@@ -2579,6 +2609,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 17,
@@ -2587,6 +2618,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 18,
@@ -2595,6 +2627,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 19,
@@ -2603,6 +2636,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 20,
@@ -2611,6 +2645,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 21,
@@ -2619,6 +2654,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 22,
@@ -2627,6 +2663,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 23,
@@ -2635,6 +2672,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 24,
@@ -2643,6 +2681,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 25,
@@ -2651,6 +2690,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 26,
@@ -2659,6 +2699,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 27,
@@ -2667,6 +2708,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 28,
@@ -2675,6 +2717,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 29,
@@ -2683,6 +2726,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 30,
@@ -2691,6 +2735,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 31,
@@ -2699,6 +2744,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 32,
@@ -2707,6 +2753,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 33,
@@ -2715,6 +2762,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 34,
@@ -2723,6 +2771,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 35,
@@ -2731,6 +2780,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 36,
@@ -2739,6 +2789,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 37,
@@ -2747,6 +2798,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 38,
@@ -2755,6 +2807,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 39,
@@ -2763,6 +2816,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 40,
@@ -2771,6 +2825,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 41,
@@ -2779,6 +2834,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 42,
@@ -2787,6 +2843,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 43,
@@ -2795,6 +2852,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 44,
@@ -2803,6 +2861,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 45,
@@ -2811,6 +2870,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 46,
@@ -2819,6 +2879,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 47,
@@ -2827,6 +2888,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 48,
@@ -2835,6 +2897,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 49,
@@ -2843,6 +2906,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 50,
@@ -2851,6 +2915,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 51,
@@ -2859,6 +2924,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 52,
@@ -2867,6 +2933,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 53,
@@ -2875,6 +2942,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 54,
@@ -2883,6 +2951,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 55,
@@ -2891,6 +2960,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 56,
@@ -2899,6 +2969,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 57,
@@ -2907,6 +2978,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 58,
@@ -2915,6 +2987,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 59,
@@ -2923,6 +2996,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 60,
@@ -2931,6 +3005,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 61,
@@ -2939,6 +3014,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 62,
@@ -2947,6 +3023,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 63,
@@ -2955,6 +3032,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 64,
@@ -2963,6 +3041,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 65,
@@ -2971,6 +3050,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 66,
@@ -2979,6 +3059,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 67,
@@ -2987,6 +3068,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 68,
@@ -2995,6 +3077,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 69,
@@ -3003,6 +3086,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 70,
@@ -3011,6 +3095,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 71,
@@ -3019,6 +3104,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 72,
@@ -3027,6 +3113,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 73,
@@ -3035,6 +3122,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 74,
@@ -3043,6 +3131,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 75,
@@ -3051,6 +3140,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 76,
@@ -3059,6 +3149,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 77,
@@ -3067,6 +3158,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 78,
@@ -3075,6 +3167,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 79,
@@ -3083,6 +3176,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 80,
@@ -3091,6 +3185,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 81,
@@ -3099,6 +3194,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 82,
@@ -3107,6 +3203,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 83,
@@ -3115,6 +3212,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 84,
@@ -3123,6 +3221,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 85,
@@ -3131,6 +3230,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 86,
@@ -3139,6 +3239,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 87,
@@ -3147,6 +3248,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 88,
@@ -3155,6 +3257,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 89,
@@ -3163,6 +3266,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 90,
@@ -3171,6 +3275,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 91,
@@ -3179,6 +3284,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 92,
@@ -3187,6 +3293,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 93,
@@ -3195,6 +3302,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 94,
@@ -3203,6 +3311,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 95,
@@ -3211,6 +3320,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 96,
@@ -3219,6 +3329,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 97,
@@ -3227,6 +3338,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 98,
@@ -3235,6 +3347,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 99,
@@ -3243,6 +3356,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 100,
@@ -3251,6 +3365,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 101,
@@ -3259,6 +3374,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 102,
@@ -3267,6 +3383,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 103,
@@ -3275,6 +3392,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 104,
@@ -3283,6 +3401,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 105,
@@ -3291,6 +3410,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 106,
@@ -3299,6 +3419,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 107,
@@ -3307,6 +3428,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 108,
@@ -3315,6 +3437,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 109,
@@ -3323,6 +3446,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 110,
@@ -3331,6 +3455,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 111,
@@ -3339,6 +3464,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 112,
@@ -3347,6 +3473,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 113,
@@ -3355,6 +3482,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 114,
@@ -3363,6 +3491,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 115,
@@ -3371,6 +3500,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 116,
@@ -3379,6 +3509,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 117,
@@ -3387,6 +3518,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 118,
@@ -3395,6 +3527,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 119,
@@ -3403,6 +3536,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 120,
@@ -3411,6 +3545,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 121,
@@ -3419,6 +3554,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 122,
@@ -3427,6 +3563,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 123,
@@ -3435,6 +3572,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 124,
@@ -3443,6 +3581,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 125,
@@ -3451,6 +3590,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 126,
@@ -3459,6 +3599,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 127,
@@ -3467,6 +3608,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 128,
@@ -3475,6 +3617,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 129,
@@ -3483,6 +3626,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 130,
@@ -3491,6 +3635,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 131,
@@ -3499,6 +3644,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 132,
@@ -3507,6 +3653,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 133,
@@ -3515,6 +3662,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 134,
@@ -3523,6 +3671,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 135,
@@ -3531,6 +3680,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 136,
@@ -3539,6 +3689,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 137,
@@ -3547,6 +3698,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 138,
@@ -3555,6 +3707,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 139,
@@ -3563,6 +3716,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 140,
@@ -3571,6 +3725,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 141,
@@ -3579,6 +3734,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 142,
@@ -3587,6 +3743,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 143,
@@ -3595,6 +3752,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 144,
@@ -3603,6 +3761,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 145,
@@ -3611,6 +3770,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 146,
@@ -3619,6 +3779,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 147,
@@ -3627,6 +3788,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 148,
@@ -3635,6 +3797,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 149,
@@ -3643,6 +3806,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 150,
@@ -3651,6 +3815,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 151,
@@ -3659,6 +3824,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 152,
@@ -3667,6 +3833,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 153,
@@ -3675,6 +3842,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 154,
@@ -3683,6 +3851,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 155,
@@ -3691,6 +3860,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 156,
@@ -3699,6 +3869,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 157,
@@ -3707,6 +3878,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 158,
@@ -3715,6 +3887,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 159,
@@ -3723,6 +3896,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 160,
@@ -3731,6 +3905,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 161,
@@ -3739,6 +3914,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 162,
@@ -3747,6 +3923,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 163,
@@ -3755,6 +3932,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 164,
@@ -3763,6 +3941,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 165,
@@ -3771,6 +3950,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 166,
@@ -3779,6 +3959,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 167,
@@ -3787,6 +3968,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 168,
@@ -3795,6 +3977,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 169,
@@ -3803,6 +3986,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 170,
@@ -3811,6 +3995,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 171,
@@ -3819,6 +4004,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 172,
@@ -3827,6 +4013,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 173,
@@ -3835,6 +4022,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 174,
@@ -3843,6 +4031,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 175,
@@ -3851,6 +4040,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 176,
@@ -3859,6 +4049,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 177,
@@ -3867,6 +4058,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 178,
@@ -3875,6 +4067,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 179,
@@ -3883,6 +4076,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 180,
@@ -3891,6 +4085,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 181,
@@ -3899,6 +4094,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 182,
@@ -3907,6 +4103,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 183,
@@ -3915,6 +4112,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 184,
@@ -3923,6 +4121,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 185,
@@ -3931,6 +4130,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 186,
@@ -3939,6 +4139,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 187,
@@ -3947,6 +4148,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 188,
@@ -3955,6 +4157,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 189,
@@ -3963,6 +4166,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 190,
@@ -3971,6 +4175,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 191,
@@ -3979,6 +4184,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 192,
@@ -3987,6 +4193,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 193,
@@ -3995,6 +4202,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 194,
@@ -4003,6 +4211,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 195,
@@ -4011,6 +4220,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 196,
@@ -4019,6 +4229,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 197,
@@ -4027,6 +4238,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 198,
@@ -4035,6 +4247,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 199,
@@ -4043,6 +4256,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 200,
@@ -4051,6 +4265,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 201,
@@ -4059,6 +4274,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 202,
@@ -4067,6 +4283,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 203,
@@ -4075,6 +4292,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 204,
@@ -4083,6 +4301,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 205,
@@ -4091,6 +4310,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 206,
@@ -4099,6 +4319,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 207,
@@ -4107,6 +4328,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 208,
@@ -4115,6 +4337,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 209,
@@ -4123,6 +4346,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 210,
@@ -4131,6 +4355,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 211,
@@ -4139,6 +4364,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 212,
@@ -4147,6 +4373,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 213,
@@ -4155,6 +4382,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 214,
@@ -4163,6 +4391,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 215,
@@ -4171,6 +4400,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 216,
@@ -4179,6 +4409,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 217,
@@ -4187,6 +4418,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 218,
@@ -4195,6 +4427,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 219,
@@ -4203,6 +4436,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 220,
@@ -4211,6 +4445,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 221,
@@ -4219,6 +4454,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 222,
@@ -4227,6 +4463,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 223,
@@ -4235,6 +4472,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 224,
@@ -4243,6 +4481,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 225,
@@ -4251,6 +4490,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 226,
@@ -4259,6 +4499,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 227,
@@ -4267,6 +4508,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 228,
@@ -4275,6 +4517,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 229,
@@ -4283,6 +4526,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 230,
@@ -4291,6 +4535,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 231,
@@ -4299,6 +4544,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 232,
@@ -4307,6 +4553,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 233,
@@ -4315,6 +4562,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 234,
@@ -4323,6 +4571,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 235,
@@ -4331,6 +4580,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 236,
@@ -4339,6 +4589,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 237,
@@ -4347,6 +4598,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 238,
@@ -4355,6 +4607,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 239,
@@ -4363,6 +4616,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 240,
@@ -4371,6 +4625,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 241,
@@ -4379,6 +4634,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 242,
@@ -4387,6 +4643,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 243,
@@ -4395,6 +4652,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 244,
@@ -4403,6 +4661,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 245,
@@ -4411,6 +4670,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 246,
@@ -4419,6 +4679,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 247,
@@ -4427,6 +4688,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 248,
@@ -4435,6 +4697,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 249,
@@ -4443,6 +4706,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 250,
@@ -4451,6 +4715,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 251,
@@ -4459,6 +4724,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 252,
@@ -4467,6 +4733,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 253,
@@ -4475,6 +4742,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 254,
@@ -4483,6 +4751,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 255,
@@ -4491,6 +4760,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 256,
@@ -4499,6 +4769,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 257,
@@ -4507,6 +4778,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 258,
@@ -4515,6 +4787,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 259,
@@ -4523,6 +4796,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 260,
@@ -4531,6 +4805,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 261,
@@ -4539,6 +4814,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 262,
@@ -4547,6 +4823,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 263,
@@ -4555,6 +4832,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 264,
@@ -4563,6 +4841,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 265,
@@ -4571,6 +4850,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 266,
@@ -4579,6 +4859,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 267,
@@ -4587,6 +4868,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 268,
@@ -4595,6 +4877,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 269,
@@ -4603,6 +4886,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 270,
@@ -4611,6 +4895,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 271,
@@ -4619,6 +4904,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 272,
@@ -4627,6 +4913,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 273,
@@ -4635,6 +4922,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 274,
@@ -4643,6 +4931,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 275,
@@ -4651,6 +4940,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 276,
@@ -4659,6 +4949,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 277,
@@ -4667,6 +4958,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 278,
@@ -4675,6 +4967,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 279,
@@ -4683,6 +4976,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 280,
@@ -4691,6 +4985,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 281,
@@ -4699,6 +4994,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 282,
@@ -4707,6 +5003,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 283,
@@ -4715,6 +5012,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 284,
@@ -4723,6 +5021,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 285,
@@ -4731,6 +5030,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 286,
@@ -4739,6 +5039,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 287,
@@ -4747,6 +5048,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 288,
@@ -4755,6 +5057,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 289,
@@ -4763,6 +5066,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 290,
@@ -4771,6 +5075,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 291,
@@ -4779,6 +5084,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 292,
@@ -4787,6 +5093,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 293,
@@ -4795,6 +5102,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 294,
@@ -4803,6 +5111,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 295,
@@ -4811,6 +5120,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 296,
@@ -4819,6 +5129,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 297,
@@ -4827,6 +5138,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 298,
@@ -4835,6 +5147,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 299,
@@ -4843,6 +5156,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 300,
@@ -4851,6 +5165,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 301,
@@ -4859,6 +5174,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 302,
@@ -4867,6 +5183,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 303,
@@ -4875,6 +5192,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 304,
@@ -4883,6 +5201,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 305,
@@ -4891,6 +5210,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 306,
@@ -4899,6 +5219,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 307,
@@ -4907,6 +5228,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 308,
@@ -4915,6 +5237,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 309,
@@ -4923,6 +5246,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 310,
@@ -4931,6 +5255,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 311,
@@ -4939,6 +5264,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 312,
@@ -4947,6 +5273,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 313,
@@ -4955,6 +5282,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 314,
@@ -4963,6 +5291,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 315,
@@ -4971,6 +5300,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 316,
@@ -4979,6 +5309,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 317,
@@ -4987,6 +5318,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 318,
@@ -4995,6 +5327,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 319,
@@ -5003,6 +5336,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 320,
@@ -5011,6 +5345,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 321,
@@ -5019,6 +5354,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 322,
@@ -5027,6 +5363,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 323,
@@ -5035,6 +5372,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 324,
@@ -5043,6 +5381,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 325,
@@ -5051,6 +5390,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 326,
@@ -5059,6 +5399,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 327,
@@ -5067,6 +5408,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 328,
@@ -5075,6 +5417,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 329,
@@ -5083,6 +5426,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 330,
@@ -5091,6 +5435,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 331,
@@ -5099,6 +5444,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 332,
@@ -5107,6 +5453,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 333,
@@ -5115,6 +5462,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 334,
@@ -5123,6 +5471,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 335,
@@ -5131,6 +5480,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 336,
@@ -5139,6 +5489,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 337,
@@ -5147,6 +5498,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 338,
@@ -5155,6 +5507,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 339,
@@ -5163,6 +5516,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 340,
@@ -5171,6 +5525,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 341,
@@ -5179,6 +5534,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 342,
@@ -5187,6 +5543,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 343,
@@ -5195,6 +5552,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 344,
@@ -5203,6 +5561,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 345,
@@ -5211,6 +5570,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 346,
@@ -5219,6 +5579,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 347,
@@ -5227,6 +5588,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 348,
@@ -5235,6 +5597,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 349,
@@ -5243,6 +5606,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 350,
@@ -5251,6 +5615,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 351,
@@ -5259,6 +5624,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 352,
@@ -5267,6 +5633,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 353,
@@ -5275,6 +5642,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 354,
@@ -5283,6 +5651,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 355,
@@ -5291,6 +5660,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 356,
@@ -5299,6 +5669,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 357,
@@ -5307,6 +5678,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 358,
@@ -5315,6 +5687,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 359,
@@ -5323,6 +5696,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 360,
@@ -5331,6 +5705,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 361,
@@ -5339,6 +5714,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 362,
@@ -5347,6 +5723,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 363,
@@ -5355,6 +5732,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 364,
@@ -5363,6 +5741,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 365,
@@ -5371,6 +5750,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 366,
@@ -5379,6 +5759,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 367,
@@ -5387,6 +5768,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 368,
@@ -5395,6 +5777,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 369,
@@ -5403,6 +5786,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 370,
@@ -5411,6 +5795,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 371,
@@ -5419,6 +5804,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 372,
@@ -5427,6 +5813,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 373,
@@ -5435,6 +5822,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 374,
@@ -5443,6 +5831,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 375,
@@ -5451,6 +5840,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 376,
@@ -5459,6 +5849,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 377,
@@ -5467,6 +5858,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 378,
@@ -5475,6 +5867,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 379,
@@ -5483,6 +5876,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 380,
@@ -5491,6 +5885,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 381,
@@ -5499,6 +5894,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 382,
@@ -5507,6 +5903,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 383,
@@ -5515,6 +5912,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 384,
@@ -5523,6 +5921,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 385,
@@ -5531,6 +5930,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 386,
@@ -5539,6 +5939,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 387,
@@ -5547,6 +5948,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 388,
@@ -5555,6 +5957,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 389,
@@ -5563,6 +5966,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 390,
@@ -5571,6 +5975,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 391,
@@ -5579,6 +5984,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 392,
@@ -5587,6 +5993,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 393,
@@ -5595,6 +6002,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 394,
@@ -5603,6 +6011,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 395,
@@ -5611,6 +6020,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 396,
@@ -5619,6 +6029,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 397,
@@ -5627,6 +6038,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 398,
@@ -5635,6 +6047,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 399,
@@ -5643,6 +6056,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 400,
@@ -5651,6 +6065,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 401,
@@ -5659,6 +6074,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 402,
@@ -5667,6 +6083,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 403,
@@ -5675,6 +6092,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 404,
@@ -5683,6 +6101,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 405,
@@ -5691,6 +6110,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 406,
@@ -5699,6 +6119,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 407,
@@ -5707,6 +6128,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 408,
@@ -5715,6 +6137,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 409,
@@ -5723,6 +6146,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 410,
@@ -5731,6 +6155,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 411,
@@ -5739,6 +6164,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 412,
@@ -5747,6 +6173,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 413,
@@ -5755,6 +6182,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 414,
@@ -5763,6 +6191,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 415,
@@ -5771,6 +6200,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 416,
@@ -5779,6 +6209,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 417,
@@ -5787,6 +6218,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 418,
@@ -5795,6 +6227,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 419,
@@ -5803,6 +6236,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 420,
@@ -5811,6 +6245,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 421,
@@ -5819,6 +6254,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 422,
@@ -5827,6 +6263,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 423,
@@ -5835,6 +6272,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 424,
@@ -5843,6 +6281,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::PlaceOnWaterBlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 425,
@@ -5851,6 +6290,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 426,
@@ -5859,6 +6299,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 427,
@@ -5867,6 +6308,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 428,
@@ -5875,6 +6317,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 429,
@@ -5883,6 +6326,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 430,
@@ -5891,6 +6335,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 431,
@@ -5899,6 +6344,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 432,
@@ -5907,6 +6353,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 433,
@@ -5915,6 +6362,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 434,
@@ -5923,6 +6371,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 435,
@@ -5931,6 +6380,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 436,
@@ -5939,6 +6389,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 437,
@@ -5947,6 +6398,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 438,
@@ -5955,6 +6407,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 439,
@@ -5963,6 +6416,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 440,
@@ -5971,6 +6425,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 441,
@@ -5979,6 +6434,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 442,
@@ -5987,6 +6443,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 443,
@@ -5995,6 +6452,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 444,
@@ -6003,6 +6461,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 445,
@@ -6011,6 +6470,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 446,
@@ -6019,6 +6479,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 447,
@@ -6027,6 +6488,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 448,
@@ -6035,6 +6497,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 449,
@@ -6043,6 +6506,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 450,
@@ -6051,6 +6515,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 451,
@@ -6059,6 +6524,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 452,
@@ -6067,6 +6533,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 453,
@@ -6075,6 +6542,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 454,
@@ -6083,6 +6551,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 455,
@@ -6091,6 +6560,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 456,
@@ -6099,6 +6569,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 457,
@@ -6107,6 +6578,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 458,
@@ -6115,6 +6587,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 459,
@@ -6123,6 +6596,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 460,
@@ -6131,6 +6605,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 461,
@@ -6139,6 +6614,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 462,
@@ -6147,6 +6623,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 463,
@@ -6155,6 +6632,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 464,
@@ -6163,6 +6641,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 465,
@@ -6171,6 +6650,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 466,
@@ -6179,6 +6659,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 467,
@@ -6187,6 +6668,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 468,
@@ -6195,6 +6677,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 469,
@@ -6203,6 +6686,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 470,
@@ -6211,6 +6695,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 471,
@@ -6219,6 +6704,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 472,
@@ -6227,6 +6713,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 473,
@@ -6235,6 +6722,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 474,
@@ -6243,6 +6731,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 475,
@@ -6251,6 +6740,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 476,
@@ -6259,6 +6749,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 477,
@@ -6267,6 +6758,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 478,
@@ -6275,6 +6767,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 479,
@@ -6283,6 +6776,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 480,
@@ -6291,6 +6785,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 481,
@@ -6299,6 +6794,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 482,
@@ -6307,6 +6803,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 483,
@@ -6315,6 +6812,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 484,
@@ -6323,6 +6821,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 485,
@@ -6331,6 +6830,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 486,
@@ -6339,6 +6839,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 487,
@@ -6347,6 +6848,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 488,
@@ -6355,6 +6857,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 489,
@@ -6363,6 +6866,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 490,
@@ -6371,6 +6875,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 491,
@@ -6379,6 +6884,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 492,
@@ -6387,6 +6893,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 493,
@@ -6395,6 +6902,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 494,
@@ -6403,6 +6911,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 495,
@@ -6411,6 +6920,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 496,
@@ -6419,6 +6929,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 497,
@@ -6427,6 +6938,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 498,
@@ -6435,6 +6947,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 499,
@@ -6443,6 +6956,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 500,
@@ -6451,6 +6965,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 501,
@@ -6459,6 +6974,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 502,
@@ -6467,6 +6983,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 503,
@@ -6475,6 +6992,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 504,
@@ -6483,6 +7001,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 505,
@@ -6491,6 +7010,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 506,
@@ -6499,6 +7019,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 507,
@@ -6507,6 +7028,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 508,
@@ -6515,6 +7037,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 509,
@@ -6523,6 +7046,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 510,
@@ -6531,6 +7055,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 511,
@@ -6539,6 +7064,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 512,
@@ -6547,6 +7073,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 513,
@@ -6555,6 +7082,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 514,
@@ -6563,6 +7091,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 515,
@@ -6571,6 +7100,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 516,
@@ -6579,6 +7109,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 517,
@@ -6587,6 +7118,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 518,
@@ -6595,6 +7127,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 519,
@@ -6603,6 +7136,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 520,
@@ -6611,6 +7145,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 521,
@@ -6619,6 +7154,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 522,
@@ -6627,6 +7163,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 523,
@@ -6635,6 +7172,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 524,
@@ -6643,6 +7181,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 525,
@@ -6651,6 +7190,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 526,
@@ -6659,6 +7199,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 527,
@@ -6667,6 +7208,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 528,
@@ -6675,6 +7217,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 529,
@@ -6683,6 +7226,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 530,
@@ -6691,6 +7235,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 531,
@@ -6699,6 +7244,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 532,
@@ -6707,6 +7253,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 533,
@@ -6715,6 +7262,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 534,
@@ -6723,6 +7271,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 535,
@@ -6731,6 +7280,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 536,
@@ -6739,6 +7289,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 537,
@@ -6747,6 +7298,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 538,
@@ -6755,6 +7307,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 539,
@@ -6763,6 +7316,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 540,
@@ -6771,6 +7325,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 541,
@@ -6779,6 +7334,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 542,
@@ -6787,6 +7343,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 543,
@@ -6795,6 +7352,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 544,
@@ -6803,6 +7361,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 545,
@@ -6811,6 +7370,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 546,
@@ -6819,6 +7379,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 547,
@@ -6827,6 +7388,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 548,
@@ -6835,6 +7397,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 549,
@@ -6843,6 +7406,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 550,
@@ -6851,6 +7415,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 551,
@@ -6859,6 +7424,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 552,
@@ -6867,6 +7433,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 553,
@@ -6875,6 +7442,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 554,
@@ -6883,6 +7451,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 555,
@@ -6891,6 +7460,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 556,
@@ -6899,6 +7469,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 557,
@@ -6907,6 +7478,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 558,
@@ -6915,6 +7487,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 559,
@@ -6923,6 +7496,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 560,
@@ -6931,6 +7505,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 561,
@@ -6939,6 +7514,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 562,
@@ -6947,6 +7523,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 563,
@@ -6955,6 +7532,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 564,
@@ -6963,6 +7541,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 565,
@@ -6971,6 +7550,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 566,
@@ -6979,6 +7559,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 567,
@@ -6987,6 +7568,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 568,
@@ -6995,6 +7577,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 569,
@@ -7003,6 +7586,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 570,
@@ -7011,6 +7595,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 571,
@@ -7019,6 +7604,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 572,
@@ -7027,6 +7613,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 573,
@@ -7035,6 +7622,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 574,
@@ -7043,6 +7631,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 575,
@@ -7051,6 +7640,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 576,
@@ -7059,6 +7649,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 577,
@@ -7067,6 +7658,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 578,
@@ -7075,6 +7667,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 579,
@@ -7083,6 +7676,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 580,
@@ -7091,6 +7685,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 581,
@@ -7099,6 +7694,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 582,
@@ -7107,6 +7703,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 583,
@@ -7115,6 +7712,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 584,
@@ -7123,6 +7721,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 585,
@@ -7131,6 +7730,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 586,
@@ -7139,6 +7739,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 587,
@@ -7147,6 +7748,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 588,
@@ -7155,6 +7757,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 589,
@@ -7163,6 +7766,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 590,
@@ -7171,6 +7775,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 591,
@@ -7179,6 +7784,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 592,
@@ -7187,6 +7793,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 593,
@@ -7195,6 +7802,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 594,
@@ -7203,6 +7811,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 595,
@@ -7211,6 +7820,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 596,
@@ -7219,6 +7829,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 597,
@@ -7227,6 +7838,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 598,
@@ -7235,6 +7847,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 599,
@@ -7243,6 +7856,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 600,
@@ -7251,6 +7865,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 601,
@@ -7259,6 +7874,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 602,
@@ -7267,6 +7883,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 603,
@@ -7275,6 +7892,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 604,
@@ -7283,6 +7901,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 605,
@@ -7291,6 +7910,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 606,
@@ -7299,6 +7919,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 607,
@@ -7307,6 +7928,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 608,
@@ -7315,6 +7937,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 609,
@@ -7323,6 +7946,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 610,
@@ -7331,6 +7955,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 611,
@@ -7339,6 +7964,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 612,
@@ -7347,6 +7973,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 613,
@@ -7355,6 +7982,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 614,
@@ -7363,6 +7991,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 615,
@@ -7371,6 +8000,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 616,
@@ -7379,6 +8009,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 617,
@@ -7387,6 +8018,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 618,
@@ -7395,6 +8027,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 619,
@@ -7403,6 +8036,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 620,
@@ -7411,6 +8045,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 621,
@@ -7419,6 +8054,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 622,
@@ -7427,6 +8063,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 623,
@@ -7435,6 +8072,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 624,
@@ -7443,6 +8081,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 625,
@@ -7451,6 +8090,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 626,
@@ -7459,6 +8099,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 627,
@@ -7467,6 +8108,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 628,
@@ -7475,6 +8117,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 629,
@@ -7483,6 +8126,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 630,
@@ -7491,6 +8135,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 631,
@@ -7499,6 +8144,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 632,
@@ -7507,6 +8153,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 633,
@@ -7515,6 +8162,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 634,
@@ -7523,6 +8171,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 635,
@@ -7531,6 +8180,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 636,
@@ -7539,6 +8189,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 637,
@@ -7547,6 +8198,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 638,
@@ -7555,6 +8207,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 639,
@@ -7563,6 +8216,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 640,
@@ -7571,6 +8225,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 641,
@@ -7579,6 +8234,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 642,
@@ -7587,6 +8243,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 643,
@@ -7595,6 +8252,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 644,
@@ -7603,6 +8261,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 645,
@@ -7611,6 +8270,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 646,
@@ -7619,6 +8279,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 647,
@@ -7627,6 +8288,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 648,
@@ -7635,6 +8297,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 649,
@@ -7643,6 +8306,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 650,
@@ -7651,6 +8315,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 651,
@@ -7659,6 +8324,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 652,
@@ -7667,6 +8333,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 653,
@@ -7675,6 +8342,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 654,
@@ -7683,6 +8351,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 655,
@@ -7691,6 +8360,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 656,
@@ -7699,6 +8369,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 657,
@@ -7707,6 +8378,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 658,
@@ -7715,6 +8387,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 659,
@@ -7723,6 +8396,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 660,
@@ -7731,6 +8405,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 661,
@@ -7739,6 +8414,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 662,
@@ -7747,6 +8423,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 663,
@@ -7755,6 +8432,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 664,
@@ -7763,6 +8441,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 665,
@@ -7771,6 +8450,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 666,
@@ -7779,6 +8459,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 667,
@@ -7787,6 +8468,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 668,
@@ -7795,6 +8477,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 669,
@@ -7803,6 +8486,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 670,
@@ -7811,6 +8495,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 671,
@@ -7819,6 +8504,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 672,
@@ -7827,6 +8513,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 673,
@@ -7835,6 +8522,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 674,
@@ -7843,6 +8531,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 675,
@@ -7851,6 +8540,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 676,
@@ -7859,6 +8549,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 677,
@@ -7867,6 +8558,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 678,
@@ -7875,6 +8567,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 679,
@@ -7883,6 +8576,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 680,
@@ -7891,6 +8585,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 681,
@@ -7899,6 +8594,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 682,
@@ -7907,6 +8603,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 683,
@@ -7915,6 +8612,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 684,
@@ -7923,6 +8621,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 685,
@@ -7931,6 +8630,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 686,
@@ -7939,6 +8639,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 687,
@@ -7947,6 +8648,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 688,
@@ -7955,6 +8657,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 689,
@@ -7963,6 +8666,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 690,
@@ -7971,6 +8675,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 691,
@@ -7979,6 +8684,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 692,
@@ -7987,6 +8693,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 693,
@@ -7995,6 +8702,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 694,
@@ -8003,6 +8711,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 695,
@@ -8011,6 +8720,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 696,
@@ -8019,6 +8729,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 697,
@@ -8027,6 +8738,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 698,
@@ -8035,6 +8747,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 699,
@@ -8043,6 +8756,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 700,
@@ -8051,6 +8765,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 701,
@@ -8059,6 +8774,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 702,
@@ -8067,6 +8783,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 703,
@@ -8075,6 +8792,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 704,
@@ -8083,6 +8801,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 705,
@@ -8091,6 +8810,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 706,
@@ -8099,6 +8819,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 707,
@@ -8107,6 +8828,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 708,
@@ -8115,6 +8837,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 709,
@@ -8123,6 +8846,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 710,
@@ -8131,6 +8855,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 711,
@@ -8139,6 +8864,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 712,
@@ -8147,6 +8873,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 713,
@@ -8155,6 +8882,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 714,
@@ -8163,6 +8891,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 715,
@@ -8171,6 +8900,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 716,
@@ -8179,6 +8909,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 717,
@@ -8187,6 +8918,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 718,
@@ -8195,6 +8927,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 719,
@@ -8203,6 +8936,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 720,
@@ -8211,6 +8945,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 721,
@@ -8219,6 +8954,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 722,
@@ -8227,6 +8963,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 723,
@@ -8235,6 +8972,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 724,
@@ -8243,6 +8981,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 725,
@@ -8251,6 +8990,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 726,
@@ -8259,6 +8999,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 727,
@@ -8267,6 +9008,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 728,
@@ -8275,6 +9017,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 729,
@@ -8283,6 +9026,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 730,
@@ -8291,6 +9035,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 731,
@@ -8299,6 +9044,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 732,
@@ -8307,6 +9053,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 733,
@@ -8315,6 +9062,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 734,
@@ -8323,6 +9071,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 735,
@@ -8331,6 +9080,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 736,
@@ -8339,6 +9089,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 737,
@@ -8347,6 +9098,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 738,
@@ -8355,6 +9107,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 739,
@@ -8363,6 +9116,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 740,
@@ -8371,6 +9125,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 741,
@@ -8379,6 +9134,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 742,
@@ -8387,6 +9143,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 743,
@@ -8395,6 +9152,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 744,
@@ -8403,6 +9161,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 745,
@@ -8411,6 +9170,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 746,
@@ -8419,6 +9179,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 747,
@@ -8427,6 +9188,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 748,
@@ -8435,6 +9197,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 749,
@@ -8443,6 +9206,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 750,
@@ -8451,6 +9215,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 751,
@@ -8459,6 +9224,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 752,
@@ -8467,6 +9233,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 753,
@@ -8475,6 +9242,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 754,
@@ -8483,6 +9251,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 755,
@@ -8491,6 +9260,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 756,
@@ -8499,6 +9269,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 757,
@@ -8507,6 +9278,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 758,
@@ -8515,6 +9287,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 759,
@@ -8523,6 +9296,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 760,
@@ -8531,6 +9305,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 761,
@@ -8539,6 +9314,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 762,
@@ -8547,6 +9323,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 763,
@@ -8555,6 +9332,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 764,
@@ -8563,6 +9341,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 765,
@@ -8571,6 +9350,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 766,
@@ -8579,6 +9359,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 767,
@@ -8587,6 +9368,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 768,
@@ -8595,6 +9377,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 769,
@@ -8603,6 +9386,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 770,
@@ -8611,6 +9395,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 771,
@@ -8619,6 +9404,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 772,
@@ -8627,6 +9413,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 773,
@@ -8635,6 +9422,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 774,
@@ -8643,6 +9431,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 775,
@@ -8651,6 +9440,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 776,
@@ -8659,6 +9449,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 777,
@@ -8667,6 +9458,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 778,
@@ -8675,6 +9467,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 779,
@@ -8683,6 +9476,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 780,
@@ -8691,6 +9485,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 781,
@@ -8699,6 +9494,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 782,
@@ -8707,6 +9503,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 783,
@@ -8715,6 +9512,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 784,
@@ -8723,6 +9521,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 785,
@@ -8731,6 +9530,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 786,
@@ -8739,6 +9539,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 787,
@@ -8747,6 +9548,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 788,
@@ -8755,6 +9557,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 789,
@@ -8763,6 +9566,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 790,
@@ -8771,6 +9575,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 791,
@@ -8779,6 +9584,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 792,
@@ -8787,6 +9593,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 793,
@@ -8795,6 +9602,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 794,
@@ -8803,6 +9611,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 795,
@@ -8811,6 +9620,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 796,
@@ -8819,6 +9629,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 797,
@@ -8827,6 +9638,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 798,
@@ -8835,6 +9647,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 799,
@@ -8843,6 +9656,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 800,
@@ -8851,6 +9665,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 801,
@@ -8859,6 +9674,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 802,
@@ -8867,6 +9683,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 803,
@@ -8875,6 +9692,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 804,
@@ -8883,6 +9701,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 805,
@@ -8891,6 +9710,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 806,
@@ -8899,6 +9719,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 807,
@@ -8907,6 +9728,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 808,
@@ -8915,6 +9737,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 809,
@@ -8923,6 +9746,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 810,
@@ -8931,6 +9755,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 811,
@@ -8939,6 +9764,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 812,
@@ -8947,6 +9773,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 813,
@@ -8955,6 +9782,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 814,
@@ -8963,6 +9791,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 815,
@@ -8971,6 +9800,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 816,
@@ -8979,6 +9809,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 817,
@@ -8987,6 +9818,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 818,
@@ -8995,6 +9827,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 819,
@@ -9003,6 +9836,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 820,
@@ -9011,6 +9845,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 821,
@@ -9019,6 +9854,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 822,
@@ -9027,6 +9863,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 823,
@@ -9035,6 +9872,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 824,
@@ -9043,6 +9881,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 825,
@@ -9051,6 +9890,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 826,
@@ -9059,6 +9899,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 827,
@@ -9067,6 +9908,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 828,
@@ -9075,6 +9917,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 829,
@@ -9083,6 +9926,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 830,
@@ -9091,6 +9935,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 831,
@@ -9099,6 +9944,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 832,
@@ -9107,6 +9953,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 833,
@@ -9115,6 +9962,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 834,
@@ -9123,6 +9971,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 835,
@@ -9131,6 +9980,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 836,
@@ -9139,6 +9989,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 837,
@@ -9147,6 +9998,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 838,
@@ -9155,6 +10007,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: Some(VanillaItemEquipOnInteract::Saddle),
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 839,
@@ -9163,6 +10016,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: Some(VanillaItemEquipOnInteract::Harness),
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 840,
@@ -9171,6 +10025,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: Some(VanillaItemEquipOnInteract::Harness),
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 841,
@@ -9179,6 +10034,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: Some(VanillaItemEquipOnInteract::Harness),
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 842,
@@ -9187,6 +10043,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: Some(VanillaItemEquipOnInteract::Harness),
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 843,
@@ -9195,6 +10052,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: Some(VanillaItemEquipOnInteract::Harness),
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 844,
@@ -9203,6 +10061,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: Some(VanillaItemEquipOnInteract::Harness),
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 845,
@@ -9211,6 +10070,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: Some(VanillaItemEquipOnInteract::Harness),
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 846,
@@ -9219,6 +10079,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: Some(VanillaItemEquipOnInteract::Harness),
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 847,
@@ -9227,6 +10088,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: Some(VanillaItemEquipOnInteract::Harness),
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 848,
@@ -9235,6 +10097,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: Some(VanillaItemEquipOnInteract::Harness),
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 849,
@@ -9243,6 +10106,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: Some(VanillaItemEquipOnInteract::Harness),
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 850,
@@ -9251,6 +10115,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: Some(VanillaItemEquipOnInteract::Harness),
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 851,
@@ -9259,6 +10124,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: Some(VanillaItemEquipOnInteract::Harness),
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 852,
@@ -9267,6 +10133,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: Some(VanillaItemEquipOnInteract::Harness),
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 853,
@@ -9275,6 +10142,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: Some(VanillaItemEquipOnInteract::Harness),
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 854,
@@ -9283,6 +10151,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: Some(VanillaItemEquipOnInteract::Harness),
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 855,
@@ -9291,6 +10160,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::MinecartItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 856,
@@ -9299,6 +10169,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::MinecartItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 857,
@@ -9307,6 +10178,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::MinecartItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 858,
@@ -9315,6 +10187,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::MinecartItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 859,
@@ -9323,6 +10196,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::MinecartItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 860,
@@ -9331,6 +10205,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 861,
@@ -9339,6 +10214,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 862,
@@ -9347,6 +10223,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 863,
@@ -9355,6 +10232,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 864,
@@ -9363,6 +10241,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 865,
@@ -9371,6 +10250,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 866,
@@ -9379,6 +10259,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 867,
@@ -9387,6 +10268,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 868,
@@ -9395,6 +10277,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 869,
@@ -9403,6 +10286,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 870,
@@ -9411,6 +10295,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 871,
@@ -9419,6 +10304,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 872,
@@ -9427,6 +10313,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 873,
@@ -9435,6 +10322,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 874,
@@ -9443,6 +10331,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 875,
@@ -9451,6 +10340,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 876,
@@ -9459,6 +10349,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 877,
@@ -9467,6 +10358,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 878,
@@ -9475,6 +10367,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 879,
@@ -9483,6 +10376,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 880,
@@ -9491,6 +10385,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 881,
@@ -9499,6 +10394,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 882,
@@ -9507,6 +10403,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 883,
@@ -9515,6 +10412,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 884,
@@ -9523,6 +10421,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 885,
@@ -9531,6 +10430,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 886,
@@ -9539,6 +10439,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 887,
@@ -9547,6 +10448,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 888,
@@ -9555,6 +10457,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 889,
@@ -9563,6 +10466,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 890,
@@ -9571,6 +10475,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 891,
@@ -9579,6 +10484,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 892,
@@ -9587,6 +10493,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::FlintAndSteelItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 893,
@@ -9595,6 +10502,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 894,
@@ -9603,6 +10511,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 895,
@@ -9611,6 +10520,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 896,
@@ -9619,6 +10529,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 897,
@@ -9627,6 +10538,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 898,
@@ -9635,6 +10547,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 899,
@@ -9643,6 +10556,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 900,
@@ -9651,6 +10565,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 901,
@@ -9659,6 +10574,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 902,
@@ -9667,6 +10583,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 903,
@@ -9675,6 +10592,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 904,
@@ -9683,6 +10601,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 905,
@@ -9691,6 +10610,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 906,
@@ -9699,6 +10619,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 907,
@@ -9707,6 +10628,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 908,
@@ -9715,6 +10637,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 909,
@@ -9723,6 +10646,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 910,
@@ -9731,6 +10655,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 911,
@@ -9739,6 +10664,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 912,
@@ -9747,6 +10673,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 913,
@@ -9755,6 +10682,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::ShovelItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 914,
@@ -9763,6 +10691,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 915,
@@ -9771,6 +10700,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::AxeItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 916,
@@ -9779,6 +10709,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::HoeItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 917,
@@ -9787,6 +10718,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 918,
@@ -9795,6 +10727,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::ShovelItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 919,
@@ -9803,6 +10736,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 920,
@@ -9811,6 +10745,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::AxeItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 921,
@@ -9819,6 +10754,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::HoeItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 922,
@@ -9827,6 +10763,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 923,
@@ -9835,6 +10772,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::ShovelItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 924,
@@ -9843,6 +10781,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 925,
@@ -9851,6 +10790,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::AxeItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 926,
@@ -9859,6 +10799,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::HoeItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 927,
@@ -9867,6 +10808,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 928,
@@ -9875,6 +10817,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::ShovelItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 929,
@@ -9883,6 +10826,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 930,
@@ -9891,6 +10835,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::AxeItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 931,
@@ -9899,6 +10844,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::HoeItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 932,
@@ -9907,6 +10853,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 933,
@@ -9915,6 +10862,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::ShovelItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 934,
@@ -9923,6 +10871,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 935,
@@ -9931,6 +10880,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::AxeItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 936,
@@ -9939,6 +10889,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::HoeItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 937,
@@ -9947,6 +10898,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 938,
@@ -9955,6 +10907,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::ShovelItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 939,
@@ -9963,6 +10916,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 940,
@@ -9971,6 +10925,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::AxeItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 941,
@@ -9979,6 +10934,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::HoeItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 942,
@@ -9987,6 +10943,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 943,
@@ -9995,6 +10952,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::ShovelItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 944,
@@ -10003,6 +10961,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 945,
@@ -10011,6 +10970,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::AxeItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 946,
@@ -10019,6 +10979,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::HoeItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 947,
@@ -10027,6 +10988,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 948,
@@ -10035,6 +10997,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 949,
@@ -10043,6 +11006,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 950,
@@ -10051,6 +11015,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 951,
@@ -10059,6 +11024,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 952,
@@ -10067,6 +11033,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 953,
@@ -10075,6 +11042,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 954,
@@ -10083,6 +11051,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 955,
@@ -10091,6 +11060,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 956,
@@ -10099,6 +11069,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 957,
@@ -10107,6 +11078,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 958,
@@ -10115,6 +11087,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 959,
@@ -10123,6 +11096,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 960,
@@ -10131,6 +11105,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 961,
@@ -10139,6 +11114,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 962,
@@ -10147,6 +11123,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 963,
@@ -10155,6 +11132,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 964,
@@ -10163,6 +11141,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 965,
@@ -10171,6 +11150,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 966,
@@ -10179,6 +11159,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 967,
@@ -10187,6 +11168,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 968,
@@ -10195,6 +11177,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 969,
@@ -10203,6 +11186,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 970,
@@ -10211,6 +11195,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 971,
@@ -10219,6 +11204,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 972,
@@ -10227,6 +11213,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 973,
@@ -10235,6 +11222,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 974,
@@ -10243,6 +11231,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 975,
@@ -10251,6 +11240,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 976,
@@ -10259,6 +11249,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 977,
@@ -10267,6 +11258,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 978,
@@ -10275,6 +11267,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 979,
@@ -10283,6 +11276,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 980,
@@ -10291,6 +11285,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 981,
@@ -10299,6 +11294,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 982,
@@ -10307,6 +11303,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 983,
@@ -10315,6 +11312,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 984,
@@ -10323,6 +11321,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 985,
@@ -10331,6 +11330,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 986,
@@ -10339,6 +11339,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::HangingEntityItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 987,
@@ -10347,6 +11348,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 988,
@@ -10355,6 +11357,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 989,
@@ -10363,6 +11366,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 990,
@@ -10371,6 +11375,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 991,
@@ -10379,6 +11384,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 992,
@@ -10387,6 +11393,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 993,
@@ -10395,6 +11402,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 994,
@@ -10403,6 +11411,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 995,
@@ -10411,6 +11420,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 996,
@@ -10419,6 +11429,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 997,
@@ -10427,6 +11438,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 998,
@@ -10435,6 +11447,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 999,
@@ -10443,6 +11456,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1000,
@@ -10451,6 +11465,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1001,
@@ -10459,6 +11474,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1002,
@@ -10467,6 +11483,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1003,
@@ -10475,6 +11492,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1004,
@@ -10483,6 +11501,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1005,
@@ -10491,6 +11510,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1006,
@@ -10499,6 +11519,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1007,
@@ -10507,6 +11528,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1008,
@@ -10515,6 +11537,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1009,
@@ -10523,6 +11546,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1010,
@@ -10531,6 +11555,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1011,
@@ -10539,6 +11564,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1012,
@@ -10547,6 +11573,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1013,
@@ -10555,6 +11582,10 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: Some(VanillaBucketItemBehavior {
+            fluid: VanillaBucketFluid::Empty,
+            mob_empty_sound_resource_id: None,
+        }),
     },
     ItemTypeCatalogEntry {
         id: 1014,
@@ -10563,6 +11594,10 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: Some(VanillaBucketItemBehavior {
+            fluid: VanillaBucketFluid::Water,
+            mob_empty_sound_resource_id: None,
+        }),
     },
     ItemTypeCatalogEntry {
         id: 1015,
@@ -10571,6 +11606,10 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: Some(VanillaBucketItemBehavior {
+            fluid: VanillaBucketFluid::Lava,
+            mob_empty_sound_resource_id: None,
+        }),
     },
     ItemTypeCatalogEntry {
         id: 1016,
@@ -10579,6 +11618,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SolidBucketItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1017,
@@ -10587,6 +11627,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1018,
@@ -10595,6 +11636,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1019,
@@ -10603,6 +11645,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1020,
@@ -10611,6 +11654,10 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: Some(VanillaBucketItemBehavior {
+            fluid: VanillaBucketFluid::Water,
+            mob_empty_sound_resource_id: Some("minecraft:item.bucket.empty_fish"),
+        }),
     },
     ItemTypeCatalogEntry {
         id: 1021,
@@ -10619,6 +11666,10 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: Some(VanillaBucketItemBehavior {
+            fluid: VanillaBucketFluid::Water,
+            mob_empty_sound_resource_id: Some("minecraft:item.bucket.empty_fish"),
+        }),
     },
     ItemTypeCatalogEntry {
         id: 1022,
@@ -10627,6 +11678,10 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: Some(VanillaBucketItemBehavior {
+            fluid: VanillaBucketFluid::Water,
+            mob_empty_sound_resource_id: Some("minecraft:item.bucket.empty_fish"),
+        }),
     },
     ItemTypeCatalogEntry {
         id: 1023,
@@ -10635,6 +11690,10 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: Some(VanillaBucketItemBehavior {
+            fluid: VanillaBucketFluid::Water,
+            mob_empty_sound_resource_id: Some("minecraft:item.bucket.empty_fish"),
+        }),
     },
     ItemTypeCatalogEntry {
         id: 1024,
@@ -10643,6 +11702,10 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: Some(VanillaBucketItemBehavior {
+            fluid: VanillaBucketFluid::Water,
+            mob_empty_sound_resource_id: Some("minecraft:item.bucket.empty_axolotl"),
+        }),
     },
     ItemTypeCatalogEntry {
         id: 1025,
@@ -10651,6 +11714,10 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: Some(VanillaBucketItemBehavior {
+            fluid: VanillaBucketFluid::Water,
+            mob_empty_sound_resource_id: Some("minecraft:item.bucket.empty_tadpole"),
+        }),
     },
     ItemTypeCatalogEntry {
         id: 1026,
@@ -10659,6 +11726,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1027,
@@ -10667,6 +11735,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1028,
@@ -10675,6 +11744,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1029,
@@ -10683,6 +11753,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1030,
@@ -10691,6 +11762,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1031,
@@ -10699,6 +11771,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1032,
@@ -10707,6 +11780,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1033,
@@ -10715,6 +11789,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1034,
@@ -10723,6 +11798,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1035,
@@ -10731,6 +11807,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::CompassItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1036,
@@ -10739,6 +11816,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1037,
@@ -10747,6 +11825,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1038,
@@ -10755,6 +11834,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1039,
@@ -10763,6 +11843,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1040,
@@ -10771,6 +11852,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1041,
@@ -10779,6 +11861,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1042,
@@ -10787,6 +11870,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1043,
@@ -10795,6 +11879,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1044,
@@ -10803,6 +11888,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1045,
@@ -10811,6 +11897,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1046,
@@ -10819,6 +11906,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1047,
@@ -10827,6 +11915,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1048,
@@ -10835,6 +11924,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1049,
@@ -10843,6 +11933,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1050,
@@ -10851,6 +11942,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1051,
@@ -10859,6 +11951,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1052,
@@ -10867,6 +11960,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1053,
@@ -10875,6 +11969,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1054,
@@ -10883,6 +11978,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1055,
@@ -10891,6 +11987,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1056,
@@ -10899,6 +11996,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1057,
@@ -10907,6 +12005,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1058,
@@ -10915,6 +12014,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1059,
@@ -10923,6 +12023,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1060,
@@ -10931,6 +12032,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1061,
@@ -10939,6 +12041,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1062,
@@ -10947,6 +12050,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1063,
@@ -10955,6 +12059,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1064,
@@ -10963,6 +12068,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1065,
@@ -10971,6 +12077,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1066,
@@ -10979,6 +12086,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1067,
@@ -10987,6 +12095,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: Some(VanillaItemInteractLivingEntityOverride::DyeItem),
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1068,
@@ -10995,6 +12104,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: Some(VanillaItemInteractLivingEntityOverride::DyeItem),
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1069,
@@ -11003,6 +12113,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: Some(VanillaItemInteractLivingEntityOverride::DyeItem),
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1070,
@@ -11011,6 +12122,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: Some(VanillaItemInteractLivingEntityOverride::DyeItem),
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1071,
@@ -11019,6 +12131,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: Some(VanillaItemInteractLivingEntityOverride::DyeItem),
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1072,
@@ -11027,6 +12140,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: Some(VanillaItemInteractLivingEntityOverride::DyeItem),
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1073,
@@ -11035,6 +12149,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: Some(VanillaItemInteractLivingEntityOverride::DyeItem),
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1074,
@@ -11043,6 +12158,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: Some(VanillaItemInteractLivingEntityOverride::DyeItem),
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1075,
@@ -11051,6 +12167,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: Some(VanillaItemInteractLivingEntityOverride::DyeItem),
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1076,
@@ -11059,6 +12176,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: Some(VanillaItemInteractLivingEntityOverride::DyeItem),
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1077,
@@ -11067,6 +12185,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: Some(VanillaItemInteractLivingEntityOverride::DyeItem),
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1078,
@@ -11075,6 +12194,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: Some(VanillaItemInteractLivingEntityOverride::DyeItem),
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1079,
@@ -11083,6 +12203,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: Some(VanillaItemInteractLivingEntityOverride::DyeItem),
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1080,
@@ -11091,6 +12212,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: Some(VanillaItemInteractLivingEntityOverride::DyeItem),
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1081,
@@ -11099,6 +12221,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: Some(VanillaItemInteractLivingEntityOverride::DyeItem),
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1082,
@@ -11107,6 +12230,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: Some(VanillaItemInteractLivingEntityOverride::DyeItem),
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1083,
@@ -11115,6 +12239,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BoneMealItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1084,
@@ -11123,6 +12248,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1085,
@@ -11131,6 +12257,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1086,
@@ -11139,6 +12266,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1087,
@@ -11147,6 +12275,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1088,
@@ -11155,6 +12284,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1089,
@@ -11163,6 +12293,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1090,
@@ -11171,6 +12302,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1091,
@@ -11179,6 +12311,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1092,
@@ -11187,6 +12320,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1093,
@@ -11195,6 +12329,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1094,
@@ -11203,6 +12338,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1095,
@@ -11211,6 +12347,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1096,
@@ -11219,6 +12356,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1097,
@@ -11227,6 +12365,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1098,
@@ -11235,6 +12374,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1099,
@@ -11243,6 +12383,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1100,
@@ -11251,6 +12392,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1101,
@@ -11259,6 +12401,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1102,
@@ -11267,6 +12410,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1103,
@@ -11275,6 +12419,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1104,
@@ -11283,6 +12428,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1105,
@@ -11291,6 +12437,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::MapItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1106,
@@ -11299,6 +12446,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::ShearsItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1107,
@@ -11307,6 +12455,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1108,
@@ -11315,6 +12464,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1109,
@@ -11323,6 +12473,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1110,
@@ -11331,6 +12482,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1111,
@@ -11339,6 +12491,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1112,
@@ -11347,6 +12500,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1113,
@@ -11355,6 +12509,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1114,
@@ -11363,6 +12518,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1115,
@@ -11371,6 +12527,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1116,
@@ -11379,6 +12536,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1117,
@@ -11387,6 +12545,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1118,
@@ -11395,6 +12554,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1119,
@@ -11403,6 +12563,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1120,
@@ -11411,6 +12572,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1121,
@@ -11419,6 +12581,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1122,
@@ -11427,6 +12590,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::PotionItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1123,
@@ -11435,6 +12599,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1124,
@@ -11443,6 +12608,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1125,
@@ -11451,6 +12617,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1126,
@@ -11459,6 +12626,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1127,
@@ -11467,6 +12635,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1128,
@@ -11475,6 +12644,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1129,
@@ -11483,6 +12653,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::EnderEyeItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1130,
@@ -11491,6 +12662,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1131,
@@ -11499,6 +12671,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1132,
@@ -11507,6 +12680,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1133,
@@ -11515,6 +12689,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1134,
@@ -11523,6 +12698,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1135,
@@ -11531,6 +12707,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1136,
@@ -11539,6 +12716,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1137,
@@ -11547,6 +12725,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1138,
@@ -11555,6 +12734,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1139,
@@ -11563,6 +12743,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1140,
@@ -11571,6 +12752,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1141,
@@ -11579,6 +12761,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1142,
@@ -11587,6 +12770,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1143,
@@ -11595,6 +12779,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1144,
@@ -11603,6 +12788,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1145,
@@ -11611,6 +12797,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1146,
@@ -11619,6 +12806,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1147,
@@ -11627,6 +12815,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1148,
@@ -11635,6 +12824,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1149,
@@ -11643,6 +12833,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1150,
@@ -11651,6 +12842,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1151,
@@ -11659,6 +12851,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1152,
@@ -11667,6 +12860,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1153,
@@ -11675,6 +12869,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1154,
@@ -11683,6 +12878,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1155,
@@ -11691,6 +12887,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1156,
@@ -11699,6 +12896,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1157,
@@ -11707,6 +12905,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1158,
@@ -11715,6 +12914,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1159,
@@ -11723,6 +12923,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1160,
@@ -11731,6 +12932,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1161,
@@ -11739,6 +12941,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1162,
@@ -11747,6 +12950,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1163,
@@ -11755,6 +12959,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1164,
@@ -11763,6 +12968,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1165,
@@ -11771,6 +12977,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1166,
@@ -11779,6 +12986,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1167,
@@ -11787,6 +12995,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1168,
@@ -11795,6 +13004,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1169,
@@ -11803,6 +13013,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1170,
@@ -11811,6 +13022,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1171,
@@ -11819,6 +13031,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1172,
@@ -11827,6 +13040,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1173,
@@ -11835,6 +13049,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1174,
@@ -11843,6 +13058,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1175,
@@ -11851,6 +13067,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1176,
@@ -11859,6 +13076,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1177,
@@ -11867,6 +13085,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1178,
@@ -11875,6 +13094,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1179,
@@ -11883,6 +13103,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1180,
@@ -11891,6 +13112,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1181,
@@ -11899,6 +13121,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1182,
@@ -11907,6 +13130,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1183,
@@ -11915,6 +13139,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1184,
@@ -11923,6 +13148,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1185,
@@ -11931,6 +13157,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1186,
@@ -11939,6 +13166,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1187,
@@ -11947,6 +13175,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1188,
@@ -11955,6 +13184,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1189,
@@ -11963,6 +13193,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1190,
@@ -11971,6 +13202,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1191,
@@ -11979,6 +13211,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1192,
@@ -11987,6 +13220,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1193,
@@ -11995,6 +13229,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1194,
@@ -12003,6 +13238,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1195,
@@ -12011,6 +13247,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1196,
@@ -12019,6 +13256,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1197,
@@ -12027,6 +13265,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1198,
@@ -12035,6 +13274,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1199,
@@ -12043,6 +13283,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1200,
@@ -12051,6 +13292,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1201,
@@ -12059,6 +13301,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1202,
@@ -12067,6 +13310,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1203,
@@ -12075,6 +13319,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1204,
@@ -12083,6 +13328,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1205,
@@ -12091,6 +13337,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1206,
@@ -12099,6 +13346,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1207,
@@ -12107,6 +13355,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1208,
@@ -12115,6 +13364,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1209,
@@ -12123,6 +13373,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1210,
@@ -12131,6 +13382,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1211,
@@ -12139,6 +13391,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1212,
@@ -12147,6 +13400,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1213,
@@ -12155,6 +13409,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1214,
@@ -12163,6 +13418,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1215,
@@ -12171,6 +13427,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1216,
@@ -12179,6 +13436,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1217,
@@ -12187,6 +13445,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::SpawnEggItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1218,
@@ -12195,6 +13454,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1219,
@@ -12203,6 +13463,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::FireChargeItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1220,
@@ -12211,6 +13472,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1221,
@@ -12219,6 +13481,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1222,
@@ -12227,6 +13490,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1223,
@@ -12235,6 +13499,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1224,
@@ -12243,6 +13508,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1225,
@@ -12251,6 +13517,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::HangingEntityItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1226,
@@ -12259,6 +13526,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::HangingEntityItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1227,
@@ -12267,6 +13535,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1228,
@@ -12275,6 +13544,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1229,
@@ -12283,6 +13553,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1230,
@@ -12291,6 +13562,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1231,
@@ -12299,6 +13571,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1232,
@@ -12307,6 +13580,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1233,
@@ -12315,6 +13589,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1234,
@@ -12323,6 +13598,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1235,
@@ -12331,6 +13607,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1236,
@@ -12339,6 +13616,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1237,
@@ -12347,6 +13625,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1238,
@@ -12355,6 +13634,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1239,
@@ -12363,6 +13643,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1240,
@@ -12371,6 +13652,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1241,
@@ -12379,6 +13661,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1242,
@@ -12387,6 +13670,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1243,
@@ -12395,6 +13679,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::FireworkRocketItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1244,
@@ -12403,6 +13688,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1245,
@@ -12411,6 +13697,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1246,
@@ -12419,6 +13706,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1247,
@@ -12427,6 +13715,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1248,
@@ -12435,6 +13724,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1249,
@@ -12443,6 +13733,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1250,
@@ -12451,6 +13742,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1251,
@@ -12459,6 +13751,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1252,
@@ -12467,6 +13760,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1253,
@@ -12475,6 +13769,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1254,
@@ -12483,6 +13778,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1255,
@@ -12491,6 +13787,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::ArmorStandItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1256,
@@ -12499,6 +13796,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1257,
@@ -12507,6 +13805,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1258,
@@ -12515,6 +13814,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1259,
@@ -12523,6 +13823,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1260,
@@ -12531,6 +13832,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1261,
@@ -12539,6 +13841,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1262,
@@ -12547,6 +13850,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::LeadItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1263,
@@ -12555,6 +13859,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: Some(VanillaItemInteractLivingEntityOverride::NameTagItem),
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1264,
@@ -12563,6 +13868,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::MinecartItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1265,
@@ -12571,6 +13877,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1266,
@@ -12579,6 +13886,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1267,
@@ -12587,6 +13895,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1268,
@@ -12595,6 +13904,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1269,
@@ -12603,6 +13913,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1270,
@@ -12611,6 +13922,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1271,
@@ -12619,6 +13931,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1272,
@@ -12627,6 +13940,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1273,
@@ -12635,6 +13949,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1274,
@@ -12643,6 +13958,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1275,
@@ -12651,6 +13967,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1276,
@@ -12659,6 +13976,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1277,
@@ -12667,6 +13985,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1278,
@@ -12675,6 +13994,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1279,
@@ -12683,6 +14003,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1280,
@@ -12691,6 +14012,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1281,
@@ -12699,6 +14021,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1282,
@@ -12707,6 +14030,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1283,
@@ -12715,6 +14039,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::EndCrystalItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1284,
@@ -12723,6 +14048,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1285,
@@ -12731,6 +14057,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1286,
@@ -12739,6 +14066,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1287,
@@ -12747,6 +14075,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1288,
@@ -12755,6 +14084,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1289,
@@ -12763,6 +14093,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1290,
@@ -12771,6 +14102,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1291,
@@ -12779,6 +14111,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1292,
@@ -12787,6 +14120,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::PotionItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1293,
@@ -12795,6 +14129,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1294,
@@ -12803,6 +14138,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1295,
@@ -12811,6 +14147,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::PotionItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1296,
@@ -12819,6 +14156,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1297,
@@ -12827,6 +14165,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1298,
@@ -12835,6 +14174,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1299,
@@ -12843,6 +14183,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1300,
@@ -12851,6 +14192,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1301,
@@ -12859,6 +14201,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1302,
@@ -12867,6 +14210,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1303,
@@ -12875,6 +14219,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1304,
@@ -12883,6 +14228,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1305,
@@ -12891,6 +14237,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1306,
@@ -12899,6 +14246,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1307,
@@ -12907,6 +14255,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1308,
@@ -12915,6 +14264,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1309,
@@ -12923,6 +14273,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::DebugStickItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1310,
@@ -12931,6 +14282,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1311,
@@ -12939,6 +14291,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1312,
@@ -12947,6 +14300,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1313,
@@ -12955,6 +14309,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1314,
@@ -12963,6 +14318,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1315,
@@ -12971,6 +14327,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1316,
@@ -12979,6 +14336,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1317,
@@ -12987,6 +14345,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1318,
@@ -12995,6 +14354,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1319,
@@ -13003,6 +14363,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1320,
@@ -13011,6 +14372,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1321,
@@ -13019,6 +14381,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1322,
@@ -13027,6 +14390,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1323,
@@ -13035,6 +14399,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1324,
@@ -13043,6 +14408,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1325,
@@ -13051,6 +14417,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1326,
@@ -13059,6 +14426,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1327,
@@ -13067,6 +14435,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1328,
@@ -13075,6 +14444,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1329,
@@ -13083,6 +14453,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1330,
@@ -13091,6 +14462,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1331,
@@ -13099,6 +14471,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1332,
@@ -13107,6 +14480,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1333,
@@ -13115,6 +14489,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1334,
@@ -13123,6 +14498,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1335,
@@ -13131,6 +14507,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1336,
@@ -13139,6 +14516,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1337,
@@ -13147,6 +14525,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1338,
@@ -13155,6 +14534,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1339,
@@ -13163,6 +14543,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1340,
@@ -13171,6 +14552,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1341,
@@ -13179,6 +14561,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1342,
@@ -13187,6 +14570,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1343,
@@ -13195,6 +14579,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1344,
@@ -13203,6 +14588,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1345,
@@ -13211,6 +14597,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1346,
@@ -13219,6 +14606,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1347,
@@ -13227,6 +14615,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1348,
@@ -13235,6 +14624,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1349,
@@ -13243,6 +14633,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1350,
@@ -13251,6 +14642,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1351,
@@ -13259,6 +14651,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1352,
@@ -13267,6 +14660,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1353,
@@ -13275,6 +14669,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1354,
@@ -13283,6 +14678,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1355,
@@ -13291,6 +14687,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1356,
@@ -13299,6 +14696,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1357,
@@ -13307,6 +14705,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1358,
@@ -13315,6 +14714,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1359,
@@ -13323,6 +14723,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1360,
@@ -13331,6 +14732,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1361,
@@ -13339,6 +14741,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1362,
@@ -13347,6 +14750,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1363,
@@ -13355,6 +14759,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1364,
@@ -13363,6 +14768,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1365,
@@ -13371,6 +14777,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1366,
@@ -13379,6 +14786,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1367,
@@ -13387,6 +14795,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1368,
@@ -13395,6 +14804,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1369,
@@ -13403,6 +14813,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1370,
@@ -13411,6 +14822,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1371,
@@ -13419,6 +14831,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1372,
@@ -13427,6 +14840,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1373,
@@ -13435,6 +14849,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1374,
@@ -13443,6 +14858,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1375,
@@ -13451,6 +14867,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1376,
@@ -13459,6 +14876,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1377,
@@ -13467,6 +14885,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1378,
@@ -13475,6 +14894,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1379,
@@ -13483,6 +14903,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::HoneycombItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1380,
@@ -13491,6 +14912,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1381,
@@ -13499,6 +14921,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1382,
@@ -13507,6 +14930,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1383,
@@ -13515,6 +14939,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1384,
@@ -13523,6 +14948,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1385,
@@ -13531,6 +14957,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1386,
@@ -13539,6 +14966,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1387,
@@ -13547,6 +14975,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1388,
@@ -13555,6 +14984,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1389,
@@ -13563,6 +14993,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1390,
@@ -13571,6 +15002,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1391,
@@ -13579,6 +15011,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1392,
@@ -13587,6 +15020,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1393,
@@ -13595,6 +15029,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1394,
@@ -13603,6 +15038,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1395,
@@ -13611,6 +15047,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1396,
@@ -13619,6 +15056,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1397,
@@ -13627,6 +15065,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1398,
@@ -13635,6 +15074,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1399,
@@ -13643,6 +15083,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1400,
@@ -13651,6 +15092,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1401,
@@ -13659,6 +15101,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1402,
@@ -13667,6 +15110,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1403,
@@ -13675,6 +15119,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1404,
@@ -13683,6 +15128,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1405,
@@ -13691,6 +15137,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1406,
@@ -13699,6 +15146,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1407,
@@ -13707,6 +15155,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1408,
@@ -13715,6 +15164,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1409,
@@ -13723,6 +15173,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1410,
@@ -13731,6 +15182,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1411,
@@ -13739,6 +15191,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1412,
@@ -13747,6 +15200,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1413,
@@ -13755,6 +15209,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1414,
@@ -13763,6 +15218,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1415,
@@ -13771,6 +15227,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1416,
@@ -13779,6 +15236,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1417,
@@ -13787,6 +15245,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1418,
@@ -13795,6 +15254,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1419,
@@ -13803,6 +15263,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1420,
@@ -13811,6 +15272,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1421,
@@ -13819,6 +15281,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1422,
@@ -13827,6 +15290,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1423,
@@ -13835,6 +15299,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1424,
@@ -13843,6 +15308,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::PlaceOnWaterBlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1425,
@@ -13851,6 +15317,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1426,
@@ -13859,6 +15326,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BrushItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1427,
@@ -13867,6 +15335,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1428,
@@ -13875,6 +15344,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1429,
@@ -13883,6 +15353,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1430,
@@ -13891,6 +15362,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1431,
@@ -13899,6 +15371,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1432,
@@ -13907,6 +15380,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1433,
@@ -13915,6 +15389,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1434,
@@ -13923,6 +15398,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1435,
@@ -13931,6 +15407,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1436,
@@ -13939,6 +15416,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1437,
@@ -13947,6 +15425,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1438,
@@ -13955,6 +15434,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1439,
@@ -13963,6 +15443,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1440,
@@ -13971,6 +15452,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1441,
@@ -13979,6 +15461,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1442,
@@ -13987,6 +15470,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1443,
@@ -13995,6 +15479,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1444,
@@ -14003,6 +15488,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1445,
@@ -14011,6 +15497,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1446,
@@ -14019,6 +15506,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1447,
@@ -14027,6 +15515,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1448,
@@ -14035,6 +15524,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1449,
@@ -14043,6 +15533,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1450,
@@ -14051,6 +15542,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1451,
@@ -14059,6 +15551,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1452,
@@ -14067,6 +15560,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1453,
@@ -14075,6 +15569,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1454,
@@ -14083,6 +15578,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1455,
@@ -14091,6 +15587,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1456,
@@ -14099,6 +15596,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1457,
@@ -14107,6 +15605,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1458,
@@ -14115,6 +15614,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1459,
@@ -14123,6 +15623,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1460,
@@ -14131,6 +15632,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1461,
@@ -14139,6 +15641,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1462,
@@ -14147,6 +15650,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1463,
@@ -14155,6 +15659,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1464,
@@ -14163,6 +15668,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1465,
@@ -14171,6 +15677,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1466,
@@ -14179,6 +15686,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1467,
@@ -14187,6 +15695,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1468,
@@ -14195,6 +15704,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1469,
@@ -14203,6 +15713,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1470,
@@ -14211,6 +15722,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1471,
@@ -14219,6 +15731,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1472,
@@ -14227,6 +15740,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1473,
@@ -14235,6 +15749,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1474,
@@ -14243,6 +15758,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1475,
@@ -14251,6 +15767,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1476,
@@ -14259,6 +15776,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1477,
@@ -14267,6 +15785,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1478,
@@ -14275,6 +15794,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1479,
@@ -14283,6 +15803,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1480,
@@ -14291,6 +15812,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1481,
@@ -14299,6 +15821,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1482,
@@ -14307,6 +15830,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1483,
@@ -14315,6 +15839,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1484,
@@ -14323,6 +15848,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1485,
@@ -14331,6 +15857,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1486,
@@ -14339,6 +15866,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1487,
@@ -14347,6 +15875,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1488,
@@ -14355,6 +15884,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1489,
@@ -14363,6 +15893,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1490,
@@ -14371,6 +15902,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1491,
@@ -14379,6 +15911,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1492,
@@ -14387,6 +15920,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1493,
@@ -14395,6 +15929,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1494,
@@ -14403,6 +15938,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1495,
@@ -14411,6 +15947,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1496,
@@ -14419,6 +15956,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1497,
@@ -14427,6 +15965,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1498,
@@ -14435,6 +15974,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1499,
@@ -14443,6 +15983,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1500,
@@ -14451,6 +15992,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1501,
@@ -14459,6 +16001,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1502,
@@ -14467,6 +16010,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1503,
@@ -14475,6 +16019,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1504,
@@ -14483,6 +16028,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: Some(VanillaItemUseOnOverride::BlockItem),
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
     ItemTypeCatalogEntry {
         id: 1505,
@@ -14491,6 +16037,7 @@ pub const VANILLA_ITEM_TYPES: &[ItemTypeCatalogEntry] = &[
         use_on_override: None,
         interact_living_entity_override: None,
         equip_on_interact: None,
+        bucket_behavior: None,
     },
 ];
 
@@ -14580,6 +16127,13 @@ mod tests {
             17
         );
         assert_eq!(
+            VANILLA_ITEM_TYPES
+                .iter()
+                .filter(|entry| entry.bucket_behavior.is_some())
+                .count(),
+            9
+        );
+        assert_eq!(
             vanilla_item_type(VANILLA_ITEM_STONE_ID)
                 .unwrap()
                 .use_override,
@@ -14638,6 +16192,48 @@ mod tests {
                 .unwrap()
                 .use_override,
             Some(VanillaItemUseOverride::WritableBookItem)
+        );
+        assert_eq!(
+            vanilla_item_type(VANILLA_ITEM_BUCKET_ID)
+                .unwrap()
+                .bucket_behavior,
+            Some(VanillaBucketItemBehavior {
+                fluid: VanillaBucketFluid::Empty,
+                mob_empty_sound_resource_id: None
+            })
+        );
+        assert_eq!(
+            vanilla_item_type(VANILLA_ITEM_WATER_BUCKET_ID)
+                .unwrap()
+                .bucket_behavior,
+            Some(VanillaBucketItemBehavior {
+                fluid: VanillaBucketFluid::Water,
+                mob_empty_sound_resource_id: None
+            })
+        );
+        assert_eq!(
+            vanilla_item_type(VANILLA_ITEM_LAVA_BUCKET_ID)
+                .unwrap()
+                .bucket_behavior,
+            Some(VanillaBucketItemBehavior {
+                fluid: VanillaBucketFluid::Lava,
+                mob_empty_sound_resource_id: None
+            })
+        );
+        assert_eq!(
+            vanilla_item_type(VANILLA_ITEM_COD_BUCKET_ID)
+                .unwrap()
+                .bucket_behavior,
+            Some(VanillaBucketItemBehavior {
+                fluid: VanillaBucketFluid::Water,
+                mob_empty_sound_resource_id: Some("minecraft:item.bucket.empty_fish")
+            })
+        );
+        assert_eq!(
+            vanilla_item_type(VANILLA_ITEM_MILK_BUCKET_ID)
+                .unwrap()
+                .bucket_behavior,
+            None
         );
         assert_eq!(
             vanilla_item_type_for_resource_id("snowball").unwrap().id,

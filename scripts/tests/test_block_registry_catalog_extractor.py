@@ -12,6 +12,8 @@ from block_registry_catalog_extractor import (  # noqa: E402
     BlockRegistryCatalogExtractionError,
     block_factory_class,
     extract_block_bonemeal_target_override_owners,
+    extract_block_bucket_pickup_owners,
+    extract_block_liquid_container_owners,
     extract_block_registry_catalog,
     extract_block_propagates_skylight_down_override_owners,
     extract_block_replaceable_membership,
@@ -315,6 +317,110 @@ class WeatheringCopperChainBlock extends ChainBlock {
                 "ChainBlock": None,
                 "StairBlock": None,
                 "WeatheringCopperChainBlock": None,
+            },
+        )
+
+    def test_resolves_bucket_interfaces_through_class_and_default_methods(self) -> None:
+        declarations = extract().declarations
+        sources = [
+            parse(
+                "net/minecraft/world/level/block/Block.java",
+                """
+package net.minecraft.world.level.block;
+class Block {}
+""",
+            ),
+            parse(
+                "net/minecraft/world/level/block/BucketPickup.java",
+                """
+package net.minecraft.world.level.block;
+interface BucketPickup {
+  ItemStack pickupBlock(
+      LivingEntity user, LevelAccessor level, BlockPos pos, BlockState state);
+}
+""",
+            ),
+            parse(
+                "net/minecraft/world/level/block/LiquidBlockContainer.java",
+                """
+package net.minecraft.world.level.block;
+interface LiquidBlockContainer {
+  boolean canPlaceLiquid(
+      LivingEntity user, BlockGetter level, BlockPos pos,
+      BlockState state, Fluid fluid);
+}
+""",
+            ),
+            parse(
+                "net/minecraft/world/level/block/SimpleWaterloggedBlock.java",
+                """
+package net.minecraft.world.level.block;
+interface SimpleWaterloggedBlock extends BucketPickup, LiquidBlockContainer {
+  default ItemStack pickupBlock(
+      LivingEntity user, LevelAccessor level, BlockPos pos, BlockState state) {
+    return ItemStack.EMPTY;
+  }
+  default boolean canPlaceLiquid(
+      LivingEntity user, BlockGetter level, BlockPos pos,
+      BlockState state, Fluid fluid) {
+    return true;
+  }
+}
+""",
+            ),
+            parse(
+                "net/minecraft/world/level/block/AirBlock.java",
+                """
+package net.minecraft.world.level.block;
+class AirBlock extends Block implements BucketPickup {
+  public ItemStack pickupBlock(
+      LivingEntity user, LevelAccessor level, BlockPos pos, BlockState state) {
+    return ItemStack.EMPTY;
+  }
+}
+""",
+            ),
+            parse(
+                "net/minecraft/world/level/block/StairBlock.java",
+                """
+package net.minecraft.world.level.block;
+class StairBlock extends Block implements SimpleWaterloggedBlock {}
+""",
+            ),
+            parse(
+                "net/minecraft/world/level/block/ChainBlock.java",
+                """
+package net.minecraft.world.level.block;
+class ChainBlock extends Block {}
+""",
+            ),
+            parse(
+                "net/minecraft/world/level/block/WeatheringCopperChainBlock.java",
+                """
+package net.minecraft.world.level.block;
+class WeatheringCopperChainBlock extends ChainBlock {}
+""",
+            ),
+        ]
+        expected_none = {
+            "Block": None,
+            "ChainBlock": None,
+            "WeatheringCopperChainBlock": None,
+        }
+        self.assertEqual(
+            extract_block_bucket_pickup_owners(declarations, sources),
+            {
+                "AirBlock": "AirBlock",
+                "StairBlock": "SimpleWaterloggedBlock",
+                **expected_none,
+            },
+        )
+        self.assertEqual(
+            extract_block_liquid_container_owners(declarations, sources),
+            {
+                "AirBlock": None,
+                "StairBlock": "SimpleWaterloggedBlock",
+                **expected_none,
             },
         )
 

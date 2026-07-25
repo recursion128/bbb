@@ -245,6 +245,118 @@ def _extract_block_method_override_owners(
     return owners
 
 
+def _extract_block_interface_method_owners(
+    declarations: Sequence[dict],
+    block_class_sources: Sequence[JavaSource],
+    interface_fqcn: str,
+    method_name: str,
+    return_type_spelling: str,
+    parameter_types: tuple[str, ...],
+) -> dict[str, str | None]:
+    """Resolve the concrete/default owner of one block interface method."""
+
+    types = [item for source in block_class_sources for item in source.types]
+    resolve_class_hierarchy(types)
+    by_fqcn = {item.fqcn: item for item in types}
+    by_simple_name: dict[str, list] = {}
+    for item in types:
+        by_simple_name.setdefault(item.simple_name, []).append(item)
+    if interface_fqcn not in by_fqcn:
+        raise BlockRegistryCatalogExtractionError(
+            f"unresolved block interface {interface_fqcn}"
+        )
+    behavior_owners = {
+        method.owner
+        for source in block_class_sources
+        for method in source.methods
+        if _is_block_method(
+            source,
+            method,
+            method_name,
+            return_type_spelling,
+            parameter_types,
+        )
+    }
+
+    def class_chain(block_type):
+        chain = []
+        seen = set()
+        while block_type.fqcn not in seen:
+            seen.add(block_type.fqcn)
+            chain.append(block_type)
+            if (
+                block_type.superclass is None
+                or block_type.superclass not in by_fqcn
+            ):
+                return chain
+            block_type = by_fqcn[block_type.superclass]
+        raise BlockRegistryCatalogExtractionError(
+            f"superclass cycle while resolving {chain[0].simple_name}.{method_name}"
+        )
+
+    def reachable_interfaces(chain):
+        pending = [
+            interface
+            for block_type in chain
+            for interface in block_type.interfaces
+        ]
+        seen = set()
+        ordered = []
+        while pending:
+            interface = pending.pop(0)
+            if interface in seen:
+                continue
+            seen.add(interface)
+            interface_type = by_fqcn.get(interface)
+            if interface_type is None:
+                continue
+            ordered.append(interface_type)
+            pending.extend(interface_type.interfaces)
+        return ordered
+
+    owners: dict[str, str | None] = {}
+    for factory_class in sorted(
+        {block_factory_class(declaration) for declaration in declarations}
+    ):
+        matches = by_simple_name.get(factory_class, [])
+        if len(matches) != 1:
+            raise BlockRegistryCatalogExtractionError(
+                f"expected exactly one block class {factory_class}, got "
+                f"{len(matches)}"
+            )
+        chain = class_chain(matches[0])
+        interfaces = reachable_interfaces(chain)
+        if not any(interface.fqcn == interface_fqcn for interface in interfaces):
+            owners[factory_class] = None
+            continue
+        class_owner = next(
+            (
+                block_type
+                for block_type in chain
+                if block_type.fqcn in behavior_owners
+            ),
+            None,
+        )
+        if class_owner is not None:
+            owners[factory_class] = class_owner.simple_name
+            continue
+        interface_owner = next(
+            (
+                interface
+                for interface in interfaces
+                if interface.fqcn in behavior_owners
+            ),
+            None,
+        )
+        if interface_owner is None:
+            raise BlockRegistryCatalogExtractionError(
+                f"{matches[0].source_path}: {factory_class} implements "
+                f"{interface_fqcn} without resolving {method_name}"
+            )
+        owners[factory_class] = interface_owner.simple_name
+    return owners
+
+
 def extract_block_use_item_on_override_owners(
     declarations: Sequence[dict],
     block_class_sources: Sequence[JavaSource],
@@ -310,6 +422,38 @@ def extract_block_propagates_skylight_down_override_owners(
         "boolean",
         ("BlockState",),
         "net.minecraft.world.level.block.state.BlockBehaviour",
+    )
+
+
+def extract_block_bucket_pickup_owners(
+    declarations: Sequence[dict],
+    block_class_sources: Sequence[JavaSource],
+) -> dict[str, str | None]:
+    """Resolve the nearest ``BucketPickup.pickupBlock`` implementation."""
+
+    return _extract_block_interface_method_owners(
+        declarations,
+        block_class_sources,
+        "net.minecraft.world.level.block.BucketPickup",
+        "pickupBlock",
+        "ItemStack",
+        ("LivingEntity", "LevelAccessor", "BlockPos", "BlockState"),
+    )
+
+
+def extract_block_liquid_container_owners(
+    declarations: Sequence[dict],
+    block_class_sources: Sequence[JavaSource],
+) -> dict[str, str | None]:
+    """Resolve the nearest ``LiquidBlockContainer.canPlaceLiquid`` implementation."""
+
+    return _extract_block_interface_method_owners(
+        declarations,
+        block_class_sources,
+        "net.minecraft.world.level.block.LiquidBlockContainer",
+        "canPlaceLiquid",
+        "boolean",
+        ("LivingEntity", "BlockGetter", "BlockPos", "BlockState", "Fluid"),
     )
 
 

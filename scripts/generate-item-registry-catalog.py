@@ -12,6 +12,7 @@ from pathlib import Path
 
 from block_registry_catalog_extractor import extract_block_registry_catalog
 from item_registry_catalog_extractor import (
+    extract_bucket_item_behaviors,
     extract_item_interact_living_entity_override_owners,
     extract_item_registry_catalog,
     extract_tool_use_on_catalog,
@@ -256,6 +257,7 @@ def _render_types(
     use_on_override_owners: list[str | None],
     interact_living_entity_override_owners: list[str | None],
     equip_on_interact_owners: list[str | None],
+    bucket_behaviors: list[dict[str, str | None] | None],
     item_constants: dict[str, int],
     common_break_sound: str,
     break_sound_overrides: dict[str, str],
@@ -276,6 +278,8 @@ def _render_types(
             raise ValueError(
                 f"item {behavior}-override catalog length does not match item ids"
             )
+    if len(bucket_behaviors) != len(resources):
+        raise ValueError("bucket behavior catalog length does not match item ids")
     use_override_variants = sorted(
         {owner for owner in use_override_owners if owner is not None}
     )
@@ -340,6 +344,19 @@ def _render_types(
         "}",
         "",
         "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
+        "pub enum VanillaBucketFluid {",
+        "    Empty,",
+        "    Water,",
+        "    Lava,",
+        "}",
+        "",
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
+        "pub struct VanillaBucketItemBehavior {",
+        "    pub fluid: VanillaBucketFluid,",
+        "    pub mob_empty_sound_resource_id: Option<&'static str>,",
+        "}",
+        "",
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
         "pub struct ItemTypeCatalogEntry {",
         "    pub id: i32,",
         "    pub resource_id: &'static str,",
@@ -347,6 +364,7 @@ def _render_types(
         "    pub use_on_override: Option<VanillaItemUseOnOverride>,",
         "    pub interact_living_entity_override: Option<VanillaItemInteractLivingEntityOverride>,",
         "    pub equip_on_interact: Option<VanillaItemEquipOnInteract>,",
+        "    pub bucket_behavior: Option<VanillaBucketItemBehavior>,",
         "}",
         "",
         "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
@@ -412,6 +430,7 @@ def _render_types(
         use_on_override_owner,
         interact_living_entity_override_owner,
         equip_on_interact_owner,
+        bucket_behavior,
     ) in enumerate(
         zip(
             resources,
@@ -419,6 +438,7 @@ def _render_types(
             use_on_override_owners,
             interact_living_entity_override_owners,
             equip_on_interact_owners,
+            bucket_behaviors,
             strict=True,
         )
     ):
@@ -447,6 +467,19 @@ def _render_types(
                 f"Some(VanillaItemEquipOnInteract::{equip_on_interact_owner}),"
                 if equip_on_interact_owner is not None
                 else "        equip_on_interact: None,"
+            ),
+            (
+                "        bucket_behavior: Some(VanillaBucketItemBehavior { "
+                f"fluid: VanillaBucketFluid::{bucket_behavior['fluid'].title()}, "
+                "mob_empty_sound_resource_id: "
+                + (
+                    f"Some(\"{bucket_behavior['mob_empty_sound']}\")"
+                    if bucket_behavior["mob_empty_sound"] is not None
+                    else "None"
+                )
+                + " }),"
+                if bucket_behavior is not None
+                else "        bucket_behavior: None,"
             ),
             "    },",
         ))
@@ -489,6 +522,7 @@ def _render_types(
         f"        assert_eq!(VANILLA_ITEM_TYPES.iter().filter(|entry| entry.use_on_override.is_some()).count(), {use_on_override_count});",
         f"        assert_eq!(VANILLA_ITEM_TYPES.iter().filter(|entry| entry.interact_living_entity_override.is_some()).count(), {interact_living_entity_override_count});",
         f"        assert_eq!(VANILLA_ITEM_TYPES.iter().filter(|entry| entry.equip_on_interact.is_some()).count(), {equip_on_interact_count});",
+        f"        assert_eq!(VANILLA_ITEM_TYPES.iter().filter(|entry| entry.bucket_behavior.is_some()).count(), {sum(behavior is not None for behavior in bucket_behaviors)});",
         "        assert_eq!(vanilla_item_type(VANILLA_ITEM_STONE_ID).unwrap().use_override, None);",
         "        assert_eq!(vanilla_item_type(VANILLA_ITEM_STONE_ID).unwrap().use_on_override, Some(VanillaItemUseOnOverride::BlockItem));",
         "        assert_eq!(vanilla_item_type(VANILLA_ITEM_STONE_ID).unwrap().interact_living_entity_override, None);",
@@ -499,6 +533,11 @@ def _render_types(
         "        assert_eq!(vanilla_item_type(VANILLA_ITEM_CARROT_ON_A_STICK_ID).unwrap().use_override, Some(VanillaItemUseOverride::FoodOnAStickItem));",
         "        assert_eq!(vanilla_item_type(VANILLA_ITEM_SNOWBALL_ID).unwrap().use_override, Some(VanillaItemUseOverride::SnowballItem));",
         "        assert_eq!(vanilla_item_type(VANILLA_ITEM_WRITABLE_BOOK_ID).unwrap().use_override, Some(VanillaItemUseOverride::WritableBookItem));",
+        "        assert_eq!(vanilla_item_type(VANILLA_ITEM_BUCKET_ID).unwrap().bucket_behavior, Some(VanillaBucketItemBehavior { fluid: VanillaBucketFluid::Empty, mob_empty_sound_resource_id: None }));",
+        "        assert_eq!(vanilla_item_type(VANILLA_ITEM_WATER_BUCKET_ID).unwrap().bucket_behavior, Some(VanillaBucketItemBehavior { fluid: VanillaBucketFluid::Water, mob_empty_sound_resource_id: None }));",
+        "        assert_eq!(vanilla_item_type(VANILLA_ITEM_LAVA_BUCKET_ID).unwrap().bucket_behavior, Some(VanillaBucketItemBehavior { fluid: VanillaBucketFluid::Lava, mob_empty_sound_resource_id: None }));",
+        "        assert_eq!(vanilla_item_type(VANILLA_ITEM_COD_BUCKET_ID).unwrap().bucket_behavior, Some(VanillaBucketItemBehavior { fluid: VanillaBucketFluid::Water, mob_empty_sound_resource_id: Some(\"minecraft:item.bucket.empty_fish\") }));",
+        "        assert_eq!(vanilla_item_type(VANILLA_ITEM_MILK_BUCKET_ID).unwrap().bucket_behavior, None);",
         '        assert_eq!(vanilla_item_type_for_resource_id("snowball").unwrap().id, VANILLA_ITEM_SNOWBALL_ID);',
         '        assert_eq!(vanilla_item_type_for_resource_id("example:snowball"), None);',
         '        assert!(vanilla_item_resource_id_matches_type("minecraft:snowball", VANILLA_ITEM_SNOWBALL_ID));',
@@ -645,6 +684,7 @@ def generate(source_root: Path) -> tuple[str, str]:
     use_on_override_owners: list[str | None] = []
     interact_living_entity_override_owners: list[str | None] = []
     equip_on_interact_owners: list[str | None] = []
+    bucket_behaviors: list[dict[str, str | None] | None] = []
     item_class_sources = [
         parse_source(
             path.relative_to(source_root).as_posix(),
@@ -666,6 +706,11 @@ def generate(source_root: Path) -> tuple[str, str]:
             value["declarations"], item_class_sources
         )
     )
+    bucket_behavior_by_field = extract_bucket_item_behaviors(value["declarations"])
+    sound_resources = {
+        entry.constant_name: entry.resource_id
+        for entry in direct_sound_event_entries(sound_events)
+    }
     for declaration in value["declarations"]:
         declaration_resources = _resource_ids(
             declaration, value["item_id_constants"]
@@ -686,6 +731,17 @@ def generate(source_root: Path) -> tuple[str, str]:
         equip_on_interact_owners.extend(
             [_equip_on_interact_owner(declaration)] * resource_count
         )
+        bucket_behavior = bucket_behavior_by_field[declaration["field"]]
+        if bucket_behavior is not None:
+            bucket_behavior = dict(bucket_behavior)
+            empty_sound = bucket_behavior["mob_empty_sound"]
+            if empty_sound is not None:
+                if empty_sound not in sound_resources:
+                    raise ValueError(
+                        f"Items.{declaration['field']}: unknown sound {empty_sound}"
+                    )
+                bucket_behavior["mob_empty_sound"] = sound_resources[empty_sound]
+        bucket_behaviors.extend([bucket_behavior] * resource_count)
     common_break_sound, break_sound_overrides = _default_break_sounds(
         value["declarations"],
         value["item_id_constants"],
@@ -734,6 +790,7 @@ def generate(source_root: Path) -> tuple[str, str]:
         use_on_override_owners,
         interact_living_entity_override_owners,
         equip_on_interact_owners,
+        bucket_behaviors,
         extracted.item_constants,
         common_break_sound,
         break_sound_overrides,

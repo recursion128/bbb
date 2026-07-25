@@ -76,6 +76,68 @@ def item_factory_class(declaration: dict) -> str:
     return "BlockItem" if name == "registerBlock" else "Item"
 
 
+def _qualified_field(expression: dict, owner: str) -> str | None:
+    if expression.get("kind") != "field_access":
+        return None
+    object_expression = expression.get("object")
+    if object_expression is None or object_expression.get("canonical") != owner:
+        return None
+    name = expression.get("name")
+    return name if isinstance(name, str) and name else None
+
+
+def extract_bucket_item_behaviors(
+    declarations: Sequence[dict],
+) -> dict[str, dict[str, str | None] | None]:
+    """Extract exact ``BucketItem``/``MobBucketItem`` constructor arguments."""
+
+    behaviors: dict[str, dict[str, str | None] | None] = {}
+    for declaration in declarations:
+        factory_class = item_factory_class(declaration)
+        if factory_class not in {"BucketItem", "MobBucketItem"}:
+            behaviors[declaration["field"]] = None
+            continue
+        creations = [
+            fact
+            for fact in _walk_expression_facts(declaration["initializer"])
+            if fact.get("kind") == "object_creation_expression"
+            and fact.get("name") == factory_class
+        ]
+        if len(creations) != 1:
+            raise ItemRegistryCatalogExtractionError(
+                f"Items.{declaration['field']}: expected one {factory_class} constructor"
+            )
+        arguments = creations[0].get("arguments", [])
+        expected_count = 4 if factory_class == "MobBucketItem" else 2
+        if len(arguments) != expected_count:
+            raise ItemRegistryCatalogExtractionError(
+                f"Items.{declaration['field']}: {factory_class} has "
+                f"{len(arguments)} constructor arguments"
+            )
+        fluid_argument = arguments[1] if factory_class == "MobBucketItem" else arguments[0]
+        fluid = _qualified_field(fluid_argument, "Fluids")
+        if fluid not in {"EMPTY", "WATER", "LAVA"}:
+            raise ItemRegistryCatalogExtractionError(
+                f"Items.{declaration['field']}: unsupported bucket fluid {fluid!r}"
+            )
+        empty_sound = None
+        if factory_class == "MobBucketItem":
+            if fluid != "WATER":
+                raise ItemRegistryCatalogExtractionError(
+                    f"Items.{declaration['field']}: mob bucket fluid must be WATER"
+                )
+            empty_sound = _qualified_field(arguments[2], "SoundEvents")
+            if empty_sound is None:
+                raise ItemRegistryCatalogExtractionError(
+                    f"Items.{declaration['field']}: mob bucket lacks SoundEvents constant"
+                )
+        behaviors[declaration["field"]] = {
+            "fluid": fluid,
+            "mob_empty_sound": empty_sound,
+        }
+    return behaviors
+
+
 def _is_item_behavior_method(
     source: JavaSource,
     method,
