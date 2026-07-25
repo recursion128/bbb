@@ -490,6 +490,8 @@ pub(crate) struct ItemRuntimeWorldDefaults {
     crafting_remainders: BTreeMap<i32, i32>,
     recipe_specific_crafting_remainders: BTreeSet<i32>,
     equipment_slots: BTreeMap<i32, ItemEquipmentSlot>,
+    swappable_equipment_item_ids: BTreeSet<i32>,
+    player_swappable_equipment_item_ids: BTreeSet<i32>,
     shearable_equipment_item_ids: BTreeSet<i32>,
     armor_materials: BTreeMap<i32, ArmorMaterialKind>,
     wings_equipment_assets: BTreeMap<i32, String>,
@@ -562,6 +564,10 @@ impl ItemRuntimeWorldDefaults {
             recipe_specific_crafting_remainders: items
                 .recipe_specific_crafting_remainder_item_ids_by_protocol_id(),
             equipment_slots: items.item_equipment_slots_by_protocol_id(),
+            swappable_equipment_item_ids: items
+                .default_swappable_equipment_item_ids_by_protocol_id(),
+            player_swappable_equipment_item_ids: items
+                .default_player_swappable_equipment_item_ids_by_protocol_id(),
             shearable_equipment_item_ids: items
                 .default_shearable_equipment_item_ids_by_protocol_id(),
             armor_materials: items.item_armor_materials_by_protocol_id(),
@@ -614,6 +620,10 @@ impl ItemRuntimeWorldDefaults {
             self.recipe_specific_crafting_remainders,
         );
         world.set_default_item_equipment_slots(self.equipment_slots);
+        world.set_default_swappable_equipment_item_ids(self.swappable_equipment_item_ids);
+        world.set_default_player_swappable_equipment_item_ids(
+            self.player_swappable_equipment_item_ids,
+        );
         world.set_default_shearable_equipment_item_ids(self.shearable_equipment_item_ids);
         world.set_item_armor_materials(self.armor_materials);
         world.set_default_item_wings_equipment_assets(self.wings_equipment_assets);
@@ -730,12 +740,25 @@ mod tests {
         let chorus_fruit_id = items.item_protocol_id("minecraft:chorus_fruit").unwrap();
         let tipped_arrow_id = items.item_protocol_id("minecraft:tipped_arrow").unwrap();
         let saddle_id = items.item_protocol_id("minecraft:saddle").unwrap();
+        let shield_id = items.item_protocol_id("minecraft:shield").unwrap();
+        let elytra_id = items.item_protocol_id("minecraft:elytra").unwrap();
         let defaults = ItemRuntimeWorldDefaults::from_runtime(&items);
 
         assert_eq!(defaults.default_component_type_ids.len(), 1506);
         assert_eq!(defaults.default_dye_color_ids.len(), 16);
         assert_eq!(defaults.default_potion_duration_scale_bits.len(), 2);
         assert_eq!(defaults.food_properties.len(), 44);
+        assert_eq!(defaults.swappable_equipment_item_ids.len(), 75);
+        assert_eq!(defaults.player_swappable_equipment_item_ids.len(), 30);
+        assert!(defaults.swappable_equipment_item_ids.contains(&saddle_id));
+        assert!(defaults.swappable_equipment_item_ids.contains(&elytra_id));
+        assert!(!defaults.swappable_equipment_item_ids.contains(&shield_id));
+        assert!(defaults
+            .player_swappable_equipment_item_ids
+            .contains(&elytra_id));
+        assert!(!defaults
+            .player_swappable_equipment_item_ids
+            .contains(&saddle_id));
         assert_eq!(defaults.shearable_equipment_item_ids.len(), 45);
         assert!(defaults.shearable_equipment_item_ids.contains(&saddle_id));
         assert_eq!(
@@ -801,6 +824,52 @@ mod tests {
         assert!(world.item_stack_has_effective_component(
             &tipped_arrow,
             VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID
+        ));
+        world.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
+            slot: 0,
+            item: ItemStackSummary {
+                item_id: Some(elytra_id),
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            },
+        });
+        assert!(matches!(
+            world.predict_local_item_use(bbb_protocol::packets::InteractionHand::MainHand),
+            bbb_world::LocalItemUsePrediction::Result(bbb_world::LocalInteractionResult::Success(
+                bbb_world::LocalInteractionSuccess {
+                    starts_using_item: false,
+                    ..
+                }
+            ))
+        ));
+        world.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
+            slot: 0,
+            item: ItemStackSummary {
+                item_id: Some(saddle_id),
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            },
+        });
+        assert_eq!(
+            world.predict_local_item_use(bbb_protocol::packets::InteractionHand::MainHand),
+            bbb_world::LocalItemUsePrediction::Result(bbb_world::LocalInteractionResult::Pass)
+        );
+        world.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
+            slot: 0,
+            item: ItemStackSummary {
+                item_id: Some(shield_id),
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            },
+        });
+        assert!(matches!(
+            world.predict_local_item_use(bbb_protocol::packets::InteractionHand::MainHand),
+            bbb_world::LocalItemUsePrediction::Result(bbb_world::LocalInteractionResult::Success(
+                bbb_world::LocalInteractionSuccess {
+                    starts_using_item: true,
+                    ..
+                }
+            ))
         ));
         let apple = ItemStackSummary {
             item_id: Some(apple_id),

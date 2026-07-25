@@ -50,6 +50,7 @@ use bbb_protocol::{
 };
 
 mod bone_meal;
+mod equippable;
 mod ignition;
 mod instrument;
 mod potion;
@@ -261,6 +262,20 @@ impl LocalInteractionSuccess {
             sound_action: Some(LocalInteractionSoundAction::InstrumentUse { hand }),
         }
     }
+
+    const fn equippable_swap(dropped: bool) -> Self {
+        Self {
+            swing_source: LocalInteractionSwingSource::Client,
+            was_item_interaction: true,
+            starts_using_item: false,
+            extra_swing: if dropped {
+                Some(InteractionHand::MainHand)
+            } else {
+                None
+            },
+            sound_action: None,
+        }
+    }
 }
 
 impl WorldStore {
@@ -303,15 +318,8 @@ impl WorldStore {
             ));
         }
 
-        // `Equippable.swapWithEquipmentSlot` depends on the target equipment
-        // slot, enchantments, allowed entity set, and local inventory mutation.
-        // Preserve that uncertainty until its prediction owner is implemented.
-        if self
-            .item_stack_has_effective_component(&stack, VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID)
-        {
-            return LocalItemUsePrediction::MissingComponentValue(
-                VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
-            );
+        if let Some(prediction) = self.predict_local_swappable_equippable_use(hand, &stack) {
+            return prediction;
         }
 
         if self.item_stack_has_effective_component(
@@ -2341,6 +2349,7 @@ mod tests {
                 VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
             ]),
         )]));
+        world.set_default_swappable_equipment_item_ids(BTreeSet::from([VANILLA_ITEM_STONE_ID]));
         assert_eq!(
             world.predict_local_item_use(InteractionHand::MainHand),
             LocalItemUsePrediction::MissingComponentValue(

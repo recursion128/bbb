@@ -503,3 +503,7 @@
 - **2026-07-23（乐器 use 预测工程关闭）**：`InstrumentItem.use` 现解析命名与
   直接 `INSTRUMENT` 持有者，按动态 duration/range 启动吹奏姿态、物品/组件冷却，
   并以本地玩家实体播放 `records` 声源而不误用 Vanilla bootstrap holder 顺序。
+- **2026-07-23（Equippable 无目标交换预测工程关闭）**：
+  `Equippable.swapWithEquipmentSlot` 现按源码派生 75 个可交换原型及 30 个玩家
+  可装备原型，覆盖 holder/tag、绑定诅咒、单件/堆叠、创造/无限材料与满背包挥手，
+  并贯通资源重载、world 库存突变和 native 主副手停机顺序。

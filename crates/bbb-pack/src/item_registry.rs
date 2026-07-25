@@ -105,6 +105,14 @@ pub struct ItemRegistryCatalog {
     #[serde(default)]
     default_equipment_slots: BTreeMap<String, ItemEquipmentSlot>,
     /// Items whose source-derived prototype `Equippable` component has
+    /// `swappable=true`.
+    #[serde(default)]
+    default_swappable_equipment_items: BTreeSet<String>,
+    /// Swappable prototype `Equippable` items whose allowed-entity holder set
+    /// accepts the player entity type.
+    #[serde(default)]
+    default_player_swappable_equipment_items: BTreeSet<String>,
+    /// Items whose source-derived prototype `Equippable` component has
     /// `canBeSheared=true`.
     #[serde(default)]
     default_shearable_equipment_items: BTreeSet<String>,
@@ -361,6 +369,8 @@ impl ItemRegistryCatalog {
             .collect::<BTreeMap<_, _>>();
         let mut spawn_egg_items = BTreeSet::new();
         let mut default_equipment_slots = BTreeMap::new();
+        let mut default_swappable_equipment_items = BTreeSet::new();
+        let mut default_player_swappable_equipment_items = BTreeSet::new();
         let mut default_shearable_equipment_items = BTreeSet::new();
         let mut humanoid_armor_assets = BTreeMap::new();
         let mut equippable_assets = BTreeMap::new();
@@ -422,6 +432,11 @@ impl ItemRegistryCatalog {
                 max_stack_size_for_declaration(expression).with_context(source_context)?;
             let equipment_slot =
                 equipment_slot_for_declaration(expression).with_context(source_context)?;
+            let swappable_equipment = equipment_slot.is_some()
+                && swappable_equipment_for_declaration(expression).with_context(source_context)?;
+            let player_swappable_equipment = swappable_equipment
+                && player_can_equip_default_equipment_for_declaration(expression)
+                    .with_context(source_context)?;
             let shearable_equipment =
                 shearable_equipment_for_declaration(expression).with_context(source_context)?;
             let humanoid_armor_asset =
@@ -496,6 +511,12 @@ impl ItemRegistryCatalog {
                 }
                 if let Some(equipment_slot) = equipment_slot {
                     default_equipment_slots.insert(resource_id.clone(), equipment_slot);
+                    if swappable_equipment {
+                        default_swappable_equipment_items.insert(resource_id.clone());
+                    }
+                    if player_swappable_equipment {
+                        default_player_swappable_equipment_items.insert(resource_id.clone());
+                    }
                 }
                 if shearable_equipment {
                     default_shearable_equipment_items.insert(resource_id.clone());
@@ -651,6 +672,8 @@ impl ItemRegistryCatalog {
             primary_block_resource_ids,
             spawn_egg_items,
             default_equipment_slots,
+            default_swappable_equipment_items,
+            default_player_swappable_equipment_items,
             default_shearable_equipment_items,
             humanoid_armor_assets,
             equippable_assets,
@@ -820,6 +843,20 @@ impl ItemRegistryCatalog {
 
     pub fn default_shearable_equipment_protocol_ids(&self) -> BTreeSet<i32> {
         self.default_shearable_equipment_items
+            .iter()
+            .filter_map(|resource_id| self.protocol_ids.get(resource_id).copied())
+            .collect()
+    }
+
+    pub fn default_swappable_equipment_protocol_ids(&self) -> BTreeSet<i32> {
+        self.default_swappable_equipment_items
+            .iter()
+            .filter_map(|resource_id| self.protocol_ids.get(resource_id).copied())
+            .collect()
+    }
+
+    pub fn default_player_swappable_equipment_protocol_ids(&self) -> BTreeSet<i32> {
+        self.default_player_swappable_equipment_items
             .iter()
             .filter_map(|resource_id| self.protocol_ids.get(resource_id).copied())
             .collect()
@@ -1565,6 +1602,7 @@ fn equipment_slot_for_declaration(
         || expression.call("nautilusArmor").is_some()
         || expression.call("wolfArmor").is_some()
         || qualified_call(expression, "llamaSwag", "Equippable").is_some()
+        || qualified_call(expression, "harness", "Equippable").is_some()
     {
         return Ok(Some(ItemEquipmentSlot::Body));
     }
@@ -1580,6 +1618,33 @@ fn equipment_slot_for_declaration(
     }
 
     Ok(None)
+}
+
+fn swappable_equipment_for_declaration(expression: &GeneratedJavaExpression) -> Result<bool> {
+    if expression.call("equippableUnswappable").is_some() {
+        return Ok(false);
+    }
+    let Some(call) = expression.call("setSwappable") else {
+        return Ok(true);
+    };
+    if call.arguments.len() != 1 {
+        bail!("setSwappable must have one boolean argument");
+    }
+    parse_java_bool_literal(&call.arguments[0].canonical)
+}
+
+fn player_can_equip_default_equipment_for_declaration(
+    expression: &GeneratedJavaExpression,
+) -> Result<bool> {
+    if expression.call("setAllowedEntities").is_some() {
+        bail!("direct Equippable.setAllowedEntities requires an explicit player membership rule");
+    }
+    Ok(!(expression.call("wolfArmor").is_some()
+        || expression.call("horseArmor").is_some()
+        || expression.call("nautilusArmor").is_some()
+        || ["llamaSwag", "saddle", "harness"]
+            .into_iter()
+            .any(|name| qualified_call(expression, name, "Equippable").is_some())))
 }
 
 fn shearable_equipment_for_declaration(expression: &GeneratedJavaExpression) -> Result<bool> {
@@ -2900,7 +2965,38 @@ mod tests {
             catalog.equipment_slot("minecraft:shield"),
             Some(ItemEquipmentSlot::OffHand)
         );
+        assert_eq!(
+            catalog.equipment_slot("minecraft:red_harness"),
+            Some(ItemEquipmentSlot::Body)
+        );
         assert_eq!(catalog.equipment_slot("minecraft:stone"), None);
+        let swappable_equipment = catalog.default_swappable_equipment_protocol_ids();
+        let player_swappable_equipment = catalog.default_player_swappable_equipment_protocol_ids();
+        assert_eq!(swappable_equipment.len(), 75);
+        assert_eq!(player_swappable_equipment.len(), 30);
+        for resource_id in [
+            "minecraft:diamond_chestplate",
+            "minecraft:elytra",
+            "minecraft:saddle",
+            "minecraft:white_carpet",
+        ] {
+            assert!(swappable_equipment.contains(&catalog.protocol_id(resource_id).unwrap()));
+        }
+        for resource_id in ["minecraft:diamond_chestplate", "minecraft:elytra"] {
+            assert!(player_swappable_equipment.contains(&catalog.protocol_id(resource_id).unwrap()));
+        }
+        for resource_id in ["minecraft:saddle", "minecraft:white_carpet"] {
+            assert!(
+                !player_swappable_equipment.contains(&catalog.protocol_id(resource_id).unwrap())
+            );
+        }
+        for resource_id in [
+            "minecraft:carved_pumpkin",
+            "minecraft:player_head",
+            "minecraft:shield",
+        ] {
+            assert!(!swappable_equipment.contains(&catalog.protocol_id(resource_id).unwrap()));
+        }
         let shearable_equipment = catalog.default_shearable_equipment_protocol_ids();
         assert_eq!(shearable_equipment.len(), 45);
         for resource_id in [

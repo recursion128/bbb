@@ -1308,6 +1308,83 @@ impl InventoryState {
         true
     }
 
+    pub(crate) fn local_player_equipment_item(
+        &self,
+        ctx: InventoryCtx<'_>,
+        equipment_slot: EquipmentSlot,
+    ) -> Option<ProtocolItemStackSummary> {
+        let slot_id = local_player_equipment_inventory_slot(ctx, equipment_slot)?;
+        Some(self.player_inventory_slot(slot_id).item)
+    }
+
+    /// Applies the client-side inventory mutation in
+    /// `Equippable.swapWithEquipmentSlot`.
+    ///
+    /// The returned flag is true only when a stacked survival swap cannot add
+    /// the displaced equipment to the inventory and vanilla calls
+    /// `Player.drop`, which contributes an extra main-hand swing client-side.
+    pub(crate) fn swap_local_item_with_equipment_slot(
+        &mut self,
+        ctx: InventoryCtx<'_>,
+        counters: &mut WorldCounters,
+        hand: InteractionHand,
+        equipment_slot: EquipmentSlot,
+        creative_mode: bool,
+    ) -> Option<bool> {
+        let hand_slot_id = match hand {
+            InteractionHand::MainHand => {
+                let selected_slot = ctx.local_player.selected_hotbar_slot;
+                (selected_slot <= 8).then_some(i32::from(selected_slot))?
+            }
+            InteractionHand::OffHand => VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+        };
+        let equipment_slot_id = local_player_equipment_inventory_slot(ctx, equipment_slot)?;
+        if hand_slot_id == equipment_slot_id {
+            return None;
+        }
+
+        let mut hand_slot = self.player_inventory_slot(hand_slot_id);
+        if item_stack_is_empty(&hand_slot.item) {
+            return None;
+        }
+        let mut target_slot = self.player_inventory_slot(equipment_slot_id);
+        let displaced = target_slot.item.clone();
+
+        if hand_slot.item.count <= 1 {
+            target_slot.item = hand_slot.item.clone();
+            hand_slot.item = if creative_mode && item_stack_is_empty(&displaced) {
+                hand_slot.item
+            } else {
+                displaced
+            };
+            normalize_item_stack(&mut hand_slot.item);
+            self.set_player_inventory_slot_and_menu_slot(hand_slot);
+            self.set_player_inventory_slot_and_menu_slot(target_slot);
+            self.update_inventory_slot_count(counters);
+            return Some(false);
+        }
+
+        target_slot.item = hand_slot.item.clone();
+        target_slot.item.count = 1;
+        self.set_player_inventory_slot_and_menu_slot(target_slot);
+
+        let instabuild = ctx
+            .local_player
+            .abilities
+            .is_some_and(|abilities| abilities.instabuild);
+        if !instabuild {
+            hand_slot.item.count -= 1;
+            normalize_item_stack(&mut hand_slot.item);
+            self.set_player_inventory_slot_and_menu_slot(hand_slot);
+        }
+
+        let added = item_stack_is_empty(&displaced)
+            || self.add_local_item_to_player_inventory(ctx, displaced)
+            || instabuild;
+        self.update_inventory_slot_count(counters);
+        Some(!added)
+    }
+
     /// Applies the client-side inventory work in `CompassItem.useOn`.
     ///
     /// The returned flag is true only for the survival/full-inventory branch
@@ -1439,14 +1516,17 @@ impl InventoryState {
         Some(!added)
     }
 
-    /// Mirrors the one-stack `Inventory.add` search order used by filled-item
-    /// results: selected slot, offhand, all non-equipment slots, then the first
-    /// empty non-equipment slot.
+    /// Mirrors `Inventory.add` search order: selected slot, offhand, compatible
+    /// non-equipment slots, then empty non-equipment slots. Returns true only
+    /// when the complete input stack was inserted.
     fn add_local_item_to_player_inventory(
         &mut self,
         ctx: InventoryCtx<'_>,
-        item: ProtocolItemStackSummary,
+        mut item: ProtocolItemStackSummary,
     ) -> bool {
+        if item_stack_is_empty(&item) {
+            return false;
+        }
         let selected_slot = i32::from(ctx.local_player.selected_hotbar_slot.min(8));
         for slot_id in [selected_slot, VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT]
             .into_iter()
@@ -1458,24 +1538,36 @@ impl InventoryState {
             }
             let max_stack_size =
                 item_stack_max_stack_size(&slot.item, &ctx.items.default_item_max_stack_sizes);
-            if slot.item.count >= max_stack_size {
+            let moved = item.count.min(max_stack_size - slot.item.count);
+            if moved <= 0 {
                 continue;
             }
-            slot.item.count += item.count;
+            slot.item.count += moved;
+            item.count -= moved;
             self.set_player_inventory_slot_and_menu_slot(slot);
-            return true;
+            if item.count == 0 {
+                return true;
+            }
         }
         for slot_id in 0..36 {
             let slot = self.player_inventory_slot(slot_id);
             if !item_stack_is_empty(&slot.item) {
                 continue;
             }
+            let mut inserted = item.clone();
+            inserted.count = item.count.min(item_stack_max_stack_size(
+                &item,
+                &ctx.items.default_item_max_stack_sizes,
+            ));
+            item.count -= inserted.count;
             self.set_player_inventory_slot_and_menu_slot(InventorySlot {
                 slot: slot_id,
-                item,
+                item: inserted,
                 local_selected_bundle_item_index: NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX,
             });
-            return true;
+            if item.count == 0 {
+                return true;
+            }
         }
         false
     }
@@ -2359,6 +2451,20 @@ impl InventoryState {
     }
 }
 
+fn local_player_equipment_inventory_slot(
+    ctx: InventoryCtx<'_>,
+    equipment_slot: EquipmentSlot,
+) -> Option<i32> {
+    if equipment_slot == EquipmentSlot::MainHand {
+        let selected_slot = ctx.local_player.selected_hotbar_slot;
+        return (selected_slot <= 8).then_some(i32::from(selected_slot));
+    }
+    VANILLA_EQUIPMENT_SLOTS
+        .iter()
+        .find(|entry| entry.slot == equipment_slot)?
+        .player_inventory_slot
+}
+
 /// Read-only cross-domain state borrowed from the `WorldStore` facade for a
 /// single inventory call. Built field-by-field at the delegation site so the
 /// shared borrows split cleanly against `&mut InventoryState`.
@@ -2707,6 +2813,29 @@ impl WorldStore {
         )
     }
 
+    pub(crate) fn local_player_equipment_item(
+        &self,
+        equipment_slot: EquipmentSlot,
+    ) -> Option<ProtocolItemStackSummary> {
+        self.inventory
+            .local_player_equipment_item(inventory_ctx!(self), equipment_slot)
+    }
+
+    pub(crate) fn swap_local_item_with_equipment_slot(
+        &mut self,
+        hand: InteractionHand,
+        equipment_slot: EquipmentSlot,
+    ) -> Option<bool> {
+        let creative_mode = self.local_player_is_creative();
+        self.inventory.swap_local_item_with_equipment_slot(
+            inventory_ctx!(self),
+            &mut self.counters,
+            hand,
+            equipment_slot,
+            creative_mode,
+        )
+    }
+
     pub(crate) fn lock_local_compass_to_lodestone(
         &mut self,
         hand: InteractionHand,
@@ -2969,6 +3098,16 @@ impl WorldStore {
         equipment_slots: BTreeMap<i32, ItemEquipmentSlot>,
     ) {
         self.items.set_default_item_equipment_slots(equipment_slots)
+    }
+
+    pub fn set_default_swappable_equipment_item_ids(&mut self, item_ids: BTreeSet<i32>) {
+        self.items
+            .set_default_swappable_equipment_item_ids(item_ids)
+    }
+
+    pub fn set_default_player_swappable_equipment_item_ids(&mut self, item_ids: BTreeSet<i32>) {
+        self.items
+            .set_default_player_swappable_equipment_item_ids(item_ids)
     }
 
     pub fn set_default_shearable_equipment_item_ids(&mut self, item_ids: BTreeSet<i32>) {

@@ -666,9 +666,8 @@ Commands:
   from local vanilla classes. Entity, block, and inventory corrections remain
   server-authoritative.
 - Complete no-target `Item.use` prediction for the source-derived specialized
-  override families and swappable `Equippable` behavior. Override ownership must
-  stay generated from local vanilla item classes instead of being inferred from
-  component shape.
+  override families. Override ownership must stay generated from local vanilla
+  item classes instead of being inferred from component shape.
 
 Inventory:
 

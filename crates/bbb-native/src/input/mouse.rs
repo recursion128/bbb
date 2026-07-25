@@ -961,29 +961,34 @@ mod tests {
     use bbb_protocol::data_component_types::{
         VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID, VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID,
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID, VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
+        VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
         VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID,
         VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID, VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
     };
-    use bbb_protocol::equipment_slots::VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT;
+    use bbb_protocol::equipment_slots::{
+        VANILLA_EQUIPMENT_SLOT_CHEST_ID, VANILLA_PLAYER_INVENTORY_CHEST_SLOT,
+        VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+    };
     use bbb_protocol::item_types::{
         VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_BONE_MEAL_ID, VANILLA_ITEM_BRUSH_ID,
         VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID, VANILLA_ITEM_COMPASS_ID,
         VANILLA_ITEM_FIREWORK_ROCKET_ID, VANILLA_ITEM_FIRE_CHARGE_ID,
         VANILLA_ITEM_FLINT_AND_STEEL_ID, VANILLA_ITEM_GLASS_BOTTLE_ID, VANILLA_ITEM_GOAT_HORN_ID,
-        VANILLA_ITEM_POTION_ID, VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_STONE_ID,
+        VANILLA_ITEM_POTION_ID, VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_SHIELD_ID,
+        VANILLA_ITEM_STONE_ID,
     };
     use bbb_protocol::packets::{
         AddEntity, AdventureModePredicateDataSummary, AdventureModePredicateSummary, AttackEntity,
         AttackRangeSummary, BlockEntityData, BlockHitResult as ProtocolBlockHitResult,
         BlockHolderSetSummary, BlockPos as ProtocolBlockPos, BlockPredicateSummary, BlockUpdate,
         CommonPlayerSpawnInfo, ConsumableSummary, EntityEvent as ProtocolEntityEvent,
-        GameEvent as ProtocolGameEvent, InitializeBorder, InstrumentSummary, InteractEntity,
-        ItemStackSummary as ProtocolItemStackSummary, LodestoneTargetSummary, OpenSignEditor,
-        PickItemFromBlock, PickItemFromEntity, PlayLogin, PlayerAbilities, PlayerAction,
-        PlayerHealth, RegistryTags, RemoveEntities, SetPassengers,
-        SetPlayerInventory as ProtocolSetPlayerInventory, TagNetworkPayload, ToolSummary,
-        UpdateTags, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
+        EquippableSummary, GameEvent as ProtocolGameEvent, InitializeBorder, InstrumentSummary,
+        InteractEntity, ItemStackSummary as ProtocolItemStackSummary, LodestoneTargetSummary,
+        OpenSignEditor, PickItemFromBlock, PickItemFromEntity, PlayLogin, PlayerAbilities,
+        PlayerAction, PlayerHealth, RegistryTags, RemoveEntities, SetPassengers,
+        SetPlayerInventory as ProtocolSetPlayerInventory, SoundEventSummary, TagNetworkPayload,
+        ToolSummary, UpdateTags, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
     };
     use bbb_world::{
         BlockEntityRecord, BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState,
@@ -1388,6 +1393,127 @@ mod tests {
         assert_eq!(sound.seed, expected_seed);
         assert_eq!(*position, Some([1.25, 64.0, -3.5]));
         assert_eq!(world.last_sound_entity(), Some(sound));
+    }
+
+    #[test]
+    fn right_mouse_equippable_swap_mutates_inventory_and_stops_before_offhand() {
+        let (tx, mut rx) = mpsc::channel(3);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        world.set_local_player_pose(LocalPlayerPoseState {
+            y_rot: 45.0,
+            x_rot: -20.0,
+            ..LocalPlayerPoseState::default()
+        });
+        let sound = || SoundEventSummary {
+            registry_id: Some(0),
+            sound_id: None,
+            fixed_range_bits: None,
+        };
+        let mut held = item_stack(VANILLA_ITEM_STONE_ID, 2);
+        held.component_patch.added = 1;
+        held.component_patch.added_type_ids = vec![VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID];
+        held.component_patch.equippable = Some(EquippableSummary {
+            slot_id: VANILLA_EQUIPMENT_SLOT_CHEST_ID,
+            equip_sound: sound(),
+            asset_id: None,
+            camera_overlay: None,
+            allowed_entities: None,
+            dispensable: true,
+            swappable: true,
+            damage_on_hurt: true,
+            equip_on_interact: false,
+            can_be_sheared: false,
+            shearing_sound: sound(),
+        });
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: held,
+        });
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: VANILLA_PLAYER_INVENTORY_CHEST_SLOT,
+            item: item_stack(VANILLA_ITEM_SHIELD_ID, 1),
+        });
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+            item: item_stack(VANILLA_ITEM_SHIELD_ID, 1),
+        });
+        world.set_default_item_max_stack_sizes(BTreeMap::from([(VANILLA_ITEM_SHIELD_ID, 1)]));
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+        );
+
+        assert_eq!(counters.use_item_commands_queued, 1);
+        assert_eq!(counters.swing_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::UseItem(UseItemCommand {
+                packet: UseItem {
+                    hand: InteractionHand::MainHand,
+                    sequence: 1,
+                    y_rot: 45.0,
+                    x_rot: -20.0,
+                },
+                selected_hotbar_slot: 0,
+            })
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
+        assert!(rx.try_recv().is_err());
+        assert_eq!(
+            world
+                .inventory()
+                .player_slots
+                .iter()
+                .find(|slot| slot.slot == 0)
+                .unwrap()
+                .item
+                .count,
+            1
+        );
+        assert_eq!(
+            world
+                .inventory()
+                .player_slots
+                .iter()
+                .find(|slot| slot.slot == 1)
+                .unwrap()
+                .item
+                .item_id,
+            Some(VANILLA_ITEM_SHIELD_ID)
+        );
+        assert_eq!(
+            world
+                .inventory()
+                .player_slots
+                .iter()
+                .find(|slot| slot.slot == VANILLA_PLAYER_INVENTORY_CHEST_SLOT)
+                .unwrap()
+                .item
+                .item_id,
+            Some(VANILLA_ITEM_STONE_ID)
+        );
+        assert_eq!(
+            world
+                .inventory()
+                .player_slots
+                .iter()
+                .find(|slot| slot.slot == VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT)
+                .unwrap()
+                .item
+                .item_id,
+            Some(VANILLA_ITEM_SHIELD_ID)
+        );
     }
 
     #[test]

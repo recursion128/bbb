@@ -61,6 +61,13 @@ pub struct ItemProfiles {
     pub(crate) recipe_specific_crafting_remainder_item_ids: PublicationShared<BTreeSet<i32>>,
     #[serde(default)]
     pub(crate) default_item_equipment_slots: PublicationShared<BTreeMap<i32, ItemEquipmentSlot>>,
+    /// Source-derived prototype `Equippable.swappable` membership.
+    #[serde(default)]
+    pub(crate) default_swappable_equipment_item_ids: PublicationShared<BTreeSet<i32>>,
+    /// Swappable prototype `Equippable` items whose allowed-entity set accepts
+    /// the player entity type.
+    #[serde(default)]
+    pub(crate) default_player_swappable_equipment_item_ids: PublicationShared<BTreeSet<i32>>,
     /// Item protocol ids whose source-derived prototype `Equippable` component has
     /// `can_be_sheared=true`.
     #[serde(default)]
@@ -548,6 +555,17 @@ impl ItemProfiles {
         equipment_slots: BTreeMap<i32, ItemEquipmentSlot>,
     ) {
         self.default_item_equipment_slots = filter_item_id_keys(equipment_slots).into();
+    }
+
+    pub(crate) fn set_default_swappable_equipment_item_ids(&mut self, item_ids: BTreeSet<i32>) {
+        self.default_swappable_equipment_item_ids = filter_item_ids(item_ids).into();
+    }
+
+    pub(crate) fn set_default_player_swappable_equipment_item_ids(
+        &mut self,
+        item_ids: BTreeSet<i32>,
+    ) {
+        self.default_player_swappable_equipment_item_ids = filter_item_ids(item_ids).into();
     }
 
     pub(crate) fn set_default_shearable_equipment_item_ids(&mut self, item_ids: BTreeSet<i32>) {
