@@ -667,8 +667,7 @@ Commands:
   server-authoritative.
 - Complete no-target `Item.use` prediction for the remaining source-derived
   specialized override families: Boat/Bottle/Bucket,
-  EmptyMap/EnderEye/FoodOnAStick,
-  PlaceOnWaterBlock/SpawnEgg/Trident.
+  EnderEye/FoodOnAStick, PlaceOnWaterBlock/SpawnEgg/Trident.
   Override ownership must stay generated from local vanilla item classes instead
   of being inferred from component shape.
 

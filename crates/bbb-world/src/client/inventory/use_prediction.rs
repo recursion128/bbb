@@ -53,6 +53,7 @@ mod bone_meal;
 mod book;
 mod bundle;
 mod crossbow;
+mod empty_map;
 mod equippable;
 mod firework_rocket;
 mod fishing_rod;
@@ -370,6 +371,7 @@ impl WorldStore {
                 VanillaItemUseOverride::CrossbowItem => {
                     self.predict_local_crossbow_item_use(&stack)
                 }
+                VanillaItemUseOverride::EmptyMapItem => self.predict_local_empty_map_item_use(),
                 VanillaItemUseOverride::FireworkRocketItem => {
                     self.predict_local_firework_rocket_item_use()
                 }
