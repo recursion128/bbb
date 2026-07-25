@@ -6,7 +6,7 @@
 //! representation. Components whose exact persistent codec is not represented
 //! here deliberately keep the enclosing click server-authoritative.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use bbb_protocol::{
     attribute_modifier_types::{
@@ -107,8 +107,9 @@ use bbb_protocol::{
         ItemEnchantmentSummary, ItemStackSummary, ItemStackTemplateSummary,
         KineticWeaponConditionSummary, MobEffectDetailsSummary, MobEffectInstanceSummary,
         NbtSummaryEntry, NbtSummaryValue, PartialDataComponentPredicateSummary,
-        PersistentItemPredicateSummary, PlayerModelTypeSummary, ResolvableProfileKindSummary,
-        ResolvableProfileSummary, SoundEventSummary, StatePropertyValueMatcherSummary,
+        PersistentDataComponentValueSummary, PersistentItemPredicateSummary,
+        PlayerModelTypeSummary, ResolvableProfileKindSummary, ResolvableProfileSummary,
+        SoundEventSummary, StatePropertyValueMatcherSummary,
     },
     tropical_fish_patterns::vanilla_tropical_fish_pattern,
 };
@@ -1734,10 +1735,6 @@ fn hash_persistent_item_predicate(
     ctx: InventoryCtx<'_>,
     predicate: &PersistentItemPredicateSummary,
 ) -> Option<Hash32> {
-    if !predicate.exact_components.is_empty() {
-        return None;
-    }
-
     let mut fields = Vec::new();
     if let Some(items) = &predicate.items {
         fields.push((
@@ -1766,6 +1763,25 @@ fn hash_persistent_item_predicate(
         };
         fields.push(("count", count));
     }
+    if !predicate.exact_components.is_empty() {
+        let mut seen = BTreeSet::new();
+        let components = predicate
+            .exact_components
+            .iter()
+            .map(|component| {
+                if !seen.insert(component.component_type_id) {
+                    return None;
+                }
+                Some((
+                    hash_string(vanilla_data_component_resource_id_for_type_id(
+                        component.component_type_id,
+                    )?),
+                    hash_persistent_data_component_value(ctx, component)?,
+                ))
+            })
+            .collect::<Option<Vec<_>>>()?;
+        fields.push(("components", hash_map(components)));
+    }
     if !predicate.partial_components.is_empty() {
         fields.push((
             "predicates",
@@ -1773,6 +1789,19 @@ fn hash_persistent_item_predicate(
         ));
     }
     Some(hash_record(fields))
+}
+
+fn hash_persistent_data_component_value(
+    ctx: InventoryCtx<'_>,
+    component: &PersistentDataComponentValueSummary,
+) -> Option<Hash32> {
+    let patch = crate::client::dialog::decode_persistent_data_component_patch_entry(
+        component.component_type_id,
+        &component.value,
+        ctx.registries,
+    )
+    .ok()??;
+    hash_component_value(ctx, &patch, component.component_type_id)
 }
 
 fn hash_attribute_modifiers(
@@ -3949,24 +3978,22 @@ mod tests {
             None
         );
 
-        let exact_lock = DataComponentPatchSummary {
+        let invalid_exact_lock = DataComponentPatchSummary {
             added: 1,
             added_type_ids: vec![VANILLA_DATA_COMPONENT_LOCK_TYPE_ID],
             lock_predicate: Some(PersistentItemPredicateSummary {
                 count_min: Some(2),
                 count_max: Some(2),
-                exact_components: vec![
-                    bbb_protocol::packets::PersistentDataComponentValueSummary {
-                        component_type_id: VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
-                        value: NbtSummaryValue::Int(16),
-                    },
-                ],
+                exact_components: vec![PersistentDataComponentValueSummary {
+                    component_type_id: VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+                    value: NbtSummaryValue::Int(0),
+                }],
                 ..PersistentItemPredicateSummary::default()
             }),
             ..DataComponentPatchSummary::default()
         };
         assert_eq!(
-            hashed_component_patch_from_summary(test_ctx(&store), &exact_lock),
+            hashed_component_patch_from_summary(test_ctx(&store), &invalid_exact_lock),
             None
         );
         assert_eq!(
@@ -3993,6 +4020,115 @@ mod tests {
                 }],
             ),
             None
+        );
+    }
+
+    #[test]
+    fn hashes_typed_exact_item_predicate_component_codecs() {
+        let entry = |name: &str, value| NbtSummaryEntry {
+            name: name.to_string(),
+            value,
+        };
+        let store = crate::WorldStore::new();
+        let predicate = PersistentItemPredicateSummary {
+            count_min: Some(2),
+            count_max: Some(2),
+            exact_components: vec![
+                PersistentDataComponentValueSummary {
+                    component_type_id: VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+                    value: NbtSummaryValue::Int(16),
+                },
+                PersistentDataComponentValueSummary {
+                    component_type_id: VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
+                    value: NbtSummaryValue::Byte(1),
+                },
+                PersistentDataComponentValueSummary {
+                    component_type_id: VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID,
+                    value: NbtSummaryValue::Compound(Vec::new()),
+                },
+            ],
+            ..PersistentItemPredicateSummary::default()
+        };
+
+        let predicate_hash = hash_record(vec![
+            ("count", hash_int(2)),
+            (
+                "components",
+                hash_map(vec![
+                    (hash_string("minecraft:max_stack_size"), hash_int(16)),
+                    (
+                        hash_string("minecraft:enchantment_glint_override"),
+                        hash_boolean(true),
+                    ),
+                    (
+                        hash_string("minecraft:use_effects"),
+                        hash_record(Vec::new()),
+                    ),
+                ]),
+            ),
+        ]);
+        assert_eq!(
+            hash_persistent_item_predicate(test_ctx(&store), &predicate),
+            Some(predicate_hash)
+        );
+        assert_eq!(
+            hashed_component_patch_from_summary(
+                test_ctx(&store),
+                &DataComponentPatchSummary {
+                    added: 1,
+                    added_type_ids: vec![VANILLA_DATA_COMPONENT_LOCK_TYPE_ID],
+                    lock_predicate: Some(predicate.clone()),
+                    ..DataComponentPatchSummary::default()
+                },
+            ),
+            Some(HashedComponentPatch {
+                added_components: BTreeMap::from([(
+                    VANILLA_DATA_COMPONENT_LOCK_TYPE_ID,
+                    predicate_hash.0 as i32,
+                )]),
+                removed_components: BTreeSet::new(),
+            })
+        );
+        let mut duplicate = predicate.clone();
+        duplicate
+            .exact_components
+            .push(PersistentDataComponentValueSummary {
+                component_type_id: VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+                value: NbtSummaryValue::Int(32),
+            });
+        assert_eq!(
+            hash_persistent_item_predicate(test_ctx(&store), &duplicate),
+            None
+        );
+
+        let nested_lock_value = NbtSummaryValue::Compound(vec![entry(
+            "components",
+            NbtSummaryValue::Compound(vec![entry(
+                "minecraft:max_stack_size",
+                NbtSummaryValue::Int(8),
+            )]),
+        )]);
+        let nested = PersistentItemPredicateSummary {
+            exact_components: vec![PersistentDataComponentValueSummary {
+                component_type_id: VANILLA_DATA_COMPONENT_LOCK_TYPE_ID,
+                value: nested_lock_value,
+            }],
+            ..PersistentItemPredicateSummary::default()
+        };
+        assert_eq!(
+            hash_persistent_item_predicate(test_ctx(&store), &nested),
+            Some(hash_record(vec![(
+                "components",
+                hash_map(vec![(
+                    hash_string("minecraft:lock"),
+                    hash_record(vec![(
+                        "components",
+                        hash_map(vec![
+                            (hash_string("minecraft:max_stack_size"), hash_int(8),)
+                        ]),
+                    )]),
+                )]),
+            )]))
         );
     }
 

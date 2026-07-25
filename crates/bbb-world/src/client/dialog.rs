@@ -17,8 +17,8 @@ pub(in crate::client::dialog) use canonical_json::canonical_component_json_utf16
 
 pub use action::{DialogActionState, DialogCommandTemplateState};
 pub(crate) use body::{
-    validate_command_item_component, validate_command_item_predicate_value,
-    validate_command_item_stack_template,
+    decode_persistent_data_component_patch_entry, validate_command_item_component,
+    validate_command_item_predicate_value, validate_command_item_stack_template,
 };
 pub use body::{
     DialogBodyState, DialogDataComponentPatchEntryState, DialogDataComponentPatchState,

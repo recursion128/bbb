@@ -4,18 +4,21 @@ use bbb_protocol::data_component_types::{
 };
 #[cfg(test)]
 use bbb_protocol::item_component_value_types::ItemRaritySummary;
-use bbb_protocol::packets::{DataComponentPatchSummary, ItemStackSummary};
+use bbb_protocol::packets::{
+    validate_data_component_patch_summary, DataComponentPatchSummary, ItemStackSummary,
+};
 #[cfg(test)]
 use bbb_protocol::tropical_fish_patterns::VANILLA_TROPICAL_FISH_PATTERN_FLOPPER_PACKED_ID;
 use bbb_protocol::{
-    data_component_types::vanilla_data_component_type_for_resource_id,
-    item_types::vanilla_item_type_for_resource_id, NbtSummaryEntry, NbtSummaryValue,
+    data_component_types::{
+        vanilla_data_component_type, vanilla_data_component_type_for_resource_id,
+    },
+    item_types::vanilla_item_type_for_resource_id,
+    NbtSummaryEntry, NbtSummaryValue,
 };
 use serde::{Deserialize, Serialize};
 
-#[cfg(test)]
-use crate::RegistrySet;
-use crate::{registries::normalize_codec_identifier, FrozenRegistryAccess};
+use crate::{registries::normalize_codec_identifier, FrozenRegistryAccess, RegistrySet};
 
 use super::{
     compound_entries, decode_component, find_entry, optional_bool, optional_i32, required_entry,
@@ -76,6 +79,39 @@ pub(crate) fn validate_command_item_stack_template(
         DialogDecodeContext::with_registry_access(Some(registry_access), 0),
     )
     .map(|_| ())
+}
+
+pub(crate) fn decode_persistent_data_component_patch_entry(
+    type_id: i32,
+    value: &NbtSummaryValue,
+    registries: &RegistrySet,
+) -> Result<Option<DataComponentPatchSummary>, String> {
+    let component_type = vanilla_data_component_type(type_id)
+        .ok_or_else(|| format!("unknown persistent data component type id {type_id}"))?;
+    if !component_type.persistent {
+        return Err(format!(
+            "data component {} is not persistent",
+            component_type.resource_id
+        ));
+    }
+    let Some(decoded) = decode_supported_component_value_with_context(
+        type_id,
+        component_type.resource_id,
+        value,
+        DialogDecodeContext::new(Some(registries), 0),
+    )?
+    else {
+        return Ok(None);
+    };
+
+    let mut patch = DataComponentPatchSummary::default();
+    if !apply_item_patch_entry_value(type_id, &decoded, Some(value), &mut patch) {
+        return Ok(None);
+    }
+    patch.added = 1;
+    patch.added_type_ids.push(type_id);
+    validate_data_component_patch_summary(&patch).map_err(|error| error.to_string())?;
+    Ok(Some(patch))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
