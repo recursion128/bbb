@@ -30766,7 +30766,7 @@ mod generated_catalog_guards {
         assert!(body.contains("VanillaEntityEventKind::PlayerFinishUsingItem"));
         assert!(body.contains("VanillaEntityEventKind::PlayerEnableReducedDebug"));
         assert!(body.contains("VanillaEntityEventKind::PlayerDisableReducedDebug"));
-        assert!(body.contains("take_local_using_item"));
+        assert!(body.contains("finish_local_using_item"));
         assert!(body.contains("set_local_player_reduced_debug_info_from_entity_event"));
         assert!(!body.contains("VANILLA_ENTITY_TYPE_PLAYER_ID"));
     }
