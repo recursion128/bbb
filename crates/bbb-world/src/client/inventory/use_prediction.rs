@@ -19,9 +19,12 @@ use bbb_protocol::{
         VanillaBlockUseWithoutItemOverride,
     },
     data_component_types::{
-        VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
-        VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
+        VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID, VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
+        VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
     },
+    entity_types::VANILLA_ENTITY_TYPE_WOLF_ID,
+    equipment_slots::VANILLA_EQUIPMENT_SLOTS,
     item_types::{
         VanillaItemInteractLivingEntityOverride, VanillaItemUseOnOverride, VanillaItemUseOverride,
         VANILLA_ITEM_GOLDEN_DANDELION_ID, VANILLA_ITEM_IRON_INGOT_ID, VANILLA_ITEM_LEAD_ID,
@@ -283,8 +286,8 @@ impl WorldStore {
 
     /// Predicts `Player.interactOn` across source-derived behavior paths whose client result is
     /// known, applying the local entity state changes that Vanilla performs while computing that
-    /// result. Specialized `Entity.interact` owners, leash/shears behavior, and specialized item
-    /// interactions stay explicit until their local state transitions are implemented.
+    /// result. The shared `Entity` leash/shears path is canonical here; unimplemented specialized
+    /// entity and item interaction owners remain explicit.
     pub fn predict_local_entity_interaction(
         &mut self,
         entity_id: i32,
@@ -318,9 +321,19 @@ impl WorldStore {
                 secondary_use_active,
             )
         } else if owner == VANILLA_DEFAULT_ENTITY_INTERACT_OWNER {
-            self.predict_local_base_entity_interact(entity_id, entity_type_id, held_item_id)
+            self.predict_local_base_entity_interact(
+                entity_id,
+                entity_type_id,
+                held_item_id,
+                secondary_use_active,
+            )
         } else if owner == VANILLA_ARMOR_STAND_INTERACT_OWNER {
-            self.predict_local_armor_stand_interact(entity_id, entity_type_id, held_item_id)
+            self.predict_local_armor_stand_interact(
+                entity_id,
+                entity_type_id,
+                held_item_id,
+                secondary_use_active,
+            )
         } else if owner == VANILLA_INTERACTION_ENTITY_INTERACT_OWNER {
             self.predict_local_interaction_entity_interact(entity_id, entity_type_id)
         } else if owner == VANILLA_ITEM_FRAME_INTERACT_OWNER {
@@ -366,10 +379,11 @@ impl WorldStore {
     }
 
     fn predict_local_armor_stand_interact(
-        &self,
+        &mut self,
         entity_id: i32,
         entity_type_id: i32,
         held_item_id: Option<i32>,
+        secondary_use_active: bool,
     ) -> LocalTargetUsePrediction {
         let Some(accessors) =
             vanilla_entity_metadata_armor_stand_accessors_for_entity_type(entity_type_id)
@@ -398,7 +412,12 @@ impl WorldStore {
                 == Some(VanillaItemInteractLivingEntityOverride::NameTagItem)
         });
         if marker || held_is_name_tag {
-            self.predict_local_base_entity_interact(entity_id, entity_type_id, held_item_id)
+            self.predict_local_base_entity_interact(
+                entity_id,
+                entity_type_id,
+                held_item_id,
+                secondary_use_active,
+            )
         } else {
             LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
                 LocalInteractionSuccess::server_item_interaction(),
@@ -482,7 +501,7 @@ impl WorldStore {
     }
 
     fn predict_local_boat_interact(
-        &self,
+        &mut self,
         owner: &'static str,
         entity_id: i32,
         entity_type_id: i32,
@@ -495,8 +514,12 @@ impl WorldStore {
         ) {
             return None;
         }
-        let base_result =
-            self.predict_local_base_entity_interact(entity_id, entity_type_id, held_item_id);
+        let base_result = self.predict_local_base_entity_interact(
+            entity_id,
+            entity_type_id,
+            held_item_id,
+            secondary_use_active,
+        );
         if base_result != LocalTargetUsePrediction::Result(LocalInteractionResult::Pass) {
             return Some(base_result);
         }
@@ -563,8 +586,12 @@ impl WorldStore {
             }
         }
 
-        let base_result =
-            self.predict_local_base_entity_interact(entity_id, entity_type_id, held_item_id);
+        let base_result = self.predict_local_base_entity_interact(
+            entity_id,
+            entity_type_id,
+            held_item_id,
+            secondary_use_active,
+        );
         if base_result != LocalTargetUsePrediction::Result(LocalInteractionResult::Pass) {
             return base_result;
         }
@@ -923,16 +950,89 @@ impl WorldStore {
     }
 
     fn predict_local_base_entity_interact(
+        &mut self,
+        entity_id: i32,
+        entity_type_id: i32,
+        held_item_id: Option<i32>,
+        secondary_use_active: bool,
+    ) -> LocalTargetUsePrediction {
+        if held_item_id == Some(VANILLA_ITEM_SHEARS_ID) {
+            let dropped_leashes = self.entities.drop_local_leash_connections(entity_id);
+            match dropped_leashes {
+                Some(true) => {
+                    return LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                        LocalInteractionSuccess::client_item_interaction(),
+                    ));
+                }
+                None => {
+                    return LocalTargetUsePrediction::UnsupportedEntityInteract(
+                        VANILLA_DEFAULT_ENTITY_INTERACT_OWNER,
+                    );
+                }
+                Some(false) => {}
+            }
+            if vanilla_entity_metadata_mob_interact_owner(entity_type_id).is_some()
+                && !secondary_use_active
+            {
+                let Some(can_shear_equipment) =
+                    self.local_mob_can_shear_equipment(entity_id, entity_type_id)
+                else {
+                    return LocalTargetUsePrediction::UnsupportedEntityInteract(
+                        VANILLA_DEFAULT_ENTITY_INTERACT_OWNER,
+                    );
+                };
+                if !can_shear_equipment {
+                    return self.predict_local_base_leash_interact(
+                        entity_id,
+                        entity_type_id,
+                        held_item_id,
+                    );
+                }
+                for slot in VANILLA_EQUIPMENT_SLOTS.iter().map(|entry| entry.slot) {
+                    let Some(item) = self.entities.equipment_item(entity_id, slot) else {
+                        continue;
+                    };
+                    let Some(can_be_sheared) = self.effective_equipment_can_be_sheared(&item)
+                    else {
+                        return LocalTargetUsePrediction::UnsupportedEntityInteract(
+                            VANILLA_DEFAULT_ENTITY_INTERACT_OWNER,
+                        );
+                    };
+                    if !can_be_sheared {
+                        continue;
+                    }
+                    if !self.local_player_is_creative() {
+                        let Some(prevents_armor_change) =
+                            self.equipment_prevents_armor_change(&item)
+                        else {
+                            return LocalTargetUsePrediction::UnsupportedEntityInteract(
+                                VANILLA_DEFAULT_ENTITY_INTERACT_OWNER,
+                            );
+                        };
+                        if prevents_armor_change {
+                            continue;
+                        }
+                    }
+                    if !self.entities.clear_local_equipment_item(entity_id, slot) {
+                        return LocalTargetUsePrediction::UnsupportedEntityInteract(
+                            VANILLA_DEFAULT_ENTITY_INTERACT_OWNER,
+                        );
+                    }
+                    return LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                        LocalInteractionSuccess::client_item_interaction(),
+                    ));
+                }
+            }
+        }
+        self.predict_local_base_leash_interact(entity_id, entity_type_id, held_item_id)
+    }
+
+    fn predict_local_base_leash_interact(
         &self,
         entity_id: i32,
         entity_type_id: i32,
         held_item_id: Option<i32>,
     ) -> LocalTargetUsePrediction {
-        if held_item_id == Some(VANILLA_ITEM_SHEARS_ID) {
-            return LocalTargetUsePrediction::UnsupportedEntityInteract(
-                VANILLA_DEFAULT_ENTITY_INTERACT_OWNER,
-            );
-        }
         if !vanilla_entity_metadata_type_is_leashable(entity_type_id) {
             return LocalTargetUsePrediction::Result(LocalInteractionResult::Pass);
         }
@@ -954,6 +1054,68 @@ impl WorldStore {
             );
         }
         LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+    }
+
+    fn effective_equipment_can_be_sheared(&self, item: &ProtocolItemStackSummary) -> Option<bool> {
+        let patch = &item.component_patch;
+        if patch
+            .removed_type_ids
+            .contains(&VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID)
+        {
+            return Some(false);
+        }
+        if patch
+            .added_type_ids
+            .contains(&VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID)
+        {
+            return patch
+                .equippable
+                .as_ref()
+                .map(|equippable| equippable.can_be_sheared);
+        }
+        Some(item.item_id.is_some_and(|item_id| {
+            self.items
+                .default_shearable_equipment_item_ids
+                .contains(&item_id)
+        }))
+    }
+
+    fn local_mob_can_shear_equipment(&self, entity_id: i32, entity_type_id: i32) -> Option<bool> {
+        if entity_type_id != VANILLA_ENTITY_TYPE_WOLF_ID {
+            return Some(!self.entities.entity_has_passengers(entity_id));
+        }
+        let accessors =
+            vanilla_entity_metadata_tamable_animal_accessors_for_entity_type(entity_type_id)?;
+        let owner = self
+            .entities
+            .metadata_optional_living_entity_reference_for_entity(
+                entity_id,
+                accessors.owner_data_id,
+                accessors.owner_default,
+            )?;
+        match owner {
+            None => Some(false),
+            Some(owner) => self
+                .local_player_profile_id()
+                .map(|local_player| local_player == owner),
+        }
+    }
+
+    fn equipment_prevents_armor_change(&self, item: &ProtocolItemStackSummary) -> Option<bool> {
+        let patch = &item.component_patch;
+        if patch
+            .removed_type_ids
+            .contains(&VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID)
+            || patch.enchantments.is_empty()
+        {
+            return Some(false);
+        }
+        for enchantment in &patch.enchantments {
+            if self.enchantment_prevents_armor_change(enchantment.holder_id)? {
+                return Some(true);
+            }
+        }
+        Some(false)
     }
 
     fn effective_item_consumable<'a>(
@@ -1002,11 +1164,13 @@ mod tests {
             VANILLA_BLOCK_CAKE_ID, VANILLA_BLOCK_CHEST_ID, VANILLA_BLOCK_STONE_ID,
         },
         data_component_types::{
+            VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID, VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
             VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
         },
         entity_data_serializers::{
             VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID, VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
             VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID, VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+            VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_LIVING_ENTITY_REFERENCE_ID,
         },
         entity_types::{
             VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
@@ -1021,16 +1185,20 @@ mod tests {
             VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
             VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
         },
+        equipment_slots::EquipmentSlot,
         item_types::{
             VanillaItemInteractLivingEntityOverride, VanillaItemUseOnOverride,
             VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID, VANILLA_ITEM_CHORUS_FRUIT_ID,
             VANILLA_ITEM_LEAD_ID, VANILLA_ITEM_NAME_TAG_ID, VANILLA_ITEM_RED_DYE_ID,
-            VANILLA_ITEM_SHEARS_ID, VANILLA_ITEM_SNOWBALL_ID, VANILLA_ITEM_STONE_ID,
+            VANILLA_ITEM_SADDLE_ID, VANILLA_ITEM_SHEARS_ID, VANILLA_ITEM_SNOWBALL_ID,
+            VANILLA_ITEM_STONE_ID,
         },
         packets::{
             AddEntity, Cooldown, DataComponentPatchSummary, EntityDataValue, EntityDataValueKind,
-            EntityEvent, ItemStackSummary, PlayerHealth, RegistryTags, SetEntityData,
-            SetEntityLink, SetPassengers, SetPlayerInventory, TagNetworkPayload, UpdateTags, Vec3d,
+            EntityEvent, EquipmentSlotUpdate, EquippableSummary, ItemEnchantmentSummary,
+            ItemStackSummary, PlayerHealth, RegistryData, RegistryDataEntry, RegistryTags,
+            SetEntityData, SetEntityLink, SetEquipment, SetPassengers, SetPlayerInventory,
+            SoundEventSummary, TagNetworkPayload, UpdateTags, Vec3d,
         },
     };
     use std::collections::{BTreeMap, BTreeSet};
@@ -1052,16 +1220,58 @@ mod tests {
     }
 
     fn add_entity(world: &mut WorldStore, id: i32, entity_type_id: i32) {
+        add_entity_at(world, id, entity_type_id, Vec3d::default());
+    }
+
+    fn add_entity_at(world: &mut WorldStore, id: i32, entity_type_id: i32, position: Vec3d) {
         world.apply_add_entity(AddEntity {
             id,
             uuid: Uuid::from_u128(id as u128),
             entity_type_id,
-            position: Vec3d::default(),
+            position,
             delta_movement: Vec3d::default(),
             x_rot: 0.0,
             y_rot: 0.0,
             y_head_rot: 0.0,
             data: 0,
+        });
+    }
+
+    fn equippable(can_be_sheared: bool) -> EquippableSummary {
+        let sound = || SoundEventSummary {
+            registry_id: Some(0),
+            sound_id: None,
+            fixed_range_bits: None,
+        };
+        EquippableSummary {
+            slot_id: 0,
+            equip_sound: sound(),
+            asset_id: None,
+            camera_overlay: None,
+            allowed_entities: None,
+            dispensable: true,
+            swappable: true,
+            damage_on_hurt: true,
+            equip_on_interact: false,
+            can_be_sheared,
+            shearing_sound: sound(),
+        }
+    }
+
+    fn install_test_enchantment_registry(world: &mut WorldStore) {
+        world.record_registry_data(RegistryData {
+            registry: "minecraft:enchantment".to_string(),
+            entries: vec![
+                RegistryDataEntry {
+                    id: "minecraft:binding_curse".to_string(),
+                    raw_data: None,
+                },
+                RegistryDataEntry {
+                    id: "minecraft:sharpness".to_string(),
+                    raw_data: None,
+                },
+            ],
+            raw_payload_len: 0,
         });
     }
 
@@ -1256,9 +1466,7 @@ mod tests {
         set_main_hand(&mut world, VANILLA_ITEM_SHEARS_ID);
         assert_eq!(
             world.predict_local_entity_interaction(1, InteractionHand::MainHand, false),
-            LocalTargetUsePrediction::UnsupportedEntityInteract(
-                VANILLA_DEFAULT_ENTITY_INTERACT_OWNER
-            )
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
         );
         set_main_hand(&mut world, VANILLA_ITEM_RED_DYE_ID);
         assert_eq!(
@@ -1267,6 +1475,237 @@ mod tests {
                 VanillaItemInteractLivingEntityOverride::DyeItem
             )
         );
+    }
+
+    #[test]
+    fn shears_clear_local_leash_connections_inside_vanilla_search_box() {
+        let mut world = WorldStore::new();
+        add_entity(&mut world, 100, VANILLA_ENTITY_TYPE_COW_ID);
+        add_entity_at(
+            &mut world,
+            101,
+            VANILLA_ENTITY_TYPE_COW_ID,
+            Vec3d {
+                x: 15.0,
+                y: 0.0,
+                z: 0.0,
+            },
+        );
+        add_entity_at(
+            &mut world,
+            102,
+            VANILLA_ENTITY_TYPE_COW_ID,
+            Vec3d {
+                x: 17.0,
+                y: 0.0,
+                z: 0.0,
+            },
+        );
+        for (source_id, dest_id) in [(100, 999), (101, 100), (102, 100)] {
+            assert!(world.apply_set_entity_link(SetEntityLink { source_id, dest_id }));
+        }
+        set_main_hand(&mut world, VANILLA_ITEM_SHEARS_ID);
+
+        assert_eq!(
+            world.predict_local_entity_interaction(100, InteractionHand::MainHand, true),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction()
+            ))
+        );
+        assert_eq!(world.entities.leash_holder_id(100), None);
+        assert_eq!(world.entities.leash_holder_id(101), None);
+        assert_eq!(world.entities.leash_holder_id(102), Some(100));
+    }
+
+    #[test]
+    fn shears_clear_first_eligible_mob_equipment_in_vanilla_slot_order() {
+        let mut world = WorldStore::new();
+        add_entity(&mut world, 110, VANILLA_ENTITY_TYPE_COW_ID);
+        install_test_enchantment_registry(&mut world);
+        world.set_default_shearable_equipment_item_ids(BTreeSet::from([VANILLA_ITEM_SADDLE_ID]));
+        let binding_curse = world
+            .registry_holder_id_by_resource_id("minecraft:enchantment", "minecraft:binding_curse")
+            .unwrap();
+        let patched_item = |can_be_sheared, enchantments| ItemStackSummary {
+            item_id: Some(VANILLA_ITEM_STONE_ID),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added_type_ids: vec![
+                    VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
+                    VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
+                ],
+                equippable: Some(equippable(can_be_sheared)),
+                enchantments,
+                ..DataComponentPatchSummary::default()
+            },
+        };
+        let removed_default = ItemStackSummary {
+            component_patch: DataComponentPatchSummary {
+                removed_type_ids: vec![VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID],
+                ..DataComponentPatchSummary::default()
+            },
+            ..stack(VANILLA_ITEM_SADDLE_ID)
+        };
+        assert!(world.apply_set_equipment(SetEquipment {
+            entity_id: 110,
+            slots: vec![
+                EquipmentSlotUpdate {
+                    slot: EquipmentSlot::MainHand,
+                    item: removed_default,
+                },
+                EquipmentSlotUpdate {
+                    slot: EquipmentSlot::OffHand,
+                    item: patched_item(false, Vec::new()),
+                },
+                EquipmentSlotUpdate {
+                    slot: EquipmentSlot::Feet,
+                    item: patched_item(
+                        true,
+                        vec![ItemEnchantmentSummary {
+                            holder_id: binding_curse,
+                            level: 1,
+                        }],
+                    ),
+                },
+                EquipmentSlotUpdate {
+                    slot: EquipmentSlot::Legs,
+                    item: stack(VANILLA_ITEM_SADDLE_ID),
+                },
+            ],
+        }));
+        set_main_hand(&mut world, VANILLA_ITEM_SHEARS_ID);
+
+        assert_eq!(
+            world.predict_local_entity_interaction(110, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction()
+            ))
+        );
+        assert!(world.equipment_item(110, EquipmentSlot::MainHand).is_some());
+        assert!(world.equipment_item(110, EquipmentSlot::OffHand).is_some());
+        assert!(world.equipment_item(110, EquipmentSlot::Feet).is_some());
+        assert!(world.equipment_item(110, EquipmentSlot::Legs).is_none());
+    }
+
+    #[test]
+    fn shearing_mob_equipment_honors_vehicle_secondary_and_creative_guards() {
+        let mut world = WorldStore::new();
+        install_test_enchantment_registry(&mut world);
+        for id in [120, 121, 122] {
+            add_entity(&mut world, id, VANILLA_ENTITY_TYPE_ZOMBIE_ID);
+            assert!(world.apply_set_equipment(SetEquipment {
+                entity_id: id,
+                slots: vec![EquipmentSlotUpdate {
+                    slot: EquipmentSlot::Body,
+                    item: stack(VANILLA_ITEM_SADDLE_ID),
+                }],
+            }));
+        }
+        add_entity(&mut world, 123, VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID);
+        world.set_default_shearable_equipment_item_ids(BTreeSet::from([VANILLA_ITEM_SADDLE_ID]));
+        set_main_hand(&mut world, VANILLA_ITEM_SHEARS_ID);
+        assert!(world.apply_set_passengers(SetPassengers {
+            vehicle_id: 120,
+            passenger_ids: vec![123],
+        }));
+
+        for (entity_id, secondary_use_active) in [(120, false), (121, true)] {
+            assert_eq!(
+                world.predict_local_entity_interaction(
+                    entity_id,
+                    InteractionHand::MainHand,
+                    secondary_use_active,
+                ),
+                LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+            );
+            assert!(world
+                .equipment_item(entity_id, EquipmentSlot::Body)
+                .is_some());
+        }
+
+        let binding_curse = world
+            .registry_holder_id_by_resource_id("minecraft:enchantment", "minecraft:binding_curse")
+            .unwrap();
+        assert!(world.apply_set_equipment(SetEquipment {
+            entity_id: 122,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::Body,
+                item: ItemStackSummary {
+                    component_patch: DataComponentPatchSummary {
+                        added_type_ids: vec![VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID],
+                        enchantments: vec![ItemEnchantmentSummary {
+                            holder_id: binding_curse,
+                            level: 1,
+                        }],
+                        ..DataComponentPatchSummary::default()
+                    },
+                    ..stack(VANILLA_ITEM_SADDLE_ID)
+                },
+            }],
+        }));
+        assert_eq!(
+            world.predict_local_entity_interaction(122, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+        world.apply_game_event(bbb_protocol::packets::GameEvent {
+            event_id: bbb_protocol::game_event_types::VANILLA_CLIENT_GAME_EVENT_CHANGE_GAME_MODE_ID,
+            param: bbb_protocol::game_types::VANILLA_GAME_TYPE_CREATIVE_ID as f32,
+        });
+        assert_eq!(
+            world.predict_local_entity_interaction(122, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction()
+            ))
+        );
+        assert!(world.equipment_item(122, EquipmentSlot::Body).is_none());
+    }
+
+    #[test]
+    fn wolf_equipment_shearing_requires_the_synced_owner() {
+        let mut world = WorldStore::new();
+        add_entity(&mut world, 130, VANILLA_ENTITY_TYPE_WOLF_ID);
+        add_entity(&mut world, 131, VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID);
+        world.set_default_shearable_equipment_item_ids(BTreeSet::from([VANILLA_ITEM_SADDLE_ID]));
+        assert!(world.apply_set_equipment(SetEquipment {
+            entity_id: 130,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::Body,
+                item: stack(VANILLA_ITEM_SADDLE_ID),
+            }],
+        }));
+        assert!(world.apply_set_passengers(SetPassengers {
+            vehicle_id: 130,
+            passenger_ids: vec![131],
+        }));
+        set_main_hand(&mut world, VANILLA_ITEM_SHEARS_ID);
+
+        assert!(matches!(
+            world.predict_local_entity_interaction(130, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::UnsupportedEntityInteract(_)
+        ));
+        assert!(world.equipment_item(130, EquipmentSlot::Body).is_some());
+
+        let local_player = Uuid::from_u128(0xabc);
+        world.set_local_player_profile_id(local_player);
+        let accessors = vanilla_entity_metadata_tamable_animal_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_WOLF_ID,
+        )
+        .unwrap();
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 130,
+            values: vec![EntityDataValue {
+                data_id: accessors.owner_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_LIVING_ENTITY_REFERENCE_ID,
+                value: EntityDataValueKind::OptionalLivingEntityReference(Some(local_player)),
+            }],
+        }));
+        assert_eq!(
+            world.predict_local_entity_interaction(130, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction()
+            ))
+        );
+        assert!(world.equipment_item(130, EquipmentSlot::Body).is_none());
     }
 
     #[test]

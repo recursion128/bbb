@@ -479,3 +479,6 @@
 - **2026-07-23（Item component coverage milestone 关闭）**：`LOCK` 现由
   protocol-owned persistent ItemPredicate Codec 驱动 typed NBT、creative
   framing 与 SNBT；110 个 26.1 ItemStack component 六维账本全部闭环。
+- **2026-07-23（共享实体剪刀交互工程关闭）**：`Entity` 的拴绳连接与 Mob
+  装备剪除现按 32×32×32 邻域、八槽顺序、动态 `PREVENT_ARMOR_CHANGE`、创造/载具/
+  潜行条件执行本地 canonical 预测；默认可剪装备由 `Items.java` 派生并随资源重载发布。

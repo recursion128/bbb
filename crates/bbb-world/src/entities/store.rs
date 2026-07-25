@@ -87,8 +87,8 @@ use super::schema::{
     vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type,
     vanilla_entity_metadata_tamable_animal_accessors_for_entity_type,
     vanilla_entity_metadata_type_collidability_kind, vanilla_entity_metadata_type_is_camel,
-    vanilla_entity_metadata_type_is_guardian, vanilla_entity_metadata_type_is_slime,
-    vanilla_entity_metadata_type_pushability_kind,
+    vanilla_entity_metadata_type_is_guardian, vanilla_entity_metadata_type_is_leashable,
+    vanilla_entity_metadata_type_is_slime, vanilla_entity_metadata_type_pushability_kind,
     vanilla_entity_metadata_type_uses_player_entity_event_handler,
     vanilla_entity_metadata_vex_flags_accessor_for_entity_type,
     vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type,
@@ -1841,6 +1841,27 @@ impl EntityStore {
         default: bool,
     ) -> Option<bool> {
         self.metadata_bool(id, data_id, default)
+    }
+
+    pub(crate) fn metadata_optional_living_entity_reference_for_entity(
+        &self,
+        id: i32,
+        data_id: u8,
+        default: Option<Uuid>,
+    ) -> Option<Option<Uuid>> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        Some(
+            metadata
+                .data_values
+                .iter()
+                .find(|value| value.data_id == data_id)
+                .and_then(|value| match &value.value {
+                    EntityDataValueKind::OptionalLivingEntityReference(value) => Some(*value),
+                    _ => None,
+                })
+                .unwrap_or(default),
+        )
     }
 
     pub(crate) fn metadata_registry_reference_for_entity(
@@ -5027,6 +5048,73 @@ impl EntityStore {
         self.ecs.get::<&EntityLeash>(entity).ok()?.holder_id
     }
 
+    /// Applies the client-side state mutation from vanilla 26.1
+    /// `Entity.dropAllLeashConnections`: clear this leashable entity's own
+    /// connection and every leashable entity connected to it within the
+    /// 32×32×32 `Leashable.leashableInArea` search box.
+    pub(crate) fn drop_local_leash_connections(&mut self, id: i32) -> Option<bool> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        let transform = self.ecs.get::<&EntityTransform>(entity).ok()?;
+        let bounds = self.debug_hitbox_bounds(id)?;
+        let search_center = [
+            transform.position.x + f64::from((bounds.min[0] + bounds.max[0]) / 2.0),
+            transform.position.y + f64::from((bounds.min[1] + bounds.max[1]) / 2.0),
+            transform.position.z + f64::from((bounds.min[2] + bounds.max[2]) / 2.0),
+        ];
+        drop(transform);
+
+        let mut connected_ids = Vec::new();
+        if vanilla_entity_metadata_type_is_leashable(identity.entity_type_id)
+            && self.leash_holder_id(id).is_some()
+        {
+            connected_ids.push(id);
+        }
+        drop(identity);
+
+        for candidate_id in self
+            .order
+            .iter()
+            .copied()
+            .filter(|candidate| *candidate != id)
+        {
+            if self.leash_holder_id(candidate_id) != Some(id) {
+                continue;
+            }
+            let candidate = self.by_protocol_id.get(&candidate_id).copied()?;
+            let candidate_identity = self.ecs.get::<&EntityIdentity>(candidate).ok()?;
+            if !vanilla_entity_metadata_type_is_leashable(candidate_identity.entity_type_id) {
+                continue;
+            }
+            let candidate_transform = self.ecs.get::<&EntityTransform>(candidate).ok()?;
+            let candidate_bounds = self.debug_hitbox_bounds(candidate_id)?;
+            let candidate_min = [
+                candidate_transform.position.x + f64::from(candidate_bounds.min[0]),
+                candidate_transform.position.y + f64::from(candidate_bounds.min[1]),
+                candidate_transform.position.z + f64::from(candidate_bounds.min[2]),
+            ];
+            let candidate_max = [
+                candidate_transform.position.x + f64::from(candidate_bounds.max[0]),
+                candidate_transform.position.y + f64::from(candidate_bounds.max[1]),
+                candidate_transform.position.z + f64::from(candidate_bounds.max[2]),
+            ];
+            if (0..3).all(|axis| {
+                candidate_max[axis] > search_center[axis] - 16.0
+                    && candidate_min[axis] < search_center[axis] + 16.0
+            }) {
+                connected_ids.push(candidate_id);
+            }
+        }
+
+        if connected_ids.is_empty() {
+            return Some(false);
+        }
+        for connected_id in connected_ids {
+            self.with_leash_mut(connected_id, |leash| leash.holder_id = None)?;
+        }
+        Some(true)
+    }
+
     pub(crate) fn leash_endpoint_inputs(
         &self,
         id: i32,
@@ -5318,6 +5406,25 @@ impl EntityStore {
             .item
             .clone();
         item.item_id.map(|_| item)
+    }
+
+    pub(crate) fn clear_local_equipment_item(
+        &mut self,
+        id: i32,
+        slot: ProtocolEquipmentSlot,
+    ) -> bool {
+        self.with_equipment_mut(id, |equipment| {
+            let Some(update) = equipment
+                .equipment
+                .iter_mut()
+                .find(|update| update.slot == slot && update.item.item_id.is_some())
+            else {
+                return false;
+            };
+            update.item = ItemStackSummary::empty();
+            true
+        })
+        .unwrap_or(false)
     }
 
     /// Collects the unique generated ITEM_STACK accessor carried by every requested entity type.

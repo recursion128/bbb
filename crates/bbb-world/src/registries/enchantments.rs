@@ -107,6 +107,7 @@ pub(super) struct MaterializedEnchantmentDefinition {
     tooltip: Option<EnchantmentTooltipDefinition>,
     attributes: Option<EnchantmentDefinition>,
     crossbow_charge_time: Option<EnchantmentValueEffect>,
+    prevents_armor_change: bool,
     holder_sets: EnchantmentHolderSetDefinition,
 }
 
@@ -155,6 +156,12 @@ pub(super) fn materialize_enchantment_definition(
         tooltip: decode_enchantment_tooltip_definition(value),
         attributes: decode_enchantment_definition(value),
         crossbow_charge_time: decode_crossbow_charge_time_effect(value).flatten(),
+        prevents_armor_change: nbt_field(fields, "effects")
+            .and_then(|value| match value {
+                NbtSummaryValue::Compound(effects) => Some(effects.as_slice()),
+                _ => None,
+            })
+            .is_some_and(|effects| nbt_field(effects, "minecraft:prevent_armor_change").is_some()),
         holder_sets: EnchantmentHolderSetDefinition {
             supported_items,
             primary_items,
@@ -164,6 +171,27 @@ pub(super) fn materialize_enchantment_definition(
 }
 
 impl WorldStore {
+    /// Resolves `EnchantmentEffectComponents.PREVENT_ARMOR_CHANGE` from the
+    /// synchronized enchantment definition. Stubbed built-in entries use the
+    /// generated vanilla identity fallback; server-provided custom definitions
+    /// are read from their materialized `effects` compound.
+    pub(crate) fn enchantment_prevents_armor_change(&self, holder_id: i32) -> Option<bool> {
+        let entry = self.registry_entry_by_holder_id(ENCHANTMENT_REGISTRY, holder_id)?;
+        if let Some(definition) = self.registries.typed.enchantments.get(&entry.id) {
+            return Some(definition.prevents_armor_change);
+        }
+        if let Some(data) = entry.element_data() {
+            let access = self.frozen_registry_access();
+            return materialize_enchantment_definition(&data.value, access)
+                .ok()
+                .map(|definition| definition.prevents_armor_change);
+        }
+        (!entry.has_data).then(|| {
+            VanillaEnchantmentIdentity::for_resource_id(&entry.id)
+                == Some(VanillaEnchantmentIdentity::BindingCurse)
+        })
+    }
+
     pub fn synchronized_enchantment_holder_sets(
         &self,
         holder_id: i32,
@@ -747,6 +775,54 @@ mod tests {
     };
 
     use super::*;
+
+    #[test]
+    fn resolves_prevent_armor_change_for_vanilla_and_custom_definitions() {
+        let mut world = WorldStore::new();
+        world.record_registry_data(RegistryData {
+            registry: ENCHANTMENT_REGISTRY.to_string(),
+            entries: vec![
+                RegistryDataEntry {
+                    id: "minecraft:binding_curse".to_string(),
+                    raw_data: None,
+                },
+                RegistryDataEntry {
+                    id: "minecraft:sharpness".to_string(),
+                    raw_data: None,
+                },
+            ],
+            raw_payload_len: 0,
+        });
+        let binding_curse = world
+            .registry_holder_id_by_resource_id(ENCHANTMENT_REGISTRY, "minecraft:binding_curse")
+            .unwrap();
+        let sharpness = world
+            .registry_holder_id_by_resource_id(ENCHANTMENT_REGISTRY, "minecraft:sharpness")
+            .unwrap();
+        assert_eq!(
+            world.enchantment_prevents_armor_change(binding_curse),
+            Some(true)
+        );
+        assert_eq!(
+            world.enchantment_prevents_armor_change(sharpness),
+            Some(false)
+        );
+
+        let data = super::super::element_value::decode_known_pack_element(
+            br#"{
+                "description":{"text":"Lock"},
+                "supported_items":"minecraft:saddle",
+                "max_level":1,
+                "slots":["body"],
+                "effects":{"minecraft:prevent_armor_change":{}}
+            }"#,
+        )
+        .unwrap();
+        let custom =
+            materialize_enchantment_definition(&data.value, world.frozen_registry_access())
+                .unwrap();
+        assert!(custom.prevents_armor_change);
+    }
 
     #[test]
     fn resolves_synced_enchantment_attribute_effects_in_stack_and_effect_order() {
