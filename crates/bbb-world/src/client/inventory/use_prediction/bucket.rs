@@ -1,10 +1,15 @@
 use super::*;
 use crate::{TerrainFluidKind, WorldStore};
 use bbb_protocol::{
-    block_state_types::vanilla_block_state_fluid_replaceable,
+    block_state_types::{
+        vanilla_block_state_fluid_replaceable, vanilla_block_state_support_facts,
+        VanillaBlockSupportDirection, VanillaBlockSupportType,
+    },
     block_types::{
-        vanilla_block_type_for_resource_id, VanillaBucketPickupOverride,
-        VanillaLiquidBlockContainerOverride, VANILLA_BLOCK_AIR_ID,
+        vanilla_block_type_for_resource_id, VanillaBucketPickupOverride, VanillaCanSurviveOverride,
+        VanillaLiquidBlockContainerOverride, VANILLA_BLOCK_AIR_ID, VANILLA_BLOCK_BIG_DRIPLEAF_ID,
+        VANILLA_BLOCK_BIG_DRIPLEAF_STEM_ID, VANILLA_BLOCK_POINTED_DRIPSTONE_ID,
+        VANILLA_BLOCK_SCAFFOLDING_ID, VANILLA_BLOCK_SMALL_DRIPLEAF_ID,
     },
     item_types::{
         ItemTypeCatalogEntry, VanillaBucketFluid, VanillaItemUseOverride, VANILLA_ITEM_BUCKET_ID,
@@ -47,6 +52,27 @@ enum BucketContainerPlacement {
     CanPlace,
     CannotPlace,
     Unsupported,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum BucketCanSurviveRule {
+    FacingFull,
+    BelowFull,
+    BelowRigid,
+    BigDripleaf,
+    BigDripleafStem,
+    BelowCenter,
+    AboveCenter,
+    AboveFull,
+    Lantern,
+    MangrovePropagule,
+    Multiface,
+    PointedDripstone,
+    Scaffolding,
+    SeaPickle,
+    SmallDripleaf,
+    BelowLegacySolid,
+    FacingLegacySolid,
 }
 
 impl WorldStore {
@@ -187,13 +213,29 @@ impl WorldStore {
                 {
                     return LocalItemUsePrediction::Result(LocalInteractionResult::Fail);
                 }
-                if block_type.can_survive_override.is_some() {
-                    return unsupported();
-                }
-                let Some(pickup) = self.waterlogged_bucket_pickup(&block) else {
+                let Some((filled_item_id, dry_state_id, sound_resource_id)) =
+                    self.waterlogged_bucket_pickup(&block)
+                else {
                     return unsupported();
                 };
-                pickup
+                let predicted_state_id = match block_type.can_survive_override {
+                    None => dry_state_id,
+                    Some(owner) => {
+                        let Some(survives) = self.bucket_pickup_block_can_survive(&block, owner)
+                        else {
+                            return unsupported();
+                        };
+                        if survives {
+                            dry_state_id
+                        } else {
+                            let Some(air_state_id) = self.bucket_air_block_state_id() else {
+                                return unsupported();
+                            };
+                            air_state_id
+                        }
+                    }
+                };
+                (filled_item_id, predicted_state_id, sound_resource_id)
             }
         };
         let Some(sequence) = sequence else {
@@ -235,6 +277,288 @@ impl WorldStore {
             .registries()
             .block_state_id_by_name_and_properties(block_name, &properties)?;
         Some((VANILLA_ITEM_WATER_BUCKET_ID, state_id, BUCKET_FILL))
+    }
+
+    fn bucket_pickup_block_can_survive(
+        &self,
+        block: &crate::BlockProbe,
+        owner: VanillaCanSurviveOverride,
+    ) -> Option<bool> {
+        let rule = bucket_can_survive_rule(owner)?;
+        let pos = block.pos;
+        match rule {
+            BucketCanSurviveRule::FacingFull => {
+                let facing = direction_property(block, "facing")?;
+                let support = self.probe_block(relative(pos, opposite(facing)))?;
+                self.bucket_face_sturdy(&support, facing, VanillaBlockSupportType::Full)
+            }
+            BucketCanSurviveRule::BelowFull => {
+                let below = self.probe_block(relative(pos, ProtocolDirection::Down))?;
+                self.bucket_face_sturdy(
+                    &below,
+                    ProtocolDirection::Up,
+                    VanillaBlockSupportType::Full,
+                )
+            }
+            BucketCanSurviveRule::BelowRigid => {
+                let below = self.probe_block(relative(pos, ProtocolDirection::Down))?;
+                self.bucket_face_sturdy(
+                    &below,
+                    ProtocolDirection::Up,
+                    VanillaBlockSupportType::Rigid,
+                )
+            }
+            BucketCanSurviveRule::BigDripleaf => {
+                let below = self.probe_block(relative(pos, ProtocolDirection::Down))?;
+                let below_type = block_type_id(&below)?;
+                if matches!(
+                    below_type,
+                    VANILLA_BLOCK_BIG_DRIPLEAF_ID | VANILLA_BLOCK_BIG_DRIPLEAF_STEM_ID
+                ) {
+                    Some(true)
+                } else {
+                    self.bucket_block_is_in_tag(&below, "minecraft:supports_big_dripleaf")
+                }
+            }
+            BucketCanSurviveRule::BigDripleafStem => {
+                let below = self.probe_block(relative(pos, ProtocolDirection::Down))?;
+                let below_type = block_type_id(&below)?;
+                let supported_below = if below_type == VANILLA_BLOCK_BIG_DRIPLEAF_STEM_ID {
+                    true
+                } else {
+                    self.bucket_block_is_in_tag(&below, "minecraft:supports_big_dripleaf")?
+                };
+                if !supported_below {
+                    return Some(false);
+                }
+                let above = self.probe_block(relative(pos, ProtocolDirection::Up))?;
+                Some(matches!(
+                    block_type_id(&above)?,
+                    VANILLA_BLOCK_BIG_DRIPLEAF_ID | VANILLA_BLOCK_BIG_DRIPLEAF_STEM_ID
+                ))
+            }
+            BucketCanSurviveRule::BelowCenter => {
+                let below = self.probe_block(relative(pos, ProtocolDirection::Down))?;
+                self.bucket_face_sturdy(
+                    &below,
+                    ProtocolDirection::Up,
+                    VanillaBlockSupportType::Center,
+                )
+            }
+            BucketCanSurviveRule::AboveCenter => {
+                let above = self.probe_block(relative(pos, ProtocolDirection::Up))?;
+                self.bucket_face_sturdy(
+                    &above,
+                    ProtocolDirection::Down,
+                    VanillaBlockSupportType::Center,
+                )
+            }
+            BucketCanSurviveRule::AboveFull => {
+                let above = self.probe_block(relative(pos, ProtocolDirection::Up))?;
+                self.bucket_face_sturdy(
+                    &above,
+                    ProtocolDirection::Down,
+                    VanillaBlockSupportType::Full,
+                )
+            }
+            BucketCanSurviveRule::Lantern => {
+                let hanging = boolean_property(block, "hanging")?;
+                let (support_direction, sturdy_direction) = if hanging {
+                    (ProtocolDirection::Up, ProtocolDirection::Down)
+                } else {
+                    (ProtocolDirection::Down, ProtocolDirection::Up)
+                };
+                let support = self.probe_block(relative(pos, support_direction))?;
+                if hanging
+                    && self.bucket_block_is_in_tag(&support, "minecraft:unstable_bottom_center")?
+                {
+                    return Some(false);
+                }
+                self.bucket_face_sturdy(&support, sturdy_direction, VanillaBlockSupportType::Center)
+            }
+            BucketCanSurviveRule::MangrovePropagule => {
+                let hanging = boolean_property(block, "hanging")?;
+                let (support_direction, tag) = if hanging {
+                    (
+                        ProtocolDirection::Up,
+                        "minecraft:supports_hanging_mangrove_propagule",
+                    )
+                } else {
+                    (
+                        ProtocolDirection::Down,
+                        "minecraft:supports_mangrove_propagule",
+                    )
+                };
+                let support = self.probe_block(relative(pos, support_direction))?;
+                self.bucket_block_is_in_tag(&support, tag)
+            }
+            BucketCanSurviveRule::Multiface => {
+                let mut has_face = false;
+                for (direction, property) in [
+                    (ProtocolDirection::Down, "down"),
+                    (ProtocolDirection::Up, "up"),
+                    (ProtocolDirection::North, "north"),
+                    (ProtocolDirection::South, "south"),
+                    (ProtocolDirection::West, "west"),
+                    (ProtocolDirection::East, "east"),
+                ] {
+                    let Some(value) = block.block_properties.get(property) else {
+                        continue;
+                    };
+                    let face = parse_boolean_property(value)?;
+                    if !face {
+                        continue;
+                    }
+                    has_face = true;
+                    let support = self.probe_block(relative(pos, direction))?;
+                    if !self.bucket_full_support_or_collision_face(&support, opposite(direction))? {
+                        return Some(false);
+                    }
+                }
+                Some(has_face)
+            }
+            BucketCanSurviveRule::PointedDripstone => {
+                let tip_direction = direction_property(block, "vertical_direction")?;
+                let behind = self.probe_block(relative(pos, opposite(tip_direction)))?;
+                if block_type_id(&behind)? == VANILLA_BLOCK_POINTED_DRIPSTONE_ID {
+                    if direction_property(&behind, "vertical_direction")? == tip_direction {
+                        return Some(true);
+                    }
+                }
+                self.bucket_face_sturdy(&behind, tip_direction, VanillaBlockSupportType::Full)
+            }
+            BucketCanSurviveRule::Scaffolding => {
+                let below = self.probe_block(relative(pos, ProtocolDirection::Down))?;
+                let mut distance = 7;
+                if block_type_id(&below)? == VANILLA_BLOCK_SCAFFOLDING_ID {
+                    distance = integer_property(&below, "distance")?;
+                } else if self.bucket_face_sturdy(
+                    &below,
+                    ProtocolDirection::Up,
+                    VanillaBlockSupportType::Full,
+                )? {
+                    return Some(true);
+                }
+
+                for direction in [
+                    ProtocolDirection::North,
+                    ProtocolDirection::East,
+                    ProtocolDirection::South,
+                    ProtocolDirection::West,
+                ] {
+                    let neighbour = self.probe_block(relative(pos, direction))?;
+                    if block_type_id(&neighbour)? == VANILLA_BLOCK_SCAFFOLDING_ID {
+                        distance = distance.min(integer_property(&neighbour, "distance")? + 1);
+                        if distance == 1 {
+                            break;
+                        }
+                    }
+                }
+                Some(distance < 7)
+            }
+            BucketCanSurviveRule::SeaPickle => {
+                let below = self.probe_block(relative(pos, ProtocolDirection::Down))?;
+                let collision =
+                    self.bucket_collision_face_nonempty(&below, ProtocolDirection::Up)?;
+                if collision {
+                    Some(true)
+                } else {
+                    self.bucket_face_sturdy(
+                        &below,
+                        ProtocolDirection::Up,
+                        VanillaBlockSupportType::Full,
+                    )
+                }
+            }
+            BucketCanSurviveRule::SmallDripleaf => {
+                match block.block_properties.get("half").map(String::as_str) {
+                    Some("upper") => {
+                        let below = self.probe_block(relative(pos, ProtocolDirection::Down))?;
+                        Some(
+                            block_type_id(&below)? == VANILLA_BLOCK_SMALL_DRIPLEAF_ID
+                                && below
+                                    .block_properties
+                                    .get("half")
+                                    .is_some_and(|half| half == "lower"),
+                        )
+                    }
+                    Some("lower") => {
+                        // SimpleWaterloggedBlock installs the dry state before
+                        // calling canSurvive, so mayPlaceOn's current-position
+                        // source-water branch is false on this pickup path.
+                        let below = self.probe_block(relative(pos, ProtocolDirection::Down))?;
+                        self.bucket_block_is_in_tag(&below, "minecraft:supports_small_dripleaf")
+                    }
+                    _ => None,
+                }
+            }
+            BucketCanSurviveRule::BelowLegacySolid => {
+                let below = self.probe_block(relative(pos, ProtocolDirection::Down))?;
+                vanilla_block_state_support_facts(below.block_state_id)
+                    .map(|facts| facts.legacy_solid())
+            }
+            BucketCanSurviveRule::FacingLegacySolid => {
+                let facing = direction_property(block, "facing")?;
+                let support = self.probe_block(relative(pos, opposite(facing)))?;
+                vanilla_block_state_support_facts(support.block_state_id)
+                    .map(|facts| facts.legacy_solid())
+            }
+        }
+    }
+
+    fn bucket_face_sturdy(
+        &self,
+        block: &crate::BlockProbe,
+        direction: ProtocolDirection,
+        support_type: VanillaBlockSupportType,
+    ) -> Option<bool> {
+        let facts = vanilla_block_state_support_facts(block.block_state_id)?;
+        if !facts.dynamic_shape() {
+            return Some(facts.face_sturdy(support_direction(direction), support_type));
+        }
+        Some(match support_type {
+            VanillaBlockSupportType::Full => self.block_has_full_sturdy_face(block, direction),
+            VanillaBlockSupportType::Center => {
+                self.block_has_vertical_center_sturdy_face(block, direction)
+            }
+            VanillaBlockSupportType::Rigid => {
+                self.block_has_vertical_rigid_sturdy_face(block, direction)
+            }
+        })
+    }
+
+    fn bucket_collision_face_nonempty(
+        &self,
+        block: &crate::BlockProbe,
+        direction: ProtocolDirection,
+    ) -> Option<bool> {
+        let facts = vanilla_block_state_support_facts(block.block_state_id)?;
+        Some(if facts.dynamic_shape() {
+            self.block_has_nonempty_collision_face(block, direction)
+        } else {
+            facts.collision_face_nonempty(support_direction(direction))
+        })
+    }
+
+    fn bucket_full_support_or_collision_face(
+        &self,
+        block: &crate::BlockProbe,
+        direction: ProtocolDirection,
+    ) -> Option<bool> {
+        let facts = vanilla_block_state_support_facts(block.block_state_id)?;
+        Some(if facts.dynamic_shape() {
+            self.block_has_full_support_or_collision_face(block, sturdy_face_index(direction))
+        } else {
+            let direction = support_direction(direction);
+            facts.face_sturdy(direction, VanillaBlockSupportType::Full)
+                || facts.collision_face_full(direction)
+        })
+    }
+
+    fn bucket_block_is_in_tag(&self, block: &crate::BlockProbe, tag: &str) -> Option<bool> {
+        let block_type_id = block_type_id(block)?;
+        self.registry_holder_ids_for_tag("minecraft:block", tag)
+            .map(|holder_ids| holder_ids.contains(&block_type_id))
     }
 
     fn predict_local_filled_bucket_use(
@@ -514,4 +838,105 @@ fn relative(pos: BlockPos, direction: ProtocolDirection) -> BlockPos {
             ..pos
         },
     }
+}
+
+fn opposite(direction: ProtocolDirection) -> ProtocolDirection {
+    match direction {
+        ProtocolDirection::Down => ProtocolDirection::Up,
+        ProtocolDirection::Up => ProtocolDirection::Down,
+        ProtocolDirection::North => ProtocolDirection::South,
+        ProtocolDirection::South => ProtocolDirection::North,
+        ProtocolDirection::West => ProtocolDirection::East,
+        ProtocolDirection::East => ProtocolDirection::West,
+    }
+}
+
+fn support_direction(direction: ProtocolDirection) -> VanillaBlockSupportDirection {
+    match direction {
+        ProtocolDirection::Down => VanillaBlockSupportDirection::Down,
+        ProtocolDirection::Up => VanillaBlockSupportDirection::Up,
+        ProtocolDirection::North => VanillaBlockSupportDirection::North,
+        ProtocolDirection::South => VanillaBlockSupportDirection::South,
+        ProtocolDirection::West => VanillaBlockSupportDirection::West,
+        ProtocolDirection::East => VanillaBlockSupportDirection::East,
+    }
+}
+
+fn sturdy_face_index(direction: ProtocolDirection) -> usize {
+    match direction {
+        ProtocolDirection::West => 0,
+        ProtocolDirection::South => 1,
+        ProtocolDirection::East => 2,
+        ProtocolDirection::North => 3,
+        ProtocolDirection::Down => 4,
+        ProtocolDirection::Up => 5,
+    }
+}
+
+fn direction_property(block: &crate::BlockProbe, property: &str) -> Option<ProtocolDirection> {
+    match block.block_properties.get(property)?.as_str() {
+        "down" => Some(ProtocolDirection::Down),
+        "up" => Some(ProtocolDirection::Up),
+        "north" => Some(ProtocolDirection::North),
+        "south" => Some(ProtocolDirection::South),
+        "west" => Some(ProtocolDirection::West),
+        "east" => Some(ProtocolDirection::East),
+        _ => None,
+    }
+}
+
+fn boolean_property(block: &crate::BlockProbe, property: &str) -> Option<bool> {
+    parse_boolean_property(block.block_properties.get(property)?)
+}
+
+fn parse_boolean_property(value: &str) -> Option<bool> {
+    match value {
+        "true" => Some(true),
+        "false" => Some(false),
+        _ => None,
+    }
+}
+
+fn integer_property(block: &crate::BlockProbe, property: &str) -> Option<i32> {
+    block.block_properties.get(property)?.parse().ok()
+}
+
+fn block_type_id(block: &crate::BlockProbe) -> Option<i32> {
+    block
+        .block_name
+        .as_deref()
+        .and_then(vanilla_block_type_for_resource_id)
+        .map(|block_type| block_type.id)
+}
+
+#[cfg(test)]
+pub(super) const fn bucket_can_survive_owner_supported(owner: VanillaCanSurviveOverride) -> bool {
+    bucket_can_survive_rule(owner).is_some()
+}
+
+const fn bucket_can_survive_rule(owner: VanillaCanSurviveOverride) -> Option<BucketCanSurviveRule> {
+    Some(match owner {
+        VanillaCanSurviveOverride::AmethystClusterBlock
+        | VanillaCanSurviveOverride::BaseCoralWallFanBlock
+        | VanillaCanSurviveOverride::LadderBlock => BucketCanSurviveRule::FacingFull,
+        VanillaCanSurviveOverride::BaseCoralPlantTypeBlock => BucketCanSurviveRule::BelowFull,
+        VanillaCanSurviveOverride::BaseRailBlock => BucketCanSurviveRule::BelowRigid,
+        VanillaCanSurviveOverride::BigDripleafBlock => BucketCanSurviveRule::BigDripleaf,
+        VanillaCanSurviveOverride::BigDripleafStemBlock => BucketCanSurviveRule::BigDripleafStem,
+        VanillaCanSurviveOverride::CandleBlock => BucketCanSurviveRule::BelowCenter,
+        VanillaCanSurviveOverride::CeilingHangingSignBlock => BucketCanSurviveRule::AboveCenter,
+        VanillaCanSurviveOverride::HangingRootsBlock => BucketCanSurviveRule::AboveFull,
+        VanillaCanSurviveOverride::LanternBlock => BucketCanSurviveRule::Lantern,
+        VanillaCanSurviveOverride::MangrovePropaguleBlock => {
+            BucketCanSurviveRule::MangrovePropagule
+        }
+        VanillaCanSurviveOverride::MultifaceBlock => BucketCanSurviveRule::Multiface,
+        VanillaCanSurviveOverride::PointedDripstoneBlock => BucketCanSurviveRule::PointedDripstone,
+        VanillaCanSurviveOverride::ScaffoldingBlock => BucketCanSurviveRule::Scaffolding,
+        VanillaCanSurviveOverride::SeaPickleBlock => BucketCanSurviveRule::SeaPickle,
+        VanillaCanSurviveOverride::SmallDripleafBlock => BucketCanSurviveRule::SmallDripleaf,
+        VanillaCanSurviveOverride::StandingSignBlock => BucketCanSurviveRule::BelowLegacySolid,
+        VanillaCanSurviveOverride::WallSignBlock => BucketCanSurviveRule::FacingLegacySolid,
+        _ => return None,
+    })
 }

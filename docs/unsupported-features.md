@@ -661,11 +661,9 @@ Commands:
   inputs; then apply each success swing-source and held-item presentation.
   Interaction override ownership must stay generated from local vanilla classes.
   Entity, block, and inventory corrections remain server-authoritative.
-- Complete post-pickup `BlockState.canSurvive` / destruction prediction for the
-  generated non-default owners of waterlogged bucket-pickup blocks, plus
-  PlaceOnWaterBlock delegation into general `BlockItem.useOn`. Consume the
-  generated ownership instead of inferring behavior from resource names,
-  component shape, or generic support.
+- Implement `PlaceOnWaterBlock` delegation into general `BlockItem.useOn`,
+  consuming generated ownership instead of inferring behavior from resource
+  names.
 - Bottle dragon-breath client prediction is `not-needed`: `AreaEffectCloud.owner`
   is absent from both `ClientboundAddEntityPacket` and synchronized metadata, so
   the remote 26.1 client leaves that branch server-authoritative. Reopen if the

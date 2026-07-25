@@ -560,18 +560,63 @@ impl WorldStore {
         block: &BlockProbe,
         direction: ProtocolDirection,
     ) -> bool {
-        let direction = match direction {
-            ProtocolDirection::Down => BlockDirection::Down,
-            ProtocolDirection::Up => BlockDirection::Up,
-            ProtocolDirection::North => BlockDirection::North,
-            ProtocolDirection::South => BlockDirection::South,
-            ProtocolDirection::West => BlockDirection::West,
-            ProtocolDirection::East => BlockDirection::East,
-        };
+        let direction = block_direction(direction);
         DEBUG_SOLID_FACE_DIRECTIONS
             .into_iter()
             .position(|candidate| candidate == direction)
             .is_some_and(|index| self.debug_block_sturdy_faces(block)[index])
+    }
+
+    /// Mirrors `SupportType.CENTER` for the vertical support queries used by
+    /// candles, lanterns, and ceiling hanging signs. Dynamic shulker support
+    /// is its one full attachment face; the remaining dynamic blocks use
+    /// their live empty-context block-support shape.
+    pub(crate) fn block_has_vertical_center_sturdy_face(
+        &self,
+        block: &BlockProbe,
+        direction: ProtocolDirection,
+    ) -> bool {
+        if !matches!(direction, ProtocolDirection::Down | ProtocolDirection::Up) {
+            return false;
+        }
+        if block
+            .block_name
+            .as_deref()
+            .is_some_and(is_shulker_box_block_name)
+        {
+            return self.block_has_full_sturdy_face(block, direction);
+        }
+        block_collision_shape_empty_context(block, block.pos)
+            .is_some_and(|shape| shape.has_center_face(block_direction(direction)))
+    }
+
+    /// Mirrors the vertical `SupportType.RIGID` query used by rail survival.
+    pub(crate) fn block_has_vertical_rigid_sturdy_face(
+        &self,
+        block: &BlockProbe,
+        direction: ProtocolDirection,
+    ) -> bool {
+        if !matches!(direction, ProtocolDirection::Down | ProtocolDirection::Up) {
+            return false;
+        }
+        if block
+            .block_name
+            .as_deref()
+            .is_some_and(is_shulker_box_block_name)
+        {
+            return self.block_has_full_sturdy_face(block, direction);
+        }
+        block_collision_shape_empty_context(block, block.pos)
+            .is_some_and(|shape| shape.has_rigid_face(block_direction(direction)))
+    }
+
+    pub(crate) fn block_has_nonempty_collision_face(
+        &self,
+        block: &BlockProbe,
+        direction: ProtocolDirection,
+    ) -> bool {
+        block_collision_shape_empty_context(block, block.pos)
+            .is_some_and(|shape| shape.has_nonempty_face(block_direction(direction)))
     }
 
     /// Mirrors `MultifaceBlock.canAttachTo`: either the block-support shape or
@@ -4284,6 +4329,17 @@ impl BlockDirection {
     }
 }
 
+fn block_direction(direction: ProtocolDirection) -> BlockDirection {
+    match direction {
+        ProtocolDirection::Down => BlockDirection::Down,
+        ProtocolDirection::Up => BlockDirection::Up,
+        ProtocolDirection::North => BlockDirection::North,
+        ProtocolDirection::South => BlockDirection::South,
+        ProtocolDirection::West => BlockDirection::West,
+        ProtocolDirection::East => BlockDirection::East,
+    }
+}
+
 const DEBUG_SOLID_FACE_DIRECTIONS: [BlockDirection; 6] = [
     BlockDirection::West,
     BlockDirection::South,
@@ -4556,32 +4612,37 @@ impl BlockCollisionShape {
     /// slice selected by `VoxelShape.getFaceShape`, then require its union to
     /// cover the complete unit square.
     fn has_full_face(self, direction: BlockDirection) -> bool {
-        const NEGATIVE_FACE_SAMPLE: f64 = 1.0e-7;
-        const POSITIVE_FACE_SAMPLE: f64 = 0.999_999_9;
+        self.covers_face_rectangle(direction, [0.0, 1.0, 0.0, 1.0])
+    }
 
+    fn has_center_face(self, direction: BlockDirection) -> bool {
+        self.covers_face_rectangle(direction, [7.0 * PX, 9.0 * PX, 7.0 * PX, 9.0 * PX])
+    }
+
+    fn has_rigid_face(self, direction: BlockDirection) -> bool {
+        [
+            [0.0, 2.0 * PX, 0.0, 1.0],
+            [14.0 * PX, 1.0, 0.0, 1.0],
+            [2.0 * PX, 14.0 * PX, 0.0, 2.0 * PX],
+            [2.0 * PX, 14.0 * PX, 14.0 * PX, 1.0],
+        ]
+        .into_iter()
+        .all(|target| self.covers_face_rectangle(direction, target))
+    }
+
+    fn has_nonempty_face(self, direction: BlockDirection) -> bool {
+        self.boxes()
+            .any(|shape_box| block_collision_box_reaches_face(shape_box, direction))
+    }
+
+    fn covers_face_rectangle(self, direction: BlockDirection, target: [f64; 4]) -> bool {
+        let [target_u0, target_u1, target_v0, target_v1] = target;
+        if target_u0 >= target_u1 || target_v0 >= target_v1 {
+            return false;
+        }
         let face_boxes = self
             .boxes()
-            .filter(|shape_box| {
-                let (min, max, sample) = match direction {
-                    BlockDirection::West => {
-                        (shape_box.min_x, shape_box.max_x, NEGATIVE_FACE_SAMPLE)
-                    }
-                    BlockDirection::South => {
-                        (shape_box.min_z, shape_box.max_z, POSITIVE_FACE_SAMPLE)
-                    }
-                    BlockDirection::East => {
-                        (shape_box.min_x, shape_box.max_x, POSITIVE_FACE_SAMPLE)
-                    }
-                    BlockDirection::North => {
-                        (shape_box.min_z, shape_box.max_z, NEGATIVE_FACE_SAMPLE)
-                    }
-                    BlockDirection::Down => {
-                        (shape_box.min_y, shape_box.max_y, NEGATIVE_FACE_SAMPLE)
-                    }
-                    BlockDirection::Up => (shape_box.min_y, shape_box.max_y, POSITIVE_FACE_SAMPLE),
-                };
-                min <= sample && sample < max
-            })
+            .filter(|shape_box| block_collision_box_reaches_face(*shape_box, direction))
             .collect::<Vec<_>>();
         if face_boxes.is_empty() {
             return false;
@@ -4607,12 +4668,18 @@ impl BlockCollisionShape {
                 shape_box.max_z,
             ],
         };
-        let mut u_coords = vec![0.0, 1.0];
-        let mut v_coords = vec![0.0, 1.0];
+        let mut u_coords = vec![target_u0, target_u1];
+        let mut v_coords = vec![target_v0, target_v1];
         for shape_box in &face_boxes {
             let [u0, u1, v0, v1] = projection(*shape_box);
-            u_coords.extend([u0.clamp(0.0, 1.0), u1.clamp(0.0, 1.0)]);
-            v_coords.extend([v0.clamp(0.0, 1.0), v1.clamp(0.0, 1.0)]);
+            u_coords.extend([
+                u0.clamp(target_u0, target_u1),
+                u1.clamp(target_u0, target_u1),
+            ]);
+            v_coords.extend([
+                v0.clamp(target_v0, target_v1),
+                v1.clamp(target_v0, target_v1),
+            ]);
         }
         u_coords.sort_by(f64::total_cmp);
         u_coords.dedup_by(|left, right| *left == *right);
@@ -4678,6 +4745,24 @@ impl BlockCollisionShape {
             BlockDirection::Down => self.map_boxes(BlockCollisionBox::rotate_x_90),
         }
     }
+}
+
+fn block_collision_box_reaches_face(
+    shape_box: BlockCollisionBox,
+    direction: BlockDirection,
+) -> bool {
+    const NEGATIVE_FACE_SAMPLE: f64 = 1.0e-7;
+    const POSITIVE_FACE_SAMPLE: f64 = 0.999_999_9;
+
+    let (min, max, sample) = match direction {
+        BlockDirection::West => (shape_box.min_x, shape_box.max_x, NEGATIVE_FACE_SAMPLE),
+        BlockDirection::South => (shape_box.min_z, shape_box.max_z, POSITIVE_FACE_SAMPLE),
+        BlockDirection::East => (shape_box.min_x, shape_box.max_x, POSITIVE_FACE_SAMPLE),
+        BlockDirection::North => (shape_box.min_z, shape_box.max_z, NEGATIVE_FACE_SAMPLE),
+        BlockDirection::Down => (shape_box.min_y, shape_box.max_y, NEGATIVE_FACE_SAMPLE),
+        BlockDirection::Up => (shape_box.min_y, shape_box.max_y, POSITIVE_FACE_SAMPLE),
+    };
+    min <= sample && sample < max
 }
 
 struct CompressedCollisionShape {

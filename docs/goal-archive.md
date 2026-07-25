@@ -545,3 +545,6 @@
 - **2026-07-25（Bottle Item.use 工程闭环）**：SOURCE_ONLY 命中水源后按
   `ItemUtils.createFilledResult` 预测水瓶、满背包额外挥手与本地装瓶声音；龙息云
   owner 不上 wire，维持 Vanilla 远端客户端的服务端权威边界。
+- **2026-07-25（BucketItem 本地预测工程关闭）**：空桶取水后的 19 类非默认
+  `canSurvive` owner 现由生成支撑事实、动态形状与实时标签精确判定干态保留或销毁；
+  空/水/岩浆/生物桶的方块、库存、声音、粒子与 prediction sequence 路径完成闭环。

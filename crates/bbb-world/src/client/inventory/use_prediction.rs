@@ -2239,9 +2239,9 @@ mod tests {
         block_types::{
             vanilla_block_type, vanilla_block_type_for_resource_id, VanillaBlockUseItemOnOverride,
             VanillaBlockUseWithoutItemOverride, VanillaBonemealTargetOverride,
-            VANILLA_BLOCK_CAKE_ID, VANILLA_BLOCK_CHEST_ID, VANILLA_BLOCK_CRIMSON_NYLIUM_ID,
-            VANILLA_BLOCK_DIRT_ID, VANILLA_BLOCK_RAIL_ID, VANILLA_BLOCK_STONE_ID,
-            VANILLA_BLOCK_WHITE_BANNER_ID,
+            VanillaBucketPickupOverride, VANILLA_BLOCK_CAKE_ID, VANILLA_BLOCK_CHEST_ID,
+            VANILLA_BLOCK_CRIMSON_NYLIUM_ID, VANILLA_BLOCK_DIRT_ID, VANILLA_BLOCK_RAIL_ID,
+            VANILLA_BLOCK_STONE_ID, VANILLA_BLOCK_TYPES, VANILLA_BLOCK_WHITE_BANNER_ID,
         },
         builtin_enum_component_values::VANILLA_DYE_COLOR_RED_ID,
         data_component_types::{
@@ -2370,12 +2370,20 @@ mod tests {
     }
 
     fn install_convertable_to_mud_tag(world: &mut WorldStore) {
+        install_block_tag(
+            world,
+            "minecraft:convertable_to_mud",
+            vec![VANILLA_BLOCK_DIRT_ID],
+        );
+    }
+
+    fn install_block_tag(world: &mut WorldStore, tag: &str, entries: Vec<i32>) {
         world.apply_update_tags(UpdateTags {
             registries: vec![RegistryTags {
                 registry: "minecraft:block".to_string(),
                 tags: vec![TagNetworkPayload {
-                    tag: "minecraft:convertable_to_mud".to_string(),
-                    entries: vec![VANILLA_BLOCK_DIRT_ID],
+                    tag: tag.to_string(),
+                    entries,
                 }],
             }],
         });
@@ -2872,29 +2880,416 @@ mod tests {
             "minecraft:ladder",
             [("facing", "north"), ("waterlogged", "true")],
         );
-        let mut special_survival_owner = tool_use_world(wet_ladder);
-        set_main_hand(&mut special_survival_owner, VANILLA_ITEM_BUCKET_ID);
-        assert_eq!(
-            special_survival_owner.predict_local_item_use_with_pov_and_sequence(
+        let dry_ladder = block_state_id(
+            "minecraft:ladder",
+            [("facing", "north"), ("waterlogged", "false")],
+        );
+        let ladder_support = BlockPos { z: 1, ..pos };
+        let stone = block_state_id("minecraft:stone", []);
+        let mut supported_ladder = tool_use_world(wet_ladder);
+        set_block(&mut supported_ladder, ladder_support, stone);
+        set_main_hand(&mut supported_ladder, VANILLA_ITEM_BUCKET_ID);
+        assert!(matches!(
+            supported_ladder.predict_local_item_use_with_pov_and_sequence(
                 InteractionHand::MainHand,
                 Some(item_use_block_hit(pos, ProtocolDirection::Up)),
                 28,
                 false,
             ),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(
+            supported_ladder.probe_block(pos).unwrap().block_state_id,
+            dry_ladder
+        );
+        assert_eq!(
+            player_inventory_item(&supported_ladder, 0).item_id,
+            Some(VANILLA_ITEM_WATER_BUCKET_ID)
+        );
+
+        let air = block_state_id("minecraft:air", []);
+        let mut unsupported_ladder = tool_use_world(wet_ladder);
+        set_main_hand(&mut unsupported_ladder, VANILLA_ITEM_BUCKET_ID);
+        assert!(matches!(
+            unsupported_ladder.predict_local_item_use_with_pov_and_sequence(
+                InteractionHand::MainHand,
+                Some(item_use_block_hit(pos, ProtocolDirection::Up)),
+                29,
+                false,
+            ),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(
+            unsupported_ladder.probe_block(pos).unwrap().block_state_id,
+            air
+        );
+        assert_eq!(
+            unsupported_ladder.local_block_predictions()[0].server_block_state_id,
+            wet_ladder
+        );
+    }
+
+    #[test]
+    fn bucket_pickup_generated_can_survive_owners_all_have_exact_evaluators() {
+        let mut owners = Vec::new();
+        for owner in VANILLA_BLOCK_TYPES
+            .iter()
+            .filter(|block| {
+                block.bucket_pickup_override
+                    == Some(VanillaBucketPickupOverride::SimpleWaterloggedBlock)
+            })
+            .filter_map(|block| block.can_survive_override)
+        {
+            if !owners.contains(&owner) {
+                owners.push(owner);
+            }
+        }
+        let unsupported = owners
+            .iter()
+            .copied()
+            .filter(|owner| !bucket::bucket_can_survive_owner_supported(*owner))
+            .collect::<Vec<_>>();
+
+        assert!(
+            unsupported.is_empty(),
+            "waterlogged bucket-pickup owners without evaluators: {unsupported:?}"
+        );
+        assert_eq!(owners.len(), 19);
+    }
+
+    #[test]
+    fn bucket_pickup_uses_static_dynamic_and_collision_support_facts() {
+        let pos = BlockPos { x: 8, y: 8, z: 8 };
+        let below = BlockPos { y: 7, ..pos };
+        let air = block_state_id("minecraft:air", []);
+        let cauldron = block_state_id("minecraft:cauldron", []);
+        let center_only_piston = block_state_id(
+            "minecraft:piston",
+            [("extended", "true"), ("facing", "north")],
+        );
+        let bamboo = block_state_id(
+            "minecraft:bamboo",
+            [("age", "0"), ("leaves", "none"), ("stage", "0")],
+        );
+        let scaffolding_support = block_state_id(
+            "minecraft:scaffolding",
+            [
+                ("bottom", "false"),
+                ("distance", "0"),
+                ("waterlogged", "false"),
+            ],
+        );
+        let pointed_support = block_state_id(
+            "minecraft:pointed_dripstone",
+            [
+                ("thickness", "base"),
+                ("vertical_direction", "up"),
+                ("waterlogged", "false"),
+            ],
+        );
+        let leaves = block_state_id(
+            "minecraft:oak_leaves",
+            [
+                ("distance", "1"),
+                ("persistent", "true"),
+                ("waterlogged", "false"),
+            ],
+        );
+        let wet_rail = block_state_id(
+            "minecraft:rail",
+            [("shape", "north_south"), ("waterlogged", "true")],
+        );
+        let dry_rail = block_state_id(
+            "minecraft:rail",
+            [("shape", "north_south"), ("waterlogged", "false")],
+        );
+        let wet_candle = block_state_id(
+            "minecraft:candle",
+            [("candles", "1"), ("lit", "false"), ("waterlogged", "true")],
+        );
+        let dry_candle = block_state_id(
+            "minecraft:candle",
+            [("candles", "1"), ("lit", "false"), ("waterlogged", "false")],
+        );
+        let wet_pickle = block_state_id(
+            "minecraft:sea_pickle",
+            [("pickles", "1"), ("waterlogged", "true")],
+        );
+        let dry_pickle = block_state_id(
+            "minecraft:sea_pickle",
+            [("pickles", "1"), ("waterlogged", "false")],
+        );
+        let wet_lichen = block_state_id(
+            "minecraft:glow_lichen",
+            [
+                ("down", "true"),
+                ("east", "false"),
+                ("north", "false"),
+                ("south", "false"),
+                ("up", "false"),
+                ("waterlogged", "true"),
+                ("west", "false"),
+            ],
+        );
+        let dry_lichen = block_state_id(
+            "minecraft:glow_lichen",
+            [
+                ("down", "true"),
+                ("east", "false"),
+                ("north", "false"),
+                ("south", "false"),
+                ("up", "false"),
+                ("waterlogged", "false"),
+                ("west", "false"),
+            ],
+        );
+
+        for (sequence, wet, support, expected) in [
+            (30, wet_rail, cauldron, dry_rail),
+            (31, wet_candle, center_only_piston, dry_candle),
+            (32, wet_pickle, bamboo, dry_pickle),
+            (33, wet_lichen, leaves, dry_lichen),
+            (34, wet_rail, center_only_piston, air),
+            (35, wet_candle, cauldron, air),
+            (36, wet_rail, scaffolding_support, dry_rail),
+            (37, wet_candle, pointed_support, dry_candle),
+        ] {
+            let mut world = tool_use_world(air);
+            set_block(&mut world, pos, wet);
+            set_block(&mut world, below, support);
+            set_main_hand(&mut world, VANILLA_ITEM_BUCKET_ID);
+            assert!(
+                matches!(
+                    world.predict_local_item_use_with_pov_and_sequence(
+                        InteractionHand::MainHand,
+                        Some(item_use_block_hit(pos, ProtocolDirection::Up)),
+                        sequence,
+                        false,
+                    ),
+                    LocalItemUsePrediction::Result(LocalInteractionResult::Success(_))
+                ),
+                "bucket pickup case {sequence} should succeed"
+            );
+            assert_eq!(
+                world.probe_block(pos).unwrap().block_state_id,
+                expected,
+                "bucket pickup case {sequence} predicted the wrong block state"
+            );
+        }
+    }
+
+    #[test]
+    fn bucket_pickup_survival_uses_live_tags_and_structural_neighbors() {
+        let pos = BlockPos { x: 8, y: 8, z: 8 };
+        let below = BlockPos { y: 7, ..pos };
+        let east = BlockPos { x: 9, ..pos };
+        let air = block_state_id("minecraft:air", []);
+        let dirt = block_state_id("minecraft:dirt", []);
+        let wet_small_dripleaf = block_state_id(
+            "minecraft:small_dripleaf",
+            [
+                ("facing", "north"),
+                ("half", "lower"),
+                ("waterlogged", "true"),
+            ],
+        );
+        let dry_small_dripleaf = block_state_id(
+            "minecraft:small_dripleaf",
+            [
+                ("facing", "north"),
+                ("half", "lower"),
+                ("waterlogged", "false"),
+            ],
+        );
+
+        let mut missing_tag = tool_use_world(air);
+        set_block(&mut missing_tag, pos, wet_small_dripleaf);
+        set_block(&mut missing_tag, below, dirt);
+        set_main_hand(&mut missing_tag, VANILLA_ITEM_BUCKET_ID);
+        assert_eq!(
+            missing_tag.predict_local_item_use_with_pov_and_sequence(
+                InteractionHand::MainHand,
+                Some(item_use_block_hit(pos, ProtocolDirection::Up)),
+                36,
+                false,
+            ),
             LocalItemUsePrediction::UnsupportedOverride(VanillaItemUseOverride::BucketItem)
         );
         assert_eq!(
-            special_survival_owner
-                .probe_block(pos)
-                .unwrap()
-                .block_state_id,
-            wet_ladder
+            missing_tag.probe_block(pos).unwrap().block_state_id,
+            wet_small_dripleaf
         );
+
+        let mut supported_tag = tool_use_world(air);
+        install_block_tag(
+            &mut supported_tag,
+            "minecraft:supports_small_dripleaf",
+            vec![VANILLA_BLOCK_DIRT_ID],
+        );
+        set_block(&mut supported_tag, pos, wet_small_dripleaf);
+        set_block(&mut supported_tag, below, dirt);
+        set_main_hand(&mut supported_tag, VANILLA_ITEM_BUCKET_ID);
+        assert!(matches!(
+            supported_tag.predict_local_item_use_with_pov_and_sequence(
+                InteractionHand::MainHand,
+                Some(item_use_block_hit(pos, ProtocolDirection::Up)),
+                37,
+                false,
+            ),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
         assert_eq!(
-            player_inventory_item(&special_survival_owner, 0).item_id,
-            Some(VANILLA_ITEM_BUCKET_ID)
+            supported_tag.probe_block(pos).unwrap().block_state_id,
+            dry_small_dripleaf
         );
-        assert!(special_survival_owner.local_block_predictions().is_empty());
+
+        let mut rejected_tag = tool_use_world(air);
+        install_block_tag(
+            &mut rejected_tag,
+            "minecraft:supports_small_dripleaf",
+            Vec::new(),
+        );
+        set_block(&mut rejected_tag, pos, wet_small_dripleaf);
+        set_block(&mut rejected_tag, below, dirt);
+        set_main_hand(&mut rejected_tag, VANILLA_ITEM_BUCKET_ID);
+        assert!(matches!(
+            rejected_tag.predict_local_item_use_with_pov_and_sequence(
+                InteractionHand::MainHand,
+                Some(item_use_block_hit(pos, ProtocolDirection::Up)),
+                38,
+                false,
+            ),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(rejected_tag.probe_block(pos).unwrap().block_state_id, air);
+
+        let wet_scaffolding = block_state_id(
+            "minecraft:scaffolding",
+            [
+                ("bottom", "false"),
+                ("distance", "1"),
+                ("waterlogged", "true"),
+            ],
+        );
+        let dry_scaffolding = block_state_id(
+            "minecraft:scaffolding",
+            [
+                ("bottom", "false"),
+                ("distance", "1"),
+                ("waterlogged", "false"),
+            ],
+        );
+        let neighbour_scaffolding = block_state_id(
+            "minecraft:scaffolding",
+            [
+                ("bottom", "false"),
+                ("distance", "0"),
+                ("waterlogged", "false"),
+            ],
+        );
+        let unsupported_below_scaffolding = block_state_id(
+            "minecraft:scaffolding",
+            [
+                ("bottom", "true"),
+                ("distance", "7"),
+                ("waterlogged", "false"),
+            ],
+        );
+        let mut scaffolding = tool_use_world(air);
+        set_block(&mut scaffolding, pos, wet_scaffolding);
+        set_block(&mut scaffolding, below, unsupported_below_scaffolding);
+        set_block(&mut scaffolding, east, neighbour_scaffolding);
+        set_main_hand(&mut scaffolding, VANILLA_ITEM_BUCKET_ID);
+        assert!(matches!(
+            scaffolding.predict_local_item_use_with_pov_and_sequence(
+                InteractionHand::MainHand,
+                Some(item_use_block_hit(pos, ProtocolDirection::Up)),
+                39,
+                false,
+            ),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(
+            scaffolding.probe_block(pos).unwrap().block_state_id,
+            dry_scaffolding
+        );
+
+        let wet_dripstone = block_state_id(
+            "minecraft:pointed_dripstone",
+            [
+                ("thickness", "tip"),
+                ("vertical_direction", "up"),
+                ("waterlogged", "true"),
+            ],
+        );
+        let dry_dripstone = block_state_id(
+            "minecraft:pointed_dripstone",
+            [
+                ("thickness", "tip"),
+                ("vertical_direction", "up"),
+                ("waterlogged", "false"),
+            ],
+        );
+        let supporting_dripstone = block_state_id(
+            "minecraft:pointed_dripstone",
+            [
+                ("thickness", "base"),
+                ("vertical_direction", "up"),
+                ("waterlogged", "false"),
+            ],
+        );
+        let mut dripstone = tool_use_world(air);
+        set_block(&mut dripstone, pos, wet_dripstone);
+        set_block(&mut dripstone, below, supporting_dripstone);
+        set_main_hand(&mut dripstone, VANILLA_ITEM_BUCKET_ID);
+        assert!(matches!(
+            dripstone.predict_local_item_use_with_pov_and_sequence(
+                InteractionHand::MainHand,
+                Some(item_use_block_hit(pos, ProtocolDirection::Up)),
+                40,
+                false,
+            ),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(
+            dripstone.probe_block(pos).unwrap().block_state_id,
+            dry_dripstone
+        );
+
+        let above = BlockPos { y: 9, ..pos };
+        let stone = block_state_id("minecraft:stone", []);
+        let wet_lantern = block_state_id(
+            "minecraft:lantern",
+            [("hanging", "true"), ("waterlogged", "true")],
+        );
+        let dry_lantern = block_state_id(
+            "minecraft:lantern",
+            [("hanging", "true"), ("waterlogged", "false")],
+        );
+        for (sequence, unstable_entries, expected) in [
+            (41, Vec::new(), dry_lantern),
+            (42, vec![VANILLA_BLOCK_STONE_ID], air),
+        ] {
+            let mut lantern = tool_use_world(air);
+            install_block_tag(
+                &mut lantern,
+                "minecraft:unstable_bottom_center",
+                unstable_entries,
+            );
+            set_block(&mut lantern, pos, wet_lantern);
+            set_block(&mut lantern, above, stone);
+            set_main_hand(&mut lantern, VANILLA_ITEM_BUCKET_ID);
+            assert!(matches!(
+                lantern.predict_local_item_use_with_pov_and_sequence(
+                    InteractionHand::MainHand,
+                    Some(item_use_block_hit(pos, ProtocolDirection::Down)),
+                    sequence,
+                    false,
+                ),
+                LocalItemUsePrediction::Result(LocalInteractionResult::Success(_))
+            ));
+            assert_eq!(lantern.probe_block(pos).unwrap().block_state_id, expected);
+        }
     }
 
     #[test]
