@@ -1,9 +1,18 @@
+use bbb_protocol::attribute_types::{
+    VANILLA_ATTRIBUTE_ATTACK_DAMAGE_ID, VANILLA_ATTRIBUTE_ATTACK_KNOCKBACK_ID,
+    VANILLA_ATTRIBUTE_ATTACK_SPEED_ID,
+};
+use bbb_protocol::entity_types::vanilla_entity_type_is_redirectable_projectile;
 use bbb_protocol::packets::{
     PlayerCombatEnd as ProtocolPlayerCombatEnd, PlayerCombatKill as ProtocolPlayerCombatKill,
 };
 use bbb_protocol::RichTextComponent;
 use serde::{Deserialize, Serialize};
 
+use crate::entities::{
+    calculate_view_vector, vanilla_entity_metadata_type_accepts_local_attack_hurt,
+    vanilla_entity_metadata_type_is_projectile,
+};
 use crate::WorldStore;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -116,6 +125,99 @@ impl WorldStore {
 
     pub fn clear_death_screen(&mut self) -> bool {
         self.client_ui.current_death_screen.take().is_some()
+    }
+
+    /// Applies the client-owned state mutations from Vanilla `Player.attack`.
+    ///
+    /// The server remains authoritative for damage, enchantments, critical and
+    /// sweep effects, sounds, stats, item damage, and target removal. The return
+    /// value reports whether `causeExtraKnockback` called `setSprinting(false)`;
+    /// the native input owner uses it to keep command ordering outside world.
+    pub fn apply_local_player_attack_prediction(
+        &mut self,
+        target_id: i32,
+        sprinting: bool,
+    ) -> bool {
+        let Some(target_type_id) = self.entity_type_id(target_id) else {
+            return false;
+        };
+        let Some(mut player_pose) = self.local_player.pose else {
+            return false;
+        };
+
+        if vanilla_entity_type_is_redirectable_projectile(target_type_id)
+            && vanilla_entity_metadata_type_is_projectile(target_type_id)
+        {
+            let look = calculate_view_vector(player_pose.x_rot, player_pose.y_rot);
+            let _ = self
+                .entities
+                .with_transform_mut(target_id, |target| target.delta_movement = look);
+            return false;
+        }
+
+        if !vanilla_entity_metadata_type_accepts_local_attack_hurt(target_type_id) {
+            return false;
+        }
+
+        // LocalPlayer inherits Player.getEnchantedDamage, which returns the
+        // input damage unchanged. Only ServerPlayer applies enchantments.
+        let Some(base_damage) =
+            self.local_player_attribute_value(VANILLA_ATTRIBUTE_ATTACK_DAMAGE_ID)
+        else {
+            return false;
+        };
+        if !base_damage.is_finite() || base_damage <= 0.0 {
+            return false;
+        }
+
+        let attack_strength = self.local_player_attack_strength_scale(0.5);
+        let sprint_knockback = if sprinting && attack_strength > 0.9 {
+            0.5_f32
+        } else {
+            0.0
+        };
+        let attribute_knockback = self
+            .local_player_attribute_value(VANILLA_ATTRIBUTE_ATTACK_KNOCKBACK_ID)
+            .filter(|value| value.is_finite())
+            .unwrap_or(0.0) as f32
+            / 2.0;
+        let knockback = attribute_knockback + sprint_knockback;
+        if knockback <= 0.0 {
+            return false;
+        }
+
+        let push_direction = calculate_view_vector(0.0, player_pose.y_rot);
+        let push_x = (push_direction.x as f32 * knockback) as f64;
+        let push_z = (push_direction.z as f32 * knockback) as f64;
+        let pushed = self
+            .entities
+            .with_transform_mut(target_id, |target| {
+                target.delta_movement.x += push_x;
+                target.delta_movement.y += 0.1;
+                target.delta_movement.z += push_z;
+            })
+            .is_some();
+        if !pushed {
+            return false;
+        }
+
+        player_pose.delta_movement.x *= 0.6;
+        player_pose.delta_movement.z *= 0.6;
+        self.local_player.pose = Some(player_pose);
+        true
+    }
+
+    fn local_player_attack_strength_scale(&self, partial_tick: f32) -> f32 {
+        let Some(attack_speed) =
+            self.local_player_attribute_value(VANILLA_ATTRIBUTE_ATTACK_SPEED_ID)
+        else {
+            return 0.0;
+        };
+        if !attack_speed.is_finite() || attack_speed <= 0.0 {
+            return 0.0;
+        }
+        let delay = (1.0 / attack_speed * 20.0) as f32;
+        ((self.local_player_attack_strength_ticks() as f32 + partial_tick) / delay).clamp(0.0, 1.0)
     }
 }
 
@@ -258,6 +360,148 @@ mod tests {
         assert!(store.game_event_screen().is_some());
     }
 
+    #[test]
+    fn local_attack_aim_deflects_redirectable_projectile_without_player_knockback() {
+        let mut store = local_player_world(7);
+        store.set_local_player_pose(crate::LocalPlayerPoseState {
+            delta_movement: ProtocolVec3d {
+                x: 0.25,
+                y: 0.5,
+                z: -0.75,
+            },
+            y_rot: 90.0,
+            x_rot: -30.0,
+            ..crate::LocalPlayerPoseState::default()
+        });
+        add_target(
+            &mut store,
+            8,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_FIREBALL_ID,
+            ProtocolVec3d {
+                x: 4.0,
+                y: 5.0,
+                z: 6.0,
+            },
+        );
+
+        assert!(!store.apply_local_player_attack_prediction(8, true));
+
+        let expected = calculate_view_vector(-30.0, 90.0);
+        let target = store.probe_entity_transform(8).unwrap();
+        assert_eq!(target.delta_movement.x, expected.x);
+        assert_eq!(target.delta_movement.y, expected.y);
+        assert_eq!(target.delta_movement.z, expected.z);
+        assert_eq!(
+            store.local_player_pose().unwrap().delta_movement,
+            ProtocolVec3d {
+                x: 0.25,
+                y: 0.5,
+                z: -0.75,
+            }
+        );
+    }
+
+    #[test]
+    fn full_strength_sprint_attack_pushes_hurt_client_vehicle_and_slows_player() {
+        let mut store = local_player_world(7);
+        store.set_local_player_pose(crate::LocalPlayerPoseState {
+            delta_movement: ProtocolVec3d {
+                x: 0.2,
+                y: 0.4,
+                z: -0.3,
+            },
+            ..crate::LocalPlayerPoseState::default()
+        });
+        add_target(
+            &mut store,
+            8,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_MINECART_ID,
+            ProtocolVec3d {
+                x: 0.1,
+                y: 0.2,
+                z: 0.3,
+            },
+        );
+        store.advance_client_level_entity_ticks_with_observation(5);
+
+        assert!(store.apply_local_player_attack_prediction(8, true));
+
+        let target = store.probe_entity_transform(8).unwrap();
+        assert_f64_near(target.delta_movement.x, 0.1);
+        assert_f64_near(target.delta_movement.y, 0.3);
+        assert_f64_near(target.delta_movement.z, 0.8);
+        let player = store.local_player_pose().unwrap();
+        assert_f64_near(player.delta_movement.x, 0.12);
+        assert_f64_near(player.delta_movement.y, 0.4);
+        assert_f64_near(player.delta_movement.z, -0.18);
+    }
+
+    #[test]
+    fn weak_or_server_hurt_target_attack_has_no_local_knockback() {
+        let mut store = local_player_world(7);
+        store.set_local_player_pose(crate::LocalPlayerPoseState {
+            delta_movement: ProtocolVec3d {
+                x: 0.2,
+                y: 0.4,
+                z: -0.3,
+            },
+            ..crate::LocalPlayerPoseState::default()
+        });
+        add_target(
+            &mut store,
+            8,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_MINECART_ID,
+            ProtocolVec3d::default(),
+        );
+        add_target(
+            &mut store,
+            9,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            ProtocolVec3d::default(),
+        );
+
+        assert!(!store.apply_local_player_attack_prediction(8, true));
+        store.advance_client_level_entity_ticks_with_observation(5);
+        assert!(!store.apply_local_player_attack_prediction(9, true));
+
+        let vehicle = store.probe_entity_transform(8).unwrap().delta_movement;
+        assert_eq!([vehicle.x, vehicle.y, vehicle.z], [0.0; 3]);
+        let living = store.probe_entity_transform(9).unwrap().delta_movement;
+        assert_eq!([living.x, living.y, living.z], [0.0; 3]);
+        assert_eq!(
+            store.local_player_pose().unwrap().delta_movement,
+            ProtocolVec3d {
+                x: 0.2,
+                y: 0.4,
+                z: -0.3,
+            }
+        );
+    }
+
+    #[test]
+    fn local_attack_hurt_policy_covers_exact_accepting_runtime_families() {
+        for entity_type_id in [
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_MINECART_ID,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
+        ] {
+            assert!(vanilla_entity_metadata_type_accepts_local_attack_hurt(
+                entity_type_id
+            ));
+        }
+        for entity_type_id in [
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ITEM_FRAME_ID,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_FIREBALL_ID,
+        ] {
+            assert!(!vanilla_entity_metadata_type_accepts_local_attack_hurt(
+                entity_type_id
+            ));
+        }
+    }
+
     fn local_player_world(id: i32) -> WorldStore {
         let mut store = WorldStore::new();
         store.local_player_id = Some(id);
@@ -288,5 +532,35 @@ mod tests {
             }],
         }));
         store
+    }
+
+    fn add_target(
+        store: &mut WorldStore,
+        id: i32,
+        entity_type_id: i32,
+        delta_movement: ProtocolVec3d,
+    ) {
+        store.apply_add_entity(ProtocolAddEntity {
+            id,
+            uuid: Uuid::from_u128(id as u128),
+            entity_type_id,
+            position: ProtocolVec3d {
+                x: 0.0,
+                y: 1.0,
+                z: 3.0,
+            },
+            delta_movement,
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        });
+    }
+
+    fn assert_f64_near(actual: f64, expected: f64) {
+        assert!(
+            (actual - expected).abs() <= 1.0e-12,
+            "expected {expected}, got {actual}"
+        );
     }
 }

@@ -4683,6 +4683,31 @@ pub(crate) fn vanilla_entity_metadata_type_is_vehicle(entity_type_id: i32) -> bo
         .unwrap_or(false)
 }
 
+/// Returns whether Vanilla's client-side `hurtClient` path accepts an ordinary
+/// player attack and reaches `Player.causeExtraKnockback` for this non-living
+/// runtime class.
+///
+/// The complete 26.1 override inventory has three accepting owners:
+/// `VehicleEntity` (all subclasses), `ShulkerBullet`, and `EndCrystal`.
+/// `BlockAttachedEntity` accepts client hurt too, but its
+/// `skipAttackInteraction` hook consumes the attack before `Player.attack`
+/// reaches its second `hurtOrSimulate` call. `ExperienceOrb` and `ItemEntity`
+/// are not attackable.
+pub(crate) fn vanilla_entity_metadata_type_accepts_local_attack_hurt(entity_type_id: i32) -> bool {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
+        .is_some_and(|entry| {
+            entry.is_vehicle
+                || matches!(
+                    entry.runtime_class,
+                    Some(
+                        "net.minecraft.world.entity.projectile.ShulkerBullet"
+                            | "net.minecraft.world.entity.boss.enderdragon.EndCrystal"
+                    )
+                )
+        })
+}
+
 pub fn vanilla_entity_metadata_type_is_boat(entity_type_id: i32) -> bool {
     VANILLA_ENTITY_TYPE_METADATA_26_1
         .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
