@@ -1029,12 +1029,13 @@ mod tests {
     use bbb_protocol::item_types::{
         VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_ARROW_ID, VANILLA_ITEM_BONE_MEAL_ID,
         VANILLA_ITEM_BOW_ID, VANILLA_ITEM_BRUSH_ID, VANILLA_ITEM_BUNDLE_ID,
-        VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID, VANILLA_ITEM_COMPASS_ID, VANILLA_ITEM_CROSSBOW_ID,
-        VANILLA_ITEM_ENDER_PEARL_ID, VANILLA_ITEM_FIREWORK_ROCKET_ID, VANILLA_ITEM_FIRE_CHARGE_ID,
-        VANILLA_ITEM_FISHING_ROD_ID, VANILLA_ITEM_FLINT_AND_STEEL_ID, VANILLA_ITEM_GLASS_BOTTLE_ID,
-        VANILLA_ITEM_GOAT_HORN_ID, VANILLA_ITEM_KNOWLEDGE_BOOK_ID, VANILLA_ITEM_MAP_ID,
-        VANILLA_ITEM_POTION_ID, VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_SHIELD_ID,
-        VANILLA_ITEM_SPYGLASS_ID, VANILLA_ITEM_STONE_ID,
+        VANILLA_ITEM_CARROT_ON_A_STICK_ID, VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID,
+        VANILLA_ITEM_COMPASS_ID, VANILLA_ITEM_CROSSBOW_ID, VANILLA_ITEM_ENDER_PEARL_ID,
+        VANILLA_ITEM_FIREWORK_ROCKET_ID, VANILLA_ITEM_FIRE_CHARGE_ID, VANILLA_ITEM_FISHING_ROD_ID,
+        VANILLA_ITEM_FLINT_AND_STEEL_ID, VANILLA_ITEM_GLASS_BOTTLE_ID, VANILLA_ITEM_GOAT_HORN_ID,
+        VANILLA_ITEM_KNOWLEDGE_BOOK_ID, VANILLA_ITEM_MAP_ID, VANILLA_ITEM_POTION_ID,
+        VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_SPYGLASS_ID,
+        VANILLA_ITEM_STONE_ID,
     };
     use bbb_protocol::packets::{
         AddEntity, AdventureModePredicateDataSummary, AdventureModePredicateSummary, AttackEntity,
@@ -2258,6 +2259,72 @@ mod tests {
         );
         assert!(world.map_items().is_empty());
         assert!(audio.positioned_sounds.is_empty());
+        assert!(audio.entity_sounds.is_empty());
+    }
+
+    #[test]
+    fn food_on_a_stick_passes_to_offhand_without_local_durability_or_boost() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        world.set_local_player_pose(LocalPlayerPoseState::default());
+        let on_a_stick = item_stack(VANILLA_ITEM_CARROT_ON_A_STICK_ID, 1);
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: on_a_stick.clone(),
+        });
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+            item: item_stack(VANILLA_ITEM_SPYGLASS_ID, 1),
+        });
+        let mut counters = NetCounters::default();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut audio = RecordingAudioSink::default();
+        let mut audio_events = Some(&mut audio as &mut dyn crate::audio_runtime::AudioEventSink);
+
+        handle_mouse_input_at_partial_tick_with_effects(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+            1.0,
+            &mut random,
+            &mut audio_events,
+        );
+        drop(audio_events);
+
+        for (sequence, hand) in [
+            (1, InteractionHand::MainHand),
+            (2, InteractionHand::OffHand),
+        ] {
+            assert_eq!(
+                rx.try_recv().unwrap(),
+                NetCommand::UseItem(UseItemCommand {
+                    packet: UseItem {
+                        hand,
+                        sequence,
+                        y_rot: 0.0,
+                        x_rot: 0.0,
+                    },
+                    selected_hotbar_slot: 0,
+                })
+            );
+        }
+        assert!(rx.try_recv().is_err());
+        assert_eq!(counters.use_item_commands_queued, 2);
+        assert_eq!(counters.swing_commands_queued, 0);
+        assert_eq!(
+            world.local_player().interaction.using_item_hand,
+            Some(InteractionHand::OffHand)
+        );
+        assert_eq!(
+            world.local_item_in_hand(InteractionHand::MainHand),
+            Some(&on_a_stick)
+        );
+        assert_eq!(audio.positioned_sounds.len(), 1);
         assert!(audio.entity_sounds.is_empty());
     }
 

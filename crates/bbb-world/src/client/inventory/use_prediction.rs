@@ -57,6 +57,7 @@ mod empty_map;
 mod equippable;
 mod firework_rocket;
 mod fishing_rod;
+mod food_on_a_stick;
 mod ignition;
 mod instrument;
 mod item_use_fov;
@@ -376,6 +377,9 @@ impl WorldStore {
                     self.predict_local_firework_rocket_item_use()
                 }
                 VanillaItemUseOverride::FishingRodItem => self.predict_local_fishing_rod_item_use(),
+                VanillaItemUseOverride::FoodOnAStickItem => {
+                    self.predict_local_food_on_a_stick_item_use()
+                }
                 VanillaItemUseOverride::KnowledgeBookItem => {
                     self.predict_local_knowledge_book_item_use(hand, &stack)
                 }
