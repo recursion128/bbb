@@ -542,3 +542,6 @@
 - **2026-07-25（Boat Item.use 工程闭环）**：ANY-fluid POV 现保留 double 命中点，
   并按 Vanilla 的眼点实体遮挡及新船体 block/entity/world-border `noCollision`
   判定本地 PASS/FAIL/SUCCESS；生成实体与物品消耗仍由服务端拥有。
+- **2026-07-25（Bottle Item.use 工程闭环）**：SOURCE_ONLY 命中水源后按
+  `ItemUtils.createFilledResult` 预测水瓶、满背包额外挥手与本地装瓶声音；龙息云
+  owner 不上 wire，维持 Vanilla 远端客户端的服务端权威边界。

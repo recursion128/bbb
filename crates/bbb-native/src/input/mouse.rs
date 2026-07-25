@@ -5133,6 +5133,71 @@ mod tests {
     }
 
     #[test]
+    fn no_target_bottle_use_fills_source_water_with_local_sound_and_swing() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_block();
+        assert!(world.apply_block_update(BlockUpdate {
+            pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+            block_state_id: test_block_state_id("minecraft:water", &[("level", "0")]),
+        }));
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(VANILLA_ITEM_GLASS_BOTTLE_ID, 1),
+        });
+        let mut counters = NetCounters::default();
+        let player_pose = world.local_player_pose();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut expected_seed_world = WorldStore::new();
+        let expected_seed = expected_seed_world.next_sound_seed();
+        let mut audio = RecordingAudioSink::default();
+        let mut audio_events = Some(&mut audio as &mut dyn crate::audio_runtime::AudioEventSink);
+
+        assert!(start_use_item_with_effects(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            None,
+            player_pose,
+            &mut random,
+            &mut audio_events,
+        ));
+        drop(audio_events);
+
+        let filled = world
+            .local_item_in_hand(InteractionHand::MainHand)
+            .expect("filled bottle");
+        let water_potion_id =
+            bbb_protocol::potion_types::vanilla_potion_for_resource_id("minecraft:water")
+                .expect("generated water potion")
+                .id;
+        assert_eq!(filled.item_id, Some(VANILLA_ITEM_POTION_ID));
+        assert_eq!(filled.count, 1);
+        assert_eq!(filled.component_patch.potion_id, Some(water_potion_id));
+        assert_eq!(counters.use_item_commands_queued, 1);
+        assert_eq!(counters.swing_commands_queued, 1);
+        assert!(matches!(rx.try_recv(), Ok(NetCommand::UseItem(_))));
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
+        assert!(rx.try_recv().is_err());
+        assert_eq!(audio.positioned_sounds.len(), 1);
+        let sound = &audio.positioned_sounds[0];
+        assert_eq!(
+            sound.sound.location.as_deref(),
+            Some("minecraft:item.bottle.fill")
+        );
+        assert_eq!(sound.source, "neutral");
+        assert_eq!(sound.volume, 1.0);
+        assert_eq!(sound.pitch, 1.0);
+        assert_eq!(sound.seed, expected_seed);
+        assert_eq!(sound.position, player_pose.expect("player pose").position);
+    }
+
+    #[test]
     fn right_mouse_riptide_release_queues_action_applies_motion_and_suppresses_local_sound() {
         let (tx, mut rx) = mpsc::channel(2);
         let commands = Some(tx);

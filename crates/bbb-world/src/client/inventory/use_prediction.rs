@@ -148,6 +148,7 @@ pub enum LocalInteractionSoundAction {
     SuppressedFireChargeUse,
     SuppressedLodestoneCompassUse,
     SuppressedPotionMudConversion,
+    BottleFill,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -346,6 +347,21 @@ impl LocalInteractionSuccess {
         }
     }
 
+    const fn bottle_fill(dropped: bool) -> Self {
+        Self {
+            swing_source: LocalInteractionSwingSource::Client,
+            was_item_interaction: true,
+            starts_using_item: false,
+            extra_swing: if dropped {
+                Some(InteractionHand::MainHand)
+            } else {
+                None
+            },
+            sound_action: Some(LocalInteractionSoundAction::BottleFill),
+            particle_action: None,
+        }
+    }
+
     const fn spyglass_use() -> Self {
         Self {
             swing_source: LocalInteractionSwingSource::None,
@@ -435,6 +451,9 @@ impl WorldStore {
                 }
                 VanillaItemUseOverride::BoatItem => {
                     self.predict_local_boat_item_use(item_type, pov)
+                }
+                VanillaItemUseOverride::BottleItem => {
+                    self.predict_local_bottle_item_use(hand, &stack, pov)
                 }
                 VanillaItemUseOverride::EnderEyeItem => self.predict_local_ender_eye_item_use(pov),
                 VanillaItemUseOverride::SpawnEggItem => self.predict_local_spawn_egg_item_use(pov),
@@ -2187,16 +2206,16 @@ mod tests {
             VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
             VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
             VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID, VANILLA_ENTITY_TYPE_COW_ID,
-            VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
-            VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
-            VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_ITEM_FRAME_ID,
-            VANILLA_ENTITY_TYPE_LEASH_KNOT_ID, VANILLA_ENTITY_TYPE_MANNEQUIN_ID,
-            VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
-            VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
-            VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-            VANILLA_ENTITY_TYPE_SHEEP_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
-            VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
-            VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+            VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
+            VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
+            VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
+            VANILLA_ENTITY_TYPE_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_LEASH_KNOT_ID,
+            VANILLA_ENTITY_TYPE_MANNEQUIN_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
+            VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+            VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
+            VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
+            VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
         },
         equipment_slots::EquipmentSlot,
         game_types::{VANILLA_GAME_TYPE_CREATIVE_ID, VANILLA_GAME_TYPE_SURVIVAL_ID},
@@ -2827,6 +2846,159 @@ mod tests {
                     .expect("boat item resource must have an entity type");
             assert!(crate::entities::is_vanilla_boat_type(entity.id));
         }
+    }
+
+    #[test]
+    fn bottle_use_fills_source_water_and_applies_filled_result_inventory_edges() {
+        let hit = |pos: ProtocolBlockPos| LocalItemUsePovResult::Block {
+            hit: BlockHitResult {
+                pos,
+                direction: ProtocolDirection::Up,
+                cursor_x: 0.5,
+                cursor_y: 0.5,
+                cursor_z: 0.5,
+                inside: false,
+                world_border_hit: false,
+            },
+            location: Vec3d {
+                x: f64::from(pos.x) + 0.5,
+                y: f64::from(pos.y) + 0.5,
+                z: f64::from(pos.z) + 0.5,
+            },
+        };
+        let pos = ProtocolBlockPos { x: 0, y: 0, z: 0 };
+        let water = block_state_id("minecraft:water", [("level", "0")]);
+        let water_potion =
+            bbb_protocol::potion_types::vanilla_potion_for_resource_id("minecraft:water")
+                .expect("generated water potion");
+
+        let mut world = tool_use_world(water);
+        set_main_hand(&mut world, VANILLA_ITEM_GLASS_BOTTLE_ID);
+        assert_eq!(
+            world.predict_local_item_use(InteractionHand::MainHand),
+            LocalItemUsePrediction::UnsupportedOverride(VanillaItemUseOverride::BottleItem)
+        );
+        assert_eq!(
+            world.predict_local_item_use_with_pov(
+                InteractionHand::MainHand,
+                Some(LocalItemUsePovResult::Miss),
+            ),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+        assert_eq!(
+            world.predict_local_item_use_with_pov(InteractionHand::MainHand, Some(hit(pos)),),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::bottle_fill(false)
+            ))
+        );
+        let filled = player_inventory_item(&world, 0);
+        assert_eq!(filled.item_id, Some(VANILLA_ITEM_POTION_ID));
+        assert_eq!(filled.count, 1);
+        assert_eq!(filled.component_patch.potion_id, Some(water_potion.id));
+        assert_eq!(
+            filled.component_patch.added_type_ids,
+            vec![VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID]
+        );
+
+        let mut dry = tool_use_world(block_state_id("minecraft:stone", []));
+        set_main_hand(&mut dry, VANILLA_ITEM_GLASS_BOTTLE_ID);
+        assert_eq!(
+            dry.predict_local_item_use_with_pov(InteractionHand::MainHand, Some(hit(pos)),),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+        assert_eq!(
+            player_inventory_item(&dry, 0).item_id,
+            Some(VANILLA_ITEM_GLASS_BOTTLE_ID)
+        );
+
+        let mut full = tool_use_world(water);
+        for slot in 0..36 {
+            full.apply_set_player_inventory(SetPlayerInventory {
+                slot,
+                item: stack(VANILLA_ITEM_STONE_ID),
+            });
+        }
+        full.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: ItemStackSummary {
+                count: 2,
+                ..stack(VANILLA_ITEM_GLASS_BOTTLE_ID)
+            },
+        });
+        assert_eq!(
+            full.predict_local_item_use_with_pov(InteractionHand::MainHand, Some(hit(pos)),),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::bottle_fill(true)
+            ))
+        );
+        assert_eq!(player_inventory_item(&full, 0).count, 1);
+        assert!(full
+            .inventory()
+            .player_slots
+            .iter()
+            .all(|slot| slot.item.item_id != Some(VANILLA_ITEM_POTION_ID)));
+    }
+
+    #[test]
+    fn bottle_use_does_not_infer_dragon_cloud_owner_from_add_entity_data() {
+        let pos = ProtocolBlockPos { x: 0, y: 0, z: 0 };
+        let mut world = tool_use_world(block_state_id("minecraft:water", [("level", "0")]));
+        add_entity_at(
+            &mut world,
+            41,
+            VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
+            Vec3d::default(),
+        );
+        world.apply_add_entity(AddEntity {
+            id: 42,
+            uuid: Uuid::from_u128(42),
+            entity_type_id: VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID,
+            position: Vec3d::default(),
+            delta_movement: Vec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 41,
+        });
+        let cloud_bounds = |world: &WorldStore| {
+            world
+                .entity_debug_hitbox_targets_at_partial_tick(1.0)
+                .into_iter()
+                .find(|target| target.entity_id == 42)
+                .map(|target| target.bounds)
+        };
+        let cloud_bounds_before = cloud_bounds(&world).expect("area effect cloud bounds");
+        set_main_hand(&mut world, VANILLA_ITEM_GLASS_BOTTLE_ID);
+
+        assert_eq!(
+            world.predict_local_item_use_with_pov(
+                InteractionHand::MainHand,
+                Some(LocalItemUsePovResult::Block {
+                    hit: BlockHitResult {
+                        pos,
+                        direction: ProtocolDirection::Up,
+                        cursor_x: 0.5,
+                        cursor_y: 0.5,
+                        cursor_z: 0.5,
+                        inside: false,
+                        world_border_hit: false,
+                    },
+                    location: Vec3d {
+                        x: 0.5,
+                        y: 0.5,
+                        z: 0.5,
+                    },
+                }),
+            ),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::bottle_fill(false)
+            ))
+        );
+        assert_eq!(cloud_bounds(&world), Some(cloud_bounds_before));
+        assert_eq!(
+            player_inventory_item(&world, 0).item_id,
+            Some(VANILLA_ITEM_POTION_ID)
+        );
     }
 
     #[test]

@@ -662,11 +662,14 @@ Commands:
   Interaction override ownership must stay generated from local vanilla classes.
   Entity, block, and inventory corrections remain server-authoritative.
 - Complete no-target `Item.use` prediction for the remaining source-derived
-  specialized override families: Bottle dragon-breath/water filling and
-  held-stack transformation, Bucket pickup/placement/evaporation, and
+  specialized override families: Bucket pickup/placement/evaporation and
   PlaceOnWaterBlock delegation into general `BlockItem.useOn`.
   Override ownership must stay generated from local vanilla item classes instead
   of being inferred from component shape.
+- Bottle dragon-breath client prediction is `not-needed`: `AreaEffectCloud.owner`
+  is absent from both `ClientboundAddEntityPacket` and synchronized metadata, so
+  the remote 26.1 client leaves that branch server-authoritative. Reopen if the
+  owner becomes client-visible on the wire.
 Inventory:
 
 - Implement the creative-inventory screen item-add/item-drop interactions that

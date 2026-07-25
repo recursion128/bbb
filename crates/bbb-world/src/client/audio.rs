@@ -1694,11 +1694,12 @@ impl WorldStore {
     /// Vanilla flint-and-steel and instruments pass the local player as
     /// `except`, so `ClientLevel.playSeededSound` plays them immediately.
     /// Instrument playback is entity-bound; flint-and-steel is positioned.
-    /// Spyglass start/stop and bundle removal call `LocalPlayer.playSound`, so
-    /// they are immediate positioned sounds. Bundle content-drop, fishing rods,
-    /// bow release, Riptide release, thrown projectiles, fire charges,
-    /// lodestone compasses, and both potion mud-conversion sounds pass `null`,
-    /// so their local calls only advance the random streams.
+    /// Spyglass start/stop and bundle removal call `LocalPlayer.playSound`;
+    /// bottle filling passes the local player as `except`, so these are
+    /// immediate positioned sounds. Bundle content-drop, fishing rods, bow
+    /// release, Riptide release, thrown projectiles, fire charges, lodestone
+    /// compasses, and both potion mud-conversion sounds pass `null`, so their
+    /// local calls only advance the random streams.
     pub fn apply_local_interaction_sound_action(
         &mut self,
         action: LocalInteractionSoundAction,
@@ -1816,6 +1817,13 @@ impl WorldStore {
                 let _discarded_bottle_empty_seed = self.next_sound_seed();
                 return None;
             }
+            LocalInteractionSoundAction::BottleFill => local_player_sound_state(
+                self.local_player_pose()?.position,
+                "minecraft:item.bottle.fill",
+                1.0,
+                1.0,
+                SoundSource::Neutral.as_str(),
+            ),
         };
         state.seed = self.next_sound_seed();
         Some(LocalInteractionSoundEffect::Positioned(

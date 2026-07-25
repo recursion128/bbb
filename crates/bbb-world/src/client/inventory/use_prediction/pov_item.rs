@@ -1,10 +1,16 @@
 use super::*;
-use crate::LocalPlayerPoseState;
+use crate::{LocalPlayerPoseState, TerrainFluidKind};
 use bbb_protocol::{
     attribute_types::{vanilla_attribute_type, VANILLA_ATTRIBUTE_BLOCK_INTERACTION_RANGE_ID},
+    data_component_types::VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
     entity_types::vanilla_entity_type_for_resource_id,
-    item_types::ItemTypeCatalogEntry,
-    packets::{BlockHitResult as ProtocolBlockHitResult, Vec3d as ProtocolVec3d},
+    item_types::{ItemTypeCatalogEntry, VANILLA_ITEM_GLASS_BOTTLE_ID, VANILLA_ITEM_POTION_ID},
+    packets::{
+        BlockHitResult as ProtocolBlockHitResult,
+        DataComponentPatchSummary as ProtocolDataComponentPatchSummary,
+        ItemStackSummary as ProtocolItemStackSummary, Vec3d as ProtocolVec3d,
+    },
+    potion_types::vanilla_potion_for_resource_id,
 };
 
 /// Fluid shape selected by Vanilla's `Item.getPlayerPOVHitResult`.
@@ -157,6 +163,64 @@ impl WorldStore {
 
         LocalItemUsePrediction::Result(LocalInteractionResult::Success(
             LocalInteractionSuccess::client_item_interaction(),
+        ))
+    }
+
+    pub(super) fn predict_local_bottle_item_use(
+        &mut self,
+        hand: InteractionHand,
+        stack: &ProtocolItemStackSummary,
+        pov: Option<LocalItemUsePovResult>,
+    ) -> LocalItemUsePrediction {
+        // `BottleItem` checks dragon-owned AreaEffectClouds first, but the
+        // cloud's EntityReference owner is absent from both AddEntity and
+        // synchronized metadata. The remote Vanilla client therefore cannot
+        // enter that server-owned branch and proceeds to the POV water check.
+        let Some(pov) = pov else {
+            return LocalItemUsePrediction::UnsupportedOverride(VanillaItemUseOverride::BottleItem);
+        };
+        let LocalItemUsePovResult::Block { hit, .. } = pov else {
+            return LocalItemUsePrediction::Result(LocalInteractionResult::Pass);
+        };
+        let pos = BlockPos {
+            x: hit.pos.x,
+            y: hit.pos.y,
+            z: hit.pos.z,
+        };
+        let Some(block) = self.probe_block(pos) else {
+            return LocalItemUsePrediction::UnsupportedOverride(VanillaItemUseOverride::BottleItem);
+        };
+        if !block
+            .fluid
+            .is_some_and(|fluid| fluid.kind == TerrainFluidKind::Water)
+        {
+            return LocalItemUsePrediction::Result(LocalInteractionResult::Pass);
+        }
+        if stack.item_id != Some(VANILLA_ITEM_GLASS_BOTTLE_ID) || stack.count < 1 {
+            return LocalItemUsePrediction::UnsupportedOverride(VanillaItemUseOverride::BottleItem);
+        }
+        let Some(water) = vanilla_potion_for_resource_id("minecraft:water") else {
+            return LocalItemUsePrediction::UnsupportedOverride(VanillaItemUseOverride::BottleItem);
+        };
+        let water_potion = ProtocolItemStackSummary {
+            item_id: Some(VANILLA_ITEM_POTION_ID),
+            count: 1,
+            component_patch: ProtocolDataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID],
+                potion_id: Some(water.id),
+                ..ProtocolDataComponentPatchSummary::default()
+            },
+        };
+        let Some(dropped) = self.replace_local_item_with_filled_result(
+            hand,
+            VANILLA_ITEM_GLASS_BOTTLE_ID,
+            water_potion,
+        ) else {
+            return LocalItemUsePrediction::UnsupportedOverride(VanillaItemUseOverride::BottleItem);
+        };
+        LocalItemUsePrediction::Result(LocalInteractionResult::Success(
+            LocalInteractionSuccess::bottle_fill(dropped),
         ))
     }
 

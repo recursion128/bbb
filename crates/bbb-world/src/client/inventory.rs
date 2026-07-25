@@ -1566,16 +1566,18 @@ impl InventoryState {
         Some(!instabuild && !added)
     }
 
-    /// Applies `ItemUtils.createFilledResult` for `PotionItem.useOn`.
+    /// Applies `ItemUtils.createFilledResult` to one locally held stack.
     ///
     /// The returned flag identifies the survival/full-inventory branch where
     /// vanilla calls `Player.drop`; on the logical client that call contributes
     /// an extra main-hand swing without spawning an item entity.
-    pub(crate) fn replace_local_potion_with_glass_bottle(
+    pub(crate) fn replace_local_item_with_filled_result(
         &mut self,
         ctx: InventoryCtx<'_>,
         counters: &mut WorldCounters,
         hand: InteractionHand,
+        expected_item_id: i32,
+        filled: ProtocolItemStackSummary,
     ) -> Option<bool> {
         let hand_slot_id = match hand {
             InteractionHand::MainHand => {
@@ -1586,35 +1588,31 @@ impl InventoryState {
         };
         let mut hand_slot = self.player_inventory_slot(hand_slot_id);
         if item_stack_is_empty(&hand_slot.item)
-            || hand_slot.item.item_id != Some(VANILLA_ITEM_POTION_ID)
+            || hand_slot.item.item_id != Some(expected_item_id)
+            || item_stack_is_empty(&filled)
         {
             return None;
         }
 
-        let bottle = ProtocolItemStackSummary {
-            item_id: Some(VANILLA_ITEM_GLASS_BOTTLE_ID),
-            count: 1,
-            component_patch: ProtocolDataComponentPatchSummary::default(),
-        };
         let instabuild = ctx
             .local_player
             .abilities
             .is_some_and(|abilities| abilities.instabuild);
         if instabuild {
-            let already_contains_bottle = (0..=VANILLA_PLAYER_INVENTORY_SADDLE_SLOT)
+            let already_contains_filled = (0..=VANILLA_PLAYER_INVENTORY_SADDLE_SLOT)
                 .map(|slot_id| self.player_inventory_slot(slot_id))
                 .any(|slot| {
                     !item_stack_is_empty(&slot.item)
-                        && same_item_same_components(&slot.item, &bottle)
+                        && same_item_same_components(&slot.item, &filled)
                 });
-            if !already_contains_bottle && self.add_local_item_to_player_inventory(ctx, bottle) {
+            if !already_contains_filled && self.add_local_item_to_player_inventory(ctx, filled) {
                 self.update_inventory_slot_count(counters);
             }
             return Some(false);
         }
 
         if hand_slot.item.count == 1 {
-            hand_slot.item = bottle;
+            hand_slot.item = filled;
             self.set_player_inventory_slot_and_menu_slot(hand_slot);
             self.update_inventory_slot_count(counters);
             return Some(false);
@@ -1623,9 +1621,28 @@ impl InventoryState {
         hand_slot.item.count -= 1;
         normalize_item_stack(&mut hand_slot.item);
         self.set_player_inventory_slot_and_menu_slot(hand_slot);
-        let added = self.add_local_item_to_player_inventory(ctx, bottle);
+        let added = self.add_local_item_to_player_inventory(ctx, filled);
         self.update_inventory_slot_count(counters);
         Some(!added)
+    }
+
+    pub(crate) fn replace_local_potion_with_glass_bottle(
+        &mut self,
+        ctx: InventoryCtx<'_>,
+        counters: &mut WorldCounters,
+        hand: InteractionHand,
+    ) -> Option<bool> {
+        self.replace_local_item_with_filled_result(
+            ctx,
+            counters,
+            hand,
+            VANILLA_ITEM_POTION_ID,
+            ProtocolItemStackSummary {
+                item_id: Some(VANILLA_ITEM_GLASS_BOTTLE_ID),
+                count: 1,
+                component_patch: ProtocolDataComponentPatchSummary::default(),
+            },
+        )
     }
 
     /// Mirrors `Inventory.add` search order: selected slot, offhand, compatible
@@ -3223,6 +3240,21 @@ impl WorldStore {
             inventory_ctx!(self),
             &mut self.counters,
             hand,
+        )
+    }
+
+    pub(crate) fn replace_local_item_with_filled_result(
+        &mut self,
+        hand: InteractionHand,
+        expected_item_id: i32,
+        filled: ProtocolItemStackSummary,
+    ) -> Option<bool> {
+        self.inventory.replace_local_item_with_filled_result(
+            inventory_ctx!(self),
+            &mut self.counters,
+            hand,
+            expected_item_id,
+            filled,
         )
     }
 
