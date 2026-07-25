@@ -54,6 +54,7 @@ mod book;
 mod bundle;
 mod crossbow;
 mod equippable;
+mod firework_rocket;
 mod fishing_rod;
 mod ignition;
 mod instrument;
@@ -368,6 +369,9 @@ impl WorldStore {
                 ),
                 VanillaItemUseOverride::CrossbowItem => {
                     self.predict_local_crossbow_item_use(&stack)
+                }
+                VanillaItemUseOverride::FireworkRocketItem => {
+                    self.predict_local_firework_rocket_item_use()
                 }
                 VanillaItemUseOverride::FishingRodItem => self.predict_local_fishing_rod_item_use(),
                 VanillaItemUseOverride::KnowledgeBookItem => {
@@ -2498,10 +2502,12 @@ mod tests {
     #[test]
     fn item_use_override_and_active_cooldown_remain_explicit() {
         let mut world = WorldStore::new();
-        set_main_hand(&mut world, VANILLA_ITEM_FIREWORK_ROCKET_ID);
+        set_main_hand(&mut world, VANILLA_ITEM_LILY_PAD_ID);
         assert_eq!(
             world.predict_local_item_use(InteractionHand::MainHand),
-            LocalItemUsePrediction::UnsupportedOverride(VanillaItemUseOverride::FireworkRocketItem)
+            LocalItemUsePrediction::UnsupportedOverride(
+                VanillaItemUseOverride::PlaceOnWaterBlockItem
+            )
         );
 
         world.set_default_item_component_type_ids(BTreeMap::from([(

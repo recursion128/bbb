@@ -1021,6 +1021,7 @@ mod tests {
         VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID, VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID,
         VANILLA_DATA_COMPONENT_TOOL_TYPE_ID, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
     };
+    use bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID;
     use bbb_protocol::equipment_slots::{
         VANILLA_EQUIPMENT_SLOT_CHEST_ID, VANILLA_PLAYER_INVENTORY_CHEST_SLOT,
         VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
@@ -1039,20 +1040,20 @@ mod tests {
         AddEntity, AdventureModePredicateDataSummary, AdventureModePredicateSummary, AttackEntity,
         AttackRangeSummary, BlockEntityData, BlockHitResult as ProtocolBlockHitResult,
         BlockHolderSetSummary, BlockPos as ProtocolBlockPos, BlockPredicateSummary, BlockUpdate,
-        CommonPlayerSpawnInfo, ConsumableSummary, DataComponentPatchSummary,
-        EntityEvent as ProtocolEntityEvent, EquippableSummary, GameEvent as ProtocolGameEvent,
-        InitializeBorder, InstrumentSummary, InteractEntity,
+        CommonPlayerSpawnInfo, ConsumableSummary, DataComponentPatchSummary, EntityDataValue,
+        EntityDataValueKind, EntityEvent as ProtocolEntityEvent, EquippableSummary,
+        GameEvent as ProtocolGameEvent, InitializeBorder, InstrumentSummary, InteractEntity,
         ItemStackSummary as ProtocolItemStackSummary, ItemStackTemplateSummary,
         LodestoneTargetSummary, OpenSignEditor, PickItemFromBlock, PickItemFromEntity, PlayLogin,
-        PlayerAbilities, PlayerAction, PlayerHealth, RegistryTags, RemoveEntities, SetPassengers,
-        SetPlayerInventory as ProtocolSetPlayerInventory, SoundEventSummary, TagNetworkPayload,
-        ToolSummary, UpdateTags, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
+        PlayerAbilities, PlayerAction, PlayerHealth, RegistryTags, RemoveEntities, SetEntityData,
+        SetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory, SoundEventSummary,
+        TagNetworkPayload, ToolSummary, UpdateTags, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
     };
     use bbb_world::{
-        BlockEntityRecord, BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState,
-        ItemFoodProperties, LightData, LocalPlayerPoseState, PaletteDomain, PaletteKind,
-        PalettedContainerData, SignBlockEntityTextState, WorldBlockDestroyProfile,
-        WorldBlockSoundProfile, WorldDimension,
+        vanilla_entity_metadata_entity_accessors, BlockEntityRecord, BlockPos, ChunkColumn,
+        ChunkPos, ChunkSection, ChunkState, ItemFoodProperties, LightData, LocalPlayerPoseState,
+        PaletteDomain, PaletteKind, PalettedContainerData, SignBlockEntityTextState,
+        WorldBlockDestroyProfile, WorldBlockSoundProfile, WorldDimension,
     };
     use std::collections::{BTreeMap, BTreeSet};
     use uuid::Uuid;
@@ -2058,6 +2059,142 @@ mod tests {
             assert!(world.client_audio().last_sound.is_none());
             assert_eq!(random.next_float(), expected_next_random);
             assert_eq!(world.next_sound_seed(), expected_next_seed);
+        }
+    }
+
+    #[test]
+    fn firework_rocket_passes_on_ground_and_swings_without_local_launch_while_flying() {
+        for fall_flying in [false, true] {
+            let (tx, mut rx) = mpsc::channel(2);
+            let commands = Some(tx);
+            let mut input = ClientInputState::new(true);
+            let mut world = WorldStore::new();
+            world.apply_login(&PlayLogin {
+                player_id: 42,
+                hardcore: false,
+                levels: vec!["minecraft:overworld".to_string()],
+                max_players: 20,
+                chunk_radius: 8,
+                simulation_distance: 6,
+                reduced_debug_info: false,
+                show_death_screen: true,
+                do_limited_crafting: false,
+                common_spawn_info: CommonPlayerSpawnInfo {
+                    dimension_type_id: 0,
+                    dimension: "minecraft:overworld".to_string(),
+                    seed: 0,
+                    game_type: 0,
+                    previous_game_type: -1,
+                    is_debug: false,
+                    is_flat: false,
+                    last_death_location: None,
+                    portal_cooldown: 0,
+                    sea_level: 63,
+                },
+                enforces_secure_chat: true,
+            });
+            world.apply_add_entity(AddEntity {
+                id: 42,
+                uuid: Uuid::from_u128(42),
+                entity_type_id: VANILLA_ENTITY_TYPE_PLAYER_ID,
+                position: ProtocolVec3d::default(),
+                delta_movement: ProtocolVec3d::default(),
+                x_rot: 0.0,
+                y_rot: 0.0,
+                y_head_rot: 0.0,
+                data: 0,
+            });
+            if fall_flying {
+                let accessors = vanilla_entity_metadata_entity_accessors().unwrap();
+                assert!(world.apply_set_entity_data(SetEntityData {
+                    id: 42,
+                    values: vec![EntityDataValue {
+                        data_id: accessors.shared_flags_data_id,
+                        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                        value: EntityDataValueKind::Byte(
+                            accessors.shared_flags_default | accessors.fall_flying_mask,
+                        ),
+                    }],
+                }));
+            }
+            world.set_local_player_pose(LocalPlayerPoseState::default());
+            let rocket = item_stack(VANILLA_ITEM_FIREWORK_ROCKET_ID, 2);
+            world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+                slot: 0,
+                item: rocket.clone(),
+            });
+            world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+                slot: VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+                item: item_stack(VANILLA_ITEM_SPYGLASS_ID, 1),
+            });
+            let entity_count = world.entity_count();
+            let mut counters = NetCounters::default();
+            let mut random = LevelEventSoundRandomState::with_seed(0);
+            let mut audio = RecordingAudioSink::default();
+            let mut audio_events =
+                Some(&mut audio as &mut dyn crate::audio_runtime::AudioEventSink);
+
+            handle_mouse_input_at_partial_tick_with_effects(
+                &mut input,
+                &mut world,
+                &mut counters,
+                &commands,
+                MouseButton::Right,
+                ElementState::Pressed,
+                1.0,
+                &mut random,
+                &mut audio_events,
+            );
+            drop(audio_events);
+
+            assert_eq!(
+                rx.try_recv().unwrap(),
+                NetCommand::UseItem(UseItemCommand {
+                    packet: UseItem {
+                        hand: InteractionHand::MainHand,
+                        sequence: 1,
+                        y_rot: 0.0,
+                        x_rot: 0.0,
+                    },
+                    selected_hotbar_slot: 0,
+                })
+            );
+            if fall_flying {
+                assert_eq!(
+                    rx.try_recv().unwrap(),
+                    NetCommand::Swing(InteractionHand::MainHand)
+                );
+            } else {
+                assert_eq!(
+                    rx.try_recv().unwrap(),
+                    NetCommand::UseItem(UseItemCommand {
+                        packet: UseItem {
+                            hand: InteractionHand::OffHand,
+                            sequence: 2,
+                            y_rot: 0.0,
+                            x_rot: 0.0,
+                        },
+                        selected_hotbar_slot: 0,
+                    })
+                );
+            }
+            assert!(rx.try_recv().is_err());
+            assert_eq!(
+                counters.use_item_commands_queued,
+                if fall_flying { 1 } else { 2 }
+            );
+            assert_eq!(counters.swing_commands_queued, usize::from(fall_flying));
+            assert_eq!(
+                world.local_player().interaction.using_item_hand,
+                (!fall_flying).then_some(InteractionHand::OffHand)
+            );
+            assert_eq!(
+                world.local_item_in_hand(InteractionHand::MainHand),
+                Some(&rocket)
+            );
+            assert_eq!(world.entity_count(), entity_count);
+            assert_eq!(audio.positioned_sounds.len(), usize::from(!fall_flying));
+            assert!(audio.entity_sounds.is_empty());
         }
     }
 
