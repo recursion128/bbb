@@ -651,15 +651,16 @@ Commands:
 
 - Add focused command-queue and encode tests for inventory, interaction, chat,
   command, and sign editing.
-- Complete specialized targeted local-use prediction from
+- Complete the remaining specialized targeted local-use prediction from
   `Minecraft.startUseItem`, `MultiPlayerGameMode.interact`, and `useItemOn`.
-  Implement the generated specialized block `useItemOn` / `useWithoutItem`
+  Implement the remaining generated specialized block `useItemOn` / `useWithoutItem`
   owners and item-side block / solid-bucket placement, armor-stand /
-  hanging-entity placement, so main/offhand iteration can stop or continue on
-  the exact `InteractionResult`; then apply each success swing-source and held-item
-  presentation. Interaction override ownership must stay generated from local
-  vanilla classes. Entity, block, and inventory corrections remain
-  server-authoritative.
+  hanging-entity placement so main/offhand iteration can stop or continue on the
+  exact `InteractionResult`; complete `ComparatorBlock.refreshOutputState` after
+  predicted mode changes, including arbitrary analog block-entity and item-frame
+  inputs; then apply each success swing-source and held-item presentation.
+  Interaction override ownership must stay generated from local vanilla classes.
+  Entity, block, and inventory corrections remain server-authoritative.
 - Complete no-target `Item.use` prediction for the remaining source-derived
   specialized override families: Boat/Bottle/Bucket,
   EnderEye/PlaceOnWaterBlock/SpawnEgg/Trident.

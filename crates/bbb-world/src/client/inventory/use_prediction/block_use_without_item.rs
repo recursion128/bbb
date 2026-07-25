@@ -2,7 +2,7 @@ use super::{
     LocalBlockUseContext, LocalInteractionParticleAction, LocalInteractionResult,
     LocalInteractionSuccess, LocalLeverAttachFace, LocalTargetUsePrediction,
 };
-use crate::WorldStore;
+use crate::{client::block_collision_shape_is_full_block, BlockPos, WorldStore};
 use bbb_protocol::{
     block_types::{
         BlockTypeCatalogEntry, VanillaBlockUseWithoutItemOverride, VANILLA_BLOCK_IRON_DOOR_ID,
@@ -156,12 +156,211 @@ impl WorldStore {
                     pass()
                 }
             }
-            // Comparator output refresh and wire connection recomputation share
-            // the redstone-neighbour evaluator implemented by the second stage.
-            VanillaBlockUseWithoutItemOverride::ComparatorBlock
-            | VanillaBlockUseWithoutItemOverride::RedStoneWireBlock => unsupported(),
+            VanillaBlockUseWithoutItemOverride::ComparatorBlock => {
+                if !self.local_player_may_build() {
+                    return pass();
+                }
+                let mode = match block.block_properties.get("mode").map(String::as_str) {
+                    Some("compare") => "subtract",
+                    Some("subtract") => "compare",
+                    _ => return unsupported(),
+                };
+                // Vanilla immediately calls `refreshOutputState` after this
+                // mode mutation. Its output derives from arbitrary analog
+                // block entities and item frames, which remain synchronized
+                // server state here; the mode itself is client canonical.
+                self.predict_local_block_property(
+                    context,
+                    block_name,
+                    block.block_properties,
+                    "mode",
+                    mode,
+                    owner,
+                )
+            }
+            VanillaBlockUseWithoutItemOverride::RedStoneWireBlock => {
+                if !self.local_player_may_build() {
+                    return pass();
+                }
+                self.predict_local_redstone_wire_toggle(
+                    context,
+                    block_name,
+                    block.block_properties,
+                    owner,
+                )
+            }
             _ => unsupported(),
         }
+    }
+
+    fn predict_local_redstone_wire_toggle(
+        &mut self,
+        context: LocalBlockUseContext,
+        block_name: &str,
+        properties: BTreeMap<String, String>,
+        owner: VanillaBlockUseWithoutItemOverride,
+    ) -> LocalTargetUsePrediction {
+        let Some(power) = properties
+            .get("power")
+            .and_then(|power| power.parse::<u8>().ok())
+            .filter(|power| *power <= 15)
+        else {
+            return LocalTargetUsePrediction::UnsupportedBlockUseWithoutItem(owner);
+        };
+        let Some(connected) = wire_connected_sides(&properties) else {
+            return LocalTargetUsePrediction::UnsupportedBlockUseWithoutItem(owner);
+        };
+        let is_cross = connected.iter().all(|connected| *connected);
+        let is_dot = connected.iter().all(|connected| !*connected);
+        if !is_cross && !is_dot {
+            return pass();
+        }
+
+        let updated = BTreeMap::from([
+            ("north".to_string(), "none".to_string()),
+            ("east".to_string(), "none".to_string()),
+            ("south".to_string(), "none".to_string()),
+            ("west".to_string(), "none".to_string()),
+            ("power".to_string(), power.to_string()),
+        ]);
+        // Vanilla computes `wasDot` from the replacement state: a cross input
+        // starts from the default dot, while a dot input starts from the cross.
+        let replacement_was_dot = is_cross;
+        let Some(updated) =
+            self.local_redstone_wire_connection_state(context.pos, updated, replacement_was_dot)
+        else {
+            return LocalTargetUsePrediction::UnsupportedBlockUseWithoutItem(owner);
+        };
+        if updated == properties {
+            return pass();
+        }
+        // Preserve the exact resource rather than assuming only the built-in
+        // redstone-wire name can own this generated override.
+        self.predict_local_block_properties(context, block_name, updated, owner)
+    }
+
+    fn local_redstone_wire_connection_state(
+        &self,
+        pos: BlockPos,
+        mut state: BTreeMap<String, String>,
+        was_dot: bool,
+    ) -> Option<BTreeMap<String, String>> {
+        let can_connect_up = !self.local_block_is_redstone_conductor(above(pos), pos)?;
+        for direction in horizontal_directions() {
+            let property = direction_name(direction);
+            if state.get(property).is_none_or(|value| value == "none") {
+                state.insert(
+                    property.to_string(),
+                    self.local_redstone_wire_connecting_side(pos, direction, can_connect_up)?
+                        .to_string(),
+                );
+            }
+        }
+        let connected = wire_connected_sides(&state)?;
+        if was_dot && connected.iter().all(|connected| !*connected) {
+            return Some(state);
+        }
+
+        let [north, east, south, west] = connected;
+        let north_south_empty = !north && !south;
+        let east_west_empty = !east && !west;
+        if !west && north_south_empty {
+            state.insert("west".to_string(), "side".to_string());
+        }
+        if !east && north_south_empty {
+            state.insert("east".to_string(), "side".to_string());
+        }
+        if !north && east_west_empty {
+            state.insert("north".to_string(), "side".to_string());
+        }
+        if !south && east_west_empty {
+            state.insert("south".to_string(), "side".to_string());
+        }
+        Some(state)
+    }
+
+    fn local_redstone_wire_connecting_side(
+        &self,
+        pos: BlockPos,
+        direction: ProtocolDirection,
+        can_connect_up: bool,
+    ) -> Option<&'static str> {
+        let relative_pos = relative(pos, direction);
+        let relative = self.probe_block(relative_pos);
+        if can_connect_up {
+            let placeable_above = relative
+                .as_ref()
+                .and_then(|block| block.block_name.as_deref())
+                .is_some_and(is_trapdoor_name)
+                || relative.as_ref().is_some_and(|block| {
+                    self.block_has_full_sturdy_face(block, ProtocolDirection::Up)
+                        || block.block_name.as_deref() == Some("minecraft:hopper")
+                });
+            if placeable_above
+                && self.local_block_should_connect_redstone(above(relative_pos), None)?
+            {
+                if relative.as_ref().is_some_and(|block| {
+                    self.block_has_full_sturdy_face(block, opposite_direction(direction))
+                }) {
+                    return Some("up");
+                }
+                return Some("side");
+            }
+        }
+
+        let connects_relative =
+            self.local_block_should_connect_redstone(relative_pos, Some(direction))?;
+        let relative_conductor =
+            self.local_block_is_redstone_conductor(relative_pos, relative_pos)?;
+        let connects_below = self.local_block_should_connect_redstone(below(relative_pos), None)?;
+        if !connects_relative && (relative_conductor || !connects_below) {
+            Some("none")
+        } else {
+            Some("side")
+        }
+    }
+
+    fn local_block_should_connect_redstone(
+        &self,
+        pos: BlockPos,
+        direction: Option<ProtocolDirection>,
+    ) -> Option<bool> {
+        let Some(block) = self.probe_block(pos) else {
+            return Some(false);
+        };
+        let name = block.block_name.as_deref()?;
+        if name == "minecraft:redstone_wire" {
+            return Some(true);
+        }
+        if name == "minecraft:repeater" {
+            let facing = horizontal_direction_property(&block.block_properties, "facing")?;
+            return Some(
+                direction == Some(facing) || direction == Some(opposite_direction(facing)),
+            );
+        }
+        if name == "minecraft:observer" {
+            let facing = direction_property(&block.block_properties, "facing")?;
+            return Some(direction == Some(facing));
+        }
+        Some(direction.is_some() && block_name_is_redstone_signal_source(name))
+    }
+
+    fn local_block_is_redstone_conductor(
+        &self,
+        state_pos: BlockPos,
+        query_pos: BlockPos,
+    ) -> Option<bool> {
+        let Some(block) = self.probe_block(state_pos) else {
+            return Some(false);
+        };
+        let name = block.block_name.as_deref()?;
+        if matches!(name, "minecraft:soul_sand" | "minecraft:mud") {
+            return Some(true);
+        }
+        if block_name_has_never_redstone_conductor_override(name) {
+            return Some(false);
+        }
+        Some(block_collision_shape_is_full_block(&block, query_pos))
     }
 
     fn predict_local_toggled_boolean_property(
@@ -257,6 +456,21 @@ fn horizontal_direction_property(
     }
 }
 
+fn direction_property(
+    properties: &BTreeMap<String, String>,
+    property: &str,
+) -> Option<ProtocolDirection> {
+    match properties.get(property)?.as_str() {
+        "down" => Some(ProtocolDirection::Down),
+        "up" => Some(ProtocolDirection::Up),
+        "north" => Some(ProtocolDirection::North),
+        "south" => Some(ProtocolDirection::South),
+        "west" => Some(ProtocolDirection::West),
+        "east" => Some(ProtocolDirection::East),
+        _ => None,
+    }
+}
+
 fn lever_attach_face(properties: &BTreeMap<String, String>) -> Option<LocalLeverAttachFace> {
     match properties.get("face")?.as_str() {
         "floor" => Some(LocalLeverAttachFace::Floor),
@@ -278,6 +492,17 @@ fn opposite_horizontal(direction: ProtocolDirection) -> ProtocolDirection {
     }
 }
 
+fn opposite_direction(direction: ProtocolDirection) -> ProtocolDirection {
+    match direction {
+        ProtocolDirection::Down => ProtocolDirection::Up,
+        ProtocolDirection::Up => ProtocolDirection::Down,
+        ProtocolDirection::North => ProtocolDirection::South,
+        ProtocolDirection::South => ProtocolDirection::North,
+        ProtocolDirection::West => ProtocolDirection::East,
+        ProtocolDirection::East => ProtocolDirection::West,
+    }
+}
+
 fn direction_name(direction: ProtocolDirection) -> &'static str {
     match direction {
         ProtocolDirection::North => "north",
@@ -288,6 +513,120 @@ fn direction_name(direction: ProtocolDirection) -> &'static str {
             unreachable!("horizontal direction cannot be vertical")
         }
     }
+}
+
+fn horizontal_directions() -> [ProtocolDirection; 4] {
+    [
+        ProtocolDirection::North,
+        ProtocolDirection::East,
+        ProtocolDirection::South,
+        ProtocolDirection::West,
+    ]
+}
+
+fn relative(pos: BlockPos, direction: ProtocolDirection) -> BlockPos {
+    match direction {
+        ProtocolDirection::Down => below(pos),
+        ProtocolDirection::Up => above(pos),
+        ProtocolDirection::North => BlockPos {
+            z: pos.z - 1,
+            ..pos
+        },
+        ProtocolDirection::South => BlockPos {
+            z: pos.z + 1,
+            ..pos
+        },
+        ProtocolDirection::West => BlockPos {
+            x: pos.x - 1,
+            ..pos
+        },
+        ProtocolDirection::East => BlockPos {
+            x: pos.x + 1,
+            ..pos
+        },
+    }
+}
+
+fn above(pos: BlockPos) -> BlockPos {
+    BlockPos {
+        y: pos.y + 1,
+        ..pos
+    }
+}
+
+fn below(pos: BlockPos) -> BlockPos {
+    BlockPos {
+        y: pos.y - 1,
+        ..pos
+    }
+}
+
+fn wire_connected_sides(properties: &BTreeMap<String, String>) -> Option<[bool; 4]> {
+    let side = |name| match properties.get(name)?.as_str() {
+        "none" => Some(false),
+        "side" | "up" => Some(true),
+        _ => None,
+    };
+    Some([side("north")?, side("east")?, side("south")?, side("west")?])
+}
+
+fn is_trapdoor_name(name: &str) -> bool {
+    name.ends_with("_trapdoor")
+}
+
+fn block_name_is_redstone_signal_source(name: &str) -> bool {
+    name.ends_with("_button")
+        || name.ends_with("_pressure_plate")
+        || name.ends_with("lightning_rod")
+        || matches!(
+            name,
+            "minecraft:lever"
+                | "minecraft:redstone_torch"
+                | "minecraft:redstone_wall_torch"
+                | "minecraft:jukebox"
+                | "minecraft:comparator"
+                | "minecraft:repeater"
+                | "minecraft:redstone_block"
+                | "minecraft:detector_rail"
+                | "minecraft:daylight_detector"
+                | "minecraft:target"
+                | "minecraft:sculk_sensor"
+                | "minecraft:calibrated_sculk_sensor"
+                | "minecraft:lectern"
+                | "minecraft:trapped_chest"
+                | "minecraft:observer"
+                | "minecraft:tripwire_hook"
+        )
+}
+
+fn block_name_has_never_redstone_conductor_override(name: &str) -> bool {
+    name.ends_with("_leaves")
+        || name.ends_with("_stained_glass")
+        || name.ends_with("_copper_grate")
+        || name.ends_with("_copper_bulb")
+        || matches!(
+            name,
+            "minecraft:glass"
+                | "minecraft:tinted_glass"
+                | "minecraft:moving_piston"
+                | "minecraft:piston"
+                | "minecraft:sticky_piston"
+                | "minecraft:tnt"
+                | "minecraft:ice"
+                | "minecraft:frosted_ice"
+                | "minecraft:glowstone"
+                | "minecraft:beacon"
+                | "minecraft:redstone_block"
+                | "minecraft:sea_lantern"
+                | "minecraft:chorus_flower"
+                | "minecraft:observer"
+                | "minecraft:bamboo"
+                | "minecraft:scaffolding"
+                | "minecraft:powder_snow"
+                | "minecraft:copper_grate"
+                | "minecraft:copper_bulb"
+                | "minecraft:pointed_dripstone"
+        )
 }
 
 fn success(success: LocalInteractionSuccess) -> LocalTargetUsePrediction {
@@ -526,6 +865,206 @@ mod tests {
     }
 
     #[test]
+    fn comparator_cycles_mode_with_may_build_and_keeps_server_output_state() {
+        let mut survival = block_use_world(
+            "minecraft:comparator",
+            [
+                ("facing", "north"),
+                ("mode", "compare"),
+                ("powered", "true"),
+            ],
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        assert_eq!(
+            use_main_hand(&mut survival, 41),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        assert_eq!(
+            block_property(&survival, "mode"),
+            Some("subtract".to_string())
+        );
+        assert_eq!(
+            block_property(&survival, "powered"),
+            Some("true".to_string())
+        );
+
+        let mut adventure = block_use_world(
+            "minecraft:comparator",
+            [
+                ("facing", "north"),
+                ("mode", "subtract"),
+                ("powered", "false"),
+            ],
+            VANILLA_GAME_TYPE_ADVENTURE_ID as i8,
+        );
+        assert_eq!(use_main_hand(&mut adventure, 42), pass());
+        assert_eq!(
+            block_property(&adventure, "mode"),
+            Some("subtract".to_string())
+        );
+    }
+
+    #[test]
+    fn redstone_wire_toggles_cross_and_dot_with_preserved_power() {
+        let mut world = block_use_world_vec(
+            "minecraft:redstone_wire",
+            wire_properties("side", "side", "side", "side", "9"),
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        assert_eq!(
+            use_main_hand(&mut world, 51),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        assert_wire_sides(&world, ["none", "none", "none", "none"], "9");
+
+        set_test_block(
+            &mut world,
+            state_id_vec(
+                "minecraft:redstone_wire",
+                wire_properties("none", "none", "none", "none", "9"),
+            ),
+        );
+        assert_eq!(
+            use_main_hand(&mut world, 52),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        assert_wire_sides(&world, ["side", "side", "side", "side"], "9");
+    }
+
+    #[test]
+    fn redstone_wire_recomputes_real_side_and_up_connections() {
+        let mut side = block_use_world_vec(
+            "minecraft:redstone_wire",
+            wire_properties("side", "side", "side", "side", "0"),
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        set_block_at(
+            &mut side,
+            relative(POS, Direction::East),
+            state_id_vec(
+                "minecraft:repeater",
+                vec![
+                    ("delay", "1"),
+                    ("facing", "east"),
+                    ("locked", "false"),
+                    ("powered", "false"),
+                ],
+            ),
+        );
+        assert_eq!(
+            use_main_hand(&mut side, 61),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        assert_wire_sides(&side, ["none", "side", "none", "side"], "0");
+
+        let mut climb = block_use_world_vec(
+            "minecraft:redstone_wire",
+            wire_properties("side", "side", "side", "side", "4"),
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        let east = relative(POS, Direction::East);
+        set_block_at(&mut climb, east, state_id("minecraft:stone", []));
+        set_block_at(
+            &mut climb,
+            above(east),
+            state_id_vec(
+                "minecraft:redstone_wire",
+                wire_properties("none", "none", "none", "none", "4"),
+            ),
+        );
+        assert_eq!(
+            use_main_hand(&mut climb, 62),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        assert_wire_sides(&climb, ["none", "up", "none", "side"], "4");
+
+        let mut support_override = block_use_world_vec(
+            "minecraft:redstone_wire",
+            wire_properties("side", "side", "side", "side", "4"),
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        set_block_at(
+            &mut support_override,
+            east,
+            state_id("minecraft:soul_sand", []),
+        );
+        set_block_at(
+            &mut support_override,
+            above(east),
+            state_id_vec(
+                "minecraft:redstone_wire",
+                wire_properties("none", "none", "none", "none", "4"),
+            ),
+        );
+        assert_eq!(
+            use_main_hand(&mut support_override, 63),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        assert_wire_sides(&support_override, ["none", "up", "none", "side"], "4");
+
+        let mut blocked_climb = block_use_world_vec(
+            "minecraft:redstone_wire",
+            wire_properties("side", "side", "side", "side", "4"),
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        set_block_at(
+            &mut blocked_climb,
+            above(POS),
+            state_id("minecraft:stone", []),
+        );
+        set_block_at(&mut blocked_climb, east, state_id("minecraft:stone", []));
+        set_block_at(
+            &mut blocked_climb,
+            above(east),
+            state_id_vec(
+                "minecraft:redstone_wire",
+                wire_properties("none", "none", "none", "none", "4"),
+            ),
+        );
+        assert_eq!(
+            use_main_hand(&mut blocked_climb, 64),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        assert_wire_sides(&blocked_climb, ["none", "none", "none", "none"], "4");
+    }
+
+    #[test]
+    fn redstone_wire_honors_always_and_never_conductor_overrides() {
+        let east = relative(POS, Direction::East);
+        let below_east = below(east);
+        let lower_wire = state_id_vec(
+            "minecraft:redstone_wire",
+            wire_properties("none", "none", "none", "none", "0"),
+        );
+
+        let mut soul_sand = block_use_world_vec(
+            "minecraft:redstone_wire",
+            wire_properties("side", "side", "side", "side", "0"),
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        set_block_at(&mut soul_sand, east, state_id("minecraft:soul_sand", []));
+        set_block_at(&mut soul_sand, below_east, lower_wire);
+        assert_eq!(
+            use_main_hand(&mut soul_sand, 71),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        assert_wire_sides(&soul_sand, ["none", "none", "none", "none"], "0");
+
+        let mut glass = block_use_world_vec(
+            "minecraft:redstone_wire",
+            wire_properties("side", "side", "side", "side", "0"),
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        set_block_at(&mut glass, east, state_id("minecraft:glass", []));
+        set_block_at(&mut glass, below_east, lower_wire);
+        assert_eq!(
+            use_main_hand(&mut glass, 72),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        assert_wire_sides(&glass, ["none", "side", "none", "side"], "0");
+    }
+
+    #[test]
     fn offhand_skips_empty_hand_block_owner_and_main_hand_pass_continues_dispatch() {
         let mut world = block_use_world(
             "minecraft:oak_door",
@@ -559,6 +1098,33 @@ mod tests {
         world
             .probe_block(POS)
             .and_then(|block| block.block_properties.get(property).cloned())
+    }
+
+    fn assert_wire_sides(world: &WorldStore, sides: [&str; 4], power: &str) {
+        for (property, expected) in ["north", "east", "south", "west"].into_iter().zip(sides) {
+            assert_eq!(
+                block_property(world, property).as_deref(),
+                Some(expected),
+                "{property}"
+            );
+        }
+        assert_eq!(block_property(world, "power").as_deref(), Some(power));
+    }
+
+    fn wire_properties(
+        north: &'static str,
+        east: &'static str,
+        south: &'static str,
+        west: &'static str,
+        power: &'static str,
+    ) -> Vec<(&'static str, &'static str)> {
+        vec![
+            ("north", north),
+            ("east", east),
+            ("south", south),
+            ("west", west),
+            ("power", power),
+        ]
     }
 
     fn block_use_world<const N: usize>(
@@ -633,11 +1199,15 @@ mod tests {
     }
 
     fn set_test_block(world: &mut WorldStore, block_state_id: i32) {
+        set_block_at(world, POS, block_state_id);
+    }
+
+    fn set_block_at(world: &mut WorldStore, pos: BlockPos, block_state_id: i32) {
         assert!(world.apply_block_update(BlockUpdate {
             pos: ProtocolBlockPos {
-                x: POS.x,
-                y: POS.y,
-                z: POS.z,
+                x: pos.x,
+                y: pos.y,
+                z: pos.z,
             },
             block_state_id,
         }));

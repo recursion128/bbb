@@ -525,3 +525,6 @@
   `Equippable.equipOnTarget` 现按生成的鞍具/挽具原型所有权及 live entity tags，
   覆盖显式 patch、slot/存活/占槽门槛与 item subclass `PASS` 回退；目标装备和
   手持数量仍等待服务端权威修正。
+- **2026-07-25（9 类方块空手 useWithoutItem 基础预测工程关闭）**：Button、Lever、
+  Door、TrapDoor、FenceGate、Repeater、DaylightDetector、Comparator 与 RedStoneWire
+  已贯通 Vanilla 停机、Lever 粒子和导线邻接；Comparator 动态输出刷新仍为纯 TODO。

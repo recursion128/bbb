@@ -13,7 +13,9 @@ use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
     VANILLA_ENTITY_TYPE_TEXT_DISPLAY_ID,
 };
-use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
+use bbb_protocol::packets::{
+    Direction as ProtocolDirection, EquipmentSlot as ProtocolEquipmentSlot,
+};
 
 use super::local_player::LocalPlayerPoseState;
 use crate::entities::{
@@ -551,6 +553,25 @@ impl WorldStore {
         block_collision_shape_empty_context(block, block.pos)
             .map(BlockCollisionShape::full_face_flags)
             .unwrap_or([false; 6])
+    }
+
+    pub(crate) fn block_has_full_sturdy_face(
+        &self,
+        block: &BlockProbe,
+        direction: ProtocolDirection,
+    ) -> bool {
+        let direction = match direction {
+            ProtocolDirection::Down => BlockDirection::Down,
+            ProtocolDirection::Up => BlockDirection::Up,
+            ProtocolDirection::North => BlockDirection::North,
+            ProtocolDirection::South => BlockDirection::South,
+            ProtocolDirection::West => BlockDirection::West,
+            ProtocolDirection::East => BlockDirection::East,
+        };
+        DEBUG_SOLID_FACE_DIRECTIONS
+            .into_iter()
+            .position(|candidate| candidate == direction)
+            .is_some_and(|index| self.debug_block_sturdy_faces(block)[index])
     }
 
     /// Mirrors `MultifaceBlock.canAttachTo`: either the block-support shape or
