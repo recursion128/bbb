@@ -1,13 +1,15 @@
 use bbb_protocol::{
     attribute_modifier_types::attribute_modifier_operation_id,
     equipment_slots::vanilla_equipment_slot_group_for_serialized_name,
-    packets::ItemEnchantmentSummary, styled_component_runs_from_nbt_value,
-    styled_runs_summary_text, NbtSummaryEntry, NbtSummaryValue, StyledTextRun,
+    packets::{ItemEnchantmentSummary, SoundEventSummary},
+    sound_event_types::vanilla_sound_event_registry_id,
+    styled_component_runs_from_nbt_value, styled_runs_summary_text, NbtSummaryEntry,
+    NbtSummaryValue, StyledTextRun,
 };
 
 use crate::{FrozenRegistryAccess, RegistryHolderSetIdentity, WorldStore};
 
-use super::{decode_persistent_sound_event, normalize_codec_identifier};
+use super::{decode_persistent_sound_event, normalize_codec_identifier, PersistentSoundEvent};
 
 mod generated_26_1;
 
@@ -108,6 +110,7 @@ pub(super) struct MaterializedEnchantmentDefinition {
     attributes: Option<EnchantmentDefinition>,
     crossbow_charge_time: Option<EnchantmentValueEffect>,
     trident_spin_attack_strength: Option<EnchantmentValueEffect>,
+    trident_sounds: Option<Vec<PersistentSoundEvent>>,
     prevents_armor_change: bool,
     holder_sets: EnchantmentHolderSetDefinition,
 }
@@ -162,6 +165,7 @@ pub(super) fn materialize_enchantment_definition(
             "minecraft:trident_spin_attack_strength",
         )
         .flatten(),
+        trident_sounds: decode_trident_sound_effect(value, registry_access).flatten(),
         prevents_armor_change: nbt_field(fields, "effects")
             .and_then(|value| match value {
                 NbtSummaryValue::Compound(effects) => Some(effects.as_slice()),
@@ -359,6 +363,55 @@ impl WorldStore {
             }
         }
         strength
+    }
+
+    /// Resolves Vanilla `EnchantmentHelper.pickHighestLevel` for
+    /// `EnchantmentEffectComponents.TRIDENT_SOUND`.
+    ///
+    /// The first effect at the highest stack enchantment level wins; that
+    /// level selects the clamped one-based list entry. Stubbed Riptide
+    /// definitions use the generated Vanilla identity fallback, while
+    /// synchronized definitions remain authoritative.
+    pub(crate) fn trident_release_sound(
+        &self,
+        enchantments: &[ItemEnchantmentSummary],
+    ) -> SoundEventSummary {
+        let mut picked: Option<(Vec<PersistentSoundEvent>, i32)> = None;
+        for enchantment in enchantments {
+            if picked
+                .as_ref()
+                .is_some_and(|(_, level)| *level >= enchantment.level)
+            {
+                continue;
+            }
+            let Some(entry) =
+                self.registry_entry_by_holder_id(ENCHANTMENT_REGISTRY, enchantment.holder_id)
+            else {
+                continue;
+            };
+            let sounds = match self.registries.typed.enchantments.get(&entry.id) {
+                Some(definition) => definition.trident_sounds.clone(),
+                None => match entry.element_data() {
+                    Some(data) => {
+                        decode_trident_sound_effect(&data.value, self.frozen_registry_access())
+                            .flatten()
+                    }
+                    None if !entry.has_data => vanilla_trident_sounds(&entry.id),
+                    None => None,
+                },
+            };
+            if let Some(sounds) = sounds.filter(|sounds| !sounds.is_empty()) {
+                picked = Some((sounds, enchantment.level));
+            }
+        }
+
+        picked
+            .and_then(|(sounds, level)| {
+                let level = usize::try_from(level).ok()?;
+                let index = level.saturating_sub(1).min(sounds.len() - 1);
+                Some(persistent_sound_event_summary(&sounds[index]))
+            })
+            .unwrap_or_else(|| named_sound_event_summary("minecraft:item.trident.throw"))
     }
 }
 
@@ -641,6 +694,33 @@ fn decode_unfiltered_value_effect(
     Some(Some(parse_enchantment_value_effect(effect)?))
 }
 
+fn decode_trident_sound_effect(
+    value: &NbtSummaryValue,
+    registry_access: FrozenRegistryAccess<'_>,
+) -> Option<Option<Vec<PersistentSoundEvent>>> {
+    let NbtSummaryValue::Compound(fields) = value else {
+        return None;
+    };
+    let Some(effects) = nbt_field(fields, "effects") else {
+        return Some(None);
+    };
+    let effects = nbt_compound(Some(effects))?;
+    let Some(sounds) = effects.iter().rev().find_map(|entry| {
+        (normalize_codec_identifier(&entry.name).as_deref() == Some("minecraft:trident_sound"))
+            .then_some(&entry.value)
+    }) else {
+        return Some(None);
+    };
+    let NbtSummaryValue::List(sounds) = sounds else {
+        return None;
+    };
+    sounds
+        .iter()
+        .map(|sound| decode_persistent_sound_event(sound, Some(registry_access)).ok())
+        .collect::<Option<Vec<_>>>()
+        .map(Some)
+}
+
 fn vanilla_crossbow_charge_time_effect(resource_id: &str) -> Option<EnchantmentValueEffect> {
     (VanillaEnchantmentIdentity::for_resource_id(resource_id)
         == Some(VanillaEnchantmentIdentity::QuickCharge))
@@ -657,6 +737,51 @@ fn vanilla_trident_spin_attack_strength(resource_id: &str) -> Option<Enchantment
         base: 1.5,
         per_level_above_first: 0.75,
     }))
+}
+
+fn vanilla_trident_sounds(resource_id: &str) -> Option<Vec<PersistentSoundEvent>> {
+    (VanillaEnchantmentIdentity::for_resource_id(resource_id)
+        == Some(VanillaEnchantmentIdentity::Riptide))
+    .then(|| {
+        [
+            "minecraft:item.trident.riptide_1",
+            "minecraft:item.trident.riptide_2",
+            "minecraft:item.trident.riptide_3",
+        ]
+        .into_iter()
+        .map(|resource_id| PersistentSoundEvent::Named {
+            holder_id: vanilla_sound_event_registry_id(resource_id)
+                .expect("generated Riptide sound must exist in the Vanilla sound registry"),
+            resource_id: resource_id.to_string(),
+        })
+        .collect()
+    })
+}
+
+fn persistent_sound_event_summary(sound: &PersistentSoundEvent) -> SoundEventSummary {
+    match sound {
+        PersistentSoundEvent::Named { holder_id, .. } => SoundEventSummary {
+            registry_id: Some(*holder_id),
+            sound_id: None,
+            fixed_range_bits: None,
+        },
+        PersistentSoundEvent::Direct {
+            resource_id,
+            fixed_range,
+        } => SoundEventSummary {
+            registry_id: None,
+            sound_id: Some(resource_id.clone()),
+            fixed_range_bits: fixed_range.map(f32::to_bits),
+        },
+    }
+}
+
+fn named_sound_event_summary(resource_id: &str) -> SoundEventSummary {
+    SoundEventSummary {
+        registry_id: vanilla_sound_event_registry_id(resource_id),
+        sound_id: None,
+        fixed_range_bits: None,
+    }
 }
 
 fn parse_enchantment_value_effect(value: &NbtSummaryValue) -> Option<EnchantmentValueEffect> {
@@ -1179,6 +1304,90 @@ mod tests {
                 level: 3,
             }]),
             0.0
+        );
+    }
+
+    #[test]
+    fn trident_sound_uses_highest_level_synced_effect_and_stub_fallback() {
+        let mut fallback = WorldStore::new();
+        fallback.record_registry_data(RegistryData {
+            registry: ENCHANTMENT_REGISTRY.to_string(),
+            entries: vec![
+                RegistryDataEntry {
+                    id: "minecraft:riptide".to_string(),
+                    raw_data: None,
+                },
+                RegistryDataEntry {
+                    id: "minecraft:sharpness".to_string(),
+                    raw_data: None,
+                },
+            ],
+            raw_payload_len: 0,
+        });
+        assert_eq!(
+            fallback.trident_release_sound(&[ItemEnchantmentSummary {
+                holder_id: 0,
+                level: 3,
+            }]),
+            named_sound_event_summary("minecraft:item.trident.riptide_3")
+        );
+        assert_eq!(
+            fallback.trident_release_sound(&[ItemEnchantmentSummary {
+                holder_id: 1,
+                level: 5,
+            }]),
+            named_sound_event_summary("minecraft:item.trident.throw")
+        );
+
+        let mut synchronized = WorldStore::new();
+        let sound_effect = |sounds: &[&str]| {
+            compound_payload(vec![compound_tag(
+                "effects",
+                vec![string_list_tag("minecraft:trident_sound", sounds)],
+            )])
+        };
+        synchronized.record_registry_data(RegistryData {
+            registry: ENCHANTMENT_REGISTRY.to_string(),
+            entries: vec![
+                RegistryDataEntry {
+                    id: "example:first".to_string(),
+                    raw_data: Some(sound_effect(&["minecraft:item.trident.riptide_2"])),
+                },
+                RegistryDataEntry {
+                    id: "example:second".to_string(),
+                    raw_data: Some(sound_effect(&[
+                        "minecraft:item.trident.riptide_1",
+                        "minecraft:item.trident.throw",
+                    ])),
+                },
+            ],
+            raw_payload_len: 0,
+        });
+        assert_eq!(
+            synchronized.trident_release_sound(&[
+                ItemEnchantmentSummary {
+                    holder_id: 0,
+                    level: 2,
+                },
+                ItemEnchantmentSummary {
+                    holder_id: 1,
+                    level: 2,
+                },
+            ]),
+            named_sound_event_summary("minecraft:item.trident.riptide_2")
+        );
+        assert_eq!(
+            synchronized.trident_release_sound(&[
+                ItemEnchantmentSummary {
+                    holder_id: 0,
+                    level: 2,
+                },
+                ItemEnchantmentSummary {
+                    holder_id: 1,
+                    level: 3,
+                },
+            ]),
+            named_sound_event_summary("minecraft:item.trident.throw")
         );
     }
 

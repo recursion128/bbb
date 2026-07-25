@@ -143,6 +143,7 @@ pub enum LocalInteractionSoundAction {
     SpyglassUse,
     SpyglassStopUsing,
     SuppressedBowRelease { power_bits: u32 },
+    SuppressedTridentRiptide,
     SuppressedProjectileThrow,
     SuppressedFireChargeUse,
     SuppressedLodestoneCompassUse,
@@ -2761,6 +2762,187 @@ mod tests {
             water.predict_local_item_use(InteractionHand::MainHand),
             consume
         );
+    }
+
+    #[test]
+    fn trident_release_obeys_hold_threshold_and_keeps_throw_damage_server_owned() {
+        let mut world = WorldStore::new();
+        set_main_hand(&mut world, VANILLA_ITEM_TRIDENT_ID);
+        let original = world
+            .local_item_in_hand(InteractionHand::MainHand)
+            .unwrap()
+            .clone();
+
+        world.set_local_using_item_with_hand(true, InteractionHand::MainHand);
+        world.advance_local_using_item_ticks(9);
+        assert!(world.release_local_using_item());
+        assert!(world.local_player_auto_spin_attack().is_none());
+        assert!(world
+            .take_pending_local_interaction_sound_actions()
+            .is_empty());
+
+        world.set_local_using_item_with_hand(true, InteractionHand::MainHand);
+        world.advance_local_using_item_ticks(10);
+        assert!(world.release_local_using_item());
+        assert!(world.local_player_auto_spin_attack().is_none());
+        assert!(world
+            .take_pending_local_interaction_sound_actions()
+            .is_empty());
+        assert_eq!(
+            world.local_item_in_hand(InteractionHand::MainHand),
+            Some(&original)
+        );
+    }
+
+    #[test]
+    fn riptide_release_pushes_moves_and_starts_private_auto_spin_state() {
+        let mut world = tool_use_world(block_state_id("minecraft:water", [("level", "0")]));
+        world.record_registry_data(RegistryData {
+            registry: "minecraft:enchantment".to_string(),
+            entries: vec![RegistryDataEntry {
+                id: "minecraft:riptide".to_string(),
+                raw_data: None,
+            }],
+            raw_payload_len: 0,
+        });
+        let trident = ItemStackSummary {
+            item_id: Some(VANILLA_ITEM_TRIDENT_ID),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID],
+                enchantments: vec![ItemEnchantmentSummary {
+                    holder_id: 0,
+                    level: 2,
+                }],
+                ..DataComponentPatchSummary::default()
+            },
+        };
+        world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: trident.clone(),
+        });
+        world.set_local_player_pose(crate::LocalPlayerPoseState {
+            on_ground: true,
+            y_rot: 90.0,
+            x_rot: -30.0,
+            ..crate::LocalPlayerPoseState::default()
+        });
+        world.set_local_using_item_with_hand(true, InteractionHand::MainHand);
+        world.advance_local_using_item_ticks(10);
+
+        assert!(world.release_local_using_item());
+        let pose = world.local_player_pose().unwrap();
+        let strength = 2.25_f32;
+        let y_rot = 90.0_f32.to_radians();
+        let x_rot = -30.0_f32.to_radians();
+        assert!(
+            (pose.delta_movement.x - f64::from(-y_rot.sin() * x_rot.cos() * strength)).abs()
+                < 1.0e-6
+        );
+        assert!((pose.delta_movement.y - f64::from(-x_rot.sin() * strength)).abs() < 1.0e-6);
+        assert!(
+            (pose.delta_movement.z - f64::from(y_rot.cos() * x_rot.cos() * strength)).abs()
+                < 1.0e-6
+        );
+        assert!((pose.position.y - f64::from(1.1999999_f32)).abs() < 1.0e-9);
+        assert!(!pose.on_ground);
+        assert_eq!(
+            world.local_player_auto_spin_attack(),
+            Some(&crate::LocalPlayerAutoSpinAttackState {
+                ticks_remaining: 20,
+                damage_bits: 8.0_f32.to_bits(),
+                item: trident.clone(),
+            })
+        );
+        assert_eq!(
+            world.take_pending_local_interaction_sound_actions(),
+            vec![LocalInteractionSoundAction::SuppressedTridentRiptide]
+        );
+        assert_eq!(
+            world.local_item_in_hand(InteractionHand::MainHand),
+            Some(&trident)
+        );
+
+        world.advance_local_player_input(crate::LocalPlayerInputState::default(), 0.05);
+        assert_eq!(
+            world
+                .local_player_auto_spin_attack()
+                .map(|state| state.ticks_remaining),
+            Some(19)
+        );
+    }
+
+    #[test]
+    fn riptide_release_rechecks_damage_wetness_and_passenger_state() {
+        let install_riptide = |world: &mut WorldStore, damaged: bool| {
+            world.record_registry_data(RegistryData {
+                registry: "minecraft:enchantment".to_string(),
+                entries: vec![RegistryDataEntry {
+                    id: "minecraft:riptide".to_string(),
+                    raw_data: None,
+                }],
+                raw_payload_len: 0,
+            });
+            world.apply_set_player_inventory(SetPlayerInventory {
+                slot: 0,
+                item: ItemStackSummary {
+                    item_id: Some(VANILLA_ITEM_TRIDENT_ID),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary {
+                        added: if damaged { 3 } else { 1 },
+                        added_type_ids: if damaged {
+                            vec![
+                                VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
+                                VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
+                                VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+                            ]
+                        } else {
+                            vec![VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID]
+                        },
+                        enchantments: vec![ItemEnchantmentSummary {
+                            holder_id: 0,
+                            level: 1,
+                        }],
+                        max_damage: damaged.then_some(250),
+                        damage: damaged.then_some(249),
+                        ..DataComponentPatchSummary::default()
+                    },
+                },
+            });
+            world.set_local_using_item_with_hand(true, InteractionHand::MainHand);
+            world.advance_local_using_item_ticks(10);
+        };
+
+        let mut dry = WorldStore::new();
+        dry.set_local_player_pose(crate::LocalPlayerPoseState::default());
+        install_riptide(&mut dry, false);
+        assert!(dry.release_local_using_item());
+        assert!(dry.local_player_auto_spin_attack().is_none());
+
+        let mut damaged = tool_use_world(block_state_id("minecraft:water", [("level", "0")]));
+        damaged.set_local_player_pose(crate::LocalPlayerPoseState::default());
+        install_riptide(&mut damaged, true);
+        assert!(damaged.release_local_using_item());
+        assert!(damaged.local_player_auto_spin_attack().is_none());
+
+        let mut passenger = tool_use_world_with_login(
+            block_state_id("minecraft:water", [("level", "0")]),
+            Some(("minecraft:overworld", VANILLA_GAME_TYPE_SURVIVAL_ID as i8)),
+        );
+        add_entity(&mut passenger, 7, VANILLA_ENTITY_TYPE_PLAYER_ID);
+        add_entity(&mut passenger, 8, VANILLA_ENTITY_TYPE_OAK_BOAT_ID);
+        assert!(passenger.apply_set_passengers(SetPassengers {
+            vehicle_id: 8,
+            passenger_ids: vec![7],
+        }));
+        passenger.set_local_player_pose(crate::LocalPlayerPoseState::default());
+        install_riptide(&mut passenger, false);
+        assert!(passenger.release_local_using_item());
+        assert!(passenger.local_player_auto_spin_attack().is_none());
+        assert!(passenger
+            .take_pending_local_interaction_sound_actions()
+            .is_empty());
     }
 
     #[test]

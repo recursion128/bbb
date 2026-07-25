@@ -668,10 +668,6 @@ Commands:
   `BlockItem.useOn`.
   Override ownership must stay generated from local vanilla item classes instead
   of being inferred from component shape.
-- Complete `TridentItem.releaseUsing` after the ten-tick hold threshold, including
-  synchronized trident sound selection, damage/throw ownership, Riptide
-  movement/auto-spin state, and passenger/water-or-rain gates.
-
 Inventory:
 
 - Implement the creative-inventory screen item-add/item-drop interactions that

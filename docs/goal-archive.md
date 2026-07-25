@@ -537,3 +537,5 @@
 - **2026-07-25（POV Item.use 基础里程碑）**：本地玩家眼位按同步交互距离执行
   `OUTLINE + Fluid` 射线；EnderEye/SpawnEgg 已精确消费命中结果，Trident 已覆盖
   耐久、同步 Riptide 水雨门禁与开始使用状态。
+- **2026-07-25（Trident releaseUsing 工程闭环）**：补齐十 tick 释放重检、同步
+  `TRIDENT_SOUND` 选择、服务端投掷所有权及 Riptide 冲量、贴地位移和私有旋转状态。

@@ -1,5 +1,7 @@
 use super::*;
-use bbb_protocol::item_types::{VANILLA_ITEM_BOW_ID, VANILLA_ITEM_SPYGLASS_ID};
+use bbb_protocol::item_types::{
+    VANILLA_ITEM_BOW_ID, VANILLA_ITEM_SPYGLASS_ID, VANILLA_ITEM_TRIDENT_ID,
+};
 
 const VANILLA_ARROWS_ITEM_TAG: &str = "minecraft:arrows";
 const VANILLA_BOW_MAX_DRAW_DURATION_TICKS: f32 = 20.0;
@@ -29,7 +31,12 @@ impl WorldStore {
         if !self.local_player().interaction.using_item {
             return false;
         }
-        if let Some(action) = self.local_using_item_release_sound_action() {
+        let action = if self.local_using_item_item_id() == Some(VANILLA_ITEM_TRIDENT_ID) {
+            self.release_local_trident_using_item()
+        } else {
+            self.local_using_item_release_sound_action()
+        };
+        if let Some(action) = action {
             self.queue_local_interaction_sound_action(action);
         }
         self.take_local_using_item()

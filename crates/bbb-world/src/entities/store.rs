@@ -2659,6 +2659,16 @@ impl EntityStore {
         query_max: [f64; 3],
         type_filter: impl Fn(i32) -> bool,
     ) -> Option<bool> {
+        self.any_entity_bounds_intersecting_except(query_min, query_max, None, type_filter)
+    }
+
+    pub(crate) fn any_entity_bounds_intersecting_except(
+        &self,
+        query_min: [f64; 3],
+        query_max: [f64; 3],
+        excluded_id: Option<i32>,
+        type_filter: impl Fn(i32) -> bool,
+    ) -> Option<bool> {
         if !(0..3).all(|axis| {
             query_min[axis].is_finite()
                 && query_max[axis].is_finite()
@@ -2667,6 +2677,9 @@ impl EntityStore {
             return None;
         }
         for id in &self.order {
+            if excluded_id == Some(*id) {
+                continue;
+            }
             let entity = self.by_protocol_id.get(id).copied()?;
             let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
             if !type_filter(identity.entity_type_id) {

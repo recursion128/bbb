@@ -18,8 +18,9 @@ use uuid::Uuid;
 
 use super::local_player_fluid::{local_player_eye_in_water, local_player_fluid_contact};
 use super::local_player_movement::{
-    apply_local_player_input_look, integrate_local_player_input_pose_with_world_effects,
-    local_player_effective_sprint, local_player_is_on_climbable,
+    advance_local_player_auto_spin_attack_after_move, apply_local_player_input_look,
+    integrate_local_player_input_pose_with_world_effects, local_player_effective_sprint,
+    local_player_is_on_climbable,
 };
 use crate::{protocol_block_pos, BlockPos, WorldStore};
 
@@ -152,6 +153,11 @@ pub struct LocalPlayerInteractionState {
     pub using_item_hand: Option<InteractionHand>,
     #[serde(default)]
     pub using_item_ticks: u32,
+    /// Client-private `LivingEntity.autoSpinAttack*` state started by a
+    /// locally released Riptide trident. The shared render flag remains
+    /// server-synchronized entity metadata, matching `Player.startAutoSpinAttack`.
+    #[serde(default)]
+    pub auto_spin_attack: Option<LocalPlayerAutoSpinAttackState>,
     #[serde(default)]
     pub prediction_sequence: i32,
     /// Prediction sequence current when the last player-position teleport was
@@ -161,6 +167,13 @@ pub struct LocalPlayerInteractionState {
     pub last_teleport_prediction_sequence: Option<i32>,
     #[serde(default)]
     pub attack: LocalPlayerAttackState,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LocalPlayerAutoSpinAttackState {
+    pub ticks_remaining: u32,
+    pub damage_bits: u32,
+    pub item: ProtocolItemStackSummary,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -536,6 +549,7 @@ impl WorldStore {
         self.local_player_old_pose = Some(old_pose);
         let pose =
             integrate_local_player_input_pose_with_world_effects(self, old_pose, input, dt_seconds);
+        let pose = advance_local_player_auto_spin_attack_after_move(self, old_pose, pose);
         self.local_player.pose = Some(pose);
         Some(pose)
     }
@@ -880,6 +894,40 @@ impl WorldStore {
         self.local_player.interaction.using_item_hand = None;
         self.local_player.interaction.using_item_ticks = 0;
         using_item
+    }
+
+    pub fn local_player_auto_spin_attack(&self) -> Option<&LocalPlayerAutoSpinAttackState> {
+        self.local_player.interaction.auto_spin_attack.as_ref()
+    }
+
+    pub(crate) fn start_local_player_auto_spin_attack(
+        &mut self,
+        ticks: u32,
+        damage: f32,
+        item: ProtocolItemStackSummary,
+    ) {
+        self.local_player.interaction.auto_spin_attack = Some(LocalPlayerAutoSpinAttackState {
+            ticks_remaining: ticks,
+            damage_bits: damage.to_bits(),
+            item,
+        });
+    }
+
+    pub(crate) fn advance_local_player_auto_spin_attack_tick(&mut self) -> bool {
+        let Some(state) = &mut self.local_player.interaction.auto_spin_attack else {
+            return false;
+        };
+        if state.ticks_remaining == 0 {
+            return false;
+        }
+        state.ticks_remaining -= 1;
+        true
+    }
+
+    pub(crate) fn stop_local_player_auto_spin_attack(&mut self) {
+        if let Some(state) = &mut self.local_player.interaction.auto_spin_attack {
+            state.ticks_remaining = 0;
+        }
     }
 
     fn resolve_look_at_target_position(&self, packet: ProtocolPlayerLookAt) -> ProtocolVec3d {
@@ -1554,6 +1602,7 @@ mod tests {
                 using_item: true,
                 using_item_hand: Some(InteractionHand::MainHand),
                 using_item_ticks: 0,
+                auto_spin_attack: None,
                 prediction_sequence: 1,
                 last_teleport_prediction_sequence: None,
                 attack: LocalPlayerAttackState::default(),

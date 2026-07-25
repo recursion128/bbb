@@ -1039,8 +1039,8 @@ mod tests {
         VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID, VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID,
         VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID,
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID, VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
-        VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID, VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
         VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID,
         VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID, VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID,
         VANILLA_DATA_COMPONENT_TOOL_TYPE_ID, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
@@ -1068,10 +1068,11 @@ mod tests {
         CommonPlayerSpawnInfo, ConsumableSummary, DataComponentPatchSummary, EntityDataValue,
         EntityDataValueKind, EntityEvent as ProtocolEntityEvent, EquippableSummary,
         GameEvent as ProtocolGameEvent, InitializeBorder, InstrumentSummary, InteractEntity,
-        ItemStackSummary as ProtocolItemStackSummary, ItemStackTemplateSummary,
-        LodestoneTargetSummary, OpenSignEditor, PickItemFromBlock, PickItemFromEntity, PlayLogin,
-        PlayerAbilities, PlayerAction, PlayerCommand, PlayerCommandAction, PlayerHealth,
-        PlayerInput, RegistryTags, RemoveEntities, SetEntityData, SetPassengers,
+        ItemEnchantmentSummary, ItemStackSummary as ProtocolItemStackSummary,
+        ItemStackTemplateSummary, LodestoneTargetSummary, OpenSignEditor, PickItemFromBlock,
+        PickItemFromEntity, PlayLogin, PlayerAbilities, PlayerAction, PlayerCommand,
+        PlayerCommandAction, PlayerHealth, PlayerInput, RegistryData, RegistryDataEntry,
+        RegistryTags, RemoveEntities, SetEntityData, SetPassengers,
         SetPlayerInventory as ProtocolSetPlayerInventory, SoundEventSummary, TagNetworkPayload,
         ToolSummary, UpdateTags, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
     };
@@ -5088,6 +5089,103 @@ mod tests {
             assert!(matches!(rx.try_recv(), Ok(NetCommand::UseItem(_))));
             assert!(rx.try_recv().is_err());
         }
+    }
+
+    #[test]
+    fn right_mouse_riptide_release_queues_action_applies_motion_and_suppresses_local_sound() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_block();
+        assert!(world.apply_block_update(BlockUpdate {
+            pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+            block_state_id: test_block_state_id("minecraft:water", &[("level", "0")]),
+        }));
+        world.set_local_player_pose(LocalPlayerPoseState {
+            on_ground: true,
+            y_rot: 90.0,
+            x_rot: -30.0,
+            ..LocalPlayerPoseState::default()
+        });
+        world.record_registry_data(RegistryData {
+            registry: "minecraft:enchantment".to_string(),
+            entries: vec![RegistryDataEntry {
+                id: "minecraft:riptide".to_string(),
+                raw_data: None,
+            }],
+            raw_payload_len: 0,
+        });
+        let mut trident = item_stack(VANILLA_ITEM_TRIDENT_ID, 1);
+        trident.component_patch.added = 1;
+        trident
+            .component_patch
+            .added_type_ids
+            .push(VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID);
+        trident
+            .component_patch
+            .enchantments
+            .push(ItemEnchantmentSummary {
+                holder_id: 0,
+                level: 1,
+            });
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: trident,
+        });
+        let mut counters = NetCounters::default();
+        let player_pose = world.local_player_pose();
+        assert!(start_use_item(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            None,
+            player_pose,
+        ));
+        assert!(matches!(rx.try_recv(), Ok(NetCommand::UseItem(_))));
+        world.advance_local_using_item_ticks(10);
+
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut expected_seed_world = WorldStore::new();
+        let _discarded_release_seed = expected_seed_world.next_sound_seed();
+        let expected_next_seed = expected_seed_world.next_sound_seed();
+        let mut audio = RecordingAudioSink::default();
+        let mut audio_events = Some(&mut audio as &mut dyn crate::audio_runtime::AudioEventSink);
+        handle_mouse_input_at_partial_tick_with_effects(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Released,
+            1.0,
+            &mut random,
+            &mut audio_events,
+        );
+        drop(audio_events);
+
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::PlayerAction(PlayerAction {
+                action: PlayerActionKind::ReleaseUseItem,
+                ..
+            })
+        ));
+        assert!(rx.try_recv().is_err());
+        assert_eq!(counters.player_action_commands_queued, 1);
+        assert!(!world.local_player().interaction.using_item);
+        assert_eq!(
+            world
+                .local_player_auto_spin_attack()
+                .map(|state| state.ticks_remaining),
+            Some(20)
+        );
+        assert!(world
+            .local_player_pose()
+            .is_some_and(|pose| pose.delta_movement.x < -1.0 && pose.position.y > 1.0));
+        assert!(audio.positioned_sounds.is_empty());
+        assert!(audio.entity_sounds.is_empty());
+        assert_eq!(world.next_sound_seed(), expected_next_seed);
     }
 
     #[test]

@@ -17,7 +17,9 @@ use super::local_player_collision::{
     LocalPlayerBounds, LocalPlayerCollisionContext, COLLISION_EPSILON, LOCAL_PLAYER_HALF_WIDTH,
 };
 use super::local_player_fluid::local_player_fluid_contact;
-use crate::entities::{EntityBlockEffectMovement, LocalPlayerBlockEffectStep};
+use crate::entities::{
+    vanilla_living_entity_type, EntityBlockEffectMovement, LocalPlayerBlockEffectStep,
+};
 use crate::{block_name_is_trapdoor, BlockPos, BlockProbe, EntityVec3, WorldStore};
 
 mod fluid;
@@ -134,6 +136,83 @@ pub(super) fn apply_local_player_input_look(
         pose.x_rot = (pose.x_rot
             + input.mouse_delta_y as f32 * LOCAL_INPUT_MOUSE_SENSITIVITY_DEGREES)
             .clamp(-90.0, 90.0);
+    }
+    pose
+}
+
+/// Applies the narrow `Entity.move(MoverType.SELF, 0, y, 0)` used by
+/// `TridentItem.releaseUsing` for a grounded Riptide launch.
+pub(super) fn move_local_player_self_upward(
+    world: &mut WorldStore,
+    mut pose: LocalPlayerPoseState,
+    requested_y: f64,
+) -> LocalPlayerPoseState {
+    let stuck_multiplier = world.local_player_id.and_then(|id| {
+        world
+            .entities
+            .consume_block_effect_stuck_speed_multiplier(id)
+    });
+    let requested_y = stuck_multiplier.map_or(requested_y, |stuck| requested_y * stuck.y);
+    if stuck_multiplier.is_some() {
+        pose.delta_movement = ProtocolVec3d::default();
+    }
+    let collision_context = LocalPlayerCollisionContext::for_pose(world, pose, false);
+    let movement = clip_local_player_movement_without_step(
+        world,
+        pose,
+        0.0,
+        requested_y,
+        0.0,
+        collision_context,
+    );
+    pose.position.y += movement.y;
+    pose.on_ground = false;
+    pose.horizontal_collision = false;
+    pose
+}
+
+/// Advances the client-private Riptide spin state in Vanilla's post-travel
+/// `LivingEntity.aiStep` slot. Touch damage remains server-authoritative; the
+/// client still ends the private timer and reflects velocity on a living hit.
+pub(super) fn advance_local_player_auto_spin_attack_after_move(
+    world: &mut WorldStore,
+    old_pose: LocalPlayerPoseState,
+    mut pose: LocalPlayerPoseState,
+) -> LocalPlayerPoseState {
+    if !world.advance_local_player_auto_spin_attack_tick() {
+        return pose;
+    }
+
+    let old_bounds = LocalPlayerBounds::for_pose(old_pose);
+    let current_bounds = LocalPlayerBounds::for_pose(pose);
+    let query_min = [
+        old_bounds.min_x().min(current_bounds.min_x()),
+        old_bounds.min_y().min(current_bounds.min_y()),
+        old_bounds.min_z().min(current_bounds.min_z()),
+    ];
+    let query_max = [
+        old_bounds.max_x().max(current_bounds.max_x()),
+        old_bounds.max_y().max(current_bounds.max_y()),
+        old_bounds.max_z().max(current_bounds.max_z()),
+    ];
+    let living_hit = world.local_player_id.is_some_and(|local_player_id| {
+        world
+            .entities
+            .any_entity_bounds_intersecting_except(
+                query_min,
+                query_max,
+                Some(local_player_id),
+                vanilla_living_entity_type,
+            )
+            .unwrap_or(false)
+    });
+    if living_hit {
+        world.stop_local_player_auto_spin_attack();
+        pose.delta_movement.x *= -0.2;
+        pose.delta_movement.y *= -0.2;
+        pose.delta_movement.z *= -0.2;
+    } else if pose.horizontal_collision {
+        world.stop_local_player_auto_spin_attack();
     }
     pose
 }
