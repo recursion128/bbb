@@ -148,10 +148,11 @@ def block_factory_class(declaration: dict) -> str:
     return factory_class
 
 
-def _is_block_behavior_method(
+def _is_block_method(
     source: JavaSource,
     method,
     method_name: str,
+    return_type_spelling: str,
     parameter_types: tuple[str, ...],
 ) -> bool:
     if (
@@ -169,7 +170,7 @@ def _is_block_behavior_method(
         and all(
             parameter_type is not None for parameter_type in actual_parameter_types
         )
-        and source.text(return_type) == "InteractionResult"
+        and source.text(return_type) == return_type_spelling
         and tuple(
             source.text(parameter_type) for parameter_type in actual_parameter_types
         )
@@ -177,11 +178,13 @@ def _is_block_behavior_method(
     )
 
 
-def _extract_block_behavior_override_owners(
+def _extract_block_method_override_owners(
     declarations: Sequence[dict],
     block_class_sources: Sequence[JavaSource],
     method_name: str,
+    return_type_spelling: str,
     parameter_types: tuple[str, ...],
+    default_owner_fqcn: str | None,
 ) -> dict[str, str | None]:
     types = [item for source in block_class_sources for item in source.types]
     resolve_class_hierarchy(types)
@@ -193,8 +196,12 @@ def _extract_block_behavior_override_owners(
         method.owner
         for source in block_class_sources
         for method in source.methods
-        if _is_block_behavior_method(
-            source, method, method_name, parameter_types
+        if _is_block_method(
+            source,
+            method,
+            method_name,
+            return_type_spelling,
+            parameter_types,
         )
     }
 
@@ -215,7 +222,7 @@ def _extract_block_behavior_override_owners(
             if block_type.fqcn in behavior_owners:
                 owners[factory_class] = (
                     None
-                    if block_type.simple_name == "BlockBehaviour"
+                    if block_type.fqcn == default_owner_fqcn
                     else block_type.simple_name
                 )
                 break
@@ -223,9 +230,12 @@ def _extract_block_behavior_override_owners(
                 block_type.superclass is None
                 or block_type.superclass not in by_fqcn
             ):
+                if default_owner_fqcn is None:
+                    owners[factory_class] = None
+                    break
                 raise BlockRegistryCatalogExtractionError(
                     f"{block_type.source_path}: {factory_class} does not resolve to "
-                    f"BlockBehaviour.{method_name}"
+                    f"{default_owner_fqcn}.{method_name}"
                 )
             block_type = by_fqcn[block_type.superclass]
         else:
@@ -239,10 +249,11 @@ def extract_block_use_item_on_override_owners(
     declarations: Sequence[dict],
     block_class_sources: Sequence[JavaSource],
 ) -> dict[str, str | None]:
-    return _extract_block_behavior_override_owners(
+    return _extract_block_method_override_owners(
         declarations,
         block_class_sources,
         "useItemOn",
+        "InteractionResult",
         (
             "ItemStack",
             "BlockState",
@@ -252,6 +263,7 @@ def extract_block_use_item_on_override_owners(
             "InteractionHand",
             "BlockHitResult",
         ),
+        "net.minecraft.world.level.block.state.BlockBehaviour",
     )
 
 
@@ -259,12 +271,67 @@ def extract_block_use_without_item_override_owners(
     declarations: Sequence[dict],
     block_class_sources: Sequence[JavaSource],
 ) -> dict[str, str | None]:
-    return _extract_block_behavior_override_owners(
+    return _extract_block_method_override_owners(
         declarations,
         block_class_sources,
         "useWithoutItem",
+        "InteractionResult",
         ("BlockState", "Level", "BlockPos", "Player", "BlockHitResult"),
+        "net.minecraft.world.level.block.state.BlockBehaviour",
     )
+
+
+def extract_block_bonemeal_target_override_owners(
+    declarations: Sequence[dict],
+    block_class_sources: Sequence[JavaSource],
+) -> dict[str, str | None]:
+    """Resolve the nearest client-visible ``BonemealableBlock`` target check."""
+
+    return _extract_block_method_override_owners(
+        declarations,
+        block_class_sources,
+        "isValidBonemealTarget",
+        "boolean",
+        ("LevelReader", "BlockPos", "BlockState"),
+        None,
+    )
+
+
+def extract_block_propagates_skylight_down_override_owners(
+    declarations: Sequence[dict],
+    block_class_sources: Sequence[JavaSource],
+) -> dict[str, str | None]:
+    """Resolve non-default ``BlockBehaviour.propagatesSkylightDown`` owners."""
+
+    return _extract_block_method_override_owners(
+        declarations,
+        block_class_sources,
+        "propagatesSkylightDown",
+        "boolean",
+        ("BlockState",),
+        "net.minecraft.world.level.block.state.BlockBehaviour",
+    )
+
+
+def extract_block_replaceable_membership(
+    declarations: Sequence[dict],
+) -> dict[str, bool]:
+    """Extract the cached ``BlockBehaviour.Properties.replaceable`` flag.
+
+    Vanilla registrations opt into this flag through the fluent
+    ``Properties.replaceable()`` call. Registrations rooted in copy/helper
+    factories in 26.1 do not inherit a replaceable source, so the explicit
+    call is the complete positive membership.
+    """
+
+    return {
+        declaration["field"]: any(
+            fact.get("kind") == "method_invocation"
+            and fact.get("name") == "replaceable"
+            for fact in _walk_expression_facts(declaration["initializer"])
+        )
+        for declaration in declarations
+    }
 
 
 def extract_block_subclass_membership(

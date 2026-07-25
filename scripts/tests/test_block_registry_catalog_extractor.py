@@ -11,7 +11,10 @@ sys.path.insert(0, str(SCRIPTS))
 from block_registry_catalog_extractor import (  # noqa: E402
     BlockRegistryCatalogExtractionError,
     block_factory_class,
+    extract_block_bonemeal_target_override_owners,
     extract_block_registry_catalog,
+    extract_block_propagates_skylight_down_override_owners,
+    extract_block_replaceable_membership,
     extract_block_subclass_membership,
     extract_block_use_item_on_override_owners,
     extract_block_use_without_item_override_owners,
@@ -119,6 +122,22 @@ class BlockRegistryCatalogExtractorTests(unittest.TestCase):
                 for child in _walk(argument)
             )
         )
+        self.assertEqual(
+            extract_block_replaceable_membership(extracted.declarations),
+            {
+                "AIR": True,
+                "DIRT": False,
+                "OAK_STAIRS": False,
+                "COPPER_CHAIN": False,
+                "EXPOSED_COPPER_CHAIN": False,
+                "WEATHERED_COPPER_CHAIN": False,
+                "OXIDIZED_COPPER_CHAIN": False,
+                "WAXED_COPPER_CHAIN": False,
+                "WAXED_EXPOSED_COPPER_CHAIN": False,
+                "WAXED_WEATHERED_COPPER_CHAIN": False,
+                "WAXED_OXIDIZED_COPPER_CHAIN": False,
+            },
+        )
 
     def test_derives_factory_classes_and_nearest_interaction_overrides(self) -> None:
         declarations = extract().declarations
@@ -169,6 +188,9 @@ class BlockBehaviour {
       BlockHitResult hit) {
     return InteractionResult.PASS;
   }
+  protected boolean propagatesSkylightDown(BlockState state) {
+    return false;
+  }
 }
 """,
             ),
@@ -212,7 +234,15 @@ class ChainBlock extends Block {}
                 "net/minecraft/world/level/block/GrowingPlantHeadBlock.java",
                 """
 package net.minecraft.world.level.block;
-class GrowingPlantHeadBlock extends Block {}
+class GrowingPlantHeadBlock extends Block {
+  public boolean isValidBonemealTarget(
+      LevelReader level, BlockPos pos, BlockState state) {
+    return true;
+  }
+  protected boolean propagatesSkylightDown(BlockState state) {
+    return true;
+  }
+}
 """,
             ),
             parse(
@@ -263,6 +293,28 @@ class WeatheringCopperChainBlock extends ChainBlock {
                 "ChainBlock": False,
                 "StairBlock": False,
                 "WeatheringCopperChainBlock": False,
+            },
+        )
+        self.assertEqual(
+            extract_block_bonemeal_target_override_owners(declarations, sources),
+            {
+                "AirBlock": "GrowingPlantHeadBlock",
+                "Block": None,
+                "ChainBlock": None,
+                "StairBlock": None,
+                "WeatheringCopperChainBlock": None,
+            },
+        )
+        self.assertEqual(
+            extract_block_propagates_skylight_down_override_owners(
+                declarations, sources
+            ),
+            {
+                "AirBlock": "GrowingPlantHeadBlock",
+                "Block": None,
+                "ChainBlock": None,
+                "StairBlock": None,
+                "WeatheringCopperChainBlock": None,
             },
         )
 

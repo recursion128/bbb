@@ -1,5 +1,8 @@
 use std::collections::BTreeMap;
 
+use bbb_protocol::block_types::{
+    vanilla_block_type_for_resource_id, VanillaPropagatesSkylightDownOverride,
+};
 use bbb_protocol::entity_poses::{VANILLA_ENTITY_POSE_DIGGING_ID, VANILLA_ENTITY_POSE_EMERGING_ID};
 use bbb_protocol::entity_types::{
     vanilla_entity_type, vanilla_entity_type_is_powder_snow_walkable,
@@ -548,6 +551,26 @@ impl WorldStore {
         block_collision_shape_empty_context(block, block.pos)
             .map(BlockCollisionShape::full_face_flags)
             .unwrap_or([false; 6])
+    }
+
+    /// Mirrors `MultifaceBlock.canAttachTo`: either the block-support shape or
+    /// the empty-context collision shape may provide the requested full face.
+    pub(crate) fn block_has_full_support_or_collision_face(
+        &self,
+        block: &BlockProbe,
+        face_index: usize,
+    ) -> bool {
+        self.debug_block_sturdy_faces(block)
+            .get(face_index)
+            .copied()
+            .unwrap_or(false)
+            || block_collision_shape_empty_context(block, block.pos).is_some_and(|shape| {
+                shape
+                    .full_face_flags()
+                    .get(face_index)
+                    .copied()
+                    .unwrap_or(false)
+            })
     }
 
     /// Mirrors `level.getEntities(cameraEntity,
@@ -2499,6 +2522,41 @@ fn block_collision_shape_empty_context(
 pub(crate) fn block_collision_shape_has_full_up_face(block: &BlockProbe, pos: BlockPos) -> bool {
     block_collision_shape_empty_context(block, pos)
         .is_some_and(|shape| shape.has_full_face(BlockDirection::Up))
+}
+
+/// Mirrors the cached `BlockStateBase.propagatesSkylightDown` value from the
+/// generated nearest override owner and the default empty-context shape rule.
+pub(crate) fn block_state_propagates_skylight_down(
+    block: &BlockProbe,
+    pos: BlockPos,
+) -> Option<bool> {
+    let block_name = block.block_name.as_deref()?;
+    let block_type = vanilla_block_type_for_resource_id(block_name)?;
+    let fluid_is_empty = block.fluid.is_none();
+    Some(match block_type.propagates_skylight_down_override {
+        Some(
+            VanillaPropagatesSkylightDownOverride::BambooStalkBlock
+            | VanillaPropagatesSkylightDownOverride::HangingMossBlock
+            | VanillaPropagatesSkylightDownOverride::MossyCarpetBlock
+            | VanillaPropagatesSkylightDownOverride::TransparentBlock
+            | VanillaPropagatesSkylightDownOverride::VineBlock,
+        ) => true,
+        Some(
+            VanillaPropagatesSkylightDownOverride::BarrierBlock
+            | VanillaPropagatesSkylightDownOverride::CrossCollisionBlock
+            | VanillaPropagatesSkylightDownOverride::GlowLichenBlock
+            | VanillaPropagatesSkylightDownOverride::LightBlock
+            | VanillaPropagatesSkylightDownOverride::VegetationBlock
+            | VanillaPropagatesSkylightDownOverride::WallBlock,
+        ) => fluid_is_empty,
+        Some(
+            VanillaPropagatesSkylightDownOverride::LiquidBlock
+            | VanillaPropagatesSkylightDownOverride::PipeBlock
+            | VanillaPropagatesSkylightDownOverride::ShulkerBoxBlock
+            | VanillaPropagatesSkylightDownOverride::TintedGlassBlock,
+        ) => false,
+        None => fluid_is_empty && !block_collision_shape_is_full_block(block, pos),
+    })
 }
 
 fn block_collision_shape(block: &BlockProbe, pos: BlockPos) -> Option<BlockCollisionShape> {

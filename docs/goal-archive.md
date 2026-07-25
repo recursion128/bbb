@@ -493,3 +493,6 @@
   `FireChargeItem` 现覆盖可点亮方块、普通/灵魂火与空黑曜石门框；`FireBlock`
   易燃注册和灵魂火基座由 Vanilla 源/标签生成，音效随机流保留
   excluded-player 语义。
+- **2026-07-23（骨粉 useOn 预测工程关闭）**：`BoneMealItem` 现按生成的
+  Bonemealable owner、replaceable/skylight 属性、实时 NYLIUM 标签与邻域形状，
+  精确区分客户端作物 `PASS` 和满水方块 `SUCCESS`，且只在后者本地挥手。

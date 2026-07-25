@@ -955,8 +955,9 @@ mod tests {
     };
     use bbb_protocol::equipment_slots::VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT;
     use bbb_protocol::item_types::{
-        VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_BRUSH_ID, VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID,
-        VANILLA_ITEM_COMPASS_ID, VANILLA_ITEM_FIREWORK_ROCKET_ID, VANILLA_ITEM_FIRE_CHARGE_ID,
+        VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_BONE_MEAL_ID, VANILLA_ITEM_BRUSH_ID,
+        VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID, VANILLA_ITEM_COMPASS_ID,
+        VANILLA_ITEM_FIREWORK_ROCKET_ID, VANILLA_ITEM_FIRE_CHARGE_ID,
         VANILLA_ITEM_FLINT_AND_STEEL_ID, VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_STONE_ID,
     };
     use bbb_protocol::packets::{
@@ -4048,6 +4049,70 @@ mod tests {
             NetCommand::Swing(InteractionHand::MainHand)
         );
         assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn bone_meal_full_water_growth_swings_main_hand_without_local_shrink() {
+        let (tx, mut rx) = mpsc::channel(3);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_block();
+        assert!(world.apply_block_update(BlockUpdate {
+            pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+            block_state_id: test_block_state_id("minecraft:stone", &[]),
+        }));
+        let water_pos = BlockPos { x: 0, y: 1, z: 2 };
+        let water_state = test_block_state_id("minecraft:water", &[("level", "0")]);
+        assert!(world.apply_block_update(BlockUpdate {
+            pos: ProtocolBlockPos {
+                x: water_pos.x,
+                y: water_pos.y,
+                z: water_pos.z,
+            },
+            block_state_id: water_state,
+        }));
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(VANILLA_ITEM_BONE_MEAL_ID, 3),
+        });
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+            item: item_stack(VANILLA_ITEM_STONE_ID, 1),
+        });
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+        );
+
+        assert_eq!(counters.use_item_on_commands_queued, 1);
+        let NetCommand::UseItemOn(command) = rx.try_recv().unwrap() else {
+            panic!("expected bone-meal use-on command");
+        };
+        assert_eq!(command.packet.hand, InteractionHand::MainHand);
+        assert_eq!(counters.swing_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
+        assert!(rx.try_recv().is_err());
+        assert_eq!(
+            world
+                .local_item_in_hand(InteractionHand::MainHand)
+                .unwrap()
+                .count,
+            3
+        );
+        assert_eq!(
+            world.probe_block(water_pos).unwrap().block_state_id,
+            water_state
+        );
+        assert!(world.local_block_predictions().is_empty());
     }
 
     #[test]

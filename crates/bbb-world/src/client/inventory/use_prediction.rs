@@ -49,6 +49,7 @@ use bbb_protocol::{
     },
 };
 
+mod bone_meal;
 mod ignition;
 
 const VANILLA_DEFAULT_ENTITY_INTERACT_OWNER: &str = "net.minecraft.world.entity.Entity";
@@ -642,6 +643,9 @@ impl WorldStore {
             VanillaItemUseOnOverride::FlintAndSteelItem
             | VanillaItemUseOnOverride::FireChargeItem => {
                 Some(self.predict_local_ignition_item_use_on(owner, hand, context))
+            }
+            VanillaItemUseOnOverride::BoneMealItem => {
+                Some(self.predict_local_bone_meal_item_use_on(owner, context))
             }
             VanillaItemUseOnOverride::EnderEyeItem => {
                 let block = self.probe_block(context.pos)?;
@@ -1954,9 +1958,10 @@ mod tests {
     use super::*;
     use bbb_protocol::{
         block_types::{
-            vanilla_block_type, VanillaBlockUseItemOnOverride, VanillaBlockUseWithoutItemOverride,
-            VANILLA_BLOCK_CAKE_ID, VANILLA_BLOCK_CHEST_ID, VANILLA_BLOCK_RAIL_ID,
-            VANILLA_BLOCK_STONE_ID, VANILLA_BLOCK_WHITE_BANNER_ID,
+            vanilla_block_type, vanilla_block_type_for_resource_id, VanillaBlockUseItemOnOverride,
+            VanillaBlockUseWithoutItemOverride, VanillaBonemealTargetOverride,
+            VANILLA_BLOCK_CAKE_ID, VANILLA_BLOCK_CHEST_ID, VANILLA_BLOCK_CRIMSON_NYLIUM_ID,
+            VANILLA_BLOCK_RAIL_ID, VANILLA_BLOCK_STONE_ID, VANILLA_BLOCK_WHITE_BANNER_ID,
         },
         builtin_enum_component_values::VANILLA_DYE_COLOR_RED_ID,
         data_component_types::{
@@ -1990,9 +1995,10 @@ mod tests {
         game_types::{VANILLA_GAME_TYPE_CREATIVE_ID, VANILLA_GAME_TYPE_SURVIVAL_ID},
         item_types::{
             VanillaItemInteractLivingEntityOverride, VanillaItemUseOnOverride,
-            VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_BRUSH_ID, VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID,
-            VANILLA_ITEM_CHORUS_FRUIT_ID, VANILLA_ITEM_COMPASS_ID, VANILLA_ITEM_DEBUG_STICK_ID,
-            VANILLA_ITEM_ENDER_EYE_ID, VANILLA_ITEM_END_CRYSTAL_ID, VANILLA_ITEM_FILLED_MAP_ID,
+            VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_BONE_MEAL_ID, VANILLA_ITEM_BRUSH_ID,
+            VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID, VANILLA_ITEM_CHORUS_FRUIT_ID,
+            VANILLA_ITEM_COMPASS_ID, VANILLA_ITEM_DEBUG_STICK_ID, VANILLA_ITEM_ENDER_EYE_ID,
+            VANILLA_ITEM_END_CRYSTAL_ID, VANILLA_ITEM_FILLED_MAP_ID,
             VANILLA_ITEM_FIREWORK_ROCKET_ID, VANILLA_ITEM_FIRE_CHARGE_ID,
             VANILLA_ITEM_FLINT_AND_STEEL_ID, VANILLA_ITEM_HONEYCOMB_ID, VANILLA_ITEM_IRON_AXE_ID,
             VANILLA_ITEM_IRON_HOE_ID, VANILLA_ITEM_IRON_SHOVEL_ID, VANILLA_ITEM_LEAD_ID,
@@ -2365,6 +2371,332 @@ mod tests {
             ),
             LocalTargetUsePrediction::UnsupportedItemUseOn(VanillaItemUseOnOverride::BlockItem)
         );
+    }
+
+    #[test]
+    fn bone_meal_water_growth_predicts_client_result_without_local_mutation() {
+        let mut world = tool_use_world(block_state_id("minecraft:air", []));
+        set_main_hand(&mut world, VANILLA_ITEM_BONE_MEAL_ID);
+        let clicked = BlockPos { x: 8, y: 8, z: 8 };
+        let water = BlockPos { x: 9, y: 8, z: 8 };
+        let above_clicked = BlockPos { x: 8, y: 9, z: 8 };
+        let source_water = block_state_id("minecraft:water", [("level", "0")]);
+        let stone = block_state_id("minecraft:stone", []);
+        set_block(&mut world, clicked, stone);
+        set_block(&mut world, water, source_water);
+
+        assert_eq!(
+            world.predict_local_block_use(
+                clicked,
+                ProtocolDirection::East,
+                InteractionHand::MainHand,
+                false,
+                1,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction()
+            ))
+        );
+        assert_eq!(world.probe_block(clicked).unwrap().block_state_id, stone);
+        assert_eq!(
+            world.probe_block(water).unwrap().block_state_id,
+            source_water
+        );
+        assert_eq!(player_inventory_item(&world, 0).count, 1);
+
+        let grass = block_state_id("minecraft:grass_block", [("snowy", "false")]);
+        set_block(&mut world, clicked, grass);
+        assert_eq!(
+            world.predict_local_block_use(
+                clicked,
+                ProtocolDirection::East,
+                InteractionHand::MainHand,
+                false,
+                2,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+
+        set_block(&mut world, above_clicked, stone);
+        assert_eq!(
+            world.predict_local_block_use(
+                clicked,
+                ProtocolDirection::East,
+                InteractionHand::MainHand,
+                false,
+                3,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction()
+            ))
+        );
+
+        set_block(
+            &mut world,
+            water,
+            block_state_id("minecraft:water", [("level", "1")]),
+        );
+        assert_eq!(
+            world.predict_local_block_use(
+                clicked,
+                ProtocolDirection::East,
+                InteractionHand::MainHand,
+                false,
+                4,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+        assert_eq!(player_inventory_item(&world, 0).count, 1);
+    }
+
+    #[test]
+    fn bone_meal_netherrack_target_uses_live_nylium_tag_and_skylight_rule() {
+        let mut world = tool_use_world(block_state_id("minecraft:air", []));
+        set_main_hand(&mut world, VANILLA_ITEM_BONE_MEAL_ID);
+        world.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: "minecraft:block".to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: "minecraft:nylium".to_string(),
+                    entries: vec![VANILLA_BLOCK_CRIMSON_NYLIUM_ID],
+                }],
+            }],
+        });
+        let clicked = BlockPos { x: 8, y: 8, z: 8 };
+        let water = BlockPos { x: 9, y: 8, z: 8 };
+        let neighbour = BlockPos { x: 7, y: 8, z: 8 };
+        let above_clicked = BlockPos { x: 8, y: 9, z: 8 };
+        set_block(
+            &mut world,
+            clicked,
+            block_state_id("minecraft:netherrack", []),
+        );
+        set_block(
+            &mut world,
+            water,
+            block_state_id("minecraft:water", [("level", "0")]),
+        );
+        set_block(
+            &mut world,
+            neighbour,
+            block_state_id("minecraft:crimson_nylium", []),
+        );
+
+        assert_eq!(
+            world.predict_local_block_use(
+                clicked,
+                ProtocolDirection::East,
+                InteractionHand::MainHand,
+                false,
+                1,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+
+        set_block(
+            &mut world,
+            above_clicked,
+            block_state_id("minecraft:tinted_glass", []),
+        );
+        assert_eq!(
+            world.predict_local_block_use(
+                clicked,
+                ProtocolDirection::East,
+                InteractionHand::MainHand,
+                false,
+                2,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction()
+            ))
+        );
+
+        set_block(
+            &mut world,
+            above_clicked,
+            block_state_id("minecraft:glass", []),
+        );
+        assert_eq!(
+            world.predict_local_block_use(
+                clicked,
+                ProtocolDirection::East,
+                InteractionHand::MainHand,
+                false,
+                3,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+    }
+
+    #[test]
+    fn bone_meal_mossy_carpet_target_tracks_replaceability_and_side_support() {
+        let mut world = tool_use_world(block_state_id("minecraft:air", []));
+        set_main_hand(&mut world, VANILLA_ITEM_BONE_MEAL_ID);
+        let clicked = BlockPos { x: 8, y: 8, z: 8 };
+        let support = BlockPos { x: 8, y: 9, z: 7 };
+        set_block(
+            &mut world,
+            clicked,
+            block_state_id(
+                "minecraft:pale_moss_carpet",
+                [
+                    ("bottom", "true"),
+                    ("east", "none"),
+                    ("north", "low"),
+                    ("south", "none"),
+                    ("west", "none"),
+                ],
+            ),
+        );
+        set_block(
+            &mut world,
+            BlockPos { x: 8, y: 7, z: 8 },
+            block_state_id("minecraft:water", [("level", "0")]),
+        );
+        set_block(&mut world, support, block_state_id("minecraft:stone", []));
+
+        assert_eq!(
+            world.predict_local_block_use(
+                clicked,
+                ProtocolDirection::Down,
+                InteractionHand::MainHand,
+                false,
+                1,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+
+        set_block(
+            &mut world,
+            BlockPos { x: 8, y: 9, z: 8 },
+            block_state_id("minecraft:stone", []),
+        );
+        assert_eq!(
+            world.predict_local_block_use(
+                clicked,
+                ProtocolDirection::Down,
+                InteractionHand::MainHand,
+                false,
+                2,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction()
+            ))
+        );
+
+        set_block(
+            &mut world,
+            BlockPos { x: 8, y: 9, z: 8 },
+            block_state_id("minecraft:air", []),
+        );
+        set_block(&mut world, support, block_state_id("minecraft:air", []));
+        assert_eq!(
+            world.predict_local_block_use(
+                clicked,
+                ProtocolDirection::Down,
+                InteractionHand::MainHand,
+                false,
+                3,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction()
+            ))
+        );
+    }
+
+    #[test]
+    fn bone_meal_non_sturdy_and_missing_water_targets_preserve_pass_boundary() {
+        let mut world = tool_use_world(block_state_id("minecraft:air", []));
+        set_main_hand(&mut world, VANILLA_ITEM_BONE_MEAL_ID);
+        let crop = BlockPos { x: 8, y: 8, z: 8 };
+        set_block(
+            &mut world,
+            crop,
+            block_state_id("minecraft:wheat", [("age", "0")]),
+        );
+        set_block(
+            &mut world,
+            BlockPos { x: 9, y: 8, z: 8 },
+            block_state_id("minecraft:water", [("level", "0")]),
+        );
+        assert_eq!(
+            world.predict_local_block_use(
+                crop,
+                ProtocolDirection::East,
+                InteractionHand::MainHand,
+                false,
+                1,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+
+        let edge = BlockPos { x: 15, y: 8, z: 8 };
+        set_block(&mut world, edge, block_state_id("minecraft:stone", []));
+        assert_eq!(
+            world.predict_local_block_use(
+                edge,
+                ProtocolDirection::East,
+                InteractionHand::MainHand,
+                false,
+                2,
+            ),
+            LocalTargetUsePrediction::UnsupportedItemUseOn(VanillaItemUseOnOverride::BoneMealItem)
+        );
+    }
+
+    #[test]
+    fn bonemeal_generated_owners_with_sturdy_faces_are_evaluated() {
+        let air = block_state_id("minecraft:air", []);
+        let mut world = tool_use_world(air);
+        let pos = BlockPos { x: 8, y: 8, z: 8 };
+        let state_count = world.registries().block_state_count();
+        let mut reached_evaluators = [false; 6];
+        let mut missing_evaluators = Vec::new();
+        for state_id in 0..state_count {
+            let Some(state) = world
+                .registries()
+                .block_state(i32::try_from(state_id).unwrap())
+                .cloned()
+            else {
+                continue;
+            };
+            let Some(block_type) = vanilla_block_type_for_resource_id(&state.name) else {
+                continue;
+            };
+            let Some(owner) = block_type.bonemeal_target_override else {
+                continue;
+            };
+            set_block(&mut world, pos, state.id);
+            let probe = world.probe_block(pos).unwrap();
+            if world
+                .debug_block_sturdy_faces(&probe)
+                .into_iter()
+                .any(|face| face)
+            {
+                let evaluator = match owner {
+                    VanillaBonemealTargetOverride::BonemealableFeaturePlacerBlock => 0,
+                    VanillaBonemealTargetOverride::GrassBlock => 1,
+                    VanillaBonemealTargetOverride::NetherrackBlock => 2,
+                    VanillaBonemealTargetOverride::NyliumBlock => 3,
+                    VanillaBonemealTargetOverride::RootedDirtBlock => 4,
+                    VanillaBonemealTargetOverride::MossyCarpetBlock => 5,
+                    VanillaBonemealTargetOverride::AzaleaBlock
+                    | VanillaBonemealTargetOverride::MushroomBlock
+                    | VanillaBonemealTargetOverride::SaplingBlock => continue,
+                    _ => {
+                        missing_evaluators
+                            .push(format!("{} state {} ({owner:?})", state.name, state.id));
+                        continue;
+                    }
+                };
+                reached_evaluators[evaluator] = true;
+            }
+        }
+        assert!(
+            missing_evaluators.is_empty(),
+            "sturdy bonemeal states without evaluators: {missing_evaluators:#?}"
+        );
+        assert_eq!(reached_evaluators, [true; 6]);
     }
 
     #[test]
