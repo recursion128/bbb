@@ -662,10 +662,9 @@ Commands:
   Interaction override ownership must stay generated from local vanilla classes.
   Entity, block, and inventory corrections remain server-authoritative.
 - Complete no-target `Item.use` prediction for the remaining source-derived
-  specialized override families: Boat entity obstruction/no-collision,
-  Bottle dragon-breath/water filling and held-stack transformation, Bucket
-  pickup/placement/evaporation, and PlaceOnWaterBlock delegation into general
-  `BlockItem.useOn`.
+  specialized override families: Bottle dragon-breath/water filling and
+  held-stack transformation, Bucket pickup/placement/evaporation, and
+  PlaceOnWaterBlock delegation into general `BlockItem.useOn`.
   Override ownership must stay generated from local vanilla item classes instead
   of being inferred from component shape.
 Inventory:

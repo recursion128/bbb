@@ -153,7 +153,7 @@ pub(crate) fn vanilla_pick_bounds_for_type(entity_type_id: i32) -> Option<Entity
     vanilla_bounds_for_type(entity_type_id)
 }
 
-fn vanilla_bounds_for_type(entity_type_id: i32) -> Option<EntityPickBoundsState> {
+pub(crate) fn vanilla_bounds_for_type(entity_type_id: i32) -> Option<EntityPickBoundsState> {
     let [width, height] = vanilla_entity_type_dimensions(entity_type_id)?;
     let pick_radius = if entity_type_id == VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID
         || vanilla_entity_type_is_redirectable_projectile(entity_type_id)

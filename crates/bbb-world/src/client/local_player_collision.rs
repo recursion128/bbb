@@ -1488,6 +1488,47 @@ impl WorldStore {
         on_ground: bool,
         entity_collision_targets: &[crate::EntityPickTargetState],
     ) -> bool {
+        self.entity_collision_bounds_are_free_for_source(
+            Some(entity_id),
+            entity_type_id,
+            position,
+            relative_min,
+            relative_max,
+            on_ground,
+            entity_collision_targets,
+        )
+    }
+
+    pub(crate) fn prospective_entity_collision_bounds_are_free(
+        &self,
+        entity_type_id: i32,
+        position: [f64; 3],
+        relative_min: [f64; 3],
+        relative_max: [f64; 3],
+        on_ground: bool,
+        entity_collision_targets: &[crate::EntityPickTargetState],
+    ) -> bool {
+        self.entity_collision_bounds_are_free_for_source(
+            None,
+            entity_type_id,
+            position,
+            relative_min,
+            relative_max,
+            on_ground,
+            entity_collision_targets,
+        )
+    }
+
+    fn entity_collision_bounds_are_free_for_source(
+        &self,
+        source_entity_id: Option<i32>,
+        entity_type_id: i32,
+        position: [f64; 3],
+        relative_min: [f64; 3],
+        relative_max: [f64; 3],
+        on_ground: bool,
+        entity_collision_targets: &[crate::EntityPickTargetState],
+    ) -> bool {
         let bounds = LocalPlayerBounds::from_min_max(
             std::array::from_fn(|axis| position[axis] + relative_min[axis]),
             std::array::from_fn(|axis| position[axis] + relative_max[axis]),
@@ -1503,7 +1544,7 @@ impl WorldStore {
             return false;
         }
         let query = EntityCollisionQuery {
-            source_entity_id: Some(entity_id),
+            source_entity_id,
             source_entity_type_id: entity_type_id,
             source_position: position,
             bounds,

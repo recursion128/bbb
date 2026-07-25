@@ -65,6 +65,7 @@ pub(crate) use components::{
     EntityMobEffects, EntityMount, EntityPlayerSleep, EntityProjectileLifecycle,
     EntitySupportingBlock, EntityTransform, EntityTransientEvents, LivingDeathWakeTransition,
 };
+pub(crate) use dimensions::vanilla_bounds_for_type;
 pub use dimensions::EntityPickBoundsState;
 pub(crate) use dimensions::{
     vanilla_animal_entity_type, vanilla_living_entity_type, vanilla_pick_bounds_for_type,

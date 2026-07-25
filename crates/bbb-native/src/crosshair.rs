@@ -9,7 +9,7 @@ use bbb_renderer::{CameraPose, SelectionOutline};
 use bbb_world::VANILLA_ENDER_DRAGON_PHASE_HOLDING_PATTERN_ID as ENDER_DRAGON_HOLDING_PATTERN_PHASE_ID;
 use bbb_world::{
     BlockPos, EntityPickTargetState, ItemAttackRange, LocalItemUsePovFluidMode,
-    LocalItemUsePovQuery, LocalPlayerPoseState, WorldStore,
+    LocalItemUsePovQuery, LocalItemUsePovResult, LocalPlayerPoseState, WorldStore,
 };
 
 use crate::block_outline::{
@@ -24,7 +24,7 @@ const DEBUG_LOOKING_AT_RANGE: f64 = 20.0;
 pub(crate) struct CrosshairBlockHit {
     pub(crate) pos: BlockPos,
     pub(crate) face: ProtocolDirection,
-    pub(crate) cursor: [f32; 3],
+    pub(crate) cursor: [f64; 3],
     pub(crate) inside: bool,
 }
 
@@ -1003,19 +1003,19 @@ fn block_pos_containing(point: [f64; 3]) -> BlockPos {
     }
 }
 
-fn block_hit_cursor(eye: [f64; 3], direction: [f64; 3], distance: f64, pos: BlockPos) -> [f32; 3] {
+fn block_hit_cursor(eye: [f64; 3], direction: [f64; 3], distance: f64, pos: BlockPos) -> [f64; 3] {
     [
-        ((eye[0] + direction[0] * distance) - f64::from(pos.x)).clamp(0.0, 1.0) as f32,
-        ((eye[1] + direction[1] * distance) - f64::from(pos.y)).clamp(0.0, 1.0) as f32,
-        ((eye[2] + direction[2] * distance) - f64::from(pos.z)).clamp(0.0, 1.0) as f32,
+        (eye[0] + direction[0] * distance) - f64::from(pos.x),
+        (eye[1] + direction[1] * distance) - f64::from(pos.y),
+        (eye[2] + direction[2] * distance) - f64::from(pos.z),
     ]
 }
 
 fn block_hit_location(hit: CrosshairBlockHit) -> [f64; 3] {
     [
-        f64::from(hit.pos.x) + f64::from(hit.cursor[0]),
-        f64::from(hit.pos.y) + f64::from(hit.cursor[1]),
-        f64::from(hit.pos.z) + f64::from(hit.cursor[2]),
+        f64::from(hit.pos.x) + hit.cursor[0],
+        f64::from(hit.pos.y) + hit.cursor[1],
+        f64::from(hit.pos.z) + hit.cursor[2],
     ]
 }
 
@@ -1049,11 +1049,21 @@ pub(crate) fn protocol_block_hit_result_from_crosshair_hit(
     ProtocolBlockHitResult {
         pos: protocol_block_pos_from_world(hit.pos),
         direction: hit.face,
-        cursor_x: hit.cursor[0],
-        cursor_y: hit.cursor[1],
-        cursor_z: hit.cursor[2],
+        cursor_x: hit.cursor[0] as f32,
+        cursor_y: hit.cursor[1] as f32,
+        cursor_z: hit.cursor[2] as f32,
         inside: hit.inside,
         world_border_hit: false,
+    }
+}
+
+pub(crate) fn local_item_use_pov_result_from_crosshair_hit(
+    hit: CrosshairBlockHit,
+) -> LocalItemUsePovResult {
+    let [x, y, z] = block_hit_location(hit);
+    LocalItemUsePovResult::Block {
+        hit: protocol_block_hit_result_from_crosshair_hit(hit),
+        location: ProtocolVec3d { x, y, z },
     }
 }
 
@@ -1177,7 +1187,7 @@ mod tests {
             Some(CrosshairBlockHit {
                 pos: BlockPos { x: 0, y: 1, z: 3 },
                 face: ProtocolDirection::North,
-                cursor: [0.0, 0.62, 0.0],
+                cursor: [0.0, pose.eye_height() - 1.0, 0.0],
                 inside: false,
             })
         );
@@ -1291,7 +1301,7 @@ mod tests {
             Some(CrosshairBlockHit {
                 pos: BlockPos { x: 0, y: 1, z: 3 },
                 face: ProtocolDirection::North,
-                cursor: [0.0, 0.62, 0.0],
+                cursor: [0.0, pose.eye_height() - 1.0, 0.0],
                 inside: false,
             })
         );
@@ -1321,7 +1331,7 @@ mod tests {
             Some(CrosshairBlockHit {
                 pos: BlockPos { x: 0, y: 1, z: 4 },
                 face: ProtocolDirection::North,
-                cursor: [0.0, 0.62, 0.0],
+                cursor: [0.0, pose.eye_height() - 1.0, 0.0],
                 inside: false,
             })
         );
@@ -1907,6 +1917,42 @@ mod tests {
         let hit = hit.expect("camera ray should hit the low block");
         assert_eq!(hit.pos, BlockPos { x: 0, y: 0, z: 3 });
         assert!((hit.cursor[1] - 0.2751).abs() < 0.0001);
+    }
+
+    #[test]
+    fn item_use_pov_keeps_double_hit_location_beside_wire_cursor() {
+        assert_eq!(
+            block_hit_cursor(
+                [5.125, 4.75, 6.5],
+                [0.0, 0.0, 0.0],
+                0.0,
+                BlockPos { x: 4, y: 5, z: 6 },
+            ),
+            [1.125, -0.25, 0.5]
+        );
+        let block_hit = CrosshairBlockHit {
+            pos: BlockPos { x: 4, y: 5, z: 6 },
+            face: ProtocolDirection::Up,
+            cursor: [0.123_456_789_012, 0.5, 0.987_654_321_098],
+            inside: false,
+        };
+
+        let LocalItemUsePovResult::Block { hit, location } =
+            local_item_use_pov_result_from_crosshair_hit(block_hit)
+        else {
+            panic!("block hit must remain a block POV result");
+        };
+        assert_eq!(
+            location,
+            ProtocolVec3d {
+                x: 4.123_456_789_012,
+                y: 5.5,
+                z: 6.987_654_321_098,
+            }
+        );
+        assert_eq!(hit.cursor_x, block_hit.cursor[0] as f32);
+        assert_eq!(hit.cursor_y, block_hit.cursor[1] as f32);
+        assert_eq!(hit.cursor_z, block_hit.cursor[2] as f32);
     }
 
     #[test]

@@ -1,7 +1,7 @@
 use super::*;
 use crate::{
     entities::{
-        vanilla_entity_metadata_abstract_horse_accessors_for_entity_type,
+        vanilla_bounds_for_type, vanilla_entity_metadata_abstract_horse_accessors_for_entity_type,
         vanilla_entity_metadata_age_locked_accessor_for_entity_type,
         vanilla_entity_metadata_armor_stand_accessors_for_entity_type,
         vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type,
@@ -432,6 +432,9 @@ impl WorldStore {
                 }
                 VanillaItemUseOverride::KnowledgeBookItem => {
                     self.predict_local_knowledge_book_item_use(hand, &stack)
+                }
+                VanillaItemUseOverride::BoatItem => {
+                    self.predict_local_boat_item_use(item_type, pov)
                 }
                 VanillaItemUseOverride::EnderEyeItem => self.predict_local_ender_eye_item_use(pov),
                 VanillaItemUseOverride::SpawnEggItem => self.predict_local_spawn_egg_item_use(pov),
@@ -2208,9 +2211,10 @@ mod tests {
             VANILLA_ITEM_GOAT_HORN_ID, VANILLA_ITEM_HONEYCOMB_ID, VANILLA_ITEM_IRON_AXE_ID,
             VANILLA_ITEM_IRON_HOE_ID, VANILLA_ITEM_IRON_SHOVEL_ID, VANILLA_ITEM_LEAD_ID,
             VANILLA_ITEM_LILY_PAD_ID, VANILLA_ITEM_MINECART_ID, VANILLA_ITEM_NAME_TAG_ID,
-            VANILLA_ITEM_POPPY_ID, VANILLA_ITEM_POTION_ID, VANILLA_ITEM_RED_DYE_ID,
-            VANILLA_ITEM_SADDLE_ID, VANILLA_ITEM_SHEARS_ID, VANILLA_ITEM_SHIELD_ID,
-            VANILLA_ITEM_STONE_ID, VANILLA_ITEM_TRIDENT_ID,
+            VANILLA_ITEM_OAK_BOAT_ID, VANILLA_ITEM_POPPY_ID, VANILLA_ITEM_POTION_ID,
+            VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_SADDLE_ID, VANILLA_ITEM_SHEARS_ID,
+            VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_STONE_ID, VANILLA_ITEM_TRIDENT_ID,
+            VANILLA_ITEM_TYPES,
         },
         packets::{
             AddEntity, AdventureModePredicateDataSummary, BlockHitResult, BlockHolderSetSummary,
@@ -2606,6 +2610,7 @@ mod tests {
                 VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID,
                 LocalItemUsePovFluidMode::SourceOnly,
             ),
+            (VANILLA_ITEM_OAK_BOAT_ID, LocalItemUsePovFluidMode::Any),
         ] {
             set_main_hand(&mut world, item_id);
             assert_eq!(
@@ -2626,8 +2631,13 @@ mod tests {
 
     #[test]
     fn ender_eye_and_spawn_egg_use_exact_pov_results() {
-        let hit = |pos| {
-            LocalItemUsePovResult::Block(BlockHitResult {
+        let hit = |pos: ProtocolBlockPos| LocalItemUsePovResult::Block {
+            location: Vec3d {
+                x: f64::from(pos.x) + 0.5,
+                y: f64::from(pos.y) + 0.5,
+                z: f64::from(pos.z) + 0.5,
+            },
+            hit: BlockHitResult {
                 pos,
                 direction: ProtocolDirection::Up,
                 cursor_x: 0.5,
@@ -2635,7 +2645,7 @@ mod tests {
                 cursor_z: 0.5,
                 inside: false,
                 world_border_hit: false,
-            })
+            },
         };
         let mut frame_world = tool_use_world(block_state_id(
             "minecraft:end_portal_frame",
@@ -2687,6 +2697,136 @@ mod tests {
                 LocalInteractionSuccess::client_item_interaction()
             ))
         );
+    }
+
+    #[test]
+    fn boat_use_checks_eye_obstruction_and_initial_hull_collision_without_local_shrink() {
+        let hit = |location: Vec3d| LocalItemUsePovResult::Block {
+            hit: BlockHitResult {
+                pos: ProtocolBlockPos {
+                    x: location.x.floor() as i32,
+                    y: location.y.floor() as i32,
+                    z: location.z.floor() as i32,
+                },
+                direction: ProtocolDirection::Up,
+                cursor_x: location.x.fract() as f32,
+                cursor_y: location.y.fract() as f32,
+                cursor_z: location.z.fract() as f32,
+                inside: false,
+                world_border_hit: false,
+            },
+            location,
+        };
+        let clear_location = Vec3d {
+            x: 0.0,
+            y: 1.0,
+            z: 2.5,
+        };
+        let mut clear = tool_use_world(crate::vanilla_air_block_state_id());
+        clear.set_local_player_pose(crate::LocalPlayerPoseState::default());
+        set_main_hand(&mut clear, VANILLA_ITEM_OAK_BOAT_ID);
+        let held_before = clear.local_item_in_hand(InteractionHand::MainHand).cloned();
+        assert_eq!(
+            clear.predict_local_item_use(InteractionHand::MainHand),
+            LocalItemUsePrediction::UnsupportedOverride(VanillaItemUseOverride::BoatItem)
+        );
+        assert_eq!(
+            clear.predict_local_item_use_with_pov(
+                InteractionHand::MainHand,
+                Some(LocalItemUsePovResult::Miss),
+            ),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+        assert_eq!(
+            clear.predict_local_item_use_with_pov(
+                InteractionHand::MainHand,
+                Some(hit(clear_location)),
+            ),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction()
+            ))
+        );
+        assert_eq!(
+            clear.local_item_in_hand(InteractionHand::MainHand),
+            held_before.as_ref()
+        );
+
+        let mut obstructed = clear.clone();
+        add_entity_at(
+            &mut obstructed,
+            20,
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            Vec3d::default(),
+        );
+        assert_eq!(
+            obstructed.predict_local_item_use_with_pov(
+                InteractionHand::MainHand,
+                Some(hit(clear_location)),
+            ),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+
+        let mut entity_collision = clear.clone();
+        add_entity_at(
+            &mut entity_collision,
+            21,
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            clear_location,
+        );
+        assert_eq!(
+            entity_collision.predict_local_item_use_with_pov(
+                InteractionHand::MainHand,
+                Some(hit(clear_location)),
+            ),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Fail)
+        );
+
+        let mut border_collision = clear.clone();
+        border_collision.apply_set_border_size(bbb_protocol::packets::SetBorderSize { size: 4.0 });
+        assert_eq!(
+            border_collision.predict_local_item_use_with_pov(
+                InteractionHand::MainHand,
+                Some(hit(Vec3d {
+                    x: 1.75,
+                    y: 1.0,
+                    z: 0.0,
+                })),
+            ),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Fail)
+        );
+
+        let mut block_collision = clear;
+        set_block(
+            &mut block_collision,
+            BlockPos { x: 0, y: 1, z: 2 },
+            block_state_id("minecraft:stone", []),
+        );
+        assert_eq!(
+            block_collision.predict_local_item_use_with_pov(
+                InteractionHand::MainHand,
+                Some(hit(Vec3d {
+                    x: 0.5,
+                    y: 1.5,
+                    z: 2.5,
+                })),
+            ),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Fail)
+        );
+    }
+
+    #[test]
+    fn generated_boat_items_resolve_to_same_resource_boat_entities() {
+        let boat_items = VANILLA_ITEM_TYPES
+            .iter()
+            .filter(|item| item.use_override == Some(VanillaItemUseOverride::BoatItem))
+            .collect::<Vec<_>>();
+        assert_eq!(boat_items.len(), 20);
+        for item in boat_items {
+            let entity =
+                bbb_protocol::entity_types::vanilla_entity_type_for_resource_id(item.resource_id)
+                    .expect("boat item resource must have an entity type");
+            assert!(crate::entities::is_vanilla_boat_type(entity.id));
+        }
     }
 
     #[test]

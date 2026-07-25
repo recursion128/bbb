@@ -539,3 +539,6 @@
   耐久、同步 Riptide 水雨门禁与开始使用状态。
 - **2026-07-25（Trident releaseUsing 工程闭环）**：补齐十 tick 释放重检、同步
   `TRIDENT_SOUND` 选择、服务端投掷所有权及 Riptide 冲量、贴地位移和私有旋转状态。
+- **2026-07-25（Boat Item.use 工程闭环）**：ANY-fluid POV 现保留 double 命中点，
+  并按 Vanilla 的眼点实体遮挡及新船体 block/entity/world-border `noCollision`
+  判定本地 PASS/FAIL/SUCCESS；生成实体与物品消耗仍由服务端拥有。

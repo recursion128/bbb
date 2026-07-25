@@ -16,7 +16,7 @@ use crate::audio_runtime::AudioEventSink;
 use crate::camera_pose::camera_pose_from_world;
 use crate::crosshair::{
     crosshair_target_from_camera_at_partial_tick, item_use_pov_block_hit_from_world,
-    protocol_block_hit_result_from_crosshair_hit, CrosshairBlockHit, CrosshairEntityHit,
+    local_item_use_pov_result_from_crosshair_hit, CrosshairBlockHit, CrosshairEntityHit,
     CrosshairTarget,
 };
 use crate::particle_runtime::local_destroy_hit_particle_state;
@@ -526,9 +526,7 @@ fn start_use_item_with_effects(
         let pov = world.local_item_use_pov_query(hand).map(|query| {
             item_use_pov_block_hit_from_world(world, pose, query).map_or(
                 LocalItemUsePovResult::Miss,
-                |hit| {
-                    LocalItemUsePovResult::Block(protocol_block_hit_result_from_crosshair_hit(hit))
-                },
+                local_item_use_pov_result_from_crosshair_hit,
             )
         });
         let prediction = world.predict_local_item_use_with_pov(hand, pov);
@@ -1058,8 +1056,9 @@ mod tests {
         VANILLA_ITEM_ENDER_PEARL_ID, VANILLA_ITEM_FIREWORK_ROCKET_ID, VANILLA_ITEM_FIRE_CHARGE_ID,
         VANILLA_ITEM_FISHING_ROD_ID, VANILLA_ITEM_FLINT_AND_STEEL_ID, VANILLA_ITEM_GLASS_BOTTLE_ID,
         VANILLA_ITEM_GOAT_HORN_ID, VANILLA_ITEM_KNOWLEDGE_BOOK_ID, VANILLA_ITEM_MAP_ID,
-        VANILLA_ITEM_POTION_ID, VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_SHIELD_ID,
-        VANILLA_ITEM_SPYGLASS_ID, VANILLA_ITEM_STONE_ID, VANILLA_ITEM_TRIDENT_ID,
+        VANILLA_ITEM_OAK_BOAT_ID, VANILLA_ITEM_POTION_ID, VANILLA_ITEM_RED_DYE_ID,
+        VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_SPYGLASS_ID, VANILLA_ITEM_STONE_ID,
+        VANILLA_ITEM_TRIDENT_ID,
     };
     use bbb_protocol::packets::{
         AddEntity, AdventureModePredicateDataSummary, AdventureModePredicateSummary, AttackEntity,
@@ -5089,6 +5088,48 @@ mod tests {
             assert!(matches!(rx.try_recv(), Ok(NetCommand::UseItem(_))));
             assert!(rx.try_recv().is_err());
         }
+    }
+
+    #[test]
+    fn no_target_boat_use_raycast_any_fluid_swings_without_local_shrink() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_block();
+        assert!(world.apply_block_update(BlockUpdate {
+            pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+            block_state_id: test_block_state_id("minecraft:water", &[("level", "0")]),
+        }));
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(VANILLA_ITEM_OAK_BOAT_ID, 1),
+        });
+        let held_before = world.local_item_in_hand(InteractionHand::MainHand).cloned();
+        let mut counters = NetCounters::default();
+        let player_pose = world.local_player_pose();
+
+        assert!(start_use_item(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            None,
+            player_pose,
+        ));
+
+        assert!(!world.local_player().interaction.using_item);
+        assert_eq!(
+            world.local_item_in_hand(InteractionHand::MainHand),
+            held_before.as_ref()
+        );
+        assert_eq!(counters.use_item_commands_queued, 1);
+        assert_eq!(counters.swing_commands_queued, 1);
+        assert!(matches!(rx.try_recv(), Ok(NetCommand::UseItem(_))));
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
+        assert!(rx.try_recv().is_err());
     }
 
     #[test]

@@ -1,7 +1,10 @@
 use super::*;
+use crate::LocalPlayerPoseState;
 use bbb_protocol::{
     attribute_types::{vanilla_attribute_type, VANILLA_ATTRIBUTE_BLOCK_INTERACTION_RANGE_ID},
-    packets::BlockHitResult as ProtocolBlockHitResult,
+    entity_types::vanilla_entity_type_for_resource_id,
+    item_types::ItemTypeCatalogEntry,
+    packets::{BlockHitResult as ProtocolBlockHitResult, Vec3d as ProtocolVec3d},
 };
 
 /// Fluid shape selected by Vanilla's `Item.getPlayerPOVHitResult`.
@@ -23,7 +26,10 @@ pub struct LocalItemUsePovQuery {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum LocalItemUsePovResult {
     Miss,
-    Block(ProtocolBlockHitResult),
+    Block {
+        hit: ProtocolBlockHitResult,
+        location: ProtocolVec3d,
+    },
 }
 
 impl WorldStore {
@@ -71,7 +77,7 @@ impl WorldStore {
                 VanillaItemUseOverride::EnderEyeItem,
             );
         };
-        if let LocalItemUsePovResult::Block(hit) = pov {
+        if let LocalItemUsePovResult::Block { hit, .. } = pov {
             if self
                 .probe_block(BlockPos {
                     x: hit.pos.x,
@@ -104,9 +110,113 @@ impl WorldStore {
             LocalItemUsePovResult::Miss => {
                 LocalItemUsePrediction::Result(LocalInteractionResult::Pass)
             }
-            LocalItemUsePovResult::Block(_) => LocalItemUsePrediction::Result(
+            LocalItemUsePovResult::Block { .. } => LocalItemUsePrediction::Result(
                 LocalInteractionResult::Success(LocalInteractionSuccess::client_item_interaction()),
             ),
         }
     }
+
+    pub(super) fn predict_local_boat_item_use(
+        &self,
+        item_type: &ItemTypeCatalogEntry,
+        pov: Option<LocalItemUsePovResult>,
+    ) -> LocalItemUsePrediction {
+        let Some(pov) = pov else {
+            return LocalItemUsePrediction::UnsupportedOverride(VanillaItemUseOverride::BoatItem);
+        };
+        let LocalItemUsePovResult::Block { location, .. } = pov else {
+            return LocalItemUsePrediction::Result(LocalInteractionResult::Pass);
+        };
+        let Some(player_pose) = self.local_player_pose() else {
+            return LocalItemUsePrediction::UnsupportedOverride(VanillaItemUseOverride::BoatItem);
+        };
+        if self.local_boat_use_eye_is_obstructed(player_pose) {
+            return LocalItemUsePrediction::Result(LocalInteractionResult::Pass);
+        }
+
+        let Some(entity_type) = vanilla_entity_type_for_resource_id(item_type.resource_id)
+            .filter(|entity_type| crate::entities::is_vanilla_boat_type(entity_type.id))
+        else {
+            return LocalItemUsePrediction::UnsupportedOverride(VanillaItemUseOverride::BoatItem);
+        };
+        let Some(bounds) = vanilla_bounds_for_type(entity_type.id) else {
+            return LocalItemUsePrediction::UnsupportedOverride(VanillaItemUseOverride::BoatItem);
+        };
+        let position = [location.x, location.y, location.z];
+        let collision_targets = self.entities.vehicle_entity_collision_targets();
+        if !self.prospective_entity_collision_bounds_are_free(
+            entity_type.id,
+            position,
+            bounds.min.map(f64::from),
+            bounds.max.map(f64::from),
+            false,
+            &collision_targets,
+        ) {
+            return LocalItemUsePrediction::Result(LocalInteractionResult::Fail);
+        }
+
+        LocalItemUsePrediction::Result(LocalInteractionResult::Success(
+            LocalInteractionSuccess::client_item_interaction(),
+        ))
+    }
+
+    fn local_boat_use_eye_is_obstructed(&self, player_pose: LocalPlayerPoseState) -> bool {
+        let view = crate::entities::calculate_view_vector(player_pose.x_rot, player_pose.y_rot);
+        let delta = [view.x * 5.0, view.y * 5.0, view.z * 5.0];
+        let position = [
+            player_pose.position.x,
+            player_pose.position.y,
+            player_pose.position.z,
+        ];
+        let mut search_min = [position[0] - 0.3, position[1], position[2] - 0.3];
+        let mut search_max = [
+            position[0] + 0.3,
+            position[1] + player_pose.body_height(),
+            position[2] + 0.3,
+        ];
+        for axis in 0..3 {
+            if delta[axis] < 0.0 {
+                search_min[axis] += delta[axis];
+            } else {
+                search_max[axis] += delta[axis];
+            }
+            search_min[axis] -= 1.0;
+            search_max[axis] += 1.0;
+        }
+        let eye = [
+            position[0],
+            position[1] + player_pose.eye_height(),
+            position[2],
+        ];
+        let local_player_id = self.local_player_id();
+
+        self.entity_pick_targets().into_iter().any(|target| {
+            if local_player_id == Some(target.entity_id) {
+                return false;
+            }
+            let pick_radius = f64::from(target.bounds.pick_radius);
+            let target_position = [target.position.x, target.position.y, target.position.z];
+            let target_min = std::array::from_fn(|axis| {
+                target_position[axis] + f64::from(target.bounds.min[axis]) - pick_radius
+            });
+            let target_max = std::array::from_fn(|axis| {
+                target_position[axis] + f64::from(target.bounds.max[axis]) + pick_radius
+            });
+            aabbs_intersect(search_min, search_max, target_min, target_max)
+                && point_is_inside_aabb(eye, target_min, target_max)
+        })
+    }
+}
+
+fn aabbs_intersect(
+    left_min: [f64; 3],
+    left_max: [f64; 3],
+    right_min: [f64; 3],
+    right_max: [f64; 3],
+) -> bool {
+    (0..3).all(|axis| left_min[axis] < right_max[axis] && left_max[axis] > right_min[axis])
+}
+
+fn point_is_inside_aabb(point: [f64; 3], min: [f64; 3], max: [f64; 3]) -> bool {
+    (0..3).all(|axis| point[axis] >= min[axis] && point[axis] < max[axis])
 }
