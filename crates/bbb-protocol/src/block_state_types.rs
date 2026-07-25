@@ -8,8 +8,12 @@ use std::{
 use serde::Deserialize;
 
 mod fluid_replaceability_26_1;
+mod support_facts_26_1;
 
 use fluid_replaceability_26_1::VANILLA_BLOCK_STATE_FLUID_REPLACEABLE_RANGES;
+use support_facts_26_1::{
+    VANILLA_BLOCK_STATE_SUPPORT_FACT_INDICES, VANILLA_BLOCK_STATE_SUPPORT_FACT_PALETTE,
+};
 
 /// The checked-in Vanilla 26.1 global block-state registry report.
 ///
@@ -43,6 +47,94 @@ pub fn vanilla_block_state_fluid_replaceable(id: i32) -> Option<bool> {
             })
             .is_ok(),
     )
+}
+
+/// A direction used by Vanilla's cached per-face block-state support facts.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VanillaBlockSupportDirection {
+    Down,
+    Up,
+    North,
+    South,
+    West,
+    East,
+}
+
+impl VanillaBlockSupportDirection {
+    const fn index(self) -> u32 {
+        match self {
+            Self::Down => 0,
+            Self::Up => 1,
+            Self::North => 2,
+            Self::South => 3,
+            Self::West => 4,
+            Self::East => 5,
+        }
+    }
+}
+
+/// One of Vanilla's three block-face support predicates.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VanillaBlockSupportType {
+    Full,
+    Center,
+    Rigid,
+}
+
+impl VanillaBlockSupportType {
+    const fn index(self) -> u32 {
+        match self {
+            Self::Full => 0,
+            Self::Center => 1,
+            Self::Rigid => 2,
+        }
+    }
+}
+
+/// Runtime-generated support facts for one built-in Vanilla 26.1 block state.
+///
+/// Support and collision-face results are exact state-cache facts when
+/// `dynamic_shape` is false. Dynamic shapes require a live world query instead
+/// of using the report's `EmptyBlockGetter` result.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaBlockStateSupportFacts {
+    facts: u32,
+}
+
+impl VanillaBlockStateSupportFacts {
+    pub const fn legacy_solid(self) -> bool {
+        self.facts & 1 != 0
+    }
+
+    pub const fn dynamic_shape(self) -> bool {
+        self.facts & (1 << 1) != 0
+    }
+
+    pub const fn face_sturdy(
+        self,
+        direction: VanillaBlockSupportDirection,
+        support_type: VanillaBlockSupportType,
+    ) -> bool {
+        let bit = 2 + direction.index() * 3 + support_type.index();
+        self.facts & (1 << bit) != 0
+    }
+
+    pub const fn collision_face_nonempty(self, direction: VanillaBlockSupportDirection) -> bool {
+        self.facts & (1 << (20 + direction.index())) != 0
+    }
+
+    pub const fn collision_face_full(self, direction: VanillaBlockSupportDirection) -> bool {
+        self.facts & (1 << (26 + direction.index())) != 0
+    }
+}
+
+/// Returns Vanilla's runtime-generated block support facts for a built-in state.
+pub fn vanilla_block_state_support_facts(id: i32) -> Option<VanillaBlockStateSupportFacts> {
+    let id = usize::try_from(vanilla_block_state_id(id)?).ok()?;
+    let palette_index = usize::from(*VANILLA_BLOCK_STATE_SUPPORT_FACT_INDICES.get(id)?);
+    Some(VanillaBlockStateSupportFacts {
+        facts: *VANILLA_BLOCK_STATE_SUPPORT_FACT_PALETTE.get(palette_index)?,
+    })
 }
 
 /// Whether the built-in block's 26.1 `StateDefinition` contains `property`.
@@ -154,6 +246,67 @@ mod tests {
         assert_eq!(vanilla_block_state_fluid_replaceable(-1), None);
         assert_eq!(
             vanilla_block_state_fluid_replaceable(VANILLA_BLOCK_STATE_COUNT),
+            None
+        );
+    }
+
+    #[test]
+    fn support_facts_use_the_runtime_generated_state_palette() {
+        let report: BlockStateReport =
+            serde_json::from_str(VANILLA_BLOCK_STATES_26_1_JSON).unwrap();
+        let state_id = |name: &str| {
+            report
+                .states
+                .iter()
+                .find(|state| state.name == name)
+                .unwrap()
+                .id
+        };
+
+        assert_eq!(
+            VANILLA_BLOCK_STATE_SUPPORT_FACT_INDICES.len(),
+            VANILLA_BLOCK_STATE_COUNT as usize
+        );
+        assert!(VANILLA_BLOCK_STATE_SUPPORT_FACT_INDICES
+            .iter()
+            .all(|index| usize::from(*index) < VANILLA_BLOCK_STATE_SUPPORT_FACT_PALETTE.len()));
+
+        let air = vanilla_block_state_support_facts(state_id("minecraft:air")).unwrap();
+        assert!(!air.legacy_solid());
+        assert!(!air.dynamic_shape());
+        assert!(!air.face_sturdy(
+            VanillaBlockSupportDirection::Up,
+            VanillaBlockSupportType::Full
+        ));
+        assert!(!air.collision_face_nonempty(VanillaBlockSupportDirection::Up));
+        assert!(!air.collision_face_full(VanillaBlockSupportDirection::Up));
+
+        let stone = vanilla_block_state_support_facts(state_id("minecraft:stone")).unwrap();
+        assert!(stone.legacy_solid());
+        for direction in [
+            VanillaBlockSupportDirection::Down,
+            VanillaBlockSupportDirection::Up,
+            VanillaBlockSupportDirection::North,
+            VanillaBlockSupportDirection::South,
+            VanillaBlockSupportDirection::West,
+            VanillaBlockSupportDirection::East,
+        ] {
+            assert!(stone.face_sturdy(direction, VanillaBlockSupportType::Full));
+            assert!(stone.face_sturdy(direction, VanillaBlockSupportType::Center));
+            assert!(stone.face_sturdy(direction, VanillaBlockSupportType::Rigid));
+            assert!(stone.collision_face_nonempty(direction));
+            assert!(stone.collision_face_full(direction));
+        }
+
+        assert!(
+            vanilla_block_state_support_facts(state_id("minecraft:moving_piston"))
+                .unwrap()
+                .dynamic_shape()
+        );
+
+        assert_eq!(vanilla_block_state_support_facts(-1), None);
+        assert_eq!(
+            vanilla_block_state_support_facts(VANILLA_BLOCK_STATE_COUNT),
             None
         );
     }
