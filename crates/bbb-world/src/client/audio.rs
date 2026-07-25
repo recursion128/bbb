@@ -19,6 +19,7 @@ use bbb_protocol::{
 };
 use serde::{Deserialize, Serialize};
 
+use super::inventory::LocalInteractionPositionedSound;
 use crate::entities::{
     is_vanilla_minecart_type, vanilla_entity_metadata_armadillo_state_accessor_for_entity_type,
     vanilla_entity_metadata_companion_variant_accessors_for_entity_type,
@@ -57,6 +58,7 @@ const COBWEB_PLACE_LEVEL_EVENT: i32 = 3018;
 const ARROW_HIT_PLAYER_SOUND_EVENT: &str = "minecraft:entity.arrow.hit_player";
 const PUFFER_FISH_STING_SOUND_EVENT: &str = "minecraft:entity.puffer_fish.sting";
 const ELDER_GUARDIAN_CURSE_SOUND_EVENT: &str = "minecraft:entity.elder_guardian.curse";
+const LODESTONE_COMPASS_LOCK_SOUND_EVENT: &str = "minecraft:item.lodestone_compass.lock";
 const TOTEM_USE_SOUND_EVENT: &str = "minecraft:item.totem.use";
 const GUARDIAN_ATTACK_SOUND_EVENT: &str = "minecraft:entity.guardian.attack";
 const SNIFFER_DIGGING_SOUND_EVENT: &str = "minecraft:entity.sniffer.digging";
@@ -2075,6 +2077,28 @@ impl WorldStore {
     pub fn record_positioned_sound(&mut self, state: SoundEventState) -> SoundEventState {
         self.client_audio.last_sound = Some(state.clone());
         state
+    }
+
+    pub fn record_local_interaction_positioned_sound(
+        &mut self,
+        sound: LocalInteractionPositionedSound,
+    ) -> SoundEventState {
+        let state = match sound {
+            LocalInteractionPositionedSound::LodestoneCompassLock { pos } => SoundEventState {
+                sound: direct_sound_holder(LODESTONE_COMPASS_LOCK_SOUND_EVENT),
+                source: SoundSource::Players.as_str().to_string(),
+                position: ProtocolVec3d {
+                    x: f64::from(pos.x) + 0.5,
+                    y: f64::from(pos.y) + 0.5,
+                    z: f64::from(pos.z) + 0.5,
+                },
+                volume: 1.0,
+                pitch: 1.0,
+                seed: self.next_sound_seed(),
+                distance_delay: false,
+            },
+        };
+        self.record_positioned_sound(state)
     }
 
     pub(crate) fn record_explosion_sound(

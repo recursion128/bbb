@@ -21,7 +21,8 @@ use bbb_protocol::{
     block_types::{
         vanilla_block_type, vanilla_block_type_for_resource_id, BlockTypeCatalogEntry,
         VanillaBlockUseItemOnOverride, VanillaBlockUseWithoutItemOverride, VANILLA_BLOCK_AIR_ID,
-        VANILLA_BLOCK_BEDROCK_ID, VANILLA_BLOCK_END_PORTAL_FRAME_ID, VANILLA_BLOCK_OBSIDIAN_ID,
+        VANILLA_BLOCK_BEDROCK_ID, VANILLA_BLOCK_END_PORTAL_FRAME_ID, VANILLA_BLOCK_LODESTONE_ID,
+        VANILLA_BLOCK_OBSIDIAN_ID,
     },
     builtin_enum_component_values::normalize_vanilla_dye_color_id,
     data_component_types::{
@@ -42,7 +43,10 @@ use bbb_protocol::{
         VANILLA_ITEM_GOLDEN_DANDELION_ID, VANILLA_ITEM_IRON_INGOT_ID, VANILLA_ITEM_LEAD_ID,
         VANILLA_ITEM_SHEARS_ID, VANILLA_SHOVEL_FLATTENABLES,
     },
-    packets::{ConsumableSummary, Direction as ProtocolDirection},
+    packets::{
+        BlockPos as ProtocolBlockPos, ConsumableSummary, Direction as ProtocolDirection,
+        LodestoneTargetSummary,
+    },
 };
 
 const VANILLA_DEFAULT_ENTITY_INTERACT_OWNER: &str = "net.minecraft.world.entity.Entity";
@@ -107,10 +111,17 @@ pub enum LocalInteractionSwingSource {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LocalInteractionPositionedSound {
+    LodestoneCompassLock { pos: BlockPos },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LocalInteractionSuccess {
     pub swing_source: LocalInteractionSwingSource,
     pub was_item_interaction: bool,
     pub starts_using_item: bool,
+    pub positioned_sound: Option<LocalInteractionPositionedSound>,
+    pub extra_swing: Option<InteractionHand>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -149,6 +160,8 @@ impl LocalInteractionSuccess {
             swing_source: LocalInteractionSwingSource::None,
             was_item_interaction: true,
             starts_using_item,
+            positioned_sound: None,
+            extra_swing: None,
         }
     }
 
@@ -157,6 +170,8 @@ impl LocalInteractionSuccess {
             swing_source: LocalInteractionSwingSource::None,
             was_item_interaction: false,
             starts_using_item: false,
+            positioned_sound: None,
+            extra_swing: None,
         }
     }
 
@@ -165,6 +180,8 @@ impl LocalInteractionSuccess {
             swing_source: LocalInteractionSwingSource::Server,
             was_item_interaction: true,
             starts_using_item: false,
+            positioned_sound: None,
+            extra_swing: None,
         }
     }
 
@@ -173,6 +190,8 @@ impl LocalInteractionSuccess {
             swing_source: LocalInteractionSwingSource::Client,
             was_item_interaction: false,
             starts_using_item: false,
+            positioned_sound: None,
+            extra_swing: None,
         }
     }
 
@@ -181,6 +200,22 @@ impl LocalInteractionSuccess {
             swing_source: LocalInteractionSwingSource::Client,
             was_item_interaction: true,
             starts_using_item: false,
+            positioned_sound: None,
+            extra_swing: None,
+        }
+    }
+
+    const fn lodestone_compass_lock(pos: BlockPos, dropped: bool) -> Self {
+        Self {
+            swing_source: LocalInteractionSwingSource::Client,
+            was_item_interaction: true,
+            starts_using_item: false,
+            positioned_sound: Some(LocalInteractionPositionedSound::LodestoneCompassLock { pos }),
+            extra_swing: if dropped {
+                Some(InteractionHand::MainHand)
+            } else {
+                None
+            },
         }
     }
 }
@@ -335,7 +370,9 @@ impl WorldStore {
                 if let Some(result) = self.predict_local_tool_item_use_on(owner, hand, context) {
                     return result;
                 }
-                if let Some(result) = self.predict_local_client_owned_item_use_on(owner, context) {
+                if let Some(result) =
+                    self.predict_local_client_owned_item_use_on(owner, hand, context)
+                {
                     return result;
                 }
                 if let Some(result) =
@@ -491,8 +528,9 @@ impl WorldStore {
     }
 
     fn predict_local_client_owned_item_use_on(
-        &self,
+        &mut self,
         owner: VanillaItemUseOnOverride,
+        hand: InteractionHand,
         context: LocalBlockUseContext,
     ) -> Option<LocalTargetUsePrediction> {
         let client_success = || {
@@ -517,6 +555,35 @@ impl WorldStore {
             // targeted entry point of `PlaceOnWaterBlockItem` always passes.
             VanillaItemUseOnOverride::LeadItem
             | VanillaItemUseOnOverride::PlaceOnWaterBlockItem => Some(pass()),
+            VanillaItemUseOnOverride::CompassItem => {
+                let block = self.probe_block(context.pos)?;
+                let block_name = block.block_name.as_deref()?;
+                let block_type = vanilla_block_type_for_resource_id(block_name)?;
+                if block_type.id != VANILLA_BLOCK_LODESTONE_ID {
+                    return Some(pass());
+                }
+                let Some(dimension) = self.level_info().map(|level| level.dimension.clone()) else {
+                    return Some(LocalTargetUsePrediction::UnsupportedItemUseOn(owner));
+                };
+                let Some(dropped) = self.lock_local_compass_to_lodestone(
+                    hand,
+                    LodestoneTargetSummary {
+                        dimension,
+                        pos: ProtocolBlockPos {
+                            x: context.pos.x,
+                            y: context.pos.y,
+                            z: context.pos.z,
+                        },
+                    },
+                ) else {
+                    return Some(LocalTargetUsePrediction::UnsupportedItemUseOn(owner));
+                };
+                Some(LocalTargetUsePrediction::Result(
+                    LocalInteractionResult::Success(
+                        LocalInteractionSuccess::lodestone_compass_lock(context.pos, dropped),
+                    ),
+                ))
+            }
             VanillaItemUseOnOverride::EnderEyeItem => {
                 let block = self.probe_block(context.pos)?;
                 let block_name = block.block_name.as_deref()?;
@@ -1836,7 +1903,8 @@ mod tests {
         data_component_types::{
             VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
             VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID, VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
-            VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
+            VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID,
+            VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
         },
         entity_data_serializers::{
             VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID, VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
@@ -1860,11 +1928,12 @@ mod tests {
             VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
         },
         equipment_slots::EquipmentSlot,
+        game_types::{VANILLA_GAME_TYPE_CREATIVE_ID, VANILLA_GAME_TYPE_SURVIVAL_ID},
         item_types::{
             VanillaItemInteractLivingEntityOverride, VanillaItemUseOnOverride,
             VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_BRUSH_ID, VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID,
-            VANILLA_ITEM_CHORUS_FRUIT_ID, VANILLA_ITEM_DEBUG_STICK_ID, VANILLA_ITEM_ENDER_EYE_ID,
-            VANILLA_ITEM_END_CRYSTAL_ID, VANILLA_ITEM_FILLED_MAP_ID,
+            VANILLA_ITEM_CHORUS_FRUIT_ID, VANILLA_ITEM_COMPASS_ID, VANILLA_ITEM_DEBUG_STICK_ID,
+            VANILLA_ITEM_ENDER_EYE_ID, VANILLA_ITEM_END_CRYSTAL_ID, VANILLA_ITEM_FILLED_MAP_ID,
             VANILLA_ITEM_FIREWORK_ROCKET_ID, VANILLA_ITEM_HONEYCOMB_ID, VANILLA_ITEM_IRON_AXE_ID,
             VANILLA_ITEM_IRON_HOE_ID, VANILLA_ITEM_IRON_SHOVEL_ID, VANILLA_ITEM_LEAD_ID,
             VANILLA_ITEM_LILY_PAD_ID, VANILLA_ITEM_MINECART_ID, VANILLA_ITEM_NAME_TAG_ID,
@@ -1874,12 +1943,13 @@ mod tests {
         },
         packets::{
             AddEntity, AdventureModePredicateDataSummary, BlockHolderSetSummary,
-            BlockPos as ProtocolBlockPos, BlockPredicateSummary, BlockUpdate, Cooldown,
-            DataComponentPatchSummary, EntityDataValue, EntityDataValueKind, EntityEvent,
-            EquipmentSlotUpdate, EquippableSummary, ItemEnchantmentSummary, ItemStackSummary,
-            PlayerHealth, RegistryData, RegistryDataEntry, RegistryTags, SetEntityData,
-            SetEntityLink, SetEquipment, SetPassengers, SetPlayerInventory, SoundEventSummary,
-            TagNetworkPayload, UpdateEnabledFeatures, UpdateTags, Vec3d,
+            BlockPos as ProtocolBlockPos, BlockPredicateSummary, BlockUpdate,
+            CommonPlayerSpawnInfo, Cooldown, DataComponentPatchSummary, EntityDataValue,
+            EntityDataValueKind, EntityEvent, EquipmentSlotUpdate, EquippableSummary,
+            ItemEnchantmentSummary, ItemStackSummary, PlayLogin, PlayerHealth, RegistryData,
+            RegistryDataEntry, RegistryTags, SetChunkCacheCenter, SetEntityData, SetEntityLink,
+            SetEquipment, SetPassengers, SetPlayerInventory, SoundEventSummary, TagNetworkPayload,
+            UpdateEnabledFeatures, UpdateTags, Vec3d,
         },
     };
     use std::collections::{BTreeMap, BTreeSet};
@@ -1907,6 +1977,16 @@ mod tests {
         });
     }
 
+    fn player_inventory_item(world: &WorldStore, slot: i32) -> &ItemStackSummary {
+        &world
+            .inventory()
+            .player_slots
+            .iter()
+            .find(|entry| entry.slot == slot)
+            .unwrap_or_else(|| panic!("missing player inventory slot {slot}"))
+            .item
+    }
+
     fn block_state_id<const N: usize>(name: &str, properties: [(&str, &str); N]) -> i32 {
         crate::vanilla_block_state_id(
             name,
@@ -1919,6 +1999,13 @@ mod tests {
     }
 
     fn tool_use_world(initial_block_state_id: i32) -> WorldStore {
+        tool_use_world_with_login(initial_block_state_id, None)
+    }
+
+    fn tool_use_world_with_login(
+        initial_block_state_id: i32,
+        login: Option<(&str, i8)>,
+    ) -> WorldStore {
         let single_value = |domain, entry_count, global_id| crate::PalettedContainerData {
             domain,
             bits_per_entry: 0,
@@ -1932,16 +2019,49 @@ mod tests {
             min_y: 0,
             height: 16,
         });
+        if let Some((dimension, game_type)) = login {
+            world.apply_login(&PlayLogin {
+                player_id: 7,
+                hardcore: false,
+                levels: vec![dimension.to_string()],
+                max_players: 20,
+                chunk_radius: 8,
+                simulation_distance: 6,
+                reduced_debug_info: false,
+                show_death_screen: true,
+                do_limited_crafting: false,
+                common_spawn_info: CommonPlayerSpawnInfo {
+                    dimension_type_id: 0,
+                    dimension: dimension.to_string(),
+                    seed: 0,
+                    game_type,
+                    previous_game_type: -1,
+                    is_debug: false,
+                    is_flat: false,
+                    last_death_location: None,
+                    portal_cooldown: 0,
+                    sea_level: 63,
+                },
+                enforces_secure_chat: true,
+            });
+            world.apply_set_chunk_cache_center(SetChunkCacheCenter {
+                chunk_x: 0,
+                chunk_z: 0,
+            });
+        }
+        let section_count = usize::try_from(world.dimension().height.div_euclid(16)).unwrap();
         world.insert_decoded_chunk(crate::ChunkColumn {
             pos: crate::ChunkPos { x: 0, z: 0 },
             state: crate::ChunkState::Decoded,
             heightmaps: Vec::new(),
-            sections: vec![crate::ChunkSection {
-                non_empty_block_count: 0,
-                fluid_count: 0,
-                block_states: single_value(crate::PaletteDomain::BlockStates, 4096, air),
-                biomes: single_value(crate::PaletteDomain::Biomes, 64, 0),
-            }],
+            sections: (0..section_count)
+                .map(|_| crate::ChunkSection {
+                    non_empty_block_count: 0,
+                    fluid_count: 0,
+                    block_states: single_value(crate::PaletteDomain::BlockStates, 4096, air),
+                    biomes: single_value(crate::PaletteDomain::Biomes, 64, 0),
+                })
+                .collect(),
             block_entities: Vec::new(),
             light: crate::LightData::default(),
         });
@@ -2755,6 +2875,189 @@ mod tests {
             ),
             pass
         );
+    }
+
+    #[test]
+    fn lodestone_compass_use_on_predicts_inventory_sound_and_drop_edges() {
+        let pos = BlockPos { x: 0, y: 0, z: 0 };
+        let lodestone = block_state_id("minecraft:lodestone", []);
+        let expected_success = |dropped| {
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::lodestone_compass_lock(pos, dropped),
+            ))
+        };
+
+        let mut singleton = tool_use_world_with_login(
+            lodestone,
+            Some(("example:dimension", VANILLA_GAME_TYPE_SURVIVAL_ID as i8)),
+        );
+        let mut removed_tracker = stack(VANILLA_ITEM_COMPASS_ID);
+        removed_tracker
+            .component_patch
+            .removed_type_ids
+            .push(VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID);
+        singleton.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: removed_tracker,
+        });
+        let result = singleton.predict_local_block_use(
+            pos,
+            ProtocolDirection::Up,
+            InteractionHand::MainHand,
+            false,
+            1,
+        );
+        assert_eq!(result, expected_success(false));
+        let locked = player_inventory_item(&singleton, 0);
+        assert_eq!(locked.count, 1);
+        assert!(locked
+            .component_patch
+            .added_type_ids
+            .contains(&VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID));
+        assert!(!locked
+            .component_patch
+            .removed_type_ids
+            .contains(&VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID));
+        assert_eq!(
+            locked.component_patch.lodestone_target,
+            Some(LodestoneTargetSummary {
+                dimension: "example:dimension".to_string(),
+                pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+            })
+        );
+        assert_eq!(locked.component_patch.lodestone_tracked, Some(true));
+        let LocalTargetUsePrediction::Result(LocalInteractionResult::Success(success)) = result
+        else {
+            unreachable!()
+        };
+        let sound =
+            singleton.record_local_interaction_positioned_sound(success.positioned_sound.unwrap());
+        assert_eq!(
+            sound.sound.location.as_deref(),
+            Some("minecraft:item.lodestone_compass.lock")
+        );
+        assert_eq!(sound.source, "player");
+        assert_eq!(
+            sound.position,
+            Vec3d {
+                x: 0.5,
+                y: 0.5,
+                z: 0.5,
+            }
+        );
+        assert_eq!(sound.volume, 1.0);
+        assert_eq!(sound.pitch, 1.0);
+
+        assert!(singleton.apply_block_update(BlockUpdate {
+            pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+            block_state_id: block_state_id("minecraft:stone", []),
+        }));
+        assert_eq!(
+            singleton.predict_local_block_use(
+                pos,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                false,
+                2,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+
+        let mut stacked = tool_use_world_with_login(
+            lodestone,
+            Some(("minecraft:overworld", VANILLA_GAME_TYPE_SURVIVAL_ID as i8)),
+        );
+        stacked.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: ItemStackSummary {
+                count: 2,
+                ..stack(VANILLA_ITEM_COMPASS_ID)
+            },
+        });
+        assert_eq!(
+            stacked.predict_local_block_use(
+                pos,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                false,
+                3,
+            ),
+            expected_success(false)
+        );
+        assert_eq!(player_inventory_item(&stacked, 0).count, 1);
+        assert!(!player_inventory_item(&stacked, 0)
+            .component_patch
+            .added_type_ids
+            .contains(&VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID));
+        assert_eq!(player_inventory_item(&stacked, 1).count, 1);
+        assert!(player_inventory_item(&stacked, 1)
+            .component_patch
+            .added_type_ids
+            .contains(&VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID));
+
+        let mut creative = tool_use_world_with_login(
+            lodestone,
+            Some(("minecraft:overworld", VANILLA_GAME_TYPE_CREATIVE_ID as i8)),
+        );
+        creative.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: ItemStackSummary {
+                count: 2,
+                ..stack(VANILLA_ITEM_COMPASS_ID)
+            },
+        });
+        assert_eq!(
+            creative.predict_local_block_use(
+                pos,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                false,
+                4,
+            ),
+            expected_success(false)
+        );
+        assert_eq!(player_inventory_item(&creative, 0).count, 2);
+        assert_eq!(player_inventory_item(&creative, 1).count, 1);
+        assert!(player_inventory_item(&creative, 1)
+            .component_patch
+            .added_type_ids
+            .contains(&VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID));
+
+        let mut full = tool_use_world_with_login(
+            lodestone,
+            Some(("minecraft:overworld", VANILLA_GAME_TYPE_SURVIVAL_ID as i8)),
+        );
+        for slot in 0..36 {
+            full.apply_set_player_inventory(SetPlayerInventory {
+                slot,
+                item: stack(VANILLA_ITEM_STONE_ID),
+            });
+        }
+        full.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: ItemStackSummary {
+                count: 2,
+                ..stack(VANILLA_ITEM_COMPASS_ID)
+            },
+        });
+        assert_eq!(
+            full.predict_local_block_use(
+                pos,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                false,
+                5,
+            ),
+            expected_success(true)
+        );
+        assert_eq!(player_inventory_item(&full, 0).count, 1);
+        assert!(full.inventory().player_slots.iter().all(|slot| {
+            !slot
+                .item
+                .component_patch
+                .added_type_ids
+                .contains(&VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID)
+        }));
     }
 
     #[test]

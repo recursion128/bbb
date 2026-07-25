@@ -2,8 +2,8 @@ use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
     VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
     VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID,
-    VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID,
+    VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
     VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
     VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
@@ -18,7 +18,9 @@ use bbb_protocol::equipment_slots::{
     VANILLA_PLAYER_INVENTORY_LEGS_SLOT, VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
     VANILLA_PLAYER_INVENTORY_SADDLE_SLOT,
 };
-use bbb_protocol::item_types::{vanilla_item_type, VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE};
+use bbb_protocol::item_types::{
+    vanilla_item_type, VANILLA_ITEM_COMPASS_ID, VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE,
+};
 use bbb_protocol::menu_types::{
     VANILLA_MENU_TYPE_ANVIL_ID, VANILLA_MENU_TYPE_BEACON_ID, VANILLA_MENU_TYPE_BLAST_FURNACE_ID,
     VANILLA_MENU_TYPE_BREWING_STAND_ID, VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
@@ -45,6 +47,7 @@ use bbb_protocol::packets::{
     HashedItemStack as ProtocolHashedItemStack, HashedStack as ProtocolHashedStack,
     IngredientSummary as ProtocolIngredientSummary, InteractionHand,
     ItemCostSummary as ProtocolItemCostSummary, ItemStackSummary as ProtocolItemStackSummary,
+    LodestoneTargetSummary as ProtocolLodestoneTargetSummary,
     MerchantOffer as ProtocolMerchantOffer, MerchantOffers as ProtocolMerchantOffers,
     OpenScreen as ProtocolOpenScreen, RecipeDisplayEntry as ProtocolRecipeDisplayEntry,
     SetCursorItem as ProtocolSetCursorItem, SetPlayerInventory as ProtocolSetPlayerInventory,
@@ -76,8 +79,8 @@ mod smithing;
 mod stonecutter;
 mod use_prediction;
 pub use use_prediction::{
-    LocalInteractionResult, LocalInteractionSuccess, LocalInteractionSwingSource,
-    LocalItemUsePrediction, LocalTargetUsePrediction,
+    LocalInteractionPositionedSound, LocalInteractionResult, LocalInteractionSuccess,
+    LocalInteractionSwingSource, LocalItemUsePrediction, LocalTargetUsePrediction,
 };
 #[cfg(test)]
 mod tests;
@@ -1304,6 +1307,111 @@ impl InventoryState {
         true
     }
 
+    /// Applies the client-side inventory work in `CompassItem.useOn`.
+    ///
+    /// The returned flag is true only for the survival/full-inventory branch
+    /// where vanilla calls `Player.drop`; on the logical client that call
+    /// emits an extra main-hand swing but does not create an item entity.
+    pub(crate) fn lock_local_compass_to_lodestone(
+        &mut self,
+        ctx: InventoryCtx<'_>,
+        counters: &mut WorldCounters,
+        hand: InteractionHand,
+        target: ProtocolLodestoneTargetSummary,
+    ) -> Option<bool> {
+        let hand_slot_id = match hand {
+            InteractionHand::MainHand => {
+                let selected_slot = ctx.local_player.selected_hotbar_slot;
+                (selected_slot <= 8).then_some(i32::from(selected_slot))?
+            }
+            InteractionHand::OffHand => VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+        };
+        let mut hand_slot = self.player_inventory_slot(hand_slot_id);
+        if item_stack_is_empty(&hand_slot.item)
+            || hand_slot.item.item_id != Some(VANILLA_ITEM_COMPASS_ID)
+        {
+            return None;
+        }
+
+        let mut lodestone_compass = hand_slot.item.clone();
+        lodestone_compass.count = 1;
+        let patch = &mut lodestone_compass.component_patch;
+        patch.removed_type_ids.retain(|component_id| {
+            *component_id != VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID
+        });
+        if !patch
+            .added_type_ids
+            .contains(&VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID)
+        {
+            patch
+                .added_type_ids
+                .push(VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID);
+        }
+        patch.added = patch.added_type_ids.len();
+        patch.lodestone_target = Some(target);
+        patch.lodestone_tracked = Some(true);
+
+        let instabuild = ctx
+            .local_player
+            .abilities
+            .is_some_and(|abilities| abilities.instabuild);
+        if !instabuild && hand_slot.item.count == 1 {
+            hand_slot.item = lodestone_compass;
+            self.set_player_inventory_slot_and_menu_slot(hand_slot);
+            self.update_inventory_slot_count(counters);
+            return Some(false);
+        }
+
+        if !instabuild {
+            hand_slot.item.count -= 1;
+            normalize_item_stack(&mut hand_slot.item);
+            self.set_player_inventory_slot_and_menu_slot(hand_slot);
+        }
+
+        let selected_slot = i32::from(ctx.local_player.selected_hotbar_slot.min(8));
+        let mut added = false;
+        for slot_id in [selected_slot, VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT]
+            .into_iter()
+            .chain(0..36)
+        {
+            let mut slot = self.player_inventory_slot(slot_id);
+            if item_stack_is_empty(&slot.item)
+                || !same_item_same_components(&slot.item, &lodestone_compass)
+            {
+                continue;
+            }
+            let max_stack_size =
+                item_stack_max_stack_size(&slot.item, &ctx.items.default_item_max_stack_sizes);
+            if max_stack_size <= 1 || slot.item.count >= max_stack_size {
+                continue;
+            }
+            slot.item.count += 1;
+            self.set_player_inventory_slot_and_menu_slot(slot);
+            added = true;
+            break;
+        }
+        if !added {
+            for slot_id in 0..36 {
+                let slot = self.player_inventory_slot(slot_id);
+                if !item_stack_is_empty(&slot.item) {
+                    continue;
+                }
+                self.set_player_inventory_slot_and_menu_slot(InventorySlot {
+                    slot: slot_id,
+                    item: lodestone_compass.clone(),
+                    local_selected_bundle_item_index: NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX,
+                });
+                added = true;
+                break;
+            }
+        }
+
+        if !instabuild || added {
+            self.update_inventory_slot_count(counters);
+        }
+        Some(!instabuild && !added)
+    }
+
     pub(crate) fn set_local_merchant_selected_offer(
         &mut self,
         ctx: InventoryCtx<'_>,
@@ -2528,6 +2636,19 @@ impl WorldStore {
             &mut self.counters,
             hand,
             amount,
+        )
+    }
+
+    pub(crate) fn lock_local_compass_to_lodestone(
+        &mut self,
+        hand: InteractionHand,
+        target: ProtocolLodestoneTargetSummary,
+    ) -> Option<bool> {
+        self.inventory.lock_local_compass_to_lodestone(
+            inventory_ctx!(self),
+            &mut self.counters,
+            hand,
+            target,
         )
     }
 

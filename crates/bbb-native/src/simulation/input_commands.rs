@@ -33,7 +33,7 @@ use crate::{
         handle_advancements_screen_mouse_input, handle_advancements_screen_mouse_wheel,
         handle_focus_change, handle_inventory_cursor_moved,
         handle_inventory_mouse_input_with_item_runtime, handle_inventory_mouse_wheel,
-        handle_key_input_with_item_runtime, handle_mouse_input_at_partial_tick,
+        handle_key_input_with_item_runtime, handle_mouse_input_at_partial_tick_with_audio,
         handle_mouse_motion, handle_mouse_wheel, handle_text_input_with_item_runtime,
         queue_chat_command, queue_debug_recreate_server_query_request, release_active_input,
         social::SocialInteractionsPlatformRequest, CommandSuggestionTextMeasurer, DebugClipboard,
@@ -1423,11 +1423,12 @@ impl SimulationInputRuntime {
         if !self.cursor_captured {
             return;
         }
-        handle_mouse_input_at_partial_tick(
+        handle_mouse_input_at_partial_tick_with_audio(
             context.input,
             context.world,
             context.net_counters,
             context.net_commands,
+            &mut context.audio_events,
             button,
             state,
             context.entity_partial_tick,
@@ -1730,6 +1731,7 @@ impl SimulationInputRuntime {
             context.world,
             context.net_commands,
             context.item_runtime.as_ref(),
+            &mut context.audio_events,
             self.code_of_conduct_overlay.is_visible(context.world),
             self.surface_size,
             context.entity_partial_tick,
@@ -1761,6 +1763,7 @@ pub(crate) struct SimulationInputContext<'a, 'collector> {
     pub(crate) server_resource_packs: &'a mut ServerResourcePackRuntime,
     pub(crate) particle_runtime: &'a mut Option<crate::particle_runtime::NativeParticleRuntime>,
     pub(crate) item_runtime: &'a mut Option<NativeItemRuntime>,
+    pub(crate) audio_events: Option<&'a mut dyn crate::audio_runtime::AudioEventSink>,
     pub(crate) terrain_textures: &'a mut crate::terrain_runtime::TerrainTextureState,
     pub(crate) code_of_conduct: Option<&'a mut CodeOfConductAcceptance>,
     pub(crate) win_screen_resources:

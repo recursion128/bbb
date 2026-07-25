@@ -659,7 +659,7 @@ Commands:
   `Minecraft.startUseItem`, `MultiPlayerGameMode.interact`, and `useItemOn`.
   Implement the generated specialized block `useItemOn` / `useWithoutItem`
   owners and item-side block placement, armor-stand / hanging-entity placement,
-  ignition, growth, navigation, the remaining specialized `useOn` owners, and
+  ignition, growth, the remaining specialized `useOn` owners, and
   `Equippable.equipOnTarget`, so main/offhand iteration can stop or continue on
   the exact `InteractionResult`; then apply each success swing-source and
   held-item presentation. Interaction override ownership must stay generated

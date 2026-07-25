@@ -25,6 +25,7 @@ use winit::{
 };
 
 use crate::{
+    audio_runtime::AudioEventSink,
     code_of_conduct::CodeOfConductAcceptance,
     input::{
         queue_block_entity_tag_query_command, queue_change_difficulty_command,
@@ -45,7 +46,7 @@ use crate::{
 use crate::{
     input::{
         handle_focus_change, handle_key_input_with_item_runtime,
-        handle_mouse_input_at_partial_tick, handle_mouse_motion, ClientInputState,
+        handle_mouse_input_at_partial_tick_with_audio, handle_mouse_motion, ClientInputState,
     },
     NativeItemRuntime,
 };
@@ -64,6 +65,7 @@ pub(crate) fn pump_control_input_requests(
     world: &mut WorldStore,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     item_runtime: Option<&NativeItemRuntime>,
+    audio_events: &mut Option<&mut dyn AudioEventSink>,
     code_of_conduct_overlay_visible: bool,
     surface_size: PhysicalSize<u32>,
     entity_partial_tick: f32,
@@ -121,11 +123,12 @@ pub(crate) fn pump_control_input_requests(
                 } else {
                     ElementState::Released
                 };
-                handle_mouse_input_at_partial_tick(
+                handle_mouse_input_at_partial_tick_with_audio(
                     input,
                     world,
                     counters,
                     net_commands,
+                    audio_events,
                     input_mouse_button(button),
                     state,
                     entity_partial_tick,
@@ -657,6 +660,7 @@ mod tests {
             &mut world,
             &None,
             None,
+            &mut None,
             false,
             PhysicalSize::new(1280, 720),
             1.0,
@@ -694,6 +698,7 @@ mod tests {
             &mut world,
             &None,
             None,
+            &mut None,
             false,
             PhysicalSize::new(1280, 720),
             1.0,
@@ -732,6 +737,7 @@ mod tests {
             &mut world,
             &None,
             None,
+            &mut None,
             false,
             PhysicalSize::new(1280, 720),
             1.0,
@@ -758,6 +764,7 @@ mod tests {
             &mut world,
             &None,
             None,
+            &mut None,
             false,
             PhysicalSize::new(1280, 720),
             1.0,
@@ -787,6 +794,7 @@ mod tests {
             &mut world,
             &None,
             None,
+            &mut None,
             true,
             PhysicalSize::new(1280, 720),
             1.0,
@@ -821,6 +829,7 @@ mod tests {
             &mut world,
             &Some(tx),
             None,
+            &mut None,
             false,
             PhysicalSize::new(1280, 720),
             1.0,

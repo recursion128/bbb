@@ -5,8 +5,8 @@ use bbb_protocol::packets::{
 };
 use bbb_world::{
     BlockPos as WorldBlockPos, ItemAttackRange, LocalDestroyBlockFinished, LocalInteractionResult,
-    LocalInteractionSwingSource, LocalItemUsePrediction, LocalPlayerPoseState,
-    LocalTargetUsePrediction, WorldStore,
+    LocalInteractionSuccess, LocalInteractionSwingSource, LocalItemUsePrediction,
+    LocalPlayerPoseState, LocalTargetUsePrediction, WorldStore,
 };
 use tokio::sync::mpsc;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta};
@@ -55,11 +55,34 @@ fn handle_mouse_input(
     handle_mouse_input_at_partial_tick(input, world, counters, net_commands, button, state, 1.0);
 }
 
+#[cfg(test)]
 pub(crate) fn handle_mouse_input_at_partial_tick(
     input: &mut ClientInputState,
     world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
+    button: MouseButton,
+    state: ElementState,
+    entity_partial_tick: f32,
+) {
+    handle_mouse_input_at_partial_tick_with_audio(
+        input,
+        world,
+        counters,
+        net_commands,
+        &mut None,
+        button,
+        state,
+        entity_partial_tick,
+    );
+}
+
+pub(crate) fn handle_mouse_input_at_partial_tick_with_audio(
+    input: &mut ClientInputState,
+    world: &mut WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    audio_events: &mut Option<&mut dyn AudioEventSink>,
     button: MouseButton,
     state: ElementState,
     entity_partial_tick: f32,
@@ -169,13 +192,14 @@ pub(crate) fn handle_mouse_input_at_partial_tick(
         }
         (MouseButton::Right, ElementState::Pressed) => {
             input.use_item_held = true;
-            start_use_item(
+            start_use_item_with_audio(
                 input,
                 world,
                 counters,
                 net_commands,
                 camera_target,
                 player_pose,
+                audio_events,
             );
         }
         (MouseButton::Right, ElementState::Released) => {
@@ -212,11 +236,32 @@ pub(crate) fn handle_mouse_input_at_partial_tick(
     }
 }
 
+#[cfg(test)]
 pub(crate) fn advance_using_item_at_partial_tick(
     input: &mut ClientInputState,
     world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
+    entity_partial_tick: f32,
+    use_ticks: u32,
+) {
+    advance_using_item_at_partial_tick_with_audio(
+        input,
+        world,
+        counters,
+        net_commands,
+        &mut None,
+        entity_partial_tick,
+        use_ticks,
+    );
+}
+
+pub(crate) fn advance_using_item_at_partial_tick_with_audio(
+    input: &mut ClientInputState,
+    world: &mut WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    audio_events: &mut Option<&mut dyn AudioEventSink>,
     entity_partial_tick: f32,
     use_ticks: u32,
 ) {
@@ -253,13 +298,14 @@ pub(crate) fn advance_using_item_at_partial_tick(
             entity_partial_tick,
         );
         let player_pose = world.local_player_pose();
-        if !start_use_item(
+        if !start_use_item_with_audio(
             input,
             world,
             counters,
             net_commands,
             camera_target,
             player_pose,
+            audio_events,
         ) || ticks_remaining == 0
         {
             return;
@@ -267,6 +313,7 @@ pub(crate) fn advance_using_item_at_partial_tick(
     }
 }
 
+#[cfg(test)]
 pub(super) fn start_use_item(
     input: &mut ClientInputState,
     world: &mut WorldStore,
@@ -274,6 +321,27 @@ pub(super) fn start_use_item(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     camera_target: Option<CrosshairTarget>,
     player_pose: Option<bbb_world::LocalPlayerPoseState>,
+) -> bool {
+    let mut audio_events = None;
+    start_use_item_with_audio(
+        input,
+        world,
+        counters,
+        net_commands,
+        camera_target,
+        player_pose,
+        &mut audio_events,
+    )
+}
+
+fn start_use_item_with_audio(
+    input: &mut ClientInputState,
+    world: &mut WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    camera_target: Option<CrosshairTarget>,
+    player_pose: Option<bbb_world::LocalPlayerPoseState>,
+    audio_events: &mut Option<&mut dyn AudioEventSink>,
 ) -> bool {
     if world.local_player().interaction.destroying_block.is_some() {
         return false;
@@ -361,10 +429,14 @@ pub(super) fn start_use_item(
         if let Some(prediction) = target_prediction {
             match prediction {
                 LocalTargetUsePrediction::Result(LocalInteractionResult::Success(success)) => {
-                    world.set_local_using_item_with_hand(success.starts_using_item, hand);
-                    if success.swing_source == LocalInteractionSwingSource::Client {
-                        queue_swing_command(world, counters, net_commands, hand);
-                    }
+                    apply_local_interaction_success(
+                        world,
+                        counters,
+                        net_commands,
+                        audio_events,
+                        hand,
+                        success,
+                    );
                     return true;
                 }
                 LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
@@ -416,10 +488,14 @@ pub(super) fn start_use_item(
         }
         match prediction {
             LocalItemUsePrediction::Result(LocalInteractionResult::Success(success)) => {
-                world.set_local_using_item_with_hand(success.starts_using_item, hand);
-                if success.swing_source == LocalInteractionSwingSource::Client {
-                    queue_swing_command(world, counters, net_commands, hand);
-                }
+                apply_local_interaction_success(
+                    world,
+                    counters,
+                    net_commands,
+                    audio_events,
+                    hand,
+                    success,
+                );
                 return true;
             }
             LocalItemUsePrediction::Result(
@@ -432,6 +508,29 @@ pub(super) fn start_use_item(
         }
     }
     true
+}
+
+fn apply_local_interaction_success(
+    world: &mut WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    audio_events: &mut Option<&mut dyn AudioEventSink>,
+    hand: InteractionHand,
+    success: LocalInteractionSuccess,
+) {
+    if let Some(positioned_sound) = success.positioned_sound {
+        let sound = world.record_local_interaction_positioned_sound(positioned_sound);
+        if let Some(audio_events) = audio_events.as_deref_mut() {
+            audio_events.play_positioned_sound(&sound);
+        }
+    }
+    if let Some(extra_swing) = success.extra_swing {
+        queue_swing_command(world, counters, net_commands, extra_swing);
+    }
+    world.set_local_using_item_with_hand(success.starts_using_item, hand);
+    if success.swing_source == LocalInteractionSwingSource::Client {
+        queue_swing_command(world, counters, net_commands, hand);
+    }
 }
 
 fn entity_target_within_world_border(world: &WorldStore, hit: CrosshairEntityHit) -> bool {
@@ -830,12 +929,14 @@ mod tests {
     use bbb_protocol::data_component_types::{
         VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID, VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID,
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
+        VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID,
+        VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
     };
     use bbb_protocol::equipment_slots::VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT;
     use bbb_protocol::item_types::{
         VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_BRUSH_ID, VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID,
-        VANILLA_ITEM_FIREWORK_ROCKET_ID, VANILLA_ITEM_RED_DYE_ID,
+        VANILLA_ITEM_COMPASS_ID, VANILLA_ITEM_FIREWORK_ROCKET_ID, VANILLA_ITEM_RED_DYE_ID,
+        VANILLA_ITEM_STONE_ID,
     };
     use bbb_protocol::packets::{
         AddEntity, AdventureModePredicateDataSummary, AdventureModePredicateSummary, AttackEntity,
@@ -843,10 +944,11 @@ mod tests {
         BlockHolderSetSummary, BlockPos as ProtocolBlockPos, BlockPredicateSummary, BlockUpdate,
         CommonPlayerSpawnInfo, ConsumableSummary, EntityEvent as ProtocolEntityEvent,
         GameEvent as ProtocolGameEvent, InitializeBorder, InteractEntity,
-        ItemStackSummary as ProtocolItemStackSummary, OpenSignEditor, PickItemFromBlock,
-        PickItemFromEntity, PlayLogin, PlayerAbilities, PlayerAction, PlayerHealth, RegistryTags,
-        RemoveEntities, SetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory,
-        TagNetworkPayload, ToolSummary, UpdateTags, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
+        ItemStackSummary as ProtocolItemStackSummary, LodestoneTargetSummary, OpenSignEditor,
+        PickItemFromBlock, PickItemFromEntity, PlayLogin, PlayerAbilities, PlayerAction,
+        PlayerHealth, RegistryTags, RemoveEntities, SetPassengers,
+        SetPlayerInventory as ProtocolSetPlayerInventory, TagNetworkPayload, ToolSummary,
+        UpdateTags, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
     };
     use bbb_world::{
         BlockEntityRecord, BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState,
@@ -3465,6 +3567,121 @@ mod tests {
     }
 
     #[test]
+    fn right_mouse_press_locks_compass_to_lodestone_with_sound_and_drop_swing() {
+        let (tx, mut rx) = mpsc::channel(3);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_lodestone();
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(VANILLA_ITEM_COMPASS_ID, 1),
+        });
+        let mut counters = NetCounters::default();
+        let mut audio = RecordingAudioSink::default();
+
+        {
+            let mut audio_events: Option<&mut dyn AudioEventSink> = Some(&mut audio);
+            handle_mouse_input_at_partial_tick_with_audio(
+                &mut input,
+                &mut world,
+                &mut counters,
+                &commands,
+                &mut audio_events,
+                MouseButton::Right,
+                ElementState::Pressed,
+                1.0,
+            );
+        }
+
+        assert_eq!(counters.use_item_on_commands_queued, 1);
+        assert_eq!(counters.swing_commands_queued, 1);
+        assert!(matches!(rx.try_recv(), Ok(NetCommand::UseItemOn(_))));
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
+        let locked = world.local_item_in_hand(InteractionHand::MainHand).unwrap();
+        assert!(locked
+            .component_patch
+            .added_type_ids
+            .contains(&VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID));
+        assert_eq!(
+            locked.component_patch.lodestone_target,
+            Some(LodestoneTargetSummary {
+                dimension: "minecraft:overworld".to_string(),
+                pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+            })
+        );
+        assert_eq!(locked.component_patch.lodestone_tracked, Some(true));
+        assert_eq!(audio.positioned_sounds.len(), 1);
+        let sound = &audio.positioned_sounds[0];
+        assert_eq!(
+            sound.sound.location.as_deref(),
+            Some("minecraft:item.lodestone_compass.lock")
+        );
+        assert_eq!(sound.source, "player");
+        assert_eq!(
+            sound.position,
+            ProtocolVec3d {
+                x: 0.5,
+                y: 1.5,
+                z: 3.5,
+            }
+        );
+
+        let (tx, mut rx) = mpsc::channel(3);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_lodestone();
+        for slot in 0..36 {
+            world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+                slot,
+                item: item_stack(VANILLA_ITEM_STONE_ID, 1),
+            });
+        }
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(VANILLA_ITEM_COMPASS_ID, 2),
+        });
+        let mut counters = NetCounters::default();
+        let mut audio = RecordingAudioSink::default();
+
+        {
+            let mut audio_events: Option<&mut dyn AudioEventSink> = Some(&mut audio);
+            handle_mouse_input_at_partial_tick_with_audio(
+                &mut input,
+                &mut world,
+                &mut counters,
+                &commands,
+                &mut audio_events,
+                MouseButton::Right,
+                ElementState::Pressed,
+                1.0,
+            );
+        }
+
+        assert_eq!(
+            world
+                .local_item_in_hand(InteractionHand::MainHand)
+                .unwrap()
+                .count,
+            1
+        );
+        assert_eq!(counters.use_item_on_commands_queued, 1);
+        assert_eq!(counters.swing_commands_queued, 2);
+        assert!(matches!(rx.try_recv(), Ok(NetCommand::UseItemOn(_))));
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
+        assert_eq!(audio.positioned_sounds.len(), 1);
+    }
+
+    #[test]
     fn default_block_pass_falls_through_to_same_hand_item_use() {
         let (tx, mut rx) = mpsc::channel(2);
         let commands = Some(tx);
@@ -4593,6 +4810,64 @@ mod tests {
         assert!(world.apply_block_update(BlockUpdate {
             pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
             block_state_id: VANILLA_GRASS_BLOCK_STATE_ID,
+        }));
+        world
+    }
+
+    fn world_with_crosshair_lodestone() -> WorldStore {
+        let mut world = WorldStore::new();
+        world.apply_login(&PlayLogin {
+            player_id: 42,
+            hardcore: false,
+            levels: vec!["minecraft:overworld".to_string()],
+            max_players: 20,
+            chunk_radius: 8,
+            simulation_distance: 6,
+            reduced_debug_info: false,
+            show_death_screen: true,
+            do_limited_crafting: false,
+            common_spawn_info: CommonPlayerSpawnInfo {
+                dimension_type_id: 0,
+                dimension: "minecraft:overworld".to_string(),
+                seed: 0,
+                game_type: 0,
+                previous_game_type: -1,
+                is_debug: false,
+                is_flat: false,
+                last_death_location: None,
+                portal_cooldown: 0,
+                sea_level: 63,
+            },
+            enforces_secure_chat: true,
+        });
+        world.set_local_player_pose(LocalPlayerPoseState {
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+        world.insert_decoded_chunk(ChunkColumn {
+            pos: ChunkPos { x: 0, z: 0 },
+            state: ChunkState::Decoded,
+            heightmaps: Vec::new(),
+            sections: (0..24)
+                .map(|_| ChunkSection {
+                    non_empty_block_count: 0,
+                    fluid_count: 0,
+                    block_states: single_value_container(
+                        PaletteDomain::BlockStates,
+                        4096,
+                        bbb_world::vanilla_air_block_state_id(),
+                    ),
+                    biomes: single_value_container(PaletteDomain::Biomes, 64, 0),
+                })
+                .collect(),
+            block_entities: Vec::new(),
+            light: LightData::default(),
+        });
+        let lodestone_state =
+            bbb_world::vanilla_block_state_id("minecraft:lodestone", &BTreeMap::new()).unwrap();
+        assert!(world.apply_block_update(BlockUpdate {
+            pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+            block_state_id: lodestone_state,
         }));
         world
     }
