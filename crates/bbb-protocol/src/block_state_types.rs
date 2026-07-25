@@ -50,44 +50,35 @@ pub fn vanilla_block_state_fluid_replaceable(id: i32) -> Option<bool> {
 }
 
 /// A direction used by Vanilla's cached per-face block-state support facts.
+#[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VanillaBlockSupportDirection {
-    Down,
-    Up,
-    North,
-    South,
-    West,
-    East,
+    Down = 0,
+    Up = 1,
+    North = 2,
+    South = 3,
+    West = 4,
+    East = 5,
 }
 
 impl VanillaBlockSupportDirection {
     const fn index(self) -> u32 {
-        match self {
-            Self::Down => 0,
-            Self::Up => 1,
-            Self::North => 2,
-            Self::South => 3,
-            Self::West => 4,
-            Self::East => 5,
-        }
+        self as u32
     }
 }
 
 /// One of Vanilla's three block-face support predicates.
+#[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VanillaBlockSupportType {
-    Full,
-    Center,
-    Rigid,
+    Full = 0,
+    Center = 1,
+    Rigid = 2,
 }
 
 impl VanillaBlockSupportType {
     const fn index(self) -> u32 {
-        match self {
-            Self::Full => 0,
-            Self::Center => 1,
-            Self::Rigid => 2,
-        }
+        self as u32
     }
 }
 
