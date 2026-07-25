@@ -54,7 +54,7 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
         VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
         VANILLA_DATA_COMPONENT_RARITY_TYPE_ID, VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID,
@@ -81,7 +81,8 @@ use bbb_protocol::{
         DataComponentPatchSummary, FireworkExplosionSummary, HashedComponentPatch, HashedItemStack,
         HashedStack, ItemEnchantmentSummary, ItemStackSummary, ItemStackTemplateSummary,
         KineticWeaponConditionSummary, MobEffectDetailsSummary, MobEffectInstanceSummary,
-        NbtSummaryEntry, NbtSummaryValue, SoundEventSummary,
+        NbtSummaryEntry, NbtSummaryValue, PlayerModelTypeSummary, ResolvableProfileKindSummary,
+        ResolvableProfileSummary, SoundEventSummary,
     },
     tropical_fish_patterns::vanilla_tropical_fish_pattern,
 };
@@ -842,6 +843,7 @@ fn hash_component_value(
                 )?
             }
         }
+        VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID => hash_resolvable_profile(patch.profile.as_ref()?)?,
         VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID => hash_typed_entity_data(
             ctx,
             "minecraft:entity_type",
@@ -1165,6 +1167,86 @@ fn hash_consume_effects(ctx: InventoryCtx<'_>, effects: &[ConsumeEffectSummary])
             })
             .collect::<Option<Vec<_>>>()?,
     ))
+}
+
+fn hash_resolvable_profile(profile: &ResolvableProfileSummary) -> Option<Hash32> {
+    let mut fields = Vec::new();
+    match profile.kind {
+        ResolvableProfileKindSummary::GameProfile => {
+            fields.push(("id", hash_uuid(profile.uuid?)));
+            let name = profile.name.as_deref()?;
+            if !player_name_is_valid(name) {
+                return None;
+            }
+            fields.push(("name", hash_string(name)));
+        }
+        ResolvableProfileKindSummary::Partial => {
+            if let Some(name) = &profile.name {
+                if !player_name_is_valid(name) {
+                    return None;
+                }
+                fields.push(("name", hash_string(name)));
+            }
+            if let Some(uuid) = profile.uuid {
+                fields.push(("id", hash_uuid(uuid)));
+            }
+        }
+    }
+    if !profile.properties.is_empty() {
+        fields.push((
+            "properties",
+            hash_list(profile.properties.iter().map(|property| {
+                let mut fields = vec![
+                    ("name", hash_string(&property.name)),
+                    ("value", hash_string(&property.value)),
+                ];
+                if let Some(signature) = &property.signature {
+                    fields.push(("signature", hash_string(signature)));
+                }
+                hash_record(fields)
+            })),
+        ));
+    }
+    for (name, texture) in [
+        ("texture", &profile.skin_patch.body),
+        ("cape", &profile.skin_patch.cape),
+        ("elytra", &profile.skin_patch.elytra),
+    ] {
+        if let Some(texture) = texture {
+            fields.push((name, hash_string(&texture.asset_id)));
+        }
+    }
+    if let Some(model) = profile.skin_patch.model {
+        fields.push((
+            "model",
+            hash_string(match model {
+                PlayerModelTypeSummary::Slim => "slim",
+                PlayerModelTypeSummary::Wide => "wide",
+            }),
+        ));
+    }
+    Some(hash_record(fields))
+}
+
+fn hash_uuid(uuid: uuid::Uuid) -> Hash32 {
+    let value = uuid.as_u128();
+    hash_int_array([
+        (value >> 96) as u32 as i32,
+        (value >> 64) as u32 as i32,
+        (value >> 32) as u32 as i32,
+        value as u32 as i32,
+    ])
+}
+
+fn player_name_is_valid(name: &str) -> bool {
+    let mut length = 0;
+    for unit in name.encode_utf16() {
+        length += 1;
+        if unit <= 32 || unit >= 127 {
+            return false;
+        }
+    }
+    length <= 16
 }
 
 fn hash_sound_event(ctx: InventoryCtx<'_>, sound: &SoundEventSummary) -> Option<Hash32> {
@@ -1654,9 +1736,10 @@ mod tests {
         equipment_slots::VANILLA_EQUIPMENT_SLOT_GROUP_MAINHAND_ID,
         packets::{
             chunks::BlockPos, AttributeModifierSummary, ConsumableSummary, DamageReductionSummary,
-            EquippableSummary, FireworkExplosionShapeSummary, ItemContainerSlotSummary,
-            ItemDamageFunctionSummary, ItemRaritySummary, ItemUseAnimationSummary,
-            KineticWeaponSummary, LodestoneTargetSummary, PiercingWeaponSummary,
+            EquippableSummary, FireworkExplosionShapeSummary, GameProfilePropertySummary,
+            ItemContainerSlotSummary, ItemDamageFunctionSummary, ItemRaritySummary,
+            ItemUseAnimationSummary, KineticWeaponSummary, LodestoneTargetSummary,
+            PiercingWeaponSummary, PlayerSkinPatchSummary, ResourceTextureSummary,
             SuspiciousStewEffectSummary, ToolSummary, UseEffectsSummary,
         },
         NbtSummaryEntry,
@@ -2263,6 +2346,76 @@ mod tests {
                 ),
             ])
         );
+    }
+
+    #[test]
+    fn hashes_resolvable_profile_full_codec_shape() {
+        let store = crate::WorldStore::new();
+        let uuid = uuid::Uuid::from_u128(0x1234_5678_9abc_def0_8000_0000_ffff_ffff);
+        let profile = ResolvableProfileSummary {
+            kind: ResolvableProfileKindSummary::Partial,
+            uuid: Some(uuid),
+            name: Some("Alex".to_string()),
+            properties: vec![GameProfilePropertySummary {
+                name: "textures".to_string(),
+                value: "skin-value".to_string(),
+                signature: Some("skin-signature".to_string()),
+            }],
+            profile_textures: None,
+            skin_patch: PlayerSkinPatchSummary {
+                body: Some(ResourceTextureSummary {
+                    asset_id: "minecraft:entity/player/wide/alex".to_string(),
+                    texture_path: "minecraft:textures/entity/player/wide/alex.png".to_string(),
+                }),
+                cape: None,
+                elytra: Some(ResourceTextureSummary {
+                    asset_id: "minecraft:entity/player/elytra".to_string(),
+                    texture_path: "minecraft:textures/entity/player/elytra.png".to_string(),
+                }),
+                model: Some(PlayerModelTypeSummary::Slim),
+            },
+        };
+        let patch = DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID],
+            profile: Some(profile.clone()),
+            ..DataComponentPatchSummary::default()
+        };
+        let expected = hash_record(vec![
+            (
+                "id",
+                hash_int_array([
+                    0x1234_5678,
+                    0x9abc_def0_u32 as i32,
+                    0x8000_0000_u32 as i32,
+                    -1,
+                ]),
+            ),
+            ("name", hash_string("Alex")),
+            (
+                "properties",
+                hash_list([hash_record(vec![
+                    ("name", hash_string("textures")),
+                    ("value", hash_string("skin-value")),
+                    ("signature", hash_string("skin-signature")),
+                ])]),
+            ),
+            ("texture", hash_string("minecraft:entity/player/wide/alex")),
+            ("elytra", hash_string("minecraft:entity/player/elytra")),
+            ("model", hash_string("slim")),
+        ]);
+
+        let hashed = hashed_component_patch_from_summary(test_ctx(&store), &patch).unwrap();
+
+        assert_eq!(
+            hashed.added_components,
+            BTreeMap::from([(VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID, expected.0 as i32,)])
+        );
+        let mut full = profile;
+        full.kind = ResolvableProfileKindSummary::GameProfile;
+        assert_eq!(hash_resolvable_profile(&full), Some(expected));
+        full.name = Some("bad name".to_string());
+        assert_eq!(hash_resolvable_profile(&full), None);
     }
 
     #[test]
