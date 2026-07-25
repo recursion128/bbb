@@ -9,9 +9,9 @@ use tokio::sync::mpsc;
 use super::{
     commands::{
         queue_paddle_boat_command, queue_player_abilities_command, queue_player_command_action,
-        queue_vehicle_move_command,
+        queue_player_input_command, queue_sprint_command, queue_vehicle_move_command,
     },
-    ClientInputState,
+    effective_sprinting_from_state, player_input_from_state, ClientInputState,
 };
 
 const MOVE_COMMAND_INTERVAL: Duration = Duration::from_millis(50);
@@ -89,6 +89,7 @@ pub(crate) fn advance_player_input_for_client_ticks(
     input.advance_debug_crash_hold(world, now);
     input.advance_sprint_trigger(dt_seconds);
     input.advance_creative_flight_jump_trigger(dt_seconds);
+    resolve_pending_attack_sprint_stop(input, world, counters, net_commands, client_ticks);
     maybe_enable_spectator_flying(counters, world, net_commands);
 
     if world.local_player_root_vehicle_id().is_some() {
@@ -151,6 +152,32 @@ fn advance_unmounted_local_player_input(
     }
 
     Some(pose)
+}
+
+fn resolve_pending_attack_sprint_stop(
+    input: &mut ClientInputState,
+    world: &WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    client_ticks: u32,
+) {
+    if client_ticks == 0 || !input.pending_attack_sprint_stop {
+        return;
+    }
+    input.pending_attack_sprint_stop = false;
+
+    // Player.attack clears the sprinting entity flag. On the next LocalPlayer
+    // tick, holding the dedicated sprint key can set it again before
+    // sendIsSprintingIfNeeded observes any transition, so no stop command is
+    // emitted in that case. Double-tap sprint has no held key and remains
+    // stopped.
+    if input.control_down() && effective_sprinting_from_state(world, input) {
+        return;
+    }
+
+    input.sprint = false;
+    queue_player_input_command(counters, net_commands, player_input_from_state(input));
+    queue_sprint_command(counters, world, net_commands, false);
 }
 
 fn maybe_enable_spectator_flying(

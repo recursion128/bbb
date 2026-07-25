@@ -518,3 +518,6 @@
 - **2026-07-23（Bundle 无目标 use 工程关闭）**：Bundle 现按 selected-first
   与 tick 0/延迟后偶数节奏移除完整内容模板，客户端只预测主手挥动而不生成物品
   实体，并保留 remove-one 实播与 drop-contents 抑制音效的 pitch/seed 顺序。
+- **2026-07-23（目标实体本地攻击预测工程关闭）**：普通实体攻击现按
+  `send → Player.attack → reset → swing` 预测 redirectable projectile 改向及
+  Vehicle/ShulkerBullet/EndCrystal 击退；伤害、附魔和暴击事件仍由服务端拥有。

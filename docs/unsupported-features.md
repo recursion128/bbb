@@ -651,10 +651,6 @@ Commands:
 
 - Add focused command-queue and encode tests for inventory, interaction, chat,
   command, and sign editing.
-- Complete target-specific local attack prediction and presentation from
-  `Player.attack`: synchronized enchantment effects, critical and magic-critical
-  tracking emitters, special `Entity.hurtClient` families, and redirectable
-  projectile deflection. Damage and combat outcomes remain server-authoritative.
 - Complete specialized targeted local-use prediction from
   `Minecraft.startUseItem`, `MultiPlayerGameMode.interact`, and `useItemOn`.
   Implement the generated specialized block `useItemOn` / `useWithoutItem`

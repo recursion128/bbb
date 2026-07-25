@@ -697,6 +697,7 @@ pub(crate) struct ClientInputState {
     riding_jump_charge_seconds: Option<f64>,
     sprint_trigger_ticks: u8,
     sprint_trigger_elapsed_seconds: f64,
+    pending_attack_sprint_stop: bool,
     creative_flight_jump_trigger_ticks: u8,
     creative_flight_jump_trigger_elapsed_seconds: f64,
     spectator_gui: spectator_menu::SpectatorGuiInputState,
@@ -1395,6 +1396,7 @@ impl ClientInputState {
         self.jump = false;
         self.sneak = false;
         self.sprint = false;
+        self.pending_attack_sprint_stop = false;
         self.destroy_block_held = false;
         self.use_item_held = false;
         self.pressed_keys.clear();
@@ -10994,6 +10996,9 @@ pub(crate) fn handle_key_input_with_item_runtime(
         if after != before {
             queue_player_input_command(counters, net_commands, after);
             if before_sprinting != after_sprinting {
+                if !after_sprinting {
+                    input.pending_attack_sprint_stop = false;
+                }
                 queue_sprint_command(counters, world, net_commands, after_sprinting);
             }
             let just_toggled_creative_flight =

@@ -28,7 +28,7 @@ use super::{
         queue_use_item_command, queue_use_item_on_command, queue_zero_pos_player_action_command,
         select_hotbar_slot,
     },
-    release_active_input, ClientInputState,
+    effective_sprinting_from_state, release_active_input, ClientInputState,
 };
 #[cfg(test)]
 use bbb_protocol::entity_types::*;
@@ -171,6 +171,12 @@ pub(crate) fn handle_mouse_input_at_partial_tick_with_effects(
                             hit.entity_id,
                             world.local_player().selected_hotbar_slot,
                         );
+                        let was_sprinting = effective_sprinting_from_state(world, input);
+                        let stopped_sprinting = world
+                            .apply_local_player_attack_prediction(hit.entity_id, was_sprinting);
+                        if was_sprinting && stopped_sprinting {
+                            input.pending_attack_sprint_stop = true;
+                        }
                         world.reset_local_player_attack_strength();
                     }
                 }
@@ -1046,9 +1052,10 @@ mod tests {
         GameEvent as ProtocolGameEvent, InitializeBorder, InstrumentSummary, InteractEntity,
         ItemStackSummary as ProtocolItemStackSummary, ItemStackTemplateSummary,
         LodestoneTargetSummary, OpenSignEditor, PickItemFromBlock, PickItemFromEntity, PlayLogin,
-        PlayerAbilities, PlayerAction, PlayerHealth, RegistryTags, RemoveEntities, SetEntityData,
-        SetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory, SoundEventSummary,
-        TagNetworkPayload, ToolSummary, UpdateTags, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
+        PlayerAbilities, PlayerAction, PlayerCommand, PlayerCommandAction, PlayerHealth,
+        PlayerInput, RegistryTags, RemoveEntities, SetEntityData, SetPassengers,
+        SetPlayerInventory as ProtocolSetPlayerInventory, SoundEventSummary, TagNetworkPayload,
+        ToolSummary, UpdateTags, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
     };
     use bbb_world::{
         vanilla_entity_metadata_entity_accessors, BlockEntityRecord, BlockPos, ChunkColumn,
@@ -3231,6 +3238,135 @@ mod tests {
             rx.try_recv().unwrap(),
             NetCommand::Swing(InteractionHand::MainHand)
         );
+    }
+
+    #[test]
+    fn local_attack_sprint_predicts_vehicle_knockback_and_defers_stop_until_tick() {
+        let (tx, mut rx) = mpsc::channel(8);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.forward = true;
+        input.sprint = true;
+        let mut world = local_attack_world_with_player_and_target(123);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            delta_movement: ProtocolVec3d {
+                x: 0.2,
+                y: 0.4,
+                z: 0.3,
+            },
+            ..LocalPlayerPoseState::default()
+        });
+        world.advance_client_level_entity_ticks_with_observation(6);
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+        );
+
+        assert!(input.pending_attack_sprint_stop);
+        assert!(input.sprint);
+        let target = world.probe_entity_transform(123).unwrap();
+        assert_f64_near(target.delta_movement.y, 0.1);
+        assert_f64_near(target.delta_movement.z, 0.5);
+        let player = world.local_player_pose().unwrap();
+        assert_f64_near(player.delta_movement.x, 0.12);
+        assert_f64_near(player.delta_movement.y, 0.4);
+        assert_f64_near(player.delta_movement.z, 0.18);
+        assert_eq!(world.local_player_attack_strength_ticks(), 0);
+        assert_eq!(world.local_player_item_swap_ticks(), 0);
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::AttackEntity(_)
+        ));
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
+
+        crate::input::advance_player_input_for_client_ticks(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            std::time::Instant::now(),
+            1,
+        );
+
+        assert!(!input.pending_attack_sprint_stop);
+        assert!(!input.sprint);
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::PlayerInput(PlayerInput {
+                forward: true,
+                sprint: false,
+                ..
+            })
+        ));
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::PlayerCommand(PlayerCommand {
+                entity_id: 42,
+                action: PlayerCommandAction::StopSprinting,
+                data: 0,
+            })
+        );
+    }
+
+    #[test]
+    fn local_attack_held_sprint_key_restarts_before_pending_stop_is_sent() {
+        let (tx, mut rx) = mpsc::channel(8);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.forward = true;
+        input.sprint = true;
+        input.control_left_down = true;
+        let mut world = local_attack_world_with_player_and_target(123);
+        world.advance_client_level_entity_ticks_with_observation(6);
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+        );
+        assert!(input.pending_attack_sprint_stop);
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::AttackEntity(_)
+        ));
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
+
+        crate::input::advance_player_input_for_client_ticks(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            std::time::Instant::now(),
+            1,
+        );
+
+        assert!(!input.pending_attack_sprint_stop);
+        assert!(input.sprint);
+        while let Ok(command) = rx.try_recv() {
+            assert!(!matches!(
+                command,
+                NetCommand::PlayerCommand(PlayerCommand {
+                    action: PlayerCommandAction::StopSprinting,
+                    ..
+                })
+            ));
+        }
     }
 
     #[test]
@@ -6835,6 +6971,13 @@ mod tests {
             slot: 0,
             item: stack,
         });
+    }
+
+    fn assert_f64_near(actual: f64, expected: f64) {
+        assert!(
+            (actual - expected).abs() <= 1.0e-12,
+            "expected {expected}, got {actual}"
+        );
     }
 
     fn world_with_ender_dragon() -> WorldStore {
