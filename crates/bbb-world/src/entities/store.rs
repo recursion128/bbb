@@ -61,6 +61,7 @@ use super::schema::{
     vanilla_entity_metadata_abstract_villager_unhappy_accessor_for_entity_type,
     vanilla_entity_metadata_accessor_for_entity_type,
     vanilla_entity_metadata_age_locked_accessor_for_entity_type,
+    vanilla_entity_metadata_armor_stand_accessors_for_entity_type,
     vanilla_entity_metadata_bat_flags_accessor_for_entity_type,
     vanilla_entity_metadata_bee_accessors_for_entity_type,
     vanilla_entity_metadata_camel_dash_accessor_for_entity_type,
@@ -122,12 +123,12 @@ use super::{
     RavagerStunParticleState, SlimeLandingParticleState, VanillaEntityBlockEffectTickPolicy,
     WolfArmorCrackiness, VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID,
     VANILLA_ABSTRACT_NAUTILUS_DEFAULT_DASH, VANILLA_COMMAND_BLOCK_MINECART_COMMAND_DATA_ID,
-    VANILLA_COMMAND_BLOCK_MINECART_LAST_OUTPUT_DATA_ID, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
-    VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
-    VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
-    VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
-    VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
-    VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SNIFFER_ID,
+    VANILLA_COMMAND_BLOCK_MINECART_LAST_OUTPUT_DATA_ID, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+    VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
+    VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
+    VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
+    VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
+    VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SNIFFER_ID,
     VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
     VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_MAX_AIR_SUPPLY_TICKS,
 };
@@ -2704,6 +2705,66 @@ impl EntityStore {
             }
         }
         Some(false)
+    }
+
+    /// Returns the building-blocking entities whose canonical boxes strictly
+    /// intersect one prospective block collision box.
+    ///
+    /// Vanilla `EntityGetter.isUnobstructed(null, shape)` first applies the
+    /// `blocksBuilding` instance flag and then intersects the entity AABB with
+    /// the block's collision shape. The only dynamic flag exception in 26.1 is
+    /// the synchronized marker armor stand.
+    pub(crate) fn block_placement_obstruction_ids_intersecting(
+        &self,
+        query_min: [f64; 3],
+        query_max: [f64; 3],
+    ) -> Option<Vec<i32>> {
+        if !(0..3).all(|axis| {
+            query_min[axis].is_finite()
+                && query_max[axis].is_finite()
+                && query_min[axis] < query_max[axis]
+        }) {
+            return None;
+        }
+        let mut obstructing = Vec::new();
+        for id in &self.order {
+            let entity = self.by_protocol_id.get(id).copied()?;
+            let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+            if !super::vanilla_entity_type_blocks_building(identity.entity_type_id) {
+                continue;
+            }
+            if identity.entity_type_id == VANILLA_ENTITY_TYPE_ARMOR_STAND_ID {
+                let accessors = vanilla_entity_metadata_armor_stand_accessors_for_entity_type(
+                    identity.entity_type_id,
+                )?;
+                let flags = self.metadata_byte(
+                    identity.id,
+                    accessors.client_flags_data_id,
+                    accessors.client_flags_default,
+                )?;
+                if flags & accessors.marker_mask != 0 {
+                    continue;
+                }
+            }
+            let transform = self.ecs.get::<&EntityTransform>(entity).ok()?;
+            let bounds = self.debug_hitbox_bounds(*id)?;
+            let entity_min = [
+                transform.position.x + f64::from(bounds.min[0]),
+                transform.position.y + f64::from(bounds.min[1]),
+                transform.position.z + f64::from(bounds.min[2]),
+            ];
+            let entity_max = [
+                transform.position.x + f64::from(bounds.max[0]),
+                transform.position.y + f64::from(bounds.max[1]),
+                transform.position.z + f64::from(bounds.max[2]),
+            ];
+            if (0..3).all(|axis| {
+                entity_min[axis] < query_max[axis] && entity_max[axis] > query_min[axis]
+            }) {
+                obstructing.push(*id);
+            }
+        }
+        Some(obstructing)
     }
 
     pub(crate) fn fill_model_candidates_at_partial_tick(

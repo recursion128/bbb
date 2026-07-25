@@ -602,6 +602,24 @@ pub(crate) fn is_vanilla_minecart_type(entity_type_id: i32) -> bool {
     vanilla_entity_type_is_minecart(entity_type_id)
 }
 
+/// Vanilla 26.1 constructor defaults for `Entity.blocksBuilding`.
+///
+/// Armor stands are included through `LivingEntity`; their synchronized marker
+/// flag is applied by the entity-store query. Spectator players are filtered by
+/// [`WorldStore`] because that state belongs to the player-info owner rather
+/// than the entity type.
+pub(crate) fn vanilla_entity_type_blocks_building(entity_type_id: i32) -> bool {
+    vanilla_entity_metadata_type_is_living(entity_type_id)
+        || is_vanilla_boat_type(entity_type_id)
+        || is_vanilla_minecart_type(entity_type_id)
+        || matches!(
+            entity_type_id,
+            VANILLA_ENTITY_TYPE_END_CRYSTAL_ID
+                | VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID
+                | VANILLA_ENTITY_TYPE_TNT_ID
+        )
+}
+
 pub fn vanilla_entity_type_is_minecart(entity_type_id: i32) -> bool {
     schema::vanilla_entity_metadata_type_is_minecart(entity_type_id)
 }
@@ -3994,6 +4012,24 @@ impl WorldStore {
             || !self
                 .player_info_entry(identity.uuid)
                 .is_some_and(|info| info.is_spectator())
+    }
+
+    /// Mirrors `EntityGetter.isUnobstructed(null, shape)` for a prospective
+    /// single-box block collision shape. Missing canonical entity dimensions
+    /// keep the caller's local prediction explicit.
+    pub(crate) fn local_block_placement_is_unobstructed(
+        &self,
+        query_min: [f64; 3],
+        query_max: [f64; 3],
+    ) -> Option<bool> {
+        let obstructing = self
+            .entities
+            .block_placement_obstruction_ids_intersecting(query_min, query_max)?;
+        Some(
+            obstructing
+                .into_iter()
+                .all(|entity_id| !self.entity_passes_spectator_filter(entity_id)),
+        )
     }
 
     /// Narrow single-entity variant of [`Self::entity_model_sources_at_partial_tick`]. Reuses the

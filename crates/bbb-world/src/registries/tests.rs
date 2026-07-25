@@ -552,6 +552,51 @@ fn item_registry_data_cannot_remap_the_builtin_holder_order() {
 }
 
 #[test]
+fn fluid_registry_fallback_preserves_vanilla_holder_order_and_resolves_tags() {
+    let mut store = WorldStore::new();
+    let expected = [
+        "minecraft:empty",
+        "minecraft:flowing_water",
+        "minecraft:water",
+        "minecraft:flowing_lava",
+        "minecraft:lava",
+    ];
+
+    for (holder_id, resource_id) in expected.into_iter().enumerate() {
+        let holder_id = i32::try_from(holder_id).unwrap();
+        assert_eq!(
+            store.registry_resource_id_by_holder_id("minecraft:fluid", holder_id),
+            Some(resource_id)
+        );
+        assert_eq!(
+            store.registry_holder_id_by_resource_id("minecraft:fluid", resource_id),
+            Some(holder_id)
+        );
+    }
+
+    store.apply_update_tags(UpdateTags {
+        registries: vec![RegistryTags {
+            registry: "minecraft:fluid".to_string(),
+            tags: vec![TagNetworkPayload {
+                tag: "minecraft:supports_lily_pad".to_string(),
+                entries: vec![2],
+            }],
+        }],
+    });
+    assert_eq!(
+        store.registry_holder_ids_for_tag("minecraft:fluid", "minecraft:supports_lily_pad"),
+        Some([2].as_slice())
+    );
+    assert_eq!(
+        store.registry_unresolved_holder_ids_for_tag(
+            "minecraft:fluid",
+            "minecraft:supports_lily_pad"
+        ),
+        None
+    );
+}
+
+#[test]
 fn mob_effect_registry_data_cannot_remap_the_builtin_holder_order() {
     let mut store = WorldStore::new();
     let poison_id = bbb_protocol::mob_effect_types::VANILLA_MOB_EFFECT_POISON_ID;

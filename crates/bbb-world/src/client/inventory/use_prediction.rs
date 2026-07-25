@@ -169,6 +169,12 @@ pub enum LocalInteractionSoundAction {
     BucketWaterEvaporate {
         pos: BlockPos,
     },
+    BlockPlace {
+        pos: BlockPos,
+        sound_resource_id: &'static str,
+        volume_bits: u32,
+        pitch_bits: u32,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -288,6 +294,27 @@ impl LocalInteractionSuccess {
             starts_using_item: false,
             extra_swing: None,
             sound_action: None,
+            particle_action: None,
+        }
+    }
+
+    const fn block_place(
+        pos: BlockPos,
+        sound_resource_id: &'static str,
+        volume: f32,
+        pitch: f32,
+    ) -> Self {
+        Self {
+            swing_source: LocalInteractionSwingSource::Client,
+            was_item_interaction: true,
+            starts_using_item: false,
+            extra_swing: None,
+            sound_action: Some(LocalInteractionSoundAction::BlockPlace {
+                pos,
+                sound_resource_id,
+                volume_bits: volume.to_bits(),
+                pitch_bits: pitch.to_bits(),
+            }),
             particle_action: None,
         }
     }
@@ -514,6 +541,10 @@ impl WorldStore {
                     secondary_use_active,
                 ),
                 VanillaItemUseOverride::EnderEyeItem => self.predict_local_ender_eye_item_use(pov),
+                VanillaItemUseOverride::PlaceOnWaterBlockItem => self
+                    .predict_local_place_on_water_block_item_use(
+                        hand, item_type, &stack, pov, sequence,
+                    ),
                 VanillaItemUseOverride::SpawnEggItem => self.predict_local_spawn_egg_item_use(pov),
                 VanillaItemUseOverride::TridentItem => self.predict_local_trident_item_use(&stack),
                 VanillaItemUseOverride::SpyglassItem => LocalItemUsePrediction::Result(
@@ -528,7 +559,6 @@ impl WorldStore {
                 | VanillaItemUseOverride::WindChargeItem => {
                     self.predict_local_thrown_projectile_item_use(hand, &stack)
                 }
-                _ => LocalItemUsePrediction::UnsupportedOverride(use_override),
             };
         }
 
@@ -2239,9 +2269,11 @@ mod tests {
         block_types::{
             vanilla_block_type, vanilla_block_type_for_resource_id, VanillaBlockUseItemOnOverride,
             VanillaBlockUseWithoutItemOverride, VanillaBonemealTargetOverride,
-            VanillaBucketPickupOverride, VANILLA_BLOCK_CAKE_ID, VANILLA_BLOCK_CHEST_ID,
-            VANILLA_BLOCK_CRIMSON_NYLIUM_ID, VANILLA_BLOCK_DIRT_ID, VANILLA_BLOCK_RAIL_ID,
-            VANILLA_BLOCK_STONE_ID, VANILLA_BLOCK_TYPES, VANILLA_BLOCK_WHITE_BANNER_ID,
+            VanillaBucketPickupOverride, VanillaCanSurviveOverride, VANILLA_BLOCK_CAKE_ID,
+            VANILLA_BLOCK_CHEST_ID, VANILLA_BLOCK_CRIMSON_NYLIUM_ID, VANILLA_BLOCK_DIRT_ID,
+            VANILLA_BLOCK_FROGSPAWN_ID, VANILLA_BLOCK_ICE_ID, VANILLA_BLOCK_LILY_PAD_ID,
+            VANILLA_BLOCK_RAIL_ID, VANILLA_BLOCK_STONE_ID, VANILLA_BLOCK_TYPES,
+            VANILLA_BLOCK_WHITE_BANNER_ID,
         },
         builtin_enum_component_values::VANILLA_DYE_COLOR_RED_ID,
         data_component_types::{
@@ -2267,13 +2299,14 @@ mod tests {
             VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
             VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
             VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
-            VANILLA_ENTITY_TYPE_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_LEASH_KNOT_ID,
-            VANILLA_ENTITY_TYPE_MANNEQUIN_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
-            VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
-            VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
-            VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
-            VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
-            VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+            VANILLA_ENTITY_TYPE_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
+            VANILLA_ENTITY_TYPE_LEASH_KNOT_ID, VANILLA_ENTITY_TYPE_MANNEQUIN_ID,
+            VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
+            VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+            VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+            VANILLA_ENTITY_TYPE_SHEEP_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+            VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
         },
         equipment_slots::EquipmentSlot,
         game_types::{VANILLA_GAME_TYPE_CREATIVE_ID, VANILLA_GAME_TYPE_SURVIVAL_ID},
@@ -2285,14 +2318,14 @@ mod tests {
             VANILLA_ITEM_DEBUG_STICK_ID, VANILLA_ITEM_ENDER_EYE_ID, VANILLA_ITEM_END_CRYSTAL_ID,
             VANILLA_ITEM_FILLED_MAP_ID, VANILLA_ITEM_FIREWORK_ROCKET_ID,
             VANILLA_ITEM_FIRE_CHARGE_ID, VANILLA_ITEM_FLINT_AND_STEEL_ID,
-            VANILLA_ITEM_GLASS_BOTTLE_ID, VANILLA_ITEM_GOAT_HORN_ID, VANILLA_ITEM_HONEYCOMB_ID,
-            VANILLA_ITEM_IRON_AXE_ID, VANILLA_ITEM_IRON_HOE_ID, VANILLA_ITEM_IRON_SHOVEL_ID,
-            VANILLA_ITEM_LAVA_BUCKET_ID, VANILLA_ITEM_LEAD_ID, VANILLA_ITEM_LILY_PAD_ID,
-            VANILLA_ITEM_MINECART_ID, VANILLA_ITEM_NAME_TAG_ID, VANILLA_ITEM_OAK_BOAT_ID,
-            VANILLA_ITEM_POPPY_ID, VANILLA_ITEM_POTION_ID, VANILLA_ITEM_RED_DYE_ID,
-            VANILLA_ITEM_SADDLE_ID, VANILLA_ITEM_SHEARS_ID, VANILLA_ITEM_SHIELD_ID,
-            VANILLA_ITEM_STONE_ID, VANILLA_ITEM_TRIDENT_ID, VANILLA_ITEM_TYPES,
-            VANILLA_ITEM_WATER_BUCKET_ID,
+            VANILLA_ITEM_FROGSPAWN_ID, VANILLA_ITEM_GLASS_BOTTLE_ID, VANILLA_ITEM_GOAT_HORN_ID,
+            VANILLA_ITEM_HONEYCOMB_ID, VANILLA_ITEM_IRON_AXE_ID, VANILLA_ITEM_IRON_HOE_ID,
+            VANILLA_ITEM_IRON_SHOVEL_ID, VANILLA_ITEM_LAVA_BUCKET_ID, VANILLA_ITEM_LEAD_ID,
+            VANILLA_ITEM_LILY_PAD_ID, VANILLA_ITEM_MINECART_ID, VANILLA_ITEM_NAME_TAG_ID,
+            VANILLA_ITEM_OAK_BOAT_ID, VANILLA_ITEM_POPPY_ID, VANILLA_ITEM_POTION_ID,
+            VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_SADDLE_ID, VANILLA_ITEM_SHEARS_ID,
+            VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_STONE_ID, VANILLA_ITEM_TRIDENT_ID,
+            VANILLA_ITEM_TYPES, VANILLA_ITEM_WATER_BUCKET_ID,
         },
         packets::{
             AddEntity, AdventureModePredicateDataSummary, BlockHitResult, BlockHolderSetSummary,
@@ -2386,6 +2419,32 @@ mod tests {
                     entries,
                 }],
             }],
+        });
+    }
+
+    fn install_place_on_water_support_tags(
+        world: &mut WorldStore,
+        tag: &str,
+        fluid_entries: Vec<i32>,
+        block_entries: Vec<i32>,
+    ) {
+        world.apply_update_tags(UpdateTags {
+            registries: vec![
+                RegistryTags {
+                    registry: "minecraft:fluid".to_string(),
+                    tags: vec![TagNetworkPayload {
+                        tag: tag.to_string(),
+                        entries: fluid_entries,
+                    }],
+                },
+                RegistryTags {
+                    registry: "minecraft:block".to_string(),
+                    tags: vec![TagNetworkPayload {
+                        tag: tag.to_string(),
+                        entries: block_entries,
+                    }],
+                },
+            ],
         });
     }
 
@@ -2737,6 +2796,14 @@ mod tests {
             (VANILLA_ITEM_BUCKET_ID, LocalItemUsePovFluidMode::SourceOnly),
             (VANILLA_ITEM_WATER_BUCKET_ID, LocalItemUsePovFluidMode::None),
             (VANILLA_ITEM_COD_BUCKET_ID, LocalItemUsePovFluidMode::None),
+            (
+                VANILLA_ITEM_LILY_PAD_ID,
+                LocalItemUsePovFluidMode::SourceOnly,
+            ),
+            (
+                VANILLA_ITEM_FROGSPAWN_ID,
+                LocalItemUsePovFluidMode::SourceOnly,
+            ),
         ] {
             set_main_hand(&mut world, item_id);
             assert_eq!(
@@ -2753,6 +2820,375 @@ mod tests {
             world.local_item_use_pov_query(InteractionHand::MainHand),
             None
         );
+    }
+
+    #[test]
+    fn place_on_water_generated_owners_have_exact_block_profiles() {
+        let owner_ids = VANILLA_ITEM_TYPES
+            .iter()
+            .filter(|item| item.use_override == Some(VanillaItemUseOverride::PlaceOnWaterBlockItem))
+            .map(|item| item.id)
+            .collect::<Vec<_>>();
+        assert_eq!(
+            owner_ids,
+            vec![VANILLA_ITEM_LILY_PAD_ID, VANILLA_ITEM_FROGSPAWN_ID]
+        );
+        assert_eq!(
+            vanilla_block_type(VANILLA_BLOCK_LILY_PAD_ID)
+                .unwrap()
+                .can_survive_override,
+            Some(VanillaCanSurviveOverride::VegetationBlock)
+        );
+        assert_eq!(
+            vanilla_block_type(VANILLA_BLOCK_FROGSPAWN_ID)
+                .unwrap()
+                .can_survive_override,
+            Some(VanillaCanSurviveOverride::FrogspawnBlock)
+        );
+    }
+
+    #[test]
+    fn place_on_water_places_lily_pad_with_inventory_sound_and_rollback() {
+        let water_pos = BlockPos { x: 8, y: 7, z: 8 };
+        let placed_pos = BlockPos { y: 8, ..water_pos };
+        let air = block_state_id("minecraft:air", []);
+        let water = block_state_id("minecraft:water", [("level", "0")]);
+        let lily_pad = block_state_id("minecraft:lily_pad", []);
+        let mut world = tool_use_world(air);
+        install_place_on_water_support_tags(
+            &mut world,
+            "minecraft:supports_lily_pad",
+            vec![2],
+            Vec::new(),
+        );
+        set_block(&mut world, water_pos, water);
+        let mut held = stack(VANILLA_ITEM_LILY_PAD_ID);
+        held.count = 2;
+        world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: held,
+        });
+
+        assert_eq!(
+            world.predict_local_item_use_with_pov(
+                InteractionHand::MainHand,
+                Some(item_use_block_hit(water_pos, ProtocolDirection::Up)),
+            ),
+            LocalItemUsePrediction::UnsupportedOverride(
+                VanillaItemUseOverride::PlaceOnWaterBlockItem
+            )
+        );
+        assert_eq!(world.probe_block(placed_pos).unwrap().block_state_id, air);
+        assert_eq!(player_inventory_item(&world, 0).count, 2);
+
+        assert_eq!(
+            world.predict_local_item_use_with_pov_and_sequence(
+                InteractionHand::MainHand,
+                Some(item_use_block_hit(water_pos, ProtocolDirection::Up)),
+                40,
+                false,
+            ),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::block_place(
+                    placed_pos,
+                    "minecraft:block.lily_pad.place",
+                    1.0,
+                    0.8,
+                )
+            ))
+        );
+        assert_eq!(
+            world.probe_block(placed_pos).unwrap().block_state_id,
+            lily_pad
+        );
+        assert_eq!(player_inventory_item(&world, 0).count, 1);
+        assert_eq!(world.local_block_predictions().len(), 1);
+        assert_eq!(world.local_block_predictions()[0].sequence, 40);
+        assert_eq!(world.sync_ended_local_block_predictions(40), 1);
+        assert_eq!(world.probe_block(placed_pos).unwrap().block_state_id, air);
+
+        let mut random = crate::LevelEventSoundRandomState::default();
+        let effect = world
+            .apply_local_interaction_sound_action(
+                LocalInteractionSoundAction::BlockPlace {
+                    pos: placed_pos,
+                    sound_resource_id: "minecraft:block.lily_pad.place",
+                    volume_bits: 1.0_f32.to_bits(),
+                    pitch_bits: 0.8_f32.to_bits(),
+                },
+                &mut random,
+            )
+            .unwrap();
+        let crate::LocalInteractionSoundEffect::Positioned(sound) = effect else {
+            panic!("lily pad placement sound should be positioned");
+        };
+        assert_eq!(
+            sound.sound.location.as_deref(),
+            Some("minecraft:block.lily_pad.place")
+        );
+        assert_eq!(sound.source, "block");
+        assert_eq!((sound.volume, sound.pitch), (1.0, 0.8));
+    }
+
+    #[test]
+    fn place_on_water_uses_live_support_tags_and_exact_collision_shapes() {
+        let support_pos = BlockPos { x: 8, y: 7, z: 8 };
+        let placed_pos = BlockPos {
+            y: support_pos.y + 1,
+            ..support_pos
+        };
+        let air = block_state_id("minecraft:air", []);
+        let water = block_state_id("minecraft:water", [("level", "0")]);
+        let ice = block_state_id("minecraft:ice", []);
+        let frogspawn = block_state_id("minecraft:frogspawn", []);
+
+        let mut missing_tags = tool_use_world(air);
+        set_block(&mut missing_tags, support_pos, water);
+        set_main_hand(&mut missing_tags, VANILLA_ITEM_LILY_PAD_ID);
+        assert_eq!(
+            missing_tags.predict_local_item_use_with_pov_and_sequence(
+                InteractionHand::MainHand,
+                Some(item_use_block_hit(support_pos, ProtocolDirection::Up)),
+                41,
+                false,
+            ),
+            LocalItemUsePrediction::MissingRegistryTag("minecraft:supports_lily_pad")
+        );
+        assert_eq!(
+            missing_tags.probe_block(placed_pos).unwrap().block_state_id,
+            air
+        );
+
+        let mut ice_support = tool_use_world(air);
+        install_place_on_water_support_tags(
+            &mut ice_support,
+            "minecraft:supports_lily_pad",
+            Vec::new(),
+            vec![VANILLA_BLOCK_ICE_ID],
+        );
+        set_block(&mut ice_support, support_pos, ice);
+        set_main_hand(&mut ice_support, VANILLA_ITEM_LILY_PAD_ID);
+        assert!(matches!(
+            ice_support.predict_local_item_use_with_pov_and_sequence(
+                InteractionHand::MainHand,
+                Some(item_use_block_hit(support_pos, ProtocolDirection::Up)),
+                42,
+                false,
+            ),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+
+        let mut blocked_lily = tool_use_world(air);
+        install_place_on_water_support_tags(
+            &mut blocked_lily,
+            "minecraft:supports_lily_pad",
+            vec![2],
+            Vec::new(),
+        );
+        set_block(&mut blocked_lily, support_pos, water);
+        set_main_hand(&mut blocked_lily, VANILLA_ITEM_LILY_PAD_ID);
+        add_entity_at(
+            &mut blocked_lily,
+            90,
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            Vec3d {
+                x: f64::from(placed_pos.x) + 0.5,
+                y: f64::from(placed_pos.y),
+                z: f64::from(placed_pos.z) + 0.5,
+            },
+        );
+        assert_eq!(
+            blocked_lily.predict_local_item_use_with_pov_and_sequence(
+                InteractionHand::MainHand,
+                Some(item_use_block_hit(support_pos, ProtocolDirection::Up)),
+                43,
+                false,
+            ),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Fail)
+        );
+
+        let mut non_blocking_item = tool_use_world(air);
+        install_place_on_water_support_tags(
+            &mut non_blocking_item,
+            "minecraft:supports_lily_pad",
+            vec![2],
+            Vec::new(),
+        );
+        set_block(&mut non_blocking_item, support_pos, water);
+        set_main_hand(&mut non_blocking_item, VANILLA_ITEM_LILY_PAD_ID);
+        add_entity_at(
+            &mut non_blocking_item,
+            91,
+            VANILLA_ENTITY_TYPE_ITEM_ID,
+            Vec3d {
+                x: f64::from(placed_pos.x) + 0.5,
+                y: f64::from(placed_pos.y),
+                z: f64::from(placed_pos.z) + 0.5,
+            },
+        );
+        assert!(matches!(
+            non_blocking_item.predict_local_item_use_with_pov_and_sequence(
+                InteractionHand::MainHand,
+                Some(item_use_block_hit(support_pos, ProtocolDirection::Up)),
+                44,
+                false,
+            ),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+
+        let mut marker_armor_stand = tool_use_world(air);
+        install_place_on_water_support_tags(
+            &mut marker_armor_stand,
+            "minecraft:supports_lily_pad",
+            vec![2],
+            Vec::new(),
+        );
+        set_block(&mut marker_armor_stand, support_pos, water);
+        set_main_hand(&mut marker_armor_stand, VANILLA_ITEM_LILY_PAD_ID);
+        add_entity_at(
+            &mut marker_armor_stand,
+            92,
+            VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+            Vec3d {
+                x: f64::from(placed_pos.x) + 0.5,
+                y: f64::from(placed_pos.y),
+                z: f64::from(placed_pos.z) + 0.5,
+            },
+        );
+        let armor_stand_accessors = vanilla_entity_metadata_armor_stand_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+        )
+        .unwrap();
+        assert!(marker_armor_stand.apply_set_entity_data(SetEntityData {
+            id: 92,
+            values: vec![EntityDataValue {
+                data_id: armor_stand_accessors.client_flags_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                value: EntityDataValueKind::Byte(armor_stand_accessors.marker_mask),
+            }],
+        }));
+        assert!(matches!(
+            marker_armor_stand.predict_local_item_use_with_pov_and_sequence(
+                InteractionHand::MainHand,
+                Some(item_use_block_hit(support_pos, ProtocolDirection::Up)),
+                45,
+                false,
+            ),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+
+        let mut frogspawn_world = tool_use_world(air);
+        install_place_on_water_support_tags(
+            &mut frogspawn_world,
+            "minecraft:supports_frogspawn",
+            vec![2],
+            Vec::new(),
+        );
+        set_block(&mut frogspawn_world, support_pos, water);
+        set_main_hand(&mut frogspawn_world, VANILLA_ITEM_FROGSPAWN_ID);
+        add_entity_at(
+            &mut frogspawn_world,
+            93,
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            Vec3d {
+                x: f64::from(placed_pos.x) + 0.5,
+                y: f64::from(placed_pos.y),
+                z: f64::from(placed_pos.z) + 0.5,
+            },
+        );
+        assert_eq!(
+            frogspawn_world.predict_local_item_use_with_pov_and_sequence(
+                InteractionHand::MainHand,
+                Some(item_use_block_hit(support_pos, ProtocolDirection::Up)),
+                46,
+                false,
+            ),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::block_place(
+                    placed_pos,
+                    "minecraft:block.frogspawn.place",
+                    1.0,
+                    0.8,
+                )
+            ))
+        );
+        assert_eq!(
+            frogspawn_world
+                .probe_block(placed_pos)
+                .unwrap()
+                .block_state_id,
+            frogspawn
+        );
+    }
+
+    #[test]
+    fn place_on_water_preserves_replace_clicked_and_empty_fluid_gates() {
+        let support_pos = BlockPos { x: 8, y: 7, z: 8 };
+        let shifted_pos = BlockPos {
+            y: support_pos.y + 1,
+            ..support_pos
+        };
+        let air = block_state_id("minecraft:air", []);
+        let water = block_state_id("minecraft:water", [("level", "0")]);
+        let one_snow = block_state_id("minecraft:snow", [("layers", "1")]);
+        let two_snow = block_state_id("minecraft:snow", [("layers", "2")]);
+        let lily_pad = block_state_id("minecraft:lily_pad", []);
+
+        let prepare = |shifted_state| {
+            let mut world = tool_use_world(air);
+            install_place_on_water_support_tags(
+                &mut world,
+                "minecraft:supports_lily_pad",
+                vec![2],
+                Vec::new(),
+            );
+            set_block(&mut world, support_pos, water);
+            set_block(&mut world, shifted_pos, shifted_state);
+            set_main_hand(&mut world, VANILLA_ITEM_LILY_PAD_ID);
+            world
+        };
+
+        let mut one_layer = prepare(one_snow);
+        assert!(matches!(
+            one_layer.predict_local_item_use_with_pov_and_sequence(
+                InteractionHand::MainHand,
+                Some(item_use_block_hit(support_pos, ProtocolDirection::Up)),
+                46,
+                false,
+            ),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(
+            one_layer.probe_block(shifted_pos).unwrap().block_state_id,
+            lily_pad
+        );
+
+        let mut two_layers = prepare(two_snow);
+        assert_eq!(
+            two_layers.predict_local_item_use_with_pov_and_sequence(
+                InteractionHand::MainHand,
+                Some(item_use_block_hit(support_pos, ProtocolDirection::Up)),
+                47,
+                false,
+            ),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Fail)
+        );
+        assert_eq!(
+            two_layers.probe_block(shifted_pos).unwrap().block_state_id,
+            two_snow
+        );
+
+        let mut occupied_fluid = prepare(water);
+        assert_eq!(
+            occupied_fluid.predict_local_item_use_with_pov_and_sequence(
+                InteractionHand::MainHand,
+                Some(item_use_block_hit(support_pos, ProtocolDirection::Up)),
+                48,
+                false,
+            ),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Fail)
+        );
+        assert!(occupied_fluid.local_block_predictions().is_empty());
     }
 
     #[test]

@@ -548,3 +548,6 @@
 - **2026-07-25（BucketItem 本地预测工程关闭）**：空桶取水后的 19 类非默认
   `canSurvive` owner 现由生成支撑事实、动态形状与实时标签精确判定干态保留或销毁；
   空/水/岩浆/生物桶的方块、库存、声音、粒子与 prediction sequence 路径完成闭环。
+- **2026-07-25（PlaceOnWaterBlockItem 本地放置工程关闭）**：睡莲与蛙卵现按
+  生成 ownership、实时流体/方块标签、精确替换与实体阻挡规则委托至本地
+  `BlockItem` 放置，贯通库存、声音及 prediction sequence 回滚。

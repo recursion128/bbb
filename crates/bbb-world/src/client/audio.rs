@@ -1697,8 +1697,9 @@ impl WorldStore {
     /// Spyglass start/stop and bundle removal call `LocalPlayer.playSound`;
     /// bottle filling passes the local player as `except`, and bucket pickup
     /// calls `LocalPlayer.playSound`, so these are immediate positioned sounds.
-    /// Bucket emptying and evaporation pass the local player as `except` and
-    /// stay block-positioned. Bundle content-drop, fishing rods, bow
+    /// Bucket emptying, evaporation, and client-predicted block placement pass
+    /// the local player as `except` and stay block-positioned. Bundle
+    /// content-drop, fishing rods, bow
     /// release, Riptide release, thrown projectiles, fire charges, lodestone
     /// compasses, and both potion mud-conversion sounds pass `null`, so their
     /// local calls only advance the random streams.
@@ -1855,6 +1856,18 @@ impl WorldStore {
                 "minecraft:block.fire.extinguish",
                 0.5,
                 2.6 + (random.next_float() - random.next_float()) * 0.8,
+                SoundSource::Blocks.as_str(),
+            ),
+            LocalInteractionSoundAction::BlockPlace {
+                pos,
+                sound_resource_id,
+                volume_bits,
+                pitch_bits,
+            } => block_sound_state(
+                pos,
+                sound_resource_id,
+                f32::from_bits(volume_bits),
+                f32::from_bits(pitch_bits),
                 SoundSource::Blocks.as_str(),
             ),
         };

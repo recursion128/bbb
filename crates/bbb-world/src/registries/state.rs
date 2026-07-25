@@ -80,6 +80,17 @@ use super::{
     RegistryElementDecodeError,
 };
 
+// Vanilla 26.1 `Fluids` registers these built-in holders in declaration order.
+// Fluid tags are synchronized against this fixed registry even though the
+// configuration phase does not send a `RegistryData` payload for it.
+const VANILLA_FLUID_RESOURCE_IDS: [&str; 5] = [
+    "minecraft:empty",
+    "minecraft:flowing_water",
+    "minecraft:water",
+    "minecraft:flowing_lava",
+    "minecraft:lava",
+];
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RegistrySet {
     pub registries: Vec<RegistryPacket>,
@@ -537,6 +548,9 @@ impl RegistrySet {
             "minecraft:chat_type" => super::chat_types::vanilla_chat_type_resource_id(holder_id),
             "minecraft:item" => Some(vanilla_item_type(holder_id)?.resource_id),
             "minecraft:block" => self.block_states.block_name_by_registry_id(holder_id),
+            "minecraft:fluid" => VANILLA_FLUID_RESOURCE_IDS
+                .get(usize::try_from(holder_id).ok()?)
+                .copied(),
             "minecraft:entity_type" => Some(vanilla_entity_type(holder_id)?.resource_id),
             "minecraft:damage_type" => Some(vanilla_damage_type(holder_id)?.resource_id),
             "minecraft:game_event" => {
@@ -613,6 +627,10 @@ impl RegistrySet {
                 Some(bbb_protocol::item_types::vanilla_item_type_for_resource_id(resource_id)?.id)
             }
             "minecraft:block" => self.block_states.block_registry_id_by_name(resource_id),
+            "minecraft:fluid" => VANILLA_FLUID_RESOURCE_IDS
+                .iter()
+                .position(|candidate| *candidate == resource_id)
+                .and_then(|holder_id| i32::try_from(holder_id).ok()),
             "minecraft:entity_type" => Some(
                 bbb_protocol::entity_types::vanilla_entity_type_for_resource_id(resource_id)?.id,
             ),
@@ -1103,6 +1121,7 @@ fn registry_has_exact_vanilla_fallback(registry: &str) -> bool {
             | "minecraft:chat_type"
             | "minecraft:item"
             | "minecraft:block"
+            | "minecraft:fluid"
             | "minecraft:entity_type"
             | "minecraft:damage_type"
             | "minecraft:game_event"
