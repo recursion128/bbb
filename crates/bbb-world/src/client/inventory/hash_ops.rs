@@ -1308,6 +1308,7 @@ pub(super) fn crc32c(bytes: &[u8]) -> u32 {
 #[cfg(test)]
 mod tests {
     use bbb_protocol::{
+        builtin_enum_component_values::VANILLA_DYE_COLOR_RED_ID,
         packets::{
             chunks::BlockPos, DamageReductionSummary, EquippableSummary,
             FireworkExplosionShapeSummary, ItemDamageFunctionSummary, ItemRaritySummary,
@@ -1413,7 +1414,7 @@ mod tests {
             item_model: Some("minecraft:diamond_sword".to_string()),
             rarity: Some(ItemRaritySummary::Rare),
             enchantment_glint_override: Some(true),
-            dye_color_id: Some(14),
+            dye_color_id: Some(VANILLA_DYE_COLOR_RED_ID),
             ..DataComponentPatchSummary::default()
         };
         let store = crate::WorldStore::new();
@@ -1568,6 +1569,11 @@ mod tests {
 
     #[test]
     fn hashes_structured_tool_firework_lodestone_and_typed_nbt_codecs() {
+        let store = crate::WorldStore::new();
+        let entity_type_id = store
+            .registries
+            .holder_id_by_resource_id("minecraft:entity_type", "minecraft:acacia_boat")
+            .unwrap();
         let bucket_data = NbtSummaryValue::Compound(vec![NbtSummaryEntry {
             name: "Health".to_string(),
             value: NbtSummaryValue::Float(2.0_f32.to_bits()),
@@ -1618,14 +1624,13 @@ mod tests {
                 VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
                 bucket_data.clone(),
             )]),
-            entity_data_entity_type_id: Some(0),
+            entity_data_entity_type_id: Some(entity_type_id),
             entity_data_tag: Some(entity_data.clone()),
             ..DataComponentPatchSummary::default()
         };
-        let store = crate::WorldStore::new();
         let entity_id = store
             .registries
-            .resource_id_by_holder_id("minecraft:entity_type", 0)
+            .resource_id_by_holder_id("minecraft:entity_type", entity_type_id)
             .unwrap();
 
         let hashed = hashed_component_patch_from_summary(test_ctx(&store), &patch).unwrap();
