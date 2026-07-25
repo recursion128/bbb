@@ -2650,6 +2650,49 @@ impl EntityStore {
         )
     }
 
+    /// Mirrors the strict `AABB.intersects` test used by `Level.getEntities`
+    /// for a caller-selected entity family. Every retained entity must have
+    /// canonical dimensions; a missing projection keeps prediction explicit.
+    pub(crate) fn any_entity_bounds_intersecting(
+        &self,
+        query_min: [f64; 3],
+        query_max: [f64; 3],
+        type_filter: impl Fn(i32) -> bool,
+    ) -> Option<bool> {
+        if !(0..3).all(|axis| {
+            query_min[axis].is_finite()
+                && query_max[axis].is_finite()
+                && query_min[axis] < query_max[axis]
+        }) {
+            return None;
+        }
+        for id in &self.order {
+            let entity = self.by_protocol_id.get(id).copied()?;
+            let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+            if !type_filter(identity.entity_type_id) {
+                continue;
+            }
+            let transform = self.ecs.get::<&EntityTransform>(entity).ok()?;
+            let bounds = self.debug_hitbox_bounds(*id)?;
+            let entity_min = [
+                transform.position.x + f64::from(bounds.min[0]),
+                transform.position.y + f64::from(bounds.min[1]),
+                transform.position.z + f64::from(bounds.min[2]),
+            ];
+            let entity_max = [
+                transform.position.x + f64::from(bounds.max[0]),
+                transform.position.y + f64::from(bounds.max[1]),
+                transform.position.z + f64::from(bounds.max[2]),
+            ];
+            if (0..3).all(|axis| {
+                entity_min[axis] < query_max[axis] && entity_max[axis] > query_min[axis]
+            }) {
+                return Some(true);
+            }
+        }
+        Some(false)
+    }
+
     pub(crate) fn fill_model_candidates_at_partial_tick(
         &self,
         partial_ticks: f32,

@@ -834,7 +834,8 @@ mod tests {
     };
     use bbb_protocol::equipment_slots::VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT;
     use bbb_protocol::item_types::{
-        VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID, VANILLA_ITEM_RED_DYE_ID,
+        VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID, VANILLA_ITEM_FIREWORK_ROCKET_ID,
+        VANILLA_ITEM_RED_DYE_ID,
     };
     use bbb_protocol::packets::{
         AddEntity, AdventureModePredicateDataSummary, AdventureModePredicateSummary, AttackEntity,
@@ -3652,6 +3653,44 @@ mod tests {
                 selected_hotbar_slot: 0,
             })
         );
+    }
+
+    #[test]
+    fn firework_use_on_swings_main_hand_and_stops_before_offhand() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_block();
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(VANILLA_ITEM_FIREWORK_ROCKET_ID, 1),
+        });
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+            item: item_stack(99, 1),
+        });
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+        );
+
+        assert_eq!(counters.use_item_on_commands_queued, 1);
+        let NetCommand::UseItemOn(command) = rx.try_recv().unwrap() else {
+            panic!("expected firework use-on command");
+        };
+        assert_eq!(command.packet.hand, InteractionHand::MainHand);
+        assert_eq!(counters.swing_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
+        assert!(rx.try_recv().is_err());
     }
 
     #[test]

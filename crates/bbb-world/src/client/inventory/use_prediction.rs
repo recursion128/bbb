@@ -12,6 +12,7 @@ use crate::{
         vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type,
         vanilla_entity_metadata_tamable_animal_accessors_for_entity_type,
         vanilla_entity_metadata_type_is_leashable, vanilla_entity_metadata_type_is_living,
+        vanilla_entity_type_is_minecart, vanilla_pick_bounds_for_type,
     },
     BlockPos,
 };
@@ -20,6 +21,7 @@ use bbb_protocol::{
     block_types::{
         vanilla_block_type, vanilla_block_type_for_resource_id, BlockTypeCatalogEntry,
         VanillaBlockUseItemOnOverride, VanillaBlockUseWithoutItemOverride, VANILLA_BLOCK_AIR_ID,
+        VANILLA_BLOCK_BEDROCK_ID, VANILLA_BLOCK_OBSIDIAN_ID,
     },
     builtin_enum_component_values::normalize_vanilla_dye_color_id,
     data_component_types::{
@@ -28,7 +30,10 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID, VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
         VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
     },
-    entity_types::{vanilla_entity_type_is_serializable, VANILLA_ENTITY_TYPE_WOLF_ID},
+    entity_types::{
+        vanilla_entity_type_is_serializable, VANILLA_ENTITY_TYPE_MINECART_ID,
+        VANILLA_ENTITY_TYPE_WOLF_ID,
+    },
     equipment_slots::VANILLA_EQUIPMENT_SLOTS,
     item_types::{
         VanillaBlockTransform, VanillaItemInteractLivingEntityOverride, VanillaItemUseOnOverride,
@@ -330,6 +335,11 @@ impl WorldStore {
                 if let Some(result) = self.predict_local_tool_item_use_on(owner, hand, context) {
                     return result;
                 }
+                if let Some(result) =
+                    self.predict_local_entity_spawning_item_use_on(owner, hand, context)
+                {
+                    return result;
+                }
             }
             return LocalTargetUsePrediction::UnsupportedItemUseOn(owner);
         }
@@ -472,6 +482,119 @@ impl WorldStore {
                     == Some(VanillaBlockUseItemOnOverride::CampfireBlock)
                     && properties.get("lit").is_some_and(|value| value == "true");
                 Some(if lit_campfire { success() } else { pass() })
+            }
+            _ => None,
+        }
+    }
+
+    fn predict_local_entity_spawning_item_use_on(
+        &mut self,
+        owner: VanillaItemUseOnOverride,
+        hand: InteractionHand,
+        context: LocalBlockUseContext,
+    ) -> Option<LocalTargetUsePrediction> {
+        let client_success = || {
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction(),
+            ))
+        };
+        let pass = || LocalTargetUsePrediction::Result(LocalInteractionResult::Pass);
+        let fail = || LocalTargetUsePrediction::Result(LocalInteractionResult::Fail);
+        match owner {
+            // `SpawnEggItem.useOn` returns before all server-only type,
+            // spawner, difficulty, spawn, and stack-mutation work.
+            VanillaItemUseOnOverride::SpawnEggItem => Some(client_success()),
+            VanillaItemUseOnOverride::FireworkRocketItem => {
+                let fall_flying = self
+                    .local_player_id()
+                    .and_then(|id| self.entities.is_fall_flying(id))
+                    .unwrap_or(false);
+                Some(if fall_flying {
+                    pass()
+                } else {
+                    client_success()
+                })
+            }
+            VanillaItemUseOnOverride::EndCrystalItem => {
+                let block = self.probe_block(context.pos)?;
+                let block_name = block.block_name.as_deref()?;
+                let block_type = vanilla_block_type_for_resource_id(block_name)?;
+                if !matches!(
+                    block_type.id,
+                    VANILLA_BLOCK_OBSIDIAN_ID | VANILLA_BLOCK_BEDROCK_ID
+                ) {
+                    return Some(fail());
+                }
+                let spawn_pos = above(context.pos);
+                if !self.local_block_is_air(spawn_pos)? {
+                    return Some(fail());
+                }
+                let query_min = [
+                    f64::from(spawn_pos.x),
+                    f64::from(spawn_pos.y),
+                    f64::from(spawn_pos.z),
+                ];
+                let query_max = [query_min[0] + 1.0, query_min[1] + 2.0, query_min[2] + 1.0];
+                match self
+                    .entities
+                    .any_entity_bounds_intersecting(query_min, query_max, |_| true)
+                {
+                    Some(true) => Some(fail()),
+                    Some(false) if self.shrink_local_item_in_hand(hand, 1) => {
+                        Some(client_success())
+                    }
+                    Some(false) => Some(LocalTargetUsePrediction::UnsupportedItemUseOn(owner)),
+                    None => Some(LocalTargetUsePrediction::UnsupportedItemUseOn(owner)),
+                }
+            }
+            VanillaItemUseOnOverride::MinecartItem => {
+                let block = self.probe_block(context.pos)?;
+                let block_name = block.block_name.as_deref()?;
+                let block_type = vanilla_block_type_for_resource_id(block_name)?;
+                let Some(rails) =
+                    self.registry_holder_ids_for_tag("minecraft:block", "minecraft:rails")
+                else {
+                    return Some(LocalTargetUsePrediction::UnsupportedItemUseOn(owner));
+                };
+                if !rails.contains(&block_type.id) {
+                    return Some(fail());
+                }
+                if self.is_feature_enabled("minecraft:minecart_improvements") {
+                    let bounds = vanilla_pick_bounds_for_type(VANILLA_ENTITY_TYPE_MINECART_ID)?;
+                    let slope_offset = block
+                        .block_properties
+                        .get("shape")
+                        .is_some_and(|shape| shape.starts_with("ascending_"))
+                        .then_some(0.5)
+                        .unwrap_or(0.0);
+                    let spawn_position = [
+                        f64::from(context.pos.x) + 0.5,
+                        f64::from(context.pos.y) + 0.0625 + slope_offset,
+                        f64::from(context.pos.z) + 0.5,
+                    ];
+                    let query_min = std::array::from_fn(|axis| {
+                        spawn_position[axis] + f64::from(bounds.min[axis])
+                    });
+                    let query_max = std::array::from_fn(|axis| {
+                        spawn_position[axis] + f64::from(bounds.max[axis])
+                    });
+                    match self.entities.any_entity_bounds_intersecting(
+                        query_min,
+                        query_max,
+                        vanilla_entity_type_is_minecart,
+                    ) {
+                        Some(true) => return Some(fail()),
+                        Some(false) => {}
+                        None => {
+                            return Some(LocalTargetUsePrediction::UnsupportedItemUseOn(owner));
+                        }
+                    }
+                }
+                Some(if self.shrink_local_item_in_hand(hand, 1) {
+                    client_success()
+                } else {
+                    LocalTargetUsePrediction::UnsupportedItemUseOn(owner)
+                })
             }
             _ => None,
         }
@@ -1644,7 +1767,8 @@ mod tests {
     use bbb_protocol::{
         block_types::{
             vanilla_block_type, VanillaBlockUseItemOnOverride, VanillaBlockUseWithoutItemOverride,
-            VANILLA_BLOCK_CAKE_ID, VANILLA_BLOCK_CHEST_ID, VANILLA_BLOCK_STONE_ID,
+            VANILLA_BLOCK_CAKE_ID, VANILLA_BLOCK_CHEST_ID, VANILLA_BLOCK_RAIL_ID,
+            VANILLA_BLOCK_STONE_ID,
         },
         builtin_enum_component_values::VANILLA_DYE_COLOR_RED_ID,
         data_component_types::{
@@ -1668,19 +1792,21 @@ mod tests {
             VANILLA_ENTITY_TYPE_LEASH_KNOT_ID, VANILLA_ENTITY_TYPE_MANNEQUIN_ID,
             VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
             VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
-            VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
-            VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
-            VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+            VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+            VANILLA_ENTITY_TYPE_SHEEP_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+            VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
         },
         equipment_slots::EquipmentSlot,
         item_types::{
             VanillaItemInteractLivingEntityOverride, VanillaItemUseOnOverride,
             VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID, VANILLA_ITEM_CHORUS_FRUIT_ID,
+            VANILLA_ITEM_END_CRYSTAL_ID, VANILLA_ITEM_FIREWORK_ROCKET_ID,
             VANILLA_ITEM_HONEYCOMB_ID, VANILLA_ITEM_IRON_AXE_ID, VANILLA_ITEM_IRON_HOE_ID,
-            VANILLA_ITEM_IRON_SHOVEL_ID, VANILLA_ITEM_LEAD_ID, VANILLA_ITEM_NAME_TAG_ID,
-            VANILLA_ITEM_POPPY_ID, VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_SADDLE_ID,
-            VANILLA_ITEM_SHEARS_ID, VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_SNOWBALL_ID,
-            VANILLA_ITEM_STONE_ID,
+            VANILLA_ITEM_IRON_SHOVEL_ID, VANILLA_ITEM_LEAD_ID, VANILLA_ITEM_MINECART_ID,
+            VANILLA_ITEM_NAME_TAG_ID, VANILLA_ITEM_POPPY_ID, VANILLA_ITEM_RED_DYE_ID,
+            VANILLA_ITEM_SADDLE_ID, VANILLA_ITEM_SHEARS_ID, VANILLA_ITEM_SHIELD_ID,
+            VANILLA_ITEM_SNOWBALL_ID, VANILLA_ITEM_STONE_ID,
         },
         packets::{
             AddEntity, AdventureModePredicateDataSummary, BlockHolderSetSummary,
@@ -1689,7 +1815,7 @@ mod tests {
             EquipmentSlotUpdate, EquippableSummary, ItemEnchantmentSummary, ItemStackSummary,
             PlayerHealth, RegistryData, RegistryDataEntry, RegistryTags, SetEntityData,
             SetEntityLink, SetEquipment, SetPassengers, SetPlayerInventory, SoundEventSummary,
-            TagNetworkPayload, UpdateTags, Vec3d,
+            TagNetworkPayload, UpdateEnabledFeatures, UpdateTags, Vec3d,
         },
     };
     use std::collections::{BTreeMap, BTreeSet};
@@ -2380,6 +2506,257 @@ mod tests {
         assert_eq!(
             world.probe_block(pos).unwrap().block_name.as_deref(),
             Some("minecraft:stripped_oak_log")
+        );
+    }
+
+    #[test]
+    fn spawn_egg_and_firework_use_on_predict_client_short_circuits() {
+        let pos = BlockPos { x: 0, y: 0, z: 0 };
+        let mut world = tool_use_world(block_state_id("minecraft:stone", []));
+        let client_success = LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+            LocalInteractionSuccess::client_item_interaction(),
+        ));
+
+        set_main_hand(&mut world, VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID);
+        assert_eq!(
+            world.predict_local_block_use(
+                pos,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                false,
+                1,
+            ),
+            client_success
+        );
+        assert_eq!(
+            world
+                .local_item_in_hand(InteractionHand::MainHand)
+                .unwrap()
+                .count,
+            1
+        );
+
+        set_main_hand(&mut world, VANILLA_ITEM_FIREWORK_ROCKET_ID);
+        assert_eq!(
+            world.predict_local_block_use(
+                pos,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                false,
+                2,
+            ),
+            client_success
+        );
+        add_entity(&mut world, 7, VANILLA_ENTITY_TYPE_PLAYER_ID);
+        world.local_player_id = Some(7);
+        let accessors = crate::entities::vanilla_entity_metadata_entity_accessors().unwrap();
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 7,
+            values: vec![EntityDataValue {
+                data_id: accessors.shared_flags_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                value: EntityDataValueKind::Byte(
+                    accessors.shared_flags_default | accessors.fall_flying_mask,
+                ),
+            }],
+        }));
+        assert_eq!(
+            world.predict_local_block_use(
+                pos,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                false,
+                3,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+    }
+
+    #[test]
+    fn end_crystal_and_minecart_use_on_predict_client_gates_and_shrink() {
+        let pos = BlockPos { x: 0, y: 0, z: 0 };
+        let client_success = LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+            LocalInteractionSuccess::client_item_interaction(),
+        ));
+        let fail = LocalTargetUsePrediction::Result(LocalInteractionResult::Fail);
+
+        let mut crystal_world = tool_use_world(block_state_id("minecraft:obsidian", []));
+        crystal_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: ItemStackSummary {
+                count: 2,
+                ..stack(VANILLA_ITEM_END_CRYSTAL_ID)
+            },
+        });
+        assert_eq!(
+            crystal_world.predict_local_block_use(
+                pos,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                false,
+                1,
+            ),
+            client_success
+        );
+        assert_eq!(
+            crystal_world
+                .local_item_in_hand(InteractionHand::MainHand)
+                .unwrap()
+                .count,
+            1
+        );
+        assert!(crystal_world.apply_block_update(BlockUpdate {
+            pos: ProtocolBlockPos { x: 0, y: 1, z: 0 },
+            block_state_id: block_state_id("minecraft:stone", []),
+        }));
+        assert_eq!(
+            crystal_world.predict_local_block_use(
+                pos,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                false,
+                2,
+            ),
+            fail
+        );
+
+        let mut occupied_crystal_world = tool_use_world(block_state_id("minecraft:obsidian", []));
+        add_entity_at(
+            &mut occupied_crystal_world,
+            8,
+            VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID,
+            Vec3d {
+                x: 0.5,
+                y: 1.0,
+                z: 0.5,
+            },
+        );
+        set_main_hand(&mut occupied_crystal_world, VANILLA_ITEM_END_CRYSTAL_ID);
+        assert_eq!(
+            occupied_crystal_world.predict_local_block_use(
+                pos,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                false,
+                3,
+            ),
+            fail
+        );
+        let stone = block_state_id("minecraft:stone", []);
+        assert!(occupied_crystal_world.apply_block_update(BlockUpdate {
+            pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+            block_state_id: stone,
+        }));
+        assert_eq!(
+            occupied_crystal_world.predict_local_block_use(
+                pos,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                false,
+                4,
+            ),
+            fail
+        );
+
+        let ascending_rail = block_state_id(
+            "minecraft:rail",
+            [("shape", "ascending_east"), ("waterlogged", "false")],
+        );
+        let mut minecart_world = tool_use_world(ascending_rail);
+        minecart_world.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: "minecraft:block".to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: "minecraft:rails".to_string(),
+                    entries: vec![VANILLA_BLOCK_RAIL_ID],
+                }],
+            }],
+        });
+        minecart_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: ItemStackSummary {
+                count: 2,
+                ..stack(VANILLA_ITEM_MINECART_ID)
+            },
+        });
+        assert_eq!(
+            minecart_world.predict_local_block_use(
+                pos,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                false,
+                5,
+            ),
+            client_success
+        );
+        assert_eq!(
+            minecart_world
+                .local_item_in_hand(InteractionHand::MainHand)
+                .unwrap()
+                .count,
+            1
+        );
+
+        minecart_world.apply_update_enabled_features(UpdateEnabledFeatures {
+            features: vec![
+                "minecraft:vanilla".to_string(),
+                "minecraft:minecart_improvements".to_string(),
+            ],
+        });
+        add_entity_at(
+            &mut minecart_world,
+            9,
+            VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID,
+            Vec3d {
+                x: 0.5,
+                y: 1.0,
+                z: 0.5,
+            },
+        );
+        assert_eq!(
+            minecart_world.predict_local_block_use(
+                pos,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                false,
+                6,
+            ),
+            client_success
+        );
+        set_main_hand(&mut minecart_world, VANILLA_ITEM_MINECART_ID);
+        add_entity_at(
+            &mut minecart_world,
+            10,
+            VANILLA_ENTITY_TYPE_MINECART_ID,
+            Vec3d {
+                x: 0.5,
+                y: 1.0,
+                z: 0.5,
+            },
+        );
+        assert_eq!(
+            minecart_world.predict_local_block_use(
+                pos,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                false,
+                7,
+            ),
+            fail
+        );
+        assert!(minecart_world.apply_block_update(BlockUpdate {
+            pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+            block_state_id: stone,
+        }));
+        assert_eq!(
+            minecart_world.predict_local_block_use(
+                pos,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                false,
+                8,
+            ),
+            fail
         );
     }
 
