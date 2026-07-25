@@ -383,6 +383,7 @@ pub(super) fn start_use_item(
                 | LocalTargetUsePrediction::UnsupportedItemUseOn(_)
                 | LocalTargetUsePrediction::UnsupportedEntityInteract(_)
                 | LocalTargetUsePrediction::UnsupportedItemInteractLivingEntity(_)
+                | LocalTargetUsePrediction::UnsupportedItemStackInteractLivingEntityComponent(_)
                 | LocalTargetUsePrediction::UnknownBlockType(_)
                 | LocalTargetUsePrediction::UnknownEntityType(_)
                 | LocalTargetUsePrediction::UnknownItemType(_) => return true,
@@ -825,13 +826,16 @@ fn scroll_signum(value: f64) -> f64 {
 mod tests {
     use super::*;
     use bbb_net::{AttackEntityCommand, InteractEntityCommand, UseItemCommand, UseItemOnCommand};
+    use bbb_protocol::builtin_enum_component_values::VANILLA_DYE_COLOR_RED_ID;
     use bbb_protocol::data_component_types::{
         VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID, VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID,
-        VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID, VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
-        VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
     };
     use bbb_protocol::equipment_slots::VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT;
-    use bbb_protocol::item_types::{VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID};
+    use bbb_protocol::item_types::{
+        VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID, VANILLA_ITEM_RED_DYE_ID,
+    };
     use bbb_protocol::packets::{
         AddEntity, AdventureModePredicateDataSummary, AdventureModePredicateSummary, AttackEntity,
         AttackRangeSummary, BlockEntityData, BlockHitResult as ProtocolBlockHitResult,
@@ -839,9 +843,9 @@ mod tests {
         CommonPlayerSpawnInfo, ConsumableSummary, EntityEvent as ProtocolEntityEvent,
         GameEvent as ProtocolGameEvent, InitializeBorder, InteractEntity,
         ItemStackSummary as ProtocolItemStackSummary, OpenSignEditor, PickItemFromBlock,
-        PickItemFromEntity, PlayLogin, PlayerAbilities, PlayerAction, PlayerHealth, RemoveEntities,
-        SetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory, ToolSummary, UseItem,
-        UseItemOn, Vec3d as ProtocolVec3d,
+        PickItemFromEntity, PlayLogin, PlayerAbilities, PlayerAction, PlayerHealth, RegistryTags,
+        RemoveEntities, SetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory,
+        TagNetworkPayload, ToolSummary, UpdateTags, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
     };
     use bbb_world::{
         BlockEntityRecord, BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState,
@@ -3270,6 +3274,62 @@ mod tests {
         };
         assert_eq!(command.packet.entity_id, 123);
         assert_eq!(command.packet.hand, InteractionHand::MainHand);
+    }
+
+    #[test]
+    fn dye_success_on_sheep_swings_main_hand_and_stops_before_offhand() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_entity_type(123, VANILLA_ENTITY_TYPE_SHEEP_ID);
+        world.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: "minecraft:item".to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: "minecraft:sheep_food".to_string(),
+                    entries: Vec::new(),
+                }],
+            }],
+        });
+        world.set_default_item_component_type_ids(BTreeMap::from([(
+            VANILLA_ITEM_RED_DYE_ID,
+            BTreeSet::from([VANILLA_DATA_COMPONENT_DYE_TYPE_ID]),
+        )]));
+        world.set_default_item_dye_color_ids(BTreeMap::from([(
+            VANILLA_ITEM_RED_DYE_ID,
+            VANILLA_DYE_COLOR_RED_ID,
+        )]));
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(VANILLA_ITEM_RED_DYE_ID, 1),
+        });
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+            item: item_stack(99, 1),
+        });
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+        );
+
+        assert_eq!(counters.interact_entity_commands_queued, 1);
+        let NetCommand::InteractEntity(command) = rx.try_recv().unwrap() else {
+            panic!("expected Sheep dye interaction");
+        };
+        assert_eq!(command.packet.entity_id, 123);
+        assert_eq!(command.packet.hand, InteractionHand::MainHand);
+        assert_eq!(counters.swing_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
+        assert!(rx.try_recv().is_err());
     }
 
     #[test]

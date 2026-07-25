@@ -32940,12 +32940,14 @@ mod generated_catalog_guards {
 
     #[test]
     fn sheep_consumers_do_not_restore_accessor_constants() {
+        let use_prediction = include_str!("../../client/inventory/use_prediction.rs");
         let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
         let native_variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
         let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
         let native_input = include_str!("../../../../bbb-native/src/input.rs");
         let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
         for source in [
+            use_prediction,
             native_scene,
             native_variants,
             native_scene_tests,
@@ -32962,6 +32964,7 @@ mod generated_catalog_guards {
             "SHEEP_WOOL_COLOR_MASK",
         ] {
             for source in [
+                use_prediction,
                 native_scene,
                 native_variants,
                 native_scene_tests,

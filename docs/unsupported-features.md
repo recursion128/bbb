@@ -658,9 +658,8 @@ Commands:
 - Complete specialized targeted local-use prediction from
   `Minecraft.startUseItem`, `MultiPlayerGameMode.interact`, and `useItemOn`.
   Implement the generated specialized block `useItemOn` / `useWithoutItem`
-  owners, item-side placement, spawning, ignition, growth, debug, navigation,
-  and projectile `useOn` owners, plus `DyeItem` / `NameTagItem`
-  `interactLivingEntity`, so main/offhand
+  owners and item-side placement, spawning, ignition, growth, debug, navigation,
+  projectile `useOn` owners, and `Equippable.equipOnTarget`, so main/offhand
   iteration can stop or continue on the exact `InteractionResult`; then apply
   each success swing-source and held-item presentation. Interaction override
   ownership must stay generated from local vanilla classes. Entity, block, and
