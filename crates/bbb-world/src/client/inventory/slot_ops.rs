@@ -110,6 +110,26 @@ pub(super) struct LocalContainerSlotAccess {
     pub(super) max_stack_size: i32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct LocalMountSlotRules {
+    entity_type_id: i32,
+    equipment_slots: MountEquipmentSlotVisibility,
+    player_start: i16,
+}
+
+pub(super) fn local_mount_slot_rules(
+    ctx: InventoryCtx<'_>,
+    mount: Option<MountScreenState>,
+    slots: &[ContainerSlot],
+    equipment_slots: Option<MountEquipmentSlotVisibility>,
+) -> Option<LocalMountSlotRules> {
+    Some(LocalMountSlotRules {
+        entity_type_id: ctx.entities.entity_type_id(mount?.entity_id)?,
+        equipment_slots: equipment_slots?,
+        player_start: mount_inventory_player_start_slot(slots)?,
+    })
+}
+
 impl LocalContainerSlotAccess {
     fn unrestricted(max_stack_size: i32) -> Self {
         Self {
@@ -140,8 +160,10 @@ pub(super) fn local_container_slot_access(
     ctx: InventoryCtx<'_>,
     container_id: i32,
     menu_type_id: Option<i32>,
+    mount_rules: Option<LocalMountSlotRules>,
     data_values: &[ContainerDataValue],
     slot_num: i16,
+    slot_item: &ProtocolItemStackSummary,
     stack_to_place: &ProtocolItemStackSummary,
 ) -> Option<LocalContainerSlotAccess> {
     let item_max_stack_size =
@@ -156,7 +178,17 @@ pub(super) fn local_container_slot_access(
             ),
         ));
     }
-    if menu_type_has_unrestricted_slot_rules(menu_type_id) || menu_type_id.is_none() {
+    if let Some(mount_rules) = mount_rules {
+        return local_mount_slot_access(
+            ctx,
+            mount_rules,
+            slot_num,
+            slot_item,
+            stack_to_place,
+            item_max_stack_size,
+        );
+    }
+    if menu_type_has_unrestricted_slot_rules(menu_type_id) {
         return Some(LocalContainerSlotAccess::unrestricted(item_max_stack_size));
     }
 
@@ -330,6 +362,7 @@ pub(super) fn local_container_slot_accesses(
     ctx: InventoryCtx<'_>,
     container_id: i32,
     menu_type_id: Option<i32>,
+    mount_rules: Option<LocalMountSlotRules>,
     data_values: &[ContainerDataValue],
     slots: &[ContainerSlot],
     stack_to_place: &ProtocolItemStackSummary,
@@ -341,13 +374,119 @@ pub(super) fn local_container_slot_accesses(
                 ctx,
                 container_id,
                 menu_type_id,
+                mount_rules,
                 data_values,
                 slot.slot,
+                &slot.item,
                 stack_to_place,
             )
             .map(|access| (slot.slot, access))
         })
         .collect()
+}
+
+fn local_mount_slot_access(
+    ctx: InventoryCtx<'_>,
+    rules: LocalMountSlotRules,
+    slot_num: i16,
+    slot_item: &ProtocolItemStackSummary,
+    stack_to_place: &ProtocolItemStackSummary,
+    item_max_stack_size: i32,
+) -> Option<LocalContainerSlotAccess> {
+    if (MOUNT_INVENTORY_START..rules.player_start + MOUNT_PLAYER_SLOT_COUNT).contains(&slot_num) {
+        return Some(LocalContainerSlotAccess::unrestricted(item_max_stack_size));
+    }
+    let expected_slot = match slot_num {
+        MOUNT_SADDLE_SLOT if rules.equipment_slots.saddle => EquipmentSlot::Saddle,
+        MOUNT_BODY_ARMOR_SLOT if rules.equipment_slots.body.is_some() => EquipmentSlot::Body,
+        MOUNT_SADDLE_SLOT | MOUNT_BODY_ARMOR_SLOT => {
+            return Some(LocalContainerSlotAccess::input(false, 1));
+        }
+        _ => return None,
+    };
+    let may_place = mount_stack_equipment_slot(ctx, rules, stack_to_place, expected_slot)?
+        == Some(expected_slot);
+    let may_pickup = if ctx
+        .local_player
+        .abilities
+        .is_some_and(|abilities| abilities.instabuild)
+        || item_stack_is_empty(slot_item)
+    {
+        true
+    } else if slot_item.component_patch.enchantments.is_empty()
+        && slot_item.component_patch.stored_enchantments.is_empty()
+    {
+        true
+    } else {
+        // ArmorSlot rejects stacks carrying PREVENT_ARMOR_CHANGE. The effect
+        // registry is dynamic, so do not invent a local answer for enchanted
+        // equipment when this borrowed click context cannot resolve it.
+        return None;
+    };
+    Some(LocalContainerSlotAccess {
+        may_place,
+        may_pickup,
+        max_stack_size: item_max_stack_size.min(1),
+    })
+}
+
+fn mount_stack_equipment_slot(
+    ctx: InventoryCtx<'_>,
+    rules: LocalMountSlotRules,
+    stack: &ProtocolItemStackSummary,
+    expected_slot: EquipmentSlot,
+) -> Option<Option<EquipmentSlot>> {
+    if item_stack_is_empty(stack)
+        || stack
+            .component_patch
+            .removed_type_ids
+            .contains(&VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID)
+    {
+        return Some(None);
+    }
+    if !ctx
+        .items
+        .item_stack_has_effective_component(stack, VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID)
+    {
+        return Some(None);
+    }
+    if stack
+        .component_patch
+        .added_type_ids
+        .contains(&VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID)
+    {
+        let equippable = stack.component_patch.equippable.as_ref()?;
+        let slot = vanilla_equipment_slot_by_id(equippable.slot_id)?.slot;
+        let allowed = match equippable.allowed_entities.as_ref() {
+            None => true,
+            Some(allowed) => match (allowed.tag.as_deref(), allowed.registry_ids.as_slice()) {
+                (Some(tag), []) => ctx
+                    .registries
+                    .tags
+                    .get("minecraft:entity_type")?
+                    .tags
+                    .get(tag)?
+                    .contains(&rules.entity_type_id),
+                (None, ids) => ids.contains(&rules.entity_type_id),
+                (Some(_), _) => return None,
+            },
+        };
+        return Some(allowed.then_some(slot));
+    }
+
+    let item_id = stack.item_id?;
+    let slot = ctx
+        .items
+        .default_item_equipment_slots
+        .get(&item_id)
+        .copied()?
+        .protocol_slot();
+    if slot == EquipmentSlot::Body {
+        let expected_kind = rules.equipment_slots.body?;
+        let item_kind = ctx.items.default_mount_body_armor_kinds.get(&item_id)?;
+        return Some((*item_kind == expected_kind).then_some(slot));
+    }
+    Some((slot == expected_slot).then_some(slot))
 }
 
 fn item_stack_is_damageable_or_enchanted(
@@ -1478,6 +1617,7 @@ pub(super) fn apply_quick_craft_to_slots(
     ctx: InventoryCtx<'_>,
     container_id: i32,
     menu_type_id: Option<i32>,
+    mount_rules: Option<LocalMountSlotRules>,
     data_values: &[ContainerDataValue],
     slots: &mut [ContainerSlot],
     cursor: &mut ProtocolItemStackSummary,
@@ -1518,8 +1658,10 @@ pub(super) fn apply_quick_craft_to_slots(
                 ctx,
                 container_id,
                 menu_type_id,
+                mount_rules,
                 data_values,
                 slot_num,
+                &slot.item,
                 cursor,
             ) else {
                 return;
@@ -1540,6 +1682,7 @@ pub(super) fn apply_quick_craft_to_slots(
                 ctx,
                 container_id,
                 menu_type_id,
+                mount_rules,
                 data_values,
                 slots,
                 cursor,
@@ -1577,6 +1720,7 @@ pub(super) fn finish_quick_craft(
     ctx: InventoryCtx<'_>,
     container_id: i32,
     menu_type_id: Option<i32>,
+    mount_rules: Option<LocalMountSlotRules>,
     data_values: &[ContainerDataValue],
     slots: &mut [ContainerSlot],
     cursor: &mut ProtocolItemStackSummary,
@@ -1597,8 +1741,10 @@ pub(super) fn finish_quick_craft(
             ctx,
             container_id,
             menu_type_id,
+            mount_rules,
             data_values,
             slot_num,
+            container_slot_item(slots, slot_num).unwrap_or(&ProtocolItemStackSummary::empty()),
             cursor,
         ) else {
             return;
@@ -1637,8 +1783,10 @@ pub(super) fn finish_quick_craft(
             ctx,
             container_id,
             menu_type_id,
+            mount_rules,
             data_values,
             selected_slot,
+            &slots[slot_index].item,
             cursor,
         ) else {
             continue;
@@ -1914,6 +2062,178 @@ pub(super) fn apply_swap_click_to_slots(
         false,
         default_item_max_stack_sizes,
     );
+}
+
+pub(super) fn apply_external_offhand_swap_to_slots(
+    container_id: i32,
+    slots: &mut [ContainerSlot],
+    cursor: &ProtocolItemStackSummary,
+    offhand: &mut ProtocolItemStackSummary,
+    slot_num: i16,
+    target_access: LocalContainerSlotAccess,
+    selected_hotbar_slot: u8,
+    default_item_max_stack_sizes: &BTreeMap<i32, i32>,
+) {
+    if !item_stack_is_empty(cursor) || slot_num < 0 {
+        return;
+    }
+    let Some(target_index) = slots.iter().position(|slot| slot.slot == slot_num) else {
+        return;
+    };
+    let source_item = offhand.clone();
+    let target_item = slots[target_index].item.clone();
+    if item_stack_is_empty(&source_item) && item_stack_is_empty(&target_item) {
+        return;
+    }
+
+    if item_stack_is_empty(&source_item) {
+        if !target_access.may_pickup {
+            return;
+        }
+        *offhand = target_item;
+        slots[target_index].item = ProtocolItemStackSummary::empty();
+        normalize_container_slot_selection(&mut slots[target_index]);
+        return;
+    }
+    if !target_access.may_place || target_access.max_stack_size <= 0 {
+        return;
+    }
+    if item_stack_is_empty(&target_item) {
+        let moved = source_item.count.min(target_access.max_stack_size);
+        slots[target_index].item = source_item.clone();
+        slots[target_index].item.count = moved;
+        offhand.count -= moved;
+        normalize_item_stack(offhand);
+        normalize_container_slot_selection(&mut slots[target_index]);
+        return;
+    }
+    if !target_access.may_pickup {
+        return;
+    }
+    if source_item.count <= target_access.max_stack_size {
+        *offhand = target_item;
+        slots[target_index].item = source_item;
+        normalize_container_slot_selection(&mut slots[target_index]);
+        return;
+    }
+
+    let mut target_replacement = source_item;
+    target_replacement.count = target_access.max_stack_size;
+    offhand.count -= target_access.max_stack_size;
+    slots[target_index].item = target_replacement;
+    normalize_container_slot_selection(&mut slots[target_index]);
+    add_item_to_external_player_inventory(
+        container_id,
+        slots,
+        offhand,
+        target_item,
+        selected_hotbar_slot,
+        default_item_max_stack_sizes,
+    );
+}
+
+fn add_item_to_external_player_inventory(
+    container_id: i32,
+    slots: &mut [ContainerSlot],
+    offhand: &mut ProtocolItemStackSummary,
+    mut moving: ProtocolItemStackSummary,
+    selected_hotbar_slot: u8,
+    default_item_max_stack_sizes: &BTreeMap<i32, i32>,
+) {
+    if item_stack_is_empty(&moving) {
+        return;
+    }
+    let damaged = moving
+        .component_patch
+        .damage
+        .is_some_and(|damage| damage > 0);
+    if !damaged {
+        let selected = i32::from(selected_hotbar_slot.min(8));
+        for inventory_slot in std::iter::once(selected)
+            .chain(std::iter::once(VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT))
+            .chain(0..36)
+        {
+            if item_stack_is_empty(&moving) {
+                return;
+            }
+            if inventory_slot == VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT {
+                merge_item_stack_into_external_slot(
+                    offhand,
+                    &mut moving,
+                    default_item_max_stack_sizes,
+                );
+                continue;
+            }
+            let Some(slot_num) =
+                container_menu_slot_for_player_inventory_slot(container_id, slots, inventory_slot)
+            else {
+                continue;
+            };
+            let Some(slot_index) = slots.iter().position(|slot| slot.slot == slot_num) else {
+                continue;
+            };
+            merge_item_stack_into_external_slot(
+                &mut slots[slot_index].item,
+                &mut moving,
+                default_item_max_stack_sizes,
+            );
+        }
+    }
+    if item_stack_is_empty(&moving) {
+        return;
+    }
+    for inventory_slot in 0..36 {
+        let Some(slot_num) =
+            container_menu_slot_for_player_inventory_slot(container_id, slots, inventory_slot)
+        else {
+            continue;
+        };
+        let Some(slot) = slots.iter_mut().find(|slot| slot.slot == slot_num) else {
+            continue;
+        };
+        if item_stack_is_empty(&slot.item) {
+            slot.item = moving;
+            normalize_container_slot_selection(slot);
+            return;
+        }
+    }
+    // Vanilla drops the remainder when Inventory.add cannot accept it.
+}
+
+fn merge_item_stack_into_external_slot(
+    slot: &mut ProtocolItemStackSummary,
+    moving: &mut ProtocolItemStackSummary,
+    default_item_max_stack_sizes: &BTreeMap<i32, i32>,
+) {
+    if item_stack_is_empty(slot)
+        || !same_item_same_components(slot, moving)
+        || item_stack_max_stack_size(slot, default_item_max_stack_sizes) <= 1
+    {
+        return;
+    }
+    let max_stack_size = item_stack_max_stack_size(slot, default_item_max_stack_sizes);
+    let moved = moving.count.min((max_stack_size - slot.count).max(0));
+    slot.count += moved;
+    moving.count -= moved;
+    normalize_item_stack(moving);
+}
+
+fn container_menu_slot_for_player_inventory_slot(
+    container_id: i32,
+    slots: &[ContainerSlot],
+    inventory_slot: i32,
+) -> Option<i16> {
+    if container_id == INVENTORY_MENU_CONTAINER_ID {
+        return inventory_slot_to_inventory_menu_slot(inventory_slot);
+    }
+    let inventory_slot = i16::try_from(inventory_slot).ok()?;
+    let total_slots = slots.iter().map(|slot| slot.slot + 1).max()?;
+    let player_start = total_slots.checked_sub(GENERIC_CONTAINER_PLAYER_SLOT_COUNT)?;
+    match inventory_slot {
+        0..=8 => Some(total_slots - PLAYER_HOTBAR_SIZE as i16 + inventory_slot),
+        9..=35 => Some(player_start + inventory_slot - 9),
+        _ => None,
+    }
 }
 
 fn visible_player_slot_range(container_id: i32, slots: &[ContainerSlot]) -> (i16, i16) {

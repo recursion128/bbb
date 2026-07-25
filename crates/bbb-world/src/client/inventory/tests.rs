@@ -860,6 +860,151 @@ fn apply_local_mount_quick_move_keeps_unknown_body_armor_kind_server_authoritati
 }
 
 #[test]
+fn apply_local_mount_pickup_honors_equipment_and_storage_slot_rules() {
+    let mut store = WorldStore::new();
+    store.set_default_item_component_type_ids(BTreeMap::from([
+        (
+            90,
+            BTreeSet::from([VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID]),
+        ),
+        (
+            91,
+            BTreeSet::from([VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID]),
+        ),
+        (
+            92,
+            BTreeSet::from([VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID]),
+        ),
+    ]));
+    store.set_default_item_equipment_slots(BTreeMap::from([
+        (90, ItemEquipmentSlot::Saddle),
+        (91, ItemEquipmentSlot::Body),
+        (92, ItemEquipmentSlot::Body),
+    ]));
+    store.set_default_mount_body_armor_kinds(BTreeMap::from([
+        (91, MountArmorSlotKind::Horse),
+        (92, MountArmorSlotKind::Llama),
+    ]));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        42,
+        VANILLA_ENTITY_TYPE_HORSE_ID,
+    ));
+    store.apply_mount_screen_open(ProtocolMountScreenOpen {
+        container_id: 7,
+        inventory_columns: 5,
+        entity_id: 42,
+    });
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: 7,
+        state_id: 18,
+        items: vec![ProtocolItemStackSummary::empty(); 53],
+        carried_item: item_stack(90, 3),
+    });
+
+    let saddle = store
+        .apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: MOUNT_SADDLE_SLOT,
+            button_num: 0,
+            input: ProtocolContainerInput::Pickup,
+        })
+        .unwrap();
+    assert_eq!(
+        saddle.changed_slots,
+        BTreeMap::from([(MOUNT_SADDLE_SLOT, hashed_item_stack(90, 1))])
+    );
+    assert_eq!(saddle.carried_item, hashed_item_stack(90, 2));
+
+    store.apply_set_cursor_item(ProtocolSetCursorItem {
+        item: item_stack(92, 1),
+    });
+    let mismatched_body = store
+        .apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: MOUNT_BODY_ARMOR_SLOT,
+            button_num: 0,
+            input: ProtocolContainerInput::Pickup,
+        })
+        .unwrap();
+    assert!(mismatched_body.changed_slots.is_empty());
+    assert_eq!(mismatched_body.carried_item, hashed_item_stack(92, 1));
+
+    store.apply_set_cursor_item(ProtocolSetCursorItem {
+        item: item_stack(91, 1),
+    });
+    let matching_body = store
+        .apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: MOUNT_BODY_ARMOR_SLOT,
+            button_num: 0,
+            input: ProtocolContainerInput::Pickup,
+        })
+        .unwrap();
+    assert_eq!(
+        matching_body.changed_slots,
+        BTreeMap::from([(MOUNT_BODY_ARMOR_SLOT, hashed_item_stack(91, 1))])
+    );
+
+    store.apply_set_cursor_item(ProtocolSetCursorItem {
+        item: item_stack(43, 3),
+    });
+    let storage = store
+        .apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: MOUNT_INVENTORY_START,
+            button_num: 0,
+            input: ProtocolContainerInput::Pickup,
+        })
+        .unwrap();
+    assert_eq!(
+        storage.changed_slots,
+        BTreeMap::from([(MOUNT_INVENTORY_START, hashed_item_stack(43, 3))])
+    );
+    assert_eq!(storage.carried_item, ProtocolHashedStack::Empty);
+}
+
+#[test]
+fn apply_local_mount_equipment_pickup_falls_back_for_enchanted_stack() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        42,
+        VANILLA_ENTITY_TYPE_HORSE_ID,
+    ));
+    store.apply_mount_screen_open(ProtocolMountScreenOpen {
+        container_id: 7,
+        inventory_columns: 5,
+        entity_id: 42,
+    });
+    let mut enchanted = item_stack(90, 1);
+    enchanted.component_patch.added = 1;
+    enchanted.component_patch.added_type_ids =
+        vec![bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID];
+    enchanted.component_patch.enchantments = vec![bbb_protocol::packets::ItemEnchantmentSummary {
+        holder_id: 0,
+        level: 1,
+    }];
+    let mut items = vec![ProtocolItemStackSummary::empty(); 53];
+    items[MOUNT_SADDLE_SLOT as usize] = enchanted.clone();
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: 7,
+        state_id: 19,
+        items,
+        carried_item: ProtocolItemStackSummary::empty(),
+    });
+
+    assert_eq!(
+        store.apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: MOUNT_SADDLE_SLOT,
+            button_num: 0,
+            input: ProtocolContainerInput::Pickup,
+        }),
+        Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+            ProtocolContainerInput::Pickup
+        ))
+    );
+    assert_eq!(
+        open_container_slot_item(&store, MOUNT_SADDLE_SLOT),
+        enchanted
+    );
+}
+
+#[test]
 fn hotbar_items_merge_player_inventory_and_inventory_menu_slots() {
     let mut store = WorldStore::new();
 
@@ -2439,7 +2584,17 @@ fn local_container_slot_access_matches_specialized_input_predicates() {
         registries: &store.registries,
     };
     let access = |menu_type_id, slot_num, stack: &ProtocolItemStackSummary| {
-        local_container_slot_access(ctx, 7, Some(menu_type_id), &[], slot_num, stack).unwrap()
+        local_container_slot_access(
+            ctx,
+            7,
+            Some(menu_type_id),
+            None,
+            &[],
+            slot_num,
+            stack,
+            stack,
+        )
+        .unwrap()
     };
 
     for (menu_type_id, slot_num, stack, expected_max_stack_size) in [
@@ -2610,8 +2765,10 @@ fn local_container_slot_access_matches_specialized_input_predicates() {
         ctx,
         7,
         Some(VANILLA_MENU_TYPE_CRAFTER_3X3_ID),
+        None,
         &[ContainerDataValue { id: 4, value: 1 }],
         4,
+        &plain,
         &plain,
     )
     .unwrap();
@@ -10425,6 +10582,103 @@ fn apply_local_container_swap_requires_empty_cursor_and_predicts_generic_menu() 
     assert_eq!(open_container_slot_item(&store, 0), item_stack(43, 2));
     assert_eq!(open_container_slot_item(&store, 45), item_stack(42, 3));
     assert_eq!(player_slot_item(&store, 0), item_stack(42, 3));
+}
+
+#[test]
+fn apply_local_open_container_swap_uses_external_offhand_without_hashing_it() {
+    let mut store = WorldStore::new();
+    store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+        item: item_stack(44, 2),
+    });
+    store.apply_open_screen(ProtocolOpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X2_ID,
+        title: "Chest".to_string(),
+        title_styled: Vec::new(),
+    });
+    let mut items = vec![ProtocolItemStackSummary::empty(); 54];
+    items[0] = item_stack(42, 3);
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: 7,
+        state_id: 4,
+        items,
+        carried_item: ProtocolItemStackSummary::empty(),
+    });
+
+    let swap = store
+        .apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: 0,
+            button_num: VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT as i8,
+            input: ProtocolContainerInput::Swap,
+        })
+        .unwrap();
+
+    assert_eq!(
+        swap.changed_slots,
+        BTreeMap::from([(0, hashed_item_stack(44, 2))])
+    );
+    assert_eq!(open_container_slot_item(&store, 0), item_stack(44, 2));
+    assert_eq!(
+        player_slot_item(&store, VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT),
+        item_stack(42, 3)
+    );
+    assert_eq!(
+        inventory_menu_slot_item(&store, INVENTORY_MENU_OFFHAND_SLOT),
+        item_stack(42, 3)
+    );
+}
+
+#[test]
+fn apply_local_open_container_offhand_swap_returns_displaced_overflow_to_inventory() {
+    let mut store = WorldStore::new();
+    apply_item_tags(&mut store, vec![(BEACON_PAYMENT_ITEM_TAG, vec![90])]);
+    store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+        item: item_stack(90, 3),
+    });
+    store.apply_open_screen(ProtocolOpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_BEACON_ID,
+        title: "Beacon".to_string(),
+        title_styled: Vec::new(),
+    });
+    let mut items = vec![ProtocolItemStackSummary::empty(); BEACON_TOTAL_SLOT_COUNT as usize];
+    items[BEACON_PAYMENT_SLOT as usize] = item_stack(42, 1);
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: 7,
+        state_id: 5,
+        items,
+        carried_item: ProtocolItemStackSummary::empty(),
+    });
+
+    let swap = store
+        .apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: BEACON_PAYMENT_SLOT,
+            button_num: VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT as i8,
+            input: ProtocolContainerInput::Swap,
+        })
+        .unwrap();
+
+    assert_eq!(
+        swap.changed_slots,
+        BTreeMap::from([
+            (BEACON_PAYMENT_SLOT, hashed_item_stack(90, 1)),
+            (BEACON_HOTBAR_START, hashed_item_stack(42, 1)),
+        ])
+    );
+    assert_eq!(
+        open_container_slot_item(&store, BEACON_PAYMENT_SLOT),
+        item_stack(90, 1)
+    );
+    assert_eq!(
+        open_container_slot_item(&store, BEACON_HOTBAR_START),
+        item_stack(42, 1)
+    );
+    assert_eq!(
+        player_slot_item(&store, VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT),
+        item_stack(90, 2)
+    );
 }
 
 #[test]

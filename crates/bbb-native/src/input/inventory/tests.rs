@@ -2,8 +2,8 @@ use super::*;
 use std::collections::{BTreeMap, BTreeSet};
 
 use bbb_protocol::data_component_types::{
-    VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID,
-    VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
 };
 use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_DONKEY_ID;
@@ -7955,6 +7955,61 @@ fn specialized_container_drag_selection_uses_world_slot_rules() {
         &input,
         &world,
         enchantment_lapis_slot,
+    ));
+}
+
+#[test]
+fn mount_drag_selection_uses_equipment_and_storage_slot_rules() {
+    let mut input = ClientInputState::new(true);
+    input.inventory_quick_craft_button_num = Some(0);
+    let mut world = WorldStore::new();
+    world.set_default_item_component_type_ids(BTreeMap::from([(
+        90,
+        BTreeSet::from([VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID]),
+    )]));
+    world.set_default_item_equipment_slots(BTreeMap::from([(90, ItemEquipmentSlot::Saddle)]));
+    world.apply_add_entity(add_entity_with_type(42, 66));
+    world.apply_mount_screen_open(MountScreenOpen {
+        container_id: 7,
+        inventory_columns: 5,
+        entity_id: 42,
+    });
+    world.apply_container_set_content(ContainerSetContent {
+        container_id: 7,
+        state_id: 12,
+        items: vec![ItemStackSummary::empty(); 53],
+        carried_item: item_stack(90, 3),
+    });
+    let slots = inventory_screen_layout(&world).unwrap().slots;
+
+    assert!(local_inventory_can_add_quick_craft_slot(
+        &input,
+        &world,
+        slots[0].slot_id,
+    ));
+    assert!(!local_inventory_can_add_quick_craft_slot(
+        &input,
+        &world,
+        slots[1].slot_id,
+    ));
+    assert!(local_inventory_can_add_quick_craft_slot(
+        &input,
+        &world,
+        slots[2].slot_id,
+    ));
+
+    world.apply_set_cursor_item(SetCursorItem {
+        item: item_stack(43, 3),
+    });
+    assert!(!local_inventory_can_add_quick_craft_slot(
+        &input,
+        &world,
+        slots[0].slot_id,
+    ));
+    assert!(local_inventory_can_add_quick_craft_slot(
+        &input,
+        &world,
+        slots[2].slot_id,
     ));
 }
 

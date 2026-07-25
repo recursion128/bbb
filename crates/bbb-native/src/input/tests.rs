@@ -21365,6 +21365,15 @@ fn server_opened_container_hovered_number_and_offhand_keys_queue_swap_clicks() {
         assert_eq!(counters.held_slot_commands_queued, 0);
         assert_eq!(counters.player_action_commands_queued, 0);
         assert_eq!(world.local_player().selected_hotbar_slot, 0);
+        let changed_slots = if button_num == 40 {
+            [(0, HashedStack::Empty)].into()
+        } else {
+            [
+                (0, HashedStack::Empty),
+                (36 + i16::from(button_num), test_hashed_item_stack(42, 3)),
+            ]
+            .into()
+        };
         assert_eq!(
             rx.try_recv().unwrap(),
             NetCommand::ContainerClick(ContainerClick {
@@ -21373,10 +21382,22 @@ fn server_opened_container_hovered_number_and_offhand_keys_queue_swap_clicks() {
                 slot_num: 0,
                 button_num,
                 input: ContainerInput::Swap,
-                changed_slots: [].into(),
+                changed_slots,
                 carried_item: HashedStack::Empty,
             })
         );
+        assert_eq!(
+            test_open_container_slot_item(&world, 0),
+            ProtocolItemStackSummary::empty()
+        );
+        if button_num == 40 {
+            assert_eq!(test_player_slot_item(&world, 40), test_item_stack(42, 3));
+        } else {
+            assert_eq!(
+                test_open_container_slot_item(&world, 36 + i16::from(button_num)),
+                test_item_stack(42, 3)
+            );
+        }
     }
 }
 
@@ -26683,6 +26704,16 @@ fn open_container_slot_bundle_selection(world: &WorldStore, slot: i16) -> Option
         .iter()
         .find(|state| state.slot == slot)
         .map(|state| state.local_selected_bundle_item_index)
+}
+
+fn test_open_container_slot_item(world: &WorldStore, slot: i16) -> ProtocolItemStackSummary {
+    world
+        .inventory()
+        .open_container
+        .as_ref()
+        .and_then(|container| container.slots.iter().find(|state| state.slot == slot))
+        .map(|state| state.item.clone())
+        .unwrap_or_else(ProtocolItemStackSummary::empty)
 }
 
 fn anvil_container_world(

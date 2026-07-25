@@ -1752,8 +1752,17 @@ impl InventoryState {
         let Some(container) = self.active_container() else {
             return false;
         };
+        let mount_rules = local_mount_slot_rules(
+            ctx,
+            container.mount,
+            &container.slots,
+            container
+                .mount
+                .and_then(|_| self.open_mount_equipment_slot_visibility(ctx)),
+        );
         if container.container_id != INVENTORY_MENU_CONTAINER_ID
             && !menu_type_has_known_slot_rules(container.menu_type_id)
+            && mount_rules.is_none()
         {
             return false;
         }
@@ -1764,8 +1773,10 @@ impl InventoryState {
             ctx,
             container.container_id,
             container.menu_type_id,
+            mount_rules,
             &container.data_values,
             slot_num,
+            &slot.item,
             &self.cursor_item,
         ) else {
             return false;
@@ -1813,10 +1824,20 @@ impl InventoryState {
                 container.merchant_offers.clone(),
             )
         };
+        let mount_rules = local_mount_slot_rules(ctx, mount, &slots_before, mount_equipment_slots);
         let mut slots_after = slots_before.clone();
         let mut merchant_offers_after = merchant_offers.clone();
         let mut cursor_after = self.cursor_item.clone();
         let mut quick_craft_after = self.local_quick_craft.clone();
+        let external_offhand_before = (container_id != INVENTORY_MENU_CONTAINER_ID
+            && request.input == ProtocolContainerInput::Swap
+            && request.button_num == VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT as i8)
+            .then(|| {
+                self.local_offhand_item()
+                    .cloned()
+                    .unwrap_or_else(ProtocolItemStackSummary::empty)
+            });
+        let mut external_offhand_after = external_offhand_before.clone();
         let anvil_result_may_pickup = anvil_result_may_pickup(
             &data_values,
             ctx.local_player.abilities,
@@ -1979,8 +2000,11 @@ impl InventoryState {
                             ctx,
                             container_id,
                             menu_type_id,
+                            mount_rules,
                             &data_values,
                             request.slot_num,
+                            container_slot_item(&slots_after, request.slot_num)
+                                .unwrap_or(&ProtocolItemStackSummary::empty()),
                             &cursor_after,
                         ) else {
                             return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
@@ -2272,7 +2296,8 @@ impl InventoryState {
                 }
                 ProtocolContainerInput::Throw
                     if container_id == INVENTORY_MENU_CONTAINER_ID
-                        || menu_type_has_known_slot_rules(menu_type_id) =>
+                        || menu_type_has_known_slot_rules(menu_type_id)
+                        || mount_rules.is_some() =>
                 {
                     let slot_access = slots_after
                         .iter()
@@ -2282,8 +2307,10 @@ impl InventoryState {
                                 ctx,
                                 container_id,
                                 menu_type_id,
+                                mount_rules,
                                 &data_values,
                                 request.slot_num,
+                                &slot.item,
                                 &slot.item,
                             )
                         });
@@ -2296,8 +2323,47 @@ impl InventoryState {
                     )
                 }
                 ProtocolContainerInput::Swap
+                    if container_id != INVENTORY_MENU_CONTAINER_ID
+                        && request.button_num == VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT as i8
+                        && (menu_type_has_known_slot_rules(menu_type_id)
+                            || mount_rules.is_some()) =>
+                {
+                    let source_item = external_offhand_after
+                        .as_ref()
+                        .cloned()
+                        .expect("external offhand captured for button 40");
+                    let Some(target_access) = local_container_slot_access(
+                        ctx,
+                        container_id,
+                        menu_type_id,
+                        mount_rules,
+                        &data_values,
+                        request.slot_num,
+                        container_slot_item(&slots_after, request.slot_num)
+                            .unwrap_or(&ProtocolItemStackSummary::empty()),
+                        &source_item,
+                    ) else {
+                        return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+                            ProtocolContainerInput::Swap,
+                        ));
+                    };
+                    apply_external_offhand_swap_to_slots(
+                        container_id,
+                        &mut slots_after,
+                        &cursor_after,
+                        external_offhand_after
+                            .as_mut()
+                            .expect("external offhand captured for button 40"),
+                        request.slot_num,
+                        target_access,
+                        ctx.local_player.selected_hotbar_slot,
+                        &ctx.items.default_item_max_stack_sizes,
+                    )
+                }
+                ProtocolContainerInput::Swap
                     if (container_id == INVENTORY_MENU_CONTAINER_ID
-                        || menu_type_has_known_slot_rules(menu_type_id))
+                        || menu_type_has_known_slot_rules(menu_type_id)
+                        || mount_rules.is_some())
                         && swap_button_container_slot(
                             container_id,
                             &slots_after,
@@ -2315,8 +2381,11 @@ impl InventoryState {
                         ctx,
                         container_id,
                         menu_type_id,
+                        mount_rules,
                         &data_values,
                         request.slot_num,
+                        container_slot_item(&slots_after, request.slot_num)
+                            .unwrap_or(&ProtocolItemStackSummary::empty()),
                         &source_item,
                     ) else {
                         return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
@@ -2335,12 +2404,14 @@ impl InventoryState {
                 }
                 ProtocolContainerInput::QuickCraft
                     if container_id == INVENTORY_MENU_CONTAINER_ID
-                        || menu_type_has_known_slot_rules(menu_type_id) =>
+                        || menu_type_has_known_slot_rules(menu_type_id)
+                        || mount_rules.is_some() =>
                 {
                     apply_quick_craft_to_slots(
                         ctx,
                         container_id,
                         menu_type_id,
+                        mount_rules,
                         &data_values,
                         &mut slots_after,
                         &mut cursor_after,
@@ -2352,12 +2423,14 @@ impl InventoryState {
                 }
                 ProtocolContainerInput::PickupAll
                     if container_id == INVENTORY_MENU_CONTAINER_ID
-                        || menu_type_has_known_slot_rules(menu_type_id) =>
+                        || menu_type_has_known_slot_rules(menu_type_id)
+                        || mount_rules.is_some() =>
                 {
                     let Some(slot_access) = local_container_slot_accesses(
                         ctx,
                         container_id,
                         menu_type_id,
+                        mount_rules,
                         &data_values,
                         &slots_after,
                         &cursor_after,
@@ -2472,6 +2545,14 @@ impl InventoryState {
                 .max()
                 .unwrap_or(0);
             self.write_back_container_player_section(counters, total_slots, &write_back_rows);
+        }
+        if external_offhand_after != external_offhand_before {
+            self.set_player_inventory_slot_and_menu_slot(InventorySlot {
+                slot: VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+                item: external_offhand_after.expect("changed external offhand remains captured"),
+                local_selected_bundle_item_index: NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX,
+            });
+            self.update_inventory_slot_count(counters);
         }
 
         Ok(ProtocolContainerClick {
