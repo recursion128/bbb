@@ -5,6 +5,9 @@ use crate::entities::{
 };
 use crate::{LevelEventSoundRandomState, LocalInteractionSoundEffect};
 use bbb_pack::RegistryDependentItemComponentInitializer;
+use bbb_protocol::builtin_enum_component_values::{
+    VANILLA_DYE_COLOR_RED_ID, VANILLA_DYE_COLOR_YELLOW_ID,
+};
 use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
     VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_LOCK_TYPE_ID,
@@ -5433,7 +5436,7 @@ fn local_container_button_click_reproduces_loom_result_and_ui_sound() {
             registry_id: Some(1),
             asset_id: None,
             translation_key: None,
-            color_id: 4,
+            color_id: VANILLA_DYE_COLOR_YELLOW_ID,
         },
     );
     let mut dye = item_stack(43, 2);
@@ -5441,7 +5444,7 @@ fn local_container_button_click_reproduces_loom_result_and_ui_sound() {
     dye.component_patch
         .added_type_ids
         .push(VANILLA_DATA_COMPONENT_DYE_TYPE_ID);
-    dye.component_patch.dye_color_id = Some(14);
+    dye.component_patch.dye_color_id = Some(VANILLA_DYE_COLOR_RED_ID);
     let mut items = vec![ProtocolItemStackSummary::empty(); LOOM_TOTAL_SLOT_COUNT as usize];
     items[LOOM_BANNER_SLOT as usize] = banner.clone();
     items[LOOM_DYE_SLOT as usize] = dye;
@@ -5469,13 +5472,13 @@ fn local_container_button_click_reproduces_loom_result_and_ui_sound() {
                 registry_id: Some(1),
                 asset_id: None,
                 translation_key: None,
-                color_id: 4,
+                color_id: VANILLA_DYE_COLOR_YELLOW_ID,
             },
             bbb_protocol::packets::BannerPatternLayerSummary {
                 registry_id: Some(0),
                 asset_id: None,
                 translation_key: None,
-                color_id: 14,
+                color_id: VANILLA_DYE_COLOR_RED_ID,
             },
         ]
     );
@@ -5525,7 +5528,7 @@ fn local_container_button_click_rejects_loom_screen_at_six_pattern_limit() {
     dye.component_patch
         .added_type_ids
         .push(VANILLA_DATA_COMPONENT_DYE_TYPE_ID);
-    dye.component_patch.dye_color_id = Some(14);
+    dye.component_patch.dye_color_id = Some(VANILLA_DYE_COLOR_RED_ID);
     let mut items = vec![ProtocolItemStackSummary::empty(); LOOM_TOTAL_SLOT_COUNT as usize];
     items[LOOM_BANNER_SLOT as usize] = banner;
     items[LOOM_DYE_SLOT as usize] = dye;
