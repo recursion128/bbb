@@ -178,6 +178,22 @@ impl WorldStore {
         self.update_cooldown_count();
     }
 
+    pub(crate) fn add_local_item_cooldown(&mut self, cooldown_group: String, duration: i32) {
+        if duration <= 0 {
+            self.cooldowns.remove(&cooldown_group);
+        } else {
+            self.cooldowns.insert(
+                cooldown_group.clone(),
+                ItemCooldownState {
+                    cooldown_group,
+                    duration,
+                    remaining_ticks: duration,
+                },
+            );
+        }
+        self.update_cooldown_count();
+    }
+
     pub fn advance_item_cooldowns(&mut self, ticks: u32) -> usize {
         if ticks == 0 || self.cooldowns.is_empty() {
             return 0;

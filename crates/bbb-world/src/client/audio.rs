@@ -302,6 +302,15 @@ pub struct SoundEntityEventState {
     pub tickable: bool,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum LocalInteractionSoundEffect {
+    Positioned(SoundEventState),
+    Entity {
+        state: SoundEntityEventState,
+        position: Option<ProtocolVec3d>,
+    },
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TickableEntitySoundState {
     pub event: SoundEntityEventState,
@@ -1650,18 +1659,16 @@ impl WorldStore {
     /// Applies the ordered client-level random and sound-seed side effects of
     /// an item interaction sound.
     ///
-    /// Vanilla `FlintAndSteelItem` passes the local player as `except`, so
-    /// `ClientLevel.playSeededSound` plays it immediately. The pitch consumes
-    /// `ClientLevel.random`; the sound instance seed comes from Level's
-    /// separate `soundSeedGenerator`. Fire charges, lodestone compasses, and
-    /// both potion mud-conversion sounds pass `null`, so their local calls
-    /// advance the same random streams without emitting a client sound; server
-    /// packets perform the actual playback.
+    /// Vanilla flint-and-steel and instruments pass the local player as
+    /// `except`, so `ClientLevel.playSeededSound` plays them immediately.
+    /// Instrument playback is entity-bound; flint-and-steel is positioned.
+    /// Fire charges, lodestone compasses, and both potion mud-conversion sounds
+    /// pass `null`, so their local calls only advance the random streams.
     pub fn apply_local_interaction_sound_action(
         &mut self,
         action: LocalInteractionSoundAction,
         random: &mut LevelEventSoundRandomState,
-    ) -> Option<SoundEventState> {
+    ) -> Option<LocalInteractionSoundEffect> {
         let mut state = match action {
             LocalInteractionSoundAction::FlintAndSteelUse { pos } => block_sound_state(
                 pos,
@@ -1670,6 +1677,32 @@ impl WorldStore {
                 random.next_float() * 0.4 + 0.8,
                 SoundSource::Blocks.as_str(),
             ),
+            LocalInteractionSoundAction::InstrumentUse { hand } => {
+                let stack = self.local_item_in_hand(hand)?.clone();
+                let instrument = self.local_instrument_use_state(&stack)?;
+                let entity_id = self.local_player_id()?;
+                let sound = sound_event_summary_holder(&instrument.sound_event)?;
+                let seed = self.next_sound_seed();
+                if self.entities.is_silent(entity_id).unwrap_or(false) {
+                    return None;
+                }
+                let state = SoundEntityEventState {
+                    sound,
+                    source: SoundSource::Records.as_str().to_string(),
+                    entity_id,
+                    volume: instrument.range / 16.0,
+                    pitch: 1.0,
+                    seed,
+                    looping: false,
+                    linear_attenuation: true,
+                    tickable: false,
+                };
+                self.client_audio.last_sound_entity = Some(state.clone());
+                return Some(LocalInteractionSoundEffect::Entity {
+                    state,
+                    position: self.local_player_pose().map(|pose| pose.position),
+                });
+            }
             LocalInteractionSoundAction::SuppressedFireChargeUse => {
                 let _discarded_pitch = (random.next_float() - random.next_float()) * 0.2 + 1.0;
                 let _discarded_seed = self.next_sound_seed();
@@ -1686,7 +1719,9 @@ impl WorldStore {
             }
         };
         state.seed = self.next_sound_seed();
-        Some(self.record_positioned_sound(state))
+        Some(LocalInteractionSoundEffect::Positioned(
+            self.record_positioned_sound(state),
+        ))
     }
 
     /// Resolves a narrow entity-movement sound into the same positioned sound

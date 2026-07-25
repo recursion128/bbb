@@ -5,9 +5,9 @@ use bbb_protocol::packets::{
 };
 use bbb_world::{
     BlockPos as WorldBlockPos, ItemAttackRange, LevelEventSoundRandomState,
-    LocalDestroyBlockFinished, LocalInteractionResult, LocalInteractionSuccess,
-    LocalInteractionSwingSource, LocalItemUsePrediction, LocalPlayerPoseState,
-    LocalTargetUsePrediction, WorldStore,
+    LocalDestroyBlockFinished, LocalInteractionResult, LocalInteractionSoundEffect,
+    LocalInteractionSuccess, LocalInteractionSwingSource, LocalItemUsePrediction,
+    LocalPlayerPoseState, LocalTargetUsePrediction, WorldStore,
 };
 use tokio::sync::mpsc;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta};
@@ -539,9 +539,19 @@ fn apply_local_interaction_success(
     audio_events: &mut Option<&mut dyn AudioEventSink>,
 ) {
     if let Some(action) = success.sound_action {
-        if let Some(state) = world.apply_local_interaction_sound_action(action, level_random) {
+        if let Some(effect) = world.apply_local_interaction_sound_action(action, level_random) {
             if let Some(audio_events) = audio_events.as_deref_mut() {
-                audio_events.play_positioned_sound(&state);
+                match effect {
+                    LocalInteractionSoundEffect::Positioned(state) => {
+                        audio_events.play_positioned_sound(&state);
+                    }
+                    LocalInteractionSoundEffect::Entity { state, position } => {
+                        audio_events.play_entity_sound(
+                            &state,
+                            position.map(|position| [position.x, position.y, position.z]),
+                        );
+                    }
+                }
             }
         }
     }
@@ -951,7 +961,8 @@ mod tests {
     use bbb_protocol::data_component_types::{
         VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID, VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID,
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID,
+        VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID,
         VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID, VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
     };
     use bbb_protocol::equipment_slots::VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT;
@@ -959,15 +970,15 @@ mod tests {
         VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_BONE_MEAL_ID, VANILLA_ITEM_BRUSH_ID,
         VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID, VANILLA_ITEM_COMPASS_ID,
         VANILLA_ITEM_FIREWORK_ROCKET_ID, VANILLA_ITEM_FIRE_CHARGE_ID,
-        VANILLA_ITEM_FLINT_AND_STEEL_ID, VANILLA_ITEM_GLASS_BOTTLE_ID, VANILLA_ITEM_POTION_ID,
-        VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_STONE_ID,
+        VANILLA_ITEM_FLINT_AND_STEEL_ID, VANILLA_ITEM_GLASS_BOTTLE_ID, VANILLA_ITEM_GOAT_HORN_ID,
+        VANILLA_ITEM_POTION_ID, VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_STONE_ID,
     };
     use bbb_protocol::packets::{
         AddEntity, AdventureModePredicateDataSummary, AdventureModePredicateSummary, AttackEntity,
         AttackRangeSummary, BlockEntityData, BlockHitResult as ProtocolBlockHitResult,
         BlockHolderSetSummary, BlockPos as ProtocolBlockPos, BlockPredicateSummary, BlockUpdate,
         CommonPlayerSpawnInfo, ConsumableSummary, EntityEvent as ProtocolEntityEvent,
-        GameEvent as ProtocolGameEvent, InitializeBorder, InteractEntity,
+        GameEvent as ProtocolGameEvent, InitializeBorder, InstrumentSummary, InteractEntity,
         ItemStackSummary as ProtocolItemStackSummary, LodestoneTargetSummary, OpenSignEditor,
         PickItemFromBlock, PickItemFromEntity, PlayLogin, PlayerAbilities, PlayerAction,
         PlayerHealth, RegistryTags, RemoveEntities, SetPassengers,
@@ -989,6 +1000,7 @@ mod tests {
 
     #[derive(Default)]
     struct RecordingAudioSink {
+        entity_sounds: Vec<(bbb_world::SoundEntityEventState, Option<[f64; 3]>)>,
         positioned_sounds: Vec<bbb_world::SoundEventState>,
     }
 
@@ -1009,9 +1021,10 @@ mod tests {
 
         fn play_entity_sound(
             &mut self,
-            _state: &bbb_world::SoundEntityEventState,
-            _position: Option<[f64; 3]>,
+            state: &bbb_world::SoundEntityEventState,
+            position: Option<[f64; 3]>,
         ) {
+            self.entity_sounds.push((state.clone(), position));
         }
 
         fn play_jukebox_song(&mut self, _state: &bbb_world::JukeboxLevelEventState) {}
@@ -1251,6 +1264,130 @@ mod tests {
                 sequence: 0,
             })
         );
+    }
+
+    #[test]
+    fn right_mouse_instrument_use_starts_main_hand_cooldown_and_entity_sound() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        world.apply_login(&PlayLogin {
+            player_id: 42,
+            hardcore: false,
+            levels: vec!["minecraft:overworld".to_string()],
+            max_players: 20,
+            chunk_radius: 8,
+            simulation_distance: 6,
+            reduced_debug_info: false,
+            show_death_screen: true,
+            do_limited_crafting: false,
+            common_spawn_info: CommonPlayerSpawnInfo {
+                dimension_type_id: 0,
+                dimension: "minecraft:overworld".to_string(),
+                seed: 0,
+                game_type: 0,
+                previous_game_type: -1,
+                is_debug: false,
+                is_flat: false,
+                last_death_location: None,
+                portal_cooldown: 0,
+                sea_level: 63,
+            },
+            enforces_secure_chat: true,
+        });
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: ProtocolVec3d {
+                x: 1.25,
+                y: 64.0,
+                z: -3.5,
+            },
+            y_rot: 45.0,
+            x_rot: -20.0,
+            ..LocalPlayerPoseState::default()
+        });
+        let mut horn = item_stack(VANILLA_ITEM_GOAT_HORN_ID, 1);
+        horn.component_patch.added = 1;
+        horn.component_patch.added_type_ids = vec![VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID];
+        horn.component_patch.instrument_direct = Some(Box::new(InstrumentSummary {
+            sound_event: bbb_protocol::packets::SoundEventSummary {
+                registry_id: None,
+                sound_id: Some("example:test_horn".to_string()),
+                fixed_range_bits: Some(24.0_f32.to_bits()),
+            },
+            use_duration_bits: 3.25_f32.to_bits(),
+            range_bits: 96.0_f32.to_bits(),
+            description: "Test horn".to_string(),
+            description_styled: None,
+            description_nbt: None,
+        }));
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: horn,
+        });
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+            item: item_stack(VANILLA_ITEM_STONE_ID, 1),
+        });
+        let mut expected_seed_world = WorldStore::new();
+        let expected_seed = expected_seed_world.next_sound_seed();
+        let mut counters = NetCounters::default();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut audio = RecordingAudioSink::default();
+        let mut audio_events = Some(&mut audio as &mut dyn crate::audio_runtime::AudioEventSink);
+
+        handle_mouse_input_at_partial_tick_with_effects(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+            1.0,
+            &mut random,
+            &mut audio_events,
+        );
+        drop(audio_events);
+
+        assert!(world.local_player().interaction.using_item);
+        assert_eq!(
+            world.local_player().interaction.using_item_hand,
+            Some(InteractionHand::MainHand)
+        );
+        assert_eq!(
+            world
+                .cooldown("minecraft:goat_horn")
+                .map(|cooldown| cooldown.duration),
+            Some(65)
+        );
+        assert_eq!(counters.use_item_commands_queued, 1);
+        assert_eq!(counters.swing_commands_queued, 0);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::UseItem(UseItemCommand {
+                packet: UseItem {
+                    hand: InteractionHand::MainHand,
+                    sequence: 1,
+                    y_rot: 45.0,
+                    x_rot: -20.0,
+                },
+                selected_hotbar_slot: 0,
+            })
+        );
+        assert!(rx.try_recv().is_err());
+        assert!(audio.positioned_sounds.is_empty());
+        assert_eq!(audio.entity_sounds.len(), 1);
+        let (sound, position) = &audio.entity_sounds[0];
+        assert_eq!(sound.sound.kind, "direct");
+        assert_eq!(sound.sound.location.as_deref(), Some("example:test_horn"));
+        assert_eq!(sound.sound.fixed_range, Some(24.0));
+        assert_eq!(sound.source, "record");
+        assert_eq!(sound.entity_id, 42);
+        assert_eq!(sound.volume, 6.0);
+        assert_eq!(sound.pitch, 1.0);
+        assert_eq!(sound.seed, expected_seed);
+        assert_eq!(*position, Some([1.25, 64.0, -3.5]));
+        assert_eq!(world.last_sound_entity(), Some(sound));
     }
 
     #[test]

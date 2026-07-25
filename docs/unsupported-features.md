@@ -669,10 +669,6 @@ Commands:
   override families and swappable `Equippable` behavior. Override ownership must
   stay generated from local vanilla item classes instead of being inferred from
   component shape.
-- Complete `InstrumentItem.use` prediction from named and direct synchronized
-  holders: preserve sound/range/use-duration values in the ItemStack component,
-  play the local records-source sound, start the use pose, and apply the matching
-  cooldown without interpreting a custom holder through vanilla bootstrap order.
 
 Inventory:
 

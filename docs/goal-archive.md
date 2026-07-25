@@ -500,3 +500,6 @@
   内建 water holder 与实时 `convertable_to_mud` 标签预测泥默认态，完整执行
   生存/创造 `createFilledResult`、满背包客户端丢弃挥手，并为两次
   `null` excluded-player 音效推进种子而不提前播放或生成服务端 splash 粒子。
+- **2026-07-23（乐器 use 预测工程关闭）**：`InstrumentItem.use` 现解析命名与
+  直接 `INSTRUMENT` 持有者，按动态 duration/range 启动吹奏姿态、物品/组件冷却，
+  并以本地玩家实体播放 `records` 声源而不误用 Vanilla bootstrap holder 顺序。

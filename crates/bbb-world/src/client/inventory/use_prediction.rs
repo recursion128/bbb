@@ -51,6 +51,7 @@ use bbb_protocol::{
 
 mod bone_meal;
 mod ignition;
+mod instrument;
 mod potion;
 
 const VANILLA_DEFAULT_ENTITY_INTERACT_OWNER: &str = "net.minecraft.world.entity.Entity";
@@ -117,6 +118,7 @@ pub enum LocalInteractionSwingSource {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LocalInteractionSoundAction {
     FlintAndSteelUse { pos: BlockPos },
+    InstrumentUse { hand: InteractionHand },
     SuppressedFireChargeUse,
     SuppressedLodestoneCompassUse,
     SuppressedPotionMudConversion,
@@ -249,14 +251,24 @@ impl LocalInteractionSuccess {
             sound_action: Some(LocalInteractionSoundAction::SuppressedPotionMudConversion),
         }
     }
+
+    const fn instrument_use(hand: InteractionHand) -> Self {
+        Self {
+            swing_source: LocalInteractionSwingSource::None,
+            was_item_interaction: true,
+            starts_using_item: true,
+            extra_swing: None,
+            sound_action: Some(LocalInteractionSoundAction::InstrumentUse { hand }),
+        }
+    }
 }
 
 impl WorldStore {
-    /// Predicts vanilla `ItemStack.use` for item classes that inherit
-    /// `Item.use`. Source-derived override ownership keeps specialized item
-    /// classes explicit instead of guessing their result from components.
-    pub fn predict_local_item_use(&self, hand: InteractionHand) -> LocalItemUsePrediction {
-        let Some(stack) = self.local_item_in_hand(hand) else {
+    /// Predicts vanilla `ItemStack.use` for the default implementation and
+    /// implemented source-derived specialized owners. Remaining specialized
+    /// classes stay explicit instead of being guessed from component shape.
+    pub fn predict_local_item_use(&mut self, hand: InteractionHand) -> LocalItemUsePrediction {
+        let Some(stack) = self.local_item_in_hand(hand).cloned() else {
             return LocalItemUsePrediction::Result(LocalInteractionResult::Pass);
         };
         let Some(item_id) = stack.item_id else {
@@ -265,19 +277,23 @@ impl WorldStore {
         let Some(item_type) = vanilla_item_type(item_id) else {
             return LocalItemUsePrediction::UnknownItemType(Some(item_id));
         };
-        if let Some(use_override) = item_type.use_override {
-            return LocalItemUsePrediction::UnsupportedOverride(use_override);
-        }
-        if self.local_item_stack_is_on_cooldown(stack) {
+        if self.local_item_stack_is_on_cooldown(&stack) {
             return LocalItemUsePrediction::Result(LocalInteractionResult::Pass);
         }
+        if let Some(use_override) = item_type.use_override {
+            if use_override == VanillaItemUseOverride::InstrumentItem {
+                return self.predict_local_instrument_item_use(hand, &stack);
+            }
+            return LocalItemUsePrediction::UnsupportedOverride(use_override);
+        }
 
-        if self.item_stack_has_effective_component(stack, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID)
+        if self
+            .item_stack_has_effective_component(&stack, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID)
         {
             if !self.local_item_in_hand_can_start_consuming(hand) {
                 return LocalItemUsePrediction::Result(LocalInteractionResult::Fail);
             }
-            let Some(consumable) = self.effective_item_consumable(stack) else {
+            let Some(consumable) = self.effective_item_consumable(&stack) else {
                 return LocalItemUsePrediction::MissingComponentValue(
                     VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
                 );
@@ -290,7 +306,8 @@ impl WorldStore {
         // `Equippable.swapWithEquipmentSlot` depends on the target equipment
         // slot, enchantments, allowed entity set, and local inventory mutation.
         // Preserve that uncertainty until its prediction owner is implemented.
-        if self.item_stack_has_effective_component(stack, VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID)
+        if self
+            .item_stack_has_effective_component(&stack, VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID)
         {
             return LocalItemUsePrediction::MissingComponentValue(
                 VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
@@ -298,10 +315,10 @@ impl WorldStore {
         }
 
         if self.item_stack_has_effective_component(
-            stack,
+            &stack,
             VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
         ) || self.item_stack_has_effective_component(
-            stack,
+            &stack,
             VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
         ) {
             return LocalItemUsePrediction::Result(LocalInteractionResult::Success(
@@ -1935,23 +1952,24 @@ impl WorldStore {
     }
 
     fn local_item_stack_is_on_cooldown(&self, stack: &ProtocolItemStackSummary) -> bool {
-        if !self
-            .item_stack_has_effective_component(stack, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID)
-        {
-            return false;
-        }
+        self.local_item_stack_cooldown_group(stack)
+            .is_some_and(|group| self.cooldown(&group).is_some())
+    }
+
+    fn local_item_stack_cooldown_group(&self, stack: &ProtocolItemStackSummary) -> Option<String> {
         let effective = self.effective_item_stack(stack);
-        let cooldown_group = effective
-            .component_patch
-            .use_cooldown_group
-            .as_deref()
+        let configured_group = self
+            .item_stack_has_effective_component(stack, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID)
+            .then(|| effective.component_patch.use_cooldown_group.as_deref())
+            .flatten();
+        configured_group
             .or_else(|| {
                 stack
                     .item_id
                     .and_then(vanilla_item_type)
                     .map(|item| item.resource_id)
-            });
-        cooldown_group.is_some_and(|group| self.cooldown(group).is_some())
+            })
+            .map(str::to_owned)
     }
 }
 
@@ -1987,7 +2005,8 @@ mod tests {
         data_component_types::{
             VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
             VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID, VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
-            VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID,
+            VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+            VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID,
             VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
             VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
         },
@@ -2022,22 +2041,22 @@ mod tests {
             VANILLA_ITEM_END_CRYSTAL_ID, VANILLA_ITEM_FILLED_MAP_ID,
             VANILLA_ITEM_FIREWORK_ROCKET_ID, VANILLA_ITEM_FIRE_CHARGE_ID,
             VANILLA_ITEM_FLINT_AND_STEEL_ID, VANILLA_ITEM_GLASS_BOTTLE_ID,
-            VANILLA_ITEM_HONEYCOMB_ID, VANILLA_ITEM_IRON_AXE_ID, VANILLA_ITEM_IRON_HOE_ID,
-            VANILLA_ITEM_IRON_SHOVEL_ID, VANILLA_ITEM_LEAD_ID, VANILLA_ITEM_LILY_PAD_ID,
-            VANILLA_ITEM_MINECART_ID, VANILLA_ITEM_NAME_TAG_ID, VANILLA_ITEM_POPPY_ID,
-            VANILLA_ITEM_POTION_ID, VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_SADDLE_ID,
-            VANILLA_ITEM_SHEARS_ID, VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_SNOWBALL_ID,
-            VANILLA_ITEM_STONE_ID,
+            VANILLA_ITEM_GOAT_HORN_ID, VANILLA_ITEM_HONEYCOMB_ID, VANILLA_ITEM_IRON_AXE_ID,
+            VANILLA_ITEM_IRON_HOE_ID, VANILLA_ITEM_IRON_SHOVEL_ID, VANILLA_ITEM_LEAD_ID,
+            VANILLA_ITEM_LILY_PAD_ID, VANILLA_ITEM_MINECART_ID, VANILLA_ITEM_NAME_TAG_ID,
+            VANILLA_ITEM_POPPY_ID, VANILLA_ITEM_POTION_ID, VANILLA_ITEM_RED_DYE_ID,
+            VANILLA_ITEM_SADDLE_ID, VANILLA_ITEM_SHEARS_ID, VANILLA_ITEM_SHIELD_ID,
+            VANILLA_ITEM_SNOWBALL_ID, VANILLA_ITEM_STONE_ID,
         },
         packets::{
             AddEntity, AdventureModePredicateDataSummary, BlockHolderSetSummary,
             BlockPos as ProtocolBlockPos, BlockPredicateSummary, BlockUpdate,
             CommonPlayerSpawnInfo, Cooldown, DataComponentPatchSummary, EntityDataValue,
             EntityDataValueKind, EntityEvent, EquipmentSlotUpdate, EquippableSummary,
-            ItemEnchantmentSummary, ItemStackSummary, PlayLogin, PlayerHealth, RegistryData,
-            RegistryDataEntry, RegistryTags, SetChunkCacheCenter, SetEntityData, SetEntityLink,
-            SetEquipment, SetPassengers, SetPlayerInventory, SoundEventSummary, TagNetworkPayload,
-            UpdateEnabledFeatures, UpdateTags, Vec3d,
+            InstrumentSummary, ItemEnchantmentSummary, ItemStackSummary, PlayLogin, PlayerHealth,
+            RegistryData, RegistryDataEntry, RegistryTags, SetChunkCacheCenter, SetEntityData,
+            SetEntityLink, SetEquipment, SetPassengers, SetPlayerInventory, SoundEventSummary,
+            TagNetworkPayload, UpdateEnabledFeatures, UpdateTags, Vec3d,
         },
     };
     use std::collections::{BTreeMap, BTreeSet};
@@ -2066,6 +2085,39 @@ mod tests {
                 added: 1,
                 added_type_ids: vec![VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID],
                 potion_id: Some(potion_id),
+                ..DataComponentPatchSummary::default()
+            },
+        }
+    }
+
+    fn direct_instrument_stack(
+        use_duration: f32,
+        range: f32,
+        cooldown_group: Option<&str>,
+    ) -> ItemStackSummary {
+        let mut added_type_ids = vec![VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID];
+        if cooldown_group.is_some() {
+            added_type_ids.push(VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID);
+        }
+        ItemStackSummary {
+            item_id: Some(VANILLA_ITEM_GOAT_HORN_ID),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: added_type_ids.len(),
+                added_type_ids,
+                instrument_direct: Some(Box::new(InstrumentSummary {
+                    sound_event: SoundEventSummary {
+                        registry_id: None,
+                        sound_id: Some("example:direct_horn".to_string()),
+                        fixed_range_bits: Some(24.0_f32.to_bits()),
+                    },
+                    use_duration_bits: use_duration.to_bits(),
+                    range_bits: range.to_bits(),
+                    description: "Direct horn".to_string(),
+                    description_styled: None,
+                    description_nbt: None,
+                })),
+                use_cooldown_group: cooldown_group.map(str::to_owned),
                 ..DataComponentPatchSummary::default()
             },
         }
@@ -2372,6 +2424,171 @@ mod tests {
             world.predict_local_item_use(InteractionHand::MainHand),
             LocalItemUsePrediction::Result(LocalInteractionResult::Pass)
         );
+    }
+
+    #[test]
+    fn instrument_use_resolves_named_session_holder_and_applies_item_cooldown() {
+        let mut world = WorldStore::new();
+        world.record_registry_entries(
+            crate::INSTRUMENT_REGISTRY,
+            0,
+            vec![
+                crate::RegistryPacketEntry::stub("example:other_horn"),
+                crate::RegistryPacketEntry::with_known_pack_data_for_test(
+                    "example:network_horn",
+                    br#"{
+                        "sound_event":"minecraft:item.goat_horn.sound.0",
+                        "use_duration":7.05,
+                        "range":128.0,
+                        "description":"Network horn"
+                    }"#
+                    .to_vec(),
+                ),
+            ],
+        );
+        world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: ItemStackSummary {
+                item_id: Some(VANILLA_ITEM_GOAT_HORN_ID),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    added: 1,
+                    added_type_ids: vec![VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID],
+                    instrument_id: Some(1),
+                    ..DataComponentPatchSummary::default()
+                },
+            },
+        });
+        let instrument = world
+            .local_instrument_use_state(
+                world.local_item_in_hand(InteractionHand::MainHand).unwrap(),
+            )
+            .unwrap();
+        assert_eq!(
+            instrument.sound_event.registry_id,
+            bbb_protocol::sound_event_types::vanilla_sound_event_registry_id(
+                "minecraft:item.goat_horn.sound.0"
+            )
+        );
+        assert_eq!(instrument.sound_event.sound_id, None);
+
+        assert_eq!(
+            world.predict_local_item_use(InteractionHand::MainHand),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::instrument_use(InteractionHand::MainHand)
+            ))
+        );
+        assert_eq!(
+            world
+                .cooldown("minecraft:goat_horn")
+                .map(|cooldown| (cooldown.duration, cooldown.remaining_ticks)),
+            Some((141, 141))
+        );
+        assert_eq!(world.counters().cooldown_packets, 0);
+        assert_eq!(
+            world.predict_local_item_use(InteractionHand::MainHand),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+    }
+
+    #[test]
+    fn instrument_use_resolves_direct_payload_sound_and_custom_cooldown_group() {
+        let mut expected_seed = crate::SoundSeedRandomState::default();
+        let expected_seed = expected_seed.next_long();
+        let mut world = tool_use_world_with_login(
+            block_state_id("minecraft:air", []),
+            Some(("minecraft:overworld", VANILLA_GAME_TYPE_SURVIVAL_ID as i8)),
+        );
+        world.set_local_player_pose(crate::LocalPlayerPoseState {
+            position: Vec3d {
+                x: 1.25,
+                y: 64.0,
+                z: -3.5,
+            },
+            ..crate::LocalPlayerPoseState::default()
+        });
+        world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: direct_instrument_stack(3.25, 96.0, Some("example:horns")),
+        });
+
+        assert_eq!(
+            world.predict_local_item_use(InteractionHand::MainHand),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::instrument_use(InteractionHand::MainHand)
+            ))
+        );
+        assert_eq!(
+            world
+                .cooldown("example:horns")
+                .map(|cooldown| cooldown.duration),
+            Some(65)
+        );
+        let effect = world
+            .apply_local_interaction_sound_action(
+                LocalInteractionSoundAction::InstrumentUse {
+                    hand: InteractionHand::MainHand,
+                },
+                &mut crate::LevelEventSoundRandomState::default(),
+            )
+            .unwrap();
+        let crate::LocalInteractionSoundEffect::Entity { state, position } = effect else {
+            panic!("instrument use must produce an entity-bound sound");
+        };
+        assert_eq!(state.sound.kind, "direct");
+        assert_eq!(state.sound.location.as_deref(), Some("example:direct_horn"));
+        assert_eq!(state.sound.fixed_range, Some(24.0));
+        assert_eq!(state.source, "record");
+        assert_eq!(state.entity_id, 7);
+        assert_eq!(state.volume, 6.0);
+        assert_eq!(state.pitch, 1.0);
+        assert_eq!(state.seed, expected_seed);
+        assert!(!state.looping);
+        assert!(state.linear_attenuation);
+        assert!(!state.tickable);
+        assert_eq!(
+            position,
+            Some(Vec3d {
+                x: 1.25,
+                y: 64.0,
+                z: -3.5,
+            })
+        );
+        assert_eq!(world.last_sound_entity(), Some(&state));
+    }
+
+    #[test]
+    fn instrument_use_without_effective_component_fails_and_invalid_payload_stays_explicit() {
+        let mut world = WorldStore::new();
+        set_main_hand(&mut world, VANILLA_ITEM_GOAT_HORN_ID);
+        assert_eq!(
+            world.predict_local_item_use(InteractionHand::MainHand),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Fail)
+        );
+
+        world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: ItemStackSummary {
+                item_id: Some(VANILLA_ITEM_GOAT_HORN_ID),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    added: 1,
+                    added_type_ids: vec![VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID],
+                    instrument_id: Some(0),
+                    instrument_direct: direct_instrument_stack(1.0, 16.0, None)
+                        .component_patch
+                        .instrument_direct,
+                    ..DataComponentPatchSummary::default()
+                },
+            },
+        });
+        assert_eq!(
+            world.predict_local_item_use(InteractionHand::MainHand),
+            LocalItemUsePrediction::MissingComponentValue(
+                VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID
+            )
+        );
+        assert!(world.cooldowns().is_empty());
     }
 
     #[test]
