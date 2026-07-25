@@ -1653,9 +1653,10 @@ impl WorldStore {
     /// Vanilla `FlintAndSteelItem` passes the local player as `except`, so
     /// `ClientLevel.playSeededSound` plays it immediately. The pitch consumes
     /// `ClientLevel.random`; the sound instance seed comes from Level's
-    /// separate `soundSeedGenerator`. Fire charges and lodestone compasses pass
-    /// `null`, so their local call advances the same random streams without
-    /// emitting a client sound; the server packet performs the actual playback.
+    /// separate `soundSeedGenerator`. Fire charges, lodestone compasses, and
+    /// both potion mud-conversion sounds pass `null`, so their local calls
+    /// advance the same random streams without emitting a client sound; server
+    /// packets perform the actual playback.
     pub fn apply_local_interaction_sound_action(
         &mut self,
         action: LocalInteractionSoundAction,
@@ -1676,6 +1677,11 @@ impl WorldStore {
             }
             LocalInteractionSoundAction::SuppressedLodestoneCompassUse => {
                 let _discarded_seed = self.next_sound_seed();
+                return None;
+            }
+            LocalInteractionSoundAction::SuppressedPotionMudConversion => {
+                let _discarded_splash_seed = self.next_sound_seed();
+                let _discarded_bottle_empty_seed = self.next_sound_seed();
                 return None;
             }
         };

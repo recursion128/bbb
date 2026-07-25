@@ -946,19 +946,21 @@ fn scroll_signum(value: f64) -> f64 {
 mod tests {
     use super::*;
     use bbb_net::{AttackEntityCommand, InteractEntityCommand, UseItemCommand, UseItemOnCommand};
+    use bbb_protocol::block_types::VANILLA_BLOCK_DIRT_ID;
     use bbb_protocol::builtin_enum_component_values::VANILLA_DYE_COLOR_RED_ID;
     use bbb_protocol::data_component_types::{
         VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID, VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID,
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
         VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID,
-        VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
+        VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID, VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
     };
     use bbb_protocol::equipment_slots::VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT;
     use bbb_protocol::item_types::{
         VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_BONE_MEAL_ID, VANILLA_ITEM_BRUSH_ID,
         VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID, VANILLA_ITEM_COMPASS_ID,
         VANILLA_ITEM_FIREWORK_ROCKET_ID, VANILLA_ITEM_FIRE_CHARGE_ID,
-        VANILLA_ITEM_FLINT_AND_STEEL_ID, VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_STONE_ID,
+        VANILLA_ITEM_FLINT_AND_STEEL_ID, VANILLA_ITEM_GLASS_BOTTLE_ID, VANILLA_ITEM_POTION_ID,
+        VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_STONE_ID,
     };
     use bbb_protocol::packets::{
         AddEntity, AdventureModePredicateDataSummary, AdventureModePredicateSummary, AttackEntity,
@@ -4116,6 +4118,99 @@ mod tests {
     }
 
     #[test]
+    fn water_potion_mud_conversion_mutates_once_and_advances_suppressed_sounds() {
+        let (tx, mut rx) = mpsc::channel(3);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_block();
+        assert!(world.apply_block_update(BlockUpdate {
+            pos: ProtocolBlockPos {
+                x: CROSSHAIR_BLOCK_POS.x,
+                y: CROSSHAIR_BLOCK_POS.y,
+                z: CROSSHAIR_BLOCK_POS.z,
+            },
+            block_state_id: test_block_state_id("minecraft:dirt", &[]),
+        }));
+        world.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: "minecraft:block".to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: "minecraft:convertable_to_mud".to_string(),
+                    entries: vec![VANILLA_BLOCK_DIRT_ID],
+                }],
+            }],
+        });
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: water_potion_item_stack(1),
+        });
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+            item: item_stack(VANILLA_ITEM_STONE_ID, 1),
+        });
+        let mut expected_seed_world = WorldStore::new();
+        let _discarded_splash_seed = expected_seed_world.next_sound_seed();
+        let _discarded_bottle_empty_seed = expected_seed_world.next_sound_seed();
+        let expected_next_seed = expected_seed_world.next_sound_seed();
+        let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut audio = RecordingAudioSink::default();
+        let mut audio_events = Some(&mut audio as &mut dyn crate::audio_runtime::AudioEventSink);
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input_at_partial_tick_with_effects(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+            1.0,
+            &mut random,
+            &mut audio_events,
+        );
+        drop(audio_events);
+
+        assert_eq!(counters.use_item_on_commands_queued, 1);
+        assert_eq!(counters.swing_commands_queued, 1);
+        let NetCommand::UseItemOn(command) = rx.try_recv().unwrap() else {
+            panic!("expected potion use-on command");
+        };
+        assert_eq!(command.packet.hand, InteractionHand::MainHand);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
+        assert!(rx.try_recv().is_err());
+        assert_eq!(
+            world
+                .local_item_in_hand(InteractionHand::MainHand)
+                .unwrap()
+                .item_id,
+            Some(VANILLA_ITEM_GLASS_BOTTLE_ID)
+        );
+        assert_eq!(
+            world
+                .local_item_in_hand(InteractionHand::OffHand)
+                .unwrap()
+                .item_id,
+            Some(VANILLA_ITEM_STONE_ID)
+        );
+        assert_eq!(
+            world
+                .probe_block(CROSSHAIR_BLOCK_POS)
+                .unwrap()
+                .block_state_id,
+            test_block_state_id("minecraft:mud", &[])
+        );
+        assert_eq!(world.local_block_predictions().len(), 1);
+        assert!(audio.positioned_sounds.is_empty());
+        assert!(world.client_audio().last_sound.is_none());
+        assert_eq!(random.next_float(), expected_random.next_float());
+        assert_eq!(world.next_sound_seed(), expected_next_seed);
+    }
+
+    #[test]
     fn brush_use_on_starts_main_hand_use_without_swing_or_offhand() {
         let (tx, mut rx) = mpsc::channel(2);
         let commands = Some(tx);
@@ -5211,6 +5306,17 @@ mod tests {
             count,
             component_patch: Default::default(),
         }
+    }
+
+    fn water_potion_item_stack(count: i32) -> ProtocolItemStackSummary {
+        let mut stack = item_stack(VANILLA_ITEM_POTION_ID, count);
+        stack.component_patch.added = 1;
+        stack
+            .component_patch
+            .added_type_ids
+            .push(VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID);
+        stack.component_patch.potion_id = Some(0);
+        stack
     }
 
     fn install_consumable(world: &mut WorldStore, slot: i32, item_id: i32, consume_seconds: f32) {

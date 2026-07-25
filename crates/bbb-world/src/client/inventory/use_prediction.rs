@@ -51,6 +51,7 @@ use bbb_protocol::{
 
 mod bone_meal;
 mod ignition;
+mod potion;
 
 const VANILLA_DEFAULT_ENTITY_INTERACT_OWNER: &str = "net.minecraft.world.entity.Entity";
 const VANILLA_MOB_ENTITY_INTERACT_OWNER: &str = "net.minecraft.world.entity.Mob";
@@ -118,6 +119,7 @@ pub enum LocalInteractionSoundAction {
     FlintAndSteelUse { pos: BlockPos },
     SuppressedFireChargeUse,
     SuppressedLodestoneCompassUse,
+    SuppressedPotionMudConversion,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -231,6 +233,20 @@ impl LocalInteractionSuccess {
             starts_using_item: false,
             extra_swing: None,
             sound_action: Some(sound_action),
+        }
+    }
+
+    const fn potion_mud_conversion(dropped: bool) -> Self {
+        Self {
+            swing_source: LocalInteractionSwingSource::Client,
+            was_item_interaction: true,
+            starts_using_item: false,
+            extra_swing: if dropped {
+                Some(InteractionHand::MainHand)
+            } else {
+                None
+            },
+            sound_action: Some(LocalInteractionSoundAction::SuppressedPotionMudConversion),
         }
     }
 }
@@ -646,6 +662,9 @@ impl WorldStore {
             }
             VanillaItemUseOnOverride::BoneMealItem => {
                 Some(self.predict_local_bone_meal_item_use_on(owner, context))
+            }
+            VanillaItemUseOnOverride::PotionItem => {
+                Some(self.predict_local_potion_item_use_on(owner, hand, context))
             }
             VanillaItemUseOnOverride::EnderEyeItem => {
                 let block = self.probe_block(context.pos)?;
@@ -1961,13 +1980,15 @@ mod tests {
             vanilla_block_type, vanilla_block_type_for_resource_id, VanillaBlockUseItemOnOverride,
             VanillaBlockUseWithoutItemOverride, VanillaBonemealTargetOverride,
             VANILLA_BLOCK_CAKE_ID, VANILLA_BLOCK_CHEST_ID, VANILLA_BLOCK_CRIMSON_NYLIUM_ID,
-            VANILLA_BLOCK_RAIL_ID, VANILLA_BLOCK_STONE_ID, VANILLA_BLOCK_WHITE_BANNER_ID,
+            VANILLA_BLOCK_DIRT_ID, VANILLA_BLOCK_RAIL_ID, VANILLA_BLOCK_STONE_ID,
+            VANILLA_BLOCK_WHITE_BANNER_ID,
         },
         builtin_enum_component_values::VANILLA_DYE_COLOR_RED_ID,
         data_component_types::{
             VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
             VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID, VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
             VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID,
+            VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
             VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
         },
         entity_data_serializers::{
@@ -2000,10 +2021,11 @@ mod tests {
             VANILLA_ITEM_COMPASS_ID, VANILLA_ITEM_DEBUG_STICK_ID, VANILLA_ITEM_ENDER_EYE_ID,
             VANILLA_ITEM_END_CRYSTAL_ID, VANILLA_ITEM_FILLED_MAP_ID,
             VANILLA_ITEM_FIREWORK_ROCKET_ID, VANILLA_ITEM_FIRE_CHARGE_ID,
-            VANILLA_ITEM_FLINT_AND_STEEL_ID, VANILLA_ITEM_HONEYCOMB_ID, VANILLA_ITEM_IRON_AXE_ID,
-            VANILLA_ITEM_IRON_HOE_ID, VANILLA_ITEM_IRON_SHOVEL_ID, VANILLA_ITEM_LEAD_ID,
-            VANILLA_ITEM_LILY_PAD_ID, VANILLA_ITEM_MINECART_ID, VANILLA_ITEM_NAME_TAG_ID,
-            VANILLA_ITEM_POPPY_ID, VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_SADDLE_ID,
+            VANILLA_ITEM_FLINT_AND_STEEL_ID, VANILLA_ITEM_GLASS_BOTTLE_ID,
+            VANILLA_ITEM_HONEYCOMB_ID, VANILLA_ITEM_IRON_AXE_ID, VANILLA_ITEM_IRON_HOE_ID,
+            VANILLA_ITEM_IRON_SHOVEL_ID, VANILLA_ITEM_LEAD_ID, VANILLA_ITEM_LILY_PAD_ID,
+            VANILLA_ITEM_MINECART_ID, VANILLA_ITEM_NAME_TAG_ID, VANILLA_ITEM_POPPY_ID,
+            VANILLA_ITEM_POTION_ID, VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_SADDLE_ID,
             VANILLA_ITEM_SHEARS_ID, VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_SNOWBALL_ID,
             VANILLA_ITEM_STONE_ID,
         },
@@ -2033,6 +2055,31 @@ mod tests {
         world.apply_set_player_inventory(SetPlayerInventory {
             slot: 0,
             item: stack(item_id),
+        });
+    }
+
+    fn potion_stack(potion_id: i32, count: i32) -> ItemStackSummary {
+        ItemStackSummary {
+            item_id: Some(VANILLA_ITEM_POTION_ID),
+            count,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID],
+                potion_id: Some(potion_id),
+                ..DataComponentPatchSummary::default()
+            },
+        }
+    }
+
+    fn install_convertable_to_mud_tag(world: &mut WorldStore) {
+        world.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: "minecraft:block".to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: "minecraft:convertable_to_mud".to_string(),
+                    entries: vec![VANILLA_BLOCK_DIRT_ID],
+                }],
+            }],
         });
     }
 
@@ -2371,6 +2418,217 @@ mod tests {
             ),
             LocalTargetUsePrediction::UnsupportedItemUseOn(VanillaItemUseOnOverride::BlockItem)
         );
+    }
+
+    #[test]
+    fn water_potion_mud_conversion_predicts_block_and_filled_result() {
+        let mut world = tool_use_world(block_state_id("minecraft:air", []));
+        install_convertable_to_mud_tag(&mut world);
+        let clicked = BlockPos { x: 8, y: 8, z: 8 };
+        let dirt = block_state_id("minecraft:dirt", []);
+        let mud = block_state_id("minecraft:mud", []);
+        set_block(&mut world, clicked, dirt);
+        world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: potion_stack(0, 1),
+        });
+
+        assert_eq!(
+            world.predict_local_block_use(
+                clicked,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                false,
+                31,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::potion_mud_conversion(false)
+            ))
+        );
+        assert_eq!(world.probe_block(clicked).unwrap().block_state_id, mud);
+        let hand = player_inventory_item(&world, 0);
+        assert_eq!(hand.item_id, Some(VANILLA_ITEM_GLASS_BOTTLE_ID));
+        assert_eq!(hand.count, 1);
+        assert_eq!(world.local_block_predictions().len(), 1);
+        assert_eq!(world.local_block_predictions()[0].sequence, 31);
+    }
+
+    #[test]
+    fn potion_mud_conversion_preserves_live_tag_holder_and_face_gates() {
+        let clicked = BlockPos { x: 8, y: 8, z: 8 };
+        let dirt = block_state_id("minecraft:dirt", []);
+        let mut world = tool_use_world(block_state_id("minecraft:air", []));
+        set_block(&mut world, clicked, dirt);
+        world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: potion_stack(0, 1),
+        });
+
+        assert_eq!(
+            world.predict_local_block_use(
+                clicked,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                false,
+                1,
+            ),
+            LocalTargetUsePrediction::UnsupportedItemUseOn(VanillaItemUseOnOverride::PotionItem)
+        );
+
+        install_convertable_to_mud_tag(&mut world);
+        world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: potion_stack(1, 1),
+        });
+        assert_eq!(
+            world.predict_local_block_use(
+                clicked,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                false,
+                2,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+
+        world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: potion_stack(0, 1),
+        });
+        assert_eq!(
+            world.predict_local_block_use(
+                clicked,
+                ProtocolDirection::Down,
+                InteractionHand::MainHand,
+                false,
+                3,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+        assert_eq!(world.probe_block(clicked).unwrap().block_state_id, dirt);
+        assert_eq!(
+            player_inventory_item(&world, 0).item_id,
+            Some(VANILLA_ITEM_POTION_ID)
+        );
+        assert!(world.local_block_predictions().is_empty());
+    }
+
+    #[test]
+    fn potion_filled_result_tracks_creative_and_full_inventory_branches() {
+        let clicked = BlockPos { x: 8, y: 8, z: 8 };
+        let dirt = block_state_id("minecraft:dirt", []);
+        let mut creative = tool_use_world(block_state_id("minecraft:air", []));
+        install_convertable_to_mud_tag(&mut creative);
+        set_block(&mut creative, clicked, dirt);
+        creative.apply_player_abilities(bbb_protocol::packets::PlayerAbilities {
+            invulnerable: true,
+            flying: false,
+            can_fly: true,
+            instabuild: true,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        });
+        creative.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: potion_stack(0, 1),
+        });
+        assert_eq!(
+            creative.predict_local_block_use(
+                clicked,
+                ProtocolDirection::North,
+                InteractionHand::MainHand,
+                false,
+                4,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::potion_mud_conversion(false)
+            ))
+        );
+        assert_eq!(
+            player_inventory_item(&creative, 0).item_id,
+            Some(VANILLA_ITEM_POTION_ID)
+        );
+        assert_eq!(
+            player_inventory_item(&creative, 1).item_id,
+            Some(VANILLA_ITEM_GLASS_BOTTLE_ID)
+        );
+        assert_eq!(creative.sync_ended_local_block_predictions(4), 1);
+        assert_eq!(creative.probe_block(clicked).unwrap().block_state_id, dirt);
+        assert_eq!(
+            creative.predict_local_block_use(
+                clicked,
+                ProtocolDirection::North,
+                InteractionHand::MainHand,
+                false,
+                5,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::potion_mud_conversion(false)
+            ))
+        );
+        assert_eq!(player_inventory_item(&creative, 1).count, 1);
+        assert!(creative
+            .inventory()
+            .player_slots
+            .iter()
+            .all(|slot| slot.slot == 1 || slot.item.item_id != Some(VANILLA_ITEM_GLASS_BOTTLE_ID)));
+
+        let mut stacked = tool_use_world(block_state_id("minecraft:air", []));
+        install_convertable_to_mud_tag(&mut stacked);
+        set_block(&mut stacked, clicked, dirt);
+        stacked.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: potion_stack(0, 2),
+        });
+        assert_eq!(
+            stacked.predict_local_block_use(
+                clicked,
+                ProtocolDirection::North,
+                InteractionHand::MainHand,
+                false,
+                6,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::potion_mud_conversion(false)
+            ))
+        );
+        assert_eq!(player_inventory_item(&stacked, 0).count, 1);
+        assert_eq!(
+            player_inventory_item(&stacked, 1).item_id,
+            Some(VANILLA_ITEM_GLASS_BOTTLE_ID)
+        );
+
+        let mut full = tool_use_world(block_state_id("minecraft:air", []));
+        install_convertable_to_mud_tag(&mut full);
+        set_block(&mut full, clicked, dirt);
+        for slot in 0..36 {
+            full.apply_set_player_inventory(SetPlayerInventory {
+                slot,
+                item: stack(VANILLA_ITEM_STONE_ID),
+            });
+        }
+        full.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: potion_stack(0, 2),
+        });
+        assert_eq!(
+            full.predict_local_block_use(
+                clicked,
+                ProtocolDirection::North,
+                InteractionHand::MainHand,
+                false,
+                7,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::potion_mud_conversion(true)
+            ))
+        );
+        assert_eq!(player_inventory_item(&full, 0).count, 1);
+        assert!(full
+            .inventory()
+            .player_slots
+            .iter()
+            .all(|slot| { slot.item.item_id != Some(VANILLA_ITEM_GLASS_BOTTLE_ID) }));
     }
 
     #[test]

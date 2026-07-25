@@ -496,3 +496,7 @@
 - **2026-07-23（骨粉 useOn 预测工程关闭）**：`BoneMealItem` 现按生成的
   Bonemealable owner、replaceable/skylight 属性、实时 NYLIUM 标签与邻域形状，
   精确区分客户端作物 `PASS` 和满水方块 `SUCCESS`，且只在后者本地挥手。
+- **2026-07-23（水药水泥化 useOn 预测工程关闭）**：`PotionItem.useOn` 现按
+  内建 water holder 与实时 `convertable_to_mud` 标签预测泥默认态，完整执行
+  生存/创造 `createFilledResult`、满背包客户端丢弃挥手，并为两次
+  `null` excluded-player 音效推进种子而不提前播放或生成服务端 splash 粒子。

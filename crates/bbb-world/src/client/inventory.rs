@@ -20,6 +20,7 @@ use bbb_protocol::equipment_slots::{
 };
 use bbb_protocol::item_types::{
     vanilla_item_type, VANILLA_ITEM_COMPASS_ID, VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE,
+    VANILLA_ITEM_GLASS_BOTTLE_ID, VANILLA_ITEM_POTION_ID,
 };
 use bbb_protocol::menu_types::{
     VANILLA_MENU_TYPE_ANVIL_ID, VANILLA_MENU_TYPE_BEACON_ID, VANILLA_MENU_TYPE_BLAST_FURNACE_ID,
@@ -1368,48 +1369,115 @@ impl InventoryState {
             self.set_player_inventory_slot_and_menu_slot(hand_slot);
         }
 
-        let selected_slot = i32::from(ctx.local_player.selected_hotbar_slot.min(8));
-        let mut added = false;
-        for slot_id in [selected_slot, VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT]
-            .into_iter()
-            .chain(0..36)
-        {
-            let mut slot = self.player_inventory_slot(slot_id);
-            if item_stack_is_empty(&slot.item)
-                || !same_item_same_components(&slot.item, &lodestone_compass)
-            {
-                continue;
-            }
-            let max_stack_size =
-                item_stack_max_stack_size(&slot.item, &ctx.items.default_item_max_stack_sizes);
-            if max_stack_size <= 1 || slot.item.count >= max_stack_size {
-                continue;
-            }
-            slot.item.count += 1;
-            self.set_player_inventory_slot_and_menu_slot(slot);
-            added = true;
-            break;
-        }
-        if !added {
-            for slot_id in 0..36 {
-                let slot = self.player_inventory_slot(slot_id);
-                if !item_stack_is_empty(&slot.item) {
-                    continue;
-                }
-                self.set_player_inventory_slot_and_menu_slot(InventorySlot {
-                    slot: slot_id,
-                    item: lodestone_compass.clone(),
-                    local_selected_bundle_item_index: NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX,
-                });
-                added = true;
-                break;
-            }
-        }
+        let added = self.add_local_item_to_player_inventory(ctx, lodestone_compass);
 
         if !instabuild || added {
             self.update_inventory_slot_count(counters);
         }
         Some(!instabuild && !added)
+    }
+
+    /// Applies `ItemUtils.createFilledResult` for `PotionItem.useOn`.
+    ///
+    /// The returned flag identifies the survival/full-inventory branch where
+    /// vanilla calls `Player.drop`; on the logical client that call contributes
+    /// an extra main-hand swing without spawning an item entity.
+    pub(crate) fn replace_local_potion_with_glass_bottle(
+        &mut self,
+        ctx: InventoryCtx<'_>,
+        counters: &mut WorldCounters,
+        hand: InteractionHand,
+    ) -> Option<bool> {
+        let hand_slot_id = match hand {
+            InteractionHand::MainHand => {
+                let selected_slot = ctx.local_player.selected_hotbar_slot;
+                (selected_slot <= 8).then_some(i32::from(selected_slot))?
+            }
+            InteractionHand::OffHand => VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+        };
+        let mut hand_slot = self.player_inventory_slot(hand_slot_id);
+        if item_stack_is_empty(&hand_slot.item)
+            || hand_slot.item.item_id != Some(VANILLA_ITEM_POTION_ID)
+        {
+            return None;
+        }
+
+        let bottle = ProtocolItemStackSummary {
+            item_id: Some(VANILLA_ITEM_GLASS_BOTTLE_ID),
+            count: 1,
+            component_patch: ProtocolDataComponentPatchSummary::default(),
+        };
+        let instabuild = ctx
+            .local_player
+            .abilities
+            .is_some_and(|abilities| abilities.instabuild);
+        if instabuild {
+            let already_contains_bottle = (0..=VANILLA_PLAYER_INVENTORY_SADDLE_SLOT)
+                .map(|slot_id| self.player_inventory_slot(slot_id))
+                .any(|slot| {
+                    !item_stack_is_empty(&slot.item)
+                        && same_item_same_components(&slot.item, &bottle)
+                });
+            if !already_contains_bottle && self.add_local_item_to_player_inventory(ctx, bottle) {
+                self.update_inventory_slot_count(counters);
+            }
+            return Some(false);
+        }
+
+        if hand_slot.item.count == 1 {
+            hand_slot.item = bottle;
+            self.set_player_inventory_slot_and_menu_slot(hand_slot);
+            self.update_inventory_slot_count(counters);
+            return Some(false);
+        }
+
+        hand_slot.item.count -= 1;
+        normalize_item_stack(&mut hand_slot.item);
+        self.set_player_inventory_slot_and_menu_slot(hand_slot);
+        let added = self.add_local_item_to_player_inventory(ctx, bottle);
+        self.update_inventory_slot_count(counters);
+        Some(!added)
+    }
+
+    /// Mirrors the one-stack `Inventory.add` search order used by filled-item
+    /// results: selected slot, offhand, all non-equipment slots, then the first
+    /// empty non-equipment slot.
+    fn add_local_item_to_player_inventory(
+        &mut self,
+        ctx: InventoryCtx<'_>,
+        item: ProtocolItemStackSummary,
+    ) -> bool {
+        let selected_slot = i32::from(ctx.local_player.selected_hotbar_slot.min(8));
+        for slot_id in [selected_slot, VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT]
+            .into_iter()
+            .chain(0..36)
+        {
+            let mut slot = self.player_inventory_slot(slot_id);
+            if item_stack_is_empty(&slot.item) || !same_item_same_components(&slot.item, &item) {
+                continue;
+            }
+            let max_stack_size =
+                item_stack_max_stack_size(&slot.item, &ctx.items.default_item_max_stack_sizes);
+            if slot.item.count >= max_stack_size {
+                continue;
+            }
+            slot.item.count += item.count;
+            self.set_player_inventory_slot_and_menu_slot(slot);
+            return true;
+        }
+        for slot_id in 0..36 {
+            let slot = self.player_inventory_slot(slot_id);
+            if !item_stack_is_empty(&slot.item) {
+                continue;
+            }
+            self.set_player_inventory_slot_and_menu_slot(InventorySlot {
+                slot: slot_id,
+                item,
+                local_selected_bundle_item_index: NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX,
+            });
+            return true;
+        }
+        false
     }
 
     pub(crate) fn set_local_merchant_selected_offer(
@@ -2649,6 +2717,17 @@ impl WorldStore {
             &mut self.counters,
             hand,
             target,
+        )
+    }
+
+    pub(crate) fn replace_local_potion_with_glass_bottle(
+        &mut self,
+        hand: InteractionHand,
+    ) -> Option<bool> {
+        self.inventory.replace_local_potion_with_glass_bottle(
+            inventory_ctx!(self),
+            &mut self.counters,
+            hand,
         )
     }
 
