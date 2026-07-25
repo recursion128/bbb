@@ -4,9 +4,11 @@ use crate::{
         vanilla_entity_metadata_abstract_horse_accessors_for_entity_type,
         vanilla_entity_metadata_age_locked_accessor_for_entity_type,
         vanilla_entity_metadata_armor_stand_accessors_for_entity_type,
+        vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type,
         vanilla_entity_metadata_interact_owner,
         vanilla_entity_metadata_interaction_accessors_for_entity_type,
         vanilla_entity_metadata_mob_interact_owner,
+        vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type,
         vanilla_entity_metadata_tamable_animal_accessors_for_entity_type,
         vanilla_entity_metadata_type_is_leashable, vanilla_entity_metadata_type_is_living,
     },
@@ -37,6 +39,8 @@ const VANILLA_DEFAULT_ENTITY_INTERACT_OWNER: &str = "net.minecraft.world.entity.
 const VANILLA_MOB_ENTITY_INTERACT_OWNER: &str = "net.minecraft.world.entity.Mob";
 const VANILLA_ARMOR_STAND_INTERACT_OWNER: &str = "net.minecraft.world.entity.decoration.ArmorStand";
 const VANILLA_BOAT_INTERACT_OWNER: &str = "net.minecraft.world.entity.vehicle.boat.AbstractBoat";
+const VANILLA_BOGGED_MOB_INTERACT_OWNER: &str =
+    "net.minecraft.world.entity.monster.skeleton.Bogged";
 const VANILLA_CAMEL_HUSK_INTERACT_OWNER: &str = "net.minecraft.world.entity.animal.camel.CamelHusk";
 const VANILLA_CAMEL_MOB_INTERACT_OWNER: &str = "net.minecraft.world.entity.animal.camel.Camel";
 const VANILLA_CAMEL_HUSK_FOOD_TAG: &str = "minecraft:camel_husk_food";
@@ -44,6 +48,9 @@ const VANILLA_CHEST_BOAT_INTERACT_OWNER: &str =
     "net.minecraft.world.entity.vehicle.boat.AbstractChestBoat";
 const VANILLA_CREEPER_MOB_INTERACT_OWNER: &str = "net.minecraft.world.entity.monster.Creeper";
 const VANILLA_CREEPER_IGNITERS_TAG: &str = "minecraft:creeper_igniters";
+const VANILLA_COPPER_GOLEM_MOB_INTERACT_OWNER: &str =
+    "net.minecraft.world.entity.animal.golem.CopperGolem";
+const VANILLA_COPPER_GOLEM_SHEARABLE_ITEMS_TAG: &str = "minecraft:shearable_from_copper_golem";
 const VANILLA_INTERACTION_ENTITY_INTERACT_OWNER: &str = "net.minecraft.world.entity.Interaction";
 const VANILLA_IRON_GOLEM_MOB_INTERACT_OWNER: &str =
     "net.minecraft.world.entity.animal.golem.IronGolem";
@@ -64,6 +71,11 @@ const VANILLA_MINECART_COMMAND_BLOCK_INTERACT_OWNER: &str =
     "net.minecraft.world.entity.vehicle.minecart.MinecartCommandBlock";
 const VANILLA_MINECART_FURNACE_INTERACT_OWNER: &str =
     "net.minecraft.world.entity.vehicle.minecart.MinecartFurnace";
+const VANILLA_MOOSHROOM_MOB_INTERACT_OWNER: &str =
+    "net.minecraft.world.entity.animal.cow.MushroomCow";
+const VANILLA_SHEEP_MOB_INTERACT_OWNER: &str = "net.minecraft.world.entity.animal.sheep.Sheep";
+const VANILLA_SNOW_GOLEM_MOB_INTERACT_OWNER: &str =
+    "net.minecraft.world.entity.animal.golem.SnowGolem";
 const VANILLA_ZOMBIE_HORSE_INTERACT_OWNER: &str =
     "net.minecraft.world.entity.animal.equine.ZombieHorse";
 const VANILLA_ZOMBIE_HORSE_FOOD_TAG: &str = "minecraft:zombie_horse_food";
@@ -624,6 +636,15 @@ impl WorldStore {
                 secondary_use_active,
             );
         }
+        if held_item_id == Some(VANILLA_ITEM_SHEARS_ID) {
+            if let Some(result) = self.predict_local_specialized_shearable_mob_interact(
+                entity_id,
+                entity_type_id,
+                owner,
+            ) {
+                return result;
+            }
+        }
         if owner == VANILLA_IRON_GOLEM_MOB_INTERACT_OWNER {
             return self.predict_local_iron_golem_mob_interact(
                 entity_id,
@@ -642,6 +663,108 @@ impl WorldStore {
             return LocalTargetUsePrediction::UnsupportedEntityInteract(owner);
         }
         LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+    }
+
+    fn predict_local_specialized_shearable_mob_interact(
+        &self,
+        entity_id: i32,
+        entity_type_id: i32,
+        owner: &'static str,
+    ) -> Option<LocalTargetUsePrediction> {
+        let client_success = || {
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction(),
+            ))
+        };
+        let pass = || LocalTargetUsePrediction::Result(LocalInteractionResult::Pass);
+        Some(match owner {
+            VANILLA_BOGGED_MOB_INTERACT_OWNER => {
+                let Some((data_id, default)) =
+                    vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type(entity_type_id)
+                else {
+                    return Some(LocalTargetUsePrediction::UnknownEntityType(Some(
+                        entity_type_id,
+                    )));
+                };
+                let Some(sheared) = self
+                    .entities
+                    .metadata_bool_for_entity(entity_id, data_id, default)
+                else {
+                    return Some(LocalTargetUsePrediction::UnknownEntityType(Some(
+                        entity_type_id,
+                    )));
+                };
+                if sheared {
+                    pass()
+                } else {
+                    client_success()
+                }
+            }
+            VANILLA_COPPER_GOLEM_MOB_INTERACT_OWNER => {
+                let Some(antenna) = self
+                    .entities
+                    .equipment_item(entity_id, EquipmentSlot::Saddle)
+                else {
+                    return Some(pass());
+                };
+                let Some(antenna_item_id) = antenna.item_id else {
+                    return Some(pass());
+                };
+                let Some(item_ids) = self.registry_holder_ids_for_tag(
+                    "minecraft:item",
+                    VANILLA_COPPER_GOLEM_SHEARABLE_ITEMS_TAG,
+                ) else {
+                    return Some(LocalTargetUsePrediction::UnsupportedEntityInteract(owner));
+                };
+                if item_ids.contains(&antenna_item_id) {
+                    client_success()
+                } else {
+                    pass()
+                }
+            }
+            VANILLA_MOOSHROOM_MOB_INTERACT_OWNER => {
+                let Some(is_baby) = self.entities.is_baby(entity_id) else {
+                    return Some(LocalTargetUsePrediction::UnknownEntityType(Some(
+                        entity_type_id,
+                    )));
+                };
+                if is_baby {
+                    // A baby falls through to `AbstractCow`/`Animal`, whose food-tag behavior
+                    // remains part of the wider specialized mob-interaction owner.
+                    LocalTargetUsePrediction::UnsupportedEntityInteract(owner)
+                } else {
+                    client_success()
+                }
+            }
+            VANILLA_SHEEP_MOB_INTERACT_OWNER => LocalTargetUsePrediction::Result(
+                LocalInteractionResult::Success(LocalInteractionSuccess::consume(false)),
+            ),
+            VANILLA_SNOW_GOLEM_MOB_INTERACT_OWNER => {
+                let Some((data_id, default, pumpkin_mask)) =
+                    vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type(
+                        entity_type_id,
+                    )
+                else {
+                    return Some(LocalTargetUsePrediction::UnknownEntityType(Some(
+                        entity_type_id,
+                    )));
+                };
+                let Some(flags) = self
+                    .entities
+                    .metadata_byte_for_entity(entity_id, data_id, default)
+                else {
+                    return Some(LocalTargetUsePrediction::UnknownEntityType(Some(
+                        entity_type_id,
+                    )));
+                };
+                if flags & pumpkin_mask != 0 {
+                    client_success()
+                } else {
+                    pass()
+                }
+            }
+            _ => return None,
+        })
     }
 
     fn predict_local_camel_husk_mob_interact(
@@ -1174,24 +1297,26 @@ mod tests {
         },
         entity_types::{
             VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
-            VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
-            VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_COW_ID,
+            VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
+            VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
+            VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID, VANILLA_ENTITY_TYPE_COW_ID,
             VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
             VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
             VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_ITEM_FRAME_ID,
             VANILLA_ENTITY_TYPE_LEASH_KNOT_ID, VANILLA_ENTITY_TYPE_MANNEQUIN_ID,
-            VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
-            VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
-            VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
-            VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+            VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
+            VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+            VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
+            VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
         },
         equipment_slots::EquipmentSlot,
         item_types::{
             VanillaItemInteractLivingEntityOverride, VanillaItemUseOnOverride,
             VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID, VANILLA_ITEM_CHORUS_FRUIT_ID,
-            VANILLA_ITEM_LEAD_ID, VANILLA_ITEM_NAME_TAG_ID, VANILLA_ITEM_RED_DYE_ID,
-            VANILLA_ITEM_SADDLE_ID, VANILLA_ITEM_SHEARS_ID, VANILLA_ITEM_SNOWBALL_ID,
-            VANILLA_ITEM_STONE_ID,
+            VANILLA_ITEM_LEAD_ID, VANILLA_ITEM_NAME_TAG_ID, VANILLA_ITEM_POPPY_ID,
+            VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_SADDLE_ID, VANILLA_ITEM_SHEARS_ID,
+            VANILLA_ITEM_SNOWBALL_ID, VANILLA_ITEM_STONE_ID,
         },
         packets::{
             AddEntity, Cooldown, DataComponentPatchSummary, EntityDataValue, EntityDataValueKind,
@@ -1706,6 +1831,168 @@ mod tests {
             ))
         );
         assert!(world.equipment_item(130, EquipmentSlot::Body).is_none());
+    }
+
+    #[test]
+    fn specialized_shearable_mobs_follow_their_exact_client_result_gates() {
+        let mut world = WorldStore::new();
+        for (entity_id, entity_type_id) in [
+            (140, VANILLA_ENTITY_TYPE_BOGGED_ID),
+            (141, VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID),
+            (142, VANILLA_ENTITY_TYPE_MOOSHROOM_ID),
+            (143, VANILLA_ENTITY_TYPE_SHEEP_ID),
+            (144, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID),
+        ] {
+            add_entity(&mut world, entity_id, entity_type_id);
+        }
+        set_main_hand(&mut world, VANILLA_ITEM_SHEARS_ID);
+        let client_success = LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+            LocalInteractionSuccess::client_item_interaction(),
+        ));
+        let pass = LocalTargetUsePrediction::Result(LocalInteractionResult::Pass);
+
+        assert_eq!(
+            world.predict_local_entity_interaction(140, InteractionHand::MainHand, false),
+            client_success
+        );
+        let (bogged_data_id, bogged_default) =
+            vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_BOGGED_ID,
+            )
+            .unwrap();
+        assert!(!bogged_default);
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 140,
+            values: vec![EntityDataValue {
+                data_id: bogged_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                value: EntityDataValueKind::Boolean(true),
+            }],
+        }));
+        assert_eq!(
+            world.predict_local_entity_interaction(140, InteractionHand::MainHand, false),
+            pass
+        );
+
+        assert!(world.apply_set_equipment(SetEquipment {
+            entity_id: 141,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::Saddle,
+                item: stack(VANILLA_ITEM_POPPY_ID),
+            }],
+        }));
+        assert_eq!(
+            world.predict_local_entity_interaction(141, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::UnsupportedEntityInteract(
+                VANILLA_COPPER_GOLEM_MOB_INTERACT_OWNER
+            )
+        );
+        world.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: "minecraft:item".to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: VANILLA_COPPER_GOLEM_SHEARABLE_ITEMS_TAG.to_string(),
+                    entries: vec![VANILLA_ITEM_POPPY_ID],
+                }],
+            }],
+        });
+        assert_eq!(
+            world.predict_local_entity_interaction(141, InteractionHand::MainHand, false),
+            client_success
+        );
+        world.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: "minecraft:item".to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: VANILLA_COPPER_GOLEM_SHEARABLE_ITEMS_TAG.to_string(),
+                    entries: Vec::new(),
+                }],
+            }],
+        });
+        assert_eq!(
+            world.predict_local_entity_interaction(141, InteractionHand::MainHand, false),
+            pass
+        );
+
+        assert_eq!(
+            world.predict_local_entity_interaction(142, InteractionHand::MainHand, false),
+            client_success
+        );
+        let (mooshroom_baby_data_id, mooshroom_baby_default) =
+            crate::entities::vanilla_entity_metadata_baby_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
+            )
+            .unwrap();
+        assert!(!mooshroom_baby_default);
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 142,
+            values: vec![EntityDataValue {
+                data_id: mooshroom_baby_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                value: EntityDataValueKind::Boolean(true),
+            }],
+        }));
+        assert_eq!(
+            world.predict_local_entity_interaction(142, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::UnsupportedEntityInteract(
+                VANILLA_MOOSHROOM_MOB_INTERACT_OWNER
+            )
+        );
+
+        let (sheep_baby_data_id, _) =
+            crate::entities::vanilla_entity_metadata_baby_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_SHEEP_ID,
+            )
+            .unwrap();
+        let (sheep_wool_data_id, sheep_wool_default, sheep_sheared_mask, _) =
+            crate::entities::vanilla_entity_metadata_sheep_wool_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_SHEEP_ID,
+            )
+            .unwrap();
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 143,
+            values: vec![
+                EntityDataValue {
+                    data_id: sheep_baby_data_id,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                    value: EntityDataValueKind::Boolean(true),
+                },
+                EntityDataValue {
+                    data_id: sheep_wool_data_id,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                    value: EntityDataValueKind::Byte(sheep_wool_default | sheep_sheared_mask),
+                },
+            ],
+        }));
+        assert_eq!(
+            world.predict_local_entity_interaction(143, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::consume(false)
+            ))
+        );
+
+        assert_eq!(
+            world.predict_local_entity_interaction(144, InteractionHand::MainHand, false),
+            client_success
+        );
+        let (snow_data_id, snow_default, pumpkin_mask) =
+            vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+            )
+            .unwrap();
+        assert_ne!(snow_default & pumpkin_mask, 0);
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 144,
+            values: vec![EntityDataValue {
+                data_id: snow_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                value: EntityDataValueKind::Byte(snow_default & !pumpkin_mask),
+            }],
+        }));
+        assert_eq!(
+            world.predict_local_entity_interaction(144, InteractionHand::MainHand, false),
+            pass
+        );
     }
 
     #[test]
