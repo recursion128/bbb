@@ -54,6 +54,7 @@ mod equippable;
 mod ignition;
 mod instrument;
 mod potion;
+mod thrown_projectile;
 
 const VANILLA_DEFAULT_ENTITY_INTERACT_OWNER: &str = "net.minecraft.world.entity.Entity";
 const VANILLA_MOB_ENTITY_INTERACT_OWNER: &str = "net.minecraft.world.entity.Mob";
@@ -120,6 +121,7 @@ pub enum LocalInteractionSwingSource {
 pub enum LocalInteractionSoundAction {
     FlintAndSteelUse { pos: BlockPos },
     InstrumentUse { hand: InteractionHand },
+    SuppressedProjectileThrow,
     SuppressedFireChargeUse,
     SuppressedLodestoneCompassUse,
     SuppressedPotionMudConversion,
@@ -276,6 +278,16 @@ impl LocalInteractionSuccess {
             sound_action: None,
         }
     }
+
+    const fn thrown_projectile_use() -> Self {
+        Self {
+            swing_source: LocalInteractionSwingSource::Client,
+            was_item_interaction: true,
+            starts_using_item: false,
+            extra_swing: None,
+            sound_action: Some(LocalInteractionSoundAction::SuppressedProjectileThrow),
+        }
+    }
 }
 
 impl WorldStore {
@@ -296,10 +308,21 @@ impl WorldStore {
             return LocalItemUsePrediction::Result(LocalInteractionResult::Pass);
         }
         if let Some(use_override) = item_type.use_override {
-            if use_override == VanillaItemUseOverride::InstrumentItem {
-                return self.predict_local_instrument_item_use(hand, &stack);
-            }
-            return LocalItemUsePrediction::UnsupportedOverride(use_override);
+            return match use_override {
+                VanillaItemUseOverride::InstrumentItem => {
+                    self.predict_local_instrument_item_use(hand, &stack)
+                }
+                VanillaItemUseOverride::EggItem
+                | VanillaItemUseOverride::EnderpearlItem
+                | VanillaItemUseOverride::ExperienceBottleItem
+                | VanillaItemUseOverride::LingeringPotionItem
+                | VanillaItemUseOverride::SnowballItem
+                | VanillaItemUseOverride::SplashPotionItem
+                | VanillaItemUseOverride::WindChargeItem => {
+                    self.predict_local_thrown_projectile_item_use(hand, &stack)
+                }
+                _ => LocalItemUsePrediction::UnsupportedOverride(use_override),
+            };
         }
 
         if self
@@ -2054,7 +2077,7 @@ mod tests {
             VANILLA_ITEM_LILY_PAD_ID, VANILLA_ITEM_MINECART_ID, VANILLA_ITEM_NAME_TAG_ID,
             VANILLA_ITEM_POPPY_ID, VANILLA_ITEM_POTION_ID, VANILLA_ITEM_RED_DYE_ID,
             VANILLA_ITEM_SADDLE_ID, VANILLA_ITEM_SHEARS_ID, VANILLA_ITEM_SHIELD_ID,
-            VANILLA_ITEM_SNOWBALL_ID, VANILLA_ITEM_STONE_ID,
+            VANILLA_ITEM_STONE_ID,
         },
         packets::{
             AddEntity, AdventureModePredicateDataSummary, BlockHolderSetSummary,
@@ -2411,10 +2434,10 @@ mod tests {
     #[test]
     fn item_use_override_and_active_cooldown_remain_explicit() {
         let mut world = WorldStore::new();
-        set_main_hand(&mut world, VANILLA_ITEM_SNOWBALL_ID);
+        set_main_hand(&mut world, VANILLA_ITEM_FIREWORK_ROCKET_ID);
         assert_eq!(
             world.predict_local_item_use(InteractionHand::MainHand),
-            LocalItemUsePrediction::UnsupportedOverride(VanillaItemUseOverride::SnowballItem)
+            LocalItemUsePrediction::UnsupportedOverride(VanillaItemUseOverride::FireworkRocketItem)
         );
 
         world.set_default_item_component_type_ids(BTreeMap::from([(

@@ -665,9 +665,12 @@ Commands:
   held-item presentation. Interaction override ownership must stay generated
   from local vanilla classes. Entity, block, and inventory corrections remain
   server-authoritative.
-- Complete no-target `Item.use` prediction for the source-derived specialized
-  override families. Override ownership must stay generated from local vanilla
-  item classes instead of being inferred from component shape.
+- Complete no-target `Item.use` prediction for the remaining source-derived
+  specialized override families: Boat/Bottle/Bow/Bucket/Bundle/Crossbow,
+  EmptyMap/EnderEye/FireworkRocket/FishingRod/FoodOnAStick/KnowledgeBook,
+  PlaceOnWaterBlock/SpawnEgg/Spyglass/Trident and writable/written books.
+  Override ownership must stay generated from local vanilla item classes instead
+  of being inferred from component shape.
 
 Inventory:
 

@@ -1662,8 +1662,9 @@ impl WorldStore {
     /// Vanilla flint-and-steel and instruments pass the local player as
     /// `except`, so `ClientLevel.playSeededSound` plays them immediately.
     /// Instrument playback is entity-bound; flint-and-steel is positioned.
-    /// Fire charges, lodestone compasses, and both potion mud-conversion sounds
-    /// pass `null`, so their local calls only advance the random streams.
+    /// Thrown projectiles, fire charges, lodestone compasses, and both potion
+    /// mud-conversion sounds pass `null`, so their local calls only advance the
+    /// random streams.
     pub fn apply_local_interaction_sound_action(
         &mut self,
         action: LocalInteractionSoundAction,
@@ -1702,6 +1703,11 @@ impl WorldStore {
                     state,
                     position: self.local_player_pose().map(|pose| pose.position),
                 });
+            }
+            LocalInteractionSoundAction::SuppressedProjectileThrow => {
+                let _discarded_pitch = 0.4 / (random.next_float() * 0.4 + 0.8);
+                let _discarded_seed = self.next_sound_seed();
+                return None;
             }
             LocalInteractionSoundAction::SuppressedFireChargeUse => {
                 let _discarded_pitch = (random.next_float() - random.next_float()) * 0.2 + 1.0;

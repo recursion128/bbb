@@ -17,6 +17,7 @@ use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
+    VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
 };
 use bbb_protocol::item_types::{
     VANILLA_ITEM_ABSOLUTE_MAX_STACK_SIZE, VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE,
@@ -49,6 +50,8 @@ pub struct ItemProfiles {
     /// Source-derived `DataComponents.POTION_DURATION_SCALE` prototype float bits.
     #[serde(default, with = "publication_i32_map")]
     pub(crate) default_potion_duration_scale_bits: PublicationShared<BTreeMap<i32, u32>>,
+    #[serde(default, with = "publication_i32_map")]
+    pub(crate) default_use_cooldown_seconds_bits: PublicationShared<BTreeMap<i32, u32>>,
     #[serde(default)]
     pub(crate) default_item_max_stack_sizes: PublicationShared<BTreeMap<i32, i32>>,
     #[serde(default)]
@@ -253,6 +256,17 @@ impl ItemProfiles {
             .into();
     }
 
+    pub(crate) fn set_default_use_cooldown_seconds_bits(&mut self, defaults: BTreeMap<i32, u32>) {
+        self.default_use_cooldown_seconds_bits = defaults
+            .into_iter()
+            .filter(|(item_id, bits)| {
+                let value = f32::from_bits(*bits);
+                *item_id >= 0 && value.is_finite() && value > 0.0
+            })
+            .collect::<BTreeMap<_, _>>()
+            .into();
+    }
+
     pub(crate) fn effective_component_patch(
         &self,
         item_id: i32,
@@ -264,10 +278,15 @@ impl ItemProfiles {
             .default_potion_duration_scale_bits
             .get(&item_id)
             .copied();
+        let default_use_cooldown_seconds_bits = self
+            .default_use_cooldown_seconds_bits
+            .get(&item_id)
+            .copied();
         let default_food_properties = self.default_item_food_properties.get(&item_id).copied();
         if registry_defaults.is_none()
             && default_dye_color_id.is_none()
             && default_potion_duration_scale_bits.is_none()
+            && default_use_cooldown_seconds_bits.is_none()
             && default_food_properties.is_none()
         {
             return None;
@@ -336,6 +355,19 @@ impl ItemProfiles {
             {
                 effective.added_type_ids.push(duration_scale_component_id);
                 effective.potion_duration_scale_bits = Some(bits);
+                changed = true;
+            }
+        }
+        let use_cooldown_component_id = VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID;
+        if let Some(bits) = default_use_cooldown_seconds_bits {
+            if !patch.removed_type_ids.contains(&use_cooldown_component_id)
+                && !patch.added_type_ids.contains(&use_cooldown_component_id)
+            {
+                let seconds = f32::from_bits(bits);
+                effective.added_type_ids.push(use_cooldown_component_id);
+                effective.use_cooldown_seconds_bits = Some(bits);
+                effective.use_cooldown_ticks = Some((seconds * 20.0) as i32);
+                effective.use_cooldown_group = None;
                 changed = true;
             }
         }

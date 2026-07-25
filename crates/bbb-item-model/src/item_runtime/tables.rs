@@ -252,6 +252,13 @@ impl NativeItemRuntime {
             .unwrap_or_default()
     }
 
+    pub fn default_use_cooldown_seconds_bits_by_protocol_id(&self) -> BTreeMap<i32, u32> {
+        self.registry
+            .as_ref()
+            .map(ItemRegistryCatalog::default_use_cooldown_seconds_bits_by_protocol_id)
+            .unwrap_or_default()
+    }
+
     pub fn registry_dependent_component_initializers_by_protocol_id(
         &self,
     ) -> BTreeMap<i32, Vec<bbb_pack::RegistryDependentItemComponentInitializer>> {

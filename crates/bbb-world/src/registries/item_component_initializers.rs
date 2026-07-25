@@ -208,6 +208,10 @@ impl WorldStore {
         self.items.set_default_potion_duration_scale_bits(defaults);
     }
 
+    pub fn set_default_item_use_cooldown_seconds_bits(&mut self, defaults: BTreeMap<i32, u32>) {
+        self.items.set_default_use_cooldown_seconds_bits(defaults);
+    }
+
     pub fn set_registry_dependent_item_component_initializers(
         &mut self,
         rules: BTreeMap<i32, Vec<RegistryDependentItemComponentInitializer>>,

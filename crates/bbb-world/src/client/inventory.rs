@@ -1308,6 +1308,23 @@ impl InventoryState {
         true
     }
 
+    pub(crate) fn consume_local_item_in_hand(
+        &mut self,
+        ctx: InventoryCtx<'_>,
+        counters: &mut WorldCounters,
+        hand: InteractionHand,
+        amount: i32,
+    ) -> bool {
+        if ctx
+            .local_player
+            .abilities
+            .is_some_and(|abilities| abilities.instabuild)
+        {
+            return self.local_item_in_hand(ctx, hand).is_some();
+        }
+        self.shrink_local_item_in_hand(ctx, counters, hand, amount)
+    }
+
     pub(crate) fn local_player_equipment_item(
         &self,
         ctx: InventoryCtx<'_>,
@@ -2806,6 +2823,19 @@ impl WorldStore {
 
     pub(crate) fn shrink_local_item_in_hand(&mut self, hand: InteractionHand, amount: i32) -> bool {
         self.inventory.shrink_local_item_in_hand(
+            inventory_ctx!(self),
+            &mut self.counters,
+            hand,
+            amount,
+        )
+    }
+
+    pub(crate) fn consume_local_item_in_hand(
+        &mut self,
+        hand: InteractionHand,
+        amount: i32,
+    ) -> bool {
+        self.inventory.consume_local_item_in_hand(
             inventory_ctx!(self),
             &mut self.counters,
             hand,

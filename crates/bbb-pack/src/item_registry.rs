@@ -91,6 +91,9 @@ pub struct ItemRegistryCatalog {
     /// Source-derived `DataComponents.POTION_DURATION_SCALE` prototype float bits.
     #[serde(default)]
     default_potion_duration_scale_bits: BTreeMap<String, u32>,
+    /// Source-derived `DataComponents.USE_COOLDOWN` prototype seconds bits.
+    #[serde(default)]
+    default_use_cooldown_seconds_bits: BTreeMap<String, u32>,
     #[serde(default)]
     registry_dependent_component_initializers:
         BTreeMap<String, Vec<RegistryDependentItemComponentInitializer>>,
@@ -358,6 +361,7 @@ impl ItemRegistryCatalog {
         let mut default_component_type_ids = BTreeMap::new();
         let mut default_dye_color_ids = BTreeMap::new();
         let mut default_potion_duration_scale_bits = BTreeMap::new();
+        let mut default_use_cooldown_seconds_bits = BTreeMap::new();
         let mut registry_dependent_component_initializers = BTreeMap::new();
         let mut block_items = BTreeSet::new();
         let mut block_item_resource_ids = BTreeMap::new();
@@ -425,6 +429,8 @@ impl ItemRegistryCatalog {
             let default_potion_duration_scale =
                 default_potion_duration_scale_for_declaration(expression)
                     .with_context(source_context)?;
+            let default_use_cooldown =
+                default_use_cooldown_for_declaration(expression).with_context(source_context)?;
             let registry_component_initializers =
                 registry_dependent_component_initializers_for_declaration(expression, &ids)
                     .with_context(source_context)?;
@@ -504,6 +510,10 @@ impl ItemRegistryCatalog {
                 if let Some(duration_scale) = default_potion_duration_scale {
                     default_potion_duration_scale_bits
                         .insert(resource_id.clone(), duration_scale.to_bits());
+                }
+                if let Some(seconds) = default_use_cooldown {
+                    default_use_cooldown_seconds_bits
+                        .insert(resource_id.clone(), seconds.to_bits());
                 }
                 if !registry_component_initializers.is_empty() {
                     registry_dependent_component_initializers
@@ -666,6 +676,7 @@ impl ItemRegistryCatalog {
             default_component_type_ids,
             default_dye_color_ids,
             default_potion_duration_scale_bits,
+            default_use_cooldown_seconds_bits,
             registry_dependent_component_initializers,
             block_items,
             block_item_resource_ids,
@@ -798,6 +809,26 @@ impl ItemRegistryCatalog {
 
     pub fn default_potion_duration_scale_bits_by_protocol_id(&self) -> BTreeMap<i32, u32> {
         self.default_potion_duration_scale_bits
+            .iter()
+            .filter_map(|(resource_id, bits)| {
+                self.protocol_ids
+                    .get(resource_id)
+                    .copied()
+                    .map(|item_id| (item_id, *bits))
+            })
+            .collect()
+    }
+
+    pub fn default_use_cooldown_seconds(&self, resource_id: &str) -> Option<f32> {
+        let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
+        self.default_use_cooldown_seconds_bits
+            .get(&resource_id)
+            .copied()
+            .map(f32::from_bits)
+    }
+
+    pub fn default_use_cooldown_seconds_bits_by_protocol_id(&self) -> BTreeMap<i32, u32> {
+        self.default_use_cooldown_seconds_bits
             .iter()
             .filter_map(|(resource_id, bits)| {
                 self.protocol_ids
@@ -1324,6 +1355,22 @@ fn default_potion_duration_scale_for_declaration(
         }
     }
     Ok(duration_scale)
+}
+
+fn default_use_cooldown_for_declaration(
+    expression: &GeneratedJavaExpression,
+) -> Result<Option<f32>> {
+    let Some(call) = expression.call("useCooldown") else {
+        return Ok(None);
+    };
+    if call.arguments.len() != 1 {
+        bail!("useCooldown must have one seconds argument");
+    }
+    let seconds = parse_java_float_literal(&call.arguments[0].canonical)?;
+    if !seconds.is_finite() || seconds <= 0.0 {
+        bail!("useCooldown seconds must be a finite positive float");
+    }
+    Ok(Some(seconds))
 }
 
 fn registry_dependent_component_initializers_for_declaration(
@@ -2663,11 +2710,13 @@ mod tests {
         let components = catalog.default_component_type_ids_by_protocol_id();
         let dyes = catalog.default_dye_color_ids_by_protocol_id();
         let duration_scales = catalog.default_potion_duration_scale_bits_by_protocol_id();
+        let use_cooldowns = catalog.default_use_cooldown_seconds_bits_by_protocol_id();
         let item = |resource_id| catalog.protocol_id(resource_id).unwrap();
 
         assert_eq!(components.len(), 1506);
         assert_eq!(dyes.len(), 16);
         assert_eq!(duration_scales.len(), 2);
+        assert_eq!(use_cooldowns.len(), 3);
         assert!(components[&item("minecraft:white_dye")]
             .contains(&component_id::VANILLA_DATA_COMPONENT_DYE_TYPE_ID));
         assert!(components[&item("minecraft:diamond")]
@@ -2692,6 +2741,22 @@ mod tests {
         );
         assert_eq!(
             catalog.default_potion_duration_scale("minecraft:splash_potion"),
+            None
+        );
+        assert_eq!(
+            use_cooldowns[&item("minecraft:ender_pearl")],
+            1.0_f32.to_bits()
+        );
+        assert_eq!(
+            use_cooldowns[&item("minecraft:wind_charge")],
+            0.5_f32.to_bits()
+        );
+        assert_eq!(
+            use_cooldowns[&item("minecraft:chorus_fruit")],
+            1.0_f32.to_bits()
+        );
+        assert_eq!(
+            catalog.default_use_cooldown_seconds("minecraft:snowball"),
             None
         );
     }

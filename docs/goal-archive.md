@@ -507,3 +507,7 @@
   `Equippable.swapWithEquipmentSlot` 现按源码派生 75 个可交换原型及 30 个玩家
   可装备原型，覆盖 holder/tag、绑定诅咒、单件/堆叠、创造/无限材料与满背包挥手，
   并贯通资源重载、world 库存突变和 native 主副手停机顺序。
+- **2026-07-23（无目标投掷物 use 预测工程关闭）**：雪球/蛋/末影珍珠/经验瓶/
+  喷溅与滞留药水/风弹现按 `ItemStack.use` 瞬时 after-use 顺序执行消耗和组件冷却；
+  `Items.java` 的 3 个默认冷却值随资源重载发布，投掷音效的客户端 `null`
+  excluded-player 调用仅推进 pitch/seed 随机流，等待服务端声音包实际播放。

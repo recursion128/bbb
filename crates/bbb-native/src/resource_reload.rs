@@ -483,6 +483,7 @@ pub(crate) struct ItemRuntimeWorldDefaults {
     default_component_type_ids: BTreeMap<i32, BTreeSet<i32>>,
     default_dye_color_ids: BTreeMap<i32, i32>,
     default_potion_duration_scale_bits: BTreeMap<i32, u32>,
+    default_use_cooldown_seconds_bits: BTreeMap<i32, u32>,
     registry_dependent_component_initializers:
         BTreeMap<i32, Vec<RegistryDependentItemComponentInitializer>>,
     max_stack_sizes: BTreeMap<i32, i32>,
@@ -556,6 +557,8 @@ impl ItemRuntimeWorldDefaults {
             default_dye_color_ids: items.default_dye_color_ids_by_protocol_id(),
             default_potion_duration_scale_bits: items
                 .default_potion_duration_scale_bits_by_protocol_id(),
+            default_use_cooldown_seconds_bits: items
+                .default_use_cooldown_seconds_bits_by_protocol_id(),
             registry_dependent_component_initializers: items
                 .registry_dependent_component_initializers_by_protocol_id(),
             max_stack_sizes: items.item_max_stack_sizes_by_protocol_id(),
@@ -604,6 +607,7 @@ impl ItemRuntimeWorldDefaults {
         world.set_default_item_component_type_ids(self.default_component_type_ids);
         world.set_default_item_dye_color_ids(self.default_dye_color_ids);
         world.set_default_item_potion_duration_scale_bits(self.default_potion_duration_scale_bits);
+        world.set_default_item_use_cooldown_seconds_bits(self.default_use_cooldown_seconds_bits);
         world.set_registry_dependent_item_component_initializers(
             self.registry_dependent_component_initializers,
         );
@@ -739,6 +743,8 @@ mod tests {
         let apple_id = items.item_protocol_id("minecraft:apple").unwrap();
         let chorus_fruit_id = items.item_protocol_id("minecraft:chorus_fruit").unwrap();
         let tipped_arrow_id = items.item_protocol_id("minecraft:tipped_arrow").unwrap();
+        let ender_pearl_id = items.item_protocol_id("minecraft:ender_pearl").unwrap();
+        let wind_charge_id = items.item_protocol_id("minecraft:wind_charge").unwrap();
         let saddle_id = items.item_protocol_id("minecraft:saddle").unwrap();
         let shield_id = items.item_protocol_id("minecraft:shield").unwrap();
         let elytra_id = items.item_protocol_id("minecraft:elytra").unwrap();
@@ -747,6 +753,15 @@ mod tests {
         assert_eq!(defaults.default_component_type_ids.len(), 1506);
         assert_eq!(defaults.default_dye_color_ids.len(), 16);
         assert_eq!(defaults.default_potion_duration_scale_bits.len(), 2);
+        assert_eq!(defaults.default_use_cooldown_seconds_bits.len(), 3);
+        assert_eq!(
+            defaults.default_use_cooldown_seconds_bits[&ender_pearl_id],
+            1.0_f32.to_bits()
+        );
+        assert_eq!(
+            defaults.default_use_cooldown_seconds_bits[&wind_charge_id],
+            0.5_f32.to_bits()
+        );
         assert_eq!(defaults.food_properties.len(), 44);
         assert_eq!(defaults.swappable_equipment_item_ids.len(), 75);
         assert_eq!(defaults.player_swappable_equipment_item_ids.len(), 30);
@@ -825,6 +840,47 @@ mod tests {
             &tipped_arrow,
             VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID
         ));
+        let ender_pearl = ItemStackSummary {
+            item_id: Some(ender_pearl_id),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        let effective_ender_pearl = world.effective_item_stack(&ender_pearl);
+        assert_eq!(
+            effective_ender_pearl
+                .component_patch
+                .use_cooldown_seconds_bits,
+            Some(1.0_f32.to_bits())
+        );
+        assert_eq!(
+            effective_ender_pearl.component_patch.use_cooldown_ticks,
+            Some(20)
+        );
+        world.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
+            slot: 0,
+            item: ItemStackSummary {
+                count: 2,
+                ..ender_pearl
+            },
+        });
+        assert!(matches!(
+            world.predict_local_item_use(bbb_protocol::packets::InteractionHand::MainHand),
+            bbb_world::LocalItemUsePrediction::Result(bbb_world::LocalInteractionResult::Success(
+                _
+            ))
+        ));
+        assert_eq!(
+            world
+                .cooldown("minecraft:ender_pearl")
+                .map(|cooldown| cooldown.duration),
+            Some(20)
+        );
+        assert_eq!(
+            world
+                .local_item_in_hand(bbb_protocol::packets::InteractionHand::MainHand)
+                .map(|stack| stack.count),
+            Some(1)
+        );
         world.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
             slot: 0,
             item: ItemStackSummary {
