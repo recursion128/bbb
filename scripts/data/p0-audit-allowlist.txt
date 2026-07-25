@@ -53,6 +53,10 @@
 # The synchronized environment codec rejects any future syncable attribute until
 # its value type and modifier semantics have an owned typed projection.
 ^crates/bbb-world/src/registries/environment_attributes[.]rs$	unsupported syncable attribute
+# Target Equippable prediction names one fail-closed result helper for malformed
+# component slot/holder data or a missing live entity-type tag. Supported owner
+# paths retain exact ItemStack PASS ordering and server-authoritative correction.
+^crates/bbb-world/src/client/inventory/use_prediction/equippable[.]rs$	unsupported_target_equippable
 # Environment ambient particles keep one explicit diagnostic for complex
 # ParticleOptions codec shapes that are dropped at the renderer bridge. Simple
 # options render normally, and the complex-shape closure remains a concrete ledger
