@@ -666,7 +666,7 @@ Commands:
   from local vanilla classes. Entity, block, and inventory corrections remain
   server-authoritative.
 - Complete no-target `Item.use` prediction for the remaining source-derived
-  specialized override families: Boat/Bottle/Bucket/Crossbow,
+  specialized override families: Boat/Bottle/Bucket,
   EmptyMap/EnderEye/FireworkRocket/FishingRod/FoodOnAStick/KnowledgeBook,
   PlaceOnWaterBlock/SpawnEgg/Trident and writable/written books.
   Override ownership must stay generated from local vanilla item classes instead

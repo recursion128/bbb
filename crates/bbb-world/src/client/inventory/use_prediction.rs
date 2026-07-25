@@ -51,6 +51,7 @@ use bbb_protocol::{
 
 mod bone_meal;
 mod bundle;
+mod crossbow;
 mod equippable;
 mod ignition;
 mod instrument;
@@ -349,6 +350,9 @@ impl WorldStore {
                 VanillaItemUseOverride::BundleItem => LocalItemUsePrediction::Result(
                     LocalInteractionResult::Success(LocalInteractionSuccess::bundle_use()),
                 ),
+                VanillaItemUseOverride::CrossbowItem => {
+                    self.predict_local_crossbow_item_use(&stack)
+                }
                 VanillaItemUseOverride::SpyglassItem => LocalItemUsePrediction::Result(
                     LocalInteractionResult::Success(LocalInteractionSuccess::spyglass_use()),
                 ),
