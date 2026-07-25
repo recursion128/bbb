@@ -16,7 +16,10 @@ pub use component::{
     ComponentPayload, ComponentStyle, RichTextComponent, SignBlockEntityNbt, SignTextNbt,
     StyledTextRun, VANILLA_COMMAND_ENTITY_SELECTOR_OPTIONS,
 };
-pub use nbt_summary::{decode_nbt_summary, parse_snbt_compound, NbtSummaryEntry, NbtSummaryValue};
+pub use nbt_summary::{
+    canonical_snbt_string, decode_nbt_summary, parse_snbt_compound, NbtSummaryEntry,
+    NbtSummaryValue,
+};
 
 pub mod advancement_frame_types;
 pub mod attribute_modifier_types;

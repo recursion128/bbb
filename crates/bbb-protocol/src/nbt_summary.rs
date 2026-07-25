@@ -3,9 +3,11 @@ use serde::{Deserialize, Serialize};
 use crate::codec::{Decoder, ProtocolError, Result};
 
 mod snbt;
+mod snbt_encode;
 
 pub use snbt::parse_snbt_compound;
 pub(crate) use snbt::{parse_snbt_prefix, validate_snbt_compound_prefix, validate_snbt_prefix};
+pub use snbt_encode::canonical_snbt_string;
 
 pub(crate) const MAX_NBT_DEPTH: usize = 64;
 const MAX_NBT_ARRAY_ITEMS: usize = 4096;

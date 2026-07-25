@@ -15,6 +15,7 @@ use bbb_protocol::{
         VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID,
     },
     builtin_enum_component_values::builtin_enum_component_value_name,
+    canonical_snbt_string,
     data_component_types::{
         vanilla_data_component_animal_variant_registry,
         vanilla_data_component_predicate_resource_id,
@@ -1117,10 +1118,6 @@ fn hash_block_predicate(
     ctx: InventoryCtx<'_>,
     predicate: &BlockPredicateSummary,
 ) -> Option<Hash32> {
-    if predicate.nbt.is_some() {
-        return None;
-    }
-
     let mut fields = Vec::new();
     if let Some(blocks) = &predicate.blocks {
         fields.push((
@@ -1162,6 +1159,12 @@ fn hash_block_predicate(
                     .collect(),
             ),
         ));
+    }
+    if let Some(nbt) = &predicate.nbt {
+        if !matches!(nbt, NbtSummaryValue::Compound(_)) {
+            return None;
+        }
+        fields.push(("nbt", hash_string(&canonical_snbt_string(nbt))));
     }
     if let Some(exact) = &predicate.exact_components {
         fields.push(("components", hash_data_component_patch_codec(ctx, exact)?));
@@ -3456,7 +3459,16 @@ mod tests {
                         },
                     },
                 ]),
-                nbt: None,
+                nbt: Some(NbtSummaryValue::Compound(vec![
+                    NbtSummaryEntry {
+                        name: "z".to_string(),
+                        value: NbtSummaryValue::Int(2),
+                    },
+                    NbtSummaryEntry {
+                        name: "name".to_string(),
+                        value: NbtSummaryValue::String("a\"b".to_string()),
+                    },
+                ])),
                 exact_components: Some(Box::new(exact)),
                 partial_components: vec![any_lock.clone()],
             }],
@@ -3539,6 +3551,7 @@ mod tests {
                                 hash_int(16),
                             )]),
                         ),
+                        ("nbt", hash_string("{name:'a\"b',z:2}")),
                         ("predicates", partial_hash),
                     ])
                     .0 as i32,
@@ -4001,6 +4014,16 @@ mod tests {
                 test_ctx(&store),
                 &BlockPredicateSummary {
                     nbt: Some(NbtSummaryValue::Compound(Vec::new())),
+                    ..BlockPredicateSummary::default()
+                },
+            ),
+            Some(hash_record(vec![("nbt", hash_string("{}"))]))
+        );
+        assert_eq!(
+            hash_block_predicate(
+                test_ctx(&store),
+                &BlockPredicateSummary {
+                    nbt: Some(NbtSummaryValue::String("{}".to_string())),
                     ..BlockPredicateSummary::default()
                 },
             ),

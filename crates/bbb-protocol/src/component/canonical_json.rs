@@ -95,6 +95,10 @@ pub fn java_float_to_string(value: f32) -> String {
     java_float_string(value)
 }
 
+pub(crate) fn java_double_to_string(value: f64) -> String {
+    java_double_string(value)
+}
+
 /// Exact JsonOps/Gson length for a finite Java `double` value that has already passed its
 /// semantic Codec validation.
 pub fn canonical_f64_json_utf16_len(bits: u64) -> Option<usize> {

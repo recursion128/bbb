@@ -10,6 +10,7 @@ mod canonical_json;
 mod codec;
 mod command;
 
+pub(crate) use canonical_json::java_double_to_string;
 pub use canonical_json::{
     canonical_component_json_utf16_len, canonical_component_json_utf16_len_with_owner,
     canonical_f32_json_utf16_len, canonical_f64_json_utf16_len, canonical_json_string_utf16_len,
