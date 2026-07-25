@@ -1017,8 +1017,8 @@ mod tests {
         VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID, VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
         VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
         VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID,
-        VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID, VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
-        VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
+        VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID, VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID,
+        VANILLA_DATA_COMPONENT_TOOL_TYPE_ID, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
     };
     use bbb_protocol::equipment_slots::{
         VANILLA_EQUIPMENT_SLOT_CHEST_ID, VANILLA_PLAYER_INVENTORY_CHEST_SLOT,
@@ -1030,8 +1030,9 @@ mod tests {
         VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID, VANILLA_ITEM_COMPASS_ID, VANILLA_ITEM_CROSSBOW_ID,
         VANILLA_ITEM_ENDER_PEARL_ID, VANILLA_ITEM_FIREWORK_ROCKET_ID, VANILLA_ITEM_FIRE_CHARGE_ID,
         VANILLA_ITEM_FISHING_ROD_ID, VANILLA_ITEM_FLINT_AND_STEEL_ID, VANILLA_ITEM_GLASS_BOTTLE_ID,
-        VANILLA_ITEM_GOAT_HORN_ID, VANILLA_ITEM_POTION_ID, VANILLA_ITEM_RED_DYE_ID,
-        VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_SPYGLASS_ID, VANILLA_ITEM_STONE_ID,
+        VANILLA_ITEM_GOAT_HORN_ID, VANILLA_ITEM_KNOWLEDGE_BOOK_ID, VANILLA_ITEM_POTION_ID,
+        VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_SPYGLASS_ID,
+        VANILLA_ITEM_STONE_ID,
     };
     use bbb_protocol::packets::{
         AddEntity, AdventureModePredicateDataSummary, AdventureModePredicateSummary, AttackEntity,
@@ -2254,6 +2255,101 @@ mod tests {
                 audio.positioned_sounds[0].sound.location.as_deref(),
                 Some("minecraft:item.spyglass.use")
             );
+        }
+    }
+
+    #[test]
+    fn knowledge_book_consumes_before_result_and_preserves_hand_fallback() {
+        for (recipe_keys, expected_use_item_commands, offhand_started) in [
+            (Vec::new(), 2, true),
+            (vec!["minecraft:bread".to_string()], 1, false),
+        ] {
+            let (tx, mut rx) = mpsc::channel(3);
+            let commands = Some(tx);
+            let mut input = ClientInputState::new(true);
+            let mut world = WorldStore::new();
+            world.set_local_player_pose(LocalPlayerPoseState::default());
+            let mut book = item_stack(VANILLA_ITEM_KNOWLEDGE_BOOK_ID, 1);
+            book.component_patch.added = 1;
+            book.component_patch
+                .added_type_ids
+                .push(VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID);
+            book.component_patch.recipe_keys = Some(recipe_keys);
+            world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+                slot: 0,
+                item: book,
+            });
+            world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+                slot: VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+                item: item_stack(VANILLA_ITEM_SPYGLASS_ID, 1),
+            });
+            let mut counters = NetCounters::default();
+            let mut random = LevelEventSoundRandomState::with_seed(0);
+            let mut audio = RecordingAudioSink::default();
+            let mut audio_events =
+                Some(&mut audio as &mut dyn crate::audio_runtime::AudioEventSink);
+
+            handle_mouse_input_at_partial_tick_with_effects(
+                &mut input,
+                &mut world,
+                &mut counters,
+                &commands,
+                MouseButton::Right,
+                ElementState::Pressed,
+                1.0,
+                &mut random,
+                &mut audio_events,
+            );
+            drop(audio_events);
+
+            assert_eq!(
+                rx.try_recv().unwrap(),
+                NetCommand::UseItem(UseItemCommand {
+                    packet: UseItem {
+                        hand: InteractionHand::MainHand,
+                        sequence: 1,
+                        y_rot: 0.0,
+                        x_rot: 0.0,
+                    },
+                    selected_hotbar_slot: 0,
+                })
+            );
+            if offhand_started {
+                assert_eq!(
+                    rx.try_recv().unwrap(),
+                    NetCommand::UseItem(UseItemCommand {
+                        packet: UseItem {
+                            hand: InteractionHand::OffHand,
+                            sequence: 2,
+                            y_rot: 0.0,
+                            x_rot: 0.0,
+                        },
+                        selected_hotbar_slot: 0,
+                    })
+                );
+            } else {
+                assert_eq!(
+                    rx.try_recv().unwrap(),
+                    NetCommand::Swing(InteractionHand::MainHand)
+                );
+            }
+            assert!(rx.try_recv().is_err());
+            assert_eq!(
+                counters.use_item_commands_queued,
+                expected_use_item_commands
+            );
+            assert_eq!(
+                counters.swing_commands_queued,
+                usize::from(!offhand_started)
+            );
+            assert!(world
+                .local_item_in_hand(InteractionHand::MainHand)
+                .is_none());
+            assert_eq!(
+                world.local_player().interaction.using_item_hand,
+                offhand_started.then_some(InteractionHand::OffHand)
+            );
+            assert_eq!(audio.positioned_sounds.len(), usize::from(offhand_started));
         }
     }
 

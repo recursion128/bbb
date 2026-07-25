@@ -29,7 +29,7 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
         VANILLA_DATA_COMPONENT_DYE_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID, VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
-        VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
+        VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
     },
     entity_types::{
         vanilla_entity_type_is_serializable, VANILLA_ENTITY_TYPE_MINECART_ID,
@@ -57,6 +57,7 @@ mod fishing_rod;
 mod ignition;
 mod instrument;
 mod item_use_fov;
+mod knowledge_book;
 mod potion;
 mod thrown_projectile;
 
@@ -366,6 +367,9 @@ impl WorldStore {
                     self.predict_local_crossbow_item_use(&stack)
                 }
                 VanillaItemUseOverride::FishingRodItem => self.predict_local_fishing_rod_item_use(),
+                VanillaItemUseOverride::KnowledgeBookItem => {
+                    self.predict_local_knowledge_book_item_use(hand, &stack)
+                }
                 VanillaItemUseOverride::SpyglassItem => LocalItemUsePrediction::Result(
                     LocalInteractionResult::Success(LocalInteractionSuccess::spyglass_use()),
                 ),
