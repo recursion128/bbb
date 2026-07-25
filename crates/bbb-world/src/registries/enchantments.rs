@@ -107,6 +107,7 @@ pub(super) struct MaterializedEnchantmentDefinition {
     tooltip: Option<EnchantmentTooltipDefinition>,
     attributes: Option<EnchantmentDefinition>,
     crossbow_charge_time: Option<EnchantmentValueEffect>,
+    trident_spin_attack_strength: Option<EnchantmentValueEffect>,
     prevents_armor_change: bool,
     holder_sets: EnchantmentHolderSetDefinition,
 }
@@ -156,6 +157,11 @@ pub(super) fn materialize_enchantment_definition(
         tooltip: decode_enchantment_tooltip_definition(value),
         attributes: decode_enchantment_definition(value),
         crossbow_charge_time: decode_crossbow_charge_time_effect(value).flatten(),
+        trident_spin_attack_strength: decode_unfiltered_value_effect(
+            value,
+            "minecraft:trident_spin_attack_strength",
+        )
+        .flatten(),
         prevents_armor_change: nbt_field(fields, "effects")
             .and_then(|value| match value {
                 NbtSummaryValue::Compound(effects) => Some(effects.as_slice()),
@@ -319,6 +325,40 @@ impl WorldStore {
             }
         }
         (duration_seconds.max(0.0) * 20.0).floor() as i32
+    }
+
+    /// Applies synchronized
+    /// `EnchantmentEffectComponents.TRIDENT_SPIN_ATTACK_STRENGTH` effects in
+    /// stack order. Stubbed Riptide entries use the generated Vanilla identity
+    /// fallback; synchronized definitions remain authoritative.
+    pub(crate) fn trident_spin_attack_strength(
+        &self,
+        enchantments: &[ItemEnchantmentSummary],
+    ) -> f32 {
+        let mut strength = 0.0_f32;
+        for enchantment in enchantments {
+            let Some(entry) =
+                self.registry_entry_by_holder_id(ENCHANTMENT_REGISTRY, enchantment.holder_id)
+            else {
+                continue;
+            };
+            let effect = match self.registries.typed.enchantments.get(&entry.id) {
+                Some(definition) => definition.trident_spin_attack_strength.clone(),
+                None => match entry.element_data() {
+                    Some(data) => decode_unfiltered_value_effect(
+                        &data.value,
+                        "minecraft:trident_spin_attack_strength",
+                    )
+                    .flatten(),
+                    None if !entry.has_data => vanilla_trident_spin_attack_strength(&entry.id),
+                    None => None,
+                },
+            };
+            if let Some(effect) = effect {
+                strength = effect.process(enchantment.level, strength);
+            }
+        }
+        strength
     }
 }
 
@@ -581,6 +621,13 @@ impl EnchantmentValueEffect {
 fn decode_crossbow_charge_time_effect(
     value: &NbtSummaryValue,
 ) -> Option<Option<EnchantmentValueEffect>> {
+    decode_unfiltered_value_effect(value, "minecraft:crossbow_charge_time")
+}
+
+fn decode_unfiltered_value_effect(
+    value: &NbtSummaryValue,
+    effect_id: &str,
+) -> Option<Option<EnchantmentValueEffect>> {
     let NbtSummaryValue::Compound(fields) = value else {
         return None;
     };
@@ -588,7 +635,7 @@ fn decode_crossbow_charge_time_effect(
         return Some(None);
     };
     let effects = nbt_compound(Some(effects))?;
-    let Some(effect) = nbt_field(effects, "minecraft:crossbow_charge_time") else {
+    let Some(effect) = nbt_field(effects, effect_id) else {
         return Some(None);
     };
     Some(Some(parse_enchantment_value_effect(effect)?))
@@ -600,6 +647,15 @@ fn vanilla_crossbow_charge_time_effect(resource_id: &str) -> Option<EnchantmentV
     .then_some(EnchantmentValueEffect::Add(LevelBasedValue::Linear {
         base: -0.25,
         per_level_above_first: -0.25,
+    }))
+}
+
+fn vanilla_trident_spin_attack_strength(resource_id: &str) -> Option<EnchantmentValueEffect> {
+    (VanillaEnchantmentIdentity::for_resource_id(resource_id)
+        == Some(VanillaEnchantmentIdentity::Riptide))
+    .then_some(EnchantmentValueEffect::Add(LevelBasedValue::Linear {
+        base: 1.5,
+        per_level_above_first: 0.75,
     }))
 }
 
@@ -1079,6 +1135,50 @@ mod tests {
                 level: 3,
             }]),
             25
+        );
+    }
+
+    #[test]
+    fn trident_spin_attack_strength_applies_stub_fallback_and_server_override() {
+        let mut world = WorldStore::new();
+        world.record_registry_data(RegistryData {
+            registry: ENCHANTMENT_REGISTRY.to_string(),
+            entries: vec![RegistryDataEntry {
+                id: "minecraft:riptide".to_string(),
+                raw_data: None,
+            }],
+            raw_payload_len: 0,
+        });
+        assert_eq!(
+            world.trident_spin_attack_strength(&[ItemEnchantmentSummary {
+                holder_id: 0,
+                level: 1,
+            }]),
+            1.5
+        );
+        assert_eq!(
+            world.trident_spin_attack_strength(&[ItemEnchantmentSummary {
+                holder_id: 0,
+                level: 3,
+            }]),
+            3.0
+        );
+
+        let mut overridden = WorldStore::new();
+        overridden.record_registry_data(RegistryData {
+            registry: ENCHANTMENT_REGISTRY.to_string(),
+            entries: vec![RegistryDataEntry {
+                id: "minecraft:riptide".to_string(),
+                raw_data: Some(compound_payload(vec![compound_tag("effects", Vec::new())])),
+            }],
+            raw_payload_len: 0,
+        });
+        assert_eq!(
+            overridden.trident_spin_attack_strength(&[ItemEnchantmentSummary {
+                holder_id: 0,
+                level: 3,
+            }]),
+            0.0
         );
     }
 

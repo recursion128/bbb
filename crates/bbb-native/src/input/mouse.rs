@@ -6,8 +6,8 @@ use bbb_protocol::packets::{
 use bbb_world::{
     BlockPos as WorldBlockPos, ItemAttackRange, LevelEventSoundRandomState,
     LocalDestroyBlockFinished, LocalInteractionResult, LocalInteractionSoundEffect,
-    LocalInteractionSuccess, LocalInteractionSwingSource, LocalItemUsePrediction,
-    LocalPlayerPoseState, LocalTargetUsePrediction, WorldStore,
+    LocalInteractionSuccess, LocalInteractionSwingSource, LocalItemUsePovResult,
+    LocalItemUsePrediction, LocalPlayerPoseState, LocalTargetUsePrediction, WorldStore,
 };
 use tokio::sync::mpsc;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta};
@@ -15,7 +15,8 @@ use winit::event::{ElementState, MouseButton, MouseScrollDelta};
 use crate::audio_runtime::AudioEventSink;
 use crate::camera_pose::camera_pose_from_world;
 use crate::crosshair::{
-    crosshair_target_from_camera_at_partial_tick, CrosshairBlockHit, CrosshairEntityHit,
+    crosshair_target_from_camera_at_partial_tick, item_use_pov_block_hit_from_world,
+    protocol_block_hit_result_from_crosshair_hit, CrosshairBlockHit, CrosshairEntityHit,
     CrosshairTarget,
 };
 use crate::particle_runtime::local_destroy_hit_particle_state;
@@ -522,7 +523,15 @@ fn start_use_item_with_effects(
         let Some(pose) = player_pose else {
             return true;
         };
-        let prediction = world.predict_local_item_use(hand);
+        let pov = world.local_item_use_pov_query(hand).map(|query| {
+            item_use_pov_block_hit_from_world(world, pose, query).map_or(
+                LocalItemUsePovResult::Miss,
+                |hit| {
+                    LocalItemUsePovResult::Block(protocol_block_hit_result_from_crosshair_hit(hit))
+                },
+            )
+        });
+        let prediction = world.predict_local_item_use_with_pov(hand, pov);
         let sequence = world.next_local_prediction_sequence();
         if !queue_use_item_command(
             counters,
@@ -1045,12 +1054,12 @@ mod tests {
         VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_ARROW_ID, VANILLA_ITEM_BONE_MEAL_ID,
         VANILLA_ITEM_BOW_ID, VANILLA_ITEM_BRUSH_ID, VANILLA_ITEM_BUNDLE_ID,
         VANILLA_ITEM_CARROT_ON_A_STICK_ID, VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID,
-        VANILLA_ITEM_COMPASS_ID, VANILLA_ITEM_CROSSBOW_ID, VANILLA_ITEM_ENDER_PEARL_ID,
-        VANILLA_ITEM_FIREWORK_ROCKET_ID, VANILLA_ITEM_FIRE_CHARGE_ID, VANILLA_ITEM_FISHING_ROD_ID,
-        VANILLA_ITEM_FLINT_AND_STEEL_ID, VANILLA_ITEM_GLASS_BOTTLE_ID, VANILLA_ITEM_GOAT_HORN_ID,
-        VANILLA_ITEM_KNOWLEDGE_BOOK_ID, VANILLA_ITEM_MAP_ID, VANILLA_ITEM_POTION_ID,
-        VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_SPYGLASS_ID,
-        VANILLA_ITEM_STONE_ID,
+        VANILLA_ITEM_COMPASS_ID, VANILLA_ITEM_CROSSBOW_ID, VANILLA_ITEM_ENDER_EYE_ID,
+        VANILLA_ITEM_ENDER_PEARL_ID, VANILLA_ITEM_FIREWORK_ROCKET_ID, VANILLA_ITEM_FIRE_CHARGE_ID,
+        VANILLA_ITEM_FISHING_ROD_ID, VANILLA_ITEM_FLINT_AND_STEEL_ID, VANILLA_ITEM_GLASS_BOTTLE_ID,
+        VANILLA_ITEM_GOAT_HORN_ID, VANILLA_ITEM_KNOWLEDGE_BOOK_ID, VANILLA_ITEM_MAP_ID,
+        VANILLA_ITEM_POTION_ID, VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_SHIELD_ID,
+        VANILLA_ITEM_SPYGLASS_ID, VANILLA_ITEM_STONE_ID, VANILLA_ITEM_TRIDENT_ID,
     };
     use bbb_protocol::packets::{
         AddEntity, AdventureModePredicateDataSummary, AdventureModePredicateSummary, AttackEntity,
@@ -5048,6 +5057,37 @@ mod tests {
         };
         assert_eq!(command.packet.entity_id, 123);
         assert_eq!(command.packet.hand, InteractionHand::MainHand);
+    }
+
+    #[test]
+    fn no_target_ender_eye_and_trident_start_using_without_client_swing() {
+        for item_id in [VANILLA_ITEM_ENDER_EYE_ID, VANILLA_ITEM_TRIDENT_ID] {
+            let (tx, mut rx) = mpsc::channel(1);
+            let commands = Some(tx);
+            let mut input = ClientInputState::new(true);
+            let mut world = world_with_crosshair_block();
+            world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+                slot: 0,
+                item: item_stack(item_id, 1),
+            });
+            let mut counters = NetCounters::default();
+            let player_pose = world.local_player_pose();
+
+            assert!(start_use_item(
+                &mut input,
+                &mut world,
+                &mut counters,
+                &commands,
+                None,
+                player_pose,
+            ));
+
+            assert!(world.local_player().interaction.using_item);
+            assert_eq!(counters.use_item_commands_queued, 1);
+            assert_eq!(counters.swing_commands_queued, 0);
+            assert!(matches!(rx.try_recv(), Ok(NetCommand::UseItem(_))));
+            assert!(rx.try_recv().is_err());
+        }
     }
 
     #[test]

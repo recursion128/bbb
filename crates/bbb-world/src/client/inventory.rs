@@ -88,8 +88,9 @@ mod stonecutter;
 mod use_prediction;
 pub use use_prediction::{
     LocalInteractionParticleAction, LocalInteractionResult, LocalInteractionSoundAction,
-    LocalInteractionSuccess, LocalInteractionSwingSource, LocalItemUsePrediction,
-    LocalLeverAttachFace, LocalTargetUsePrediction, LocalUsingItemTickActions,
+    LocalInteractionSuccess, LocalInteractionSwingSource, LocalItemUsePovFluidMode,
+    LocalItemUsePovQuery, LocalItemUsePovResult, LocalItemUsePrediction, LocalLeverAttachFace,
+    LocalTargetUsePrediction, LocalUsingItemTickActions,
 };
 #[cfg(test)]
 mod tests;

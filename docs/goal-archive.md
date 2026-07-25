@@ -534,3 +534,6 @@
 - **2026-07-25（富 Component HashOps 工程关闭）**：协议 canonical Component
   树保留 primitive/array 类型与语义 owner；库存预测复用 profile、item patch
   和命名 dialog codec，direct dialog 继续 fail-closed。
+- **2026-07-25（POV Item.use 基础里程碑）**：本地玩家眼位按同步交互距离执行
+  `OUTLINE + Fluid` 射线；EnderEye/SpawnEgg 已精确消费命中结果，Trident 已覆盖
+  耐久、同步 Riptide 水雨门禁与开始使用状态。

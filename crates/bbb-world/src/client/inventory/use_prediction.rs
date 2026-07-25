@@ -64,7 +64,11 @@ mod instrument;
 mod item_use_fov;
 mod knowledge_book;
 mod potion;
+mod pov_item;
 mod thrown_projectile;
+mod trident;
+
+pub use pov_item::{LocalItemUsePovFluidMode, LocalItemUsePovQuery, LocalItemUsePovResult};
 
 const VANILLA_DEFAULT_ENTITY_INTERACT_OWNER: &str = "net.minecraft.world.entity.Entity";
 const VANILLA_MOB_ENTITY_INTERACT_OWNER: &str = "net.minecraft.world.entity.Mob";
@@ -380,6 +384,17 @@ impl WorldStore {
     /// implemented source-derived specialized owners. Remaining specialized
     /// classes stay explicit instead of being guessed from component shape.
     pub fn predict_local_item_use(&mut self, hand: InteractionHand) -> LocalItemUsePrediction {
+        self.predict_local_item_use_with_pov(hand, None)
+    }
+
+    /// Predicts `ItemStack.use` with the exact native player-eye POV result.
+    /// `None` means that the caller did not supply a required raycast, while
+    /// `Some(Miss)` is Vanilla's explicit miss result.
+    pub fn predict_local_item_use_with_pov(
+        &mut self,
+        hand: InteractionHand,
+        pov: Option<LocalItemUsePovResult>,
+    ) -> LocalItemUsePrediction {
         let Some(stack) = self.local_item_in_hand(hand).cloned() else {
             return LocalItemUsePrediction::Result(LocalInteractionResult::Pass);
         };
@@ -417,6 +432,9 @@ impl WorldStore {
                 VanillaItemUseOverride::KnowledgeBookItem => {
                     self.predict_local_knowledge_book_item_use(hand, &stack)
                 }
+                VanillaItemUseOverride::EnderEyeItem => self.predict_local_ender_eye_item_use(pov),
+                VanillaItemUseOverride::SpawnEggItem => self.predict_local_spawn_egg_item_use(pov),
+                VanillaItemUseOverride::TridentItem => self.predict_local_trident_item_use(&stack),
                 VanillaItemUseOverride::SpyglassItem => LocalItemUsePrediction::Result(
                     LocalInteractionResult::Success(LocalInteractionSuccess::spyglass_use()),
                 ),
@@ -2146,10 +2164,12 @@ mod tests {
         },
         builtin_enum_component_values::VANILLA_DYE_COLOR_RED_ID,
         data_component_types::{
-            VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
-            VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID, VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
-            VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+            VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+            VANILLA_DATA_COMPONENT_DYE_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
+            VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID, VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
+            VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
             VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID,
+            VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
             VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
             VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
         },
@@ -2189,10 +2209,10 @@ mod tests {
             VANILLA_ITEM_LILY_PAD_ID, VANILLA_ITEM_MINECART_ID, VANILLA_ITEM_NAME_TAG_ID,
             VANILLA_ITEM_POPPY_ID, VANILLA_ITEM_POTION_ID, VANILLA_ITEM_RED_DYE_ID,
             VANILLA_ITEM_SADDLE_ID, VANILLA_ITEM_SHEARS_ID, VANILLA_ITEM_SHIELD_ID,
-            VANILLA_ITEM_STONE_ID,
+            VANILLA_ITEM_STONE_ID, VANILLA_ITEM_TRIDENT_ID,
         },
         packets::{
-            AddEntity, AdventureModePredicateDataSummary, BlockHolderSetSummary,
+            AddEntity, AdventureModePredicateDataSummary, BlockHitResult, BlockHolderSetSummary,
             BlockPos as ProtocolBlockPos, BlockPredicateSummary, BlockUpdate,
             CommonPlayerSpawnInfo, Cooldown, DataComponentPatchSummary, EntityDataValue,
             EntityDataValueKind, EntityEvent, EquipmentSlotUpdate, EquippableSummary,
@@ -2569,6 +2589,177 @@ mod tests {
         assert_eq!(
             world.predict_local_item_use(InteractionHand::MainHand),
             LocalItemUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+    }
+
+    #[test]
+    fn item_use_pov_queries_follow_generated_owner_fluid_modes() {
+        let mut world = WorldStore::new();
+        for (item_id, fluid_mode) in [
+            (VANILLA_ITEM_ENDER_EYE_ID, LocalItemUsePovFluidMode::None),
+            (
+                VANILLA_ITEM_GLASS_BOTTLE_ID,
+                LocalItemUsePovFluidMode::SourceOnly,
+            ),
+            (
+                VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID,
+                LocalItemUsePovFluidMode::SourceOnly,
+            ),
+        ] {
+            set_main_hand(&mut world, item_id);
+            assert_eq!(
+                world.local_item_use_pov_query(InteractionHand::MainHand),
+                Some(LocalItemUsePovQuery {
+                    fluid_mode,
+                    max_distance: 4.5,
+                })
+            );
+        }
+
+        set_main_hand(&mut world, VANILLA_ITEM_STONE_ID);
+        assert_eq!(
+            world.local_item_use_pov_query(InteractionHand::MainHand),
+            None
+        );
+    }
+
+    #[test]
+    fn ender_eye_and_spawn_egg_use_exact_pov_results() {
+        let hit = |pos| {
+            LocalItemUsePovResult::Block(BlockHitResult {
+                pos,
+                direction: ProtocolDirection::Up,
+                cursor_x: 0.5,
+                cursor_y: 0.5,
+                cursor_z: 0.5,
+                inside: false,
+                world_border_hit: false,
+            })
+        };
+        let mut frame_world = tool_use_world(block_state_id(
+            "minecraft:end_portal_frame",
+            [("eye", "false"), ("facing", "north")],
+        ));
+        set_main_hand(&mut frame_world, VANILLA_ITEM_ENDER_EYE_ID);
+        assert_eq!(
+            frame_world.predict_local_item_use(InteractionHand::MainHand),
+            LocalItemUsePrediction::UnsupportedOverride(VanillaItemUseOverride::EnderEyeItem)
+        );
+        assert_eq!(
+            frame_world.predict_local_item_use_with_pov(
+                InteractionHand::MainHand,
+                Some(hit(ProtocolBlockPos { x: 0, y: 0, z: 0 })),
+            ),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+        assert_eq!(
+            frame_world.predict_local_item_use_with_pov(
+                InteractionHand::MainHand,
+                Some(LocalItemUsePovResult::Miss),
+            ),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess {
+                    swing_source: LocalInteractionSwingSource::Server,
+                    was_item_interaction: true,
+                    starts_using_item: true,
+                    extra_swing: None,
+                    sound_action: None,
+                    particle_action: None,
+                }
+            ))
+        );
+
+        set_main_hand(&mut frame_world, VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID);
+        assert_eq!(
+            frame_world.predict_local_item_use_with_pov(
+                InteractionHand::MainHand,
+                Some(LocalItemUsePovResult::Miss),
+            ),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+        assert_eq!(
+            frame_world.predict_local_item_use_with_pov(
+                InteractionHand::MainHand,
+                Some(hit(ProtocolBlockPos { x: 0, y: 0, z: 0 })),
+            ),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction()
+            ))
+        );
+    }
+
+    #[test]
+    fn trident_use_checks_breakage_riptide_and_water_before_starting_use() {
+        let consume = LocalItemUsePrediction::Result(LocalInteractionResult::Success(
+            LocalInteractionSuccess::consume(true),
+        ));
+        let mut dry = WorldStore::new();
+        set_main_hand(&mut dry, VANILLA_ITEM_TRIDENT_ID);
+        assert_eq!(
+            dry.predict_local_item_use(InteractionHand::MainHand),
+            consume
+        );
+
+        dry.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: ItemStackSummary {
+                item_id: Some(VANILLA_ITEM_TRIDENT_ID),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    added: 2,
+                    added_type_ids: vec![
+                        VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
+                        VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+                    ],
+                    max_damage: Some(250),
+                    damage: Some(249),
+                    ..DataComponentPatchSummary::default()
+                },
+            },
+        });
+        assert_eq!(
+            dry.predict_local_item_use(InteractionHand::MainHand),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Fail)
+        );
+
+        let install_riptide = |world: &mut WorldStore| {
+            world.record_registry_data(RegistryData {
+                registry: "minecraft:enchantment".to_string(),
+                entries: vec![RegistryDataEntry {
+                    id: "minecraft:riptide".to_string(),
+                    raw_data: None,
+                }],
+                raw_payload_len: 0,
+            });
+            world.apply_set_player_inventory(SetPlayerInventory {
+                slot: 0,
+                item: ItemStackSummary {
+                    item_id: Some(VANILLA_ITEM_TRIDENT_ID),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary {
+                        added: 1,
+                        added_type_ids: vec![VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID],
+                        enchantments: vec![ItemEnchantmentSummary {
+                            holder_id: 0,
+                            level: 1,
+                        }],
+                        ..DataComponentPatchSummary::default()
+                    },
+                },
+            });
+        };
+        install_riptide(&mut dry);
+        assert_eq!(
+            dry.predict_local_item_use(InteractionHand::MainHand),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Fail)
+        );
+
+        let mut water = tool_use_world(block_state_id("minecraft:water", [("level", "0")]));
+        water.set_local_player_pose(crate::LocalPlayerPoseState::default());
+        install_riptide(&mut water);
+        assert_eq!(
+            water.predict_local_item_use(InteractionHand::MainHand),
+            consume
         );
     }
 

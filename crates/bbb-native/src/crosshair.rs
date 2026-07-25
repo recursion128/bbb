@@ -5,11 +5,11 @@ use bbb_protocol::packets::{
     Direction as ProtocolDirection, Vec3d as ProtocolVec3d,
 };
 use bbb_renderer::{CameraPose, SelectionOutline};
-use bbb_world::{BlockPos, EntityPickTargetState, ItemAttackRange, WorldStore};
 #[cfg(test)]
+use bbb_world::VANILLA_ENDER_DRAGON_PHASE_HOLDING_PATTERN_ID as ENDER_DRAGON_HOLDING_PATTERN_PHASE_ID;
 use bbb_world::{
-    LocalPlayerPoseState,
-    VANILLA_ENDER_DRAGON_PHASE_HOLDING_PATTERN_ID as ENDER_DRAGON_HOLDING_PATTERN_PHASE_ID,
+    BlockPos, EntityPickTargetState, ItemAttackRange, LocalItemUsePovFluidMode,
+    LocalItemUsePovQuery, LocalPlayerPoseState, WorldStore,
 };
 
 use crate::block_outline::{
@@ -126,6 +126,38 @@ pub(crate) fn debug_looking_at_fluid_hit_from_camera(
             Some(BlockOutlineTarget::from_fluid_height(
                 probe.fluid?.own_height(),
             ))
+        },
+    )
+}
+
+pub(crate) fn item_use_pov_block_hit_from_world(
+    world: &WorldStore,
+    pose: LocalPlayerPoseState,
+    query: LocalItemUsePovQuery,
+) -> Option<CrosshairBlockHit> {
+    raycast_crosshair_block_hit_from_ray(
+        crosshair_ray_from_player_pose(pose),
+        query.max_distance,
+        |pos| {
+            let probe = world.probe_block(pos)?;
+            let fluid_height = probe.fluid.and_then(|fluid| {
+                let selected = match query.fluid_mode {
+                    LocalItemUsePovFluidMode::None => false,
+                    LocalItemUsePovFluidMode::SourceOnly => fluid.amount == 8 && !fluid.falling,
+                    LocalItemUsePovFluidMode::Any => true,
+                };
+                if selected {
+                    world
+                        .fluid_state_and_height_at(pos)
+                        .map(|(_, height)| height)
+                } else {
+                    None
+                }
+            });
+            Some(match fluid_height {
+                Some(height) => BlockOutlineTarget::from_probe_with_fluid_height(&probe, height),
+                None => BlockOutlineTarget::from_probe(&probe),
+            })
         },
     )
 }
@@ -1025,7 +1057,6 @@ pub(crate) fn protocol_block_hit_result_from_crosshair_hit(
     }
 }
 
-#[cfg(test)]
 fn eye_position_from_player_pose(pose: LocalPlayerPoseState) -> [f64; 3] {
     [
         pose.position.x,
@@ -1041,7 +1072,6 @@ struct CrosshairRay {
     x_rot: f32,
 }
 
-#[cfg(test)]
 fn crosshair_ray_from_player_pose(pose: LocalPlayerPoseState) -> CrosshairRay {
     CrosshairRay {
         eye: eye_position_from_player_pose(pose),
@@ -1150,6 +1180,93 @@ mod tests {
                 cursor: [0.0, 0.62, 0.0],
                 inside: false,
             })
+        );
+    }
+
+    #[test]
+    fn item_use_pov_raycast_selects_source_and_flowing_fluid_modes() {
+        let mut world = WorldStore::with_dimension(WorldDimension {
+            min_y: 0,
+            height: 16,
+        });
+        insert_air_chunk(&mut world);
+        let pos = ProtocolBlockPos { x: 0, y: 1, z: 0 };
+        let source_water = bbb_world::vanilla_block_state_id(
+            "minecraft:water",
+            &std::collections::BTreeMap::from([("level".to_string(), "0".to_string())]),
+        )
+        .expect("source water state");
+        let flowing_water = bbb_world::vanilla_block_state_id(
+            "minecraft:water",
+            &std::collections::BTreeMap::from([("level".to_string(), "1".to_string())]),
+        )
+        .expect("flowing water state");
+        assert!(
+            world.apply_block_update(bbb_protocol::packets::BlockUpdate {
+                pos,
+                block_state_id: source_water,
+            })
+        );
+        let pose = player_pose(0.0, 0.0, 0.0);
+        let query = |fluid_mode| LocalItemUsePovQuery {
+            fluid_mode,
+            max_distance: 4.5,
+        };
+
+        assert_eq!(
+            item_use_pov_block_hit_from_world(&world, pose, query(LocalItemUsePovFluidMode::None)),
+            None
+        );
+        assert_eq!(
+            item_use_pov_block_hit_from_world(
+                &world,
+                pose,
+                query(LocalItemUsePovFluidMode::SourceOnly)
+            )
+            .map(|hit| hit.pos),
+            Some(BlockPos { x: 0, y: 1, z: 0 })
+        );
+
+        assert!(
+            world.apply_block_update(bbb_protocol::packets::BlockUpdate {
+                pos,
+                block_state_id: flowing_water,
+            })
+        );
+        assert_eq!(
+            item_use_pov_block_hit_from_world(
+                &world,
+                pose,
+                query(LocalItemUsePovFluidMode::SourceOnly)
+            ),
+            None
+        );
+        assert_eq!(
+            item_use_pov_block_hit_from_world(&world, pose, query(LocalItemUsePovFluidMode::Any))
+                .map(|hit| hit.pos),
+            Some(BlockPos { x: 0, y: 1, z: 0 })
+        );
+
+        assert!(
+            world.apply_block_update(bbb_protocol::packets::BlockUpdate {
+                pos,
+                block_state_id: source_water,
+            })
+        );
+        assert!(
+            world.apply_block_update(bbb_protocol::packets::BlockUpdate {
+                pos: ProtocolBlockPos { x: 0, y: 2, z: 0 },
+                block_state_id: source_water,
+            })
+        );
+        assert_eq!(
+            item_use_pov_block_hit_from_world(
+                &world,
+                player_pose_at([0.0, 0.33, 0.0], 0.0, 0.0),
+                query(LocalItemUsePovFluidMode::SourceOnly),
+            )
+            .map(|hit| hit.pos),
+            Some(BlockPos { x: 0, y: 1, z: 0 })
         );
     }
 

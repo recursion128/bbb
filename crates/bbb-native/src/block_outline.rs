@@ -44,6 +44,30 @@ impl BlockOutlineTarget {
         }
     }
 
+    pub(crate) fn from_probe_with_fluid_height(probe: &BlockProbe, height: f64) -> Self {
+        let mut boxes = if is_selectable_crosshair_material(probe.material) {
+            outline_shape_for_block(probe.block_name.as_deref(), &probe.block_properties)
+                .map(|shape| {
+                    shape
+                        .boxes_min_max()
+                        .into_iter()
+                        .map(|(min, max)| BlockOutlineBox { min, max })
+                        .collect()
+                })
+                .unwrap_or_default()
+        } else {
+            Vec::new()
+        };
+        boxes.push(BlockOutlineBox {
+            min: [0.0, 0.0, 0.0],
+            max: [1.0, height.clamp(0.0, 1.0), 1.0],
+        });
+        Self {
+            material: TerrainMaterialClass::Translucent,
+            outline: Some(BlockOutlineShape::from_boxes(boxes)),
+        }
+    }
+
     #[cfg(test)]
     pub(crate) fn from_box(material: TerrainMaterialClass, min: [f64; 3], max: [f64; 3]) -> Self {
         Self {
