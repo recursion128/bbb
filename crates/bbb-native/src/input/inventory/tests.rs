@@ -3683,6 +3683,62 @@ fn generic_container_mouse_click_queues_pickup() {
 }
 
 #[test]
+fn generic_container_double_click_predicts_pickup_all_before_queueing() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.inventory_last_click_slot = Some(0);
+    input.inventory_last_click_button_num = Some(0);
+    input.inventory_last_click_at = Some(Instant::now() - Duration::from_millis(1));
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_open_screen(OpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X1_ID,
+        title: "Chest".to_string(),
+        title_styled: Vec::new(),
+    });
+    let mut items = vec![ItemStackSummary::empty(); 45];
+    items[1] = item_stack(42, 3);
+    world.apply_container_set_content(ContainerSetContent {
+        container_id: 7,
+        state_id: 12,
+        items,
+        carried_item: item_stack(42, 5),
+    });
+
+    assert!(handle_inventory_mouse_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(568.0, 320.0)),
+        PhysicalSize::new(1280, 720),
+    ));
+
+    assert_eq!(counters.container_click_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::ContainerClick(ContainerClick {
+            container_id: 7,
+            state_id: 12,
+            slot_num: 0,
+            button_num: 0,
+            input: ContainerInput::PickupAll,
+            changed_slots: [(1, HashedStack::Empty)].into(),
+            carried_item: HashedStack::Item(hashed_item(42, 8)),
+        })
+    );
+    assert_eq!(
+        world.inventory().open_container.as_ref().unwrap().slots[1].item,
+        ItemStackSummary::empty()
+    );
+    assert_eq!(world.inventory().cursor_item, item_stack(42, 8));
+}
+
+#[test]
 fn mount_horse_mouse_click_queues_pickup() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);
@@ -7749,6 +7805,117 @@ fn inventory_left_drag_queues_quick_craft_sequence() {
 }
 
 #[test]
+fn generic_container_left_drag_queues_predicted_quick_craft_sequence() {
+    let (tx, mut rx) = mpsc::channel(8);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_open_screen(OpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X1_ID,
+        title: "Chest".to_string(),
+        title_styled: Vec::new(),
+    });
+    world.apply_container_set_content(ContainerSetContent {
+        container_id: 7,
+        state_id: 12,
+        items: vec![ItemStackSummary::empty(); 45],
+        carried_item: item_stack(42, 8),
+    });
+
+    assert!(handle_inventory_mouse_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(568.0, 320.0)),
+        PhysicalSize::new(1280, 720),
+    ));
+    assert!(rx.try_recv().is_err());
+    assert!(handle_inventory_cursor_moved(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        Some(PhysicalPosition::new(568.0, 320.0)),
+        PhysicalSize::new(1280, 720),
+    ));
+    assert!(handle_inventory_cursor_moved(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        Some(PhysicalPosition::new(586.0, 320.0)),
+        PhysicalSize::new(1280, 720),
+    ));
+    assert!(handle_inventory_mouse_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Left,
+        ElementState::Released,
+        Some(PhysicalPosition::new(586.0, 320.0)),
+        PhysicalSize::new(1280, 720),
+    ));
+
+    assert_eq!(counters.container_click_commands_queued, 4);
+    assert_quick_craft_click_for_container(
+        &mut rx,
+        7,
+        12,
+        -999,
+        0,
+        [].into(),
+        HashedStack::Item(hashed_item(42, 8)),
+    );
+    assert_quick_craft_click_for_container(
+        &mut rx,
+        7,
+        12,
+        0,
+        1,
+        [].into(),
+        HashedStack::Item(hashed_item(42, 8)),
+    );
+    assert_quick_craft_click_for_container(
+        &mut rx,
+        7,
+        12,
+        1,
+        1,
+        [].into(),
+        HashedStack::Item(hashed_item(42, 8)),
+    );
+    assert_quick_craft_click_for_container(
+        &mut rx,
+        7,
+        12,
+        -999,
+        2,
+        [
+            (0, HashedStack::Item(hashed_item(42, 4))),
+            (1, HashedStack::Item(hashed_item(42, 4))),
+        ]
+        .into(),
+        HashedStack::Empty,
+    );
+    assert!(rx.try_recv().is_err());
+    assert_eq!(world.inventory().cursor_item, ItemStackSummary::empty());
+    assert_eq!(
+        world.inventory().open_container.as_ref().unwrap().slots[0].item,
+        item_stack(42, 4)
+    );
+    assert_eq!(
+        world.inventory().open_container.as_ref().unwrap().slots[1].item,
+        item_stack(42, 4)
+    );
+}
+
+#[test]
 fn inventory_right_drag_queues_quick_craft_one_per_slot() {
     let (tx, mut rx) = mpsc::channel(8);
     let commands = Some(tx);
@@ -8512,10 +8679,30 @@ fn assert_quick_craft_click(
     changed_slots: BTreeMap<i16, HashedStack>,
     carried_item: HashedStack,
 ) {
+    assert_quick_craft_click_for_container(
+        rx,
+        0,
+        0,
+        slot_num,
+        button_num,
+        changed_slots,
+        carried_item,
+    );
+}
+
+fn assert_quick_craft_click_for_container(
+    rx: &mut mpsc::Receiver<NetCommand>,
+    container_id: i32,
+    state_id: i32,
+    slot_num: i16,
+    button_num: i8,
+    changed_slots: BTreeMap<i16, HashedStack>,
+    carried_item: HashedStack,
+) {
     match rx.try_recv().unwrap() {
         NetCommand::ContainerClick(click) => {
-            assert_eq!(click.container_id, 0);
-            assert_eq!(click.state_id, 0);
+            assert_eq!(click.container_id, container_id);
+            assert_eq!(click.state_id, state_id);
             assert_eq!(click.slot_num, slot_num);
             assert_eq!(click.button_num, button_num);
             assert_eq!(click.input, ContainerInput::QuickCraft);

@@ -303,9 +303,7 @@ pub(crate) fn handle_inventory_cursor_moved(
         input.inventory_hovered_slot = hovered;
     }
     if let Some(slot) = hovered {
-        if world.local_inventory_is_open() {
-            local_inventory_add_quick_craft_slot(input, world, slot);
-        }
+        local_inventory_add_quick_craft_slot(input, world, slot);
     }
     true
 }
@@ -625,13 +623,7 @@ pub(crate) fn handle_inventory_mouse_input_with_item_runtime(
     local_inventory_clear_quick_craft(input);
     let (slot_num, click_input) = match click_target {
         Some(InventoryClickTarget::Slot(slot)) => {
-            if !world.local_inventory_is_open() {
-                if input.shift_down() {
-                    (slot, ContainerInput::QuickMove)
-                } else {
-                    (slot, ContainerInput::Pickup)
-                }
-            } else if double_click_slot == Some(slot)
+            if double_click_slot == Some(slot)
                 && button_num == 0
                 && !input.shift_down()
                 && !inventory_cursor_is_empty(world)
@@ -1185,10 +1177,6 @@ fn handle_inventory_mouse_released(
     let Some(quick_craft_button_num) = input.inventory_quick_craft_button_num else {
         return true;
     };
-    if !world.local_inventory_is_open() {
-        local_inventory_clear_quick_craft(input);
-        return true;
-    }
     if quick_craft_button_num != button_num {
         local_inventory_clear_quick_craft(input);
         return true;
@@ -1330,11 +1318,7 @@ fn local_inventory_apply_and_queue_click(
         i32::from(request.slot_num),
         request.input,
     );
-    let click = if world.local_inventory_is_open()
-        || matches!(
-            request.input,
-            ContainerInput::Pickup | ContainerInput::QuickMove | ContainerInput::Clone
-        ) {
+    let click = {
         match world.apply_local_container_click_slot(request) {
             Ok(click) => click,
             Err(ContainerClickBuildError::UnsupportedLocalClickInput(_))
@@ -1353,11 +1337,6 @@ fn local_inventory_apply_and_queue_click(
             }
             Err(_) => return false,
         }
-    } else {
-        let Ok(click) = world.build_container_click_slot(request) else {
-            return false;
-        };
-        click
     };
     queue_container_click_command(counters, net_commands, click);
     true
@@ -1427,7 +1406,12 @@ fn local_inventory_can_add_quick_craft_slot(
     world: &WorldStore,
     slot_num: i16,
 ) -> bool {
-    if input.inventory_quick_craft_slots.contains(&slot_num) || slot_num == 0 {
+    if input.inventory_quick_craft_slots.contains(&slot_num)
+        || (world.local_inventory_is_open() && slot_num == 0)
+    {
+        return false;
+    }
+    if !world.local_inventory_is_open() && !world.active_container_uses_unrestricted_slot_rules() {
         return false;
     }
     let Some(button_num) = input.inventory_quick_craft_button_num else {
@@ -1445,19 +1429,21 @@ fn local_inventory_can_add_quick_craft_slot(
         return false;
     };
     if item_stack_is_empty(slot_item) {
-        return local_inventory_slot_max_stack_size(slot_num, &world.inventory().cursor_item) > 0;
+        return inventory_slot_max_stack_size(world, slot_num, &world.inventory().cursor_item) > 0;
     }
     if !same_item_same_components(slot_item, &world.inventory().cursor_item) {
         return false;
     }
-    slot_item.count < local_inventory_slot_max_stack_size(slot_num, slot_item)
+    slot_item.count < inventory_slot_max_stack_size(world, slot_num, slot_item)
 }
 
 fn local_inventory_slot_item(world: &WorldStore, slot_num: i16) -> Option<&ItemStackSummary> {
-    world
-        .inventory()
-        .inventory_menu
-        .slots
+    let inventory = world.inventory();
+    inventory
+        .open_container
+        .as_ref()
+        .map(|container| &container.slots)
+        .unwrap_or(&inventory.inventory_menu.slots)
         .iter()
         .find(|slot| slot.slot == slot_num)
         .map(|slot| &slot.item)
@@ -3525,6 +3511,20 @@ fn local_inventory_slot_max_stack_size(slot_num: i16, stack: &ItemStackSummary) 
         _ => 64,
     };
     item_max_stack_size.min(slot_max_stack_size)
+}
+
+fn inventory_slot_max_stack_size(
+    world: &WorldStore,
+    slot_num: i16,
+    stack: &ItemStackSummary,
+) -> i32 {
+    if world.local_inventory_is_open() {
+        local_inventory_slot_max_stack_size(slot_num, stack)
+    } else if world.active_container_uses_unrestricted_slot_rules() {
+        local_inventory_item_max_stack_size(stack)
+    } else {
+        0
+    }
 }
 
 fn local_inventory_item_max_stack_size(stack: &ItemStackSummary) -> i32 {

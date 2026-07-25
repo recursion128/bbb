@@ -2862,7 +2862,7 @@ fn apply_local_container_pickup_all_noops_without_eligible_click() {
 }
 
 #[test]
-fn apply_local_container_pickup_all_rejects_non_inventory_menu() {
+fn apply_local_container_pickup_all_predicts_generic_menu() {
     let mut store = WorldStore::new();
     store.apply_set_cursor_item(ProtocolSetCursorItem {
         item: item_stack(42, 5),
@@ -2873,28 +2873,33 @@ fn apply_local_container_pickup_all_rejects_non_inventory_menu() {
         title: "Chest".to_string(),
         title_styled: Vec::new(),
     });
+    let mut items = vec![ProtocolItemStackSummary::empty(); 54];
+    items[1] = item_stack(42, 3);
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
         state_id: 3,
-        items: vec![ProtocolItemStackSummary::empty(), item_stack(42, 3)],
+        items,
         carried_item: item_stack(42, 5),
     });
 
+    let pickup_all = store
+        .apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: 0,
+            button_num: 0,
+            input: ProtocolContainerInput::PickupAll,
+        })
+        .unwrap();
+
     assert_eq!(
-        store
-            .apply_local_container_click_slot(ContainerClickSlotRequest {
-                slot_num: 0,
-                button_num: 0,
-                input: ProtocolContainerInput::PickupAll,
-            })
-            .unwrap_err(),
-        ContainerClickBuildError::UnsupportedLocalClickInput(ProtocolContainerInput::PickupAll)
+        pickup_all.changed_slots,
+        BTreeMap::from([(1, ProtocolHashedStack::Empty)])
     );
+    assert_eq!(pickup_all.carried_item, hashed_item_stack(42, 8));
     assert_eq!(
         store.inventory().open_container.as_ref().unwrap().slots[1].item,
-        item_stack(42, 3)
+        ProtocolItemStackSummary::empty()
     );
-    assert_eq!(store.inventory().cursor_item, item_stack(42, 5));
+    assert_eq!(store.inventory().cursor_item, item_stack(42, 8));
 }
 
 #[test]
@@ -3131,7 +3136,7 @@ fn apply_local_container_quick_craft_invalid_type_or_order_resets_without_corrup
 }
 
 #[test]
-fn apply_local_container_quick_craft_rejects_non_inventory_menu() {
+fn apply_local_container_quick_craft_predicts_generic_menu() {
     let mut store = WorldStore::new();
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
@@ -3142,25 +3147,50 @@ fn apply_local_container_quick_craft_rejects_non_inventory_menu() {
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
         state_id: 3,
-        items: vec![ProtocolItemStackSummary::empty()],
+        items: vec![ProtocolItemStackSummary::empty(); 54],
         carried_item: item_stack(42, 8),
     });
 
+    store
+        .apply_local_container_click_slot(quick_craft_request(
+            -999,
+            QUICKCRAFT_HEADER_START,
+            QUICKCRAFT_TYPE_CHARITABLE,
+        ))
+        .unwrap();
+    store
+        .apply_local_container_click_slot(quick_craft_request(
+            0,
+            QUICKCRAFT_HEADER_CONTINUE,
+            QUICKCRAFT_TYPE_CHARITABLE,
+        ))
+        .unwrap();
+    store
+        .apply_local_container_click_slot(quick_craft_request(
+            1,
+            QUICKCRAFT_HEADER_CONTINUE,
+            QUICKCRAFT_TYPE_CHARITABLE,
+        ))
+        .unwrap();
+    let finish = store
+        .apply_local_container_click_slot(quick_craft_request(
+            -999,
+            QUICKCRAFT_HEADER_END,
+            QUICKCRAFT_TYPE_CHARITABLE,
+        ))
+        .unwrap();
+
     assert_eq!(
-        store
-            .apply_local_container_click_slot(quick_craft_request(
-                0,
-                QUICKCRAFT_HEADER_START,
-                QUICKCRAFT_TYPE_CHARITABLE,
-            ))
-            .unwrap_err(),
-        ContainerClickBuildError::UnsupportedLocalClickInput(ProtocolContainerInput::QuickCraft)
+        finish.changed_slots,
+        BTreeMap::from([(0, hashed_item_stack(42, 4)), (1, hashed_item_stack(42, 4)),])
     );
+    assert_eq!(finish.carried_item, ProtocolHashedStack::Empty);
+    assert_eq!(open_container_slot_item(&store, 0), item_stack(42, 4));
+    assert_eq!(open_container_slot_item(&store, 1), item_stack(42, 4));
     assert_eq!(
-        store.inventory().open_container.as_ref().unwrap().slots[0].item,
+        store.inventory().cursor_item,
         ProtocolItemStackSummary::empty()
     );
-    assert_eq!(store.inventory().cursor_item, item_stack(42, 8));
 }
 
 #[test]
@@ -9524,7 +9554,7 @@ fn apply_local_container_throw_drops_full_stack_and_requires_empty_cursor() {
 }
 
 #[test]
-fn apply_local_container_throw_rejects_non_inventory_menu() {
+fn apply_local_container_throw_predicts_generic_menu() {
     let mut store = WorldStore::new();
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
@@ -9532,27 +9562,29 @@ fn apply_local_container_throw_rejects_non_inventory_menu() {
         title: "Chest".to_string(),
         title_styled: Vec::new(),
     });
+    let mut items = vec![ProtocolItemStackSummary::empty(); 54];
+    items[0] = item_stack(42, 3);
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
         state_id: 3,
-        items: vec![item_stack(42, 3)],
+        items,
         carried_item: ProtocolItemStackSummary::empty(),
     });
 
+    let throw = store
+        .apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: 0,
+            button_num: 0,
+            input: ProtocolContainerInput::Throw,
+        })
+        .unwrap();
+
     assert_eq!(
-        store
-            .apply_local_container_click_slot(ContainerClickSlotRequest {
-                slot_num: 0,
-                button_num: 0,
-                input: ProtocolContainerInput::Throw,
-            })
-            .unwrap_err(),
-        ContainerClickBuildError::UnsupportedLocalClickInput(ProtocolContainerInput::Throw)
+        throw.changed_slots,
+        BTreeMap::from([(0, hashed_item_stack(42, 2))])
     );
-    assert_eq!(
-        store.inventory().open_container.as_ref().unwrap().slots[0].item,
-        item_stack(42, 3)
-    );
+    assert_eq!(throw.carried_item, ProtocolHashedStack::Empty);
+    assert_eq!(open_container_slot_item(&store, 0), item_stack(42, 2));
 }
 
 #[test]
@@ -9673,7 +9705,7 @@ fn apply_local_container_swap_splits_source_when_target_slot_has_lower_limit() {
 }
 
 #[test]
-fn apply_local_container_swap_requires_empty_cursor_and_inventory_menu() {
+fn apply_local_container_swap_requires_empty_cursor_and_predicts_generic_menu() {
     let mut store = WorldStore::new();
     store.apply_set_player_inventory(ProtocolSetPlayerInventory {
         slot: 0,
@@ -9713,22 +9745,34 @@ fn apply_local_container_swap_requires_empty_cursor_and_inventory_menu() {
         title: "Chest".to_string(),
         title_styled: Vec::new(),
     });
+    let mut items = vec![ProtocolItemStackSummary::empty(); 54];
+    items[0] = item_stack(42, 3);
+    items[45] = item_stack(43, 2);
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
         state_id: 3,
-        items: vec![item_stack(42, 3)],
+        items,
         carried_item: ProtocolItemStackSummary::empty(),
     });
+
+    let swap = store
+        .apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: 0,
+            button_num: 0,
+            input: ProtocolContainerInput::Swap,
+        })
+        .unwrap();
+
     assert_eq!(
-        store
-            .apply_local_container_click_slot(ContainerClickSlotRequest {
-                slot_num: 0,
-                button_num: 0,
-                input: ProtocolContainerInput::Swap,
-            })
-            .unwrap_err(),
-        ContainerClickBuildError::UnsupportedLocalClickInput(ProtocolContainerInput::Swap)
+        swap.changed_slots,
+        BTreeMap::from([
+            (0, hashed_item_stack(43, 2)),
+            (45, hashed_item_stack(42, 3)),
+        ])
     );
+    assert_eq!(open_container_slot_item(&store, 0), item_stack(43, 2));
+    assert_eq!(open_container_slot_item(&store, 45), item_stack(42, 3));
+    assert_eq!(player_slot_item(&store, 0), item_stack(42, 3));
 }
 
 #[test]

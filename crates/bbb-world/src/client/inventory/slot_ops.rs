@@ -1216,10 +1216,6 @@ pub(super) fn apply_quick_craft_to_slots(
     button_num: i8,
     default_item_max_stack_sizes: &BTreeMap<i32, i32>,
 ) {
-    if container_id != INVENTORY_MENU_CONTAINER_ID {
-        return;
-    }
-
     let expected_status = quick_craft.status;
     quick_craft.status = quickcraft_header(button_num);
     if (expected_status != QUICKCRAFT_HEADER_CONTINUE
@@ -1520,10 +1516,10 @@ pub(super) fn apply_swap_click_to_slots(
     button_num: i8,
     default_item_max_stack_sizes: &BTreeMap<i32, i32>,
 ) {
-    if container_id != INVENTORY_MENU_CONTAINER_ID || !item_stack_is_empty(cursor) || slot_num < 0 {
+    if !item_stack_is_empty(cursor) || slot_num < 0 {
         return;
     }
-    let Some(source_slot_num) = swap_button_inventory_menu_slot(button_num) else {
+    let Some(source_slot_num) = swap_button_container_slot(container_id, slots, button_num) else {
         return;
     };
     if source_slot_num == slot_num {
@@ -1642,6 +1638,31 @@ pub(super) fn swap_button_inventory_menu_slot(button_num: i8) -> Option<i16> {
         }
         _ => None,
     }
+}
+
+pub(super) fn swap_button_container_slot(
+    container_id: i32,
+    slots: &[ContainerSlot],
+    button_num: i8,
+) -> Option<i16> {
+    if container_id == INVENTORY_MENU_CONTAINER_ID {
+        return swap_button_inventory_menu_slot(button_num);
+    }
+    let hotbar_index = i16::from(u8::try_from(button_num).ok()?);
+    if hotbar_index >= PLAYER_HOTBAR_SIZE as i16 {
+        return None;
+    }
+    let total_slots = slots.iter().map(|slot| slot.slot + 1).max()?;
+    let hotbar_start = total_slots.checked_sub(PLAYER_HOTBAR_SIZE as i16)?;
+    let player_main_start = total_slots.checked_sub(GENERIC_CONTAINER_PLAYER_SLOT_COUNT)?;
+    (player_main_start >= 0).then_some(hotbar_start + hotbar_index)
+}
+
+pub(super) fn menu_type_has_unrestricted_slot_rules(menu_type_id: Option<i32>) -> bool {
+    generic_9x_container_slot_count(menu_type_id).is_some()
+        || generic_3x3_container_slot_count(menu_type_id).is_some()
+        || hopper_container_slot_count(menu_type_id).is_some()
+        || shulker_box_container_slot_count(menu_type_id).is_some()
 }
 
 pub(super) fn generic_9x_container_slot_count(menu_type_id: Option<i32>) -> Option<i16> {

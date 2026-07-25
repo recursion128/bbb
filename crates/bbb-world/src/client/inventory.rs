@@ -1744,6 +1744,12 @@ impl InventoryState {
         })
     }
 
+    fn active_container_uses_unrestricted_slot_rules(&self) -> bool {
+        self.open_container
+            .as_ref()
+            .is_some_and(|container| menu_type_has_unrestricted_slot_rules(container.menu_type_id))
+    }
+
     pub(crate) fn apply_local_container_click_slot(
         &mut self,
         ctx: InventoryCtx<'_>,
@@ -2217,7 +2223,10 @@ impl InventoryState {
                         ));
                     }
                 }
-                ProtocolContainerInput::Throw if container_id == INVENTORY_MENU_CONTAINER_ID => {
+                ProtocolContainerInput::Throw
+                    if container_id == INVENTORY_MENU_CONTAINER_ID
+                        || menu_type_has_unrestricted_slot_rules(menu_type_id) =>
+                {
                     apply_throw_click_to_slots(
                         &mut slots_after,
                         &cursor_after,
@@ -2225,7 +2234,16 @@ impl InventoryState {
                         request.button_num,
                     )
                 }
-                ProtocolContainerInput::Swap if container_id == INVENTORY_MENU_CONTAINER_ID => {
+                ProtocolContainerInput::Swap
+                    if (container_id == INVENTORY_MENU_CONTAINER_ID
+                        || menu_type_has_unrestricted_slot_rules(menu_type_id))
+                        && swap_button_container_slot(
+                            container_id,
+                            &slots_after,
+                            request.button_num,
+                        )
+                        .is_some() =>
+                {
                     apply_swap_click_to_slots(
                         container_id,
                         &mut slots_after,
@@ -2236,7 +2254,8 @@ impl InventoryState {
                     )
                 }
                 ProtocolContainerInput::QuickCraft
-                    if container_id == INVENTORY_MENU_CONTAINER_ID =>
+                    if container_id == INVENTORY_MENU_CONTAINER_ID
+                        || menu_type_has_unrestricted_slot_rules(menu_type_id) =>
                 {
                     apply_quick_craft_to_slots(
                         container_id,
@@ -2249,7 +2268,8 @@ impl InventoryState {
                     )
                 }
                 ProtocolContainerInput::PickupAll
-                    if container_id == INVENTORY_MENU_CONTAINER_ID =>
+                    if container_id == INVENTORY_MENU_CONTAINER_ID
+                        || menu_type_has_unrestricted_slot_rules(menu_type_id) =>
                 {
                     apply_pickup_all_to_slots(
                         &mut slots_after,
@@ -3304,6 +3324,11 @@ impl WorldStore {
         request: ContainerClickSlotRequest,
     ) -> Result<ProtocolContainerClick, ContainerClickBuildError> {
         self.inventory.build_container_click_slot(request)
+    }
+
+    pub fn active_container_uses_unrestricted_slot_rules(&self) -> bool {
+        self.inventory
+            .active_container_uses_unrestricted_slot_rules()
     }
 
     pub fn apply_local_container_click_slot(
