@@ -25,7 +25,8 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID, VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
         VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
-        VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID, VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID,
         VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID,
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID, VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID,
         VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
@@ -45,7 +46,7 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
         VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
         VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
+        VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_LOCK_TYPE_ID,
         VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID, VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
@@ -82,12 +83,15 @@ use bbb_protocol::{
         VANILLA_EQUIPMENT_SLOT_GROUP_ANY_ID,
     },
     packets::{
-        validate_data_component_patch_summary, BlocksAttacksSummary, ConsumeEffectSummary,
-        DataComponentPatchSummary, FireworkExplosionSummary, HashedComponentPatch, HashedItemStack,
-        HashedStack, ItemEnchantmentSummary, ItemStackSummary, ItemStackTemplateSummary,
-        KineticWeaponConditionSummary, MobEffectDetailsSummary, MobEffectInstanceSummary,
-        NbtSummaryEntry, NbtSummaryValue, PlayerModelTypeSummary, ResolvableProfileKindSummary,
-        ResolvableProfileSummary, SoundEventSummary,
+        validate_data_component_patch_summary, AdventureModePredicateDataSummary,
+        BlockPredicateSummary, BlocksAttacksSummary, ConsumeEffectSummary,
+        DataComponentPatchSummary, DataComponentPredicateTypeSummary, FireworkExplosionSummary,
+        HashedComponentPatch, HashedItemStack, HashedStack, ItemEnchantmentSummary,
+        ItemStackSummary, ItemStackTemplateSummary, KineticWeaponConditionSummary,
+        MobEffectDetailsSummary, MobEffectInstanceSummary, NbtSummaryEntry, NbtSummaryValue,
+        PartialDataComponentPredicateSummary, PersistentItemPredicateSummary,
+        PlayerModelTypeSummary, ResolvableProfileKindSummary, ResolvableProfileSummary,
+        SoundEventSummary, StatePropertyValueMatcherSummary,
     },
     tropical_fish_patterns::vanilla_tropical_fish_pattern,
 };
@@ -242,6 +246,12 @@ fn hash_component_value(
         ),
         VANILLA_DATA_COMPONENT_RARITY_TYPE_ID => hash_string(patch.rarity?.as_str()),
         VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID => hash_enchantments(ctx, &patch.enchantments)?,
+        VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID => {
+            hash_adventure_mode_predicate(ctx, patch.can_place_on_persistent.as_ref()?)?
+        }
+        VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID => {
+            hash_adventure_mode_predicate(ctx, patch.can_break_persistent.as_ref()?)?
+        }
         VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID => hash_attribute_modifiers(ctx, patch)?,
         VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID => {
             let mut fields = Vec::new();
@@ -838,6 +848,9 @@ fn hash_component_value(
                 .map(|(name, value)| (hash_string(name), hash_string(value)))
                 .collect(),
         ),
+        VANILLA_DATA_COMPONENT_LOCK_TYPE_ID => {
+            hash_persistent_item_predicate(ctx, patch.lock_predicate.as_ref()?)?
+        }
         VANILLA_DATA_COMPONENT_BEES_TYPE_ID => hash_list(
             patch
                 .bees
@@ -1063,6 +1076,157 @@ fn hash_data_component_patch_codec(
         ));
     }
     Some(hash_map(entries))
+}
+
+fn hash_adventure_mode_predicate(
+    ctx: InventoryCtx<'_>,
+    predicate: &AdventureModePredicateDataSummary,
+) -> Option<Hash32> {
+    match predicate.predicates.as_slice() {
+        // The list branch is wrapped in `ExtraCodecs.nonEmptyList`.
+        [] => None,
+        [only] => hash_block_predicate(ctx, only),
+        predicates => Some(hash_list(
+            predicates
+                .iter()
+                .map(|predicate| hash_block_predicate(ctx, predicate))
+                .collect::<Option<Vec<_>>>()?,
+        )),
+    }
+}
+
+fn hash_block_predicate(
+    ctx: InventoryCtx<'_>,
+    predicate: &BlockPredicateSummary,
+) -> Option<Hash32> {
+    if predicate.nbt.is_some() {
+        return None;
+    }
+
+    let mut fields = Vec::new();
+    if let Some(blocks) = &predicate.blocks {
+        fields.push((
+            "blocks",
+            hash_registry_holder_set(
+                ctx,
+                "minecraft:block",
+                &blocks.registry_ids,
+                blocks.tag.as_deref(),
+            )?,
+        ));
+    }
+    if let Some(properties) = &predicate.state {
+        let mut property_hashes = BTreeMap::new();
+        for property in properties {
+            let value = match &property.value {
+                StatePropertyValueMatcherSummary::Exact(value) => hash_string(value),
+                StatePropertyValueMatcherSummary::Range { min, max } => {
+                    let mut fields = Vec::new();
+                    if let Some(min) = min {
+                        fields.push(("min", hash_string(min)));
+                    }
+                    if let Some(max) = max {
+                        fields.push(("max", hash_string(max)));
+                    }
+                    hash_record(fields)
+                }
+            };
+            if property_hashes.insert(&property.name, value).is_some() {
+                return None;
+            }
+        }
+        fields.push((
+            "state",
+            hash_map(
+                property_hashes
+                    .into_iter()
+                    .map(|(name, value)| (hash_string(name), value))
+                    .collect(),
+            ),
+        ));
+    }
+    if let Some(exact) = &predicate.exact_components {
+        fields.push(("components", hash_data_component_patch_codec(ctx, exact)?));
+    }
+    if !predicate.partial_components.is_empty() {
+        fields.push((
+            "predicates",
+            hash_partial_component_predicates(&predicate.partial_components)?,
+        ));
+    }
+    Some(hash_record(fields))
+}
+
+fn hash_partial_component_predicates(
+    predicates: &[PartialDataComponentPredicateSummary],
+) -> Option<Hash32> {
+    Some(hash_map(
+        predicates
+            .iter()
+            .map(|predicate| {
+                let DataComponentPredicateTypeSummary::AnyComponent(type_id) =
+                    predicate.predicate_type
+                else {
+                    return None;
+                };
+                if !matches!(
+                    predicate.wire_value.as_ref()?,
+                    NbtSummaryValue::Compound(entries) if entries.is_empty()
+                ) {
+                    return None;
+                }
+                Some((
+                    hash_string(vanilla_data_component_resource_id_for_type_id(type_id)?),
+                    hash_record(Vec::new()),
+                ))
+            })
+            .collect::<Option<Vec<_>>>()?,
+    ))
+}
+
+fn hash_persistent_item_predicate(
+    ctx: InventoryCtx<'_>,
+    predicate: &PersistentItemPredicateSummary,
+) -> Option<Hash32> {
+    if !predicate.exact_components.is_empty() {
+        return None;
+    }
+
+    let mut fields = Vec::new();
+    if let Some(items) = &predicate.items {
+        fields.push((
+            "items",
+            hash_registry_holder_set(
+                ctx,
+                "minecraft:item",
+                &items.registry_ids,
+                items.tag.as_deref(),
+            )?,
+        ));
+    }
+    if predicate.count_min.is_some() || predicate.count_max.is_some() {
+        let count = match (predicate.count_min, predicate.count_max) {
+            (Some(min), Some(max)) if min == max => hash_int(min),
+            (min, max) => {
+                let mut bounds = Vec::new();
+                if let Some(min) = min {
+                    bounds.push(("min", hash_int(min)));
+                }
+                if let Some(max) = max {
+                    bounds.push(("max", hash_int(max)));
+                }
+                hash_record(bounds)
+            }
+        };
+        fields.push(("count", count));
+    }
+    if !predicate.partial_components.is_empty() {
+        fields.push((
+            "predicates",
+            hash_partial_component_predicates(&predicate.partial_components)?,
+        ));
+    }
+    Some(hash_record(fields))
 }
 
 fn hash_attribute_modifiers(
@@ -1834,12 +1998,14 @@ mod tests {
         builtin_enum_component_values::VANILLA_DYE_COLOR_RED_ID,
         equipment_slots::VANILLA_EQUIPMENT_SLOT_GROUP_MAINHAND_ID,
         packets::{
-            chunks::BlockPos, AttributeModifierSummary, ConsumableSummary, DamageReductionSummary,
-            EquippableSummary, FireworkExplosionShapeSummary, GameProfilePropertySummary,
-            ItemContainerSlotSummary, ItemDamageFunctionSummary, ItemRaritySummary,
+            chunks::BlockPos, AdventureModePredicateSummary, AttributeModifierSummary,
+            BlockHolderSetSummary, ConsumableSummary, DamageReductionSummary, EquippableSummary,
+            FireworkExplosionShapeSummary, GameProfilePropertySummary, ItemContainerSlotSummary,
+            ItemDamageFunctionSummary, ItemHolderSetSummary, ItemRaritySummary,
             ItemUseAnimationSummary, KineticWeaponSummary, LodestoneTargetSummary,
             PiercingWeaponSummary, PlayerSkinPatchSummary, ResourceTextureSummary,
-            SuspiciousStewEffectSummary, ToolSummary, UseEffectsSummary, WrittenBookContentSummary,
+            StatePropertyMatcherSummary, SuspiciousStewEffectSummary, ToolSummary,
+            UseEffectsSummary, WrittenBookContentSummary,
         },
         ComponentStyle, NbtSummaryEntry, StyledTextRun,
     };
@@ -2669,6 +2835,228 @@ mod tests {
                     hash_list([hash_string("First"), hash_string("Second")]).0 as i32,
                 ),
             ])
+        );
+    }
+
+    #[test]
+    fn hashes_adventure_mode_and_lock_predicate_codec_shapes() {
+        let store = crate::WorldStore::new();
+        let block_id = store
+            .registries
+            .holder_id_by_resource_id("minecraft:block", "minecraft:stone")
+            .unwrap();
+        let item_id = store
+            .registries
+            .holder_id_by_resource_id("minecraft:item", "minecraft:stone")
+            .unwrap();
+        let empty_compound = NbtSummaryValue::Compound(Vec::new());
+        let any_lock = PartialDataComponentPredicateSummary {
+            predicate_type: DataComponentPredicateTypeSummary::AnyComponent(
+                VANILLA_DATA_COMPONENT_LOCK_TYPE_ID,
+            ),
+            wire_value: Some(empty_compound),
+        };
+        let exact = DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID],
+            max_stack_size: Some(16),
+            ..DataComponentPatchSummary::default()
+        };
+        let can_place_on = AdventureModePredicateDataSummary {
+            predicates: vec![BlockPredicateSummary {
+                blocks: Some(BlockHolderSetSummary {
+                    registry_ids: vec![block_id],
+                    tag: None,
+                }),
+                state: Some(vec![
+                    StatePropertyMatcherSummary {
+                        name: "facing".to_string(),
+                        value: StatePropertyValueMatcherSummary::Exact("north".to_string()),
+                    },
+                    StatePropertyMatcherSummary {
+                        name: "age".to_string(),
+                        value: StatePropertyValueMatcherSummary::Range {
+                            min: Some("1".to_string()),
+                            max: Some("3".to_string()),
+                        },
+                    },
+                ]),
+                nbt: None,
+                exact_components: Some(Box::new(exact)),
+                partial_components: vec![any_lock.clone()],
+            }],
+        };
+        let can_break = AdventureModePredicateDataSummary {
+            predicates: vec![
+                BlockPredicateSummary::default(),
+                BlockPredicateSummary {
+                    blocks: Some(BlockHolderSetSummary {
+                        registry_ids: Vec::new(),
+                        tag: Some("minecraft:mineable/pickaxe".to_string()),
+                    }),
+                    ..BlockPredicateSummary::default()
+                },
+            ],
+        };
+        let lock = PersistentItemPredicateSummary {
+            items: Some(ItemHolderSetSummary {
+                registry_ids: vec![item_id],
+                tag: None,
+            }),
+            count_min: Some(1),
+            count_max: Some(3),
+            exact_components: Vec::new(),
+            partial_components: vec![any_lock],
+        };
+        let patch = DataComponentPatchSummary {
+            added: 3,
+            added_type_ids: vec![
+                VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID,
+                VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID,
+                VANILLA_DATA_COMPONENT_LOCK_TYPE_ID,
+            ],
+            can_place_on: Some(AdventureModePredicateSummary {
+                unknown: false,
+                block_registry_ids: vec![block_id],
+                unresolved_block_tag_count: 0,
+            }),
+            can_place_on_persistent: Some(can_place_on),
+            can_break: Some(AdventureModePredicateSummary {
+                unknown: true,
+                block_registry_ids: Vec::new(),
+                unresolved_block_tag_count: 1,
+            }),
+            can_break_persistent: Some(can_break),
+            lock_predicate: Some(lock),
+            ..DataComponentPatchSummary::default()
+        };
+        let partial_hash = hash_map(vec![(
+            hash_string("minecraft:lock"),
+            hash_record(Vec::new()),
+        )]);
+
+        let hashed = hashed_component_patch_from_summary(test_ctx(&store), &patch).unwrap();
+
+        assert_eq!(
+            hashed.added_components,
+            BTreeMap::from([
+                (
+                    VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID,
+                    hash_record(vec![
+                        ("blocks", hash_string("minecraft:stone")),
+                        (
+                            "state",
+                            hash_map(vec![
+                                (hash_string("facing"), hash_string("north")),
+                                (
+                                    hash_string("age"),
+                                    hash_record(vec![
+                                        ("min", hash_string("1")),
+                                        ("max", hash_string("3")),
+                                    ]),
+                                ),
+                            ]),
+                        ),
+                        (
+                            "components",
+                            hash_map(vec![(
+                                hash_string("minecraft:max_stack_size"),
+                                hash_int(16),
+                            )]),
+                        ),
+                        ("predicates", partial_hash),
+                    ])
+                    .0 as i32,
+                ),
+                (
+                    VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID,
+                    hash_list([
+                        hash_record(Vec::new()),
+                        hash_record(vec![
+                            ("blocks", hash_string("#minecraft:mineable/pickaxe"),)
+                        ]),
+                    ])
+                    .0 as i32,
+                ),
+                (
+                    VANILLA_DATA_COMPONENT_LOCK_TYPE_ID,
+                    hash_record(vec![
+                        ("items", hash_string("minecraft:stone")),
+                        (
+                            "count",
+                            hash_record(vec![("min", hash_int(1)), ("max", hash_int(3)),]),
+                        ),
+                        ("predicates", partial_hash),
+                    ])
+                    .0 as i32,
+                ),
+            ])
+        );
+    }
+
+    #[test]
+    fn keeps_lossy_predicate_codec_shapes_server_authoritative() {
+        let store = crate::WorldStore::new();
+        assert_eq!(
+            hash_persistent_item_predicate(
+                test_ctx(&store),
+                &PersistentItemPredicateSummary {
+                    count_min: Some(2),
+                    count_max: Some(2),
+                    ..PersistentItemPredicateSummary::default()
+                },
+            ),
+            Some(hash_record(vec![("count", hash_int(2))]))
+        );
+
+        let empty_adventure = DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID],
+            can_place_on: Some(AdventureModePredicateSummary::default()),
+            can_place_on_persistent: Some(AdventureModePredicateDataSummary::default()),
+            ..DataComponentPatchSummary::default()
+        };
+        assert_eq!(
+            hashed_component_patch_from_summary(test_ctx(&store), &empty_adventure),
+            None
+        );
+
+        let exact_lock = DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![VANILLA_DATA_COMPONENT_LOCK_TYPE_ID],
+            lock_predicate: Some(PersistentItemPredicateSummary {
+                count_min: Some(2),
+                count_max: Some(2),
+                exact_components: vec![
+                    bbb_protocol::packets::PersistentDataComponentValueSummary {
+                        component_type_id: VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+                        value: NbtSummaryValue::Int(16),
+                    },
+                ],
+                ..PersistentItemPredicateSummary::default()
+            }),
+            ..DataComponentPatchSummary::default()
+        };
+        assert_eq!(
+            hashed_component_patch_from_summary(test_ctx(&store), &exact_lock),
+            None
+        );
+        assert_eq!(
+            hash_block_predicate(
+                test_ctx(&store),
+                &BlockPredicateSummary {
+                    nbt: Some(NbtSummaryValue::Compound(Vec::new())),
+                    ..BlockPredicateSummary::default()
+                },
+            ),
+            None
+        );
+        assert_eq!(
+            hash_partial_component_predicates(&[PartialDataComponentPredicateSummary {
+                predicate_type: DataComponentPredicateTypeSummary::Concrete(0),
+                wire_value: Some(NbtSummaryValue::Compound(Vec::new())),
+            }]),
+            None
         );
     }
 
