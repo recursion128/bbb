@@ -11,35 +11,48 @@ use std::collections::BTreeMap;
 use bbb_protocol::{
     builtin_enum_component_values::builtin_enum_component_value_name,
     data_component_types::{
+        vanilla_data_component_animal_variant_registry,
         vanilla_data_component_resource_id_for_type_id, vanilla_data_component_type_is_persistent,
-        VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID, VANILLA_DATA_COMPONENT_BASE_COLOR_TYPE_ID,
-        VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
-        VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID, VANILLA_DATA_COMPONENT_BASE_COLOR_TYPE_ID,
+        VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID,
+        VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID, VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID,
+        VANILLA_DATA_COMPONENT_DYE_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
         VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID,
+        VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
         VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID,
-        VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID,
+        VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
         VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_NOTE_BLOCK_SOUND_TYPE_ID,
         VANILLA_DATA_COMPONENT_OMINOUS_BOTTLE_AMPLIFIER_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_RARITY_TYPE_ID, VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID,
+        VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
+        VANILLA_DATA_COMPONENT_RARITY_TYPE_ID, VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID,
+        VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID, VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID,
+        VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
         VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID,
-        VANILLA_DATA_COMPONENT_TOOLTIP_STYLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_TOOLTIP_STYLE_TYPE_ID, VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
         VANILLA_DATA_COMPONENT_TROPICAL_FISH_BASE_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID,
         VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
-        VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID, VANILLA_DATA_COMPONENT_WEAPON_TYPE_ID,
+        VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_WEAPON_TYPE_ID,
     },
     packets::{
         validate_data_component_patch_summary, DataComponentPatchSummary, HashedComponentPatch,
-        HashedItemStack, HashedStack, ItemStackSummary, NbtSummaryValue,
+        HashedItemStack, HashedStack, ItemEnchantmentSummary, ItemStackSummary, NbtSummaryValue,
+        SoundEventSummary,
     },
     tropical_fish_patterns::vanilla_tropical_fish_pattern,
 };
@@ -132,7 +145,7 @@ pub(super) fn changed_hashed_slots(
 }
 
 fn hash_component_value(
-    _ctx: InventoryCtx<'_>,
+    ctx: InventoryCtx<'_>,
     patch: &DataComponentPatchSummary,
     type_id: i32,
 ) -> Option<Hash32> {
@@ -175,8 +188,12 @@ fn hash_component_value(
         VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID => {
             hash_float(patch.minimum_attack_charge_bits?)
         }
+        VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID => {
+            hash_registry_holder(ctx, "minecraft:damage_type", patch.damage_type_id?)?
+        }
         VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID => hash_string(patch.item_model.as_deref()?),
         VANILLA_DATA_COMPONENT_RARITY_TYPE_ID => hash_string(patch.rarity?.as_str()),
+        VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID => hash_enchantments(ctx, &patch.enchantments)?,
         VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID => {
             let mut fields = Vec::new();
             if !patch.custom_model_data_floats.is_empty() {
@@ -269,6 +286,15 @@ fn hash_component_value(
             }
             hash_record(fields)
         }
+        VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID => hash_record(vec![(
+            "types",
+            hash_registry_holder_set(
+                ctx,
+                "minecraft:damage_type",
+                &patch.damage_resistant_type_registry_ids,
+                patch.damage_resistant_type_tag.as_deref(),
+            )?,
+        )]),
         VANILLA_DATA_COMPONENT_WEAPON_TYPE_ID => {
             let mut fields = Vec::new();
             push_non_default_int(
@@ -329,6 +355,15 @@ fn hash_component_value(
         VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID => {
             hash_record(vec![("value", hash_int(patch.enchantable_value?))])
         }
+        VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID => hash_record(vec![(
+            "items",
+            hash_registry_holder_set(
+                ctx,
+                "minecraft:item",
+                &patch.repairable_item_registry_ids,
+                patch.repairable_item_tag.as_deref(),
+            )?,
+        )]),
         VANILLA_DATA_COMPONENT_TOOLTIP_STYLE_TYPE_ID => {
             hash_string(patch.tooltip_style.as_deref()?)
         }
@@ -340,6 +375,9 @@ fn hash_component_value(
             }
             push_non_default_int(&mut fields, "duration", value.duration, 6);
             hash_record(fields)
+        }
+        VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID => {
+            hash_enchantments(ctx, &patch.stored_enchantments)?
         }
         VANILLA_DATA_COMPONENT_DYE_TYPE_ID => hash_string(builtin_enum_component_value_name(
             type_id,
@@ -354,12 +392,114 @@ fn hash_component_value(
         VANILLA_DATA_COMPONENT_OMINOUS_BOTTLE_AMPLIFIER_TYPE_ID => {
             hash_int(patch.ominous_bottle_amplifier?)
         }
+        VANILLA_DATA_COMPONENT_TRIM_TYPE_ID => {
+            if patch.armor_trim_material_direct.is_some()
+                || patch.armor_trim_pattern_direct.is_some()
+            {
+                return None;
+            }
+            hash_record(vec![
+                (
+                    "material",
+                    hash_registry_holder(
+                        ctx,
+                        "minecraft:trim_material",
+                        patch.armor_trim_material_id?,
+                    )?,
+                ),
+                (
+                    "pattern",
+                    hash_registry_holder(
+                        ctx,
+                        "minecraft:trim_pattern",
+                        patch.armor_trim_pattern_id?,
+                    )?,
+                ),
+            ])
+        }
+        VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID => {
+            if patch.instrument_direct.is_some() {
+                return None;
+            }
+            hash_registry_holder(ctx, "minecraft:instrument", patch.instrument_id?)?
+        }
+        VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID => {
+            if patch.provides_trim_material_direct.is_some() {
+                return None;
+            }
+            hash_registry_holder(
+                ctx,
+                "minecraft:trim_material",
+                patch.provides_trim_material_id?,
+            )?
+        }
+        VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID => {
+            if patch.jukebox_direct_song.is_some() {
+                return None;
+            }
+            hash_registry_holder(ctx, "minecraft:jukebox_song", patch.jukebox_song_id?)?
+        }
+        VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID => hash_registry_holder_set(
+            ctx,
+            "minecraft:banner_pattern",
+            &patch.provides_banner_pattern_registry_ids,
+            patch.provides_banner_pattern_tag.as_deref(),
+        )?,
+        VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID => hash_list(
+            patch
+                .recipe_keys
+                .as_ref()?
+                .iter()
+                .map(|recipe| hash_string(recipe)),
+        ),
         VANILLA_DATA_COMPONENT_NOTE_BLOCK_SOUND_TYPE_ID => {
             hash_string(patch.note_block_sound.as_deref()?)
         }
+        VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID => hash_list(
+            patch
+                .banner_pattern_layers
+                .iter()
+                .map(|layer| {
+                    if layer.asset_id.is_some() || layer.translation_key.is_some() {
+                        return None;
+                    }
+                    Some(hash_record(vec![
+                        (
+                            "pattern",
+                            hash_registry_holder(
+                                ctx,
+                                "minecraft:banner_pattern",
+                                layer.registry_id?,
+                            )?,
+                        ),
+                        (
+                            "color",
+                            hash_string(
+                                bbb_protocol::builtin_enum_component_values::vanilla_dye_color_name(
+                                    layer.color_id,
+                                ),
+                            ),
+                        ),
+                    ]))
+                })
+                .collect::<Option<Vec<_>>>()?,
+        ),
         VANILLA_DATA_COMPONENT_BASE_COLOR_TYPE_ID => hash_string(
             builtin_enum_component_value_name(type_id, patch.base_color_id?)?,
         ),
+        VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID => hash_list(
+            patch
+                .pot_decorations_item_ids
+                .iter()
+                .map(|item_id| hash_registry_holder(ctx, "minecraft:item", *item_id))
+                .collect::<Option<Vec<_>>>()?,
+        ),
+        VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID => {
+            hash_sound_event(ctx, patch.break_sound.as_ref()?)?
+        }
+        VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID => {
+            hash_registry_holder(ctx, "minecraft:villager_type", patch.villager_variant_id?)?
+        }
         VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID => hash_string(
             vanilla_tropical_fish_pattern(patch.tropical_fish_pattern_id?).serialized_name,
         ),
@@ -369,12 +509,125 @@ fn hash_component_value(
         VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_COLOR_TYPE_ID => hash_string(
             builtin_enum_component_value_name(type_id, patch.tropical_fish_pattern_color_id?)?,
         ),
+        VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID => {
+            if patch.painting_variant_direct.is_some() {
+                return None;
+            }
+            hash_registry_holder(
+                ctx,
+                "minecraft:painting_variant",
+                patch.painting_variant_id?,
+            )?
+        }
         _ => {
+            if let Some(registry) = vanilla_data_component_animal_variant_registry(type_id) {
+                let holder_id = animal_variant_holder_id(patch, type_id)?;
+                return hash_registry_holder(ctx, registry, holder_id);
+            }
             let value_id = patch.builtin_enum_component_ids.get(&type_id)?;
             hash_string(builtin_enum_component_value_name(type_id, *value_id)?)
         }
     };
     Some(hash)
+}
+
+fn animal_variant_holder_id(patch: &DataComponentPatchSummary, type_id: i32) -> Option<i32> {
+    use bbb_protocol::data_component_types::{
+        VANILLA_DATA_COMPONENT_CAT_SOUND_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CAT_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_FROG_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PIG_SOUND_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID,
+    };
+
+    match type_id {
+        VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID => patch.wolf_variant_id,
+        VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID => patch.wolf_sound_variant_id,
+        VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID => patch.pig_variant_id,
+        VANILLA_DATA_COMPONENT_PIG_SOUND_VARIANT_TYPE_ID => patch.pig_sound_variant_id,
+        VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID => patch.cow_variant_id,
+        VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID => patch.cow_sound_variant_id,
+        VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID => patch.chicken_variant_id,
+        VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID => patch.chicken_sound_variant_id,
+        VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID => patch.zombie_nautilus_variant_id,
+        VANILLA_DATA_COMPONENT_FROG_VARIANT_TYPE_ID => patch.frog_variant_id,
+        VANILLA_DATA_COMPONENT_CAT_VARIANT_TYPE_ID => patch.cat_variant_id,
+        VANILLA_DATA_COMPONENT_CAT_SOUND_VARIANT_TYPE_ID => patch.cat_sound_variant_id,
+        _ => None,
+    }
+}
+
+fn hash_registry_holder(ctx: InventoryCtx<'_>, registry: &str, holder_id: i32) -> Option<Hash32> {
+    ctx.registries
+        .resource_id_by_holder_id(registry, holder_id)
+        .map(hash_string)
+}
+
+fn hash_registry_holder_set(
+    ctx: InventoryCtx<'_>,
+    registry: &str,
+    holder_ids: &[i32],
+    tag: Option<&str>,
+) -> Option<Hash32> {
+    if let Some(tag) = tag {
+        if !holder_ids.is_empty() {
+            return None;
+        }
+        return Some(hash_string(&format!("#{tag}")));
+    }
+
+    let holders = holder_ids
+        .iter()
+        .map(|holder_id| {
+            ctx.registries
+                .resource_id_by_holder_id(registry, *holder_id)
+                .map(hash_string)
+        })
+        .collect::<Option<Vec<_>>>()?;
+    Some(match holders.as_slice() {
+        [holder] => *holder,
+        _ => hash_list(holders),
+    })
+}
+
+fn hash_enchantments(
+    ctx: InventoryCtx<'_>,
+    enchantments: &[ItemEnchantmentSummary],
+) -> Option<Hash32> {
+    Some(hash_map(
+        enchantments
+            .iter()
+            .map(|enchantment| {
+                Some((
+                    ctx.registries
+                        .resource_id_by_holder_id("minecraft:enchantment", enchantment.holder_id)
+                        .map(hash_string)?,
+                    hash_int(enchantment.level),
+                ))
+            })
+            .collect::<Option<Vec<_>>>()?,
+    ))
+}
+
+fn hash_sound_event(ctx: InventoryCtx<'_>, sound: &SoundEventSummary) -> Option<Hash32> {
+    if let Some(registry_id) = sound.registry_id {
+        if sound.sound_id.is_some() || sound.fixed_range_bits.is_some() {
+            return None;
+        }
+        return hash_registry_holder(ctx, "minecraft:sound_event", registry_id);
+    }
+    let sound_id = sound.sound_id.as_deref()?;
+    let mut fields = vec![("sound_id", hash_string(sound_id))];
+    if let Some(range) = sound.fixed_range_bits {
+        fields.push(("range", hash_float(range)));
+    }
+    Some(hash_record(fields))
 }
 
 fn push_non_default_bool<'a>(
@@ -692,7 +945,7 @@ mod tests {
     }
 
     #[test]
-    fn keeps_transient_and_unimplemented_registry_codec_components_server_authoritative() {
+    fn keeps_transient_component_codecs_server_authoritative() {
         let transient_patch = DataComponentPatchSummary {
             added: 1,
             added_type_ids: vec![
@@ -701,23 +954,104 @@ mod tests {
             creative_slot_lock: true,
             ..DataComponentPatchSummary::default()
         };
-        let patch = DataComponentPatchSummary {
-            added: 1,
-            added_type_ids: vec![
-                bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
-            ],
-            damage_type_id: Some(0),
-            ..DataComponentPatchSummary::default()
-        };
         let store = crate::WorldStore::new();
 
         assert_eq!(
             hashed_component_patch_from_summary(test_ctx(&store), &transient_patch),
             None
         );
+    }
+
+    #[test]
+    fn hashes_registry_holders_sets_and_enchantment_maps_by_resource_id() {
+        let mut store = crate::WorldStore::new();
+        let mut enchantments = crate::RegistryContentState::new("minecraft:enchantment");
+        enchantments.entries = vec![crate::RegistryPacketEntry::stub("example:sharp")];
+        store
+            .registries
+            .contents
+            .insert("minecraft:enchantment".to_string(), enchantments);
+
+        let patch = DataComponentPatchSummary {
+            added: 6,
+            added_type_ids: vec![
+                VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
+                VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
+                VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID,
+                VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID,
+                VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID,
+                VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
+            ],
+            damage_type_id: Some(0),
+            enchantments: vec![ItemEnchantmentSummary {
+                holder_id: 0,
+                level: 3,
+            }],
+            damage_resistant_type_registry_ids: vec![0, 1],
+            repairable_item_registry_ids: vec![0],
+            recipe_keys: Some(vec![
+                "minecraft:stick".to_string(),
+                "example:custom".to_string(),
+            ]),
+            break_sound: Some(SoundEventSummary {
+                registry_id: Some(0),
+                sound_id: None,
+                fixed_range_bits: None,
+            }),
+            ..DataComponentPatchSummary::default()
+        };
+
+        let hashed = hashed_component_patch_from_summary(test_ctx(&store), &patch).unwrap();
+
         assert_eq!(
-            hashed_component_patch_from_summary(test_ctx(&store), &patch),
-            None
+            hashed.added_components,
+            BTreeMap::from([
+                (
+                    VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
+                    hash_registry_holder(test_ctx(&store), "minecraft:damage_type", 0)
+                        .unwrap()
+                        .0 as i32,
+                ),
+                (
+                    VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
+                    hash_map(vec![(hash_string("example:sharp"), hash_int(3))]).0 as i32,
+                ),
+                (
+                    VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID,
+                    hash_record(vec![(
+                        "types",
+                        hash_list([
+                            hash_registry_holder(test_ctx(&store), "minecraft:damage_type", 0,)
+                                .unwrap(),
+                            hash_registry_holder(test_ctx(&store), "minecraft:damage_type", 1,)
+                                .unwrap(),
+                        ]),
+                    )])
+                    .0 as i32,
+                ),
+                (
+                    VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID,
+                    hash_record(vec![(
+                        "items",
+                        hash_registry_holder(test_ctx(&store), "minecraft:item", 0).unwrap(),
+                    )])
+                    .0 as i32,
+                ),
+                (
+                    VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID,
+                    hash_list([
+                        hash_string("minecraft:stick"),
+                        hash_string("example:custom"),
+                    ])
+                    .0 as i32,
+                ),
+                (
+                    VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
+                    hash_registry_holder(test_ctx(&store), "minecraft:sound_event", 0)
+                        .unwrap()
+                        .0 as i32,
+                ),
+            ])
         );
     }
 }
