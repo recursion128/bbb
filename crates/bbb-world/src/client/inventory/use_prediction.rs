@@ -111,16 +111,10 @@ pub enum LocalInteractionSwingSource {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LocalInteractionPositionedSound {
-    LodestoneCompassLock { pos: BlockPos },
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LocalInteractionSuccess {
     pub swing_source: LocalInteractionSwingSource,
     pub was_item_interaction: bool,
     pub starts_using_item: bool,
-    pub positioned_sound: Option<LocalInteractionPositionedSound>,
     pub extra_swing: Option<InteractionHand>,
 }
 
@@ -160,7 +154,6 @@ impl LocalInteractionSuccess {
             swing_source: LocalInteractionSwingSource::None,
             was_item_interaction: true,
             starts_using_item,
-            positioned_sound: None,
             extra_swing: None,
         }
     }
@@ -170,7 +163,6 @@ impl LocalInteractionSuccess {
             swing_source: LocalInteractionSwingSource::None,
             was_item_interaction: false,
             starts_using_item: false,
-            positioned_sound: None,
             extra_swing: None,
         }
     }
@@ -180,7 +172,6 @@ impl LocalInteractionSuccess {
             swing_source: LocalInteractionSwingSource::Server,
             was_item_interaction: true,
             starts_using_item: false,
-            positioned_sound: None,
             extra_swing: None,
         }
     }
@@ -190,7 +181,6 @@ impl LocalInteractionSuccess {
             swing_source: LocalInteractionSwingSource::Client,
             was_item_interaction: false,
             starts_using_item: false,
-            positioned_sound: None,
             extra_swing: None,
         }
     }
@@ -200,17 +190,15 @@ impl LocalInteractionSuccess {
             swing_source: LocalInteractionSwingSource::Client,
             was_item_interaction: true,
             starts_using_item: false,
-            positioned_sound: None,
             extra_swing: None,
         }
     }
 
-    const fn lodestone_compass_lock(pos: BlockPos, dropped: bool) -> Self {
+    const fn lodestone_compass_lock(dropped: bool) -> Self {
         Self {
             swing_source: LocalInteractionSwingSource::Client,
             was_item_interaction: true,
             starts_using_item: false,
-            positioned_sound: Some(LocalInteractionPositionedSound::LodestoneCompassLock { pos }),
             extra_swing: if dropped {
                 Some(InteractionHand::MainHand)
             } else {
@@ -580,7 +568,7 @@ impl WorldStore {
                 };
                 Some(LocalTargetUsePrediction::Result(
                     LocalInteractionResult::Success(
-                        LocalInteractionSuccess::lodestone_compass_lock(context.pos, dropped),
+                        LocalInteractionSuccess::lodestone_compass_lock(dropped),
                     ),
                 ))
             }
@@ -2878,12 +2866,12 @@ mod tests {
     }
 
     #[test]
-    fn lodestone_compass_use_on_predicts_inventory_sound_and_drop_edges() {
+    fn lodestone_compass_use_on_predicts_inventory_and_drop_edges_without_local_sound() {
         let pos = BlockPos { x: 0, y: 0, z: 0 };
         let lodestone = block_state_id("minecraft:lodestone", []);
         let expected_success = |dropped| {
             LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
-                LocalInteractionSuccess::lodestone_compass_lock(pos, dropped),
+                LocalInteractionSuccess::lodestone_compass_lock(dropped),
             ))
         };
 
@@ -2926,27 +2914,10 @@ mod tests {
             })
         );
         assert_eq!(locked.component_patch.lodestone_tracked, Some(true));
-        let LocalTargetUsePrediction::Result(LocalInteractionResult::Success(success)) = result
-        else {
-            unreachable!()
-        };
-        let sound =
-            singleton.record_local_interaction_positioned_sound(success.positioned_sound.unwrap());
-        assert_eq!(
-            sound.sound.location.as_deref(),
-            Some("minecraft:item.lodestone_compass.lock")
+        assert!(
+            singleton.client_audio().last_sound.is_none(),
+            "CompassItem passes null as the excluded player, so ClientLevel does not play locally"
         );
-        assert_eq!(sound.source, "player");
-        assert_eq!(
-            sound.position,
-            Vec3d {
-                x: 0.5,
-                y: 0.5,
-                z: 0.5,
-            }
-        );
-        assert_eq!(sound.volume, 1.0);
-        assert_eq!(sound.pitch, 1.0);
 
         assert!(singleton.apply_block_update(BlockUpdate {
             pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },

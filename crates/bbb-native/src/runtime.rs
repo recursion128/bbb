@@ -122,7 +122,7 @@ use crate::{
     game_test_highlights::game_test_highlight_gizmos,
     input::{
         advance_destroying_block_at_partial_tick, advance_player_input_for_client_ticks,
-        advance_using_item_at_partial_tick_with_audio,
+        advance_using_item_at_partial_tick,
         death_screen::DeathScreenRuntime,
         game_event_screen::{DemoHelpFocus, DemoLinkConfirmationFocus, GameEventScreenRuntime},
         inventory_screen_layout_for_surface, inventory_screen_selected_hotbar_slot_id,
@@ -2380,9 +2380,6 @@ pub(crate) fn advance_simulation(
         net_counters,
         net_commands,
     );
-    let audio_events_for_input = audio_events
-        .as_mut()
-        .map(|audio_events| &mut **audio_events as &mut dyn AudioEventSink);
     input_runtime.apply_commands(
         commands,
         &mut crate::simulation::input_commands::SimulationInputContext {
@@ -2393,7 +2390,6 @@ pub(crate) fn advance_simulation(
             server_resource_packs,
             particle_runtime,
             item_runtime,
-            audio_events: audio_events_for_input,
             terrain_textures,
             code_of_conduct: Some(code_of_conduct),
             win_screen_resources,
@@ -2584,12 +2580,11 @@ pub(crate) fn advance_simulation(
         advanced_ticks,
     );
     submit_local_player_action_particles(particle_batches, world, input, particle_runtime.as_mut());
-    advance_using_item_at_partial_tick_with_audio(
+    advance_using_item_at_partial_tick(
         input,
         world,
         net_counters,
         net_commands,
-        &mut audio_events,
         entity_partial_tick,
         advanced_ticks,
     );

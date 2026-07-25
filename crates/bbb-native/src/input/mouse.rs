@@ -55,34 +55,11 @@ fn handle_mouse_input(
     handle_mouse_input_at_partial_tick(input, world, counters, net_commands, button, state, 1.0);
 }
 
-#[cfg(test)]
 pub(crate) fn handle_mouse_input_at_partial_tick(
     input: &mut ClientInputState,
     world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
-    button: MouseButton,
-    state: ElementState,
-    entity_partial_tick: f32,
-) {
-    handle_mouse_input_at_partial_tick_with_audio(
-        input,
-        world,
-        counters,
-        net_commands,
-        &mut None,
-        button,
-        state,
-        entity_partial_tick,
-    );
-}
-
-pub(crate) fn handle_mouse_input_at_partial_tick_with_audio(
-    input: &mut ClientInputState,
-    world: &mut WorldStore,
-    counters: &mut NetCounters,
-    net_commands: &Option<mpsc::Sender<NetCommand>>,
-    audio_events: &mut Option<&mut dyn AudioEventSink>,
     button: MouseButton,
     state: ElementState,
     entity_partial_tick: f32,
@@ -192,14 +169,13 @@ pub(crate) fn handle_mouse_input_at_partial_tick_with_audio(
         }
         (MouseButton::Right, ElementState::Pressed) => {
             input.use_item_held = true;
-            start_use_item_with_audio(
+            start_use_item(
                 input,
                 world,
                 counters,
                 net_commands,
                 camera_target,
                 player_pose,
-                audio_events,
             );
         }
         (MouseButton::Right, ElementState::Released) => {
@@ -236,32 +212,11 @@ pub(crate) fn handle_mouse_input_at_partial_tick_with_audio(
     }
 }
 
-#[cfg(test)]
 pub(crate) fn advance_using_item_at_partial_tick(
     input: &mut ClientInputState,
     world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
-    entity_partial_tick: f32,
-    use_ticks: u32,
-) {
-    advance_using_item_at_partial_tick_with_audio(
-        input,
-        world,
-        counters,
-        net_commands,
-        &mut None,
-        entity_partial_tick,
-        use_ticks,
-    );
-}
-
-pub(crate) fn advance_using_item_at_partial_tick_with_audio(
-    input: &mut ClientInputState,
-    world: &mut WorldStore,
-    counters: &mut NetCounters,
-    net_commands: &Option<mpsc::Sender<NetCommand>>,
-    audio_events: &mut Option<&mut dyn AudioEventSink>,
     entity_partial_tick: f32,
     use_ticks: u32,
 ) {
@@ -298,14 +253,13 @@ pub(crate) fn advance_using_item_at_partial_tick_with_audio(
             entity_partial_tick,
         );
         let player_pose = world.local_player_pose();
-        if !start_use_item_with_audio(
+        if !start_use_item(
             input,
             world,
             counters,
             net_commands,
             camera_target,
             player_pose,
-            audio_events,
         ) || ticks_remaining == 0
         {
             return;
@@ -313,7 +267,6 @@ pub(crate) fn advance_using_item_at_partial_tick_with_audio(
     }
 }
 
-#[cfg(test)]
 pub(super) fn start_use_item(
     input: &mut ClientInputState,
     world: &mut WorldStore,
@@ -321,27 +274,6 @@ pub(super) fn start_use_item(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     camera_target: Option<CrosshairTarget>,
     player_pose: Option<bbb_world::LocalPlayerPoseState>,
-) -> bool {
-    let mut audio_events = None;
-    start_use_item_with_audio(
-        input,
-        world,
-        counters,
-        net_commands,
-        camera_target,
-        player_pose,
-        &mut audio_events,
-    )
-}
-
-fn start_use_item_with_audio(
-    input: &mut ClientInputState,
-    world: &mut WorldStore,
-    counters: &mut NetCounters,
-    net_commands: &Option<mpsc::Sender<NetCommand>>,
-    camera_target: Option<CrosshairTarget>,
-    player_pose: Option<bbb_world::LocalPlayerPoseState>,
-    audio_events: &mut Option<&mut dyn AudioEventSink>,
 ) -> bool {
     if world.local_player().interaction.destroying_block.is_some() {
         return false;
@@ -429,14 +361,7 @@ fn start_use_item_with_audio(
         if let Some(prediction) = target_prediction {
             match prediction {
                 LocalTargetUsePrediction::Result(LocalInteractionResult::Success(success)) => {
-                    apply_local_interaction_success(
-                        world,
-                        counters,
-                        net_commands,
-                        audio_events,
-                        hand,
-                        success,
-                    );
+                    apply_local_interaction_success(world, counters, net_commands, hand, success);
                     return true;
                 }
                 LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
@@ -488,14 +413,7 @@ fn start_use_item_with_audio(
         }
         match prediction {
             LocalItemUsePrediction::Result(LocalInteractionResult::Success(success)) => {
-                apply_local_interaction_success(
-                    world,
-                    counters,
-                    net_commands,
-                    audio_events,
-                    hand,
-                    success,
-                );
+                apply_local_interaction_success(world, counters, net_commands, hand, success);
                 return true;
             }
             LocalItemUsePrediction::Result(
@@ -514,16 +432,9 @@ fn apply_local_interaction_success(
     world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
-    audio_events: &mut Option<&mut dyn AudioEventSink>,
     hand: InteractionHand,
     success: LocalInteractionSuccess,
 ) {
-    if let Some(positioned_sound) = success.positioned_sound {
-        let sound = world.record_local_interaction_positioned_sound(positioned_sound);
-        if let Some(audio_events) = audio_events.as_deref_mut() {
-            audio_events.play_positioned_sound(&sound);
-        }
-    }
     if let Some(extra_swing) = success.extra_swing {
         queue_swing_command(world, counters, net_commands, extra_swing);
     }
@@ -3567,7 +3478,7 @@ mod tests {
     }
 
     #[test]
-    fn right_mouse_press_locks_compass_to_lodestone_with_sound_and_drop_swing() {
+    fn right_mouse_press_locks_compass_without_local_sound_and_preserves_drop_swing() {
         let (tx, mut rx) = mpsc::channel(3);
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
@@ -3577,21 +3488,15 @@ mod tests {
             item: item_stack(VANILLA_ITEM_COMPASS_ID, 1),
         });
         let mut counters = NetCounters::default();
-        let mut audio = RecordingAudioSink::default();
 
-        {
-            let mut audio_events: Option<&mut dyn AudioEventSink> = Some(&mut audio);
-            handle_mouse_input_at_partial_tick_with_audio(
-                &mut input,
-                &mut world,
-                &mut counters,
-                &commands,
-                &mut audio_events,
-                MouseButton::Right,
-                ElementState::Pressed,
-                1.0,
-            );
-        }
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+        );
 
         assert_eq!(counters.use_item_on_commands_queued, 1);
         assert_eq!(counters.swing_commands_queued, 1);
@@ -3613,20 +3518,9 @@ mod tests {
             })
         );
         assert_eq!(locked.component_patch.lodestone_tracked, Some(true));
-        assert_eq!(audio.positioned_sounds.len(), 1);
-        let sound = &audio.positioned_sounds[0];
-        assert_eq!(
-            sound.sound.location.as_deref(),
-            Some("minecraft:item.lodestone_compass.lock")
-        );
-        assert_eq!(sound.source, "player");
-        assert_eq!(
-            sound.position,
-            ProtocolVec3d {
-                x: 0.5,
-                y: 1.5,
-                z: 3.5,
-            }
+        assert!(
+            world.client_audio().last_sound.is_none(),
+            "CompassItem passes null as the excluded player, so ClientLevel waits for the server sound packet"
         );
 
         let (tx, mut rx) = mpsc::channel(3);
@@ -3644,21 +3538,15 @@ mod tests {
             item: item_stack(VANILLA_ITEM_COMPASS_ID, 2),
         });
         let mut counters = NetCounters::default();
-        let mut audio = RecordingAudioSink::default();
 
-        {
-            let mut audio_events: Option<&mut dyn AudioEventSink> = Some(&mut audio);
-            handle_mouse_input_at_partial_tick_with_audio(
-                &mut input,
-                &mut world,
-                &mut counters,
-                &commands,
-                &mut audio_events,
-                MouseButton::Right,
-                ElementState::Pressed,
-                1.0,
-            );
-        }
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+        );
 
         assert_eq!(
             world
@@ -3678,7 +3566,7 @@ mod tests {
             rx.try_recv().unwrap(),
             NetCommand::Swing(InteractionHand::MainHand)
         );
-        assert_eq!(audio.positioned_sounds.len(), 1);
+        assert!(world.client_audio().last_sound.is_none());
     }
 
     #[test]
