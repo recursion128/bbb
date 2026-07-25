@@ -114,6 +114,15 @@ pub(crate) fn decode_persistent_data_component_patch_entry(
     Ok(Some(patch))
 }
 
+pub(crate) fn decode_persistent_data_component_patch_summary(
+    value: &NbtSummaryValue,
+    registries: &RegistrySet,
+) -> Result<Option<DataComponentPatchSummary>, String> {
+    let decoded =
+        decode_data_component_patch(value, DialogDecodeContext::new(Some(registries), 0))?;
+    Ok(decoded.data_component_patch_summary())
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum DialogBodyState {
@@ -165,29 +174,38 @@ pub struct DialogDataComponentPatchEntryState {
 
 impl DialogItemStackTemplateState {
     pub fn item_stack_summary_for_protocol_id(&self, item_id: i32) -> Option<ItemStackSummary> {
-        let mut component_patch = DataComponentPatchSummary::default();
-        if let Some(patch) = &self.component_data {
-            for entry in &patch.entries {
-                if entry.removed {
-                    component_patch.removed_type_ids.push(entry.type_id);
-                    continue;
-                }
-                apply_item_patch_entry_value(
-                    entry.type_id,
-                    entry.value_data.as_ref()?,
-                    entry.value.as_ref(),
-                    &mut component_patch,
-                )
-                .then_some(())?;
-                component_patch.added_type_ids.push(entry.type_id);
-            }
-        }
-        component_patch.added = component_patch.added_type_ids.len();
+        let component_patch = match &self.component_data {
+            Some(patch) => patch.data_component_patch_summary()?,
+            None => DataComponentPatchSummary::default(),
+        };
         Some(ItemStackSummary {
             item_id: Some(item_id),
             count: self.count,
             component_patch,
         })
+    }
+}
+
+impl DialogDataComponentPatchState {
+    fn data_component_patch_summary(&self) -> Option<DataComponentPatchSummary> {
+        let mut component_patch = DataComponentPatchSummary::default();
+        for entry in &self.entries {
+            if entry.removed {
+                component_patch.removed_type_ids.push(entry.type_id);
+                continue;
+            }
+            apply_item_patch_entry_value(
+                entry.type_id,
+                entry.value_data.as_ref()?,
+                entry.value.as_ref(),
+                &mut component_patch,
+            )
+            .then_some(())?;
+            component_patch.added_type_ids.push(entry.type_id);
+        }
+        component_patch.added = component_patch.added_type_ids.len();
+        validate_data_component_patch_summary(&component_patch).ok()?;
+        Some(component_patch)
     }
 }
 

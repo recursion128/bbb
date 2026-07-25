@@ -531,3 +531,6 @@
 - **2026-07-25（ContainerButtonClick 四菜单闭环）**：Lectern 保持服务端回写，
   Enchantment 补齐物品/材料/经验门槛，Loom 与 Stonecutter 按 Vanilla 顺序预测
   data、结果槽和 UI 音效；该 serverbound packet 的五维覆盖现全部关闭。
+- **2026-07-25（富 Component HashOps 工程关闭）**：协议 canonical Component
+  树保留 primitive/array 类型与语义 owner；库存预测复用 profile、item patch
+  和命名 dialog codec，direct dialog 继续 fail-closed。

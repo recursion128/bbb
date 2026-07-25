@@ -1013,10 +1013,11 @@ back into a todo. Do not delete these.
 
 - ContainerClick encodes all seven generated ContainerInput ids and predicts common
   pickup, quick-move, swap, clone, throw, quick-craft, and pickup-all paths. Keep the
-  conservative empty-delta/server-authoritative fallback for unhashable component
-  patches and specialized result-slot semantics until their local menu rules are
-  complete; ordinary ContainerSetContent/Slot/Data updates remain the correction
-  path rather than a synthetic acknowledgement.
+  conservative empty-delta/server-authoritative fallback for direct-dialog Component
+  values, named-only direct jukebox/painting holders, remaining lossy predicate
+  codecs, and specialized result-slot semantics until their local rules are complete;
+  ordinary ContainerSetContent/Slot/Data updates remain the correction path rather
+  than a synthetic acknowledgement.
 - Crafter slot-state requests cover the empty-grid pickup toggle, but still need
   vanilla's hotbar `SWAP` enable path plus immediate local menu data/audio mutation.
   The server's CrafterBlockEntity remains authoritative and has no dedicated ack.

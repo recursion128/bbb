@@ -15,7 +15,7 @@ use bbb_protocol::{
         VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID,
     },
     builtin_enum_component_values::builtin_enum_component_value_name,
-    canonical_snbt_string,
+    canonical_component_codec_value, canonical_snbt_string,
     data_component_types::{
         vanilla_data_component_animal_variant_registry,
         vanilla_data_component_predicate_resource_id,
@@ -114,6 +114,7 @@ use bbb_protocol::{
         TrimPatternSummary,
     },
     tropical_fish_patterns::vanilla_tropical_fish_pattern,
+    CanonicalComponentCodecValue, CanonicalComponentOwnerValue,
 };
 
 use super::{ContainerClickBuildError, ContainerSlot, InventoryCtx};
@@ -251,17 +252,17 @@ fn hash_component_value(
             hash_registry_holder(ctx, "minecraft:damage_type", patch.damage_type_id?)?
         }
         VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID => {
-            hash_simple_component(patch.custom_name_nbt.as_ref()?)?
+            hash_component(ctx, patch.custom_name_nbt.as_ref()?)?
         }
         VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID => {
-            hash_simple_component(patch.item_name_nbt.as_ref()?)?
+            hash_component(ctx, patch.item_name_nbt.as_ref()?)?
         }
         VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID => hash_string(patch.item_model.as_deref()?),
         VANILLA_DATA_COMPONENT_LORE_TYPE_ID => hash_list(
             patch
                 .lore_nbt
                 .iter()
-                .map(hash_simple_component)
+                .map(|value| hash_component(ctx, value))
                 .collect::<Option<Vec<_>>>()?,
         ),
         VANILLA_DATA_COMPONENT_RARITY_TYPE_ID => hash_string(patch.rarity?.as_str()),
@@ -662,7 +663,7 @@ fn hash_component_value(
                             .iter()
                             .zip(&patch.written_book_page_filters_nbt)
                             .map(|(raw, filtered)| {
-                                hash_filterable_component(raw.as_ref()?, filtered.as_ref())
+                                hash_filterable_component(ctx, raw.as_ref()?, filtered.as_ref())
                             })
                             .collect::<Option<Vec<_>>>()?,
                     ),
@@ -988,7 +989,7 @@ fn hash_instrument_holder(
             ("range", hash_float(instrument.range_bits)),
             (
                 "description",
-                hash_simple_component(instrument.description_nbt.as_deref()?)?,
+                hash_component(ctx, instrument.description_nbt.as_deref()?)?,
             ),
         ])),
         _ => None,
@@ -1018,7 +1019,7 @@ fn hash_trim_material_holder(
             }
             fields.push((
                 "description",
-                hash_simple_component(material.description_nbt.as_deref()?)?,
+                hash_component(ctx, material.description_nbt.as_deref()?)?,
             ));
             Some(hash_record(fields))
         }
@@ -1037,7 +1038,7 @@ fn hash_trim_pattern_holder(
             ("asset_id", hash_string(&pattern.asset_id)),
             (
                 "description",
-                hash_simple_component(pattern.description_nbt.as_deref()?)?,
+                hash_component(ctx, pattern.description_nbt.as_deref()?)?,
             ),
             // `fieldOf("decal").orElse(false)` still delegates every encode to
             // the required field codec; the default only applies while decoding.
@@ -1305,7 +1306,9 @@ fn hash_concrete_component_predicate(
         VANILLA_DATA_COMPONENT_PREDICATE_WRITABLE_BOOK_TYPE_ID => {
             hash_writable_book_predicate(value)
         }
-        VANILLA_DATA_COMPONENT_PREDICATE_WRITTEN_BOOK_TYPE_ID => hash_written_book_predicate(value),
+        VANILLA_DATA_COMPONENT_PREDICATE_WRITTEN_BOOK_TYPE_ID => {
+            hash_written_book_predicate(ctx, value)
+        }
         VANILLA_DATA_COMPONENT_PREDICATE_ATTRIBUTE_MODIFIERS_TYPE_ID => {
             hash_attribute_modifiers_predicate(ctx, value)
         }
@@ -1460,7 +1463,7 @@ fn hash_writable_book_predicate(value: &NbtSummaryValue) -> Option<Hash32> {
     Some(hash_record(hashed))
 }
 
-fn hash_written_book_predicate(value: &NbtSummaryValue) -> Option<Hash32> {
+fn hash_written_book_predicate(ctx: InventoryCtx<'_>, value: &NbtSummaryValue) -> Option<Hash32> {
     let fields = nbt_record_fields(
         value,
         &["pages", "author", "title", "generation", "resolved"],
@@ -1469,7 +1472,7 @@ fn hash_written_book_predicate(value: &NbtSummaryValue) -> Option<Hash32> {
     if let Some(pages) = fields.get("pages") {
         hashed.push((
             "pages",
-            hash_collection_predicate(pages, hash_simple_component)?,
+            hash_collection_predicate(pages, |page| hash_component(ctx, page))?,
         ));
     }
     for name in ["author", "title"] {
@@ -1908,7 +1911,7 @@ fn hash_attribute_modifiers(
                                 ),
                                 (
                                     "value",
-                                    hash_simple_component(entry.display_text_nbt.as_ref()?)?,
+                                    hash_component(ctx, entry.display_text_nbt.as_ref()?)?,
                                 ),
                             ]),
                         ));
@@ -2114,20 +2117,106 @@ fn hash_filterable_string(raw: &str, filtered: Option<&str>) -> Hash32 {
 }
 
 fn hash_filterable_component(
+    ctx: InventoryCtx<'_>,
     raw: &NbtSummaryValue,
     filtered: Option<&NbtSummaryValue>,
 ) -> Option<Hash32> {
-    let mut fields = vec![("raw", hash_simple_component(raw)?)];
+    let mut fields = vec![("raw", hash_component(ctx, raw)?)];
     if let Some(filtered) = filtered {
-        fields.push(("filtered", hash_simple_component(filtered)?));
+        fields.push(("filtered", hash_component(ctx, filtered)?));
     }
     Some(hash_record(fields))
 }
 
-fn hash_simple_component(value: &NbtSummaryValue) -> Option<Hash32> {
+fn hash_component(ctx: InventoryCtx<'_>, value: &NbtSummaryValue) -> Option<Hash32> {
+    let value = canonical_component_codec_value(value).ok()?;
+    hash_canonical_component_value(ctx, &value)
+}
+
+fn hash_canonical_component_value(
+    ctx: InventoryCtx<'_>,
+    value: &CanonicalComponentCodecValue,
+) -> Option<Hash32> {
     match value {
-        NbtSummaryValue::String(value) => Some(hash_string(value)),
-        _ => None,
+        CanonicalComponentCodecValue::Boolean(value) => Some(hash_boolean(*value)),
+        CanonicalComponentCodecValue::Byte(value) => {
+            Some(hash_tagged_bytes(HASH_TAG_BYTE, &value.to_le_bytes()))
+        }
+        CanonicalComponentCodecValue::Short(value) => {
+            Some(hash_tagged_bytes(HASH_TAG_SHORT, &value.to_le_bytes()))
+        }
+        CanonicalComponentCodecValue::Int(value) => Some(hash_int(*value)),
+        CanonicalComponentCodecValue::Long(value) => Some(hash_long(*value)),
+        CanonicalComponentCodecValue::Float(bits) => Some(hash_float(*bits)),
+        CanonicalComponentCodecValue::Double(bits) => Some(hash_double(*bits)),
+        CanonicalComponentCodecValue::String(value) => Some(hash_string(value)),
+        CanonicalComponentCodecValue::List(values) => Some(hash_list(
+            values
+                .iter()
+                .map(|value| hash_canonical_component_value(ctx, value))
+                .collect::<Option<Vec<_>>>()?,
+        )),
+        CanonicalComponentCodecValue::ByteArray(values) => Some(hash_byte_array(values)),
+        CanonicalComponentCodecValue::IntArray(values) => {
+            Some(hash_int_array(values.iter().copied()))
+        }
+        CanonicalComponentCodecValue::LongArray(values) => Some(hash_long_array(values)),
+        CanonicalComponentCodecValue::Object(fields) => Some(hash_map(
+            fields
+                .iter()
+                .map(|(name, value)| {
+                    Some((
+                        hash_string(name),
+                        hash_canonical_component_value(ctx, value)?,
+                    ))
+                })
+                .collect::<Option<Vec<_>>>()?,
+        )),
+        CanonicalComponentCodecValue::Map(fields) => Some(hash_map(
+            fields
+                .iter()
+                .map(|(name, value)| {
+                    Some((
+                        hash_string(name),
+                        hash_canonical_component_value(ctx, value)?,
+                    ))
+                })
+                .collect::<Option<Vec<_>>>()?,
+        )),
+        CanonicalComponentCodecValue::Owner(kind, value) => {
+            hash_component_owner_value(ctx, *kind, value)
+        }
+    }
+}
+
+fn hash_component_owner_value(
+    ctx: InventoryCtx<'_>,
+    kind: CanonicalComponentOwnerValue,
+    value: &NbtSummaryValue,
+) -> Option<Hash32> {
+    match kind {
+        CanonicalComponentOwnerValue::PlayerProfile => {
+            let profile =
+                crate::resolvable_profile::decode_profile(value, "component player").ok()?;
+            hash_resolvable_profile(&profile)
+        }
+        CanonicalComponentOwnerValue::ItemComponentPatch => {
+            let patch = crate::client::dialog::decode_persistent_data_component_patch_summary(
+                value,
+                ctx.registries,
+            )
+            .ok()??;
+            hash_data_component_patch_codec(ctx, &patch)
+        }
+        CanonicalComponentOwnerValue::Dialog => {
+            let resource_id =
+                crate::client::dialog::decode_persistent_dialog_reference_resource_id(
+                    value,
+                    ctx.registries,
+                )
+                .ok()??;
+            Some(hash_string(&resource_id))
+        }
     }
 }
 
@@ -2492,11 +2581,7 @@ fn hash_nbt(value: &NbtSummaryValue) -> Hash32 {
         NbtSummaryValue::Long(value) => hash_tagged_bytes(HASH_TAG_LONG, &value.to_le_bytes()),
         NbtSummaryValue::Float(bits) => hash_float(*bits),
         NbtSummaryValue::Double(bits) => hash_tagged_bytes(HASH_TAG_DOUBLE, &bits.to_le_bytes()),
-        NbtSummaryValue::ByteArray(values) => hash_delimited_bytes(
-            HASH_TAG_BYTE_ARRAY_START,
-            values.iter().map(|value| value.to_le_bytes()[0]),
-            HASH_TAG_BYTE_ARRAY_END,
-        ),
+        NbtSummaryValue::ByteArray(values) => hash_byte_array(values),
         NbtSummaryValue::String(value) => hash_string(value),
         NbtSummaryValue::List(values) => hash_list(values.iter().map(hash_nbt)),
         NbtSummaryValue::Compound(entries) => hash_map(
@@ -2505,24 +2590,8 @@ fn hash_nbt(value: &NbtSummaryValue) -> Hash32 {
                 .map(|entry| (hash_string(&entry.name), hash_nbt(&entry.value)))
                 .collect(),
         ),
-        NbtSummaryValue::IntArray(values) => {
-            let mut payload = Vec::with_capacity(2 + values.len() * 4);
-            payload.push(HASH_TAG_INT_ARRAY_START);
-            for value in values {
-                payload.extend_from_slice(&value.to_le_bytes());
-            }
-            payload.push(HASH_TAG_INT_ARRAY_END);
-            hash_bytes(&payload)
-        }
-        NbtSummaryValue::LongArray(values) => {
-            let mut payload = Vec::with_capacity(2 + values.len() * 8);
-            payload.push(HASH_TAG_LONG_ARRAY_START);
-            for value in values {
-                payload.extend_from_slice(&value.to_le_bytes());
-            }
-            payload.push(HASH_TAG_LONG_ARRAY_END);
-            hash_bytes(&payload)
-        }
+        NbtSummaryValue::IntArray(values) => hash_int_array(values.iter().copied()),
+        NbtSummaryValue::LongArray(values) => hash_long_array(values),
     }
 }
 
@@ -2547,12 +2616,30 @@ fn hash_long(value: i64) -> Hash32 {
     hash_tagged_bytes(HASH_TAG_LONG, &value.to_le_bytes())
 }
 
+fn hash_byte_array(values: &[i8]) -> Hash32 {
+    hash_delimited_bytes(
+        HASH_TAG_BYTE_ARRAY_START,
+        values.iter().map(|value| value.to_le_bytes()[0]),
+        HASH_TAG_BYTE_ARRAY_END,
+    )
+}
+
 fn hash_int_array(values: impl IntoIterator<Item = i32>) -> Hash32 {
     let mut payload = vec![HASH_TAG_INT_ARRAY_START];
     for value in values {
         payload.extend_from_slice(&value.to_le_bytes());
     }
     payload.push(HASH_TAG_INT_ARRAY_END);
+    hash_bytes(&payload)
+}
+
+fn hash_long_array(values: &[i64]) -> Hash32 {
+    let mut payload = Vec::with_capacity(2 + values.len() * 8);
+    payload.push(HASH_TAG_LONG_ARRAY_START);
+    for value in values {
+        payload.extend_from_slice(&value.to_le_bytes());
+    }
+    payload.push(HASH_TAG_LONG_ARRAY_END);
     hash_bytes(&payload)
 }
 
@@ -3052,7 +3139,7 @@ mod tests {
                 &rich_instrument,
                 VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
             ),
-            None
+            Some(instrument_hash)
         );
 
         for (type_id, patch) in [
@@ -3684,6 +3771,177 @@ mod tests {
                 ),
             ])
         );
+    }
+
+    #[test]
+    fn hashes_rich_component_codec_types_and_semantic_owners() {
+        let mut store = crate::WorldStore::new();
+        store.record_registry_entries(
+            "minecraft:dialog",
+            0,
+            vec![crate::RegistryPacketEntry::with_known_pack_data_for_test(
+                "example:notice",
+                br#"{"type":"minecraft:notice","title":"Referenced"}"#.to_vec(),
+            )],
+        );
+        let entry = |name: &str, value| NbtSummaryEntry {
+            name: name.to_string(),
+            value,
+        };
+        let string = |value: &str| NbtSummaryValue::String(value.to_string());
+
+        let typed = NbtSummaryValue::Compound(vec![
+            entry("translate", string("example.key")),
+            entry(
+                "with",
+                NbtSummaryValue::List(vec![
+                    NbtSummaryValue::Byte(-1),
+                    NbtSummaryValue::Short(-2),
+                    NbtSummaryValue::Int(-3),
+                    NbtSummaryValue::Long(-4),
+                    NbtSummaryValue::Float(1.5f32.to_bits()),
+                    NbtSummaryValue::Double(2.5f64.to_bits()),
+                ]),
+            ),
+            entry("bold", NbtSummaryValue::Byte(1)),
+            entry(
+                "click_event",
+                NbtSummaryValue::Compound(vec![
+                    entry("action", string("custom")),
+                    entry("id", string("example:test")),
+                    entry(
+                        "payload",
+                        NbtSummaryValue::Compound(vec![
+                            entry("bytes", NbtSummaryValue::ByteArray(vec![-1, 2])),
+                            entry("ints", NbtSummaryValue::IntArray(vec![-3, 4])),
+                            entry("longs", NbtSummaryValue::LongArray(vec![-5, 6])),
+                        ]),
+                    ),
+                ]),
+            ),
+        ]);
+        assert_eq!(
+            hash_component(test_ctx(&store), &typed),
+            Some(hash_record(vec![
+                ("translate", hash_string("example.key")),
+                (
+                    "with",
+                    hash_list([
+                        hash_tagged_bytes(HASH_TAG_BYTE, &(-1_i8).to_le_bytes()),
+                        hash_tagged_bytes(HASH_TAG_SHORT, &(-2_i16).to_le_bytes()),
+                        hash_int(-3),
+                        hash_long(-4),
+                        hash_float(1.5f32.to_bits()),
+                        hash_double(2.5f64.to_bits()),
+                    ]),
+                ),
+                ("bold", hash_boolean(true)),
+                (
+                    "click_event",
+                    hash_record(vec![
+                        ("action", hash_string("custom")),
+                        ("id", hash_string("example:test")),
+                        (
+                            "payload",
+                            hash_map(vec![
+                                (hash_string("bytes"), hash_byte_array(&[-1, 2])),
+                                (hash_string("ints"), hash_int_array([-3, 4]),),
+                                (hash_string("longs"), hash_long_array(&[-5, 6]),),
+                            ]),
+                        ),
+                    ]),
+                ),
+            ]))
+        );
+
+        let player = NbtSummaryValue::Compound(vec![
+            entry("object", string("player")),
+            entry("player", string("Alex")),
+        ]);
+        assert_eq!(
+            hash_component(test_ctx(&store), &player),
+            Some(hash_record(vec![(
+                "player",
+                hash_record(vec![("name", hash_string("Alex"))]),
+            )]))
+        );
+
+        let show_item = NbtSummaryValue::Compound(vec![
+            entry("text", string("Hover")),
+            entry(
+                "hover_event",
+                NbtSummaryValue::Compound(vec![
+                    entry("action", string("show_item")),
+                    entry("id", string("stone")),
+                    entry(
+                        "components",
+                        NbtSummaryValue::Compound(vec![entry(
+                            "repair_cost",
+                            NbtSummaryValue::Int(7),
+                        )]),
+                    ),
+                ]),
+            ),
+        ]);
+        assert_eq!(
+            hash_component(test_ctx(&store), &show_item),
+            Some(hash_record(vec![
+                ("text", hash_string("Hover")),
+                (
+                    "hover_event",
+                    hash_record(vec![
+                        ("action", hash_string("show_item")),
+                        ("id", hash_string("minecraft:stone")),
+                        (
+                            "components",
+                            hash_map(vec![(hash_string("minecraft:repair_cost"), hash_int(7),)]),
+                        ),
+                    ]),
+                ),
+            ]))
+        );
+
+        let named_dialog = NbtSummaryValue::Compound(vec![
+            entry("text", string("Open")),
+            entry(
+                "click_event",
+                NbtSummaryValue::Compound(vec![
+                    entry("action", string("show_dialog")),
+                    entry("dialog", string("example:notice")),
+                ]),
+            ),
+        ]);
+        assert_eq!(
+            hash_component(test_ctx(&store), &named_dialog),
+            Some(hash_record(vec![
+                ("text", hash_string("Open")),
+                (
+                    "click_event",
+                    hash_record(vec![
+                        ("action", hash_string("show_dialog")),
+                        ("dialog", hash_string("example:notice")),
+                    ]),
+                ),
+            ]))
+        );
+
+        let direct_dialog = NbtSummaryValue::Compound(vec![
+            entry("text", string("Open")),
+            entry(
+                "click_event",
+                NbtSummaryValue::Compound(vec![
+                    entry("action", string("show_dialog")),
+                    entry(
+                        "dialog",
+                        NbtSummaryValue::Compound(vec![
+                            entry("type", string("notice")),
+                            entry("title", string("Direct")),
+                        ]),
+                    ),
+                ]),
+            ),
+        ]);
+        assert_eq!(hash_component(test_ctx(&store), &direct_dialog), None);
     }
 
     #[test]

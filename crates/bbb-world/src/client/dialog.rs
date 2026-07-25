@@ -17,8 +17,9 @@ pub(in crate::client::dialog) use canonical_json::canonical_component_json_utf16
 
 pub use action::{DialogActionState, DialogCommandTemplateState};
 pub(crate) use body::{
-    decode_persistent_data_component_patch_entry, validate_command_item_component,
-    validate_command_item_predicate_value, validate_command_item_stack_template,
+    decode_persistent_data_component_patch_entry, decode_persistent_data_component_patch_summary,
+    validate_command_item_component, validate_command_item_predicate_value,
+    validate_command_item_stack_template,
 };
 pub use body::{
     DialogBodyState, DialogDataComponentPatchEntryState, DialogDataComponentPatchState,
@@ -31,6 +32,16 @@ pub use input::{
 
 const MAX_DIALOG_SEMANTIC_DEPTH: usize = 64;
 const DIALOG_REGISTRY: &str = "minecraft:dialog";
+
+pub(crate) fn decode_persistent_dialog_reference_resource_id(
+    value: &NbtSummaryValue,
+    registries: &RegistrySet,
+) -> Result<Option<String>, String> {
+    let state = action::decode_action_dialog_holder(value, Some(registries.frozen_access()), 0)?;
+    Ok((state.holder_kind == "reference")
+        .then_some(state.resource_id)
+        .flatten())
+}
 
 #[derive(Debug, Clone, Copy)]
 struct DialogDecodeContext<'a> {
