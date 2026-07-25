@@ -266,6 +266,9 @@ const EVOKER_FANGS_PARTICLE_RANDOM_SALT: i64 = 0xF46;
 /// the synced dash flag rises, and `Camel.tick` decrements it each client tick. The renderer consumes
 /// `max(dashCooldown - partialTicks, 0)` as `CamelRenderState.jumpCooldown`.
 const CAMEL_DASH_COOLDOWN_TICKS: i32 = 55;
+/// Vanilla `AgeableMob.AGE_LOCK_COOLDOWN_TICKS`, also assigned to
+/// `ageLockParticleTimer` by `setAgeLockedData`.
+const AGE_LOCK_COOLDOWN_TICKS: u8 = 40;
 /// Vanilla `AbstractNautilus.DASH_COOLDOWN_TICKS`. Unlike Camel, metadata updates seed this
 /// cooldown from `onSyncedDataUpdated(DASH)` even when the synchronized value is `false`.
 const NAUTILUS_DASH_COOLDOWN_TICKS: i32 = 40;
@@ -499,6 +502,10 @@ pub struct EntityClientAnimationState {
     /// of the stable probe/renderer shape; immutable publications still clone it for isolation.
     #[serde(skip)]
     pub(crate) nautilus_dash_cooldown: Option<NautilusDashCooldownState>,
+    /// Vanilla `AgeableMob.ageLockParticleTimer`. A local golden-dandelion interaction starts this
+    /// at 40 ticks; while nonzero it also prevents another local age-lock interaction.
+    #[serde(skip)]
+    pub(crate) age_lock_particle_timer_ticks: u8,
     /// Vanilla `ItemBasedSteering` client-only `boosting`/`boostTime` owner for
     /// Pig and Strider. The synchronized total remains in canonical metadata.
     #[serde(skip)]
@@ -6353,6 +6360,18 @@ impl EntityClientAnimationState {
         }
     }
 
+    pub(crate) fn age_lock_particle_timer_ticks(&self) -> u8 {
+        self.age_lock_particle_timer_ticks
+    }
+
+    pub(crate) fn start_age_lock_particle_timer(&mut self) {
+        self.age_lock_particle_timer_ticks = AGE_LOCK_COOLDOWN_TICKS;
+    }
+
+    pub(crate) fn advance_age_lock_particle_timer_tick(&mut self) {
+        self.age_lock_particle_timer_ticks = self.age_lock_particle_timer_ticks.saturating_sub(1);
+    }
+
     pub(crate) fn advance_client_tick(
         &mut self,
         entity_type_id: i32,
@@ -6477,6 +6496,7 @@ impl EntityClientAnimationState {
         is_swimming: bool,
     ) -> EntityClientTickParticleTriggers {
         self.age_ticks = self.age_ticks.saturating_add(1);
+        self.advance_age_lock_particle_timer_tick();
         self.spawn_body_y_rot = None;
         let mut particle_triggers = EntityClientTickParticleTriggers::default();
         // Vanilla `AbstractArrow.tick`: `if (shakeTime > 0) --shakeTime`.

@@ -6,12 +6,14 @@ use crate::{
         vanilla_entity_metadata_armor_stand_accessors_for_entity_type,
         vanilla_entity_metadata_interact_owner,
         vanilla_entity_metadata_interaction_accessors_for_entity_type,
-        vanilla_entity_metadata_mob_interact_owner, vanilla_entity_metadata_type_is_leashable,
-        vanilla_entity_metadata_type_is_living,
+        vanilla_entity_metadata_mob_interact_owner,
+        vanilla_entity_metadata_tamable_animal_accessors_for_entity_type,
+        vanilla_entity_metadata_type_is_leashable, vanilla_entity_metadata_type_is_living,
     },
     BlockPos,
 };
 use bbb_protocol::{
+    attribute_types::VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
     block_types::{
         vanilla_block_type_for_resource_id, BlockTypeCatalogEntry, VanillaBlockUseItemOnOverride,
         VanillaBlockUseWithoutItemOverride,
@@ -22,7 +24,7 @@ use bbb_protocol::{
     },
     item_types::{
         VanillaItemInteractLivingEntityOverride, VanillaItemUseOnOverride, VanillaItemUseOverride,
-        VANILLA_ITEM_LEAD_ID, VANILLA_ITEM_SHEARS_ID,
+        VANILLA_ITEM_GOLDEN_DANDELION_ID, VANILLA_ITEM_LEAD_ID, VANILLA_ITEM_SHEARS_ID,
     },
     packets::ConsumableSummary,
 };
@@ -42,6 +44,8 @@ const VANILLA_LEASH_KNOT_INTERACT_OWNER: &str =
     "net.minecraft.world.entity.decoration.LeashFenceKnotEntity";
 const VANILLA_NAUTILUS_INTERACT_OWNER: &str =
     "net.minecraft.world.entity.animal.nautilus.AbstractNautilus";
+const VANILLA_NAUTILUS_FOOD_TAG: &str = "minecraft:nautilus_food";
+const VANILLA_NAUTILUS_TAMING_ITEMS_TAG: &str = "minecraft:nautilus_taming_items";
 const VANILLA_MINECART_INTERACT_OWNER: &str =
     "net.minecraft.world.entity.vehicle.minecart.Minecart";
 const VANILLA_MINECART_CONTAINER_INTERACT_OWNER: &str =
@@ -272,12 +276,12 @@ impl WorldStore {
         LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
     }
 
-    /// Predicts `Player.interactOn` only across source-derived behavior paths
-    /// whose client result is known. Specialized `Entity.interact` owners,
-    /// leash/shears behavior, and specialized item interactions stay explicit
-    /// until their local state transitions are implemented.
+    /// Predicts `Player.interactOn` across source-derived behavior paths whose client result is
+    /// known, applying the local entity state changes that Vanilla performs while computing that
+    /// result. Specialized `Entity.interact` owners, leash/shears behavior, and specialized item
+    /// interactions stay explicit until their local state transitions are implemented.
     pub fn predict_local_entity_interaction(
-        &self,
+        &mut self,
         entity_id: i32,
         hand: InteractionHand,
         secondary_use_active: bool,
@@ -519,7 +523,7 @@ impl WorldStore {
     }
 
     fn predict_local_mob_interact(
-        &self,
+        &mut self,
         entity_id: i32,
         entity_type_id: i32,
         hand: InteractionHand,
@@ -572,6 +576,16 @@ impl WorldStore {
             && owner == VANILLA_ZOMBIE_HORSE_INTERACT_OWNER
         {
             return self.predict_local_zombie_horse_mob_interact(
+                entity_id,
+                entity_type_id,
+                held_item_id,
+                secondary_use_active,
+            );
+        }
+        if interact_owner == VANILLA_NAUTILUS_INTERACT_OWNER
+            && owner == VANILLA_NAUTILUS_INTERACT_OWNER
+        {
+            return self.predict_local_nautilus_mob_interact(
                 entity_id,
                 entity_type_id,
                 held_item_id,
@@ -723,6 +737,130 @@ impl WorldStore {
         LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
     }
 
+    fn predict_local_nautilus_mob_interact(
+        &mut self,
+        entity_id: i32,
+        entity_type_id: i32,
+        held_item_id: Option<i32>,
+        secondary_use_active: bool,
+    ) -> LocalTargetUsePrediction {
+        let Some(is_baby) = self.entities.is_baby(entity_id) else {
+            return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+        };
+        let Some(accessors) =
+            vanilla_entity_metadata_tamable_animal_accessors_for_entity_type(entity_type_id)
+        else {
+            return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+        };
+        let Some(flags) = self.entities.metadata_byte_for_entity(
+            entity_id,
+            accessors.flags_data_id,
+            accessors.flags_default,
+        ) else {
+            return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+        };
+        let is_tamed = flags & accessors.tame_mask != 0;
+
+        if !is_baby && is_tamed && secondary_use_active {
+            return LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction(),
+            ));
+        }
+        let Some(item_id) = held_item_id else {
+            return if !is_baby && is_tamed {
+                LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                    LocalInteractionSuccess::client_item_interaction(),
+                ))
+            } else {
+                LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+            };
+        };
+        let food_tag = if !is_baby && !is_tamed {
+            VANILLA_NAUTILUS_TAMING_ITEMS_TAG
+        } else {
+            VANILLA_NAUTILUS_FOOD_TAG
+        };
+        let Some(food_item_ids) = self.registry_holder_ids_for_tag("minecraft:item", food_tag)
+        else {
+            return LocalTargetUsePrediction::UnsupportedEntityInteract(
+                VANILLA_NAUTILUS_INTERACT_OWNER,
+            );
+        };
+        let is_food = food_item_ids.contains(&item_id);
+
+        if is_baby {
+            if is_food {
+                let Some((data_id, default)) =
+                    vanilla_entity_metadata_age_locked_accessor_for_entity_type(entity_type_id)
+                else {
+                    return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+                };
+                let Some(age_locked) = self
+                    .entities
+                    .metadata_bool_for_entity(entity_id, data_id, default)
+                else {
+                    return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+                };
+                return LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                    if age_locked {
+                        LocalInteractionSuccess::consume(false)
+                    } else {
+                        LocalInteractionSuccess::client_item_interaction()
+                    },
+                ));
+            }
+            if item_id == VANILLA_ITEM_GOLDEN_DANDELION_ID {
+                let Some(timer_ticks) = self.entities.age_lock_particle_timer_ticks(entity_id)
+                else {
+                    return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+                };
+                if timer_ticks == 0 {
+                    if self.entities.apply_local_age_lock_use(entity_id).is_none() {
+                        return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+                    }
+                    return LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                        LocalInteractionSuccess::client_item_interaction(),
+                    ));
+                }
+            }
+            return LocalTargetUsePrediction::Result(LocalInteractionResult::Pass);
+        }
+
+        let Some(item_type) = vanilla_item_type(item_id) else {
+            return LocalTargetUsePrediction::UnknownItemType(Some(item_id));
+        };
+        if is_food {
+            let Some(health) = self.entities.living_entity_health(entity_id) else {
+                return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+            };
+            let Some(max_health) = self
+                .entities
+                .attribute_value(entity_id, VANILLA_ATTRIBUTE_MAX_HEALTH_ID)
+            else {
+                return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+            };
+            if health < max_health as f32 {
+                return LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                    LocalInteractionSuccess::client_item_interaction(),
+                ));
+            }
+        }
+        if let Some(owner) = item_type.interact_living_entity_override {
+            return LocalTargetUsePrediction::UnsupportedItemInteractLivingEntity(owner);
+        }
+        if is_food {
+            return LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::consume(false),
+            ));
+        }
+        if is_tamed && !secondary_use_active {
+            return LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction(),
+            ));
+        }
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+    }
+
     fn predict_local_base_entity_interact(
         &self,
         entity_id: i32,
@@ -807,7 +945,7 @@ mod tests {
         },
         entity_data_serializers::{
             VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID, VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-            VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+            VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID, VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
         },
         entity_types::{
             VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
@@ -1385,19 +1523,10 @@ mod tests {
                 LocalInteractionSuccess::client_item_interaction()
             ))
         );
-        for (entity_id, owner) in [
-            (
-                72,
-                "net.minecraft.world.entity.animal.nautilus.AbstractNautilus",
-            ),
-            (
-                73,
-                "net.minecraft.world.entity.animal.nautilus.AbstractNautilus",
-            ),
-        ] {
+        for entity_id in [72, 73] {
             assert_eq!(
                 world.predict_local_entity_interaction(entity_id, InteractionHand::MainHand, false),
-                LocalTargetUsePrediction::UnsupportedEntityInteract(owner)
+                LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
             );
         }
 
@@ -1408,6 +1537,185 @@ mod tests {
                 LocalInteractionSuccess::server_item_interaction()
             ))
         );
+    }
+
+    #[test]
+    fn nautilus_mob_interaction_uses_synced_tame_age_health_and_food_state() {
+        let mut world = WorldStore::new();
+        add_entity(&mut world, 90, VANILLA_ENTITY_TYPE_NAUTILUS_ID);
+        add_entity(&mut world, 91, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID);
+        let tame_accessors = vanilla_entity_metadata_tamable_animal_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+        )
+        .unwrap();
+        let living_accessors =
+            crate::entities::vanilla_entity_metadata_living_entity_accessors_for_entity_type(
+                VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+            )
+            .unwrap();
+        let (baby_data_id, baby_default) =
+            crate::entities::vanilla_entity_metadata_baby_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+            )
+            .unwrap();
+        let (age_locked_data_id, age_locked_default) =
+            vanilla_entity_metadata_age_locked_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+            )
+            .unwrap();
+        assert!(!baby_default);
+        assert!(!age_locked_default);
+
+        let client_success = LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+            LocalInteractionSuccess::client_item_interaction(),
+        ));
+        let consume = LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+            LocalInteractionSuccess::consume(false),
+        ));
+        assert_eq!(
+            world.predict_local_entity_interaction(90, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+        set_main_hand(&mut world, VANILLA_ITEM_STONE_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(90, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::UnsupportedEntityInteract(VANILLA_NAUTILUS_INTERACT_OWNER)
+        );
+        world.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: "minecraft:item".to_string(),
+                tags: vec![
+                    TagNetworkPayload {
+                        tag: VANILLA_NAUTILUS_TAMING_ITEMS_TAG.to_string(),
+                        entries: vec![VANILLA_ITEM_STONE_ID],
+                    },
+                    TagNetworkPayload {
+                        tag: VANILLA_NAUTILUS_FOOD_TAG.to_string(),
+                        entries: vec![VANILLA_ITEM_APPLE_ID],
+                    },
+                ],
+            }],
+        });
+        assert_eq!(
+            world.predict_local_entity_interaction(90, InteractionHand::MainHand, false),
+            client_success
+        );
+        assert_eq!(
+            world.predict_local_entity_interaction(91, InteractionHand::MainHand, false),
+            client_success
+        );
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 90,
+            values: vec![EntityDataValue {
+                data_id: living_accessors.health_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
+                value: EntityDataValueKind::Float(15.0),
+            }],
+        }));
+        assert_eq!(
+            world.predict_local_entity_interaction(90, InteractionHand::MainHand, false),
+            consume
+        );
+
+        set_main_hand(&mut world, VANILLA_ITEM_RED_DYE_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(90, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::UnsupportedItemInteractLivingEntity(
+                VanillaItemInteractLivingEntityOverride::DyeItem
+            )
+        );
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 90,
+            values: vec![EntityDataValue {
+                data_id: tame_accessors.flags_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                value: EntityDataValueKind::Byte(tame_accessors.tame_mask),
+            }],
+        }));
+        assert_eq!(
+            world.predict_local_entity_interaction(90, InteractionHand::MainHand, true),
+            client_success
+        );
+        assert_eq!(
+            world.predict_local_entity_interaction(90, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::UnsupportedItemInteractLivingEntity(
+                VanillaItemInteractLivingEntityOverride::DyeItem
+            )
+        );
+        set_main_hand(&mut world, VANILLA_ITEM_APPLE_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(90, InteractionHand::MainHand, false),
+            consume
+        );
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 90,
+            values: vec![EntityDataValue {
+                data_id: living_accessors.health_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
+                value: EntityDataValueKind::Float(1.0),
+            }],
+        }));
+        assert_eq!(
+            world.predict_local_entity_interaction(90, InteractionHand::MainHand, false),
+            client_success
+        );
+        set_main_hand(&mut world, VANILLA_ITEM_STONE_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(90, InteractionHand::MainHand, false),
+            client_success
+        );
+
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 90,
+            values: vec![
+                EntityDataValue {
+                    data_id: baby_data_id,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                    value: EntityDataValueKind::Boolean(true),
+                },
+                EntityDataValue {
+                    data_id: age_locked_data_id,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                    value: EntityDataValueKind::Boolean(true),
+                },
+            ],
+        }));
+        set_main_hand(&mut world, VANILLA_ITEM_APPLE_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(90, InteractionHand::MainHand, false),
+            consume
+        );
+        set_main_hand(&mut world, VANILLA_ITEM_GOLDEN_DANDELION_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(90, InteractionHand::MainHand, false),
+            client_success
+        );
+        assert_eq!(
+            world.predict_local_entity_interaction(90, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+        assert_eq!(
+            world
+                .entities
+                .metadata_bool_for_entity(90, age_locked_data_id, age_locked_default),
+            Some(false)
+        );
+        set_main_hand(&mut world, VANILLA_ITEM_APPLE_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(90, InteractionHand::MainHand, false),
+            client_success
+        );
+    }
+
+    #[test]
+    fn age_lock_particle_timer_expires_after_forty_client_ticks() {
+        let mut state = crate::entities::EntityClientAnimationState::default();
+        state.start_age_lock_particle_timer();
+        assert_eq!(state.age_lock_particle_timer_ticks(), 40);
+        for expected in (0..40).rev() {
+            state.advance_age_lock_particle_timer_tick();
+            assert_eq!(state.age_lock_particle_timer_ticks(), expected);
+        }
     }
 
     #[test]

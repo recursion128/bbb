@@ -58,6 +58,7 @@ use super::schema::{
     vanilla_entity_metadata_abstract_minecart_accessors_for_entity_type,
     vanilla_entity_metadata_abstract_villager_unhappy_accessor_for_entity_type,
     vanilla_entity_metadata_accessor_for_entity_type,
+    vanilla_entity_metadata_age_locked_accessor_for_entity_type,
     vanilla_entity_metadata_bat_flags_accessor_for_entity_type,
     vanilla_entity_metadata_bee_accessors_for_entity_type,
     vanilla_entity_metadata_camel_dash_accessor_for_entity_type,
@@ -1720,6 +1721,37 @@ impl EntityStore {
             identity.entity_type_id,
             &metadata.data_values,
         ))
+    }
+
+    pub(crate) fn age_lock_particle_timer_ticks(&self, id: i32) -> Option<u8> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
+        Some(animations.animations.age_lock_particle_timer_ticks())
+    }
+
+    /// Applies the client half of `AgeableMob.setAgeLocked`: toggles the generated synchronized
+    /// boolean immediately and starts the local 40-tick particle/interaction timer. The next
+    /// server metadata update remains authoritative and replaces the local boolean.
+    pub(crate) fn apply_local_age_lock_use(&mut self, id: i32) -> Option<()> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let entity_type_id = self.ecs.get::<&EntityIdentity>(entity).ok()?.entity_type_id;
+        let (data_id, default) =
+            vanilla_entity_metadata_age_locked_accessor_for_entity_type(entity_type_id)?;
+        let age_locked = self.metadata_bool(id, data_id, default)?;
+        let (metadata, animations) = self
+            .ecs
+            .query_one_mut::<(&mut EntityMetadata, &mut EntityClientAnimations)>(entity)
+            .ok()?;
+        upsert_metadata_value(
+            metadata,
+            ProtocolEntityDataValue {
+                data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                value: EntityDataValueKind::Boolean(!age_locked),
+            },
+        );
+        animations.animations.start_age_lock_particle_timer();
+        Some(())
     }
 
     pub(crate) fn is_fall_flying(&self, id: i32) -> Option<bool> {
