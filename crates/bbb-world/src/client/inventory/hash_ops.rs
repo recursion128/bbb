@@ -17,6 +17,7 @@ use bbb_protocol::{
     builtin_enum_component_values::builtin_enum_component_value_name,
     data_component_types::{
         vanilla_data_component_animal_variant_registry,
+        vanilla_data_component_predicate_resource_id,
         vanilla_data_component_resource_id_for_type_id, vanilla_data_component_type_is_persistent,
         VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
@@ -58,7 +59,17 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
         VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PREDICATE_ARMOR_TRIM_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PREDICATE_CUSTOM_DATA_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PREDICATE_DAMAGE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PREDICATE_ENCHANTMENTS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PREDICATE_FIREWORK_EXPLOSION_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PREDICATE_JUKEBOX_PLAYABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PREDICATE_POTIONS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PREDICATE_STORED_ENCHANTMENTS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PREDICATE_VILLAGER_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
         VANILLA_DATA_COMPONENT_RARITY_TYPE_ID, VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID,
@@ -1151,37 +1162,288 @@ fn hash_block_predicate(
     if !predicate.partial_components.is_empty() {
         fields.push((
             "predicates",
-            hash_partial_component_predicates(&predicate.partial_components)?,
+            hash_partial_component_predicates(ctx, &predicate.partial_components)?,
         ));
     }
     Some(hash_record(fields))
 }
 
 fn hash_partial_component_predicates(
+    ctx: InventoryCtx<'_>,
     predicates: &[PartialDataComponentPredicateSummary],
 ) -> Option<Hash32> {
     Some(hash_map(
         predicates
             .iter()
             .map(|predicate| {
-                let DataComponentPredicateTypeSummary::AnyComponent(type_id) =
-                    predicate.predicate_type
-                else {
-                    return None;
+                let value = predicate.wire_value.as_ref()?;
+                let (resource_id, value_hash) = match predicate.predicate_type {
+                    DataComponentPredicateTypeSummary::Concrete(type_id) => (
+                        vanilla_data_component_predicate_resource_id(type_id)?,
+                        hash_concrete_component_predicate(ctx, type_id, value)?,
+                    ),
+                    DataComponentPredicateTypeSummary::AnyComponent(type_id) => {
+                        if !matches!(
+                            value,
+                            NbtSummaryValue::Compound(entries) if entries.is_empty()
+                        ) {
+                            return None;
+                        }
+                        (
+                            vanilla_data_component_resource_id_for_type_id(type_id)?,
+                            hash_record(Vec::new()),
+                        )
+                    }
                 };
-                if !matches!(
-                    predicate.wire_value.as_ref()?,
-                    NbtSummaryValue::Compound(entries) if entries.is_empty()
-                ) {
-                    return None;
-                }
-                Some((
-                    hash_string(vanilla_data_component_resource_id_for_type_id(type_id)?),
-                    hash_record(Vec::new()),
-                ))
+                Some((hash_string(resource_id), value_hash))
             })
             .collect::<Option<Vec<_>>>()?,
     ))
+}
+
+fn hash_concrete_component_predicate(
+    ctx: InventoryCtx<'_>,
+    type_id: i32,
+    value: &NbtSummaryValue,
+) -> Option<Hash32> {
+    match type_id {
+        VANILLA_DATA_COMPONENT_PREDICATE_DAMAGE_TYPE_ID => hash_damage_predicate(value),
+        VANILLA_DATA_COMPONENT_PREDICATE_ENCHANTMENTS_TYPE_ID
+        | VANILLA_DATA_COMPONENT_PREDICATE_STORED_ENCHANTMENTS_TYPE_ID => {
+            hash_enchantments_predicate(ctx, value)
+        }
+        VANILLA_DATA_COMPONENT_PREDICATE_POTIONS_TYPE_ID => {
+            hash_persistent_holder_set(ctx, "minecraft:potion", value)
+        }
+        VANILLA_DATA_COMPONENT_PREDICATE_CUSTOM_DATA_TYPE_ID => {
+            let NbtSummaryValue::String(snbt) = value else {
+                return None;
+            };
+            Some(hash_string(snbt))
+        }
+        VANILLA_DATA_COMPONENT_PREDICATE_FIREWORK_EXPLOSION_TYPE_ID => {
+            hash_firework_explosion_predicate(value)
+        }
+        VANILLA_DATA_COMPONENT_PREDICATE_ARMOR_TRIM_TYPE_ID => {
+            let fields = nbt_record_fields(value, &["material", "pattern"])?;
+            let mut hashed = Vec::new();
+            if let Some(material) = fields.get("material") {
+                hashed.push((
+                    "material",
+                    hash_persistent_holder_set(ctx, "minecraft:trim_material", material)?,
+                ));
+            }
+            if let Some(pattern) = fields.get("pattern") {
+                hashed.push((
+                    "pattern",
+                    hash_persistent_holder_set(ctx, "minecraft:trim_pattern", pattern)?,
+                ));
+            }
+            Some(hash_record(hashed))
+        }
+        VANILLA_DATA_COMPONENT_PREDICATE_JUKEBOX_PLAYABLE_TYPE_ID => {
+            let fields = nbt_record_fields(value, &["song"])?;
+            let mut hashed = Vec::new();
+            if let Some(song) = fields.get("song") {
+                hashed.push((
+                    "song",
+                    hash_persistent_holder_set(ctx, "minecraft:jukebox_song", song)?,
+                ));
+            }
+            Some(hash_record(hashed))
+        }
+        VANILLA_DATA_COMPONENT_PREDICATE_VILLAGER_VARIANT_TYPE_ID => {
+            hash_persistent_holder_set(ctx, "minecraft:villager_type", value)
+        }
+        _ => None,
+    }
+}
+
+fn hash_damage_predicate(value: &NbtSummaryValue) -> Option<Hash32> {
+    let fields = nbt_record_fields(value, &["durability", "damage"])?;
+    let mut hashed = Vec::new();
+    for name in ["durability", "damage"] {
+        let Some(value) = fields.get(name) else {
+            continue;
+        };
+        let bounds = IntBounds::from_nbt(value)?;
+        if !bounds.is_any() {
+            hashed.push((name, bounds.hash()));
+        }
+    }
+    Some(hash_record(hashed))
+}
+
+fn hash_enchantments_predicate(ctx: InventoryCtx<'_>, value: &NbtSummaryValue) -> Option<Hash32> {
+    let NbtSummaryValue::List(predicates) = value else {
+        return None;
+    };
+    Some(hash_list(
+        predicates
+            .iter()
+            .map(|predicate| {
+                let fields = nbt_record_fields(predicate, &["enchantments", "levels"])?;
+                let mut hashed = Vec::new();
+                if let Some(enchantments) = fields.get("enchantments") {
+                    hashed.push((
+                        "enchantments",
+                        hash_persistent_holder_set(ctx, "minecraft:enchantment", enchantments)?,
+                    ));
+                }
+                if let Some(levels) = fields.get("levels") {
+                    let bounds = IntBounds::from_nbt(levels)?;
+                    if !bounds.is_any() {
+                        hashed.push(("levels", bounds.hash()));
+                    }
+                }
+                Some(hash_record(hashed))
+            })
+            .collect::<Option<Vec<_>>>()?,
+    ))
+}
+
+fn hash_firework_explosion_predicate(value: &NbtSummaryValue) -> Option<Hash32> {
+    let fields = nbt_record_fields(value, &["shape", "has_twinkle", "has_trail"])?;
+    let mut hashed = Vec::new();
+    if let Some(shape) = fields.get("shape") {
+        let NbtSummaryValue::String(shape) = shape else {
+            return None;
+        };
+        let shape =
+            bbb_protocol::packets::FireworkExplosionShapeSummary::from_serialized_name(shape)?;
+        hashed.push(("shape", hash_string(shape.as_str())));
+    }
+    if let Some(twinkle) = fields.get("has_twinkle") {
+        hashed.push(("has_twinkle", hash_boolean(nbt_boolean(twinkle)?)));
+    }
+    if let Some(trail) = fields.get("has_trail") {
+        hashed.push(("has_trail", hash_boolean(nbt_boolean(trail)?)));
+    }
+    Some(hash_record(hashed))
+}
+
+fn hash_persistent_holder_set(
+    ctx: InventoryCtx<'_>,
+    registry: &str,
+    value: &NbtSummaryValue,
+) -> Option<Hash32> {
+    let holder_set = ctx
+        .registries
+        .frozen_access()
+        .persistent_holder_set_from_nbt(registry, value)
+        .ok()?;
+    match holder_set.kind {
+        crate::FrozenRegistryHolderSetKind::Named { tag, .. } => {
+            Some(hash_string(&format!("#{tag}")))
+        }
+        crate::FrozenRegistryHolderSetKind::Direct => {
+            let holders = holder_set
+                .entries
+                .iter()
+                .map(|entry| hash_string(entry.resource_id))
+                .collect::<Vec<_>>();
+            Some(match holders.as_slice() {
+                [holder] => *holder,
+                _ => hash_list(holders),
+            })
+        }
+    }
+}
+
+fn nbt_record_fields<'a>(
+    value: &'a NbtSummaryValue,
+    allowed: &[&str],
+) -> Option<BTreeMap<&'a str, &'a NbtSummaryValue>> {
+    let NbtSummaryValue::Compound(entries) = value else {
+        return None;
+    };
+    let mut fields = BTreeMap::new();
+    for entry in entries {
+        let name = entry.name.as_str();
+        if !allowed.contains(&name) || fields.insert(name, &entry.value).is_some() {
+            return None;
+        }
+    }
+    Some(fields)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct IntBounds {
+    min: Option<i32>,
+    max: Option<i32>,
+}
+
+impl IntBounds {
+    fn from_nbt(value: &NbtSummaryValue) -> Option<Self> {
+        let bounds = match value {
+            NbtSummaryValue::Byte(value) => Self::exact(i32::from(*value)),
+            NbtSummaryValue::Short(value) => Self::exact(i32::from(*value)),
+            NbtSummaryValue::Int(value) => Self::exact(*value),
+            NbtSummaryValue::Compound(_) => {
+                let fields = nbt_record_fields(value, &["min", "max"])?;
+                Self {
+                    min: optional_nbt_i32(fields.get("min"))?,
+                    max: optional_nbt_i32(fields.get("max"))?,
+                }
+            }
+            _ => return None,
+        };
+        if matches!((bounds.min, bounds.max), (Some(min), Some(max)) if min > max) {
+            return None;
+        }
+        Some(bounds)
+    }
+
+    fn exact(value: i32) -> Self {
+        Self {
+            min: Some(value),
+            max: Some(value),
+        }
+    }
+
+    fn is_any(self) -> bool {
+        self.min.is_none() && self.max.is_none()
+    }
+
+    fn hash(self) -> Hash32 {
+        if let (Some(min), Some(max)) = (self.min, self.max) {
+            if min == max {
+                return hash_int(min);
+            }
+        }
+        let mut fields = Vec::new();
+        if let Some(min) = self.min {
+            fields.push(("min", hash_int(min)));
+        }
+        if let Some(max) = self.max {
+            fields.push(("max", hash_int(max)));
+        }
+        hash_record(fields)
+    }
+}
+
+fn optional_nbt_i32(value: Option<&&NbtSummaryValue>) -> Option<Option<i32>> {
+    match value {
+        Some(value) => Some(Some(nbt_i32(value)?)),
+        None => Some(None),
+    }
+}
+
+fn nbt_i32(value: &NbtSummaryValue) -> Option<i32> {
+    match value {
+        NbtSummaryValue::Byte(value) => Some(i32::from(*value)),
+        NbtSummaryValue::Short(value) => Some(i32::from(*value)),
+        NbtSummaryValue::Int(value) => Some(*value),
+        _ => None,
+    }
+}
+
+fn nbt_boolean(value: &NbtSummaryValue) -> Option<bool> {
+    match value {
+        NbtSummaryValue::Byte(0) => Some(false),
+        NbtSummaryValue::Byte(1) => Some(true),
+        _ => None,
+    }
 }
 
 fn hash_persistent_item_predicate(
@@ -1223,7 +1485,7 @@ fn hash_persistent_item_predicate(
     if !predicate.partial_components.is_empty() {
         fields.push((
             "predicates",
-            hash_partial_component_predicates(&predicate.partial_components)?,
+            hash_partial_component_predicates(ctx, &predicate.partial_components)?,
         ));
     }
     Some(hash_record(fields))
@@ -2995,6 +3257,178 @@ mod tests {
     }
 
     #[test]
+    fn hashes_scalar_and_holder_concrete_component_predicates() {
+        let mut store = crate::WorldStore::new();
+        for (registry, resource_id) in [
+            ("minecraft:enchantment", "minecraft:sharpness"),
+            ("minecraft:potion", "minecraft:water"),
+            ("minecraft:trim_material", "minecraft:iron"),
+            ("minecraft:trim_pattern", "minecraft:sentry"),
+            ("minecraft:jukebox_song", "minecraft:13"),
+            ("minecraft:villager_type", "minecraft:plains"),
+        ] {
+            let mut contents = crate::RegistryContentState::new(registry);
+            contents.entries = vec![crate::RegistryPacketEntry::stub(resource_id)];
+            store
+                .registries
+                .contents
+                .insert(registry.to_string(), contents);
+            assert!(
+                store
+                    .registries
+                    .holder_id_by_resource_id(registry, resource_id)
+                    .is_some(),
+                "missing {resource_id} in {registry}"
+            );
+        }
+        let entry = |name: &str, value| NbtSummaryEntry {
+            name: name.to_string(),
+            value,
+        };
+        let predicates = vec![
+            PartialDataComponentPredicateSummary {
+                predicate_type: DataComponentPredicateTypeSummary::Concrete(
+                    VANILLA_DATA_COMPONENT_PREDICATE_DAMAGE_TYPE_ID,
+                ),
+                wire_value: Some(NbtSummaryValue::Compound(vec![
+                    entry("durability", NbtSummaryValue::Int(3)),
+                    entry(
+                        "damage",
+                        NbtSummaryValue::Compound(vec![
+                            entry("min", NbtSummaryValue::Int(1)),
+                            entry("max", NbtSummaryValue::Int(5)),
+                        ]),
+                    ),
+                ])),
+            },
+            PartialDataComponentPredicateSummary {
+                predicate_type: DataComponentPredicateTypeSummary::Concrete(
+                    VANILLA_DATA_COMPONENT_PREDICATE_ENCHANTMENTS_TYPE_ID,
+                ),
+                wire_value: Some(NbtSummaryValue::List(vec![NbtSummaryValue::Compound(
+                    vec![
+                        entry(
+                            "enchantments",
+                            NbtSummaryValue::String("minecraft:sharpness".to_string()),
+                        ),
+                        entry("levels", NbtSummaryValue::Int(2)),
+                    ],
+                )])),
+            },
+            PartialDataComponentPredicateSummary {
+                predicate_type: DataComponentPredicateTypeSummary::Concrete(
+                    VANILLA_DATA_COMPONENT_PREDICATE_STORED_ENCHANTMENTS_TYPE_ID,
+                ),
+                wire_value: Some(NbtSummaryValue::List(Vec::new())),
+            },
+            PartialDataComponentPredicateSummary {
+                predicate_type: DataComponentPredicateTypeSummary::Concrete(
+                    VANILLA_DATA_COMPONENT_PREDICATE_POTIONS_TYPE_ID,
+                ),
+                wire_value: Some(NbtSummaryValue::String("minecraft:water".to_string())),
+            },
+            PartialDataComponentPredicateSummary {
+                predicate_type: DataComponentPredicateTypeSummary::Concrete(
+                    VANILLA_DATA_COMPONENT_PREDICATE_CUSTOM_DATA_TYPE_ID,
+                ),
+                wire_value: Some(NbtSummaryValue::String("{foo:1}".to_string())),
+            },
+            PartialDataComponentPredicateSummary {
+                predicate_type: DataComponentPredicateTypeSummary::Concrete(
+                    VANILLA_DATA_COMPONENT_PREDICATE_FIREWORK_EXPLOSION_TYPE_ID,
+                ),
+                wire_value: Some(NbtSummaryValue::Compound(vec![
+                    entry("shape", NbtSummaryValue::String("star".to_string())),
+                    entry("has_twinkle", NbtSummaryValue::Byte(1)),
+                    entry("has_trail", NbtSummaryValue::Byte(0)),
+                ])),
+            },
+            PartialDataComponentPredicateSummary {
+                predicate_type: DataComponentPredicateTypeSummary::Concrete(
+                    VANILLA_DATA_COMPONENT_PREDICATE_ARMOR_TRIM_TYPE_ID,
+                ),
+                wire_value: Some(NbtSummaryValue::Compound(vec![
+                    entry(
+                        "material",
+                        NbtSummaryValue::String("minecraft:iron".to_string()),
+                    ),
+                    entry(
+                        "pattern",
+                        NbtSummaryValue::String("minecraft:sentry".to_string()),
+                    ),
+                ])),
+            },
+            PartialDataComponentPredicateSummary {
+                predicate_type: DataComponentPredicateTypeSummary::Concrete(
+                    VANILLA_DATA_COMPONENT_PREDICATE_JUKEBOX_PLAYABLE_TYPE_ID,
+                ),
+                wire_value: Some(NbtSummaryValue::Compound(vec![entry(
+                    "song",
+                    NbtSummaryValue::String("minecraft:13".to_string()),
+                )])),
+            },
+            PartialDataComponentPredicateSummary {
+                predicate_type: DataComponentPredicateTypeSummary::Concrete(
+                    VANILLA_DATA_COMPONENT_PREDICATE_VILLAGER_VARIANT_TYPE_ID,
+                ),
+                wire_value: Some(NbtSummaryValue::String("minecraft:plains".to_string())),
+            },
+        ];
+
+        assert_eq!(
+            hash_partial_component_predicates(test_ctx(&store), &predicates),
+            Some(hash_map(vec![
+                (
+                    hash_string("minecraft:damage"),
+                    hash_record(vec![
+                        ("durability", hash_int(3)),
+                        (
+                            "damage",
+                            hash_record(vec![("min", hash_int(1)), ("max", hash_int(5)),]),
+                        ),
+                    ]),
+                ),
+                (
+                    hash_string("minecraft:enchantments"),
+                    hash_list([hash_record(vec![
+                        ("enchantments", hash_string("minecraft:sharpness")),
+                        ("levels", hash_int(2)),
+                    ])]),
+                ),
+                (hash_string("minecraft:stored_enchantments"), hash_list([]),),
+                (
+                    hash_string("minecraft:potion_contents"),
+                    hash_string("minecraft:water"),
+                ),
+                (hash_string("minecraft:custom_data"), hash_string("{foo:1}"),),
+                (
+                    hash_string("minecraft:firework_explosion"),
+                    hash_record(vec![
+                        ("shape", hash_string("star")),
+                        ("has_twinkle", hash_boolean(true)),
+                        ("has_trail", hash_boolean(false)),
+                    ]),
+                ),
+                (
+                    hash_string("minecraft:trim"),
+                    hash_record(vec![
+                        ("material", hash_string("minecraft:iron")),
+                        ("pattern", hash_string("minecraft:sentry")),
+                    ]),
+                ),
+                (
+                    hash_string("minecraft:jukebox_playable"),
+                    hash_record(vec![("song", hash_string("minecraft:13"))]),
+                ),
+                (
+                    hash_string("minecraft:villager/variant"),
+                    hash_string("minecraft:plains"),
+                ),
+            ]))
+        );
+    }
+
+    #[test]
     fn keeps_lossy_predicate_codec_shapes_server_authoritative() {
         let store = crate::WorldStore::new();
         assert_eq!(
@@ -3052,10 +3486,18 @@ mod tests {
             None
         );
         assert_eq!(
-            hash_partial_component_predicates(&[PartialDataComponentPredicateSummary {
-                predicate_type: DataComponentPredicateTypeSummary::Concrete(0),
-                wire_value: Some(NbtSummaryValue::Compound(Vec::new())),
-            }]),
+            hash_partial_component_predicates(
+                test_ctx(&store),
+                &[PartialDataComponentPredicateSummary {
+                    predicate_type: DataComponentPredicateTypeSummary::Concrete(
+                        VANILLA_DATA_COMPONENT_PREDICATE_DAMAGE_TYPE_ID,
+                    ),
+                    wire_value: Some(NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                        name: "unknown".to_string(),
+                        value: NbtSummaryValue::Int(1),
+                    }])),
+                }],
+            ),
             None
         );
     }
