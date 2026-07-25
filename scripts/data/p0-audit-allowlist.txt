@@ -57,6 +57,11 @@
 # component slot/holder data or a missing live entity-type tag. Supported owner
 # paths retain exact ItemStack PASS ordering and server-authoritative correction.
 ^crates/bbb-world/src/client/inventory/use_prediction/equippable[.]rs$	unsupported_target_equippable
+# Generated block-use-without-item dispatch retains one explicit result boundary
+# for unimplemented owners, malformed generated state properties, or unavailable
+# local neighbor facts. It is surfaced to diagnostics instead of guessing a
+# consuming result or mutating canonical block state.
+^crates/bbb-world/src/client/inventory/use_prediction/block_use_without_item[.]rs$	UnsupportedBlockUseWithoutItem|unsupported[(][)]
 # Environment ambient particles keep one explicit diagnostic for complex
 # ParticleOptions codec shapes that are dropped at the renderer bridge. Simple
 # options render normally, and the complex-shape closure remains a concrete ledger
