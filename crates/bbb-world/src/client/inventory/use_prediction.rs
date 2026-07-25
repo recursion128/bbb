@@ -2908,10 +2908,10 @@ mod tests {
         );
 
         let air = block_state_id("minecraft:air", []);
-        let mut unsupported_ladder = tool_use_world(wet_ladder);
-        set_main_hand(&mut unsupported_ladder, VANILLA_ITEM_BUCKET_ID);
+        let mut detached_ladder = tool_use_world(wet_ladder);
+        set_main_hand(&mut detached_ladder, VANILLA_ITEM_BUCKET_ID);
         assert!(matches!(
-            unsupported_ladder.predict_local_item_use_with_pov_and_sequence(
+            detached_ladder.predict_local_item_use_with_pov_and_sequence(
                 InteractionHand::MainHand,
                 Some(item_use_block_hit(pos, ProtocolDirection::Up)),
                 29,
@@ -2920,11 +2920,11 @@ mod tests {
             LocalItemUsePrediction::Result(LocalInteractionResult::Success(_))
         ));
         assert_eq!(
-            unsupported_ladder.probe_block(pos).unwrap().block_state_id,
+            detached_ladder.probe_block(pos).unwrap().block_state_id,
             air
         );
         assert_eq!(
-            unsupported_ladder.local_block_predictions()[0].server_block_state_id,
+            detached_ladder.local_block_predictions()[0].server_block_state_id,
             wet_ladder
         );
     }
@@ -2944,15 +2944,15 @@ mod tests {
                 owners.push(owner);
             }
         }
-        let unsupported = owners
+        let missing_evaluators = owners
             .iter()
             .copied()
             .filter(|owner| !bucket::bucket_can_survive_owner_supported(*owner))
             .collect::<Vec<_>>();
 
         assert!(
-            unsupported.is_empty(),
-            "waterlogged bucket-pickup owners without evaluators: {unsupported:?}"
+            missing_evaluators.is_empty(),
+            "waterlogged bucket-pickup owners without evaluators: {missing_evaluators:?}"
         );
         assert_eq!(owners.len(), 19);
     }
@@ -3187,7 +3187,7 @@ mod tests {
                 ("waterlogged", "false"),
             ],
         );
-        let unsupported_below_scaffolding = block_state_id(
+        let distance_seven_below_scaffolding = block_state_id(
             "minecraft:scaffolding",
             [
                 ("bottom", "true"),
@@ -3197,7 +3197,7 @@ mod tests {
         );
         let mut scaffolding = tool_use_world(air);
         set_block(&mut scaffolding, pos, wet_scaffolding);
-        set_block(&mut scaffolding, below, unsupported_below_scaffolding);
+        set_block(&mut scaffolding, below, distance_seven_below_scaffolding);
         set_block(&mut scaffolding, east, neighbour_scaffolding);
         set_main_hand(&mut scaffolding, VANILLA_ITEM_BUCKET_ID);
         assert!(matches!(
