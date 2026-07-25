@@ -15,23 +15,33 @@ use bbb_protocol::{
         vanilla_data_component_resource_id_for_type_id, vanilla_data_component_type_is_persistent,
         VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID, VANILLA_DATA_COMPONENT_BASE_COLOR_TYPE_ID,
-        VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
+        VANILLA_DATA_COMPONENT_BEES_TYPE_ID, VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
+        VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID, VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
+        VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID, VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID,
-        VANILLA_DATA_COMPONENT_DYE_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID,
-        VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID, VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
+        VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
         VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
         VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID,
+        VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
+        VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID,
+        VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
         VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_NOTE_BLOCK_SOUND_TYPE_ID,
         VANILLA_DATA_COMPONENT_OMINOUS_BOTTLE_AMPLIFIER_TYPE_ID,
         VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
         VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
         VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
@@ -41,7 +51,8 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
         VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID,
-        VANILLA_DATA_COMPONENT_TOOLTIP_STYLE_TYPE_ID, VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
+        VANILLA_DATA_COMPONENT_TOOLTIP_STYLE_TYPE_ID, VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
+        VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
         VANILLA_DATA_COMPONENT_TROPICAL_FISH_BASE_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID,
@@ -49,10 +60,12 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_WEAPON_TYPE_ID,
     },
+    equipment_slots::vanilla_equipment_slot_by_id,
     packets::{
-        validate_data_component_patch_summary, DataComponentPatchSummary, HashedComponentPatch,
-        HashedItemStack, HashedStack, ItemEnchantmentSummary, ItemStackSummary, NbtSummaryValue,
-        SoundEventSummary,
+        validate_data_component_patch_summary, BlocksAttacksSummary, DataComponentPatchSummary,
+        FireworkExplosionSummary, HashedComponentPatch, HashedItemStack, HashedStack,
+        ItemEnchantmentSummary, ItemStackSummary, KineticWeaponConditionSummary, NbtSummaryEntry,
+        NbtSummaryValue, SoundEventSummary,
     },
     tropical_fish_patterns::vanilla_tropical_fish_pattern,
 };
@@ -295,6 +308,7 @@ fn hash_component_value(
                 patch.damage_resistant_type_tag.as_deref(),
             )?,
         )]),
+        VANILLA_DATA_COMPONENT_TOOL_TYPE_ID => hash_tool(ctx, patch.tool.as_ref()?)?,
         VANILLA_DATA_COMPONENT_WEAPON_TYPE_ID => {
             let mut fields = Vec::new();
             push_non_default_int(
@@ -355,6 +369,9 @@ fn hash_component_value(
         VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID => {
             hash_record(vec![("value", hash_int(patch.enchantable_value?))])
         }
+        VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID => {
+            hash_equippable(ctx, patch.equippable.as_ref()?)?
+        }
         VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID => hash_record(vec![(
             "items",
             hash_registry_holder_set(
@@ -376,6 +393,61 @@ fn hash_component_value(
             push_non_default_int(&mut fields, "duration", value.duration, 6);
             hash_record(fields)
         }
+        VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID => {
+            hash_blocks_attacks(ctx, patch.blocks_attacks.as_ref()?)?
+        }
+        VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID => {
+            let value = patch.piercing_weapon.as_ref()?;
+            let mut fields = Vec::new();
+            push_non_default_bool(&mut fields, "deals_knockback", value.deals_knockback, true);
+            push_non_default_bool(&mut fields, "dismounts", value.dismounts, false);
+            if let Some(sound) = &value.sound {
+                fields.push(("sound", hash_sound_event(ctx, sound)?));
+            }
+            if let Some(sound) = &value.hit_sound {
+                fields.push(("hit_sound", hash_sound_event(ctx, sound)?));
+            }
+            hash_record(fields)
+        }
+        VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID => {
+            let value = patch.kinetic_weapon.as_ref()?;
+            let mut fields = Vec::new();
+            push_non_default_int(
+                &mut fields,
+                "contact_cooldown_ticks",
+                value.contact_cooldown_ticks,
+                10,
+            );
+            push_non_default_int(&mut fields, "delay_ticks", value.delay_ticks, 0);
+            if let Some(condition) = value.dismount_conditions {
+                fields.push(("dismount_conditions", hash_kinetic_condition(condition)));
+            }
+            if let Some(condition) = value.knockback_conditions {
+                fields.push(("knockback_conditions", hash_kinetic_condition(condition)));
+            }
+            if let Some(condition) = value.damage_conditions {
+                fields.push(("damage_conditions", hash_kinetic_condition(condition)));
+            }
+            push_non_default_float(
+                &mut fields,
+                "forward_movement",
+                value.forward_movement_bits,
+                0.0_f32.to_bits(),
+            );
+            push_non_default_float(
+                &mut fields,
+                "damage_multiplier",
+                value.damage_multiplier_bits,
+                1.0_f32.to_bits(),
+            );
+            if let Some(sound) = &value.sound {
+                fields.push(("sound", hash_sound_event(ctx, sound)?));
+            }
+            if let Some(sound) = &value.hit_sound {
+                fields.push(("hit_sound", hash_sound_event(ctx, sound)?));
+            }
+            hash_record(fields)
+        }
         VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID => {
             hash_enchantments(ctx, &patch.stored_enchantments)?
         }
@@ -386,12 +458,72 @@ fn hash_component_value(
         VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID => hash_int(patch.dyed_color?),
         VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID => hash_int(patch.map_color?),
         VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID => hash_int(patch.map_id?),
+        VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID => hash_map(
+            patch
+                .map_decorations
+                .as_ref()?
+                .iter()
+                .map(|decoration| {
+                    (
+                        hash_string(&decoration.id),
+                        hash_record(vec![
+                            ("type", hash_string(&decoration.decoration_type_resource_id)),
+                            ("x", hash_double(decoration.x_bits)),
+                            ("z", hash_double(decoration.z_bits)),
+                            ("rotation", hash_float(decoration.rotation_bits)),
+                        ]),
+                    )
+                })
+                .collect(),
+        ),
         VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID => {
             hash_float(patch.potion_duration_scale_bits?)
         }
         VANILLA_DATA_COMPONENT_OMINOUS_BOTTLE_AMPLIFIER_TYPE_ID => {
             hash_int(patch.ominous_bottle_amplifier?)
         }
+        VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID => {
+            hash_firework_explosion(&FireworkExplosionSummary {
+                shape: patch.firework_explosion_shape?,
+                colors: patch.firework_explosion_colors.clone(),
+                fade_colors: patch.firework_explosion_fade_colors.clone(),
+                has_trail: patch.firework_explosion_has_trail?,
+                has_twinkle: patch.firework_explosion_has_twinkle?,
+            })
+        }
+        VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID => {
+            let mut fields = Vec::new();
+            push_non_default_int(
+                &mut fields,
+                "flight_duration",
+                patch.fireworks_flight_duration?,
+                0,
+            );
+            if !patch.fireworks_explosions.is_empty() {
+                fields.push((
+                    "explosions",
+                    hash_list(
+                        patch
+                            .fireworks_explosions
+                            .iter()
+                            .map(hash_firework_explosion),
+                    ),
+                ));
+            }
+            hash_record(fields)
+        }
+        VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID => hash_map(
+            patch
+                .debug_stick_properties
+                .iter()
+                .map(|entry| {
+                    Some((
+                        hash_registry_holder(ctx, "minecraft:block", entry.block_registry_id)?,
+                        hash_string(&entry.property),
+                    ))
+                })
+                .collect::<Option<Vec<_>>>()?,
+        ),
         VANILLA_DATA_COMPONENT_TRIM_TYPE_ID => {
             if patch.armor_trim_material_direct.is_some()
                 || patch.armor_trim_pattern_direct.is_some()
@@ -452,6 +584,23 @@ fn hash_component_value(
                 .iter()
                 .map(|recipe| hash_string(recipe)),
         ),
+        VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID => {
+            let mut fields = Vec::new();
+            if let Some(target) = &patch.lodestone_target {
+                fields.push((
+                    "target",
+                    hash_record(vec![
+                        ("dimension", hash_string(&target.dimension)),
+                        (
+                            "pos",
+                            hash_int_array([target.pos.x, target.pos.y, target.pos.z]),
+                        ),
+                    ]),
+                ));
+            }
+            push_non_default_bool(&mut fields, "tracked", patch.lodestone_tracked?, true);
+            hash_record(fields)
+        }
         VANILLA_DATA_COMPONENT_NOTE_BLOCK_SOUND_TYPE_ID => {
             hash_string(patch.note_block_sound.as_deref()?)
         }
@@ -494,6 +643,44 @@ fn hash_component_value(
                 .map(|item_id| hash_registry_holder(ctx, "minecraft:item", *item_id))
                 .collect::<Option<Vec<_>>>()?,
         ),
+        VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID => hash_map(
+            patch
+                .block_state_properties
+                .iter()
+                .map(|(name, value)| (hash_string(name), hash_string(value)))
+                .collect(),
+        ),
+        VANILLA_DATA_COMPONENT_BEES_TYPE_ID => hash_list(
+            patch
+                .bees
+                .iter()
+                .map(|bee| {
+                    Some(hash_record(vec![
+                        (
+                            "entity_data",
+                            hash_typed_entity_data(
+                                ctx,
+                                "minecraft:entity_type",
+                                bee.entity_type_id,
+                                bee.entity_data_tag.as_ref()?,
+                            )?,
+                        ),
+                        ("ticks_in_hive", hash_int(bee.ticks_in_hive)),
+                        ("min_ticks_in_hive", hash_int(bee.min_ticks_in_hive)),
+                    ]))
+                })
+                .collect::<Option<Vec<_>>>()?,
+        ),
+        VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID => {
+            let mut fields = vec![(
+                "loot_table",
+                hash_string(patch.container_loot_table.as_deref()?),
+            )];
+            if let Some(seed) = patch.container_loot_seed.filter(|seed| *seed != 0) {
+                fields.push(("seed", hash_long(seed)));
+            }
+            hash_record(fields)
+        }
         VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID => {
             hash_sound_event(ctx, patch.break_sound.as_ref()?)?
         }
@@ -510,15 +697,42 @@ fn hash_component_value(
             builtin_enum_component_value_name(type_id, patch.tropical_fish_pattern_color_id?)?,
         ),
         VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID => {
-            if patch.painting_variant_direct.is_some() {
+            if let Some(direct) = &patch.painting_variant_direct {
+                if direct.title.is_some() || direct.author.is_some() {
+                    return None;
+                }
+                hash_record(vec![
+                    ("width", hash_int(direct.width)),
+                    ("height", hash_int(direct.height)),
+                    ("asset_id", hash_string(&direct.asset_id)),
+                ])
+            } else {
+                hash_registry_holder(
+                    ctx,
+                    "minecraft:painting_variant",
+                    patch.painting_variant_id?,
+                )?
+            }
+        }
+        VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID => hash_typed_entity_data(
+            ctx,
+            "minecraft:entity_type",
+            patch.entity_data_entity_type_id?,
+            patch.entity_data_tag.as_ref()?,
+        )?,
+        VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID => {
+            let value = patch.codec_backed_nbt.get(&type_id)?;
+            if !matches!(value, NbtSummaryValue::Compound(_)) {
                 return None;
             }
-            hash_registry_holder(
-                ctx,
-                "minecraft:painting_variant",
-                patch.painting_variant_id?,
-            )?
+            hash_nbt(value)
         }
+        VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID => hash_typed_entity_data(
+            ctx,
+            "minecraft:block_entity_type",
+            patch.block_entity_data_type_id?,
+            patch.block_entity_data_tag.as_ref()?,
+        )?,
         _ => {
             if let Some(registry) = vanilla_data_component_animal_variant_registry(type_id) {
                 let holder_id = animal_variant_holder_id(patch, type_id)?;
@@ -630,6 +844,281 @@ fn hash_sound_event(ctx: InventoryCtx<'_>, sound: &SoundEventSummary) -> Option<
     Some(hash_record(fields))
 }
 
+fn sound_event_is_registry_resource(
+    ctx: InventoryCtx<'_>,
+    sound: &SoundEventSummary,
+    resource_id: &str,
+) -> bool {
+    sound.sound_id.is_none()
+        && sound.fixed_range_bits.is_none()
+        && sound.registry_id.is_some_and(|holder_id| {
+            ctx.registries
+                .resource_id_by_holder_id("minecraft:sound_event", holder_id)
+                == Some(resource_id)
+        })
+}
+
+fn hash_tool(ctx: InventoryCtx<'_>, tool: &bbb_protocol::packets::ToolSummary) -> Option<Hash32> {
+    let mut fields = vec![(
+        "rules",
+        hash_list(
+            tool.rules
+                .iter()
+                .map(|rule| {
+                    let mut fields = vec![(
+                        "blocks",
+                        hash_registry_holder_set(
+                            ctx,
+                            "minecraft:block",
+                            &rule.block_registry_ids,
+                            rule.block_tag.as_deref(),
+                        )?,
+                    )];
+                    if let Some(speed) = rule.speed_bits {
+                        fields.push(("speed", hash_float(speed)));
+                    }
+                    if let Some(correct) = rule.correct_for_drops {
+                        fields.push(("correct_for_drops", hash_boolean(correct)));
+                    }
+                    Some(hash_record(fields))
+                })
+                .collect::<Option<Vec<_>>>()?,
+        ),
+    )];
+    push_non_default_float(
+        &mut fields,
+        "default_mining_speed",
+        tool.default_mining_speed_bits,
+        1.0_f32.to_bits(),
+    );
+    push_non_default_int(&mut fields, "damage_per_block", tool.damage_per_block, 1);
+    push_non_default_bool(
+        &mut fields,
+        "can_destroy_blocks_in_creative",
+        tool.can_destroy_blocks_in_creative,
+        true,
+    );
+    Some(hash_record(fields))
+}
+
+fn hash_equippable(
+    ctx: InventoryCtx<'_>,
+    equippable: &bbb_protocol::packets::EquippableSummary,
+) -> Option<Hash32> {
+    let mut fields = vec![(
+        "slot",
+        hash_string(vanilla_equipment_slot_by_id(equippable.slot_id)?.serialized_name),
+    )];
+    if !sound_event_is_registry_resource(
+        ctx,
+        &equippable.equip_sound,
+        "minecraft:item.armor.equip_generic",
+    ) {
+        fields.push((
+            "equip_sound",
+            hash_sound_event(ctx, &equippable.equip_sound)?,
+        ));
+    }
+    if let Some(asset_id) = &equippable.asset_id {
+        fields.push(("asset_id", hash_string(asset_id)));
+    }
+    if let Some(camera_overlay) = &equippable.camera_overlay {
+        fields.push(("camera_overlay", hash_string(camera_overlay)));
+    }
+    if let Some(allowed) = &equippable.allowed_entities {
+        fields.push((
+            "allowed_entities",
+            hash_registry_holder_set(
+                ctx,
+                "minecraft:entity_type",
+                &allowed.registry_ids,
+                allowed.tag.as_deref(),
+            )?,
+        ));
+    }
+    push_non_default_bool(&mut fields, "dispensable", equippable.dispensable, true);
+    push_non_default_bool(&mut fields, "swappable", equippable.swappable, true);
+    push_non_default_bool(
+        &mut fields,
+        "damage_on_hurt",
+        equippable.damage_on_hurt,
+        true,
+    );
+    push_non_default_bool(
+        &mut fields,
+        "equip_on_interact",
+        equippable.equip_on_interact,
+        false,
+    );
+    push_non_default_bool(
+        &mut fields,
+        "can_be_sheared",
+        equippable.can_be_sheared,
+        false,
+    );
+    if !sound_event_is_registry_resource(
+        ctx,
+        &equippable.shearing_sound,
+        "minecraft:item.shears.snip",
+    ) {
+        fields.push((
+            "shearing_sound",
+            hash_sound_event(ctx, &equippable.shearing_sound)?,
+        ));
+    }
+    Some(hash_record(fields))
+}
+
+fn hash_blocks_attacks(ctx: InventoryCtx<'_>, blocks: &BlocksAttacksSummary) -> Option<Hash32> {
+    let mut fields = Vec::new();
+    push_non_default_float(
+        &mut fields,
+        "block_delay_seconds",
+        blocks.block_delay_seconds_bits,
+        0.0_f32.to_bits(),
+    );
+    push_non_default_float(
+        &mut fields,
+        "disable_cooldown_scale",
+        blocks.disable_cooldown_scale_bits,
+        1.0_f32.to_bits(),
+    );
+
+    let default_reduction = blocks.damage_reductions.as_slice()
+        == [bbb_protocol::packets::DamageReductionSummary {
+            horizontal_blocking_angle_bits: 90.0_f32.to_bits(),
+            damage_types: None,
+            base_bits: 0.0_f32.to_bits(),
+            factor_bits: 1.0_f32.to_bits(),
+        }];
+    if !default_reduction {
+        fields.push((
+            "damage_reductions",
+            hash_list(
+                blocks
+                    .damage_reductions
+                    .iter()
+                    .map(|reduction| {
+                        let mut fields = Vec::new();
+                        push_non_default_float(
+                            &mut fields,
+                            "horizontal_blocking_angle",
+                            reduction.horizontal_blocking_angle_bits,
+                            90.0_f32.to_bits(),
+                        );
+                        if let Some(types) = &reduction.damage_types {
+                            fields.push((
+                                "type",
+                                hash_registry_holder_set(
+                                    ctx,
+                                    "minecraft:damage_type",
+                                    &types.registry_ids,
+                                    types.tag.as_deref(),
+                                )?,
+                            ));
+                        }
+                        fields.push(("base", hash_float(reduction.base_bits)));
+                        fields.push(("factor", hash_float(reduction.factor_bits)));
+                        Some(hash_record(fields))
+                    })
+                    .collect::<Option<Vec<_>>>()?,
+            ),
+        ));
+    }
+
+    if blocks.item_damage.threshold_bits != 1.0_f32.to_bits()
+        || blocks.item_damage.base_bits != 0.0_f32.to_bits()
+        || blocks.item_damage.factor_bits != 1.0_f32.to_bits()
+    {
+        fields.push((
+            "item_damage",
+            hash_record(vec![
+                ("threshold", hash_float(blocks.item_damage.threshold_bits)),
+                ("base", hash_float(blocks.item_damage.base_bits)),
+                ("factor", hash_float(blocks.item_damage.factor_bits)),
+            ]),
+        ));
+    }
+    if let Some(types) = &blocks.bypassed_by {
+        fields.push((
+            "bypassed_by",
+            hash_registry_holder_set(
+                ctx,
+                "minecraft:damage_type",
+                &types.registry_ids,
+                types.tag.as_deref(),
+            )?,
+        ));
+    }
+    if let Some(sound) = &blocks.block_sound {
+        fields.push(("block_sound", hash_sound_event(ctx, sound)?));
+    }
+    if let Some(sound) = &blocks.disable_sound {
+        fields.push(("disabled_sound", hash_sound_event(ctx, sound)?));
+    }
+    Some(hash_record(fields))
+}
+
+fn hash_kinetic_condition(condition: KineticWeaponConditionSummary) -> Hash32 {
+    let mut fields = vec![("max_duration_ticks", hash_int(condition.max_duration_ticks))];
+    push_non_default_float(
+        &mut fields,
+        "min_speed",
+        condition.min_speed_bits,
+        0.0_f32.to_bits(),
+    );
+    push_non_default_float(
+        &mut fields,
+        "min_relative_speed",
+        condition.min_relative_speed_bits,
+        0.0_f32.to_bits(),
+    );
+    hash_record(fields)
+}
+
+fn hash_firework_explosion(explosion: &FireworkExplosionSummary) -> Hash32 {
+    let mut fields = vec![("shape", hash_string(explosion.shape.as_str()))];
+    if !explosion.colors.is_empty() {
+        fields.push((
+            "colors",
+            hash_list(explosion.colors.iter().copied().map(hash_int)),
+        ));
+    }
+    if !explosion.fade_colors.is_empty() {
+        fields.push((
+            "fade_colors",
+            hash_list(explosion.fade_colors.iter().copied().map(hash_int)),
+        ));
+    }
+    push_non_default_bool(&mut fields, "has_trail", explosion.has_trail, false);
+    push_non_default_bool(&mut fields, "has_twinkle", explosion.has_twinkle, false);
+    hash_record(fields)
+}
+
+fn hash_typed_entity_data(
+    ctx: InventoryCtx<'_>,
+    registry: &str,
+    type_id: i32,
+    tag: &NbtSummaryValue,
+) -> Option<Hash32> {
+    let NbtSummaryValue::Compound(entries) = tag else {
+        return None;
+    };
+    if entries.iter().any(|entry| entry.name == "id") {
+        return None;
+    }
+    let mut entries = entries.clone();
+    entries.push(NbtSummaryEntry {
+        name: "id".to_string(),
+        value: NbtSummaryValue::String(
+            ctx.registries
+                .resource_id_by_holder_id(registry, type_id)?
+                .to_string(),
+        ),
+    });
+    Some(hash_nbt(&NbtSummaryValue::Compound(entries)))
+}
+
 fn push_non_default_bool<'a>(
     fields: &mut Vec<(&'a str, Hash32)>,
     name: &'a str,
@@ -727,6 +1216,23 @@ fn hash_float(bits: u32) -> Hash32 {
     hash_tagged_bytes(HASH_TAG_FLOAT, &bits.to_le_bytes())
 }
 
+fn hash_double(bits: u64) -> Hash32 {
+    hash_tagged_bytes(HASH_TAG_DOUBLE, &bits.to_le_bytes())
+}
+
+fn hash_long(value: i64) -> Hash32 {
+    hash_tagged_bytes(HASH_TAG_LONG, &value.to_le_bytes())
+}
+
+fn hash_int_array(values: impl IntoIterator<Item = i32>) -> Hash32 {
+    let mut payload = vec![HASH_TAG_INT_ARRAY_START];
+    for value in values {
+        payload.extend_from_slice(&value.to_le_bytes());
+    }
+    payload.push(HASH_TAG_INT_ARRAY_END);
+    hash_bytes(&payload)
+}
+
 fn hash_boolean(value: bool) -> Hash32 {
     hash_bytes(&[HASH_TAG_BOOLEAN, u8::from(value)])
 }
@@ -802,7 +1308,12 @@ pub(super) fn crc32c(bytes: &[u8]) -> u32 {
 #[cfg(test)]
 mod tests {
     use bbb_protocol::{
-        packets::{ItemRaritySummary, UseEffectsSummary},
+        packets::{
+            chunks::BlockPos, DamageReductionSummary, EquippableSummary,
+            FireworkExplosionShapeSummary, ItemDamageFunctionSummary, ItemRaritySummary,
+            KineticWeaponSummary, LodestoneTargetSummary, PiercingWeaponSummary, ToolSummary,
+            UseEffectsSummary,
+        },
         NbtSummaryEntry,
     };
 
@@ -1050,6 +1561,235 @@ mod tests {
                     hash_registry_holder(test_ctx(&store), "minecraft:sound_event", 0)
                         .unwrap()
                         .0 as i32,
+                ),
+            ])
+        );
+    }
+
+    #[test]
+    fn hashes_structured_tool_firework_lodestone_and_typed_nbt_codecs() {
+        let bucket_data = NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+            name: "Health".to_string(),
+            value: NbtSummaryValue::Float(2.0_f32.to_bits()),
+        }]);
+        let entity_data = NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+            name: "NoAI".to_string(),
+            value: NbtSummaryValue::Byte(1),
+        }]);
+        let explosion = FireworkExplosionSummary {
+            shape: FireworkExplosionShapeSummary::Star,
+            colors: vec![0x11_22_33],
+            fade_colors: Vec::new(),
+            has_trail: true,
+            has_twinkle: false,
+        };
+        let patch = DataComponentPatchSummary {
+            added: 7,
+            added_type_ids: vec![
+                VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
+                VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
+                VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
+                VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID,
+                VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID,
+                VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
+                VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
+            ],
+            tool: Some(ToolSummary {
+                rules: Vec::new(),
+                default_mining_speed_bits: 1.0_f32.to_bits(),
+                damage_per_block: 1,
+                can_destroy_blocks_in_creative: true,
+            }),
+            firework_explosion_shape: Some(explosion.shape),
+            firework_explosion_colors: explosion.colors.clone(),
+            firework_explosion_fade_colors: explosion.fade_colors.clone(),
+            firework_explosion_has_trail: Some(explosion.has_trail),
+            firework_explosion_has_twinkle: Some(explosion.has_twinkle),
+            fireworks_flight_duration: Some(2),
+            fireworks_explosions_count: Some(1),
+            fireworks_explosions: vec![explosion.clone()],
+            lodestone_target: Some(LodestoneTargetSummary {
+                dimension: "minecraft:overworld".to_string(),
+                pos: BlockPos { x: 1, y: 2, z: 3 },
+            }),
+            lodestone_tracked: Some(true),
+            block_state_properties: BTreeMap::from([("facing".to_string(), "north".to_string())]),
+            codec_backed_nbt: BTreeMap::from([(
+                VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
+                bucket_data.clone(),
+            )]),
+            entity_data_entity_type_id: Some(0),
+            entity_data_tag: Some(entity_data.clone()),
+            ..DataComponentPatchSummary::default()
+        };
+        let store = crate::WorldStore::new();
+        let entity_id = store
+            .registries
+            .resource_id_by_holder_id("minecraft:entity_type", 0)
+            .unwrap();
+
+        let hashed = hashed_component_patch_from_summary(test_ctx(&store), &patch).unwrap();
+
+        assert_eq!(
+            hashed.added_components,
+            BTreeMap::from([
+                (
+                    VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
+                    hash_record(vec![("rules", hash_list([]))]).0 as i32,
+                ),
+                (
+                    VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
+                    hash_firework_explosion(&explosion).0 as i32,
+                ),
+                (
+                    VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
+                    hash_record(vec![
+                        ("flight_duration", hash_int(2)),
+                        (
+                            "explosions",
+                            hash_list([hash_firework_explosion(&explosion)])
+                        ),
+                    ])
+                    .0 as i32,
+                ),
+                (
+                    VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID,
+                    hash_record(vec![(
+                        "target",
+                        hash_record(vec![
+                            ("dimension", hash_string("minecraft:overworld")),
+                            ("pos", hash_int_array([1, 2, 3])),
+                        ]),
+                    )])
+                    .0 as i32,
+                ),
+                (
+                    VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID,
+                    hash_map(vec![(hash_string("facing"), hash_string("north"))]).0 as i32,
+                ),
+                (
+                    VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
+                    hash_nbt(&bucket_data).0 as i32,
+                ),
+                (
+                    VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
+                    hash_nbt(&NbtSummaryValue::Compound(vec![
+                        NbtSummaryEntry {
+                            name: "NoAI".to_string(),
+                            value: NbtSummaryValue::Byte(1),
+                        },
+                        NbtSummaryEntry {
+                            name: "id".to_string(),
+                            value: NbtSummaryValue::String(entity_id.to_string()),
+                        },
+                    ]))
+                    .0 as i32,
+                ),
+            ])
+        );
+    }
+
+    #[test]
+    fn hashes_equippable_and_attack_component_codec_defaults() {
+        let store = crate::WorldStore::new();
+        let equip_sound_id = store
+            .registries
+            .holder_id_by_resource_id(
+                "minecraft:sound_event",
+                "minecraft:item.armor.equip_generic",
+            )
+            .unwrap();
+        let shearing_sound_id = store
+            .registries
+            .holder_id_by_resource_id("minecraft:sound_event", "minecraft:item.shears.snip")
+            .unwrap();
+        let patch = DataComponentPatchSummary {
+            added: 4,
+            added_type_ids: vec![
+                VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
+                VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
+                VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
+                VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
+            ],
+            equippable: Some(EquippableSummary {
+                slot_id: 6,
+                equip_sound: SoundEventSummary {
+                    registry_id: Some(equip_sound_id),
+                    sound_id: None,
+                    fixed_range_bits: None,
+                },
+                asset_id: None,
+                camera_overlay: None,
+                allowed_entities: None,
+                dispensable: true,
+                swappable: true,
+                damage_on_hurt: true,
+                equip_on_interact: false,
+                can_be_sheared: false,
+                shearing_sound: SoundEventSummary {
+                    registry_id: Some(shearing_sound_id),
+                    sound_id: None,
+                    fixed_range_bits: None,
+                },
+            }),
+            blocks_attacks: Some(BlocksAttacksSummary {
+                block_delay_seconds_bits: 0.0_f32.to_bits(),
+                disable_cooldown_scale_bits: 1.0_f32.to_bits(),
+                damage_reductions: vec![DamageReductionSummary {
+                    horizontal_blocking_angle_bits: 90.0_f32.to_bits(),
+                    damage_types: None,
+                    base_bits: 0.0_f32.to_bits(),
+                    factor_bits: 1.0_f32.to_bits(),
+                }],
+                item_damage: ItemDamageFunctionSummary {
+                    threshold_bits: 1.0_f32.to_bits(),
+                    base_bits: 0.0_f32.to_bits(),
+                    factor_bits: 1.0_f32.to_bits(),
+                },
+                bypassed_by: None,
+                block_sound: None,
+                disable_sound: None,
+            }),
+            piercing_weapon: Some(PiercingWeaponSummary {
+                deals_knockback: true,
+                dismounts: false,
+                sound: None,
+                hit_sound: None,
+            }),
+            kinetic_weapon: Some(KineticWeaponSummary {
+                contact_cooldown_ticks: 10,
+                delay_ticks: 0,
+                dismount_conditions: None,
+                knockback_conditions: None,
+                damage_conditions: None,
+                forward_movement_bits: 0.0_f32.to_bits(),
+                damage_multiplier_bits: 1.0_f32.to_bits(),
+                sound: None,
+                hit_sound: None,
+            }),
+            ..DataComponentPatchSummary::default()
+        };
+
+        let hashed = hashed_component_patch_from_summary(test_ctx(&store), &patch).unwrap();
+
+        assert_eq!(
+            hashed.added_components,
+            BTreeMap::from([
+                (
+                    VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
+                    hash_record(vec![("slot", hash_string("body"))]).0 as i32,
+                ),
+                (
+                    VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
+                    hash_record(Vec::new()).0 as i32,
+                ),
+                (
+                    VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
+                    hash_record(Vec::new()).0 as i32,
+                ),
+                (
+                    VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
+                    hash_record(Vec::new()).0 as i32,
                 ),
             ])
         );
