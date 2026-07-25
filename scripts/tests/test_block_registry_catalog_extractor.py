@@ -13,6 +13,7 @@ from block_registry_catalog_extractor import (  # noqa: E402
     block_factory_class,
     extract_block_bonemeal_target_override_owners,
     extract_block_bucket_pickup_owners,
+    extract_block_can_survive_override_owners,
     extract_block_liquid_container_owners,
     extract_block_registry_catalog,
     extract_block_propagates_skylight_down_override_owners,
@@ -193,6 +194,10 @@ class BlockBehaviour {
   protected boolean propagatesSkylightDown(BlockState state) {
     return false;
   }
+  protected boolean canSurvive(
+      BlockState state, LevelReader level, BlockPos pos) {
+    return true;
+  }
 }
 """,
             ),
@@ -221,6 +226,10 @@ class StairBlock extends Block {
       BlockState state, Level level, BlockPos pos, Player player,
       BlockHitResult hit) {
     return InteractionResult.SUCCESS;
+  }
+  protected boolean canSurvive(
+      BlockState state, LevelReader level, BlockPos pos) {
+    return false;
   }
 }
 """,
@@ -275,6 +284,16 @@ class WeatheringCopperChainBlock extends ChainBlock {
             extract_block_use_without_item_override_owners(
                 declarations, sources
             ),
+            {
+                "AirBlock": None,
+                "Block": None,
+                "ChainBlock": None,
+                "StairBlock": "StairBlock",
+                "WeatheringCopperChainBlock": None,
+            },
+        )
+        self.assertEqual(
+            extract_block_can_survive_override_owners(declarations, sources),
             {
                 "AirBlock": None,
                 "Block": None,

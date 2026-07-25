@@ -1,4 +1,4 @@
-use crate::{ClientEnvironmentAttributes, WorldStore};
+use crate::{BlockPos, ClientEnvironmentAttributes, WorldStore};
 
 use super::environment_attributes::{
     apply_spatial_environment_attribute_maps, sanitize_environment_attributes,
@@ -15,6 +15,34 @@ pub enum EnvironmentBiomeSampling {
 }
 
 impl WorldStore {
+    /// Samples Vanilla's positional `WATER_EVAPORATES` environment attribute.
+    ///
+    /// Legacy sessions without synchronized dimension-type contents retain the
+    /// pre-26.1 Nether identity fallback used by the native event dispatcher.
+    pub fn water_evaporates_at(&self, pos: BlockPos) -> bool {
+        if let Some(value) = self
+            .sampled_client_environment_attributes_at(
+                [f64::from(pos.x), f64::from(pos.y), f64::from(pos.z)],
+                EnvironmentBiomeSampling::Direct,
+            )
+            .ok()
+            .and_then(|attributes| attributes.water_evaporates)
+        {
+            return value;
+        }
+        if self
+            .registry_content(crate::DIMENSION_TYPE_REGISTRY)
+            .is_some()
+        {
+            return false;
+        }
+        self.level_info().is_some_and(|level| {
+            level.dimension_type_id == 1
+                || level.dimension == "minecraft:the_nether"
+                || level.dimension_type_name.as_deref() == Some("minecraft:the_nether")
+        })
+    }
+
     pub fn sampled_client_environment_attributes(
         &self,
     ) -> Result<ClientEnvironmentAttributes, TimelineProjectionError> {

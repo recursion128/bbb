@@ -52,6 +52,7 @@ use bbb_protocol::{
 mod block_use_without_item;
 mod bone_meal;
 mod book;
+mod bucket;
 mod bundle;
 mod crossbow;
 mod empty_map;
@@ -133,22 +134,41 @@ pub enum LocalInteractionSwingSource {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LocalInteractionSoundAction {
-    FlintAndSteelUse { pos: BlockPos },
-    InstrumentUse { hand: InteractionHand },
+    FlintAndSteelUse {
+        pos: BlockPos,
+    },
+    InstrumentUse {
+        hand: InteractionHand,
+    },
     LoomSelectPattern,
     StonecutterSelectRecipe,
     BundleRemoveOne,
     SuppressedBundleDropContents,
-    SuppressedFishingRodUse { retrieving: bool },
+    SuppressedFishingRodUse {
+        retrieving: bool,
+    },
     SpyglassUse,
     SpyglassStopUsing,
-    SuppressedBowRelease { power_bits: u32 },
+    SuppressedBowRelease {
+        power_bits: u32,
+    },
     SuppressedTridentRiptide,
     SuppressedProjectileThrow,
     SuppressedFireChargeUse,
     SuppressedLodestoneCompassUse,
     SuppressedPotionMudConversion,
     BottleFill,
+    BucketFill {
+        sound_resource_id: &'static str,
+    },
+    BucketEmpty {
+        pos: BlockPos,
+        sound_resource_id: &'static str,
+        neutral_source: bool,
+    },
+    BucketWaterEvaporate {
+        pos: BlockPos,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -164,6 +184,9 @@ pub enum LocalInteractionParticleAction {
         pos: BlockPos,
         facing: ProtocolDirection,
         face: LocalLeverAttachFace,
+    },
+    BucketWaterEvaporate {
+        pos: BlockPos,
     },
 }
 
@@ -412,6 +435,33 @@ impl WorldStore {
         hand: InteractionHand,
         pov: Option<LocalItemUsePovResult>,
     ) -> LocalItemUsePrediction {
+        self.predict_local_item_use_with_pov_context(hand, pov, None, false)
+    }
+
+    /// Predicts one native no-target use after the caller has allocated the
+    /// serverbound interaction sequence that owns any local block mutation.
+    pub fn predict_local_item_use_with_pov_and_sequence(
+        &mut self,
+        hand: InteractionHand,
+        pov: Option<LocalItemUsePovResult>,
+        sequence: i32,
+        secondary_use_active: bool,
+    ) -> LocalItemUsePrediction {
+        self.predict_local_item_use_with_pov_context(
+            hand,
+            pov,
+            Some(sequence),
+            secondary_use_active,
+        )
+    }
+
+    fn predict_local_item_use_with_pov_context(
+        &mut self,
+        hand: InteractionHand,
+        pov: Option<LocalItemUsePovResult>,
+        sequence: Option<i32>,
+        secondary_use_active: bool,
+    ) -> LocalItemUsePrediction {
         let Some(stack) = self.local_item_in_hand(hand).cloned() else {
             return LocalItemUsePrediction::Result(LocalInteractionResult::Pass);
         };
@@ -455,6 +505,14 @@ impl WorldStore {
                 VanillaItemUseOverride::BottleItem => {
                     self.predict_local_bottle_item_use(hand, &stack, pov)
                 }
+                VanillaItemUseOverride::BucketItem => self.predict_local_bucket_item_use(
+                    hand,
+                    item_type,
+                    &stack,
+                    pov,
+                    sequence,
+                    secondary_use_active,
+                ),
                 VanillaItemUseOverride::EnderEyeItem => self.predict_local_ender_eye_item_use(pov),
                 VanillaItemUseOverride::SpawnEggItem => self.predict_local_spawn_egg_item_use(pov),
                 VanillaItemUseOverride::TridentItem => self.predict_local_trident_item_use(&stack),
@@ -2222,18 +2280,19 @@ mod tests {
         item_types::{
             VanillaItemInteractLivingEntityOverride, VanillaItemUseOnOverride,
             VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_BONE_MEAL_ID, VANILLA_ITEM_BRUSH_ID,
-            VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID, VANILLA_ITEM_CHORUS_FRUIT_ID,
-            VANILLA_ITEM_COMPASS_ID, VANILLA_ITEM_DEBUG_STICK_ID, VANILLA_ITEM_ENDER_EYE_ID,
-            VANILLA_ITEM_END_CRYSTAL_ID, VANILLA_ITEM_FILLED_MAP_ID,
-            VANILLA_ITEM_FIREWORK_ROCKET_ID, VANILLA_ITEM_FIRE_CHARGE_ID,
-            VANILLA_ITEM_FLINT_AND_STEEL_ID, VANILLA_ITEM_GLASS_BOTTLE_ID,
-            VANILLA_ITEM_GOAT_HORN_ID, VANILLA_ITEM_HONEYCOMB_ID, VANILLA_ITEM_IRON_AXE_ID,
-            VANILLA_ITEM_IRON_HOE_ID, VANILLA_ITEM_IRON_SHOVEL_ID, VANILLA_ITEM_LEAD_ID,
-            VANILLA_ITEM_LILY_PAD_ID, VANILLA_ITEM_MINECART_ID, VANILLA_ITEM_NAME_TAG_ID,
-            VANILLA_ITEM_OAK_BOAT_ID, VANILLA_ITEM_POPPY_ID, VANILLA_ITEM_POTION_ID,
-            VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_SADDLE_ID, VANILLA_ITEM_SHEARS_ID,
-            VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_STONE_ID, VANILLA_ITEM_TRIDENT_ID,
-            VANILLA_ITEM_TYPES,
+            VANILLA_ITEM_BUCKET_ID, VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID,
+            VANILLA_ITEM_CHORUS_FRUIT_ID, VANILLA_ITEM_COD_BUCKET_ID, VANILLA_ITEM_COMPASS_ID,
+            VANILLA_ITEM_DEBUG_STICK_ID, VANILLA_ITEM_ENDER_EYE_ID, VANILLA_ITEM_END_CRYSTAL_ID,
+            VANILLA_ITEM_FILLED_MAP_ID, VANILLA_ITEM_FIREWORK_ROCKET_ID,
+            VANILLA_ITEM_FIRE_CHARGE_ID, VANILLA_ITEM_FLINT_AND_STEEL_ID,
+            VANILLA_ITEM_GLASS_BOTTLE_ID, VANILLA_ITEM_GOAT_HORN_ID, VANILLA_ITEM_HONEYCOMB_ID,
+            VANILLA_ITEM_IRON_AXE_ID, VANILLA_ITEM_IRON_HOE_ID, VANILLA_ITEM_IRON_SHOVEL_ID,
+            VANILLA_ITEM_LAVA_BUCKET_ID, VANILLA_ITEM_LEAD_ID, VANILLA_ITEM_LILY_PAD_ID,
+            VANILLA_ITEM_MINECART_ID, VANILLA_ITEM_NAME_TAG_ID, VANILLA_ITEM_OAK_BOAT_ID,
+            VANILLA_ITEM_POPPY_ID, VANILLA_ITEM_POTION_ID, VANILLA_ITEM_RED_DYE_ID,
+            VANILLA_ITEM_SADDLE_ID, VANILLA_ITEM_SHEARS_ID, VANILLA_ITEM_SHIELD_ID,
+            VANILLA_ITEM_STONE_ID, VANILLA_ITEM_TRIDENT_ID, VANILLA_ITEM_TYPES,
+            VANILLA_ITEM_WATER_BUCKET_ID,
         },
         packets::{
             AddEntity, AdventureModePredicateDataSummary, BlockHitResult, BlockHolderSetSummary,
@@ -2439,6 +2498,43 @@ mod tests {
         }));
     }
 
+    fn item_use_block_hit(pos: BlockPos, direction: ProtocolDirection) -> LocalItemUsePovResult {
+        LocalItemUsePovResult::Block {
+            hit: BlockHitResult {
+                pos: ProtocolBlockPos {
+                    x: pos.x,
+                    y: pos.y,
+                    z: pos.z,
+                },
+                direction,
+                cursor_x: 0.5,
+                cursor_y: 0.5,
+                cursor_z: 0.5,
+                inside: false,
+                world_border_hit: false,
+            },
+            location: Vec3d {
+                x: f64::from(pos.x) + 0.5,
+                y: f64::from(pos.y) + 0.5,
+                z: f64::from(pos.z) + 0.5,
+            },
+        }
+    }
+
+    fn bucket_success_with(
+        sound_action: LocalInteractionSoundAction,
+        particle_action: Option<LocalInteractionParticleAction>,
+    ) -> LocalItemUsePrediction {
+        LocalItemUsePrediction::Result(LocalInteractionResult::Success(LocalInteractionSuccess {
+            swing_source: LocalInteractionSwingSource::Client,
+            was_item_interaction: true,
+            starts_using_item: false,
+            extra_swing: None,
+            sound_action: Some(sound_action),
+            particle_action,
+        }))
+    }
+
     fn add_entity_at(world: &mut WorldStore, id: i32, entity_type_id: i32, position: Vec3d) {
         world.apply_add_entity(AddEntity {
             id,
@@ -2630,6 +2726,9 @@ mod tests {
                 LocalItemUsePovFluidMode::SourceOnly,
             ),
             (VANILLA_ITEM_OAK_BOAT_ID, LocalItemUsePovFluidMode::Any),
+            (VANILLA_ITEM_BUCKET_ID, LocalItemUsePovFluidMode::SourceOnly),
+            (VANILLA_ITEM_WATER_BUCKET_ID, LocalItemUsePovFluidMode::None),
+            (VANILLA_ITEM_COD_BUCKET_ID, LocalItemUsePovFluidMode::None),
         ] {
             set_main_hand(&mut world, item_id);
             assert_eq!(
@@ -2646,6 +2745,409 @@ mod tests {
             world.local_item_use_pov_query(InteractionHand::MainHand),
             None
         );
+    }
+
+    #[test]
+    fn empty_bucket_pickup_predicts_source_mutation_inventory_sound_and_rollback() {
+        let pos = BlockPos { x: 0, y: 0, z: 0 };
+        let water = block_state_id("minecraft:water", [("level", "0")]);
+        let air = block_state_id("minecraft:air", []);
+        let mut world = tool_use_world(water);
+        set_main_hand(&mut world, VANILLA_ITEM_BUCKET_ID);
+
+        assert_eq!(
+            world.predict_local_item_use_with_pov_and_sequence(
+                InteractionHand::MainHand,
+                Some(item_use_block_hit(pos, ProtocolDirection::Up)),
+                17,
+                false,
+            ),
+            bucket_success_with(
+                LocalInteractionSoundAction::BucketFill {
+                    sound_resource_id: "minecraft:item.bucket.fill",
+                },
+                None,
+            )
+        );
+        assert_eq!(world.probe_block(pos).unwrap().block_state_id, air);
+        assert_eq!(
+            player_inventory_item(&world, 0).item_id,
+            Some(VANILLA_ITEM_WATER_BUCKET_ID)
+        );
+        assert_eq!(world.local_block_predictions().len(), 1);
+        assert_eq!(world.sync_ended_local_block_predictions(17), 1);
+        assert_eq!(world.probe_block(pos).unwrap().block_state_id, water);
+
+        let flowing = block_state_id("minecraft:water", [("level", "1")]);
+        let mut flowing_world = tool_use_world(flowing);
+        set_main_hand(&mut flowing_world, VANILLA_ITEM_BUCKET_ID);
+        assert_eq!(
+            flowing_world.predict_local_item_use_with_pov_and_sequence(
+                InteractionHand::MainHand,
+                Some(item_use_block_hit(pos, ProtocolDirection::Up)),
+                18,
+                false,
+            ),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Fail)
+        );
+        assert_eq!(
+            player_inventory_item(&flowing_world, 0).item_id,
+            Some(VANILLA_ITEM_BUCKET_ID)
+        );
+        assert!(flowing_world.local_block_predictions().is_empty());
+    }
+
+    #[test]
+    fn bucket_pickup_and_placement_follow_waterlogged_container_and_sneak_paths() {
+        let pos = BlockPos { x: 0, y: 0, z: 0 };
+        let above = BlockPos { y: 1, ..pos };
+        let dry_slab = block_state_id(
+            "minecraft:oak_slab",
+            [("type", "bottom"), ("waterlogged", "false")],
+        );
+        let wet_slab = block_state_id(
+            "minecraft:oak_slab",
+            [("type", "bottom"), ("waterlogged", "true")],
+        );
+        let water = block_state_id("minecraft:water", [("level", "0")]);
+
+        let mut pickup = tool_use_world(wet_slab);
+        set_main_hand(&mut pickup, VANILLA_ITEM_BUCKET_ID);
+        assert!(matches!(
+            pickup.predict_local_item_use_with_pov_and_sequence(
+                InteractionHand::MainHand,
+                Some(item_use_block_hit(pos, ProtocolDirection::Up)),
+                19,
+                false,
+            ),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(pickup.probe_block(pos).unwrap().block_state_id, dry_slab);
+        assert_eq!(
+            player_inventory_item(&pickup, 0).item_id,
+            Some(VANILLA_ITEM_WATER_BUCKET_ID)
+        );
+
+        let mut container = tool_use_world(dry_slab);
+        set_main_hand(&mut container, VANILLA_ITEM_WATER_BUCKET_ID);
+        assert_eq!(
+            container.predict_local_item_use_with_pov_and_sequence(
+                InteractionHand::MainHand,
+                Some(item_use_block_hit(pos, ProtocolDirection::Up)),
+                20,
+                false,
+            ),
+            bucket_success_with(
+                LocalInteractionSoundAction::BucketEmpty {
+                    pos,
+                    sound_resource_id: "minecraft:item.bucket.empty",
+                    neutral_source: false,
+                },
+                None,
+            )
+        );
+        assert_eq!(container.probe_block(pos).unwrap().block_state_id, dry_slab);
+        assert_eq!(
+            player_inventory_item(&container, 0).item_id,
+            Some(VANILLA_ITEM_BUCKET_ID)
+        );
+        assert!(container.local_block_predictions().is_empty());
+
+        let mut sneaking = tool_use_world(dry_slab);
+        set_main_hand(&mut sneaking, VANILLA_ITEM_WATER_BUCKET_ID);
+        assert!(matches!(
+            sneaking.predict_local_item_use_with_pov_and_sequence(
+                InteractionHand::MainHand,
+                Some(item_use_block_hit(pos, ProtocolDirection::Up)),
+                21,
+                true,
+            ),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(sneaking.probe_block(pos).unwrap().block_state_id, dry_slab);
+        assert_eq!(sneaking.probe_block(above).unwrap().block_state_id, water);
+        assert_eq!(sneaking.local_block_predictions().len(), 1);
+
+        let wet_ladder = block_state_id(
+            "minecraft:ladder",
+            [("facing", "north"), ("waterlogged", "true")],
+        );
+        let mut special_survival_owner = tool_use_world(wet_ladder);
+        set_main_hand(&mut special_survival_owner, VANILLA_ITEM_BUCKET_ID);
+        assert_eq!(
+            special_survival_owner.predict_local_item_use_with_pov_and_sequence(
+                InteractionHand::MainHand,
+                Some(item_use_block_hit(pos, ProtocolDirection::Up)),
+                28,
+                false,
+            ),
+            LocalItemUsePrediction::UnsupportedOverride(VanillaItemUseOverride::BucketItem)
+        );
+        assert_eq!(
+            special_survival_owner
+                .probe_block(pos)
+                .unwrap()
+                .block_state_id,
+            wet_ladder
+        );
+        assert_eq!(
+            player_inventory_item(&special_survival_owner, 0).item_id,
+            Some(VANILLA_ITEM_BUCKET_ID)
+        );
+        assert!(special_survival_owner.local_block_predictions().is_empty());
+    }
+
+    #[test]
+    fn filled_buckets_predict_replaceable_lava_mob_sound_and_creative_inventory() {
+        let pos = BlockPos { x: 0, y: 0, z: 0 };
+        let above = BlockPos { y: 1, ..pos };
+        let stone = block_state_id("minecraft:stone", []);
+        let short_grass = block_state_id("minecraft:short_grass", []);
+        let lava = block_state_id("minecraft:lava", [("level", "0")]);
+        let water = block_state_id("minecraft:water", [("level", "0")]);
+
+        let mut lava_world = tool_use_world(stone);
+        set_block(&mut lava_world, above, short_grass);
+        set_main_hand(&mut lava_world, VANILLA_ITEM_LAVA_BUCKET_ID);
+        assert_eq!(
+            lava_world.predict_local_item_use_with_pov_and_sequence(
+                InteractionHand::MainHand,
+                Some(item_use_block_hit(pos, ProtocolDirection::Up)),
+                22,
+                false,
+            ),
+            bucket_success_with(
+                LocalInteractionSoundAction::BucketEmpty {
+                    pos: above,
+                    sound_resource_id: "minecraft:item.bucket.empty_lava",
+                    neutral_source: false,
+                },
+                None,
+            )
+        );
+        assert_eq!(lava_world.probe_block(above).unwrap().block_state_id, lava);
+        assert_eq!(
+            player_inventory_item(&lava_world, 0).item_id,
+            Some(VANILLA_ITEM_BUCKET_ID)
+        );
+
+        let mut mob_world = tool_use_world(stone);
+        set_main_hand(&mut mob_world, VANILLA_ITEM_COD_BUCKET_ID);
+        assert_eq!(
+            mob_world.predict_local_item_use_with_pov_and_sequence(
+                InteractionHand::MainHand,
+                Some(item_use_block_hit(pos, ProtocolDirection::Up)),
+                23,
+                false,
+            ),
+            bucket_success_with(
+                LocalInteractionSoundAction::BucketEmpty {
+                    pos: above,
+                    sound_resource_id: "minecraft:item.bucket.empty_fish",
+                    neutral_source: true,
+                },
+                None,
+            )
+        );
+        assert_eq!(mob_world.probe_block(above).unwrap().block_state_id, water);
+        assert_eq!(
+            player_inventory_item(&mob_world, 0).item_id,
+            Some(VANILLA_ITEM_BUCKET_ID)
+        );
+
+        let mut creative = tool_use_world_with_login(
+            stone,
+            Some(("minecraft:overworld", VANILLA_GAME_TYPE_CREATIVE_ID as i8)),
+        );
+        creative.apply_player_abilities(bbb_protocol::packets::PlayerAbilities {
+            invulnerable: true,
+            flying: false,
+            can_fly: true,
+            instabuild: true,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        });
+        set_main_hand(&mut creative, VANILLA_ITEM_WATER_BUCKET_ID);
+        assert!(matches!(
+            creative.predict_local_item_use_with_pov_and_sequence(
+                InteractionHand::MainHand,
+                Some(item_use_block_hit(pos, ProtocolDirection::Up)),
+                24,
+                false,
+            ),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(
+            player_inventory_item(&creative, 0).item_id,
+            Some(VANILLA_ITEM_WATER_BUCKET_ID)
+        );
+        assert_eq!(creative.probe_block(above).unwrap().block_state_id, water);
+
+        let mut infinite_survival = tool_use_world(stone);
+        infinite_survival.apply_player_abilities(bbb_protocol::packets::PlayerAbilities {
+            invulnerable: false,
+            flying: false,
+            can_fly: false,
+            instabuild: true,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        });
+        set_main_hand(&mut infinite_survival, VANILLA_ITEM_WATER_BUCKET_ID);
+        assert!(matches!(
+            infinite_survival.predict_local_item_use_with_pov_and_sequence(
+                InteractionHand::MainHand,
+                Some(item_use_block_hit(pos, ProtocolDirection::Up)),
+                26,
+                false,
+            ),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(
+            player_inventory_item(&infinite_survival, 0).item_id,
+            Some(VANILLA_ITEM_WATER_BUCKET_ID)
+        );
+        assert!(infinite_survival
+            .inventory()
+            .player_slots
+            .iter()
+            .all(|slot| slot.item.item_id != Some(VANILLA_ITEM_BUCKET_ID)));
+
+        let mut finite_creative = tool_use_world_with_login(
+            stone,
+            Some(("minecraft:overworld", VANILLA_GAME_TYPE_CREATIVE_ID as i8)),
+        );
+        finite_creative.apply_player_abilities(bbb_protocol::packets::PlayerAbilities {
+            invulnerable: true,
+            flying: false,
+            can_fly: true,
+            instabuild: false,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        });
+        set_main_hand(&mut finite_creative, VANILLA_ITEM_WATER_BUCKET_ID);
+        assert!(matches!(
+            finite_creative.predict_local_item_use_with_pov_and_sequence(
+                InteractionHand::MainHand,
+                Some(item_use_block_hit(pos, ProtocolDirection::Up)),
+                27,
+                false,
+            ),
+            LocalItemUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(
+            player_inventory_item(&finite_creative, 0).item_id,
+            Some(VANILLA_ITEM_BUCKET_ID)
+        );
+    }
+
+    #[test]
+    fn water_bucket_evaporation_consumes_bucket_without_block_mutation() {
+        let pos = BlockPos { x: 0, y: 0, z: 0 };
+        let above = BlockPos { y: 1, ..pos };
+        let stone = block_state_id("minecraft:stone", []);
+        let air = block_state_id("minecraft:air", []);
+        let mut world = tool_use_world_with_login(
+            stone,
+            Some(("minecraft:the_nether", VANILLA_GAME_TYPE_SURVIVAL_ID as i8)),
+        );
+        set_main_hand(&mut world, VANILLA_ITEM_WATER_BUCKET_ID);
+
+        assert_eq!(
+            world.predict_local_item_use_with_pov_and_sequence(
+                InteractionHand::MainHand,
+                Some(item_use_block_hit(pos, ProtocolDirection::Up)),
+                25,
+                false,
+            ),
+            bucket_success_with(
+                LocalInteractionSoundAction::BucketWaterEvaporate { pos: above },
+                Some(LocalInteractionParticleAction::BucketWaterEvaporate { pos: above }),
+            )
+        );
+        assert_eq!(world.probe_block(above).unwrap().block_state_id, air);
+        assert_eq!(
+            player_inventory_item(&world, 0).item_id,
+            Some(VANILLA_ITEM_BUCKET_ID)
+        );
+        assert!(world.local_block_predictions().is_empty());
+    }
+
+    #[test]
+    fn bucket_sound_actions_resolve_vanilla_sources_positions_and_evaporation_pitch() {
+        let pos = BlockPos { x: -3, y: 70, z: 5 };
+        let player_position = Vec3d {
+            x: 1.25,
+            y: 64.0,
+            z: -2.5,
+        };
+        let mut world = WorldStore::new();
+        world.set_local_player_pose(crate::LocalPlayerPoseState {
+            position: player_position,
+            ..crate::LocalPlayerPoseState::default()
+        });
+        let mut random = crate::LevelEventSoundRandomState::default();
+
+        let fill = world
+            .apply_local_interaction_sound_action(
+                LocalInteractionSoundAction::BucketFill {
+                    sound_resource_id: "minecraft:item.bucket.fill_lava",
+                },
+                &mut random,
+            )
+            .unwrap();
+        let crate::LocalInteractionSoundEffect::Positioned(fill) = fill else {
+            panic!("bucket fill should be positioned at the local player");
+        };
+        assert_eq!(
+            fill.sound.location.as_deref(),
+            Some("minecraft:item.bucket.fill_lava")
+        );
+        assert_eq!(fill.source, "player");
+        assert_eq!(fill.position, player_position);
+        assert_eq!((fill.volume, fill.pitch), (1.0, 1.0));
+
+        let empty = world
+            .apply_local_interaction_sound_action(
+                LocalInteractionSoundAction::BucketEmpty {
+                    pos,
+                    sound_resource_id: "minecraft:item.bucket.empty_fish",
+                    neutral_source: true,
+                },
+                &mut random,
+            )
+            .unwrap();
+        let crate::LocalInteractionSoundEffect::Positioned(empty) = empty else {
+            panic!("bucket empty should be block-positioned");
+        };
+        assert_eq!(empty.source, "neutral");
+        assert_eq!(
+            empty.position,
+            Vec3d {
+                x: -2.5,
+                y: 70.5,
+                z: 5.5,
+            }
+        );
+
+        let mut expected_random = crate::LevelEventSoundRandomState::default();
+        let expected_pitch =
+            2.6 + (expected_random.next_float() - expected_random.next_float()) * 0.8;
+        let evaporate = world
+            .apply_local_interaction_sound_action(
+                LocalInteractionSoundAction::BucketWaterEvaporate { pos },
+                &mut crate::LevelEventSoundRandomState::default(),
+            )
+            .unwrap();
+        let crate::LocalInteractionSoundEffect::Positioned(evaporate) = evaporate else {
+            panic!("bucket evaporation should be block-positioned");
+        };
+        assert_eq!(
+            evaporate.sound.location.as_deref(),
+            Some("minecraft:block.fire.extinguish")
+        );
+        assert_eq!(evaporate.source, "block");
+        assert_eq!(evaporate.volume, 0.5);
+        assert!((evaporate.pitch - expected_pitch).abs() < 1.0e-6);
     }
 
     #[test]

@@ -529,8 +529,9 @@ fn start_use_item_with_effects(
                 local_item_use_pov_result_from_crosshair_hit,
             )
         });
-        let prediction = world.predict_local_item_use_with_pov(hand, pov);
         let sequence = world.next_local_prediction_sequence();
+        let prediction =
+            world.predict_local_item_use_with_pov_and_sequence(hand, pov, sequence, input.sneak);
         if !queue_use_item_command(
             counters,
             net_commands,
@@ -1058,7 +1059,7 @@ mod tests {
         VANILLA_ITEM_GOAT_HORN_ID, VANILLA_ITEM_KNOWLEDGE_BOOK_ID, VANILLA_ITEM_MAP_ID,
         VANILLA_ITEM_OAK_BOAT_ID, VANILLA_ITEM_POTION_ID, VANILLA_ITEM_RED_DYE_ID,
         VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_SPYGLASS_ID, VANILLA_ITEM_STONE_ID,
-        VANILLA_ITEM_TRIDENT_ID,
+        VANILLA_ITEM_TRIDENT_ID, VANILLA_ITEM_WATER_BUCKET_ID,
     };
     use bbb_protocol::packets::{
         AddEntity, AdventureModePredicateDataSummary, AdventureModePredicateSummary, AttackEntity,
@@ -1354,6 +1355,57 @@ mod tests {
                 sequence: 0,
             })
         );
+    }
+
+    #[test]
+    fn right_mouse_bucket_prediction_uses_the_queued_use_item_sequence() {
+        let (tx, mut rx) = mpsc::channel(3);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_block();
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(VANILLA_ITEM_WATER_BUCKET_ID, 1),
+        });
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+        );
+
+        let NetCommand::UseItemOn(use_on) = rx.try_recv().unwrap() else {
+            panic!("expected initial use-item-on packet");
+        };
+        assert_eq!(use_on.packet.sequence, 1);
+        let NetCommand::UseItem(use_item) = rx.try_recv().unwrap() else {
+            panic!("expected bucket use-item packet");
+        };
+        assert_eq!(use_item.packet.sequence, 2);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
+        assert_eq!(world.local_block_predictions().len(), 1);
+        assert_eq!(world.local_block_predictions()[0].sequence, 2);
+        assert_eq!(
+            world.local_block_predictions()[0].pos,
+            BlockPos { x: 0, y: 1, z: 2 }
+        );
+        assert_eq!(
+            world
+                .local_item_in_hand(InteractionHand::MainHand)
+                .unwrap()
+                .item_id,
+            Some(bbb_protocol::item_types::VANILLA_ITEM_BUCKET_ID)
+        );
+        assert_eq!(counters.use_item_on_commands_queued, 1);
+        assert_eq!(counters.use_item_commands_queued, 1);
+        assert_eq!(counters.swing_commands_queued, 1);
     }
 
     #[test]

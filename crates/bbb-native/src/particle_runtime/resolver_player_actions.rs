@@ -45,7 +45,28 @@ impl ParticleCommandResolver {
             LocalInteractionParticleAction::LeverActivation { pos, facing, face } => {
                 self.lever_activation_particle_batch(pos, facing, face)
             }
+            LocalInteractionParticleAction::BucketWaterEvaporate { pos } => {
+                self.bucket_water_evaporation_particle_batch(pos)
+            }
         }
+    }
+
+    fn bucket_water_evaporation_particle_batch(
+        &mut self,
+        pos: WorldBlockPos,
+    ) -> ParticleSpawnBatch {
+        let mut spawns = Vec::with_capacity(8);
+        for _ in 0..8 {
+            spawns.push((
+                Vec3d {
+                    x: f64::from(pos.x) + f64::from(self.particle_level_random.next_float()),
+                    y: f64::from(pos.y) + f64::from(self.particle_level_random.next_float()),
+                    z: f64::from(pos.z) + f64::from(self.particle_level_random.next_float()),
+                },
+                Vec3d::default(),
+            ));
+        }
+        self.simple_particle_batch(VANILLA_PARTICLE_TYPE_LARGE_SMOKE_ID, spawns)
     }
 
     fn lever_activation_particle_batch(

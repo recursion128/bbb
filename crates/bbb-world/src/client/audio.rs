@@ -1695,8 +1695,10 @@ impl WorldStore {
     /// `except`, so `ClientLevel.playSeededSound` plays them immediately.
     /// Instrument playback is entity-bound; flint-and-steel is positioned.
     /// Spyglass start/stop and bundle removal call `LocalPlayer.playSound`;
-    /// bottle filling passes the local player as `except`, so these are
-    /// immediate positioned sounds. Bundle content-drop, fishing rods, bow
+    /// bottle filling passes the local player as `except`, and bucket pickup
+    /// calls `LocalPlayer.playSound`, so these are immediate positioned sounds.
+    /// Bucket emptying and evaporation pass the local player as `except` and
+    /// stay block-positioned. Bundle content-drop, fishing rods, bow
     /// release, Riptide release, thrown projectiles, fire charges, lodestone
     /// compasses, and both potion mud-conversion sounds pass `null`, so their
     /// local calls only advance the random streams.
@@ -1823,6 +1825,37 @@ impl WorldStore {
                 1.0,
                 1.0,
                 SoundSource::Neutral.as_str(),
+            ),
+            LocalInteractionSoundAction::BucketFill { sound_resource_id } => {
+                local_player_sound_state(
+                    self.local_player_pose()?.position,
+                    sound_resource_id,
+                    1.0,
+                    1.0,
+                    SoundSource::Players.as_str(),
+                )
+            }
+            LocalInteractionSoundAction::BucketEmpty {
+                pos,
+                sound_resource_id,
+                neutral_source,
+            } => block_sound_state(
+                pos,
+                sound_resource_id,
+                1.0,
+                1.0,
+                if neutral_source {
+                    SoundSource::Neutral.as_str()
+                } else {
+                    SoundSource::Blocks.as_str()
+                },
+            ),
+            LocalInteractionSoundAction::BucketWaterEvaporate { pos } => block_sound_state(
+                pos,
+                "minecraft:block.fire.extinguish",
+                0.5,
+                2.6 + (random.next_float() - random.next_float()) * 0.8,
+                SoundSource::Blocks.as_str(),
             ),
         };
         state.seed = self.next_sound_seed();

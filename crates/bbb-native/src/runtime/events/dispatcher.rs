@@ -1729,31 +1729,7 @@ fn default_dripstone_drip_particle(
 }
 
 fn level_water_evaporates(world: &WorldStore, position: bbb_world::BlockPos) -> bool {
-    if let Some(value) = world
-        .sampled_client_environment_attributes_at(
-            [
-                f64::from(position.x),
-                f64::from(position.y),
-                f64::from(position.z),
-            ],
-            bbb_world::EnvironmentBiomeSampling::Direct,
-        )
-        .ok()
-        .and_then(|attributes| attributes.water_evaporates)
-    {
-        return value;
-    }
-    if world
-        .registry_content(bbb_world::DIMENSION_TYPE_REGISTRY)
-        .is_some()
-    {
-        return false;
-    }
-    world.level_info().is_some_and(|level| {
-        level.dimension_type_id == 1
-            || level.dimension == "minecraft:the_nether"
-            || level.dimension_type_name.as_deref() == Some("minecraft:the_nether")
-    })
+    world.water_evaporates_at(position)
 }
 
 fn camera_audio_position_from_world(world: &WorldStore) -> Option<ProtocolVec3d> {

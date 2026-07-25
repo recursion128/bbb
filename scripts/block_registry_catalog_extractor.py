@@ -393,6 +393,22 @@ def extract_block_use_without_item_override_owners(
     )
 
 
+def extract_block_can_survive_override_owners(
+    declarations: Sequence[dict],
+    block_class_sources: Sequence[JavaSource],
+) -> dict[str, str | None]:
+    """Resolve non-default ``BlockBehaviour.canSurvive`` owners."""
+
+    return _extract_block_method_override_owners(
+        declarations,
+        block_class_sources,
+        "canSurvive",
+        "boolean",
+        ("BlockState", "LevelReader", "BlockPos"),
+        "net.minecraft.world.level.block.state.BlockBehaviour",
+    )
+
+
 def extract_block_bonemeal_target_override_owners(
     declarations: Sequence[dict],
     block_class_sources: Sequence[JavaSource],

@@ -144,6 +144,10 @@
 ^crates/bbb-world/src/chunks/.*[.]rs$	fallback
 ^crates/bbb-world/src/(level|terrain|sign_blocks|banner_blocks)[.]rs$	fallback
 ^crates/bbb-world/src/play_apply[.]rs$	fallback
+# Bucket prediction uses explicit unsupported outcomes for unloaded/unknown
+# registry facts and generated non-default canSurvive owners. These preserve
+# server authority and never select a renderer or canonical-state fallback.
+^crates/bbb-world/src/client/inventory/use_prediction/bucket[.]rs$	unsupported
 # Jigsaw block-entity inline tests name a local `fallback` value solely to
 # assert Vanilla codec defaults for wrong-typed optional fields. These exact
 # test lines do not admit a production renderer or canonical-state fallback.

@@ -70,6 +70,35 @@ fn lever_activation_particle_uses_vanilla_attachment_offsets_and_dust_options() 
 }
 
 #[test]
+fn bucket_water_evaporation_emits_eight_large_smoke_particles_inside_block() {
+    let pos = WorldBlockPos { x: -2, y: 7, z: 4 };
+    let mut resolver = test_resolver(0);
+    let batch = resolver.local_interaction_particle_batch(
+        LocalInteractionParticleAction::BucketWaterEvaporate { pos },
+    );
+
+    assert_eq!(batch.commands.len(), 8);
+    let mut expected_random = LegacyRandom::new(0);
+    for command in &batch.commands {
+        let expected = [
+            f64::from(pos.x) + f64::from(expected_random.next_float()),
+            f64::from(pos.y) + f64::from(expected_random.next_float()),
+            f64::from(pos.z) + f64::from(expected_random.next_float()),
+        ];
+        for (actual, expected) in command.position.iter().zip(expected) {
+            assert_close(*actual, expected);
+        }
+        assert_eq!(command.velocity, [0.0; 3]);
+        assert_eq!(
+            command.particle_type_id,
+            VANILLA_PARTICLE_TYPE_LARGE_SMOKE_ID
+        );
+        assert_eq!(command.particle_id, "minecraft:large_smoke");
+        assert!(!command.always_show);
+    }
+}
+
+#[test]
 fn local_destroy_hit_particle_uses_vanilla_shape_face_power_and_scale() {
     let pos = WorldBlockPos { x: 0, y: 8, z: 0 };
     let slab = test_block_state_id(
