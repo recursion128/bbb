@@ -668,7 +668,7 @@ Commands:
 - Complete no-target `Item.use` prediction for the remaining source-derived
   specialized override families: Boat/Bottle/Bucket,
   EmptyMap/EnderEye/FireworkRocket/FoodOnAStick,
-  PlaceOnWaterBlock/SpawnEgg/Trident and writable/written books.
+  PlaceOnWaterBlock/SpawnEgg/Trident.
   Override ownership must stay generated from local vanilla item classes instead
   of being inferred from component shape.
 

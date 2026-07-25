@@ -1,6 +1,6 @@
 use bbb_net::NetCommand;
 use bbb_protocol::{
-    item_types::VANILLA_ITEM_WRITABLE_BOOK_ID,
+    item_types::{VANILLA_ITEM_WRITABLE_BOOK_ID, VANILLA_ITEM_WRITTEN_BOOK_ID},
     packets::{
         InteractionHand, ItemStackSummary, SetPlayerInventory as ProtocolSetPlayerInventory,
     },
@@ -58,7 +58,51 @@ fn book_screen_writable_use_opens_filtered_editor_and_still_queues_use_item() {
     assert_eq!(screen.pages, ["filtered"]);
     assert!(!world.local_player().interaction.using_item);
     assert!(matches!(rx.try_recv(), Ok(NetCommand::UseItem(_))));
+    assert_eq!(
+        rx.try_recv(),
+        Ok(NetCommand::Swing(InteractionHand::MainHand))
+    );
     assert!(rx.try_recv().is_err());
+    assert_eq!(counters.use_item_commands_queued, 1);
+    assert_eq!(counters.swing_commands_queued, 1);
+}
+
+#[test]
+fn written_book_use_swings_but_waits_for_server_open_packet() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut counters = NetCounters::default();
+    let mut input = ClientInputState::new(true);
+    let mut world = WorldStore::new();
+    world.set_local_player_pose(LocalPlayerPoseState::default());
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: ItemStackSummary {
+            item_id: Some(VANILLA_ITEM_WRITTEN_BOOK_ID),
+            count: 1,
+            component_patch: Default::default(),
+        },
+    });
+    let player_pose = world.local_player_pose();
+
+    assert!(super::super::mouse::start_use_item(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        None,
+        player_pose,
+    ));
+
+    assert_eq!(world.current_book(), None);
+    assert!(matches!(rx.try_recv(), Ok(NetCommand::UseItem(_))));
+    assert_eq!(
+        rx.try_recv(),
+        Ok(NetCommand::Swing(InteractionHand::MainHand))
+    );
+    assert!(rx.try_recv().is_err());
+    assert_eq!(counters.use_item_commands_queued, 1);
+    assert_eq!(counters.swing_commands_queued, 1);
 }
 
 #[test]

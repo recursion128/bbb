@@ -528,11 +528,8 @@ fn start_use_item_with_effects(
         ) {
             return true;
         }
-        if world.open_writable_book_editor(hand, input.client_text_filtering_enabled()) {
-            input.sync_book_screen(world);
-            release_active_input(input, world, counters, net_commands);
-            return true;
-        }
+        let opened_writable_book =
+            world.open_writable_book_editor(hand, input.client_text_filtering_enabled());
         match prediction {
             LocalItemUsePrediction::Result(LocalInteractionResult::Success(success)) => {
                 apply_local_interaction_success(
@@ -544,6 +541,10 @@ fn start_use_item_with_effects(
                     level_random,
                     audio_events,
                 );
+                if opened_writable_book {
+                    input.sync_book_screen(world);
+                    release_active_input(input, world, counters, net_commands);
+                }
                 return true;
             }
             LocalItemUsePrediction::Result(

@@ -50,6 +50,7 @@ use bbb_protocol::{
 };
 
 mod bone_meal;
+mod book;
 mod bundle;
 mod crossbow;
 mod equippable;
@@ -360,6 +361,8 @@ impl WorldStore {
                     self.predict_local_instrument_item_use(hand, &stack)
                 }
                 VanillaItemUseOverride::BowItem => self.predict_local_bow_item_use(),
+                VanillaItemUseOverride::WritableBookItem
+                | VanillaItemUseOverride::WrittenBookItem => self.predict_local_book_item_use(),
                 VanillaItemUseOverride::BundleItem => LocalItemUsePrediction::Result(
                     LocalInteractionResult::Success(LocalInteractionSuccess::bundle_use()),
                 ),
