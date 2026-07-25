@@ -105,12 +105,13 @@ use bbb_protocol::{
         AdventureModePredicateDataSummary, BlockPredicateSummary, BlocksAttacksSummary,
         ConsumeEffectSummary, DataComponentPatchSummary, DataComponentPredicateTypeSummary,
         FireworkExplosionSummary, HashedComponentPatch, HashedItemStack, HashedStack,
-        ItemEnchantmentSummary, ItemStackSummary, ItemStackTemplateSummary,
+        InstrumentSummary, ItemEnchantmentSummary, ItemStackSummary, ItemStackTemplateSummary,
         KineticWeaponConditionSummary, MobEffectDetailsSummary, MobEffectInstanceSummary,
         NbtSummaryEntry, NbtSummaryValue, PartialDataComponentPredicateSummary,
         PersistentDataComponentValueSummary, PersistentItemPredicateSummary,
         PlayerModelTypeSummary, ResolvableProfileKindSummary, ResolvableProfileSummary,
-        SoundEventSummary, StatePropertyValueMatcherSummary,
+        SoundEventSummary, StatePropertyValueMatcherSummary, TrimMaterialSummary,
+        TrimPatternSummary,
     },
     tropical_fish_patterns::vanilla_tropical_fish_pattern,
 };
@@ -729,47 +730,32 @@ fn hash_component_value(
                 })
                 .collect::<Option<Vec<_>>>()?,
         ),
-        VANILLA_DATA_COMPONENT_TRIM_TYPE_ID => {
-            if patch.armor_trim_material_direct.is_some()
-                || patch.armor_trim_pattern_direct.is_some()
-            {
-                return None;
-            }
-            hash_record(vec![
-                (
-                    "material",
-                    hash_registry_holder(
-                        ctx,
-                        "minecraft:trim_material",
-                        patch.armor_trim_material_id?,
-                    )?,
-                ),
-                (
-                    "pattern",
-                    hash_registry_holder(
-                        ctx,
-                        "minecraft:trim_pattern",
-                        patch.armor_trim_pattern_id?,
-                    )?,
-                ),
-            ])
-        }
+        VANILLA_DATA_COMPONENT_TRIM_TYPE_ID => hash_record(vec![
+            (
+                "material",
+                hash_trim_material_holder(
+                    ctx,
+                    patch.armor_trim_material_id,
+                    patch.armor_trim_material_direct.as_deref(),
+                )?,
+            ),
+            (
+                "pattern",
+                hash_trim_pattern_holder(
+                    ctx,
+                    patch.armor_trim_pattern_id,
+                    patch.armor_trim_pattern_direct.as_deref(),
+                )?,
+            ),
+        ]),
         VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID => {
-            if patch.instrument_direct.is_some() {
-                return None;
-            }
-            hash_registry_holder(ctx, "minecraft:instrument", patch.instrument_id?)?
+            hash_instrument_holder(ctx, patch.instrument_id, patch.instrument_direct.as_deref())?
         }
-        VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID => {
-            if patch.provides_trim_material_direct.is_some() {
-                return None;
-            }
-            hash_registry_holder(
-                ctx,
-                "minecraft:trim_material",
-                patch.provides_trim_material_id?,
-            )?
-        }
+        VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID => hash_trim_material_holder(
+            ctx,
+            patch.provides_trim_material_id,
+            patch.provides_trim_material_direct.as_deref(),
+        )?,
         VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID => {
             if patch.jukebox_direct_song.is_some() {
                 return None;
@@ -814,18 +800,8 @@ fn hash_component_value(
                 .banner_pattern_layers
                 .iter()
                 .map(|layer| {
-                    if layer.asset_id.is_some() || layer.translation_key.is_some() {
-                        return None;
-                    }
                     Some(hash_record(vec![
-                        (
-                            "pattern",
-                            hash_registry_holder(
-                                ctx,
-                                "minecraft:banner_pattern",
-                                layer.registry_id?,
-                            )?,
-                        ),
+                        ("pattern", hash_banner_pattern_holder(ctx, layer)?),
                         (
                             "color",
                             hash_string(
@@ -917,22 +893,14 @@ fn hash_component_value(
             builtin_enum_component_value_name(type_id, patch.tropical_fish_pattern_color_id?)?,
         ),
         VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID => {
-            if let Some(direct) = &patch.painting_variant_direct {
-                if direct.title.is_some() || direct.author.is_some() {
-                    return None;
-                }
-                hash_record(vec![
-                    ("width", hash_int(direct.width)),
-                    ("height", hash_int(direct.height)),
-                    ("asset_id", hash_string(&direct.asset_id)),
-                ])
-            } else {
-                hash_registry_holder(
-                    ctx,
-                    "minecraft:painting_variant",
-                    patch.painting_variant_id?,
-                )?
+            if patch.painting_variant_direct.is_some() {
+                return None;
             }
+            hash_registry_holder(
+                ctx,
+                "minecraft:painting_variant",
+                patch.painting_variant_id?,
+            )?
         }
         VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID => hash_resolvable_profile(patch.profile.as_ref()?)?,
         VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID => hash_typed_entity_data(
@@ -1002,6 +970,101 @@ fn hash_registry_holder(ctx: InventoryCtx<'_>, registry: &str, holder_id: i32) -
     ctx.registries
         .resource_id_by_holder_id(registry, holder_id)
         .map(hash_string)
+}
+
+fn hash_instrument_holder(
+    ctx: InventoryCtx<'_>,
+    holder_id: Option<i32>,
+    direct: Option<&InstrumentSummary>,
+) -> Option<Hash32> {
+    match (holder_id, direct) {
+        (Some(holder_id), None) => hash_registry_holder(ctx, "minecraft:instrument", holder_id),
+        (None, Some(instrument)) => Some(hash_record(vec![
+            (
+                "sound_event",
+                hash_sound_event(ctx, &instrument.sound_event)?,
+            ),
+            ("use_duration", hash_float(instrument.use_duration_bits)),
+            ("range", hash_float(instrument.range_bits)),
+            (
+                "description",
+                hash_simple_component(instrument.description_nbt.as_deref()?)?,
+            ),
+        ])),
+        _ => None,
+    }
+}
+
+fn hash_trim_material_holder(
+    ctx: InventoryCtx<'_>,
+    holder_id: Option<i32>,
+    direct: Option<&TrimMaterialSummary>,
+) -> Option<Hash32> {
+    match (holder_id, direct) {
+        (Some(holder_id), None) => hash_registry_holder(ctx, "minecraft:trim_material", holder_id),
+        (None, Some(material)) => {
+            let mut fields = vec![("asset_name", hash_string(&material.asset_name))];
+            if !material.override_armor_assets.is_empty() {
+                fields.push((
+                    "override_armor_assets",
+                    hash_map(
+                        material
+                            .override_armor_assets
+                            .iter()
+                            .map(|(asset, suffix)| (hash_string(asset), hash_string(suffix)))
+                            .collect(),
+                    ),
+                ));
+            }
+            fields.push((
+                "description",
+                hash_simple_component(material.description_nbt.as_deref()?)?,
+            ));
+            Some(hash_record(fields))
+        }
+        _ => None,
+    }
+}
+
+fn hash_trim_pattern_holder(
+    ctx: InventoryCtx<'_>,
+    holder_id: Option<i32>,
+    direct: Option<&TrimPatternSummary>,
+) -> Option<Hash32> {
+    match (holder_id, direct) {
+        (Some(holder_id), None) => hash_registry_holder(ctx, "minecraft:trim_pattern", holder_id),
+        (None, Some(pattern)) => Some(hash_record(vec![
+            ("asset_id", hash_string(&pattern.asset_id)),
+            (
+                "description",
+                hash_simple_component(pattern.description_nbt.as_deref()?)?,
+            ),
+            // `fieldOf("decal").orElse(false)` still delegates every encode to
+            // the required field codec; the default only applies while decoding.
+            ("decal", hash_boolean(pattern.decal)),
+        ])),
+        _ => None,
+    }
+}
+
+fn hash_banner_pattern_holder(
+    ctx: InventoryCtx<'_>,
+    layer: &bbb_protocol::packets::BannerPatternLayerSummary,
+) -> Option<Hash32> {
+    match (
+        layer.registry_id,
+        layer.asset_id.as_deref(),
+        layer.translation_key.as_deref(),
+    ) {
+        (Some(holder_id), None, None) => {
+            hash_registry_holder(ctx, "minecraft:banner_pattern", holder_id)
+        }
+        (None, Some(asset_id), Some(translation_key)) => Some(hash_record(vec![
+            ("asset_id", hash_string(asset_id)),
+            ("translation_key", hash_string(translation_key)),
+        ])),
+        _ => None,
+    }
 }
 
 fn hash_registry_holder_set(
@@ -2577,10 +2640,11 @@ mod tests {
         equipment_slots::VANILLA_EQUIPMENT_SLOT_GROUP_MAINHAND_ID,
         packets::{
             chunks::BlockPos, AdventureModePredicateSummary, AttributeModifierSummary,
-            BlockHolderSetSummary, ConsumableSummary, DamageReductionSummary, EquippableSummary,
-            FireworkExplosionShapeSummary, GameProfilePropertySummary, ItemContainerSlotSummary,
-            ItemDamageFunctionSummary, ItemHolderSetSummary, ItemRaritySummary,
-            ItemUseAnimationSummary, KineticWeaponSummary, LodestoneTargetSummary,
+            BannerPatternLayerSummary, BlockHolderSetSummary, ConsumableSummary,
+            DamageReductionSummary, EquippableSummary, FireworkExplosionShapeSummary,
+            GameProfilePropertySummary, ItemContainerSlotSummary, ItemDamageFunctionSummary,
+            ItemHolderSetSummary, ItemRaritySummary, ItemUseAnimationSummary, JukeboxSongSummary,
+            KineticWeaponSummary, LodestoneTargetSummary, PaintingVariantSummary,
             PiercingWeaponSummary, PlayerSkinPatchSummary, ResourceTextureSummary,
             StatePropertyMatcherSummary, SuspiciousStewEffectSummary, ToolSummary,
             UseEffectsSummary, WrittenBookContentSummary,
@@ -2835,6 +2899,212 @@ mod tests {
                 ),
             ])
         );
+    }
+
+    #[test]
+    fn hashes_inline_registry_component_codecs_and_rejects_named_only_direct_holders() {
+        let store = crate::WorldStore::new();
+        let description = |text: &str| {
+            (
+                text.to_string(),
+                Some(
+                    vec![StyledTextRun {
+                        text: text.to_string(),
+                        style: ComponentStyle::default(),
+                    }]
+                    .into_boxed_slice(),
+                ),
+                Some(Box::new(NbtSummaryValue::String(text.to_string()))),
+            )
+        };
+        let (instrument_text, instrument_runs, instrument_nbt) = description("Signal horn");
+        let instrument = InstrumentSummary {
+            sound_event: SoundEventSummary {
+                registry_id: None,
+                sound_id: Some("example:signal".to_string()),
+                fixed_range_bits: Some(12.0_f32.to_bits()),
+            },
+            use_duration_bits: 7.0_f32.to_bits(),
+            range_bits: 256.0_f32.to_bits(),
+            description: instrument_text.clone(),
+            description_styled: instrument_runs.clone(),
+            description_nbt: instrument_nbt,
+        };
+        let (material_text, material_runs, material_nbt) = description("Opal");
+        let material = TrimMaterialSummary {
+            asset_name: "opal".to_string(),
+            override_armor_assets: BTreeMap::from([(
+                "example:steel".to_string(),
+                "opal_dark".to_string(),
+            )]),
+            description: material_text,
+            description_styled: material_runs,
+            description_nbt: material_nbt,
+        };
+        let (pattern_text, pattern_runs, pattern_nbt) = description("Spiral");
+        let pattern = TrimPatternSummary {
+            asset_id: "example:spiral".to_string(),
+            description: pattern_text,
+            description_styled: pattern_runs,
+            description_nbt: pattern_nbt,
+            decal: true,
+        };
+        let patch = DataComponentPatchSummary {
+            added: 4,
+            added_type_ids: vec![
+                VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+                VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
+                VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
+                VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID,
+            ],
+            instrument_description: Some(instrument_text),
+            instrument_description_styled: instrument_runs
+                .as_deref()
+                .map(<[StyledTextRun]>::to_vec),
+            instrument_direct: Some(Box::new(instrument)),
+            armor_trim_material_direct: Some(Box::new(material.clone())),
+            armor_trim_pattern_direct: Some(Box::new(pattern)),
+            provides_trim_material_direct: Some(Box::new(material)),
+            banner_pattern_layers: vec![BannerPatternLayerSummary {
+                registry_id: None,
+                asset_id: Some("example:wave".to_string()),
+                translation_key: Some("block.example.banner.wave".to_string()),
+                color_id: VANILLA_DYE_COLOR_RED_ID,
+            }],
+            ..DataComponentPatchSummary::default()
+        };
+
+        let sound_hash = hash_record(vec![
+            ("sound_id", hash_string("example:signal")),
+            ("range", hash_float(12.0_f32.to_bits())),
+        ]);
+        let instrument_hash = hash_record(vec![
+            ("sound_event", sound_hash),
+            ("use_duration", hash_float(7.0_f32.to_bits())),
+            ("range", hash_float(256.0_f32.to_bits())),
+            ("description", hash_string("Signal horn")),
+        ]);
+        let material_hash = hash_record(vec![
+            ("asset_name", hash_string("opal")),
+            (
+                "override_armor_assets",
+                hash_map(vec![(
+                    hash_string("example:steel"),
+                    hash_string("opal_dark"),
+                )]),
+            ),
+            ("description", hash_string("Opal")),
+        ]);
+        let pattern_hash = hash_record(vec![
+            ("asset_id", hash_string("example:spiral")),
+            ("description", hash_string("Spiral")),
+            ("decal", hash_boolean(true)),
+        ]);
+        let banner_hash = hash_list([hash_record(vec![
+            (
+                "pattern",
+                hash_record(vec![
+                    ("asset_id", hash_string("example:wave")),
+                    ("translation_key", hash_string("block.example.banner.wave")),
+                ]),
+            ),
+            ("color", hash_string("red")),
+        ])]);
+
+        assert_eq!(
+            hashed_component_patch_from_summary(test_ctx(&store), &patch)
+                .unwrap()
+                .added_components,
+            BTreeMap::from([
+                (
+                    VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+                    instrument_hash.0 as i32,
+                ),
+                (
+                    VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
+                    hash_record(vec![("material", material_hash), ("pattern", pattern_hash),]).0
+                        as i32,
+                ),
+                (
+                    VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
+                    material_hash.0 as i32,
+                ),
+                (
+                    VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID,
+                    banner_hash.0 as i32,
+                ),
+            ])
+        );
+
+        let mut rich_instrument = patch.clone();
+        let rich_description = NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+            name: "text".to_string(),
+            value: NbtSummaryValue::String("Signal horn".to_string()),
+        }]);
+        rich_instrument
+            .instrument_direct
+            .as_mut()
+            .unwrap()
+            .description_nbt = Some(Box::new(rich_description));
+        assert_eq!(
+            hash_component_value(
+                test_ctx(&store),
+                &rich_instrument,
+                VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+            ),
+            None
+        );
+
+        for (type_id, patch) in [
+            (
+                VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+                DataComponentPatchSummary {
+                    jukebox_direct_song: Some(Box::new(JukeboxSongSummary {
+                        sound_event: SoundEventSummary {
+                            registry_id: None,
+                            sound_id: Some("example:song".to_string()),
+                            fixed_range_bits: None,
+                        },
+                        description: "Song".to_string(),
+                        description_styled: Some(
+                            vec![StyledTextRun {
+                                text: "Song".to_string(),
+                                style: ComponentStyle::default(),
+                            }]
+                            .into_boxed_slice(),
+                        ),
+                        description_nbt: Some(Box::new(NbtSummaryValue::String(
+                            "Song".to_string(),
+                        ))),
+                        length_in_seconds_bits: 10.0_f32.to_bits(),
+                        comparator_output: 1,
+                    })),
+                    ..DataComponentPatchSummary::default()
+                },
+            ),
+            (
+                VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
+                DataComponentPatchSummary {
+                    painting_variant_direct: Some(PaintingVariantSummary {
+                        width: 1,
+                        height: 1,
+                        asset_id: "example:painting".to_string(),
+                        title: None,
+                        title_styled: None,
+                        title_nbt: None,
+                        author: None,
+                        author_styled: None,
+                        author_nbt: None,
+                    }),
+                    ..DataComponentPatchSummary::default()
+                },
+            ),
+        ] {
+            assert_eq!(
+                hash_component_value(test_ctx(&store), &patch, type_id),
+                None
+            );
+        }
     }
 
     #[test]
@@ -4151,6 +4421,169 @@ mod tests {
                         ]),
                     )]),
                 )]),
+            )]))
+        );
+
+        let direct_instrument = PersistentItemPredicateSummary {
+            exact_components: vec![PersistentDataComponentValueSummary {
+                component_type_id: VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+                value: NbtSummaryValue::Compound(vec![
+                    entry(
+                        "sound_event",
+                        NbtSummaryValue::Compound(vec![
+                            entry(
+                                "sound_id",
+                                NbtSummaryValue::String("example:signal".to_string()),
+                            ),
+                            entry("range", NbtSummaryValue::Float(12.0_f32.to_bits())),
+                        ]),
+                    ),
+                    entry("use_duration", NbtSummaryValue::Float(7.0_f32.to_bits())),
+                    entry("range", NbtSummaryValue::Float(256.0_f32.to_bits())),
+                    entry(
+                        "description",
+                        NbtSummaryValue::String("Signal horn".to_string()),
+                    ),
+                ]),
+            }],
+            ..PersistentItemPredicateSummary::default()
+        };
+        assert!(
+            crate::client::dialog::decode_persistent_data_component_patch_entry(
+                VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+                &direct_instrument.exact_components[0].value,
+                &store.registries,
+            )
+            .unwrap()
+            .is_some()
+        );
+        assert_eq!(
+            hash_persistent_item_predicate(test_ctx(&store), &direct_instrument),
+            Some(hash_record(vec![(
+                "components",
+                hash_map(vec![(
+                    hash_string("minecraft:instrument"),
+                    hash_record(vec![
+                        (
+                            "sound_event",
+                            hash_record(vec![
+                                ("sound_id", hash_string("example:signal")),
+                                ("range", hash_float(12.0_f32.to_bits())),
+                            ]),
+                        ),
+                        ("use_duration", hash_float(7.0_f32.to_bits())),
+                        ("range", hash_float(256.0_f32.to_bits())),
+                        ("description", hash_string("Signal horn")),
+                    ]),
+                )]),
+            )]))
+        );
+    }
+
+    #[test]
+    fn hashes_inline_trim_and_banner_holders_in_exact_item_predicates() {
+        let entry = |name: &str, value| NbtSummaryEntry {
+            name: name.to_string(),
+            value,
+        };
+        let material = NbtSummaryValue::Compound(vec![
+            entry("asset_name", NbtSummaryValue::String("opal".to_string())),
+            entry(
+                "override_armor_assets",
+                NbtSummaryValue::Compound(vec![entry(
+                    "example:steel",
+                    NbtSummaryValue::String("opal_dark".to_string()),
+                )]),
+            ),
+            entry("description", NbtSummaryValue::String("Opal".to_string())),
+        ]);
+        let pattern = NbtSummaryValue::Compound(vec![
+            entry(
+                "asset_id",
+                NbtSummaryValue::String("example:spiral".to_string()),
+            ),
+            entry("description", NbtSummaryValue::String("Spiral".to_string())),
+        ]);
+        let predicate = PersistentItemPredicateSummary {
+            exact_components: vec![
+                PersistentDataComponentValueSummary {
+                    component_type_id: VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
+                    value: material.clone(),
+                },
+                PersistentDataComponentValueSummary {
+                    component_type_id: VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
+                    value: NbtSummaryValue::Compound(vec![
+                        entry("material", material),
+                        entry("pattern", pattern),
+                    ]),
+                },
+                PersistentDataComponentValueSummary {
+                    component_type_id: VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID,
+                    value: NbtSummaryValue::List(vec![NbtSummaryValue::Compound(vec![
+                        entry(
+                            "pattern",
+                            NbtSummaryValue::Compound(vec![
+                                entry(
+                                    "asset_id",
+                                    NbtSummaryValue::String("example:wave".to_string()),
+                                ),
+                                entry(
+                                    "translation_key",
+                                    NbtSummaryValue::String(
+                                        "block.example.banner.wave".to_string(),
+                                    ),
+                                ),
+                            ]),
+                        ),
+                        entry("color", NbtSummaryValue::String("red".to_string())),
+                    ])]),
+                },
+            ],
+            ..PersistentItemPredicateSummary::default()
+        };
+        let material_hash = hash_record(vec![
+            ("asset_name", hash_string("opal")),
+            (
+                "override_armor_assets",
+                hash_map(vec![(
+                    hash_string("example:steel"),
+                    hash_string("opal_dark"),
+                )]),
+            ),
+            ("description", hash_string("Opal")),
+        ]);
+        let pattern_hash = hash_record(vec![
+            ("asset_id", hash_string("example:spiral")),
+            ("description", hash_string("Spiral")),
+            ("decal", hash_boolean(false)),
+        ]);
+        let banner_hash = hash_list([hash_record(vec![
+            (
+                "pattern",
+                hash_record(vec![
+                    ("asset_id", hash_string("example:wave")),
+                    ("translation_key", hash_string("block.example.banner.wave")),
+                ]),
+            ),
+            ("color", hash_string("red")),
+        ])]);
+        let store = crate::WorldStore::new();
+
+        assert_eq!(
+            hash_persistent_item_predicate(test_ctx(&store), &predicate),
+            Some(hash_record(vec![(
+                "components",
+                hash_map(vec![
+                    (
+                        hash_string("minecraft:provides_trim_material"),
+                        material_hash,
+                    ),
+                    (
+                        hash_string("minecraft:trim"),
+                        hash_record(vec![("material", material_hash), ("pattern", pattern_hash),]),
+                    ),
+                    (hash_string("minecraft:banner_patterns"), banner_hash),
+                ]),
             )]))
         );
     }

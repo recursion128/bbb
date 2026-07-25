@@ -1271,6 +1271,9 @@ fn validate_encodable_data_component_patch_summary(
                 expected.armor_trim_material_direct = patch.armor_trim_material_direct.clone();
                 expected.armor_trim_pattern_id = patch.armor_trim_pattern_id;
                 expected.armor_trim_pattern_direct = patch.armor_trim_pattern_direct.clone();
+                if let Some(value) = patch.codec_backed_nbt.get(type_id) {
+                    expected.codec_backed_nbt.insert(*type_id, value.clone());
+                }
             }
             crate::data_component_types::VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID => {
                 expected.firework_explosion_colors = patch.firework_explosion_colors.clone();
@@ -1373,6 +1376,9 @@ fn validate_encodable_data_component_patch_summary(
                 expected.instrument_description_styled =
                     patch.instrument_description_styled.clone();
                 expected.instrument_direct = patch.instrument_direct.clone();
+                if let Some(value) = patch.codec_backed_nbt.get(type_id) {
+                    expected.codec_backed_nbt.insert(*type_id, value.clone());
+                }
             }
             VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID => {
                 expected.banner_pattern_layers = patch.banner_pattern_layers.clone();
@@ -1441,6 +1447,9 @@ fn validate_encodable_data_component_patch_summary(
                 expected.provides_trim_material_id = patch.provides_trim_material_id;
                 expected.provides_trim_material_direct =
                     patch.provides_trim_material_direct.clone();
+                if let Some(value) = patch.codec_backed_nbt.get(type_id) {
+                    expected.codec_backed_nbt.insert(*type_id, value.clone());
+                }
             }
             VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID => {
                 expected.profile = patch

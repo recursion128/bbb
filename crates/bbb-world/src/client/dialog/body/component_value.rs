@@ -19,7 +19,7 @@ use bbb_protocol::packets::{
         BlockPredicateSummary, BlocksAttacksSummary, ConsumableSummary, ConsumeEffectSummary,
         DamageReductionSummary, DamageTypeHolderSetSummary, DataComponentPatchSummary,
         DataComponentPredicateTypeSummary, DebugStickPropertySummary, EntityTypeHolderSetSummary,
-        EquippableSummary, FireworkExplosionSummary, ItemContainerSlotSummary,
+        EquippableSummary, FireworkExplosionSummary, InstrumentSummary, ItemContainerSlotSummary,
         ItemDamageFunctionSummary, ItemEnchantmentSummary, ItemHolderSetSummary,
         ItemMapDecorationSummary, ItemStackTemplateSummary, KineticWeaponConditionSummary,
         KineticWeaponSummary, LodestoneTargetSummary, MobEffectDetailsSummary,
@@ -1169,6 +1169,16 @@ pub(super) fn apply_item_patch_value(
                 DialogInstrumentHolderState::Direct { instrument } => {
                     patch.instrument_description = Some(instrument.description.text.clone());
                     patch.instrument_description_styled = Some(instrument.description.runs.clone());
+                    patch.instrument_direct = Some(Box::new(InstrumentSummary {
+                        sound_event: sound_event_summary(&instrument.sound_event),
+                        use_duration_bits: instrument.use_duration_bits,
+                        range_bits: instrument.range_bits,
+                        description: instrument.description.text.clone(),
+                        description_styled: Some(
+                            instrument.description.runs.clone().into_boxed_slice(),
+                        ),
+                        description_nbt: Some(Box::new(instrument.description.component.clone())),
+                    }));
                 }
             }
         }

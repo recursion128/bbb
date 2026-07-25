@@ -805,10 +805,10 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   packed variant projection, remaining codec-backed SNBT projection (component removals are complete;
   added values still include `AbstractArrow`
   `inBlockState` and `item`, attribute-modifier override-display Component trees,
-  and lossless persistent reconstruction for direct instrument and direct
-  jukebox-song network holders. Painting direct network holders are intentionally
-  omitted from persistent reconstruction because vanilla `PaintingVariant.CODEC`
-  is a named-only `RegistryFixedCodec`. Keep the remaining dispatch
+  and other rich Component values. Direct jukebox-song and painting network
+  holders are intentionally omitted from persistent reconstruction because
+  vanilla `JukeboxSong.CODEC` and `PaintingVariant.CODEC` are named-only
+  `RegistryFixedCodec`s. Keep the remaining dispatch
   owned by the protocol
   generated-metadata/handler descriptor catalog and native persistent SNBT encoder registry
   beyond the supported custom-NBT/primitive (including repair-cost/enchantable/glider/
