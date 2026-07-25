@@ -1996,7 +1996,7 @@ fn renderer_frame_hud_extracts_after_input_and_use_item_tick() {
         .find("advance_using_item_at_partial_tick_with_effects(")
         .expect("pump should advance use-item input before HUD extraction");
     let using_item_tick = source
-        .find("world.advance_local_using_item_ticks(advanced_ticks);")
+        .find("advance_local_using_item_ticks_with_effects(")
         .expect("pump should advance local use-item ticks before HUD extraction");
     let hud_extract = source
         .find("let local_player = world.local_player();")
@@ -6136,7 +6136,7 @@ fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
         .find("advance_player_input_for_client_ticks(")
         .expect("pump should advance input before held item extraction");
     let using_item_tick = source
-        .find("world.advance_local_using_item_ticks(advanced_ticks);")
+        .find("advance_local_using_item_ticks_with_effects(")
         .expect("pump should advance local use-item ticks before held item extraction");
     let item_age_extract = source
         .find("let item_model_age_ticks = world")
@@ -6375,7 +6375,7 @@ fn renderer_frame_outlines_extract_after_input_camera_and_partial_tick() {
         .find("advance_player_input_for_client_ticks(")
         .expect("pump should advance player input before outline extraction");
     let using_item_tick = source
-        .find("world.advance_local_using_item_ticks(advanced_ticks);")
+        .find("advance_local_using_item_ticks_with_effects(")
         .expect("pump should advance local use-item ticks before outline extraction");
     let entity_tick = source
         .find("let advanced_ticks = advance_entity_client_animations(")
@@ -6588,7 +6588,7 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
         .find("advance_using_item_at_partial_tick_with_effects(")
         .expect("pump should advance use-item input before particle tick");
     let using_item_tick = source
-        .find("world.advance_local_using_item_ticks(advanced_ticks);")
+        .find("advance_local_using_item_ticks_with_effects(")
         .expect("pump should advance local use-item ticks before particle tick");
     let particle_camera_pose = source
         .find(
