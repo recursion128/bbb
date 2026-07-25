@@ -1694,10 +1694,10 @@ impl WorldStore {
     /// `except`, so `ClientLevel.playSeededSound` plays them immediately.
     /// Instrument playback is entity-bound; flint-and-steel is positioned.
     /// Spyglass start/stop and bundle removal call `LocalPlayer.playSound`, so
-    /// they are immediate positioned sounds. Bundle content-drop, bow release,
-    /// thrown projectiles, fire charges, lodestone compasses, and both potion
-    /// mud-conversion sounds pass `null`, so their local calls only advance the
-    /// random streams.
+    /// they are immediate positioned sounds. Bundle content-drop, fishing rods,
+    /// bow release, thrown projectiles, fire charges, lodestone compasses, and
+    /// both potion mud-conversion sounds pass `null`, so their local calls only
+    /// advance the random streams.
     pub fn apply_local_interaction_sound_action(
         &mut self,
         action: LocalInteractionSoundAction,
@@ -1754,6 +1754,12 @@ impl WorldStore {
             LocalInteractionSoundAction::SuppressedBundleDropContents => {
                 let _discarded_drop_pitch = 0.8 + random.next_float() * 0.4;
                 let _discarded_drop_seed = self.next_sound_seed();
+                return None;
+            }
+            LocalInteractionSoundAction::SuppressedFishingRodUse { retrieving } => {
+                let _suppressed_volume = if retrieving { 1.0 } else { 0.5 };
+                let _discarded_pitch = 0.4 / (random.next_float() * 0.4 + 0.8);
+                let _discarded_seed = self.next_sound_seed();
                 return None;
             }
             LocalInteractionSoundAction::SpyglassUse => local_player_sound_state(

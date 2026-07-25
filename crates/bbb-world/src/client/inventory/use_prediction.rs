@@ -53,6 +53,7 @@ mod bone_meal;
 mod bundle;
 mod crossbow;
 mod equippable;
+mod fishing_rod;
 mod ignition;
 mod instrument;
 mod item_use_fov;
@@ -126,6 +127,7 @@ pub enum LocalInteractionSoundAction {
     InstrumentUse { hand: InteractionHand },
     BundleRemoveOne,
     SuppressedBundleDropContents,
+    SuppressedFishingRodUse { retrieving: bool },
     SpyglassUse,
     SpyglassStopUsing,
     SuppressedBowRelease { power_bits: u32 },
@@ -322,6 +324,16 @@ impl LocalInteractionSuccess {
             sound_action: None,
         }
     }
+
+    const fn fishing_rod_use(retrieving: bool) -> Self {
+        Self {
+            swing_source: LocalInteractionSwingSource::Client,
+            was_item_interaction: true,
+            starts_using_item: false,
+            extra_swing: None,
+            sound_action: Some(LocalInteractionSoundAction::SuppressedFishingRodUse { retrieving }),
+        }
+    }
 }
 
 impl WorldStore {
@@ -353,6 +365,7 @@ impl WorldStore {
                 VanillaItemUseOverride::CrossbowItem => {
                     self.predict_local_crossbow_item_use(&stack)
                 }
+                VanillaItemUseOverride::FishingRodItem => self.predict_local_fishing_rod_item_use(),
                 VanillaItemUseOverride::SpyglassItem => LocalItemUsePrediction::Result(
                     LocalInteractionResult::Success(LocalInteractionSuccess::spyglass_use()),
                 ),

@@ -1029,9 +1029,9 @@ mod tests {
         VANILLA_ITEM_BOW_ID, VANILLA_ITEM_BRUSH_ID, VANILLA_ITEM_BUNDLE_ID,
         VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID, VANILLA_ITEM_COMPASS_ID, VANILLA_ITEM_CROSSBOW_ID,
         VANILLA_ITEM_ENDER_PEARL_ID, VANILLA_ITEM_FIREWORK_ROCKET_ID, VANILLA_ITEM_FIRE_CHARGE_ID,
-        VANILLA_ITEM_FLINT_AND_STEEL_ID, VANILLA_ITEM_GLASS_BOTTLE_ID, VANILLA_ITEM_GOAT_HORN_ID,
-        VANILLA_ITEM_POTION_ID, VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_SHIELD_ID,
-        VANILLA_ITEM_SPYGLASS_ID, VANILLA_ITEM_STONE_ID,
+        VANILLA_ITEM_FISHING_ROD_ID, VANILLA_ITEM_FLINT_AND_STEEL_ID, VANILLA_ITEM_GLASS_BOTTLE_ID,
+        VANILLA_ITEM_GOAT_HORN_ID, VANILLA_ITEM_POTION_ID, VANILLA_ITEM_RED_DYE_ID,
+        VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_SPYGLASS_ID, VANILLA_ITEM_STONE_ID,
     };
     use bbb_protocol::packets::{
         AddEntity, AdventureModePredicateDataSummary, AdventureModePredicateSummary, AttackEntity,
@@ -1938,6 +1938,125 @@ mod tests {
         assert!(audio.entity_sounds.is_empty());
         assert_eq!(random.next_float(), expected_random.next_float());
         assert_eq!(world.next_sound_seed(), expected_next_seed);
+    }
+
+    #[test]
+    fn fishing_rod_cast_and_retrieve_swing_without_local_bobber_or_sound() {
+        for retrieving in [false, true] {
+            let (tx, mut rx) = mpsc::channel(2);
+            let commands = Some(tx);
+            let mut input = ClientInputState::new(true);
+            let mut world = WorldStore::new();
+            world.apply_login(&PlayLogin {
+                player_id: 42,
+                hardcore: false,
+                levels: vec!["minecraft:overworld".to_string()],
+                max_players: 20,
+                chunk_radius: 8,
+                simulation_distance: 6,
+                reduced_debug_info: false,
+                show_death_screen: true,
+                do_limited_crafting: false,
+                common_spawn_info: CommonPlayerSpawnInfo {
+                    dimension_type_id: 0,
+                    dimension: "minecraft:overworld".to_string(),
+                    seed: 0,
+                    game_type: 0,
+                    previous_game_type: -1,
+                    is_debug: false,
+                    is_flat: false,
+                    last_death_location: None,
+                    portal_cooldown: 0,
+                    sea_level: 63,
+                },
+                enforces_secure_chat: true,
+            });
+            world.set_local_player_pose(LocalPlayerPoseState {
+                y_rot: 20.0,
+                x_rot: -10.0,
+                ..LocalPlayerPoseState::default()
+            });
+            let rod = item_stack(VANILLA_ITEM_FISHING_ROD_ID, 1);
+            world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+                slot: 0,
+                item: rod.clone(),
+            });
+            if retrieving {
+                world.apply_add_entity(AddEntity {
+                    id: 88,
+                    uuid: Uuid::from_u128(88),
+                    entity_type_id: VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+                    position: ProtocolVec3d::default(),
+                    delta_movement: ProtocolVec3d::default(),
+                    x_rot: 0.0,
+                    y_rot: 0.0,
+                    y_head_rot: 0.0,
+                    data: 42,
+                });
+            }
+            assert_eq!(
+                world.local_player_fishing_bobber_id(),
+                retrieving.then_some(88)
+            );
+            let mut counters = NetCounters::default();
+            let mut random = LevelEventSoundRandomState::with_seed(0);
+            let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+            let _discarded_pitch = 0.4 / (expected_random.next_float() * 0.4 + 0.8);
+            let expected_next_random = expected_random.next_float();
+            let mut expected_seed_world = WorldStore::new();
+            let _discarded_seed = expected_seed_world.next_sound_seed();
+            let expected_next_seed = expected_seed_world.next_sound_seed();
+            let mut audio = RecordingAudioSink::default();
+            let mut audio_events =
+                Some(&mut audio as &mut dyn crate::audio_runtime::AudioEventSink);
+
+            handle_mouse_input_at_partial_tick_with_effects(
+                &mut input,
+                &mut world,
+                &mut counters,
+                &commands,
+                MouseButton::Right,
+                ElementState::Pressed,
+                1.0,
+                &mut random,
+                &mut audio_events,
+            );
+            drop(audio_events);
+
+            assert_eq!(
+                rx.try_recv().unwrap(),
+                NetCommand::UseItem(UseItemCommand {
+                    packet: UseItem {
+                        hand: InteractionHand::MainHand,
+                        sequence: 1,
+                        y_rot: 20.0,
+                        x_rot: -10.0,
+                    },
+                    selected_hotbar_slot: 0,
+                })
+            );
+            assert_eq!(
+                rx.try_recv().unwrap(),
+                NetCommand::Swing(InteractionHand::MainHand)
+            );
+            assert!(rx.try_recv().is_err());
+            assert!(!world.local_player().interaction.using_item);
+            assert_eq!(
+                world.local_item_in_hand(InteractionHand::MainHand),
+                Some(&rod)
+            );
+            assert_eq!(
+                world.local_player_fishing_bobber_id(),
+                retrieving.then_some(88)
+            );
+            assert_eq!(counters.use_item_commands_queued, 1);
+            assert_eq!(counters.swing_commands_queued, 1);
+            assert!(audio.positioned_sounds.is_empty());
+            assert!(audio.entity_sounds.is_empty());
+            assert!(world.client_audio().last_sound.is_none());
+            assert_eq!(random.next_float(), expected_next_random);
+            assert_eq!(world.next_sound_seed(), expected_next_seed);
+        }
     }
 
     #[test]
