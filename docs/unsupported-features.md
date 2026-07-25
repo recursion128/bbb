@@ -663,9 +663,10 @@ Commands:
   Entity, block, and inventory corrections remain server-authoritative.
 - Complete no-target `Item.use` prediction for Bucket pickup/placement/evaporation
   through the generated item behavior, `BucketPickup`, and
-  `LiquidBlockContainer` owners, plus PlaceOnWaterBlock delegation into general
-  `BlockItem.useOn`. Consume those source-derived owners instead of inferring
-  behavior from resource names or component shape.
+  `LiquidBlockContainer` owners and the runtime-generated exact per-state
+  `BlockState.canBeReplaced(Fluid)` catalog, plus PlaceOnWaterBlock delegation
+  into general `BlockItem.useOn`. Consume those derived facts instead of inferring
+  behavior from resource names, component shape, or generic replaceability.
 - Bottle dragon-breath client prediction is `not-needed`: `AreaEffectCloud.owner`
   is absent from both `ClientboundAddEntityPacket` and synchronized metadata, so
   the remote 26.1 client leaves that branch server-authoritative. Reopen if the

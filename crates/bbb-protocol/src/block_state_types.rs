@@ -7,6 +7,10 @@ use std::{
 
 use serde::Deserialize;
 
+mod fluid_replaceability_26_1;
+
+use fluid_replaceability_26_1::VANILLA_BLOCK_STATE_FLUID_REPLACEABLE_RANGES;
+
 /// The checked-in Vanilla 26.1 global block-state registry report.
 ///
 /// Protocol decode needs only the contiguous id range. World and pack
@@ -21,6 +25,24 @@ static VANILLA_BLOCK_PROPERTIES: OnceLock<BTreeMap<String, BTreeSet<String>>> = 
 
 pub fn vanilla_block_state_id(id: i32) -> Option<i32> {
     (0..VANILLA_BLOCK_STATE_COUNT).contains(&id).then_some(id)
+}
+
+/// Returns Vanilla's fluid replacement predicate for a built-in block state.
+pub fn vanilla_block_state_fluid_replaceable(id: i32) -> Option<bool> {
+    let id = vanilla_block_state_id(id)?;
+    Some(
+        VANILLA_BLOCK_STATE_FLUID_REPLACEABLE_RANGES
+            .binary_search_by(|(start, end)| {
+                if id < *start {
+                    std::cmp::Ordering::Greater
+                } else if id > *end {
+                    std::cmp::Ordering::Less
+                } else {
+                    std::cmp::Ordering::Equal
+                }
+            })
+            .is_ok(),
+    )
 }
 
 /// Whether the built-in block's 26.1 `StateDefinition` contains `property`.
@@ -91,6 +113,49 @@ mod tests {
             Some(VANILLA_BLOCK_STATE_COUNT - 1)
         );
         assert_eq!(vanilla_block_state_id(VANILLA_BLOCK_STATE_COUNT), None);
+    }
+
+    #[test]
+    fn fluid_replaceability_uses_the_runtime_generated_state_ranges() {
+        let report: BlockStateReport =
+            serde_json::from_str(VANILLA_BLOCK_STATES_26_1_JSON).unwrap();
+        let state_id = |name: &str| {
+            report
+                .states
+                .iter()
+                .find(|state| state.name == name)
+                .unwrap()
+                .id
+        };
+
+        assert!(VANILLA_BLOCK_STATE_FLUID_REPLACEABLE_RANGES
+            .windows(2)
+            .all(|ranges| ranges[0].1 + 1 < ranges[1].0));
+        assert_eq!(
+            vanilla_block_state_fluid_replaceable(state_id("minecraft:air")),
+            Some(true)
+        );
+        assert_eq!(
+            vanilla_block_state_fluid_replaceable(state_id("minecraft:stone")),
+            Some(false)
+        );
+        assert_eq!(
+            vanilla_block_state_fluid_replaceable(state_id("minecraft:short_grass")),
+            Some(true)
+        );
+        assert_eq!(
+            vanilla_block_state_fluid_replaceable(state_id("minecraft:oak_sign")),
+            Some(false)
+        );
+        assert_eq!(
+            vanilla_block_state_fluid_replaceable(state_id("minecraft:end_portal")),
+            Some(false)
+        );
+        assert_eq!(vanilla_block_state_fluid_replaceable(-1), None);
+        assert_eq!(
+            vanilla_block_state_fluid_replaceable(VANILLA_BLOCK_STATE_COUNT),
+            None
+        );
     }
 
     #[test]
