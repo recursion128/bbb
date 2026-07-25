@@ -88,6 +88,7 @@ use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
 };
 use bbb_protocol::equipment_slots::VANILLA_PLAYER_INVENTORY_CHEST_SLOT;
+use bbb_protocol::item_types::VANILLA_ITEM_SPYGLASS_ID;
 use bbb_protocol::menu_types::{
     VANILLA_MENU_TYPE_ANVIL_ID, VANILLA_MENU_TYPE_CRAFTING_ID, VANILLA_MENU_TYPE_FURNACE_ID,
     VANILLA_MENU_TYPE_GENERIC_9X1_ID, VANILLA_MENU_TYPE_GENERIC_9X3_ID,
@@ -26410,6 +26411,10 @@ fn focus_loss_releases_using_item() {
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
     let mut world = WorldStore::new();
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: test_item_stack(VANILLA_ITEM_SPYGLASS_ID, 1),
+    });
     world.set_local_using_item(true);
     let mut counters = NetCounters::default();
 
@@ -26425,6 +26430,10 @@ fn focus_loss_releases_using_item() {
             direction: ProtocolDirection::Down,
             sequence: 0,
         })
+    );
+    assert_eq!(
+        world.take_pending_local_interaction_sound_actions(),
+        vec![bbb_world::LocalInteractionSoundAction::SpyglassStopUsing]
     );
 }
 

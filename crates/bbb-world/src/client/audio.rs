@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 
 use bbb_protocol::{
     block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID,
@@ -119,6 +119,7 @@ const DEFAULT_LEVEL_EVENT_SOUND_SEED: i64 = 0;
 /// `ClientLevel.random`), itself seeded from wall-clock unique seeds; a distinct
 /// fixed seed keeps `WorldStore` serializable and deterministic.
 const SOUND_SEED_RANDOM_INITIAL_SEED: i64 = 0x5EED_50_1D_A0D_10;
+const MAX_PENDING_LOCAL_INTERACTION_SOUND_ACTIONS: usize = 8;
 
 const fn default_true() -> bool {
     true
@@ -263,6 +264,8 @@ pub struct ClientAudioState {
     pub sound_seed_random: SoundSeedRandomState,
     #[serde(default)]
     pub(crate) active_tickable_entity_sounds: BTreeMap<i32, ActiveTickableEntitySound>,
+    #[serde(skip)]
+    pub(crate) pending_local_interaction_sound_actions: VecDeque<LocalInteractionSoundAction>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -370,6 +373,34 @@ pub struct WorldBlockSoundProfile {
 }
 
 impl WorldStore {
+    pub(crate) fn queue_local_interaction_sound_action(
+        &mut self,
+        action: LocalInteractionSoundAction,
+    ) {
+        if self
+            .client_audio
+            .pending_local_interaction_sound_actions
+            .len()
+            >= MAX_PENDING_LOCAL_INTERACTION_SOUND_ACTIONS
+        {
+            self.client_audio
+                .pending_local_interaction_sound_actions
+                .pop_front();
+        }
+        self.client_audio
+            .pending_local_interaction_sound_actions
+            .push_back(action);
+    }
+
+    pub fn take_pending_local_interaction_sound_actions(
+        &mut self,
+    ) -> Vec<LocalInteractionSoundAction> {
+        self.client_audio
+            .pending_local_interaction_sound_actions
+            .drain(..)
+            .collect()
+    }
+
     pub fn set_default_block_sound_profiles(
         &mut self,
         profiles: BTreeMap<String, WorldBlockSoundProfile>,
@@ -1662,9 +1693,10 @@ impl WorldStore {
     /// Vanilla flint-and-steel and instruments pass the local player as
     /// `except`, so `ClientLevel.playSeededSound` plays them immediately.
     /// Instrument playback is entity-bound; flint-and-steel is positioned.
-    /// Thrown projectiles, fire charges, lodestone compasses, and both potion
-    /// mud-conversion sounds pass `null`, so their local calls only advance the
-    /// random streams.
+    /// Spyglass start/stop calls use `LocalPlayer.playSound`, so they are
+    /// immediate positioned sounds. Bow release, thrown projectiles, fire
+    /// charges, lodestone compasses, and both potion mud-conversion sounds pass
+    /// `null`, so their local calls only advance the random streams.
     pub fn apply_local_interaction_sound_action(
         &mut self,
         action: LocalInteractionSoundAction,
@@ -1703,6 +1735,26 @@ impl WorldStore {
                     state,
                     position: self.local_player_pose().map(|pose| pose.position),
                 });
+            }
+            LocalInteractionSoundAction::SpyglassUse => local_player_sound_state(
+                self.local_player_pose()?.position,
+                "minecraft:item.spyglass.use",
+                1.0,
+                1.0,
+                SoundSource::Players.as_str(),
+            ),
+            LocalInteractionSoundAction::SpyglassStopUsing => local_player_sound_state(
+                self.local_player_pose()?.position,
+                "minecraft:item.spyglass.stop_using",
+                1.0,
+                1.0,
+                SoundSource::Players.as_str(),
+            ),
+            LocalInteractionSoundAction::SuppressedBowRelease { power_bits } => {
+                let power = f32::from_bits(power_bits);
+                let _discarded_pitch = 1.0 / (random.next_float() * 0.4 + 1.2) + power * 0.5;
+                let _discarded_seed = self.next_sound_seed();
+                return None;
             }
             LocalInteractionSoundAction::SuppressedProjectileThrow => {
                 let _discarded_pitch = 0.4 / (random.next_float() * 0.4 + 0.8);
@@ -2634,6 +2686,29 @@ fn block_sound_state(
     source: &str,
 ) -> SoundEventState {
     block_sound_state_with_distance_delay(pos, sound, volume, pitch, source, false)
+}
+
+fn local_player_sound_state(
+    position: ProtocolVec3d,
+    sound: &str,
+    volume: f32,
+    pitch: f32,
+    source: &str,
+) -> SoundEventState {
+    SoundEventState {
+        sound: SoundHolderState {
+            kind: "direct".to_string(),
+            registry_id: None,
+            location: Some(sound.to_string()),
+            fixed_range: None,
+        },
+        source: source.to_string(),
+        position,
+        volume,
+        pitch,
+        seed: 0,
+        distance_delay: false,
+    }
 }
 
 fn block_sound_state_with_distance_delay(

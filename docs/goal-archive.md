@@ -511,3 +511,7 @@
   喷溅与滞留药水/风弹现按 `ItemStack.use` 瞬时 after-use 顺序执行消耗和组件冷却；
   `Items.java` 的 3 个默认冷却值随资源重载发布，投掷音效的客户端 `null`
   excluded-player 调用仅推进 pitch/seed 随机流，等待服务端声音包实际播放。
+- **2026-07-23（弓/望远镜 use 与 FOV 工程关闭）**：弓现按 live arrows tag、
+  全玩家库存和无限材料执行 use 门禁，释放保留客户端无弹药/耐久突变及抑制声音
+  随机顺序；望远镜覆盖 use/release/自然完成声音，二者共同进入 vanilla camera
+  FOV target 与既有逐 tick easing。

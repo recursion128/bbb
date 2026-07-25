@@ -212,12 +212,14 @@ pub(crate) fn handle_mouse_input_at_partial_tick_with_effects(
         (MouseButton::Right, ElementState::Released) => {
             input.use_item_held = false;
             input.use_item_repeat_delay_ticks = 0;
-            if world.take_local_using_item() {
+            if world.local_player().interaction.using_item {
                 queue_zero_pos_player_action_command(
                     counters,
                     net_commands,
                     PlayerActionKind::ReleaseUseItem,
                 );
+                world.release_local_using_item();
+                flush_local_interaction_sound_actions(world, level_random, audio_events);
             }
         }
         (MouseButton::Middle, ElementState::Pressed) => match camera_target {
@@ -523,7 +525,8 @@ fn start_use_item_with_effects(
             LocalItemUsePrediction::Result(LocalInteractionResult::TryEmptyHandInteraction)
             | LocalItemUsePrediction::UnsupportedOverride(_)
             | LocalItemUsePrediction::UnknownItemType(_)
-            | LocalItemUsePrediction::MissingComponentValue(_) => return true,
+            | LocalItemUsePrediction::MissingComponentValue(_)
+            | LocalItemUsePrediction::MissingRegistryTag(_) => return true,
         }
     }
     true
@@ -539,21 +542,7 @@ fn apply_local_interaction_success(
     audio_events: &mut Option<&mut dyn AudioEventSink>,
 ) {
     if let Some(action) = success.sound_action {
-        if let Some(effect) = world.apply_local_interaction_sound_action(action, level_random) {
-            if let Some(audio_events) = audio_events.as_deref_mut() {
-                match effect {
-                    LocalInteractionSoundEffect::Positioned(state) => {
-                        audio_events.play_positioned_sound(&state);
-                    }
-                    LocalInteractionSoundEffect::Entity { state, position } => {
-                        audio_events.play_entity_sound(
-                            &state,
-                            position.map(|position| [position.x, position.y, position.z]),
-                        );
-                    }
-                }
-            }
-        }
+        apply_local_interaction_sound_action(world, action, level_random, audio_events);
     }
     if let Some(extra_swing) = success.extra_swing {
         queue_swing_command(world, counters, net_commands, extra_swing);
@@ -561,6 +550,41 @@ fn apply_local_interaction_success(
     world.set_local_using_item_with_hand(success.starts_using_item, hand);
     if success.swing_source == LocalInteractionSwingSource::Client {
         queue_swing_command(world, counters, net_commands, hand);
+    }
+}
+
+pub(crate) fn flush_local_interaction_sound_actions(
+    world: &mut WorldStore,
+    level_random: &mut LevelEventSoundRandomState,
+    audio_events: &mut Option<&mut dyn AudioEventSink>,
+) {
+    for action in world.take_pending_local_interaction_sound_actions() {
+        apply_local_interaction_sound_action(world, action, level_random, audio_events);
+    }
+}
+
+fn apply_local_interaction_sound_action(
+    world: &mut WorldStore,
+    action: bbb_world::LocalInteractionSoundAction,
+    level_random: &mut LevelEventSoundRandomState,
+    audio_events: &mut Option<&mut dyn AudioEventSink>,
+) {
+    let Some(effect) = world.apply_local_interaction_sound_action(action, level_random) else {
+        return;
+    };
+    let Some(audio_events) = audio_events.as_deref_mut() else {
+        return;
+    };
+    match effect {
+        LocalInteractionSoundEffect::Positioned(state) => {
+            audio_events.play_positioned_sound(&state);
+        }
+        LocalInteractionSoundEffect::Entity { state, position } => {
+            audio_events.play_entity_sound(
+                &state,
+                position.map(|position| [position.x, position.y, position.z]),
+            );
+        }
     }
 }
 
@@ -972,12 +996,12 @@ mod tests {
         VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
     };
     use bbb_protocol::item_types::{
-        VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_BONE_MEAL_ID, VANILLA_ITEM_BRUSH_ID,
-        VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID, VANILLA_ITEM_COMPASS_ID, VANILLA_ITEM_ENDER_PEARL_ID,
-        VANILLA_ITEM_FIREWORK_ROCKET_ID, VANILLA_ITEM_FIRE_CHARGE_ID,
-        VANILLA_ITEM_FLINT_AND_STEEL_ID, VANILLA_ITEM_GLASS_BOTTLE_ID, VANILLA_ITEM_GOAT_HORN_ID,
-        VANILLA_ITEM_POTION_ID, VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_SHIELD_ID,
-        VANILLA_ITEM_STONE_ID,
+        VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_ARROW_ID, VANILLA_ITEM_BONE_MEAL_ID,
+        VANILLA_ITEM_BOW_ID, VANILLA_ITEM_BRUSH_ID, VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID,
+        VANILLA_ITEM_COMPASS_ID, VANILLA_ITEM_ENDER_PEARL_ID, VANILLA_ITEM_FIREWORK_ROCKET_ID,
+        VANILLA_ITEM_FIRE_CHARGE_ID, VANILLA_ITEM_FLINT_AND_STEEL_ID, VANILLA_ITEM_GLASS_BOTTLE_ID,
+        VANILLA_ITEM_GOAT_HORN_ID, VANILLA_ITEM_POTION_ID, VANILLA_ITEM_RED_DYE_ID,
+        VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_SPYGLASS_ID, VANILLA_ITEM_STONE_ID,
     };
     use bbb_protocol::packets::{
         AddEntity, AdventureModePredicateDataSummary, AdventureModePredicateSummary, AttackEntity,
@@ -1609,6 +1633,265 @@ mod tests {
         assert!(world.client_audio().last_sound.is_none());
         assert_eq!(random.next_float(), expected_random.next_float());
         assert_eq!(world.next_sound_seed(), expected_next_seed);
+    }
+
+    #[test]
+    fn right_mouse_bow_use_and_release_follow_ammo_threshold_and_suppressed_sound() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        world.set_local_player_pose(LocalPlayerPoseState {
+            y_rot: 20.0,
+            x_rot: -10.0,
+            ..LocalPlayerPoseState::default()
+        });
+        world.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: "minecraft:item".to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: "minecraft:arrows".to_string(),
+                    entries: vec![VANILLA_ITEM_ARROW_ID],
+                }],
+            }],
+        });
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(VANILLA_ITEM_BOW_ID, 1),
+        });
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 9,
+            item: item_stack(VANILLA_ITEM_ARROW_ID, 4),
+        });
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+        let _discarded_pitch = 1.0 / (expected_random.next_float() * 0.4 + 1.2) + 0.1075 * 0.5;
+        let mut expected_seed_world = WorldStore::new();
+        let _discarded_seed = expected_seed_world.next_sound_seed();
+        let expected_next_seed = expected_seed_world.next_sound_seed();
+        let mut counters = NetCounters::default();
+        let mut audio = RecordingAudioSink::default();
+        let mut audio_events = Some(&mut audio as &mut dyn crate::audio_runtime::AudioEventSink);
+
+        handle_mouse_input_at_partial_tick_with_effects(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+            1.0,
+            &mut random,
+            &mut audio_events,
+        );
+        assert!(world.local_player().interaction.using_item);
+        assert_eq!(
+            world.local_player().interaction.using_item_hand,
+            Some(InteractionHand::MainHand)
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::UseItem(UseItemCommand {
+                packet: UseItem {
+                    hand: InteractionHand::MainHand,
+                    sequence: 1,
+                    y_rot: 20.0,
+                    x_rot: -10.0,
+                },
+                selected_hotbar_slot: 0,
+            })
+        );
+
+        world.advance_local_using_item_ticks(3);
+        handle_mouse_input_at_partial_tick_with_effects(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Released,
+            1.0,
+            &mut random,
+            &mut audio_events,
+        );
+        drop(audio_events);
+
+        assert!(!world.local_player().interaction.using_item);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::PlayerAction(PlayerAction {
+                action: PlayerActionKind::ReleaseUseItem,
+                pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+                direction: ProtocolDirection::Down,
+                sequence: 0,
+            })
+        );
+        assert!(rx.try_recv().is_err());
+        assert_eq!(counters.use_item_commands_queued, 1);
+        assert_eq!(counters.player_action_commands_queued, 1);
+        assert_eq!(counters.swing_commands_queued, 0);
+        assert_eq!(
+            world
+                .inventory()
+                .player_slots
+                .iter()
+                .find(|slot| slot.slot == 9)
+                .map(|slot| slot.item.count),
+            Some(4)
+        );
+        assert!(audio.positioned_sounds.is_empty());
+        assert!(audio.entity_sounds.is_empty());
+        assert_eq!(random.next_float(), expected_random.next_float());
+        assert_eq!(world.next_sound_seed(), expected_next_seed);
+    }
+
+    #[test]
+    fn bow_without_arrow_falls_through_to_offhand_spyglass_use() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        world.set_local_player_pose(LocalPlayerPoseState::default());
+        world.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: "minecraft:item".to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: "minecraft:arrows".to_string(),
+                    entries: vec![VANILLA_ITEM_ARROW_ID],
+                }],
+            }],
+        });
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(VANILLA_ITEM_BOW_ID, 1),
+        });
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+            item: item_stack(VANILLA_ITEM_SPYGLASS_ID, 1),
+        });
+        let mut counters = NetCounters::default();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut audio = RecordingAudioSink::default();
+        let mut audio_events = Some(&mut audio as &mut dyn crate::audio_runtime::AudioEventSink);
+
+        handle_mouse_input_at_partial_tick_with_effects(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+            1.0,
+            &mut random,
+            &mut audio_events,
+        );
+        drop(audio_events);
+
+        for (sequence, hand) in [
+            (1, InteractionHand::MainHand),
+            (2, InteractionHand::OffHand),
+        ] {
+            assert_eq!(
+                rx.try_recv().unwrap(),
+                NetCommand::UseItem(UseItemCommand {
+                    packet: UseItem {
+                        hand,
+                        sequence,
+                        y_rot: 0.0,
+                        x_rot: 0.0,
+                    },
+                    selected_hotbar_slot: 0,
+                })
+            );
+        }
+        assert!(rx.try_recv().is_err());
+        assert_eq!(counters.use_item_commands_queued, 2);
+        assert_eq!(counters.swing_commands_queued, 0);
+        assert_eq!(
+            world.local_player().interaction.using_item_hand,
+            Some(InteractionHand::OffHand)
+        );
+        assert_eq!(
+            audio.positioned_sounds[0].sound.location.as_deref(),
+            Some("minecraft:item.spyglass.use")
+        );
+    }
+
+    #[test]
+    fn right_mouse_spyglass_use_and_release_emit_ordered_local_sounds() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: ProtocolVec3d {
+                x: 1.5,
+                y: 64.0,
+                z: -2.25,
+            },
+            ..LocalPlayerPoseState::default()
+        });
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(VANILLA_ITEM_SPYGLASS_ID, 1),
+        });
+        let mut counters = NetCounters::default();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut audio = RecordingAudioSink::default();
+        let mut audio_events = Some(&mut audio as &mut dyn crate::audio_runtime::AudioEventSink);
+
+        for state in [ElementState::Pressed, ElementState::Released] {
+            handle_mouse_input_at_partial_tick_with_effects(
+                &mut input,
+                &mut world,
+                &mut counters,
+                &commands,
+                MouseButton::Right,
+                state,
+                1.0,
+                &mut random,
+                &mut audio_events,
+            );
+        }
+        drop(audio_events);
+
+        assert!(!world.local_player().interaction.using_item);
+        assert!(matches!(rx.try_recv().unwrap(), NetCommand::UseItem(_)));
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::PlayerAction(PlayerAction {
+                action: PlayerActionKind::ReleaseUseItem,
+                ..
+            })
+        ));
+        assert!(rx.try_recv().is_err());
+        assert_eq!(
+            audio
+                .positioned_sounds
+                .iter()
+                .map(|sound| sound.sound.location.as_deref())
+                .collect::<Vec<_>>(),
+            vec![
+                Some("minecraft:item.spyglass.use"),
+                Some("minecraft:item.spyglass.stop_using"),
+            ]
+        );
+        assert!(audio.positioned_sounds.iter().all(|sound| {
+            sound.source == "player"
+                && sound.position
+                    == ProtocolVec3d {
+                        x: 1.5,
+                        y: 64.0,
+                        z: -2.25,
+                    }
+                && sound.volume == 1.0
+                && sound.pitch == 1.0
+        }));
+        assert_ne!(
+            audio.positioned_sounds[0].seed,
+            audio.positioned_sounds[1].seed
+        );
+        assert!(audio.entity_sounds.is_empty());
     }
 
     #[test]

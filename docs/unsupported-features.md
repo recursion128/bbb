@@ -634,9 +634,9 @@ Movement:
   the rest of the GUI still renders.
 
 - Complete the remaining camera-FOV inputs beyond synchronized player abilities:
-  configurable base FOV/effect scale, bow-use/scoping zoom, and death/fluid
-  modifiers. Vanilla keeps `walkingSpeed` as the FOV ratio denominator; it does
-  not replace the separately synchronized movement-speed attribute base.
+  configurable base FOV/effect scale and death/fluid modifiers. Vanilla keeps
+  `walkingSpeed` as the FOV ratio denominator; it does not replace the separately
+  synchronized movement-speed attribute base.
 - Cover the remaining vanilla survival physics beyond the synchronized local
   movement cadence.
 - Cover the remaining vanilla voxel collision shapes.
@@ -666,9 +666,9 @@ Commands:
   from local vanilla classes. Entity, block, and inventory corrections remain
   server-authoritative.
 - Complete no-target `Item.use` prediction for the remaining source-derived
-  specialized override families: Boat/Bottle/Bow/Bucket/Bundle/Crossbow,
+  specialized override families: Boat/Bottle/Bucket/Bundle/Crossbow,
   EmptyMap/EnderEye/FireworkRocket/FishingRod/FoodOnAStick/KnowledgeBook,
-  PlaceOnWaterBlock/SpawnEgg/Spyglass/Trident and writable/written books.
+  PlaceOnWaterBlock/SpawnEgg/Trident and writable/written books.
   Override ownership must stay generated from local vanilla item classes instead
   of being inferred from component shape.
 
@@ -762,6 +762,11 @@ Environment:
 
 Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 
+- Render the first-person spyglass scope from
+  `textures/misc/spyglass_scope.png`, including the black outside mask and
+  `Gui.scopeScale` interpolation. The interpolation needs a deterministic
+  GUI-frame `getGameTimeDeltaTicks` owner rather than a simulation-tick
+  approximation.
 - Preserve full trusted Components in the TabList header/footer and complete
   remaining player-list presentation parity: encrypted-session player heads,
   narrator visibility announcements, and vanilla ping sprites.

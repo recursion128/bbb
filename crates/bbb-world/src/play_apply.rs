@@ -1717,8 +1717,8 @@ mod tests {
         vanilla_entity_metadata_type_death_sound_policy, VanillaEntityDeathSoundPolicy,
     };
     use crate::{
-        DamageTypeEffects, ExplosionEventState, LocalPlayerPoseState, RegistryPacketEntry,
-        DAMAGE_TYPE_REGISTRY,
+        DamageTypeEffects, ExplosionEventState, LocalInteractionSoundAction, LocalPlayerPoseState,
+        RegistryPacketEntry, DAMAGE_TYPE_REGISTRY,
     };
     use bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID;
     use bbb_protocol::entity_data_serializers::{
@@ -1748,7 +1748,10 @@ mod tests {
         VANILLA_ENTITY_TYPE_ZOGLIN_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
         VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
     };
-    use bbb_protocol::item_types::{VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_STONE_ID};
+    use bbb_protocol::item_types::{
+        VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_SPYGLASS_ID, VANILLA_ITEM_STONE_ID,
+    };
+    use bbb_protocol::packets::SetPlayerInventory;
     use bbb_protocol::particle_types::{
         VANILLA_PARTICLE_TYPE_CLOUD_ID, VANILLA_PARTICLE_TYPE_EXPLOSION_ID,
     };
@@ -6479,6 +6482,14 @@ mod tests {
                 Vec3d::default(),
             ));
         }
+        store.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: ItemStackSummary {
+                item_id: Some(VANILLA_ITEM_SPYGLASS_ID),
+                count: 1,
+                component_patch: Default::default(),
+            },
+        });
         store.set_local_using_item(true);
         store.advance_local_using_item_ticks(4);
         let mut random = LevelEventSoundRandomState::with_seed(0);
@@ -6501,6 +6512,10 @@ mod tests {
         assert_eq!(store.local_player().interaction.using_item_ticks, 0);
         assert_eq!(store.probe_entity(7).unwrap().last_event_id, Some(9));
         assert_eq!(store.probe_entity(8).unwrap().last_event_id, Some(9));
+        assert_eq!(
+            store.take_pending_local_interaction_sound_actions(),
+            vec![LocalInteractionSoundAction::SpyglassStopUsing]
+        );
     }
 
     #[test]

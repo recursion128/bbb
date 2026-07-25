@@ -53,6 +53,7 @@ mod bone_meal;
 mod equippable;
 mod ignition;
 mod instrument;
+mod item_use_fov;
 mod potion;
 mod thrown_projectile;
 
@@ -121,6 +122,9 @@ pub enum LocalInteractionSwingSource {
 pub enum LocalInteractionSoundAction {
     FlintAndSteelUse { pos: BlockPos },
     InstrumentUse { hand: InteractionHand },
+    SpyglassUse,
+    SpyglassStopUsing,
+    SuppressedBowRelease { power_bits: u32 },
     SuppressedProjectileThrow,
     SuppressedFireChargeUse,
     SuppressedLodestoneCompassUse,
@@ -150,6 +154,7 @@ pub enum LocalItemUsePrediction {
     UnsupportedOverride(VanillaItemUseOverride),
     UnknownItemType(Option<i32>),
     MissingComponentValue(i32),
+    MissingRegistryTag(&'static str),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -288,6 +293,16 @@ impl LocalInteractionSuccess {
             sound_action: Some(LocalInteractionSoundAction::SuppressedProjectileThrow),
         }
     }
+
+    const fn spyglass_use() -> Self {
+        Self {
+            swing_source: LocalInteractionSwingSource::None,
+            was_item_interaction: true,
+            starts_using_item: true,
+            extra_swing: None,
+            sound_action: Some(LocalInteractionSoundAction::SpyglassUse),
+        }
+    }
 }
 
 impl WorldStore {
@@ -312,6 +327,10 @@ impl WorldStore {
                 VanillaItemUseOverride::InstrumentItem => {
                     self.predict_local_instrument_item_use(hand, &stack)
                 }
+                VanillaItemUseOverride::BowItem => self.predict_local_bow_item_use(),
+                VanillaItemUseOverride::SpyglassItem => LocalItemUsePrediction::Result(
+                    LocalInteractionResult::Success(LocalInteractionSuccess::spyglass_use()),
+                ),
                 VanillaItemUseOverride::EggItem
                 | VanillaItemUseOverride::EnderpearlItem
                 | VanillaItemUseOverride::ExperienceBottleItem

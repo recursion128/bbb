@@ -271,7 +271,8 @@ use minecart_command_block::MinecartCommandBlockEditorInputState;
 pub(crate) use mouse::handle_mouse_input_at_partial_tick;
 pub(crate) use mouse::{
     advance_destroying_block_at_partial_tick, advance_using_item_at_partial_tick_with_effects,
-    handle_mouse_input_at_partial_tick_with_effects, handle_mouse_motion, handle_mouse_wheel,
+    flush_local_interaction_sound_actions, handle_mouse_input_at_partial_tick_with_effects,
+    handle_mouse_motion, handle_mouse_wheel,
 };
 #[cfg(test)]
 pub(crate) use movement::advance_player_input;
@@ -9974,12 +9975,13 @@ pub(crate) fn release_active_input(
             0,
         );
     }
-    if world.take_local_using_item() {
+    if world.local_player().interaction.using_item {
         queue_zero_pos_player_action_command(
             counters,
             net_commands,
             PlayerActionKind::ReleaseUseItem,
         );
+        world.release_local_using_item();
     }
     if world.local_player_root_boat_vehicle_id().is_some() {
         queue_paddle_boat_command(counters, net_commands, false, false);

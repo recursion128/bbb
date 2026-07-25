@@ -124,6 +124,7 @@ use crate::{
         advance_destroying_block_at_partial_tick, advance_player_input_for_client_ticks,
         advance_using_item_at_partial_tick_with_effects,
         death_screen::DeathScreenRuntime,
+        flush_local_interaction_sound_actions,
         game_event_screen::{DemoHelpFocus, DemoLinkConfirmationFocus, GameEventScreenRuntime},
         inventory_screen_layout_for_surface, inventory_screen_selected_hotbar_slot_id,
         pause_screen_advancements_button_contains, pause_screen_disconnect_button_contains,
@@ -1326,7 +1327,7 @@ impl CameraFovTickState {
     fn advance_for_world(&mut self, ticks: u32, world: &WorldStore) {
         for _ in 0..ticks {
             let target = if world.local_player().camera.follows_player {
-                world.local_player_abilities_fov_modifier()
+                world.local_player_camera_fov_modifier(true, 1.0)
             } else {
                 1.0
             };
@@ -2595,6 +2596,7 @@ pub(crate) fn advance_simulation(
         &mut audio_events,
     );
     world.advance_local_using_item_ticks(advanced_ticks);
+    flush_local_interaction_sound_actions(world, level_event_sound_random, &mut audio_events);
     let particle_camera_pose = camera_pose_from_world_at_partial_tick(world, entity_partial_tick);
     let particle_scope_context =
         particle_local_player_scope_context(world, item_runtime.as_ref(), particle_camera_pose);

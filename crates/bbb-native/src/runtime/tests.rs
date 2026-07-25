@@ -37,6 +37,7 @@ use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPE_PLAYER_ID,
 };
 use bbb_protocol::heightmap_types::VANILLA_HEIGHTMAP_TYPES;
+use bbb_protocol::item_types::{VANILLA_ITEM_BOW_ID, VANILLA_ITEM_SPYGLASS_ID};
 use bbb_protocol::menu_types::{
     VANILLA_MENU_TYPE_ANVIL_ID, VANILLA_MENU_TYPE_BEACON_ID, VANILLA_MENU_TYPE_BREWING_STAND_ID,
     VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID, VANILLA_MENU_TYPE_CRAFTER_3X3_ID,
@@ -2208,6 +2209,35 @@ fn camera_fov_tick_state_eases_player_abilities_modifier_like_vanilla() {
     assert!(world.apply_set_camera(bbb_protocol::packets::SetCamera { camera_id: 100 }));
     fov.advance_for_world(1, &world);
     assert!((fov.fov_degrees(1.0) - 63.4375).abs() < 1.0e-6);
+
+    assert!(world.apply_set_camera(bbb_protocol::packets::SetCamera { camera_id: 42 }));
+    world.apply_player_abilities(bbb_protocol::packets::PlayerAbilities {
+        invulnerable: false,
+        flying: false,
+        can_fly: false,
+        instabuild: false,
+        flying_speed: 0.05,
+        walking_speed: 0.1,
+    });
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: item_stack(VANILLA_ITEM_BOW_ID, 1),
+    });
+    world.set_local_using_item_with_hand(true, InteractionHand::MainHand);
+    world.advance_local_using_item_ticks(10);
+    let mut bow_fov = CameraFovTickState::default();
+    bow_fov.advance_for_world(1, &world);
+    assert!((bow_fov.fov_degrees(1.0) - 68.6875).abs() < 1.0e-6);
+
+    world.take_local_using_item();
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: item_stack(VANILLA_ITEM_SPYGLASS_ID, 1),
+    });
+    world.set_local_using_item_with_hand(true, InteractionHand::MainHand);
+    let mut spyglass_fov = CameraFovTickState::default();
+    spyglass_fov.advance_for_world(1, &world);
+    assert!((spyglass_fov.fov_degrees(1.0) - 38.5).abs() < 1.0e-6);
 }
 
 #[test]

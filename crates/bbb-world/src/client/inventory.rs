@@ -1158,6 +1158,21 @@ impl InventoryState {
         }
     }
 
+    pub(crate) fn local_player_has_item_in_tag(
+        &self,
+        ctx: InventoryCtx<'_>,
+        tag: &str,
+    ) -> Option<bool> {
+        let item_ids = ctx.registries.holder_ids_for_tag("minecraft:item", tag)?;
+        Some(
+            (0..=VANILLA_PLAYER_INVENTORY_SADDLE_SLOT)
+                .filter_map(|slot| self.local_player_inventory_item(slot))
+                .filter(|item| item_stack_is_non_empty(item))
+                .filter_map(|item| item.item_id)
+                .any(|item_id| item_ids.contains(&item_id)),
+        )
+    }
+
     pub(crate) fn local_selected_main_hand_has_piercing_weapon(
         &self,
         ctx: InventoryCtx<'_>,
@@ -2712,6 +2727,11 @@ impl WorldStore {
     pub fn local_item_in_hand(&self, hand: InteractionHand) -> Option<&ProtocolItemStackSummary> {
         self.inventory
             .local_item_in_hand(inventory_ctx!(self), hand)
+    }
+
+    pub(crate) fn local_player_has_item_in_tag(&self, tag: &str) -> Option<bool> {
+        self.inventory
+            .local_player_has_item_in_tag(inventory_ctx!(self), tag)
     }
 
     /// Vanilla `Consumable.canConsume`: FOOD only gates an effective

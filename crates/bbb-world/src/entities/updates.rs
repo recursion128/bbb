@@ -130,7 +130,7 @@ impl WorldStore {
                     // `ServerPlayer.completeUsingItem` sends event 9 only to the completing
                     // player's connection. The authoritative stack/effect changes arrive through
                     // their own packets; this event closes the local use/movement/render gates.
-                    let _ = self.take_local_using_item();
+                    let _ = self.finish_local_using_item();
                 }
                 Some(VanillaEntityEventKind::PlayerEnableReducedDebug) => {
                     let _ = self.set_local_player_reduced_debug_info_from_entity_event(
