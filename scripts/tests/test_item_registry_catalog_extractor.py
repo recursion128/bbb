@@ -14,6 +14,7 @@ from item_registry_catalog_extractor import (  # noqa: E402
     extract_item_registry_catalog,
     extract_item_use_on_override_owners,
     extract_item_use_override_owners,
+    extract_tool_use_on_catalog,
     item_factory_class,
 )
 from vanilla_java_source import parse_source  # noqa: E402
@@ -157,6 +158,145 @@ class Items {
             foods(),
         ).declarations[0]["initializer"]
         self.assertEqual(compact_fact, spaced_fact)
+
+    def test_extracts_tool_use_on_transforms_and_predicates(self) -> None:
+        declarations = [
+            {
+                "field": field,
+                "initializer": {"canonical": field},
+            }
+            for field in [
+                "LOG",
+                "STRIPPED_LOG",
+                "COPPER",
+                "EXPOSED_COPPER",
+                "WAXED_COPPER",
+                "GRASS_BLOCK",
+                "DIRT",
+                "FARMLAND",
+                "DIRT_PATH",
+            ]
+        ]
+        axe = parse(
+            "net/minecraft/world/item/AxeItem.java",
+            """
+package net.minecraft.world.item;
+class AxeItem {
+  static final Map<Block, Block> STRIPPABLES =
+      ImmutableMap.<Block, Block>builder()
+          .put(Blocks.LOG, Blocks.STRIPPED_LOG).build();
+}
+""",
+        )
+        hoe = parse(
+            "net/minecraft/world/item/HoeItem.java",
+            """
+package net.minecraft.world.item;
+class HoeItem {
+  static final Map<Block, Pair<Predicate<UseOnContext>, Consumer<UseOnContext>>> TILLABLES =
+      Maps.newHashMap(ImmutableMap.of(
+          Blocks.GRASS_BLOCK,
+          Pair.of(HoeItem::onlyIfAirAbove,
+              changeIntoState(Blocks.FARMLAND.defaultBlockState())),
+          Blocks.DIRT,
+          Pair.of(context -> true,
+              changeIntoStateAndDropItem(
+                  Blocks.DIRT.defaultBlockState(), Items.ROOTS))));
+}
+""",
+        )
+        shovel = parse(
+            "net/minecraft/world/item/ShovelItem.java",
+            """
+package net.minecraft.world.item;
+class ShovelItem {
+  static final Map<Block, BlockState> FLATTENABLES =
+      ImmutableMap.<Block, BlockState>builder()
+          .put(Blocks.GRASS_BLOCK, Blocks.DIRT_PATH.defaultBlockState()).build();
+}
+""",
+        )
+        honeycomb = parse(
+            "net/minecraft/world/item/HoneycombItem.java",
+            """
+package net.minecraft.world.item;
+class HoneycombItem {
+  static final Supplier<BiMap<Block, Block>> WAXABLES =
+      Suppliers.memoize(() -> ImmutableBiMap.<Block, Block>builder()
+          .put(Blocks.COPPER, Blocks.WAXED_COPPER).build());
+}
+""",
+        )
+        weathering = parse(
+            "net/minecraft/world/level/block/WeatheringCopper.java",
+            """
+package net.minecraft.world.level.block;
+interface WeatheringCopper {
+  Supplier<BiMap<Block, Block>> NEXT_BY_BLOCK =
+      Suppliers.memoize(() -> ImmutableBiMap.<Block, Block>builder()
+          .put(Blocks.COPPER, Blocks.EXPOSED_COPPER).build());
+}
+""",
+        )
+        weathering_blocks = parse(
+            "net/minecraft/world/level/block/WeatheringCopperBlocks.java",
+            """
+package net.minecraft.world.level.block;
+record WeatheringCopperBlocks(
+    Block unaffected, Block exposed, Block weathered, Block oxidized,
+    Block waxed, Block waxedExposed, Block waxedWeathered, Block waxedOxidized) {
+  ImmutableBiMap<Block, Block> weatheringMapping() {
+    return ImmutableBiMap.of(
+        this.unaffected, this.exposed, this.exposed, this.weathered,
+        this.weathered, this.oxidized);
+  }
+  ImmutableBiMap<Block, Block> waxedMapping() {
+    return ImmutableBiMap.of(
+        this.unaffected, this.waxed, this.exposed, this.waxedExposed,
+        this.weathered, this.waxedWeathered,
+        this.oxidized, this.waxedOxidized);
+  }
+}
+""",
+        )
+        self.assertEqual(
+            extract_tool_use_on_catalog(
+                declarations,
+                axe,
+                hoe,
+                shovel,
+                honeycomb,
+                weathering,
+                weathering_blocks,
+            ),
+            {
+                "axe_strippables": [{"source": "LOG", "target": "STRIPPED_LOG"}],
+                "axe_scrapeables": [
+                    {"source": "EXPOSED_COPPER", "target": "COPPER"}
+                ],
+                "axe_wax_off": [
+                    {"source": "WAXED_COPPER", "target": "COPPER"}
+                ],
+                "honeycomb_waxables": [
+                    {"source": "COPPER", "target": "WAXED_COPPER"}
+                ],
+                "hoe_tillables": [
+                    {
+                        "source": "DIRT",
+                        "target": "DIRT",
+                        "requires_air_above": False,
+                    },
+                    {
+                        "source": "GRASS_BLOCK",
+                        "target": "FARMLAND",
+                        "requires_air_above": True,
+                    },
+                ],
+                "shovel_flattenables": [
+                    {"source": "GRASS_BLOCK", "target": "DIRT_PATH"}
+                ],
+            },
+        )
 
     def test_rejects_non_call_item_initializer(self) -> None:
         items = parse(

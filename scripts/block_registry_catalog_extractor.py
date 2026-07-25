@@ -267,6 +267,54 @@ def extract_block_use_without_item_override_owners(
     )
 
 
+def extract_block_subclass_membership(
+    declarations: Sequence[dict],
+    block_class_sources: Sequence[JavaSource],
+    target_fqcn: str,
+) -> dict[str, bool]:
+    """Resolve each registered factory class against one authoritative base class."""
+    types = [item for source in block_class_sources for item in source.types]
+    resolve_class_hierarchy(types)
+    by_fqcn = {item.fqcn: item for item in types}
+    by_simple_name: dict[str, list] = {}
+    for item in types:
+        by_simple_name.setdefault(item.simple_name, []).append(item)
+    if target_fqcn not in by_fqcn:
+        raise BlockRegistryCatalogExtractionError(
+            f"unresolved block membership target {target_fqcn}"
+        )
+
+    memberships: dict[str, bool] = {}
+    for factory_class in sorted(
+        {block_factory_class(declaration) for declaration in declarations}
+    ):
+        matches = by_simple_name.get(factory_class, [])
+        if len(matches) != 1:
+            raise BlockRegistryCatalogExtractionError(
+                f"expected exactly one block class {factory_class}, got "
+                f"{len(matches)}"
+            )
+        block_type = matches[0]
+        seen = set()
+        while block_type.fqcn not in seen:
+            seen.add(block_type.fqcn)
+            if block_type.fqcn == target_fqcn:
+                memberships[factory_class] = True
+                break
+            if (
+                block_type.superclass is None
+                or block_type.superclass not in by_fqcn
+            ):
+                memberships[factory_class] = False
+                break
+            block_type = by_fqcn[block_type.superclass]
+        else:
+            raise BlockRegistryCatalogExtractionError(
+                f"superclass cycle while resolving {factory_class} membership"
+            )
+    return memberships
+
+
 def resolve_block_resource_path(
     source: JavaSource,
     expression: JavaExpression,

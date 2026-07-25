@@ -192,6 +192,329 @@ def extract_item_interact_living_entity_override_owners(
     )
 
 
+def _unique_field(source: JavaSource, owner: str, name: str):
+    fields = [
+        field
+        for field in source.fields_for(owner)
+        if field.name == name and field.initializer is not None
+    ]
+    if len(fields) != 1:
+        raise ItemRegistryCatalogExtractionError(
+            f"{source.relative_path}: expected exactly one {owner}.{name} field"
+        )
+    return fields[0]
+
+
+def _calls_within(source: JavaSource, owner: str, span, name: str):
+    return [
+        call
+        for call in source.calls_for(owner)
+        if call.name == name
+        and span.start_byte <= call.span.start_byte
+        and call.span.end_byte <= span.end_byte
+    ]
+
+
+def _fact_field(fact: dict, owner: str) -> str | None:
+    if fact.get("kind") != "field_access":
+        return None
+    object_fact = fact.get("object")
+    if object_fact is None or object_fact.get("canonical") != owner:
+        return None
+    return fact.get("name")
+
+
+def _block_constant(source: JavaSource, expression: JavaExpression) -> str | None:
+    fact = expression_fact(source, expression)
+    direct = _fact_field(fact, "Blocks")
+    if direct is not None:
+        return direct
+    if fact.get("kind") == "method_invocation" and fact.get("name") == "defaultBlockState":
+        object_fact = fact.get("object")
+        if object_fact is not None:
+            return _fact_field(object_fact, "Blocks")
+    return None
+
+
+def _map_put_pairs(source: JavaSource, owner: str, field_name: str):
+    field = _unique_field(source, owner, field_name)
+    pairs = []
+    for call in _calls_within(source, owner, field.initializer.span, "put"):
+        if len(call.arguments) != 2:
+            _fail(source, field.initializer, "map put must have two arguments")
+        source_block = _block_constant(source, call.arguments[0])
+        target_block = _block_constant(source, call.arguments[1])
+        if source_block is None or target_block is None:
+            _fail(source, field.initializer, "map put must use Blocks constants")
+        pairs.append((source_block, target_block))
+    return field, pairs
+
+
+def _camel_to_snake(value: str) -> str:
+    result = []
+    for character in value:
+        if character.isupper() and result:
+            result.append("_")
+        result.append(character.lower())
+    return "".join(result)
+
+
+def _weathering_group_relations(
+    source: JavaSource,
+    method_name: str,
+) -> list[tuple[str, str]]:
+    owner = "net.minecraft.world.level.block.WeatheringCopperBlocks"
+    methods = [
+        method
+        for method in source.methods_for(owner)
+        if method.name == method_name and method.body is not None
+    ]
+    if len(methods) != 1:
+        raise ItemRegistryCatalogExtractionError(
+            f"{source.relative_path}: expected exactly one "
+            f"WeatheringCopperBlocks.{method_name}"
+        )
+    method = methods[0]
+    calls = _calls_within(source, owner, method.body, "of")
+    calls = [call for call in calls if len(call.arguments) >= 2]
+    if len(calls) != 1 or len(calls[0].arguments) % 2:
+        raise ItemRegistryCatalogExtractionError(
+            f"{source.relative_path}: {method_name} must return one even map"
+        )
+    components = []
+    for argument in calls[0].arguments:
+        fact = expression_fact(source, argument)
+        component = _fact_field(fact, "this")
+        if component is None:
+            _fail(source, argument, f"{method_name} must use record components")
+        components.append(_camel_to_snake(component))
+    return list(zip(components[::2], components[1::2], strict=True))
+
+
+def _group_mapping_calls(
+    source: JavaSource,
+    owner: str,
+    field,
+    method_name: str,
+) -> list[str]:
+    groups = []
+    for call in _calls_within(source, owner, field.initializer.span, "putAll"):
+        if len(call.arguments) != 1:
+            _fail(source, field.initializer, "putAll must have one argument")
+        fact = expression_fact(source, call.arguments[0])
+        if fact.get("kind") != "method_invocation" or fact.get("name") != method_name:
+            _fail(
+                source,
+                call.arguments[0],
+                f"unsupported putAll in {field.name}; expected {method_name}",
+            )
+        object_fact = fact.get("object")
+        group = _fact_field(object_fact or {}, "Blocks")
+        if group is None:
+            _fail(source, call.arguments[0], f"{method_name} must target Blocks group")
+        groups.append(group)
+    return groups
+
+
+def _expanded_group_pairs(
+    declarations: Sequence[dict],
+    group: str,
+    relations: Sequence[tuple[str, str]],
+) -> list[tuple[str, str]]:
+    base = next(
+        (declaration for declaration in declarations if declaration["field"] == group),
+        None,
+    )
+    if base is None or base.get("group_variant") is None:
+        raise ItemRegistryCatalogExtractionError(
+            f"unresolved WeatheringCopperBlocks group Blocks.{group}"
+        )
+    canonical = base["initializer"]["canonical"]
+    variants = {
+        declaration["group_variant"]: declaration["field"]
+        for declaration in declarations
+        if declaration.get("group_variant") is not None
+        and declaration["initializer"]["canonical"] == canonical
+    }
+    pairs = []
+    for source_variant, target_variant in relations:
+        if source_variant not in variants or target_variant not in variants:
+            raise ItemRegistryCatalogExtractionError(
+                f"Blocks.{group} lacks {source_variant}->{target_variant}"
+            )
+        pairs.append((variants[source_variant], variants[target_variant]))
+    return pairs
+
+
+def _validate_transform_pairs(
+    declarations: Sequence[dict],
+    name: str,
+    pairs: Sequence[tuple[str, str]],
+) -> list[dict[str, str]]:
+    block_fields = {declaration["field"] for declaration in declarations}
+    seen = set()
+    values = []
+    for source, target in pairs:
+        if source not in block_fields or target not in block_fields:
+            raise ItemRegistryCatalogExtractionError(
+                f"{name}: unresolved Blocks constant {source}->{target}"
+            )
+        if source in seen:
+            raise ItemRegistryCatalogExtractionError(
+                f"{name}: duplicate source Blocks.{source}"
+            )
+        seen.add(source)
+        values.append({"source": source, "target": target})
+    return sorted(values, key=lambda entry: entry["source"])
+
+
+def extract_tool_use_on_catalog(
+    block_declarations: Sequence[dict],
+    axe_source: JavaSource,
+    hoe_source: JavaSource,
+    shovel_source: JavaSource,
+    honeycomb_source: JavaSource,
+    weathering_copper_source: JavaSource,
+    weathering_copper_blocks_source: JavaSource,
+) -> dict[str, list[dict]]:
+    """Extract source-owned tool block transforms and client-result predicates."""
+    axe_owner = "net.minecraft.world.item.AxeItem"
+    strip_field, strip_pairs = _map_put_pairs(
+        axe_source, axe_owner, "STRIPPABLES"
+    )
+
+    weather_owner = "net.minecraft.world.level.block.WeatheringCopper"
+    weather_field, weather_next_pairs = _map_put_pairs(
+        weathering_copper_source, weather_owner, "NEXT_BY_BLOCK"
+    )
+    weather_relations = _weathering_group_relations(
+        weathering_copper_blocks_source, "weatheringMapping"
+    )
+    for group in _group_mapping_calls(
+        weathering_copper_source,
+        weather_owner,
+        weather_field,
+        "weatheringMapping",
+    ):
+        weather_next_pairs.extend(
+            _expanded_group_pairs(block_declarations, group, weather_relations)
+        )
+
+    honey_owner = "net.minecraft.world.item.HoneycombItem"
+    wax_field, wax_pairs = _map_put_pairs(
+        honeycomb_source, honey_owner, "WAXABLES"
+    )
+    wax_relations = _weathering_group_relations(
+        weathering_copper_blocks_source, "waxedMapping"
+    )
+    for group in _group_mapping_calls(
+        honeycomb_source, honey_owner, wax_field, "waxedMapping"
+    ):
+        wax_pairs.extend(
+            _expanded_group_pairs(block_declarations, group, wax_relations)
+        )
+
+    shovel_owner = "net.minecraft.world.item.ShovelItem"
+    _, shovel_pairs = _map_put_pairs(
+        shovel_source, shovel_owner, "FLATTENABLES"
+    )
+
+    hoe_owner = "net.minecraft.world.item.HoeItem"
+    hoe_field = _unique_field(hoe_source, hoe_owner, "TILLABLES")
+    map_calls = [
+        call
+        for call in _calls_within(
+            hoe_source, hoe_owner, hoe_field.initializer.span, "of"
+        )
+        if expression_fact(hoe_source, hoe_source.expression(call.node))
+        .get("object", {})
+        .get("canonical")
+        == "ImmutableMap"
+    ]
+    if len(map_calls) != 1 or len(map_calls[0].arguments) % 2:
+        _fail(hoe_source, hoe_field.initializer, "TILLABLES must contain one even map")
+    hoe_entries = []
+    for source_expression, pair_expression in zip(
+        map_calls[0].arguments[::2],
+        map_calls[0].arguments[1::2],
+        strict=True,
+    ):
+        source_block = _block_constant(hoe_source, source_expression)
+        pair_fact = expression_fact(hoe_source, pair_expression)
+        if (
+            source_block is None
+            or pair_fact.get("kind") != "method_invocation"
+            or pair_fact.get("name") != "of"
+            or pair_fact.get("object", {}).get("canonical") != "Pair"
+            or len(pair_fact.get("arguments", [])) != 2
+        ):
+            _fail(hoe_source, pair_expression, "invalid TILLABLES entry")
+        predicate, action = pair_fact["arguments"]
+        predicate_name = predicate.get("canonical")
+        if predicate_name == "HoeItem::onlyIfAirAbove":
+            requires_air_above = True
+        elif predicate.get("kind") == "lambda_expression" and predicate_name == "context -> true":
+            requires_air_above = False
+        else:
+            _fail(hoe_source, pair_expression, "unsupported TILLABLES predicate")
+        if (
+            action.get("kind") != "method_invocation"
+            or action.get("name")
+            not in {"changeIntoState", "changeIntoStateAndDropItem"}
+            or not action.get("arguments")
+        ):
+            _fail(hoe_source, pair_expression, "unsupported TILLABLES action")
+        target_fact = action["arguments"][0]
+        target = _fact_field(target_fact.get("object", {}), "Blocks")
+        if (
+            target_fact.get("kind") != "method_invocation"
+            or target_fact.get("name") != "defaultBlockState"
+            or target is None
+        ):
+            _fail(hoe_source, pair_expression, "TILLABLES target is not a default block")
+        hoe_entries.append(
+            {
+                "source": source_block,
+                "target": target,
+                "requires_air_above": requires_air_above,
+            }
+        )
+
+    validated_hoe = _validate_transform_pairs(
+        block_declarations,
+        "hoe_tillables",
+        [(entry["source"], entry["target"]) for entry in hoe_entries],
+    )
+    hoe_predicates = {
+        entry["source"]: entry["requires_air_above"] for entry in hoe_entries
+    }
+    for entry in validated_hoe:
+        entry["requires_air_above"] = hoe_predicates[entry["source"]]
+
+    return {
+        "axe_strippables": _validate_transform_pairs(
+            block_declarations, "axe_strippables", strip_pairs
+        ),
+        "axe_scrapeables": _validate_transform_pairs(
+            block_declarations,
+            "axe_scrapeables",
+            [(target, source) for source, target in weather_next_pairs],
+        ),
+        "axe_wax_off": _validate_transform_pairs(
+            block_declarations,
+            "axe_wax_off",
+            [(target, source) for source, target in wax_pairs],
+        ),
+        "honeycomb_waxables": _validate_transform_pairs(
+            block_declarations, "honeycomb_waxables", wax_pairs
+        ),
+        "hoe_tillables": validated_hoe,
+        "shovel_flattenables": _validate_transform_pairs(
+            block_declarations, "shovel_flattenables", shovel_pairs
+        ),
+    }
+
+
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     span = expression.span
     raise ItemRegistryCatalogExtractionError(

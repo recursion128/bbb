@@ -361,6 +361,15 @@ impl RegistrySet {
             .map(|state| state.id)
     }
 
+    pub(crate) fn maximum_numeric_block_property_value(
+        &self,
+        name: &str,
+        property: &str,
+    ) -> Option<i32> {
+        self.block_states
+            .maximum_numeric_block_property_value(name, property)
+    }
+
     pub fn block_state_count(&self) -> usize {
         self.block_states.len()
     }

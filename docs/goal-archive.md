@@ -482,3 +482,6 @@
 - **2026-07-23（共享实体剪刀交互工程关闭）**：`Entity` 的拴绳连接与 Mob
   装备剪除现按 32×32×32 邻域、八槽顺序、动态 `PREVENT_ARMOR_CHANGE`、创造/载具/
   潜行条件执行本地 canonical 预测；默认可剪装备由 `Items.java` 派生并随资源重载发布。
+- **2026-07-23（工具 useOn 预测工程关闭）**：斧、锄、铲、蜂蜜脾与剪刀的
+  方块变换、判定和植物头部成员改由 Vanilla Tree-sitter 目录派生；方块命中面、
+  prediction sequence、本地方块/物品突变、冒险与创造门控贯通 world/native。

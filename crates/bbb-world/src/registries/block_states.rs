@@ -111,6 +111,21 @@ impl BlockStateRegistry {
         properties
     }
 
+    pub(crate) fn maximum_numeric_block_property_value(
+        &self,
+        name: &str,
+        property: &str,
+    ) -> Option<i32> {
+        self.block_property_values(name)
+            .get(property)?
+            .iter()
+            .map(|value| value.parse::<i32>())
+            .collect::<Result<Vec<_>, _>>()
+            .ok()?
+            .into_iter()
+            .max()
+    }
+
     pub(crate) fn compare_block_property_values(
         &self,
         name: &str,

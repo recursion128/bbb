@@ -1273,6 +1273,37 @@ impl InventoryState {
         true
     }
 
+    pub(crate) fn shrink_local_item_in_hand(
+        &mut self,
+        ctx: InventoryCtx<'_>,
+        counters: &mut WorldCounters,
+        hand: InteractionHand,
+        amount: i32,
+    ) -> bool {
+        if amount <= 0 {
+            return true;
+        }
+        let slot_id = match hand {
+            InteractionHand::MainHand => {
+                let selected_slot = ctx.local_player.selected_hotbar_slot;
+                if selected_slot > 8 {
+                    return false;
+                }
+                i32::from(selected_slot)
+            }
+            InteractionHand::OffHand => VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+        };
+        let mut slot = self.player_inventory_slot(slot_id);
+        if item_stack_is_empty(&slot.item) || slot.item.count < amount {
+            return false;
+        }
+        slot.item.count -= amount;
+        normalize_item_stack(&mut slot.item);
+        self.set_player_inventory_slot_and_menu_slot(slot);
+        self.update_inventory_slot_count(counters);
+        true
+    }
+
     pub(crate) fn set_local_merchant_selected_offer(
         &mut self,
         ctx: InventoryCtx<'_>,
@@ -2488,6 +2519,15 @@ impl WorldStore {
             inventory_ctx!(self),
             &mut self.counters,
             all,
+        )
+    }
+
+    pub(crate) fn shrink_local_item_in_hand(&mut self, hand: InteractionHand, amount: i32) -> bool {
+        self.inventory.shrink_local_item_in_hand(
+            inventory_ctx!(self),
+            &mut self.counters,
+            hand,
+            amount,
         )
     }
 

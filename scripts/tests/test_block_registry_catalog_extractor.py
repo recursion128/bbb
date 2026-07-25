@@ -12,6 +12,7 @@ from block_registry_catalog_extractor import (  # noqa: E402
     BlockRegistryCatalogExtractionError,
     block_factory_class,
     extract_block_registry_catalog,
+    extract_block_subclass_membership,
     extract_block_use_item_on_override_owners,
     extract_block_use_without_item_override_owners,
 )
@@ -183,7 +184,7 @@ class Block extends BlockBehaviour {}
                 "net/minecraft/world/level/block/AirBlock.java",
                 """
 package net.minecraft.world.level.block;
-class AirBlock extends Block {}
+class AirBlock extends GrowingPlantHeadBlock {}
 """,
             ),
             parse(
@@ -205,6 +206,13 @@ class StairBlock extends Block {
                 """
 package net.minecraft.world.level.block;
 class ChainBlock extends Block {}
+""",
+            ),
+            parse(
+                "net/minecraft/world/level/block/GrowingPlantHeadBlock.java",
+                """
+package net.minecraft.world.level.block;
+class GrowingPlantHeadBlock extends Block {}
 """,
             ),
             parse(
@@ -241,6 +249,20 @@ class WeatheringCopperChainBlock extends ChainBlock {
                 "ChainBlock": None,
                 "StairBlock": "StairBlock",
                 "WeatheringCopperChainBlock": None,
+            },
+        )
+        self.assertEqual(
+            extract_block_subclass_membership(
+                declarations,
+                sources,
+                "net.minecraft.world.level.block.GrowingPlantHeadBlock",
+            ),
+            {
+                "AirBlock": True,
+                "Block": False,
+                "ChainBlock": False,
+                "StairBlock": False,
+                "WeatheringCopperChainBlock": False,
             },
         )
 

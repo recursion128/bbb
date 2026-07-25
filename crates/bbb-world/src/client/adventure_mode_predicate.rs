@@ -47,8 +47,21 @@ impl WorldStore {
         &self,
         pos: BlockPos,
     ) -> bool {
-        self.local_selected_main_hand_adventure_mode_predicate_matches(
+        self.local_item_in_hand_adventure_mode_predicate_matches(
             AdventureModeComponent::CanPlaceOn,
+            InteractionHand::MainHand,
+            pos,
+        )
+    }
+
+    pub(crate) fn local_item_in_hand_can_place_on_block_in_adventure_mode(
+        &self,
+        hand: InteractionHand,
+        pos: BlockPos,
+    ) -> bool {
+        self.local_item_in_hand_adventure_mode_predicate_matches(
+            AdventureModeComponent::CanPlaceOn,
+            hand,
             pos,
         )
     }
@@ -57,18 +70,20 @@ impl WorldStore {
         &self,
         pos: BlockPos,
     ) -> bool {
-        self.local_selected_main_hand_adventure_mode_predicate_matches(
+        self.local_item_in_hand_adventure_mode_predicate_matches(
             AdventureModeComponent::CanBreak,
+            InteractionHand::MainHand,
             pos,
         )
     }
 
-    fn local_selected_main_hand_adventure_mode_predicate_matches(
+    fn local_item_in_hand_adventure_mode_predicate_matches(
         &self,
         component: AdventureModeComponent,
+        hand: InteractionHand,
         pos: BlockPos,
     ) -> bool {
-        let Some(stack) = self.local_item_in_hand(InteractionHand::MainHand) else {
+        let Some(stack) = self.local_item_in_hand(hand) else {
             return false;
         };
         let patch = &stack.component_patch;

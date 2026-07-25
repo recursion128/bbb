@@ -17,8 +17,8 @@ use crate::{
 use bbb_protocol::{
     attribute_types::VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
     block_types::{
-        vanilla_block_type_for_resource_id, BlockTypeCatalogEntry, VanillaBlockUseItemOnOverride,
-        VanillaBlockUseWithoutItemOverride,
+        vanilla_block_type, vanilla_block_type_for_resource_id, BlockTypeCatalogEntry,
+        VanillaBlockUseItemOnOverride, VanillaBlockUseWithoutItemOverride, VANILLA_BLOCK_AIR_ID,
     },
     data_component_types::{
         VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
@@ -28,11 +28,13 @@ use bbb_protocol::{
     entity_types::VANILLA_ENTITY_TYPE_WOLF_ID,
     equipment_slots::VANILLA_EQUIPMENT_SLOTS,
     item_types::{
-        VanillaItemInteractLivingEntityOverride, VanillaItemUseOnOverride, VanillaItemUseOverride,
+        VanillaBlockTransform, VanillaItemInteractLivingEntityOverride, VanillaItemUseOnOverride,
+        VanillaItemUseOverride, VANILLA_AXE_SCRAPEABLES, VANILLA_AXE_STRIPPABLES,
+        VANILLA_AXE_WAX_OFF, VANILLA_HOE_TILLABLES, VANILLA_HONEYCOMB_WAXABLES,
         VANILLA_ITEM_GOLDEN_DANDELION_ID, VANILLA_ITEM_IRON_INGOT_ID, VANILLA_ITEM_LEAD_ID,
-        VANILLA_ITEM_SHEARS_ID,
+        VANILLA_ITEM_SHEARS_ID, VANILLA_SHOVEL_FLATTENABLES,
     },
-    packets::ConsumableSummary,
+    packets::{ConsumableSummary, Direction as ProtocolDirection},
 };
 
 const VANILLA_DEFAULT_ENTITY_INTERACT_OWNER: &str = "net.minecraft.world.entity.Entity";
@@ -79,6 +81,14 @@ const VANILLA_SNOW_GOLEM_MOB_INTERACT_OWNER: &str =
 const VANILLA_ZOMBIE_HORSE_INTERACT_OWNER: &str =
     "net.minecraft.world.entity.animal.equine.ZombieHorse";
 const VANILLA_ZOMBIE_HORSE_FOOD_TAG: &str = "minecraft:zombie_horse_food";
+
+#[derive(Debug, Clone, Copy)]
+struct LocalBlockUseContext {
+    pos: BlockPos,
+    face: ProtocolDirection,
+    sequence: i32,
+    secondary_use_active: bool,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LocalInteractionSwingSource {
@@ -231,20 +241,28 @@ impl WorldStore {
     /// implementation. Generated override ownership keeps specialized block
     /// and item behavior explicit.
     pub fn predict_local_block_use(
-        &self,
+        &mut self,
         pos: BlockPos,
+        face: ProtocolDirection,
         hand: InteractionHand,
         secondary_use_active: bool,
+        sequence: i32,
     ) -> LocalTargetUsePrediction {
         if self.local_player_is_spectator() {
             return LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
                 LocalInteractionSuccess::consume_without_item(),
             ));
         }
+        let context = LocalBlockUseContext {
+            pos,
+            face,
+            sequence,
+            secondary_use_active,
+        };
         let hands_have_item = self.local_item_in_hand(InteractionHand::MainHand).is_some()
             || self.local_item_in_hand(InteractionHand::OffHand).is_some();
         if secondary_use_active && hands_have_item {
-            return self.predict_local_item_use_on(hand);
+            return self.predict_local_item_use_on(hand, Some(context));
         }
         let Some(block) = self.probe_block(pos) else {
             return LocalTargetUsePrediction::UnknownBlockType(None);
@@ -255,13 +273,14 @@ impl WorldStore {
         let Some(block_type) = vanilla_block_type_for_resource_id(block_name) else {
             return LocalTargetUsePrediction::UnknownBlockType(Some(block.block_state_id));
         };
-        self.predict_local_block_use_for_type(block_type, hand)
+        self.predict_local_block_use_for_type(block_type, hand, Some(context))
     }
 
     fn predict_local_block_use_for_type(
-        &self,
+        &mut self,
         block_type: &BlockTypeCatalogEntry,
         hand: InteractionHand,
+        context: Option<LocalBlockUseContext>,
     ) -> LocalTargetUsePrediction {
         if !self.is_feature_enabled("minecraft:vanilla") {
             return LocalTargetUsePrediction::Result(LocalInteractionResult::Fail);
@@ -274,15 +293,26 @@ impl WorldStore {
                 return LocalTargetUsePrediction::UnsupportedBlockUseWithoutItem(owner);
             }
         }
-        self.predict_local_item_use_on(hand)
+        self.predict_local_item_use_on(hand, context)
     }
 
-    fn predict_local_item_use_on(&self, hand: InteractionHand) -> LocalTargetUsePrediction {
+    fn predict_local_item_use_on(
+        &mut self,
+        hand: InteractionHand,
+        context: Option<LocalBlockUseContext>,
+    ) -> LocalTargetUsePrediction {
         let Some(stack) = self.local_item_in_hand(hand) else {
             return LocalTargetUsePrediction::Result(LocalInteractionResult::Pass);
         };
         if self.local_item_stack_is_on_cooldown(stack) {
             return LocalTargetUsePrediction::Result(LocalInteractionResult::Pass);
+        }
+        if let Some(context) = context {
+            if self.local_player_is_adventure()
+                && !self.local_item_in_hand_can_place_on_block_in_adventure_mode(hand, context.pos)
+            {
+                return LocalTargetUsePrediction::Result(LocalInteractionResult::Pass);
+            }
         }
         let Some(item_id) = stack.item_id else {
             return LocalTargetUsePrediction::UnknownItemType(None);
@@ -291,9 +321,188 @@ impl WorldStore {
             return LocalTargetUsePrediction::UnknownItemType(Some(item_id));
         };
         if let Some(owner) = item_type.use_on_override {
+            if let Some(context) = context {
+                if let Some(result) = self.predict_local_tool_item_use_on(owner, hand, context) {
+                    return result;
+                }
+            }
             return LocalTargetUsePrediction::UnsupportedItemUseOn(owner);
         }
         LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+    }
+
+    fn predict_local_tool_item_use_on(
+        &mut self,
+        owner: VanillaItemUseOnOverride,
+        hand: InteractionHand,
+        context: LocalBlockUseContext,
+    ) -> Option<LocalTargetUsePrediction> {
+        let block = self.probe_block(context.pos)?;
+        let block_name = block.block_name.as_deref()?;
+        let block_type = vanilla_block_type_for_resource_id(block_name)?;
+        let properties = block.block_properties;
+        let success = || {
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction(),
+            ))
+        };
+        let pass = || LocalTargetUsePrediction::Result(LocalInteractionResult::Pass);
+        match owner {
+            VanillaItemUseOnOverride::AxeItem => {
+                if hand == InteractionHand::MainHand
+                    && !context.secondary_use_active
+                    && self
+                        .local_item_in_hand(InteractionHand::OffHand)
+                        .is_some_and(|stack| {
+                            self.item_stack_has_effective_component(
+                                stack,
+                                VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
+                            )
+                        })
+                {
+                    return Some(pass());
+                }
+                let Some((transform, copy_axis_only)) =
+                    find_block_transform(VANILLA_AXE_STRIPPABLES, block_type.id)
+                        .map(|transform| (transform, true))
+                        .or_else(|| {
+                            find_block_transform(VANILLA_AXE_SCRAPEABLES, block_type.id)
+                                .map(|transform| (transform, false))
+                        })
+                        .or_else(|| {
+                            find_block_transform(VANILLA_AXE_WAX_OFF, block_type.id)
+                                .map(|transform| (transform, false))
+                        })
+                else {
+                    return Some(pass());
+                };
+                if !self.predict_local_transformed_block_state(
+                    context,
+                    transform,
+                    properties,
+                    copy_axis_only,
+                ) {
+                    return Some(LocalTargetUsePrediction::UnsupportedItemUseOn(owner));
+                }
+                Some(success())
+            }
+            VanillaItemUseOnOverride::HoneycombItem => {
+                let Some(transform) =
+                    find_block_transform(VANILLA_HONEYCOMB_WAXABLES, block_type.id)
+                else {
+                    return Some(pass());
+                };
+                if !self
+                    .predict_local_transformed_block_state(context, transform, properties, false)
+                    || (!self
+                        .local_player()
+                        .abilities
+                        .is_some_and(|abilities| abilities.instabuild)
+                        && !self.shrink_local_item_in_hand(hand, 1))
+                {
+                    return Some(LocalTargetUsePrediction::UnsupportedItemUseOn(owner));
+                }
+                Some(success())
+            }
+            VanillaItemUseOnOverride::HoeItem => {
+                let Some(tillable) = VANILLA_HOE_TILLABLES
+                    .iter()
+                    .find(|entry| entry.transform.source_block_type_id == block_type.id)
+                else {
+                    return Some(pass());
+                };
+                if tillable.requires_air_above
+                    && (context.face == ProtocolDirection::Down
+                        || !self.local_block_is_air(above(context.pos))?)
+                {
+                    return Some(pass());
+                }
+                Some(success())
+            }
+            VanillaItemUseOnOverride::ShearsItem => {
+                if !block_type.growing_plant_head {
+                    return Some(pass());
+                }
+                let Some(current_age) = properties
+                    .get("age")
+                    .and_then(|value| value.parse::<i32>().ok())
+                else {
+                    return Some(LocalTargetUsePrediction::UnsupportedItemUseOn(owner));
+                };
+                let Some(max_age) = self
+                    .registries
+                    .maximum_numeric_block_property_value(block_name, "age")
+                else {
+                    return Some(LocalTargetUsePrediction::UnsupportedItemUseOn(owner));
+                };
+                if current_age >= max_age {
+                    return Some(pass());
+                }
+                let mut predicted_properties = properties;
+                predicted_properties.insert("age".to_string(), max_age.to_string());
+                let Some(predicted_block_state_id) = self
+                    .registries
+                    .block_state_id_by_name_and_properties(block_name, &predicted_properties)
+                else {
+                    return Some(LocalTargetUsePrediction::UnsupportedItemUseOn(owner));
+                };
+                if !self.predict_local_block_state(
+                    context.pos,
+                    predicted_block_state_id,
+                    context.sequence,
+                ) {
+                    return Some(LocalTargetUsePrediction::UnsupportedItemUseOn(owner));
+                }
+                Some(success())
+            }
+            VanillaItemUseOnOverride::ShovelItem => {
+                if context.face == ProtocolDirection::Down {
+                    return Some(pass());
+                }
+                let flattenable = find_block_transform(VANILLA_SHOVEL_FLATTENABLES, block_type.id);
+                if flattenable.is_some() && self.local_block_is_air(above(context.pos))? {
+                    return Some(success());
+                }
+                let lit_campfire = block_type.use_item_on_override
+                    == Some(VanillaBlockUseItemOnOverride::CampfireBlock)
+                    && properties.get("lit").is_some_and(|value| value == "true");
+                Some(if lit_campfire { success() } else { pass() })
+            }
+            _ => None,
+        }
+    }
+
+    fn predict_local_transformed_block_state(
+        &mut self,
+        context: LocalBlockUseContext,
+        transform: &VanillaBlockTransform,
+        source_properties: BTreeMap<String, String>,
+        copy_axis_only: bool,
+    ) -> bool {
+        let Some(target) = vanilla_block_type(transform.target_block_type_id) else {
+            return false;
+        };
+        let target_properties = if copy_axis_only {
+            source_properties
+                .get("axis")
+                .map(|axis| BTreeMap::from([("axis".to_string(), axis.clone())]))
+                .unwrap_or_default()
+        } else {
+            source_properties
+        };
+        let Some(predicted_block_state_id) = self
+            .registries
+            .block_state_id_by_name_and_properties(target.resource_id, &target_properties)
+        else {
+            return false;
+        };
+        self.predict_local_block_state(context.pos, predicted_block_state_id, context.sequence)
+    }
+
+    fn local_block_is_air(&self, pos: BlockPos) -> Option<bool> {
+        let block = self.probe_block(pos)?;
+        let block_name = block.block_name.as_deref()?;
+        Some(vanilla_block_type_for_resource_id(block_name)?.id == VANILLA_BLOCK_AIR_ID)
     }
 
     /// Predicts `Player.interactOn` across source-derived behavior paths whose client result is
@@ -1278,6 +1487,23 @@ impl WorldStore {
     }
 }
 
+fn find_block_transform(
+    transforms: &'static [VanillaBlockTransform],
+    source_block_type_id: i32,
+) -> Option<&'static VanillaBlockTransform> {
+    transforms
+        .iter()
+        .find(|transform| transform.source_block_type_id == source_block_type_id)
+}
+
+fn above(pos: BlockPos) -> BlockPos {
+    BlockPos {
+        x: pos.x,
+        y: pos.y.saturating_add(1),
+        z: pos.z,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1314,16 +1540,20 @@ mod tests {
         item_types::{
             VanillaItemInteractLivingEntityOverride, VanillaItemUseOnOverride,
             VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID, VANILLA_ITEM_CHORUS_FRUIT_ID,
-            VANILLA_ITEM_LEAD_ID, VANILLA_ITEM_NAME_TAG_ID, VANILLA_ITEM_POPPY_ID,
-            VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_SADDLE_ID, VANILLA_ITEM_SHEARS_ID,
-            VANILLA_ITEM_SNOWBALL_ID, VANILLA_ITEM_STONE_ID,
+            VANILLA_ITEM_HONEYCOMB_ID, VANILLA_ITEM_IRON_AXE_ID, VANILLA_ITEM_IRON_HOE_ID,
+            VANILLA_ITEM_IRON_SHOVEL_ID, VANILLA_ITEM_LEAD_ID, VANILLA_ITEM_NAME_TAG_ID,
+            VANILLA_ITEM_POPPY_ID, VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_SADDLE_ID,
+            VANILLA_ITEM_SHEARS_ID, VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_SNOWBALL_ID,
+            VANILLA_ITEM_STONE_ID,
         },
         packets::{
-            AddEntity, Cooldown, DataComponentPatchSummary, EntityDataValue, EntityDataValueKind,
-            EntityEvent, EquipmentSlotUpdate, EquippableSummary, ItemEnchantmentSummary,
-            ItemStackSummary, PlayerHealth, RegistryData, RegistryDataEntry, RegistryTags,
-            SetEntityData, SetEntityLink, SetEquipment, SetPassengers, SetPlayerInventory,
-            SoundEventSummary, TagNetworkPayload, UpdateTags, Vec3d,
+            AddEntity, AdventureModePredicateDataSummary, BlockHolderSetSummary,
+            BlockPos as ProtocolBlockPos, BlockPredicateSummary, BlockUpdate, Cooldown,
+            DataComponentPatchSummary, EntityDataValue, EntityDataValueKind, EntityEvent,
+            EquipmentSlotUpdate, EquippableSummary, ItemEnchantmentSummary, ItemStackSummary,
+            PlayerHealth, RegistryData, RegistryDataEntry, RegistryTags, SetEntityData,
+            SetEntityLink, SetEquipment, SetPassengers, SetPlayerInventory, SoundEventSummary,
+            TagNetworkPayload, UpdateTags, Vec3d,
         },
     };
     use std::collections::{BTreeMap, BTreeSet};
@@ -1342,6 +1572,58 @@ mod tests {
             slot: 0,
             item: stack(item_id),
         });
+    }
+
+    fn set_offhand(world: &mut WorldStore, item: ItemStackSummary) {
+        world.apply_set_player_inventory(SetPlayerInventory {
+            slot: VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+            item,
+        });
+    }
+
+    fn block_state_id<const N: usize>(name: &str, properties: [(&str, &str); N]) -> i32 {
+        crate::vanilla_block_state_id(
+            name,
+            &properties
+                .into_iter()
+                .map(|(name, value)| (name.to_string(), value.to_string()))
+                .collect(),
+        )
+        .unwrap()
+    }
+
+    fn tool_use_world(initial_block_state_id: i32) -> WorldStore {
+        let single_value = |domain, entry_count, global_id| crate::PalettedContainerData {
+            domain,
+            bits_per_entry: 0,
+            palette_kind: crate::PaletteKind::SingleValue,
+            palette_global_ids: vec![global_id],
+            packed_data: Vec::new(),
+            entry_count,
+        };
+        let air = block_state_id("minecraft:air", []);
+        let mut world = WorldStore::with_dimension(crate::WorldDimension {
+            min_y: 0,
+            height: 16,
+        });
+        world.insert_decoded_chunk(crate::ChunkColumn {
+            pos: crate::ChunkPos { x: 0, z: 0 },
+            state: crate::ChunkState::Decoded,
+            heightmaps: Vec::new(),
+            sections: vec![crate::ChunkSection {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: single_value(crate::PaletteDomain::BlockStates, 4096, air),
+                biomes: single_value(crate::PaletteDomain::Biomes, 64, 0),
+            }],
+            block_entities: Vec::new(),
+            light: crate::LightData::default(),
+        });
+        assert!(world.apply_block_update(BlockUpdate {
+            pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+            block_state_id: initial_block_state_id,
+        }));
+        world
     }
 
     fn add_entity(world: &mut WorldStore, id: i32, entity_type_id: i32) {
@@ -1527,25 +1809,25 @@ mod tests {
         let mut world = WorldStore::new();
         let stone = vanilla_block_type(VANILLA_BLOCK_STONE_ID).unwrap();
         assert_eq!(
-            world.predict_local_block_use_for_type(stone, InteractionHand::MainHand),
+            world.predict_local_block_use_for_type(stone, InteractionHand::MainHand, None),
             LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
         );
 
         let chest = vanilla_block_type(VANILLA_BLOCK_CHEST_ID).unwrap();
         assert_eq!(
-            world.predict_local_block_use_for_type(chest, InteractionHand::MainHand),
+            world.predict_local_block_use_for_type(chest, InteractionHand::MainHand, None),
             LocalTargetUsePrediction::UnsupportedBlockUseWithoutItem(
                 VanillaBlockUseWithoutItemOverride::ChestBlock
             )
         );
         assert_eq!(
-            world.predict_local_block_use_for_type(chest, InteractionHand::OffHand),
+            world.predict_local_block_use_for_type(chest, InteractionHand::OffHand, None),
             LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
         );
 
         let cake = vanilla_block_type(VANILLA_BLOCK_CAKE_ID).unwrap();
         assert_eq!(
-            world.predict_local_block_use_for_type(cake, InteractionHand::MainHand),
+            world.predict_local_block_use_for_type(cake, InteractionHand::MainHand, None),
             LocalTargetUsePrediction::UnsupportedBlockUseItemOn(
                 VanillaBlockUseItemOnOverride::CakeBlock
             )
@@ -1553,16 +1835,415 @@ mod tests {
 
         set_main_hand(&mut world, VANILLA_ITEM_STONE_ID);
         assert_eq!(
-            world.predict_local_block_use_for_type(stone, InteractionHand::MainHand),
+            world.predict_local_block_use_for_type(stone, InteractionHand::MainHand, None),
             LocalTargetUsePrediction::UnsupportedItemUseOn(VanillaItemUseOnOverride::BlockItem)
         );
         assert_eq!(
             world.predict_local_block_use(
                 BlockPos { x: 32, y: 0, z: 32 },
+                ProtocolDirection::Up,
                 InteractionHand::MainHand,
                 true,
+                1,
             ),
             LocalTargetUsePrediction::UnsupportedItemUseOn(VanillaItemUseOnOverride::BlockItem)
+        );
+    }
+
+    #[test]
+    fn axe_use_on_predicts_blocking_guard_and_local_state_transforms() {
+        let oak_log = block_state_id("minecraft:oak_log", [("axis", "x")]);
+        let mut world = tool_use_world(oak_log);
+        set_main_hand(&mut world, VANILLA_ITEM_IRON_AXE_ID);
+        set_offhand(
+            &mut world,
+            ItemStackSummary {
+                component_patch: DataComponentPatchSummary {
+                    added_type_ids: vec![VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID],
+                    ..DataComponentPatchSummary::default()
+                },
+                ..stack(VANILLA_ITEM_SHIELD_ID)
+            },
+        );
+        let pos = BlockPos { x: 0, y: 0, z: 0 };
+
+        assert_eq!(
+            world.predict_local_block_use(
+                pos,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                false,
+                1,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+        assert_eq!(world.probe_block(pos).unwrap().block_state_id, oak_log);
+
+        assert_eq!(
+            world.predict_local_block_use(
+                pos,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                true,
+                2,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction()
+            ))
+        );
+        let stripped = world.probe_block(pos).unwrap();
+        assert_eq!(
+            stripped.block_name.as_deref(),
+            Some("minecraft:stripped_oak_log")
+        );
+        assert_eq!(
+            stripped.block_properties.get("axis").map(String::as_str),
+            Some("x")
+        );
+        assert_eq!(world.local_block_predictions().len(), 1);
+        assert_eq!(world.local_block_predictions()[0].sequence, 2);
+        assert_eq!(
+            world.local_block_predictions()[0].server_block_state_id,
+            oak_log
+        );
+    }
+
+    #[test]
+    fn wax_and_shears_use_on_predict_client_mutations_and_inventory() {
+        let copper_bulb = block_state_id(
+            "minecraft:copper_bulb",
+            [("lit", "true"), ("powered", "false")],
+        );
+        let mut world = tool_use_world(copper_bulb);
+        world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: ItemStackSummary {
+                count: 2,
+                ..stack(VANILLA_ITEM_HONEYCOMB_ID)
+            },
+        });
+        let pos = BlockPos { x: 0, y: 0, z: 0 };
+        assert_eq!(
+            world.predict_local_block_use(
+                pos,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                true,
+                3,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction()
+            ))
+        );
+        let waxed = world.probe_block(pos).unwrap();
+        assert_eq!(
+            waxed.block_name.as_deref(),
+            Some("minecraft:waxed_copper_bulb")
+        );
+        assert_eq!(
+            waxed.block_properties,
+            BTreeMap::from([
+                ("lit".to_string(), "true".to_string()),
+                ("powered".to_string(), "false".to_string()),
+            ])
+        );
+        assert_eq!(
+            world
+                .local_item_in_hand(InteractionHand::MainHand)
+                .unwrap()
+                .count,
+            1
+        );
+
+        let cave_vines =
+            block_state_id("minecraft:cave_vines", [("age", "3"), ("berries", "true")]);
+        let mut world = tool_use_world(cave_vines);
+        set_main_hand(&mut world, VANILLA_ITEM_SHEARS_ID);
+        assert_eq!(
+            world.predict_local_block_use(
+                pos,
+                ProtocolDirection::North,
+                InteractionHand::MainHand,
+                true,
+                4,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction()
+            ))
+        );
+        let max_age = world.probe_block(pos).unwrap();
+        assert_eq!(max_age.block_name.as_deref(), Some("minecraft:cave_vines"));
+        assert_eq!(
+            max_age.block_properties.get("age").map(String::as_str),
+            Some("25")
+        );
+        assert_eq!(
+            max_age.block_properties.get("berries").map(String::as_str),
+            Some("true")
+        );
+        assert_eq!(
+            world.predict_local_block_use(
+                pos,
+                ProtocolDirection::North,
+                InteractionHand::MainHand,
+                true,
+                5,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+
+        let mut creative_world = tool_use_world(copper_bulb);
+        creative_world.apply_game_event(bbb_protocol::packets::GameEvent {
+            event_id: bbb_protocol::game_event_types::VANILLA_CLIENT_GAME_EVENT_CHANGE_GAME_MODE_ID,
+            param: bbb_protocol::game_types::VANILLA_GAME_TYPE_CREATIVE_ID as f32,
+        });
+        creative_world.apply_player_abilities(bbb_protocol::packets::PlayerAbilities {
+            invulnerable: true,
+            flying: false,
+            can_fly: true,
+            instabuild: true,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        });
+        creative_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: ItemStackSummary {
+                count: 2,
+                ..stack(VANILLA_ITEM_HONEYCOMB_ID)
+            },
+        });
+        assert_eq!(
+            creative_world.predict_local_block_use(
+                pos,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                true,
+                6,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction()
+            ))
+        );
+        assert_eq!(
+            creative_world
+                .local_item_in_hand(InteractionHand::MainHand)
+                .unwrap()
+                .count,
+            2
+        );
+
+        let mut offhand_world = tool_use_world(copper_bulb);
+        set_offhand(
+            &mut offhand_world,
+            ItemStackSummary {
+                count: 2,
+                ..stack(VANILLA_ITEM_HONEYCOMB_ID)
+            },
+        );
+        assert_eq!(
+            offhand_world.predict_local_block_use(
+                pos,
+                ProtocolDirection::Up,
+                InteractionHand::OffHand,
+                true,
+                7,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction()
+            ))
+        );
+        assert_eq!(
+            offhand_world
+                .local_item_in_hand(InteractionHand::OffHand)
+                .unwrap()
+                .count,
+            1
+        );
+    }
+
+    #[test]
+    fn hoe_and_shovel_use_on_predict_source_owned_client_result_gates() {
+        let grass = block_state_id("minecraft:grass_block", [("snowy", "false")]);
+        let mut world = tool_use_world(grass);
+        let pos = BlockPos { x: 0, y: 0, z: 0 };
+        set_main_hand(&mut world, VANILLA_ITEM_IRON_HOE_ID);
+        assert_eq!(
+            world.predict_local_block_use(
+                pos,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                false,
+                6,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction()
+            ))
+        );
+        assert_eq!(world.probe_block(pos).unwrap().block_state_id, grass);
+        assert!(world.local_block_predictions().is_empty());
+        assert_eq!(
+            world.predict_local_block_use(
+                pos,
+                ProtocolDirection::Down,
+                InteractionHand::MainHand,
+                false,
+                7,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+
+        set_main_hand(&mut world, VANILLA_ITEM_IRON_SHOVEL_ID);
+        assert_eq!(
+            world.predict_local_block_use(
+                pos,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                false,
+                8,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction()
+            ))
+        );
+        assert_eq!(world.probe_block(pos).unwrap().block_state_id, grass);
+        assert_eq!(
+            world.predict_local_block_use(
+                pos,
+                ProtocolDirection::Down,
+                InteractionHand::MainHand,
+                false,
+                9,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+
+        set_main_hand(&mut world, VANILLA_ITEM_IRON_AXE_ID);
+        assert_eq!(
+            world.predict_local_block_use(
+                pos,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                false,
+                10,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+
+        let rooted_dirt = block_state_id("minecraft:rooted_dirt", []);
+        let mut rooted_world = tool_use_world(rooted_dirt);
+        assert!(rooted_world.apply_block_update(BlockUpdate {
+            pos: ProtocolBlockPos { x: 0, y: 1, z: 0 },
+            block_state_id: block_state_id("minecraft:stone", []),
+        }));
+        set_main_hand(&mut rooted_world, VANILLA_ITEM_IRON_HOE_ID);
+        assert_eq!(
+            rooted_world.predict_local_block_use(
+                pos,
+                ProtocolDirection::Down,
+                InteractionHand::MainHand,
+                false,
+                11,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction()
+            ))
+        );
+        assert_eq!(
+            rooted_world.probe_block(pos).unwrap().block_state_id,
+            rooted_dirt
+        );
+
+        let campfire = block_state_id(
+            "minecraft:campfire",
+            [
+                ("facing", "north"),
+                ("lit", "true"),
+                ("signal_fire", "false"),
+                ("waterlogged", "false"),
+            ],
+        );
+        let mut campfire_world = tool_use_world(campfire);
+        set_main_hand(&mut campfire_world, VANILLA_ITEM_IRON_SHOVEL_ID);
+        assert_eq!(
+            campfire_world.predict_local_block_use(
+                pos,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                true,
+                12,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction()
+            ))
+        );
+        assert_eq!(
+            campfire_world.probe_block(pos).unwrap().block_state_id,
+            campfire
+        );
+    }
+
+    #[test]
+    fn item_use_on_respects_adventure_can_place_on_before_tool_owner() {
+        let oak_log = block_state_id("minecraft:oak_log", [("axis", "y")]);
+        let mut world = tool_use_world(oak_log);
+        let pos = BlockPos { x: 0, y: 0, z: 0 };
+        world.apply_game_event(bbb_protocol::packets::GameEvent {
+            event_id: bbb_protocol::game_event_types::VANILLA_CLIENT_GAME_EVENT_CHANGE_GAME_MODE_ID,
+            param: bbb_protocol::game_types::VANILLA_GAME_TYPE_ADVENTURE_ID as f32,
+        });
+        set_main_hand(&mut world, VANILLA_ITEM_IRON_AXE_ID);
+        assert_eq!(
+            world.predict_local_block_use(
+                pos,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                true,
+                13,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+        assert_eq!(world.probe_block(pos).unwrap().block_state_id, oak_log);
+
+        let oak_log_holder = world
+            .registry_holder_id_by_resource_id("minecraft:block", "minecraft:oak_log")
+            .unwrap();
+        world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: ItemStackSummary {
+                component_patch: DataComponentPatchSummary {
+                    added_type_ids: vec![
+                        bbb_protocol::data_component_types::
+                            VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID,
+                    ],
+                    can_place_on_persistent: Some(AdventureModePredicateDataSummary {
+                        predicates: vec![BlockPredicateSummary {
+                            blocks: Some(BlockHolderSetSummary {
+                                registry_ids: vec![oak_log_holder],
+                                tag: None,
+                            }),
+                            ..BlockPredicateSummary::default()
+                        }],
+                    }),
+                    ..DataComponentPatchSummary::default()
+                },
+                ..stack(VANILLA_ITEM_IRON_AXE_ID)
+            },
+        });
+        assert_eq!(
+            world.predict_local_block_use(
+                pos,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                true,
+                14,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction()
+            ))
+        );
+        assert_eq!(
+            world.probe_block(pos).unwrap().block_name.as_deref(),
+            Some("minecraft:stripped_oak_log")
         );
     }
 

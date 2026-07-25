@@ -344,7 +344,8 @@ pub(super) fn start_use_item(
             }
             Some(CrosshairTarget::Block(hit)) => {
                 let sequence = world.next_local_prediction_sequence();
-                let prediction = world.predict_local_block_use(hit.pos, hand, input.sneak);
+                let prediction =
+                    world.predict_local_block_use(hit.pos, hit.face, hand, input.sneak, sequence);
                 queue_use_item_on_command(
                     counters,
                     net_commands,
