@@ -71,6 +71,8 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
         VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID, VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID,
         VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_WEAPON_TYPE_ID,
+        VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
     },
     equipment_slots::{
         vanilla_equipment_slot_by_id, vanilla_equipment_slot_group,
@@ -582,6 +584,47 @@ fn hash_component_value(
                 })
                 .collect::<Option<Vec<_>>>()?,
         ),
+        VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID => {
+            let pages = patch
+                .writable_book_pages
+                .iter()
+                .zip(&patch.writable_book_page_filters)
+                .map(|(raw, filtered)| hash_filterable_string(raw, filtered.as_deref()))
+                .collect::<Vec<_>>();
+            let mut fields = Vec::new();
+            if !pages.is_empty() {
+                fields.push(("pages", hash_list(pages)));
+            }
+            hash_record(fields)
+        }
+        VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID => {
+            let book = patch.written_book.as_ref()?;
+            let mut fields = vec![
+                (
+                    "title",
+                    hash_filterable_string(&book.title, book.title_filter.as_deref()),
+                ),
+                ("author", hash_string(&book.author)),
+            ];
+            push_non_default_int(&mut fields, "generation", book.generation, 0);
+            if !book.pages.is_empty() {
+                fields.push((
+                    "pages",
+                    hash_list(
+                        patch
+                            .written_book_pages_nbt
+                            .iter()
+                            .zip(&patch.written_book_page_filters_nbt)
+                            .map(|(raw, filtered)| {
+                                hash_filterable_component(raw.as_ref()?, filtered.as_ref())
+                            })
+                            .collect::<Option<Vec<_>>>()?,
+                    ),
+                ));
+            }
+            push_non_default_bool(&mut fields, "resolved", book.resolved, false);
+            hash_record(fields)
+        }
         VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID => hash_list(
             patch
                 .charged_projectiles_items
@@ -1228,6 +1271,32 @@ fn hash_resolvable_profile(profile: &ResolvableProfileSummary) -> Option<Hash32>
     Some(hash_record(fields))
 }
 
+fn hash_filterable_string(raw: &str, filtered: Option<&str>) -> Hash32 {
+    let mut fields = vec![("raw", hash_string(raw))];
+    if let Some(filtered) = filtered {
+        fields.push(("filtered", hash_string(filtered)));
+    }
+    hash_record(fields)
+}
+
+fn hash_filterable_component(
+    raw: &NbtSummaryValue,
+    filtered: Option<&NbtSummaryValue>,
+) -> Option<Hash32> {
+    let mut fields = vec![("raw", hash_simple_component(raw)?)];
+    if let Some(filtered) = filtered {
+        fields.push(("filtered", hash_simple_component(filtered)?));
+    }
+    Some(hash_record(fields))
+}
+
+fn hash_simple_component(value: &NbtSummaryValue) -> Option<Hash32> {
+    match value {
+        NbtSummaryValue::String(value) => Some(hash_string(value)),
+        _ => None,
+    }
+}
+
 fn hash_uuid(uuid: uuid::Uuid) -> Hash32 {
     let value = uuid.as_u128();
     hash_int_array([
@@ -1740,7 +1809,7 @@ mod tests {
             ItemContainerSlotSummary, ItemDamageFunctionSummary, ItemRaritySummary,
             ItemUseAnimationSummary, KineticWeaponSummary, LodestoneTargetSummary,
             PiercingWeaponSummary, PlayerSkinPatchSummary, ResourceTextureSummary,
-            SuspiciousStewEffectSummary, ToolSummary, UseEffectsSummary,
+            SuspiciousStewEffectSummary, ToolSummary, UseEffectsSummary, WrittenBookContentSummary,
         },
         NbtSummaryEntry,
     };
@@ -2416,6 +2485,77 @@ mod tests {
         assert_eq!(hash_resolvable_profile(&full), Some(expected));
         full.name = Some("bad name".to_string());
         assert_eq!(hash_resolvable_profile(&full), None);
+    }
+
+    #[test]
+    fn hashes_filterable_string_and_simple_component_book_codecs() {
+        let store = crate::WorldStore::new();
+        let patch = DataComponentPatchSummary {
+            added: 2,
+            added_type_ids: vec![
+                VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
+                VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
+            ],
+            writable_book_pages: vec!["raw page".to_string(), "second page".to_string()],
+            writable_book_page_filters: vec![Some("safe page".to_string()), None],
+            written_book: Some(WrittenBookContentSummary {
+                title: "Guide".to_string(),
+                title_filter: Some("Safe Guide".to_string()),
+                author: "Alex".to_string(),
+                generation: 1,
+                pages: vec!["Raw".to_string()],
+                page_filters: vec![Some("Safe".to_string())],
+                resolved: true,
+            }),
+            written_book_pages_nbt: vec![Some(NbtSummaryValue::String("Raw".to_string()))],
+            written_book_page_filters_nbt: vec![Some(NbtSummaryValue::String("Safe".to_string()))],
+            ..DataComponentPatchSummary::default()
+        };
+
+        let hashed = hashed_component_patch_from_summary(test_ctx(&store), &patch).unwrap();
+
+        assert_eq!(
+            hashed.added_components,
+            BTreeMap::from([
+                (
+                    VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
+                    hash_record(vec![(
+                        "pages",
+                        hash_list([
+                            hash_record(vec![
+                                ("raw", hash_string("raw page")),
+                                ("filtered", hash_string("safe page")),
+                            ]),
+                            hash_record(vec![("raw", hash_string("second page"))]),
+                        ]),
+                    )])
+                    .0 as i32,
+                ),
+                (
+                    VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
+                    hash_record(vec![
+                        (
+                            "title",
+                            hash_record(vec![
+                                ("raw", hash_string("Guide")),
+                                ("filtered", hash_string("Safe Guide")),
+                            ]),
+                        ),
+                        ("author", hash_string("Alex")),
+                        ("generation", hash_int(1)),
+                        (
+                            "pages",
+                            hash_list([hash_record(vec![
+                                ("raw", hash_string("Raw")),
+                                ("filtered", hash_string("Safe")),
+                            ])]),
+                        ),
+                        ("resolved", hash_boolean(true)),
+                    ])
+                    .0 as i32,
+                ),
+            ])
+        );
     }
 
     #[test]

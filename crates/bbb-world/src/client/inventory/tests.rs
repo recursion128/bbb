@@ -2959,7 +2959,7 @@ fn apply_local_container_click_slot_rejects_incomplete_integer_component_patch()
 }
 
 #[test]
-fn apply_local_container_click_slot_rejects_profile_component_patch() {
+fn apply_local_container_click_slot_hashes_profile_component_patch() {
     let mut store = WorldStore::new();
     open_test_container(&mut store, 7);
     store.apply_container_set_content(ProtocolContainerSetContent {
@@ -2969,14 +2969,33 @@ fn apply_local_container_click_slot_rejects_profile_component_patch() {
         carried_item: ProtocolItemStackSummary::empty(),
     });
 
-    assert_eq!(
-        store.apply_local_container_click_slot(ContainerClickSlotRequest {
+    let pickup = store
+        .apply_local_container_click_slot(ContainerClickSlotRequest {
             slot_num: 0,
             button_num: 0,
             input: ProtocolContainerInput::Pickup,
-        }),
-        Err(ContainerClickBuildError::UnhashableCarriedItem)
+        })
+        .unwrap();
+
+    assert_eq!(
+        pickup.changed_slots,
+        BTreeMap::from([(0, ProtocolHashedStack::Empty)])
     );
+    let ProtocolHashedStack::Item(carried) = pickup.carried_item else {
+        panic!("profiled carried stack must remain an item");
+    };
+    assert_eq!(carried.item_id, 42);
+    assert_eq!(carried.count, 1);
+    assert_eq!(
+        carried
+            .components
+            .added_components
+            .keys()
+            .copied()
+            .collect::<Vec<_>>(),
+        vec![VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID]
+    );
+    assert!(carried.components.removed_components.is_empty());
 }
 
 #[test]
