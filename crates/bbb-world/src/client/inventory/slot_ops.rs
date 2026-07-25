@@ -507,20 +507,6 @@ fn item_stack_is_damageable_or_enchanted(
     damageable || !patch.enchantments.is_empty() || !patch.stored_enchantments.is_empty()
 }
 
-pub(super) fn hashed_stack_from_summary(
-    stack: &ProtocolItemStackSummary,
-) -> Option<ProtocolHashedStack> {
-    let (Some(item_id), true) = (stack.item_id, stack.count > 0) else {
-        return Some(ProtocolHashedStack::Empty);
-    };
-    let components = hashed_component_patch_from_summary(&stack.component_patch)?;
-    Some(ProtocolHashedStack::Item(ProtocolHashedItemStack {
-        item_id,
-        count: stack.count,
-        components,
-    }))
-}
-
 pub(super) fn item_stack_is_non_empty(stack: &ProtocolItemStackSummary) -> bool {
     stack.item_id.is_some() && stack.count > 0
 }
@@ -698,94 +684,6 @@ pub(super) fn item_stack_use_effects(
     Some(default_effects)
 }
 
-pub(super) fn hashed_component_patch_from_summary(
-    patch: &ProtocolDataComponentPatchSummary,
-) -> Option<ProtocolHashedComponentPatch> {
-    if patch == &ProtocolDataComponentPatchSummary::default() {
-        return Some(ProtocolHashedComponentPatch::default());
-    }
-
-    if patch.added != patch.added_type_ids.len() {
-        return None;
-    }
-
-    let removed_components: BTreeSet<_> = patch.removed_type_ids.iter().copied().collect();
-    if removed_components.len() != patch.removed_type_ids.len() {
-        return None;
-    }
-
-    let mut expected = ProtocolDataComponentPatchSummary {
-        added: patch.added,
-        added_type_ids: patch.added_type_ids.clone(),
-        removed_type_ids: patch.removed_type_ids.clone(),
-        ..ProtocolDataComponentPatchSummary::default()
-    };
-    let mut added_components = BTreeMap::new();
-    let mut added_type_ids = BTreeSet::new();
-    for component_type_id in &patch.added_type_ids {
-        if !added_type_ids.insert(*component_type_id) {
-            return None;
-        }
-        let value = match *component_type_id {
-            VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID => {
-                let value = patch.max_stack_size?;
-                expected.max_stack_size = Some(value);
-                value
-            }
-            VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID => {
-                let value = patch.max_damage?;
-                expected.max_damage = Some(value);
-                value
-            }
-            VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID => {
-                let value = patch.damage?;
-                expected.damage = Some(value);
-                value
-            }
-            VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID => {
-                let value = patch.map_id?;
-                expected.map_id = Some(value);
-                value
-            }
-            _ => return None,
-        };
-        added_components.insert(*component_type_id, hash_ops_crc32c_int(value));
-    }
-    if patch != &expected {
-        return None;
-    }
-
-    Some(ProtocolHashedComponentPatch {
-        added_components,
-        removed_components,
-    })
-}
-
-pub(super) fn component_patch_can_be_hashed_from_summary(
-    patch: &ProtocolDataComponentPatchSummary,
-) -> bool {
-    hashed_component_patch_from_summary(patch).is_some()
-}
-
-pub(super) fn hash_ops_crc32c_int(value: i32) -> i32 {
-    let mut bytes = [0u8; 5];
-    bytes[0] = 8;
-    bytes[1..].copy_from_slice(&value.to_le_bytes());
-    crc32c(&bytes) as i32
-}
-
-pub(super) fn crc32c(bytes: &[u8]) -> u32 {
-    let mut crc = !0u32;
-    for &byte in bytes {
-        crc ^= u32::from(byte);
-        for _ in 0..8 {
-            let mask = 0u32.wrapping_sub(crc & 1);
-            crc = (crc >> 1) ^ (0x82f6_3b78 & mask);
-        }
-    }
-    !crc
-}
-
 pub(super) fn set_inventory_slot(slots: &mut Vec<InventorySlot>, mut update: InventorySlot) {
     update.local_selected_bundle_item_index = normalize_local_selected_bundle_item_index(
         update.local_selected_bundle_item_index,
@@ -810,26 +708,6 @@ pub(super) fn set_container_slot(slots: &mut Vec<ContainerSlot>, mut update: Con
         slots.push(update);
     }
     slots.sort_by_key(|slot| slot.slot);
-}
-
-pub(super) fn changed_hashed_slots(
-    before: &[ContainerSlot],
-    after: &[ContainerSlot],
-) -> Result<BTreeMap<i16, ProtocolHashedStack>, ContainerClickBuildError> {
-    let mut changed = BTreeMap::new();
-    for slot in after {
-        if before
-            .iter()
-            .find(|before| before.slot == slot.slot)
-            .is_some_and(|before| before.item == slot.item)
-        {
-            continue;
-        }
-        let hashed = hashed_stack_from_summary(&slot.item)
-            .ok_or(ContainerClickBuildError::UnhashableChangedSlot(slot.slot))?;
-        changed.insert(slot.slot, hashed);
-    }
-    Ok(changed)
 }
 
 pub(super) fn inventory_menu_result_was_taken(
@@ -3308,6 +3186,7 @@ pub(super) fn brewing_stand_slot_max_stack_size(
 }
 
 pub(super) fn cartography_table_quick_move_requires_server_authority(
+    ctx: InventoryCtx<'_>,
     slots: &[ContainerSlot],
     slot_num: i16,
     cartography_additional_item_ids: &BTreeSet<i32>,
@@ -3331,7 +3210,7 @@ pub(super) fn cartography_table_quick_move_requires_server_authority(
         return false;
     }
     if item_stack_has_map_id(source_item) {
-        return hashed_component_patch_from_summary(&source_item.component_patch).is_none();
+        return hashed_component_patch_from_summary(ctx, &source_item.component_patch).is_none();
     }
     if cartography_additional_item_ids.is_empty() {
         return true;

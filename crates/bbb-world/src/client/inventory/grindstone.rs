@@ -1,6 +1,7 @@
 use super::*;
 
 pub(super) fn apply_grindstone_menu_quick_move_to_slots(
+    ctx: InventoryCtx<'_>,
     container_id: i32,
     slots: &mut [ContainerSlot],
     slot_num: i16,
@@ -34,7 +35,7 @@ pub(super) fn apply_grindstone_menu_quick_move_to_slots(
         }
         slot if !inputs_full
             && (GRINDSTONE_PLAYER_MAIN_START..GRINDSTONE_HOTBAR_END).contains(&slot)
-            && item_stack_is_default_damageable(&source_item, default_damageable_item_ids) =>
+            && item_stack_is_default_damageable(ctx, &source_item, default_damageable_item_ids) =>
         {
             Some((GRINDSTONE_INPUT_SLOT, GRINDSTONE_RESULT_SLOT, false))
         }
@@ -172,6 +173,7 @@ pub(super) fn apply_grindstone_result_pickup_to_slots(
 }
 
 pub(super) fn grindstone_quick_move_requires_server_authority(
+    ctx: InventoryCtx<'_>,
     slots: &[ContainerSlot],
     slot_num: i16,
     default_damageable_item_ids: &BTreeSet<i32>,
@@ -196,15 +198,16 @@ pub(super) fn grindstone_quick_move_requires_server_authority(
     let Some(source) = slots.iter().find(|slot| slot.slot == slot_num) else {
         return false;
     };
-    !item_stack_is_default_damageable(&source.item, default_damageable_item_ids)
+    !item_stack_is_default_damageable(ctx, &source.item, default_damageable_item_ids)
 }
 
 fn item_stack_is_default_damageable(
+    ctx: InventoryCtx<'_>,
     stack: &ProtocolItemStackSummary,
     default_damageable_item_ids: &BTreeSet<i32>,
 ) -> bool {
     if item_stack_is_empty(stack)
-        || !component_patch_can_be_hashed_from_summary(&stack.component_patch)
+        || !component_patch_can_be_hashed_from_summary(ctx, &stack.component_patch)
         || stack
             .component_patch
             .removed_type_ids

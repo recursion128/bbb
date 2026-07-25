@@ -1627,6 +1627,17 @@ fn validate_encodable_data_component_patch_summary(
     Ok(descriptors)
 }
 
+/// Validates that every retained projection belongs to exactly one declared
+/// component and that the patch can be reproduced by the registered 26.1
+/// component stream encoders.
+pub fn validate_data_component_patch_summary(patch: &DataComponentPatchSummary) -> Result<()> {
+    validate_data_component_patch_recursive_templates(patch)?;
+    for (_, descriptor) in validate_encodable_data_component_patch_summary(patch)? {
+        descriptor.encode(patch, &mut Encoder::new())?;
+    }
+    Ok(())
+}
+
 pub(crate) fn decode_data_component_exact_predicate_summary(
     decoder: &mut Decoder<'_>,
 ) -> Result<DataComponentPatchSummary> {

@@ -46,8 +46,6 @@ use bbb_protocol::packets::{
     CraftingRecipeDisplaySummary as ProtocolCraftingRecipeDisplaySummary,
     DataComponentPatchSummary as ProtocolDataComponentPatchSummary,
     EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
-    HashedComponentPatch as ProtocolHashedComponentPatch,
-    HashedItemStack as ProtocolHashedItemStack, HashedStack as ProtocolHashedStack,
     IngredientSummary as ProtocolIngredientSummary, InteractionHand,
     ItemCostSummary as ProtocolItemCostSummary, ItemStackSummary as ProtocolItemStackSummary,
     LodestoneTargetSummary as ProtocolLodestoneTargetSummary,
@@ -57,6 +55,11 @@ use bbb_protocol::packets::{
     SlotDisplaySummary as ProtocolSlotDisplaySummary,
     StonecutterSelectableRecipeSummary as ProtocolStonecutterSelectableRecipeSummary,
     SwingAnimationSummary as ProtocolSwingAnimationSummary,
+};
+#[cfg(test)]
+use bbb_protocol::packets::{
+    HashedComponentPatch as ProtocolHashedComponentPatch,
+    HashedItemStack as ProtocolHashedItemStack, HashedStack as ProtocolHashedStack,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -77,6 +80,7 @@ use crate::{
 mod container_button;
 mod crafting;
 mod grindstone;
+mod hash_ops;
 mod merchant;
 mod slot_ops;
 mod smithing;
@@ -90,7 +94,6 @@ pub use use_prediction::{
 #[cfg(test)]
 mod tests;
 
-use self::slot_ops::*;
 use self::{
     crafting::{
         apply_crafter_menu_quick_move_to_slots, apply_crafting_menu_quick_move_to_slots,
@@ -115,6 +118,7 @@ use self::{
         apply_stonecutter_menu_quick_move_to_slots, apply_stonecutter_result_pickup_to_slots,
     },
 };
+use self::{hash_ops::*, slot_ops::*};
 
 const GENERIC_CONTAINER_SLOT_COUNT_PER_ROW: i16 = 9;
 const GENERIC_3X3_CONTAINER_SLOT_COUNT: i16 = 9;
@@ -1726,6 +1730,7 @@ impl InventoryState {
 
     pub(crate) fn build_container_click_slot(
         &self,
+        ctx: InventoryCtx<'_>,
         request: ContainerClickSlotRequest,
     ) -> Result<ProtocolContainerClick, ContainerClickBuildError> {
         let Some(container) = self.active_container() else {
@@ -1735,7 +1740,7 @@ impl InventoryState {
             return Err(ContainerClickBuildError::InvalidSlot(request.slot_num));
         }
 
-        let carried_item = hashed_stack_from_summary(&self.cursor_item)
+        let carried_item = hashed_stack_from_summary(ctx, &self.cursor_item)
             .ok_or(ContainerClickBuildError::UnhashableCarriedItem)?;
         Ok(ProtocolContainerClick {
             container_id: container.container_id,
@@ -2187,6 +2192,7 @@ impl InventoryState {
                         )
                     } else if menu_type_id == Some(VANILLA_MENU_TYPE_GRINDSTONE_ID) {
                         if grindstone_quick_move_requires_server_authority(
+                            ctx,
                             &slots_after,
                             request.slot_num,
                             &ctx.items.default_damageable_item_ids,
@@ -2196,6 +2202,7 @@ impl InventoryState {
                             ));
                         }
                         apply_grindstone_menu_quick_move_to_slots(
+                            ctx,
                             container_id,
                             &mut slots_after,
                             request.slot_num,
@@ -2221,6 +2228,7 @@ impl InventoryState {
                         )
                     } else if menu_type_id == Some(VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID) {
                         if cartography_table_quick_move_requires_server_authority(
+                            ctx,
                             &slots_after,
                             request.slot_num,
                             &ctx.items.cartography_additional_item_ids,
@@ -2518,8 +2526,8 @@ impl InventoryState {
                 &mut slots_after,
             );
         }
-        let changed_slots = changed_hashed_slots(&slots_before, &slots_after)?;
-        let carried_item = hashed_stack_from_summary(&cursor_after)
+        let changed_slots = changed_hashed_slots(ctx, &slots_before, &slots_after)?;
+        let carried_item = hashed_stack_from_summary(ctx, &cursor_after)
             .ok_or(ContainerClickBuildError::UnhashableCarriedItem)?;
 
         let write_back_rows = (container_id != INVENTORY_MENU_CONTAINER_ID)
@@ -3539,7 +3547,8 @@ impl WorldStore {
         &self,
         request: ContainerClickSlotRequest,
     ) -> Result<ProtocolContainerClick, ContainerClickBuildError> {
-        self.inventory.build_container_click_slot(request)
+        self.inventory
+            .build_container_click_slot(inventory_ctx!(self), request)
     }
 
     pub fn active_container_slot_can_quick_craft(&self, slot_num: i16) -> bool {

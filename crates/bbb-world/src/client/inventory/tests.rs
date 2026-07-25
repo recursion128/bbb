@@ -8785,7 +8785,7 @@ fn apply_local_cartography_table_map_id_with_removed_component_quick_move_routes
 }
 
 #[test]
-fn cartography_table_map_id_unhashable_component_requires_server_authority() {
+fn cartography_table_map_id_with_use_effects_component_predicts() {
     let mut store = WorldStore::new();
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
@@ -8814,19 +8814,47 @@ fn cartography_table_map_id_unhashable_component_requires_server_authority() {
         carried_item: ProtocolItemStackSummary::empty(),
     });
 
-    assert_eq!(
-        store.apply_local_container_click_slot(ContainerClickSlotRequest {
+    let click = store
+        .apply_local_container_click_slot(ContainerClickSlotRequest {
             slot_num: CARTOGRAPHY_TABLE_PLAYER_MAIN_START,
             button_num: 0,
             input: ProtocolContainerInput::QuickMove,
-        }),
-        Err(ContainerClickBuildError::UnsupportedLocalClickInput(
-            ProtocolContainerInput::QuickMove
-        ))
+        })
+        .unwrap();
+
+    assert_eq!(
+        click.changed_slots,
+        BTreeMap::from([
+            (
+                CARTOGRAPHY_TABLE_MAP_SLOT,
+                ProtocolHashedStack::Item(ProtocolHashedItemStack {
+                    item_id: 42,
+                    count: 1,
+                    components: ProtocolHashedComponentPatch {
+                        added_components: BTreeMap::from([
+                            (VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID, 1_133_294_169,),
+                            (
+                                VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID,
+                                hash_ops_crc32c_int(7),
+                            ),
+                        ]),
+                        removed_components: BTreeSet::new(),
+                    },
+                }),
+            ),
+            (
+                CARTOGRAPHY_TABLE_PLAYER_MAIN_START,
+                ProtocolHashedStack::Empty,
+            ),
+        ])
+    );
+    assert_eq!(
+        open_container_slot_item(&store, CARTOGRAPHY_TABLE_MAP_SLOT),
+        map_stack
     );
     assert_eq!(
         open_container_slot_item(&store, CARTOGRAPHY_TABLE_PLAYER_MAIN_START),
-        map_stack
+        ProtocolItemStackSummary::empty()
     );
 }
 
