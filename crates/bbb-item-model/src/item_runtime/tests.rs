@@ -17576,6 +17576,7 @@ fn item_registry_override_value(item_ids: &[&str]) -> serde_json::Value {
     for field in [
         "block_items",
         "spawn_egg_items",
+        "default_shearable_equipment_items",
         "default_piercing_weapon_ids",
     ] {
         catalog[field] = serde_json::json!([]);
@@ -17617,6 +17618,7 @@ fn copy_item_registry_profile(
     for field in [
         "block_items",
         "spawn_egg_items",
+        "default_shearable_equipment_items",
         "default_piercing_weapon_ids",
     ] {
         if vanilla[field]

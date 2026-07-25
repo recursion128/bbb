@@ -61,6 +61,10 @@ pub struct ItemProfiles {
     pub(crate) recipe_specific_crafting_remainder_item_ids: PublicationShared<BTreeSet<i32>>,
     #[serde(default)]
     pub(crate) default_item_equipment_slots: PublicationShared<BTreeMap<i32, ItemEquipmentSlot>>,
+    /// Item protocol ids whose source-derived prototype `Equippable` component has
+    /// `can_be_sheared=true`.
+    #[serde(default)]
+    pub(crate) default_shearable_equipment_item_ids: PublicationShared<BTreeSet<i32>>,
     /// Item protocol id → humanoid armor material (`HumanoidArmorLayer` equipment asset), for
     /// projecting worn armor onto the entity render source.
     #[serde(default)]
@@ -544,6 +548,10 @@ impl ItemProfiles {
         equipment_slots: BTreeMap<i32, ItemEquipmentSlot>,
     ) {
         self.default_item_equipment_slots = filter_item_id_keys(equipment_slots).into();
+    }
+
+    pub(crate) fn set_default_shearable_equipment_item_ids(&mut self, item_ids: BTreeSet<i32>) {
+        self.default_shearable_equipment_item_ids = filter_item_ids(item_ids).into();
     }
 
     pub(crate) fn set_item_armor_materials(

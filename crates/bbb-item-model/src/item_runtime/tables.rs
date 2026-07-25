@@ -361,6 +361,13 @@ impl NativeItemRuntime {
         self.item_equipment_slots_by_protocol_id().len()
     }
 
+    pub fn default_shearable_equipment_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
+        self.registry
+            .as_ref()
+            .map(ItemRegistryCatalog::default_shearable_equipment_protocol_ids)
+            .unwrap_or_default()
+    }
+
     /// Item protocol id → humanoid armor material, for the `HumanoidArmorLayer` overlay: each armor
     /// item's `bbb_pack` equipment-asset name (`humanoid_armor_asset`) parsed into a world material.
     pub fn item_armor_materials_by_protocol_id(&self) -> BTreeMap<i32, WorldArmorMaterialKind> {

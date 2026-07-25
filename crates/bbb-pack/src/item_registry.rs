@@ -104,6 +104,10 @@ pub struct ItemRegistryCatalog {
     spawn_egg_items: BTreeSet<String>,
     #[serde(default)]
     default_equipment_slots: BTreeMap<String, ItemEquipmentSlot>,
+    /// Items whose source-derived prototype `Equippable` component has
+    /// `canBeSheared=true`.
+    #[serde(default)]
+    default_shearable_equipment_items: BTreeSet<String>,
     /// Resource id → humanoid armor equipment-asset name (`ArmorMaterials.<MAT>` →
     /// `EquipmentAssets.<MAT>`, the lowercased material, e.g. `iron` / `chainmail` / `turtle_scute`),
     /// for the `HumanoidArmorLayer` texture path. Only `.humanoidArmor(...)` items appear here.
@@ -357,6 +361,7 @@ impl ItemRegistryCatalog {
             .collect::<BTreeMap<_, _>>();
         let mut spawn_egg_items = BTreeSet::new();
         let mut default_equipment_slots = BTreeMap::new();
+        let mut default_shearable_equipment_items = BTreeSet::new();
         let mut humanoid_armor_assets = BTreeMap::new();
         let mut equippable_assets = BTreeMap::new();
         let mut default_mount_body_armor_kinds = BTreeMap::new();
@@ -417,6 +422,8 @@ impl ItemRegistryCatalog {
                 max_stack_size_for_declaration(expression).with_context(source_context)?;
             let equipment_slot =
                 equipment_slot_for_declaration(expression).with_context(source_context)?;
+            let shearable_equipment =
+                shearable_equipment_for_declaration(expression).with_context(source_context)?;
             let humanoid_armor_asset =
                 humanoid_armor_asset_for_declaration(expression).with_context(source_context)?;
             let wolf_armor_asset =
@@ -489,6 +496,9 @@ impl ItemRegistryCatalog {
                 }
                 if let Some(equipment_slot) = equipment_slot {
                     default_equipment_slots.insert(resource_id.clone(), equipment_slot);
+                }
+                if shearable_equipment {
+                    default_shearable_equipment_items.insert(resource_id.clone());
                 }
                 if let Some(asset) = &humanoid_armor_asset {
                     humanoid_armor_assets.insert(resource_id.clone(), asset.clone());
@@ -641,6 +651,7 @@ impl ItemRegistryCatalog {
             primary_block_resource_ids,
             spawn_egg_items,
             default_equipment_slots,
+            default_shearable_equipment_items,
             humanoid_armor_assets,
             equippable_assets,
             default_mount_body_armor_kinds,
@@ -805,6 +816,13 @@ impl ItemRegistryCatalog {
     pub fn equipment_slot(&self, resource_id: &str) -> Option<ItemEquipmentSlot> {
         let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
         self.default_equipment_slots.get(&resource_id).copied()
+    }
+
+    pub fn default_shearable_equipment_protocol_ids(&self) -> BTreeSet<i32> {
+        self.default_shearable_equipment_items
+            .iter()
+            .filter_map(|resource_id| self.protocol_ids.get(resource_id).copied())
+            .collect()
     }
 
     /// The humanoid armor equipment-asset name for an armor item (e.g. `iron`, `chainmail`,
@@ -1562,6 +1580,21 @@ fn equipment_slot_for_declaration(
     }
 
     Ok(None)
+}
+
+fn shearable_equipment_for_declaration(expression: &GeneratedJavaExpression) -> Result<bool> {
+    if let Some(call) = expression.call("setCanBeSheared") {
+        if call.arguments.len() != 1 {
+            bail!("setCanBeSheared must have one boolean argument");
+        }
+        return parse_java_bool_literal(&call.arguments[0].canonical);
+    }
+    Ok(expression.call("wolfArmor").is_some()
+        || expression.call("horseArmor").is_some()
+        || expression.call("nautilusArmor").is_some()
+        || ["llamaSwag", "saddle", "harness"]
+            .into_iter()
+            .any(|name| qualified_call(expression, name, "Equippable").is_some()))
 }
 
 fn mount_body_armor_kind_for_declaration(
@@ -2868,6 +2901,20 @@ mod tests {
             Some(ItemEquipmentSlot::OffHand)
         );
         assert_eq!(catalog.equipment_slot("minecraft:stone"), None);
+        let shearable_equipment = catalog.default_shearable_equipment_protocol_ids();
+        assert_eq!(shearable_equipment.len(), 45);
+        for resource_id in [
+            "minecraft:white_carpet",
+            "minecraft:saddle",
+            "minecraft:red_harness",
+            "minecraft:wolf_armor",
+            "minecraft:leather_horse_armor",
+            "minecraft:copper_nautilus_armor",
+        ] {
+            assert!(shearable_equipment.contains(&catalog.protocol_id(resource_id).unwrap()));
+        }
+        assert!(!shearable_equipment
+            .contains(&catalog.protocol_id("minecraft:diamond_chestplate").unwrap()));
 
         let component_ids = |resource_id| catalog.default_component_type_ids(resource_id).unwrap();
         assert_eq!(component_ids("minecraft:stick").len(), 12);

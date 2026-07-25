@@ -490,6 +490,7 @@ pub(crate) struct ItemRuntimeWorldDefaults {
     crafting_remainders: BTreeMap<i32, i32>,
     recipe_specific_crafting_remainders: BTreeSet<i32>,
     equipment_slots: BTreeMap<i32, ItemEquipmentSlot>,
+    shearable_equipment_item_ids: BTreeSet<i32>,
     armor_materials: BTreeMap<i32, ArmorMaterialKind>,
     wings_equipment_assets: BTreeMap<i32, String>,
     mount_body_armor_kinds: BTreeMap<i32, MountArmorSlotKind>,
@@ -561,6 +562,8 @@ impl ItemRuntimeWorldDefaults {
             recipe_specific_crafting_remainders: items
                 .recipe_specific_crafting_remainder_item_ids_by_protocol_id(),
             equipment_slots: items.item_equipment_slots_by_protocol_id(),
+            shearable_equipment_item_ids: items
+                .default_shearable_equipment_item_ids_by_protocol_id(),
             armor_materials: items.item_armor_materials_by_protocol_id(),
             wings_equipment_assets: items.item_wings_equipment_assets_by_protocol_id(),
             mount_body_armor_kinds: items.mount_body_armor_kinds_by_protocol_id(),
@@ -611,6 +614,7 @@ impl ItemRuntimeWorldDefaults {
             self.recipe_specific_crafting_remainders,
         );
         world.set_default_item_equipment_slots(self.equipment_slots);
+        world.set_default_shearable_equipment_item_ids(self.shearable_equipment_item_ids);
         world.set_item_armor_materials(self.armor_materials);
         world.set_default_item_wings_equipment_assets(self.wings_equipment_assets);
         world.set_default_mount_body_armor_kinds(self.mount_body_armor_kinds);
@@ -725,12 +729,15 @@ mod tests {
         let apple_id = items.item_protocol_id("minecraft:apple").unwrap();
         let chorus_fruit_id = items.item_protocol_id("minecraft:chorus_fruit").unwrap();
         let tipped_arrow_id = items.item_protocol_id("minecraft:tipped_arrow").unwrap();
+        let saddle_id = items.item_protocol_id("minecraft:saddle").unwrap();
         let defaults = ItemRuntimeWorldDefaults::from_runtime(&items);
 
         assert_eq!(defaults.default_component_type_ids.len(), 1506);
         assert_eq!(defaults.default_dye_color_ids.len(), 16);
         assert_eq!(defaults.default_potion_duration_scale_bits.len(), 2);
         assert_eq!(defaults.food_properties.len(), 44);
+        assert_eq!(defaults.shearable_equipment_item_ids.len(), 45);
+        assert!(defaults.shearable_equipment_item_ids.contains(&saddle_id));
         assert_eq!(
             defaults.consumables[&apple_id].consume_seconds.to_bits(),
             1.6_f32.to_bits()
