@@ -521,3 +521,7 @@
 - **2026-07-23（目标实体本地攻击预测工程关闭）**：普通实体攻击现按
   `send → Player.attack → reset → swing` 预测 redirectable projectile 改向及
   Vehicle/ShulkerBullet/EndCrystal 击退；伤害、附魔和暴击事件仍由服务端拥有。
+- **2026-07-23（Equippable 目标装备预测工程关闭）**：
+  `Equippable.equipOnTarget` 现按生成的鞍具/挽具原型所有权及 live entity tags，
+  覆盖显式 patch、slot/存活/占槽门槛与 item subclass `PASS` 回退；目标装备和
+  手持数量仍等待服务端权威修正。

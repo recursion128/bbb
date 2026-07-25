@@ -1,12 +1,206 @@
 use super::*;
 use bbb_protocol::{
-    entity_types::VANILLA_ENTITY_TYPE_PLAYER_ID,
+    entity_types::{
+        VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
+        VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
+        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
+        VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_PIG_ID,
+        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
+        VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+    },
     equipment_slots::{vanilla_equipment_slot_by_id, EquipmentSlot},
+    item_types::VanillaItemEquipOnInteract,
 };
 
 const ENTITY_TYPE_REGISTRY: &str = "minecraft:entity_type";
+const CAN_EQUIP_SADDLE_TAG: &str = "minecraft:can_equip_saddle";
+const CAN_EQUIP_HARNESS_TAG: &str = "minecraft:can_equip_harness";
 
 impl WorldStore {
+    pub(super) fn predict_local_equippable_equip_on_target(
+        &self,
+        entity_id: i32,
+        entity_type_id: i32,
+        stack: &ProtocolItemStackSummary,
+    ) -> Option<LocalTargetUsePrediction> {
+        if !self
+            .item_stack_has_effective_component(stack, VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID)
+        {
+            return None;
+        }
+
+        let resolved = if stack
+            .component_patch
+            .added_type_ids
+            .contains(&VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID)
+        {
+            let Some(equippable) = stack.component_patch.equippable.as_ref() else {
+                return Some(unsupported_target_equippable());
+            };
+            if !equippable.equip_on_interact {
+                return None;
+            }
+            let Some(slot) =
+                vanilla_equipment_slot_by_id(equippable.slot_id).map(|entry| entry.slot)
+            else {
+                return Some(unsupported_target_equippable());
+            };
+            let Some(allowed) = self.local_equippable_holder_set_accepts(
+                equippable.allowed_entities.as_ref(),
+                entity_type_id,
+            ) else {
+                return Some(unsupported_target_equippable());
+            };
+            (slot, allowed)
+        } else {
+            let item_type = stack.item_id.and_then(vanilla_item_type)?;
+            match item_type.equip_on_interact? {
+                VanillaItemEquipOnInteract::Saddle => {
+                    let Some(allowed) =
+                        self.local_entity_type_tag_contains(CAN_EQUIP_SADDLE_TAG, entity_type_id)
+                    else {
+                        return Some(unsupported_target_equippable());
+                    };
+                    (EquipmentSlot::Saddle, allowed)
+                }
+                VanillaItemEquipOnInteract::Harness => {
+                    let Some(allowed) =
+                        self.local_entity_type_tag_contains(CAN_EQUIP_HARNESS_TAG, entity_type_id)
+                    else {
+                        return Some(unsupported_target_equippable());
+                    };
+                    (EquipmentSlot::Body, allowed)
+                }
+            }
+        };
+        let (slot, allowed) = resolved;
+        if !allowed {
+            return Some(target_equippable_pass());
+        }
+        let Some(alive) = self
+            .entities
+            .living_entity_health(entity_id)
+            .map(|health| health > 0.0)
+        else {
+            return Some(LocalTargetUsePrediction::UnknownEntityType(Some(
+                entity_type_id,
+            )));
+        };
+        let Some(can_use_slot) =
+            self.local_living_entity_can_use_equipment_slot(entity_id, entity_type_id, slot)
+        else {
+            return Some(unsupported_target_equippable());
+        };
+        if !alive || !can_use_slot || self.entities.equipment_item(entity_id, slot).is_some() {
+            return Some(target_equippable_pass());
+        }
+        Some(LocalTargetUsePrediction::Result(
+            LocalInteractionResult::Success(LocalInteractionSuccess::client_item_interaction()),
+        ))
+    }
+
+    fn local_equippable_holder_set_accepts(
+        &self,
+        allowed_entities: Option<&bbb_protocol::packets::EntityTypeHolderSetSummary>,
+        entity_type_id: i32,
+    ) -> Option<bool> {
+        let Some(allowed_entities) = allowed_entities else {
+            return Some(true);
+        };
+        match (
+            allowed_entities.tag.as_deref(),
+            allowed_entities.registry_ids.as_slice(),
+        ) {
+            (Some(tag), []) => self.local_entity_type_tag_contains(tag, entity_type_id),
+            (None, ids) => Some(ids.contains(&entity_type_id)),
+            (Some(_), _) => None,
+        }
+    }
+
+    fn local_entity_type_tag_contains(&self, tag: &str, entity_type_id: i32) -> Option<bool> {
+        self.registry_holder_ids_for_tag(ENTITY_TYPE_REGISTRY, tag)
+            .map(|ids| ids.contains(&entity_type_id))
+    }
+
+    fn local_living_entity_can_use_equipment_slot(
+        &self,
+        entity_id: i32,
+        entity_type_id: i32,
+        slot: EquipmentSlot,
+    ) -> Option<bool> {
+        if entity_type_id == VANILLA_ENTITY_TYPE_ARMOR_STAND_ID {
+            return match slot {
+                EquipmentSlot::Body | EquipmentSlot::Saddle => Some(false),
+                EquipmentSlot::MainHand | EquipmentSlot::OffHand => {
+                    let accessors = vanilla_entity_metadata_armor_stand_accessors_for_entity_type(
+                        entity_type_id,
+                    )?;
+                    self.entities
+                        .metadata_byte_for_entity(
+                            entity_id,
+                            accessors.client_flags_data_id,
+                            accessors.client_flags_default,
+                        )
+                        .map(|flags| flags & accessors.show_arms_mask != 0)
+                }
+                _ => Some(true),
+            };
+        }
+        match (entity_type_id, slot) {
+            (
+                VANILLA_ENTITY_TYPE_HORSE_ID
+                | VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID
+                | VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+                _,
+            ) => Some(true),
+            (
+                VANILLA_ENTITY_TYPE_PIG_ID | VANILLA_ENTITY_TYPE_STRIDER_ID,
+                EquipmentSlot::Saddle,
+            )
+            | (VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, EquipmentSlot::Body) => {
+                self.entities.is_baby(entity_id).map(|is_baby| !is_baby)
+            }
+            (
+                VANILLA_ENTITY_TYPE_CAMEL_ID | VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
+                EquipmentSlot::Saddle,
+            ) => self.entities.is_baby(entity_id).map(|is_baby| !is_baby),
+            (
+                VANILLA_ENTITY_TYPE_DONKEY_ID | VANILLA_ENTITY_TYPE_MULE_ID,
+                EquipmentSlot::Saddle,
+            ) => {
+                let is_baby = self.entities.is_baby(entity_id)?;
+                self.local_abstract_horse_is_tamed(entity_id, entity_type_id)
+                    .map(|is_tamed| !is_baby && is_tamed)
+            }
+            (
+                VANILLA_ENTITY_TYPE_NAUTILUS_ID | VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+                EquipmentSlot::Saddle | EquipmentSlot::Body,
+            ) => {
+                let is_baby = self.entities.is_baby(entity_id)?;
+                self.local_tamable_animal_is_tamed(entity_id, entity_type_id)
+                    .map(|is_tamed| !is_baby && is_tamed)
+            }
+            _ => Some(true),
+        }
+    }
+
+    fn local_abstract_horse_is_tamed(&self, entity_id: i32, entity_type_id: i32) -> Option<bool> {
+        let accessors =
+            vanilla_entity_metadata_abstract_horse_accessors_for_entity_type(entity_type_id)?;
+        self.entities
+            .metadata_byte_for_entity(entity_id, accessors.flags_data_id, accessors.flags_default)
+            .map(|flags| flags & accessors.tame_mask != 0)
+    }
+
+    fn local_tamable_animal_is_tamed(&self, entity_id: i32, entity_type_id: i32) -> Option<bool> {
+        let accessors =
+            vanilla_entity_metadata_tamable_animal_accessors_for_entity_type(entity_type_id)?;
+        self.entities
+            .metadata_byte_for_entity(entity_id, accessors.flags_data_id, accessors.flags_default)
+            .map(|flags| flags & accessors.tame_mask != 0)
+    }
+
     pub(super) fn predict_local_swappable_equippable_use(
         &mut self,
         hand: InteractionHand,
@@ -139,28 +333,45 @@ impl WorldStore {
     }
 }
 
+fn unsupported_target_equippable() -> LocalTargetUsePrediction {
+    LocalTargetUsePrediction::UnsupportedItemStackInteractLivingEntityComponent(
+        VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
+    )
+}
+
+fn target_equippable_pass() -> LocalTargetUsePrediction {
+    LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use bbb_protocol::{
         data_component_types::VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
+        entity_types::{
+            VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+            VANILLA_ENTITY_TYPE_PIG_ID,
+        },
         equipment_slots::{
-            VANILLA_EQUIPMENT_SLOT_CHEST_ID, VANILLA_EQUIPMENT_SLOT_MAINHAND_ID,
-            VANILLA_PLAYER_INVENTORY_CHEST_SLOT, VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+            VANILLA_EQUIPMENT_SLOT_BODY_ID, VANILLA_EQUIPMENT_SLOT_CHEST_ID,
+            VANILLA_EQUIPMENT_SLOT_MAINHAND_ID, VANILLA_PLAYER_INVENTORY_CHEST_SLOT,
+            VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
         },
         game_types::{VANILLA_GAME_TYPE_CREATIVE_ID, VANILLA_GAME_TYPE_SURVIVAL_ID},
         item_types::{
             VANILLA_ITEM_IRON_CHESTPLATE_ID, VANILLA_ITEM_SADDLE_ID, VANILLA_ITEM_SHIELD_ID,
-            VANILLA_ITEM_STONE_ID,
+            VANILLA_ITEM_STONE_ID, VANILLA_ITEM_WHITE_HARNESS_ID,
         },
         packets::{
-            CommonPlayerSpawnInfo, DataComponentPatchSummary, EntityTypeHolderSetSummary,
-            EquippableSummary, ItemEnchantmentSummary, PlayLogin, PlayerAbilities, RegistryData,
-            RegistryDataEntry, RegistryTags, SetPlayerInventory, SoundEventSummary,
-            TagNetworkPayload, UpdateTags,
+            AddEntity, CommonPlayerSpawnInfo, DataComponentPatchSummary,
+            EntityTypeHolderSetSummary, EquipmentSlotUpdate, EquippableSummary,
+            ItemEnchantmentSummary, PlayLogin, PlayerAbilities, RegistryData, RegistryDataEntry,
+            RegistryTags, SetEquipment, SetPlayerInventory, SoundEventSummary, TagNetworkPayload,
+            UpdateTags, Vec3d,
         },
     };
     use std::collections::{BTreeMap, BTreeSet};
+    use uuid::Uuid;
 
     fn stack(item_id: i32, count: i32) -> ProtocolItemStackSummary {
         ProtocolItemStackSummary {
@@ -245,6 +456,181 @@ mod tests {
             .find(|entry| entry.slot == slot)
             .map(|entry| entry.item.clone())
             .unwrap_or_else(ProtocolItemStackSummary::empty)
+    }
+
+    fn add_entity(world: &mut WorldStore, id: i32, entity_type_id: i32) {
+        world.apply_add_entity(AddEntity {
+            id,
+            uuid: Uuid::from_u128(id as u128),
+            entity_type_id,
+            position: Vec3d::default(),
+            delta_movement: Vec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        });
+    }
+
+    fn install_default_equip_on_interact_tags(world: &mut WorldStore) {
+        world.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: ENTITY_TYPE_REGISTRY.to_string(),
+                tags: vec![
+                    TagNetworkPayload {
+                        tag: CAN_EQUIP_SADDLE_TAG.to_string(),
+                        entries: vec![VANILLA_ENTITY_TYPE_PIG_ID],
+                    },
+                    TagNetworkPayload {
+                        tag: CAN_EQUIP_HARNESS_TAG.to_string(),
+                        entries: vec![VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID],
+                    },
+                ],
+            }],
+        });
+    }
+
+    #[test]
+    fn default_target_equippables_use_generated_owner_live_tags_and_empty_slot() {
+        let mut world = WorldStore::new();
+        add_entity(&mut world, 20, VANILLA_ENTITY_TYPE_PIG_ID);
+        add_entity(&mut world, 21, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID);
+        install_default_equip_on_interact_tags(&mut world);
+        world.set_default_item_component_type_ids(BTreeMap::from([
+            (
+                VANILLA_ITEM_SADDLE_ID,
+                BTreeSet::from([VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID]),
+            ),
+            (
+                VANILLA_ITEM_WHITE_HARNESS_ID,
+                BTreeSet::from([VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID]),
+            ),
+        ]));
+        let success = Some(LocalTargetUsePrediction::Result(
+            LocalInteractionResult::Success(LocalInteractionSuccess::client_item_interaction()),
+        ));
+        let pass = Some(target_equippable_pass());
+        let saddle = stack(VANILLA_ITEM_SADDLE_ID, 1);
+        let harness = stack(VANILLA_ITEM_WHITE_HARNESS_ID, 1);
+
+        assert_eq!(
+            world.predict_local_equippable_equip_on_target(20, VANILLA_ENTITY_TYPE_PIG_ID, &saddle),
+            success
+        );
+        assert_eq!(
+            world.predict_local_equippable_equip_on_target(
+                20,
+                VANILLA_ENTITY_TYPE_PIG_ID,
+                &harness
+            ),
+            pass
+        );
+        assert_eq!(
+            world.predict_local_equippable_equip_on_target(
+                21,
+                VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+                &harness
+            ),
+            success
+        );
+
+        assert!(world.apply_set_equipment(SetEquipment {
+            entity_id: 20,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::Saddle,
+                item: stack(VANILLA_ITEM_SADDLE_ID, 1),
+            }],
+        }));
+        assert_eq!(
+            world.predict_local_equippable_equip_on_target(20, VANILLA_ENTITY_TYPE_PIG_ID, &saddle),
+            pass
+        );
+    }
+
+    #[test]
+    fn patched_target_equippable_honors_flag_holders_slot_and_removal() {
+        let mut world = WorldStore::new();
+        add_entity(&mut world, 30, VANILLA_ENTITY_TYPE_COW_ID);
+        let mut held = explicit_equippable_stack(
+            2,
+            true,
+            Some(EntityTypeHolderSetSummary {
+                registry_ids: vec![VANILLA_ENTITY_TYPE_COW_ID],
+                tag: None,
+            }),
+        );
+        held.component_patch
+            .equippable
+            .as_mut()
+            .unwrap()
+            .equip_on_interact = true;
+        assert!(matches!(
+            world.predict_local_equippable_equip_on_target(30, VANILLA_ENTITY_TYPE_COW_ID, &held),
+            Some(LocalTargetUsePrediction::Result(
+                LocalInteractionResult::Success(_)
+            ))
+        ));
+        assert_eq!(held.count, 2, "target equip is server-authoritative");
+
+        held.component_patch
+            .equippable
+            .as_mut()
+            .unwrap()
+            .allowed_entities = Some(EntityTypeHolderSetSummary {
+            registry_ids: vec![VANILLA_ENTITY_TYPE_PIG_ID],
+            tag: None,
+        });
+        assert_eq!(
+            world.predict_local_equippable_equip_on_target(30, VANILLA_ENTITY_TYPE_COW_ID, &held),
+            Some(target_equippable_pass())
+        );
+
+        held.component_patch
+            .equippable
+            .as_mut()
+            .unwrap()
+            .allowed_entities = None;
+        held.component_patch.equippable.as_mut().unwrap().slot_id = i32::MAX;
+        assert_eq!(
+            world.predict_local_equippable_equip_on_target(30, VANILLA_ENTITY_TYPE_COW_ID, &held),
+            Some(unsupported_target_equippable())
+        );
+
+        let removed_default = ProtocolItemStackSummary {
+            component_patch: DataComponentPatchSummary {
+                removed_type_ids: vec![VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID],
+                ..DataComponentPatchSummary::default()
+            },
+            ..stack(VANILLA_ITEM_SADDLE_ID, 1)
+        };
+        world.set_default_item_component_type_ids(BTreeMap::from([(
+            VANILLA_ITEM_SADDLE_ID,
+            BTreeSet::from([VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID]),
+        )]));
+        assert_eq!(
+            world.predict_local_equippable_equip_on_target(
+                30,
+                VANILLA_ENTITY_TYPE_COW_ID,
+                &removed_default
+            ),
+            None
+        );
+
+        let mut no_target_equip = explicit_equippable_stack(1, true, None);
+        no_target_equip
+            .component_patch
+            .equippable
+            .as_mut()
+            .unwrap()
+            .slot_id = VANILLA_EQUIPMENT_SLOT_BODY_ID;
+        assert_eq!(
+            world.predict_local_equippable_equip_on_target(
+                30,
+                VANILLA_ENTITY_TYPE_COW_ID,
+                &no_target_equip
+            ),
+            None
+        );
     }
 
     #[test]

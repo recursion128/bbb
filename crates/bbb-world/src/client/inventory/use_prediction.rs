@@ -1057,20 +1057,11 @@ impl WorldStore {
         entity_type_id: i32,
         stack: &bbb_protocol::packets::ItemStackSummary,
     ) -> LocalTargetUsePrediction {
-        // `Equippable.equipOnTarget` runs before the Item subclass. Prototype
-        // membership is known, but its full value is not projected here, so
-        // only an explicit patch can prove that `equipOnInteract` is false.
-        if self.item_stack_has_effective_component(stack, VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID)
+        if let Some(prediction) =
+            self.predict_local_equippable_equip_on_target(entity_id, entity_type_id, stack)
         {
-            let Some(equippable) = stack.component_patch.equippable.as_ref() else {
-                return LocalTargetUsePrediction::UnsupportedItemStackInteractLivingEntityComponent(
-                    VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
-                );
-            };
-            if equippable.equip_on_interact {
-                return LocalTargetUsePrediction::UnsupportedItemStackInteractLivingEntityComponent(
-                    VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
-                );
+            if prediction != LocalTargetUsePrediction::Result(LocalInteractionResult::Pass) {
+                return prediction;
             }
         }
         let Some(item_id) = stack.item_id else {
@@ -4701,9 +4692,7 @@ mod tests {
         ]));
         assert_eq!(
             world.predict_local_entity_interaction(4, InteractionHand::OffHand, false),
-            LocalTargetUsePrediction::UnsupportedItemStackInteractLivingEntityComponent(
-                VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID
-            )
+            client_success
         );
 
         let patched_equippable = equippable(false);
@@ -4748,9 +4737,7 @@ mod tests {
         });
         assert_eq!(
             world.predict_local_entity_interaction(4, InteractionHand::OffHand, false),
-            LocalTargetUsePrediction::UnsupportedItemStackInteractLivingEntityComponent(
-                VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID
-            )
+            client_success
         );
     }
 
