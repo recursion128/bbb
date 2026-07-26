@@ -238,10 +238,10 @@ impl WorldStore {
             | (VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, EquipmentSlot::Body) => {
                 self.entities.is_baby(entity_id).map(|is_baby| !is_baby)
             }
-            (
-                VANILLA_ENTITY_TYPE_CAMEL_ID | VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
-                EquipmentSlot::Saddle,
-            ) => self.entities.is_baby(entity_id).map(|is_baby| !is_baby),
+            (VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, EquipmentSlot::Saddle) => Some(true),
+            (VANILLA_ENTITY_TYPE_CAMEL_ID, EquipmentSlot::Saddle) => {
+                self.entities.is_baby(entity_id).map(|is_baby| !is_baby)
+            }
             (
                 VANILLA_ENTITY_TYPE_DONKEY_ID | VANILLA_ENTITY_TYPE_MULE_ID,
                 EquipmentSlot::Saddle,
@@ -262,7 +262,11 @@ impl WorldStore {
         }
     }
 
-    fn local_abstract_horse_is_tamed(&self, entity_id: i32, entity_type_id: i32) -> Option<bool> {
+    pub(super) fn local_abstract_horse_is_tamed(
+        &self,
+        entity_id: i32,
+        entity_type_id: i32,
+    ) -> Option<bool> {
         let accessors =
             vanilla_entity_metadata_abstract_horse_accessors_for_entity_type(entity_type_id)?;
         self.entities
@@ -426,9 +430,11 @@ mod tests {
     use crate::entities::ArmorMaterialKind;
     use bbb_protocol::{
         data_component_types::VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
+        entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
         entity_types::{
-            VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
-            VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+            VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_COW_ID,
+            VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_PIG_ID,
+            VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
         },
         equipment_slots::{
             VANILLA_EQUIPMENT_SLOT_BODY_ID, VANILLA_EQUIPMENT_SLOT_CHEST_ID,
@@ -442,11 +448,11 @@ mod tests {
             VANILLA_ITEM_WHITE_HARNESS_ID, VANILLA_ITEM_WOLF_ARMOR_ID,
         },
         packets::{
-            AddEntity, CommonPlayerSpawnInfo, DataComponentPatchSummary,
-            EntityTypeHolderSetSummary, EquipmentSlotUpdate, EquippableSummary,
-            ItemEnchantmentSummary, PlayLogin, PlayerAbilities, RegistryData, RegistryDataEntry,
-            RegistryTags, SetEquipment, SetPlayerInventory, SoundEventSummary, TagNetworkPayload,
-            UpdateTags, Vec3d,
+            AddEntity, CommonPlayerSpawnInfo, DataComponentPatchSummary, EntityDataValue,
+            EntityDataValueKind, EntityTypeHolderSetSummary, EquipmentSlotUpdate,
+            EquippableSummary, ItemEnchantmentSummary, PlayLogin, PlayerAbilities, RegistryData,
+            RegistryDataEntry, RegistryTags, SetEntityData, SetEquipment, SetPlayerInventory,
+            SoundEventSummary, TagNetworkPayload, UpdateTags, Vec3d,
         },
     };
     use std::collections::{BTreeMap, BTreeSet};
@@ -558,7 +564,10 @@ mod tests {
                 tags: vec![
                     TagNetworkPayload {
                         tag: CAN_EQUIP_SADDLE_TAG.to_string(),
-                        entries: vec![VANILLA_ENTITY_TYPE_PIG_ID],
+                        entries: vec![
+                            VANILLA_ENTITY_TYPE_PIG_ID,
+                            VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
+                        ],
                     },
                     TagNetworkPayload {
                         tag: CAN_EQUIP_HARNESS_TAG.to_string(),
@@ -574,6 +583,7 @@ mod tests {
         let mut world = WorldStore::new();
         add_entity(&mut world, 20, VANILLA_ENTITY_TYPE_PIG_ID);
         add_entity(&mut world, 21, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID);
+        add_entity(&mut world, 22, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID);
         install_default_equip_on_interact_tags(&mut world);
         world.set_default_item_component_type_ids(BTreeMap::from([
             (
@@ -611,6 +621,28 @@ mod tests {
                 &harness
             ),
             success
+        );
+        let (baby_data_id, _) =
+            crate::entities::vanilla_entity_metadata_baby_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
+            )
+            .unwrap();
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 22,
+            values: vec![EntityDataValue {
+                data_id: baby_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                value: EntityDataValueKind::Boolean(true),
+            }],
+        }));
+        assert_eq!(
+            world.predict_local_equippable_equip_on_target(
+                22,
+                VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
+                &saddle
+            ),
+            success,
+            "CamelHusk.isBaby() ignores inherited baby metadata"
         );
 
         assert!(world.apply_set_equipment(SetEquipment {

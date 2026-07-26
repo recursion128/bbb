@@ -1855,6 +1855,12 @@ impl EntityStore {
         ))
     }
 
+    pub(crate) fn on_ground(&self, id: i32) -> Option<Option<bool>> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let transform = self.ecs.get::<&EntityTransform>(entity).ok()?;
+        Some(transform.on_ground)
+    }
+
     pub(crate) fn age_lock_particle_timer_ticks(&self, id: i32) -> Option<u8> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
@@ -1884,6 +1890,112 @@ impl EntityStore {
         );
         animations.animations.start_age_lock_particle_timer();
         Some(())
+    }
+
+    pub(crate) fn toggle_local_ordered_to_sit(&mut self, id: i32) -> Option<bool> {
+        self.with_client_animations_mut(id, |animations| {
+            animations.animations.ordered_to_sit = !animations.animations.ordered_to_sit;
+            animations.animations.ordered_to_sit
+        })
+    }
+
+    #[cfg(test)]
+    pub(crate) fn local_ordered_to_sit(&self, id: i32) -> Option<bool> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
+        Some(animations.animations.ordered_to_sit)
+    }
+
+    pub(crate) fn local_mooshroom_stew_ingredient(&self, id: i32) -> Option<Option<i32>> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
+        Some(animations.animations.mooshroom_stew_ingredient_item_id)
+    }
+
+    pub(crate) fn set_local_mooshroom_stew_ingredient(
+        &mut self,
+        id: i32,
+        ingredient_item_id: Option<i32>,
+    ) -> Option<()> {
+        self.with_client_animations_mut(id, |animations| {
+            animations.animations.mooshroom_stew_ingredient_item_id = ingredient_item_id;
+        })
+    }
+
+    pub(crate) fn local_tadpole_age_ticks(&self, id: i32) -> Option<i32> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
+        Some(animations.animations.tadpole_age_ticks)
+    }
+
+    pub(crate) fn feed_local_tadpole(&mut self, id: i32) -> Option<()> {
+        self.with_client_animations_mut(id, |animations| {
+            let remaining = (24_000 - animations.animations.tadpole_age_ticks).max(0);
+            let speed_up_seconds = ((remaining / 20) as f32 * 0.1) as i32;
+            animations.animations.tadpole_age_ticks = animations
+                .animations
+                .tadpole_age_ticks
+                .saturating_add(speed_up_seconds.saturating_mul(20));
+        })
+    }
+
+    pub(crate) fn reset_local_tadpole_age(&mut self, id: i32) -> Option<()> {
+        self.with_client_animations_mut(id, |animations| {
+            animations.animations.tadpole_age_ticks = 0;
+        })
+    }
+
+    pub(crate) fn next_local_interaction_random_float(&mut self, id: i32) -> Option<f32> {
+        self.with_client_animations_mut(id, |animations| {
+            animations
+                .animations
+                .next_local_interaction_random_float(id)
+        })
+    }
+
+    pub(crate) fn next_local_interaction_random_double(&mut self, id: i32) -> Option<f64> {
+        self.with_client_animations_mut(id, |animations| {
+            animations
+                .animations
+                .next_local_interaction_random_double(id)
+        })
+    }
+
+    pub(crate) fn local_interaction_particle_origin(
+        &self,
+        id: i32,
+        y_fraction: f64,
+    ) -> Option<super::EntityVec3> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let position = self.ecs.get::<&EntityTransform>(entity).ok()?.position;
+        let bounds = self.pick_bounds(id)?;
+        let height = f64::from(bounds.max[1] - bounds.min[1]);
+        Some(super::EntityVec3 {
+            x: position.x,
+            y: position.y + height * y_fraction,
+            z: position.z,
+        })
+    }
+
+    pub(crate) fn local_interaction_random_position(
+        &mut self,
+        id: i32,
+        horizontal_scale: f64,
+        y_offset: f64,
+    ) -> Option<super::EntityVec3> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let position = self.ecs.get::<&EntityTransform>(entity).ok()?.position;
+        let bounds = self.pick_bounds(id)?;
+        let width = f64::from(bounds.max[0] - bounds.min[0]);
+        let height = f64::from(bounds.max[1] - bounds.min[1]);
+        let x = self.next_local_interaction_random_double(id)?;
+        let y = self.next_local_interaction_random_double(id)?;
+        let z = self.next_local_interaction_random_double(id)?;
+        Some(super::EntityVec3 {
+            x: position.x + width * horizontal_scale * (2.0 * x - 1.0),
+            y: position.y + height * y + y_offset,
+            z: position.z + width * horizontal_scale * (2.0 * z - 1.0),
+        })
     }
 
     pub(crate) fn is_fall_flying(&self, id: i32) -> Option<bool> {
@@ -1943,6 +2055,63 @@ impl EntityStore {
         default: bool,
     ) -> Option<bool> {
         self.metadata_bool(id, data_id, default)
+    }
+
+    pub(crate) fn set_local_metadata_bool(
+        &mut self,
+        id: i32,
+        data_id: u8,
+        value: bool,
+    ) -> Option<()> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let mut metadata = self.ecs.get::<&mut EntityMetadata>(entity).ok()?;
+        upsert_metadata_value(
+            &mut metadata,
+            ProtocolEntityDataValue {
+                data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                value: EntityDataValueKind::Boolean(value),
+            },
+        );
+        Some(())
+    }
+
+    pub(crate) fn set_local_metadata_byte(
+        &mut self,
+        id: i32,
+        data_id: u8,
+        value: i8,
+    ) -> Option<()> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let mut metadata = self.ecs.get::<&mut EntityMetadata>(entity).ok()?;
+        upsert_metadata_value(
+            &mut metadata,
+            ProtocolEntityDataValue {
+                data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                value: EntityDataValueKind::Byte(value),
+            },
+        );
+        Some(())
+    }
+
+    pub(crate) fn set_local_metadata_int(
+        &mut self,
+        id: i32,
+        data_id: u8,
+        value: i32,
+    ) -> Option<()> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let mut metadata = self.ecs.get::<&mut EntityMetadata>(entity).ok()?;
+        upsert_metadata_value(
+            &mut metadata,
+            ProtocolEntityDataValue {
+                data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                value: EntityDataValueKind::Int(value),
+            },
+        );
+        Some(())
     }
 
     pub(crate) fn metadata_optional_living_entity_reference_for_entity(
@@ -2034,6 +2203,12 @@ impl EntityStore {
         self.ecs
             .get::<&EntityMount>(entity)
             .is_ok_and(|mount| !mount.passengers.is_empty())
+    }
+
+    pub(crate) fn entity_passenger_count(&self, id: i32) -> Option<usize> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let mount = self.ecs.get::<&EntityMount>(entity).ok()?;
+        Some(mount.passengers.len())
     }
 
     /// Vanilla `LivingEntity.getSleepingPos`: the synced bed position the entity is

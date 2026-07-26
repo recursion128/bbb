@@ -174,6 +174,89 @@ fn equine_baby_feeding_emits_one_stationary_happy_villager_particle() {
 }
 
 #[test]
+fn tadpole_feeding_emits_one_stationary_happy_villager_particle() {
+    let world = WorldStore::new();
+    let mut resolver = test_resolver(0);
+    let position = [-2.25_f64, 0.5, 9.75];
+    let batch = resolver.local_interaction_particle_batch(
+        &world,
+        LocalInteractionParticleAction::TadpoleFeeding {
+            position_bits: position.map(f64::to_bits),
+        },
+    );
+
+    let [command] = batch.commands.as_slice() else {
+        panic!("tadpole feeding should emit one particle");
+    };
+    assert_eq!(command.position, position);
+    assert_eq!(command.velocity, [0.0; 3]);
+    assert_eq!(
+        command.particle_type_id,
+        VANILLA_PARTICLE_TYPE_HAPPY_VILLAGER_ID
+    );
+    assert_eq!(command.particle_id, "minecraft:happy_villager");
+    assert!(!command.always_show);
+}
+
+#[test]
+fn mooshroom_flower_particles_preserve_positions_velocities_and_spell_options() {
+    let world = WorldStore::new();
+    let smoke_positions = [[1.0_f64, 2.0, 3.0], [-4.0, 5.0, -6.0]];
+    let smoke_velocities = [0.125_f64, 0.25];
+    let mut smoke_resolver = test_resolver(0);
+    let smoke = smoke_resolver.local_interaction_particle_batch(
+        &world,
+        LocalInteractionParticleAction::MooshroomSmoke {
+            position_bits: smoke_positions.map(|position| position.map(f64::to_bits)),
+            velocity_y_bits: smoke_velocities.map(f64::to_bits),
+        },
+    );
+    assert_eq!(smoke.commands.len(), 2);
+    for ((command, position), velocity_y) in smoke
+        .commands
+        .iter()
+        .zip(smoke_positions)
+        .zip(smoke_velocities)
+    {
+        assert_eq!(command.position, position);
+        assert_eq!(command.velocity, [0.0, velocity_y, 0.0]);
+        assert_eq!(command.particle_type_id, VANILLA_PARTICLE_TYPE_SMOKE_ID);
+        assert_eq!(command.option_color, None);
+        assert_eq!(command.option_power, None);
+    }
+
+    let effect_positions = [
+        [0.25_f64, 1.5, 2.75],
+        [3.25, 4.5, 5.75],
+        [6.25, 7.5, 8.75],
+        [9.25, 10.5, 11.75],
+    ];
+    let effect_velocities = [0.1_f64, 0.2, 0.3, 0.4];
+    let mut effect_resolver = test_resolver(0);
+    let effect = effect_resolver.local_interaction_particle_batch(
+        &world,
+        LocalInteractionParticleAction::MooshroomEffect {
+            position_bits: effect_positions.map(|position| position.map(f64::to_bits)),
+            velocity_y_bits: effect_velocities.map(f64::to_bits),
+        },
+    );
+    assert_eq!(effect.commands.len(), 4);
+    for ((command, position), velocity_y) in effect
+        .commands
+        .iter()
+        .zip(effect_positions)
+        .zip(effect_velocities)
+    {
+        assert_eq!(command.position, position);
+        assert_eq!(command.velocity, [0.0, velocity_y, 0.0]);
+        assert_eq!(command.particle_type_id, VANILLA_PARTICLE_TYPE_EFFECT_ID);
+        assert_eq!(command.option_color, Some([1.0; 4]));
+        assert_eq!(command.option_power, Some(1.0));
+        assert!(!command.always_show);
+    }
+}
+
+#[test]
 fn local_destroy_hit_particle_uses_vanilla_shape_face_power_and_scale() {
     let pos = WorldBlockPos { x: 0, y: 8, z: 0 };
     let slab = test_block_state_id(

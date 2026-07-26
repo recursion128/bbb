@@ -6,6 +6,8 @@ from __future__ import annotations
 import argparse
 import difflib
 import json
+import math
+import struct
 import subprocess
 import sys
 from pathlib import Path
@@ -25,7 +27,7 @@ from sound_event_catalog_extractor import direct_sound_event_entries
 from targeted_block_use_catalog_extractor import (
     extract_targeted_block_use_catalog,
 )
-from vanilla_java_source import expression_fact, parse_source
+from vanilla_java_source import expression_fact, parse_source, type_body_members
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -40,6 +42,10 @@ DATA_COMPONENTS_PATH = Path("net/minecraft/core/component/DataComponents.java")
 SOUND_EVENTS_PATH = Path("net/minecraft/sounds/SoundEvents.java")
 ITEM_PACKAGE_PATH = Path("net/minecraft/world/item")
 BLOCKS_PATH = Path("net/minecraft/world/level/block/Blocks.java")
+FLOWER_BLOCK_PATH = Path("net/minecraft/world/level/block/FlowerBlock.java")
+EYEBLOSSOM_BLOCK_PATH = Path(
+    "net/minecraft/world/level/block/EyeblossomBlock.java"
+)
 BLOCK_IDS_PATH = Path("net/minecraft/references/BlockIds.java")
 BLOCK_ENTITY_TYPES_PATH = Path(
     "net/minecraft/world/level/block/entity/BlockEntityType.java"
@@ -69,6 +75,7 @@ EXPECTED_BLOCK_ITEM_BEHAVIOR_COUNT = 1023
 EXPECTED_COMPOSTABLE_COUNT = 115
 EXPECTED_CAULDRON_ITEM_INTERACTION_COUNT = 50
 EXPECTED_CAULDRON_TAG_INTERACTION_COUNT = 1
+EXPECTED_SUSPICIOUS_STEW_INGREDIENT_COUNT = 17
 
 
 def parse_args() -> argparse.Namespace:
@@ -149,6 +156,154 @@ def _walk_facts(expression: dict):
     for key in ("arguments", "children"):
         for child in expression.get(key, []):
             yield from _walk_facts(child)
+
+
+def _f32(value: float) -> float:
+    return struct.unpack(">f", struct.pack(">f", value))[0]
+
+
+def _float_literal(fact: dict) -> float | None:
+    if fact.get("kind") not in {
+        "decimal_floating_point_literal",
+        "hex_floating_point_literal",
+    }:
+        return None
+    spelling = fact.get("canonical")
+    if not isinstance(spelling, str):
+        return None
+    spelling = spelling.replace("_", "")
+    if spelling[-1:] in {"f", "F", "d", "D"}:
+        spelling = spelling[:-1]
+    try:
+        return _f32(float.fromhex(spelling) if "p" in spelling.lower() else float(spelling))
+    except ValueError:
+        return None
+
+
+def _validate_flower_effect_duration_formula(flower_source) -> None:
+    owner = "net.minecraft.world.level.block.FlowerBlock"
+    methods = [
+        method
+        for method in flower_source.methods_for(owner)
+        if method.name == "makeEffectList" and method.body is not None
+    ]
+    if len(methods) != 1:
+        raise ValueError("expected exactly one FlowerBlock.makeEffectList method")
+    method = methods[0]
+    floor_calls = [
+        call
+        for call in flower_source.calls_for(owner)
+        if call.name == "floor"
+        and method.body.start_byte <= call.span.start_byte
+        and call.span.end_byte <= method.body.end_byte
+    ]
+    if (
+        len(floor_calls) != 1
+        or len(floor_calls[0].arguments) != 1
+        or floor_calls[0].arguments[0].canonical != "effectSeconds * 20.0F"
+    ):
+        raise ValueError(
+            "FlowerBlock.makeEffectList no longer floors effectSeconds * 20.0F"
+        )
+
+
+def _eyeblossom_type_effects(eyeblossom_source) -> dict[str, tuple[str, int]]:
+    types = [
+        java_type
+        for java_type in eyeblossom_source.types
+        if java_type.kind == "enum" and java_type.simple_name == "Type"
+    ]
+    if len(types) != 1:
+        raise ValueError("expected exactly one EyeblossomBlock.Type enum")
+    effects: dict[str, tuple[str, int]] = {}
+    for node in type_body_members(types[0].body_node):
+        if node.type != "enum_constant":
+            continue
+        name = node.child_by_field_name("name")
+        arguments = node.child_by_field_name("arguments")
+        if name is None or arguments is None or len(arguments.named_children) != 6:
+            raise ValueError("EyeblossomBlock.Type constant lacks six arguments")
+        argument_facts = [
+            expression_fact(
+                eyeblossom_source,
+                eyeblossom_source.expression(argument),
+            )
+            for argument in arguments.named_children
+        ]
+        effect = _field_access(argument_facts[1], "MobEffects")
+        seconds = _float_literal(argument_facts[2])
+        if effect is None or seconds is None:
+            raise ValueError(
+                f"EyeblossomBlock.Type.{eyeblossom_source.text(name)} "
+                "lacks a direct MobEffects holder and float duration"
+            )
+        effects[eyeblossom_source.text(name)] = (
+            effect,
+            math.floor(_f32(seconds * _f32(20.0))),
+        )
+    if set(effects) != {"OPEN", "CLOSED"}:
+        raise ValueError(
+            f"unexpected EyeblossomBlock.Type effect constants: {sorted(effects)}"
+        )
+    return effects
+
+
+def _suspicious_stew_effects_by_block(
+    block_declarations: list[dict],
+    flower_source,
+    eyeblossom_source,
+) -> dict[str, tuple[str, int]]:
+    _validate_flower_effect_duration_formula(flower_source)
+    eyeblossom_effects = _eyeblossom_type_effects(eyeblossom_source)
+    effects: dict[str, tuple[str, int]] = {}
+    for declaration in block_declarations:
+        creations = [
+            fact
+            for fact in _walk_facts(declaration["initializer"])
+            if fact.get("kind") == "object_creation_expression"
+            and fact.get("name")
+            in {"FlowerBlock", "WitherRoseBlock", "EyeblossomBlock"}
+        ]
+        if not creations:
+            continue
+        if len(creations) != 1:
+            raise ValueError(
+                f"Blocks.{declaration['field']}: expected one suspicious-effect block constructor"
+            )
+        creation = creations[0]
+        arguments = creation.get("arguments", [])
+        if creation["name"] == "EyeblossomBlock":
+            if len(arguments) != 2:
+                raise ValueError(
+                    f"Blocks.{declaration['field']}: EyeblossomBlock lacks two arguments"
+                )
+            type_name = _field_access(arguments[0], "EyeblossomBlock.Type")
+            if type_name not in eyeblossom_effects:
+                raise ValueError(
+                    f"Blocks.{declaration['field']}: unknown EyeblossomBlock.Type {type_name}"
+                )
+            effects[declaration["field"]] = eyeblossom_effects[type_name]
+            continue
+        if len(arguments) != 3:
+            raise ValueError(
+                f"Blocks.{declaration['field']}: {creation['name']} lacks three arguments"
+            )
+        effect = _field_access(arguments[0], "MobEffects")
+        seconds = _float_literal(arguments[1])
+        if effect is None or seconds is None:
+            raise ValueError(
+                f"Blocks.{declaration['field']}: suspicious effect lacks direct source facts"
+            )
+        effects[declaration["field"]] = (
+            effect,
+            math.floor(_f32(seconds * _f32(20.0))),
+        )
+    if len(effects) != EXPECTED_SUSPICIOUS_STEW_INGREDIENT_COUNT:
+        raise ValueError(
+            "unexpected vanilla 26.1 suspicious-stew ingredient count: "
+            f"{len(effects)}"
+        )
+    return effects
 
 
 def _equip_on_interact_owner(declaration: dict) -> str | None:
@@ -279,6 +434,7 @@ def _render_types(
     break_sound_overrides: dict[str, str],
     tool_use_on_catalog: dict[str, list[dict]],
     compostables: list[dict],
+    suspicious_stew_ingredients: list[dict],
     cauldron_item_interactions: list[dict],
     cauldron_tag_interactions: list[dict],
 ) -> str:
@@ -329,7 +485,7 @@ def _render_types(
     )
     lines = [
         "// @generated by scripts/generate-item-registry-catalog.py; do not edit manually.",
-        "// Sources: vanilla 26.1 item registrations/overrides, BlockItem registrations, tool transform maps, targeted block-use registrations, block registrations/weathering groups, component defaults, item tags, and sound ids through the shared Tree-sitter Java frontend.",
+        "// Sources: vanilla 26.1 item registrations/overrides, BlockItem registrations, suspicious-stew effect holders, tool transform maps, targeted block-use registrations, block registrations/weathering groups, component defaults, item tags, and sound ids through the shared Tree-sitter Java frontend.",
         "// Update: scripts/vanilla-source-tools.sh scripts/generate-item-registry-catalog.py",
         "// Check: scripts/vanilla-source-tools.sh scripts/generate-item-registry-catalog.py --check",
         "",
@@ -402,6 +558,13 @@ def _render_types(
         "pub struct VanillaCompostable {",
         "    pub item_type_id: i32,",
         "    pub chance_bits: u32,",
+        "}",
+        "",
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
+        "pub struct VanillaSuspiciousStewIngredient {",
+        "    pub item_type_id: i32,",
+        "    pub effect_type_id: i32,",
+        "    pub duration_ticks: i32,",
         "}",
         "",
         "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
@@ -501,6 +664,24 @@ def _render_types(
                 "    VanillaCompostable {",
                 f"        item_type_id: {entry['item_type_id']},",
                 f"        chance_bits: 0x{entry['chance_bits']:08x},",
+                "    },",
+            )
+        )
+    lines.append("];")
+    lines.extend(
+        (
+            "",
+            "pub const VANILLA_SUSPICIOUS_STEW_INGREDIENTS: &[VanillaSuspiciousStewIngredient] = &[",
+        )
+    )
+    for entry in suspicious_stew_ingredients:
+        lines.extend(
+            (
+                "    VanillaSuspiciousStewIngredient {",
+                f"        item_type_id: VANILLA_ITEM_{entry['item_suffix']}_ID,",
+                "        effect_type_id: "
+                f"crate::mob_effect_types::VANILLA_MOB_EFFECT_{entry['effect']}_ID,",
+                f"        duration_ticks: {entry['duration_ticks']},",
                 "    },",
             )
         )
@@ -651,6 +832,14 @@ def _render_types(
         "        .ok()",
         "        .map(|index| VANILLA_COMPOSTABLES[index].chance_bits)",
         "}", "",
+        "pub fn vanilla_suspicious_stew_ingredient(",
+        "    item_type_id: i32,",
+        ") -> Option<VanillaSuspiciousStewIngredient> {",
+        "    VANILLA_SUSPICIOUS_STEW_INGREDIENTS",
+        "        .binary_search_by_key(&item_type_id, |entry| entry.item_type_id)",
+        "        .ok()",
+        "        .map(|index| VANILLA_SUSPICIOUS_STEW_INGREDIENTS[index])",
+        "}", "",
         "pub fn vanilla_cauldron_item_interaction(",
         "    cauldron: VanillaCauldronKind,",
         "    item_type_id: i32,",
@@ -736,6 +925,7 @@ def _render_types(
         f"        assert_eq!(VANILLA_HOE_TILLABLES.len(), {EXPECTED_TOOL_USE_ON_COUNTS['hoe_tillables']});",
         f"        assert_eq!(VANILLA_SHOVEL_FLATTENABLES.len(), {EXPECTED_TOOL_USE_ON_COUNTS['shovel_flattenables']});",
         f"        assert_eq!(VANILLA_COMPOSTABLES.len(), {EXPECTED_COMPOSTABLE_COUNT});",
+        f"        assert_eq!(VANILLA_SUSPICIOUS_STEW_INGREDIENTS.len(), {EXPECTED_SUSPICIOUS_STEW_INGREDIENT_COUNT});",
         f"        assert_eq!(VANILLA_CAULDRON_ITEM_INTERACTIONS.len(), {EXPECTED_CAULDRON_ITEM_INTERACTION_COUNT});",
         f"        assert_eq!(VANILLA_CAULDRON_TAG_INTERACTIONS.len(), {EXPECTED_CAULDRON_TAG_INTERACTION_COUNT});",
         "        assert_eq!(vanilla_compost_chance_bits(VANILLA_ITEM_OAK_LEAVES_ID), Some(0.3_f32.to_bits()));",
@@ -743,6 +933,11 @@ def _render_types(
         "        assert_eq!(vanilla_compost_chance_bits(VANILLA_ITEM_CAKE_ID), Some(1.0_f32.to_bits()));",
         "        assert_eq!(vanilla_compost_chance_bits(VANILLA_ITEM_STONE_ID), None);",
         "        assert!(VANILLA_COMPOSTABLES.windows(2).all(|entries| entries[0].item_type_id < entries[1].item_type_id));",
+        "        assert_eq!(vanilla_suspicious_stew_ingredient(VANILLA_ITEM_DANDELION_ID), Some(VanillaSuspiciousStewIngredient { item_type_id: VANILLA_ITEM_DANDELION_ID, effect_type_id: crate::mob_effect_types::VANILLA_MOB_EFFECT_SATURATION_ID, duration_ticks: 7 }));",
+        "        assert_eq!(vanilla_suspicious_stew_ingredient(VANILLA_ITEM_OPEN_EYEBLOSSOM_ID), Some(VanillaSuspiciousStewIngredient { item_type_id: VANILLA_ITEM_OPEN_EYEBLOSSOM_ID, effect_type_id: crate::mob_effect_types::VANILLA_MOB_EFFECT_BLINDNESS_ID, duration_ticks: 220 }));",
+        "        assert_eq!(vanilla_suspicious_stew_ingredient(VANILLA_ITEM_WITHER_ROSE_ID), Some(VanillaSuspiciousStewIngredient { item_type_id: VANILLA_ITEM_WITHER_ROSE_ID, effect_type_id: crate::mob_effect_types::VANILLA_MOB_EFFECT_WITHER_ID, duration_ticks: 140 }));",
+        "        assert_eq!(vanilla_suspicious_stew_ingredient(VANILLA_ITEM_STONE_ID), None);",
+        "        assert!(VANILLA_SUSPICIOUS_STEW_INGREDIENTS.windows(2).all(|entries| entries[0].item_type_id < entries[1].item_type_id));",
         "        assert_eq!(vanilla_cauldron_item_interaction(VanillaCauldronKind::Empty, VANILLA_ITEM_WATER_BUCKET_ID), Some(VanillaCauldronInteraction::PourWaterBucket));",
         "        assert_eq!(vanilla_cauldron_item_interaction(VanillaCauldronKind::Water, VANILLA_ITEM_BUCKET_ID), Some(VanillaCauldronInteraction::TakeWaterBucket));",
         "        assert_eq!(vanilla_cauldron_item_interaction(VanillaCauldronKind::Lava, VANILLA_ITEM_BUCKET_ID), Some(VanillaCauldronInteraction::TakeLavaBucket));",
@@ -778,6 +973,13 @@ def _render_types(
         "            let literal = format!(\"\\\"{resource_id}\\\"\");",
         "            assert!(!production.contains(&literal), \"{} restored hand-written {literal}\", path.display());",
         "        }",
+        "    }", "", "    #[test]", "    fn suspicious_stew_consumer_uses_generated_catalog() {",
+        "        let crates = Path::new(env!(\"CARGO_MANIFEST_DIR\")).parent().unwrap();",
+        "        let path = crates.join(\"bbb-world/src/client/inventory/use_prediction/mob_interact.rs\");",
+        "        let source = fs::read_to_string(&path).unwrap();",
+        "        let production = source.split(\"#[cfg(test)]\").next().unwrap();",
+        "        assert!(production.contains(\"vanilla_suspicious_stew_ingredient\"), \"{} missing generated suspicious-stew lookup\", path.display());",
+        "        assert!(!production.contains(\"VANILLA_MOB_EFFECT_SATURATION_ID\"), \"{} restored a hand-written suspicious-stew effect table\", path.display());",
         "    }", "", "    #[test]", "    fn item_stack_size_consumers_use_generated_constants() {",
         "        assert_eq!(VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE, 64);",
         "        assert_eq!(VANILLA_ITEM_ABSOLUTE_MAX_STACK_SIZE, 99);",
@@ -923,6 +1125,17 @@ def generate(source_root: Path) -> tuple[str, str]:
             (source_root / BLOCK_ENTITY_TYPES_PATH).read_bytes(),
         ),
     )
+    suspicious_stew_effects_by_block = _suspicious_stew_effects_by_block(
+        block_catalog.declarations,
+        parse_source(
+            FLOWER_BLOCK_PATH.as_posix(),
+            (source_root / FLOWER_BLOCK_PATH).read_bytes(),
+        ),
+        parse_source(
+            EYEBLOSSOM_BLOCK_PATH.as_posix(),
+            (source_root / EYEBLOSSOM_BLOCK_PATH).read_bytes(),
+        ),
+    )
     block_fields = {
         declaration["field"] for declaration in block_catalog.declarations
     }
@@ -1020,6 +1233,37 @@ def generate(source_root: Path) -> tuple[str, str]:
         raise ValueError(
             "unexpected vanilla 26.1 BlockItem behavior count: "
             f"{actual_block_item_behavior_count}"
+        )
+    suspicious_stew_ingredients = sorted(
+        (
+            {
+                "item_type_id": item_type_id,
+                "item_suffix": resource_paths[item_type_id].upper(),
+                "effect": suspicious_stew_effects_by_block[behavior["block_field"]],
+            }
+            for item_type_id, behavior in enumerate(block_item_behaviors)
+            if behavior is not None
+            and behavior["block_field"] in suspicious_stew_effects_by_block
+        ),
+        key=lambda entry: entry["item_type_id"],
+    )
+    for entry in suspicious_stew_ingredients:
+        effect, duration_ticks = entry.pop("effect")
+        entry["effect"] = effect
+        entry["duration_ticks"] = duration_ticks
+    generated_stew_blocks = {
+        behavior["block_field"]
+        for behavior in block_item_behaviors
+        if behavior is not None
+        and behavior["block_field"] in suspicious_stew_effects_by_block
+    }
+    if (
+        len(suspicious_stew_ingredients)
+        != EXPECTED_SUSPICIOUS_STEW_INGREDIENT_COUNT
+        or generated_stew_blocks != set(suspicious_stew_effects_by_block)
+    ):
+        raise ValueError(
+            "suspicious-stew effect blocks do not map one-to-one onto generated items"
         )
     common_break_sound, break_sound_overrides = _default_break_sounds(
         value["declarations"],
@@ -1137,6 +1381,7 @@ def generate(source_root: Path) -> tuple[str, str]:
         break_sound_overrides,
         tool_use_on_catalog,
         compostables,
+        suspicious_stew_ingredients,
         cauldron_item_interactions,
         cauldron_tag_interactions,
     )

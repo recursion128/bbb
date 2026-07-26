@@ -1420,6 +1420,53 @@ impl InventoryState {
         self.shrink_local_item_in_hand(ctx, counters, hand, amount)
     }
 
+    /// Applies the client-observable part of `Mob.usePlayerItem`, including
+    /// `DataComponents.USE_REMAINDER`.
+    ///
+    /// `LocalPlayer` inherits the no-op
+    /// `LivingEntity.handleExtraItemsCreatedOnUse`, so a remainder replaces
+    /// only a consumed singleton. A remainder created while the original
+    /// stack remains nonempty is discarded locally and left to server
+    /// inventory correction.
+    pub(crate) fn consume_local_mob_player_item(
+        &mut self,
+        ctx: InventoryCtx<'_>,
+        counters: &mut WorldCounters,
+        hand: InteractionHand,
+        remainder: Option<ProtocolItemStackSummary>,
+    ) -> bool {
+        let slot_id = match hand {
+            InteractionHand::MainHand => {
+                let selected_slot = ctx.local_player.selected_hotbar_slot;
+                if selected_slot > 8 {
+                    return false;
+                }
+                i32::from(selected_slot)
+            }
+            InteractionHand::OffHand => VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+        };
+        let mut slot = self.player_inventory_slot(slot_id);
+        if item_stack_is_empty(&slot.item) {
+            return false;
+        }
+        if ctx
+            .local_player
+            .abilities
+            .is_some_and(|abilities| abilities.instabuild)
+        {
+            return true;
+        }
+
+        slot.item.count -= 1;
+        if slot.item.count <= 0 {
+            slot.item = remainder.unwrap_or_else(ProtocolItemStackSummary::empty);
+        }
+        normalize_item_stack(&mut slot.item);
+        self.set_player_inventory_slot_and_menu_slot(slot);
+        self.update_inventory_slot_count(counters);
+        true
+    }
+
     pub(crate) fn local_player_equipment_item(
         &self,
         ctx: InventoryCtx<'_>,
@@ -1606,6 +1653,61 @@ impl InventoryState {
                         && same_item_same_components(&slot.item, &filled)
                 });
             if !already_contains_filled && self.add_local_item_to_player_inventory(ctx, filled) {
+                self.update_inventory_slot_count(counters);
+            }
+            return Some(false);
+        }
+
+        if hand_slot.item.count == 1 {
+            hand_slot.item = filled;
+            self.set_player_inventory_slot_and_menu_slot(hand_slot);
+            self.update_inventory_slot_count(counters);
+            return Some(false);
+        }
+
+        hand_slot.item.count -= 1;
+        normalize_item_stack(&mut hand_slot.item);
+        self.set_player_inventory_slot_and_menu_slot(hand_slot);
+        let added = self.add_local_item_to_player_inventory(ctx, filled);
+        self.update_inventory_slot_count(counters);
+        Some(!added)
+    }
+
+    /// Applies `ItemUtils.createFilledResult(..., false)`. Creative mode keeps
+    /// the input stack and still attempts to add the filled result, while
+    /// survival behavior matches the ordinary helper above. In creative mode,
+    /// `Inventory.add` consumes an uninserted result and reports success, so
+    /// the returned drop flag is always false.
+    pub(crate) fn replace_local_item_with_unlimited_creative_filled_result(
+        &mut self,
+        ctx: InventoryCtx<'_>,
+        counters: &mut WorldCounters,
+        hand: InteractionHand,
+        expected_item_id: i32,
+        filled: ProtocolItemStackSummary,
+    ) -> Option<bool> {
+        let hand_slot_id = match hand {
+            InteractionHand::MainHand => {
+                let selected_slot = ctx.local_player.selected_hotbar_slot;
+                (selected_slot <= 8).then_some(i32::from(selected_slot))?
+            }
+            InteractionHand::OffHand => VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+        };
+        let mut hand_slot = self.player_inventory_slot(hand_slot_id);
+        if item_stack_is_empty(&hand_slot.item)
+            || hand_slot.item.item_id != Some(expected_item_id)
+            || item_stack_is_empty(&filled)
+        {
+            return None;
+        }
+
+        let instabuild = ctx
+            .local_player
+            .abilities
+            .is_some_and(|abilities| abilities.instabuild);
+        if instabuild {
+            let added = self.add_local_item_to_player_inventory(ctx, filled);
+            if added {
                 self.update_inventory_slot_count(counters);
             }
             return Some(false);
@@ -3244,6 +3346,19 @@ impl WorldStore {
         )
     }
 
+    pub(crate) fn consume_local_mob_player_item(
+        &mut self,
+        hand: InteractionHand,
+        remainder: Option<ProtocolItemStackSummary>,
+    ) -> bool {
+        self.inventory.consume_local_mob_player_item(
+            inventory_ctx!(self),
+            &mut self.counters,
+            hand,
+            remainder,
+        )
+    }
+
     pub(crate) fn local_player_equipment_item(
         &self,
         equipment_slot: EquipmentSlot,
@@ -3304,6 +3419,22 @@ impl WorldStore {
             expected_item_id,
             filled,
         )
+    }
+
+    pub(crate) fn replace_local_item_with_unlimited_creative_filled_result(
+        &mut self,
+        hand: InteractionHand,
+        expected_item_id: i32,
+        filled: ProtocolItemStackSummary,
+    ) -> Option<bool> {
+        self.inventory
+            .replace_local_item_with_unlimited_creative_filled_result(
+                inventory_ctx!(self),
+                &mut self.counters,
+                hand,
+                expected_item_id,
+                filled,
+            )
     }
 
     pub(crate) fn replace_local_item_with_forced_filled_result(

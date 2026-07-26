@@ -652,11 +652,10 @@ Commands:
 - Add focused command-queue and encode tests for inventory, interaction, chat,
   command, and sign editing.
 - Complete every remaining generated concrete targeted local-use owner from
-  `Minecraft.startUseItem`, `MultiPlayerGameMode.interact`, and `useItemOn`, and
-  add a reverse guard that rejects any generated owner still routed to generic
-  unsupported handling. Interaction override ownership must stay generated from
-  local vanilla classes; entity, block, and inventory corrections remain
-  server-authoritative.
+  `Minecraft.startUseItem` and `useItemOn`, and add reverse guards that reject
+  any generated item or block owner still routed to generic unsupported
+  handling. Interaction override ownership must stay generated from local
+  vanilla classes; block and inventory corrections remain server-authoritative.
 - Apply each targeted-use success's exact swing source and first-person held-item
   presentation, including client-item swap properties, hand-height interpolation,
   and the damage component's ignore-swap-animation rule.

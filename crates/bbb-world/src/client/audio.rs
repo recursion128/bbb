@@ -1936,6 +1936,90 @@ impl WorldStore {
                 }
                 return None;
             }
+            LocalInteractionSoundAction::AllayInteraction {
+                entity_id,
+                sound_resource_id,
+            } => {
+                let position = self.entities.transform(entity_id)?.position;
+                let state = SoundEntityEventState {
+                    sound: direct_sound_holder(sound_resource_id),
+                    source: SoundSource::Neutral.as_str().to_string(),
+                    entity_id,
+                    volume: 2.0,
+                    pitch: 1.0,
+                    seed: self.next_sound_seed(),
+                    looping: false,
+                    linear_attenuation: true,
+                    tickable: false,
+                };
+                self.client_audio.last_sound_entity = Some(state.clone());
+                return Some(LocalInteractionSoundEffect::Entity {
+                    state,
+                    position: Some(ProtocolVec3d {
+                        x: position.x,
+                        y: position.y,
+                        z: position.z,
+                    }),
+                });
+            }
+            LocalInteractionSoundAction::CreeperIgnition {
+                entity_id,
+                fire_charge,
+            } => {
+                let position = self.entities.transform(entity_id)?.position;
+                let pitch = self
+                    .entities
+                    .next_local_interaction_random_float(entity_id)?
+                    * 0.4
+                    + 0.8;
+                let seed = self.next_sound_seed();
+                return Some(LocalInteractionSoundEffect::Positioned(
+                    self.record_positioned_sound(SoundEventState {
+                        sound: direct_sound_holder(if fire_charge {
+                            "minecraft:item.firecharge.use"
+                        } else {
+                            "minecraft:item.flintandsteel.use"
+                        }),
+                        source: SoundSource::Hostile.as_str().to_string(),
+                        position: ProtocolVec3d {
+                            x: position.x,
+                            y: position.y,
+                            z: position.z,
+                        },
+                        volume: 1.0,
+                        pitch,
+                        seed,
+                        distance_delay: false,
+                    }),
+                ));
+            }
+            LocalInteractionSoundAction::LocalPlayerMobInteraction { sound_resource_id } => {
+                local_player_sound_state(
+                    self.local_player_pose()?.position,
+                    sound_resource_id,
+                    1.0,
+                    1.0,
+                    SoundSource::Players.as_str(),
+                )
+            }
+            LocalInteractionSoundAction::SuppressedMobInteraction {
+                entity_id,
+                silent,
+                random_float_count,
+                random_before_silent_check,
+            } => {
+                if random_before_silent_check || !silent {
+                    for _ in 0..random_float_count {
+                        let _discarded_random = self
+                            .entities
+                            .next_local_interaction_random_float(entity_id)?;
+                    }
+                }
+                if !silent {
+                    let _discarded_seed = self.next_sound_seed();
+                }
+                return None;
+            }
             LocalInteractionSoundAction::BlockPlace {
                 pos,
                 sound_resource_id,

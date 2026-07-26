@@ -70,7 +70,87 @@ impl ParticleCommandResolver {
                         Vec3d::default(),
                     )],
                 ),
+            LocalInteractionParticleAction::TadpoleFeeding { position_bits } => self
+                .simple_particle_batch(
+                    VANILLA_PARTICLE_TYPE_HAPPY_VILLAGER_ID,
+                    vec![(
+                        Vec3d {
+                            x: f64::from_bits(position_bits[0]),
+                            y: f64::from_bits(position_bits[1]),
+                            z: f64::from_bits(position_bits[2]),
+                        },
+                        Vec3d::default(),
+                    )],
+                ),
+            LocalInteractionParticleAction::MooshroomSmoke {
+                position_bits,
+                velocity_y_bits,
+            } => self.simple_particle_batch(
+                VANILLA_PARTICLE_TYPE_SMOKE_ID,
+                position_bits
+                    .into_iter()
+                    .zip(velocity_y_bits)
+                    .map(|(position, velocity_y)| {
+                        (
+                            Vec3d {
+                                x: f64::from_bits(position[0]),
+                                y: f64::from_bits(position[1]),
+                                z: f64::from_bits(position[2]),
+                            },
+                            Vec3d {
+                                y: f64::from_bits(velocity_y),
+                                ..Vec3d::default()
+                            },
+                        )
+                    })
+                    .collect(),
+            ),
+            LocalInteractionParticleAction::MooshroomEffect {
+                position_bits,
+                velocity_y_bits,
+            } => self.mooshroom_effect_particle_batch(position_bits, velocity_y_bits),
         }
+    }
+
+    fn mooshroom_effect_particle_batch(
+        &self,
+        position_bits: [[u64; 3]; 4],
+        velocity_y_bits: [u64; 4],
+    ) -> ParticleSpawnBatch {
+        let mut batch = ParticleSpawnBatch::default();
+        let Some(template) = self.append_template_result(
+            &mut batch,
+            self.simple_particle_template(VANILLA_PARTICLE_TYPE_EFFECT_ID),
+        ) else {
+            return batch;
+        };
+        for (position, velocity_y) in position_bits.into_iter().zip(velocity_y_bits) {
+            batch.commands.push(self.command_for_type(
+                template.particle_type,
+                &template.sprite_ids,
+                Vec3d {
+                    x: f64::from_bits(position[0]),
+                    y: f64::from_bits(position[1]),
+                    z: f64::from_bits(position[2]),
+                },
+                Vec3d {
+                    y: f64::from_bits(velocity_y),
+                    ..Vec3d::default()
+                },
+                template.particle_type.override_limiter,
+                false,
+                0,
+                0,
+                ParticleOptionRenderState {
+                    color: Some([1.0; 4]),
+                    power: Some(1.0),
+                    ..ParticleOptionRenderState::default()
+                },
+                None,
+                None,
+            ));
+        }
+        batch
     }
 
     fn candle_extinguish_particle_batch(

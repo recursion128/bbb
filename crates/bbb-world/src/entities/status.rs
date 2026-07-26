@@ -125,6 +125,10 @@ fn mob_effect_ends_within(duration_ticks: i32, ticks: i32) -> bool {
     duration_ticks != -1 && duration_ticks <= ticks
 }
 
+fn mob_effect_duration_is_shorter(duration_ticks: i32, other_duration_ticks: i32) -> bool {
+    duration_ticks != -1 && (other_duration_ticks == -1 || duration_ticks < other_duration_ticks)
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EntityDamageEventState {
     pub source_type_id: i32,
@@ -229,6 +233,67 @@ impl WorldStore {
             effects.effects.insert(effect.effect_id, effect);
         }) else {
             self.counters.update_mob_effects_ignored += 1;
+            return false;
+        };
+        self.update_active_mob_effect_count();
+        self.refresh_entity_active_swing_duration(entity_id);
+        true
+    }
+
+    pub(crate) fn apply_local_mob_effect(
+        &mut self,
+        entity_id: i32,
+        effect_id: i32,
+        duration_ticks: i32,
+    ) -> bool {
+        let Some(entity_type_id) = self.entities.entity_type_id(entity_id) else {
+            return false;
+        };
+        if !vanilla_living_entity_type(entity_type_id) {
+            return false;
+        }
+        let effect = MobEffectState::from(ProtocolUpdateMobEffect {
+            entity_id,
+            effect_id,
+            amplifier: 0,
+            duration_ticks,
+            flags: bbb_protocol::packets::MobEffectFlags {
+                raw: 0x06,
+                ambient: false,
+                visible: true,
+                show_icon: true,
+                blend: false,
+            },
+        });
+        let Some(()) = self.entities.with_mob_effects_mut(entity_id, |effects| {
+            let Some(previous) = effects.effects.get_mut(&effect.effect_id) else {
+                effects.effects.insert(effect.effect_id, effect);
+                return;
+            };
+
+            // Vanilla `MobEffectInstance.update`: a stronger incoming effect
+            // takes over, while an equal-amplifier effect only extends the
+            // active duration. A weaker effect may become a hidden fallback,
+            // which this client projection does not need to expose while the
+            // stronger active instance remains.
+            let mut changed = false;
+            if effect.amplifier > previous.amplifier {
+                previous.amplifier = effect.amplifier;
+                previous.duration_ticks = effect.duration_ticks;
+                changed = true;
+            } else if effect.amplifier == previous.amplifier
+                && mob_effect_duration_is_shorter(previous.duration_ticks, effect.duration_ticks)
+            {
+                previous.duration_ticks = effect.duration_ticks;
+                changed = true;
+            }
+
+            if (!effect.ambient && previous.ambient) || changed {
+                previous.ambient = effect.ambient;
+            }
+            previous.visible = effect.visible;
+            previous.show_icon = effect.show_icon;
+        }) else {
             return false;
         };
         self.update_active_mob_effect_count();

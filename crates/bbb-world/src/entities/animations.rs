@@ -640,6 +640,20 @@ pub struct EntityClientAnimationState {
     /// ambient/step/eat consolidation.
     #[serde(skip)]
     pub(crate) eating_voice_random_seed: Option<u64>,
+    /// Client-owned fields consulted by repeated local mob interactions.
+    /// Vanilla does not synchronize these fields: tameable sitting intent,
+    /// a brown mooshroom's pending stew ingredient, and Tadpole's private age.
+    #[serde(skip)]
+    pub(crate) ordered_to_sit: bool,
+    #[serde(skip)]
+    pub(crate) mooshroom_stew_ingredient_item_id: Option<i32>,
+    #[serde(skip)]
+    pub(crate) tadpole_age_ticks: i32,
+    /// Shared deterministic stand-in for the entity `RandomSource` calls made
+    /// by local interaction methods. It is retained per incarnation and kept
+    /// out of stable probe serialization like the other client RNG cursors.
+    #[serde(skip)]
+    pub(crate) local_interaction_random_seed: Option<u64>,
     /// Client-local `PlayerRideableJumping` input retained between the local
     /// player's release edge and the controlled vehicle's ridden tick. It is
     /// cloned into immutable publications for old-generation isolation but is
@@ -4534,6 +4548,20 @@ impl EntityClientAnimationState {
         self.equine_tail
             .get_or_insert_with(|| EquineTailAnimationState::new(entity_id))
             .advance_eating_pitch();
+    }
+
+    pub(crate) fn next_local_interaction_random_float(&mut self, entity_id: i32) -> f32 {
+        let random_seed = self.local_interaction_random_seed.get_or_insert_with(|| {
+            java_random_seed(i64::from(entity_id).wrapping_add(0x4d4f_4249))
+        });
+        java_random_next_float(random_seed)
+    }
+
+    pub(crate) fn next_local_interaction_random_double(&mut self, entity_id: i32) -> f64 {
+        let random_seed = self.local_interaction_random_seed.get_or_insert_with(|| {
+            java_random_seed(i64::from(entity_id).wrapping_add(0x4d4f_4249))
+        });
+        java_random_next_double(random_seed)
     }
 
     pub(crate) fn needs_particle_trigger_bounds_snapshot(&self) -> bool {

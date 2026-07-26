@@ -3141,6 +3141,13 @@ impl WorldStore {
         removed
     }
 
+    /// Applies the client half of an entity's own `discard()` call, used by
+    /// Vanilla bucketable interaction prediction. A later server remove or
+    /// spawn correction remains authoritative.
+    pub(crate) fn discard_local_entity(&mut self, entity_id: i32) -> bool {
+        self.remove_entities_by_ids(&[entity_id]) == 1
+    }
+
     fn remove_entities_by_ids(&mut self, removed_ids: &[i32]) -> usize {
         self.remove_tickable_entity_sounds(removed_ids);
         self.close_minecart_command_block_editor_for_removed_entities(removed_ids);

@@ -228,4 +228,13 @@ impl WorldStore {
             sea_level: self.level.as_ref().map_or(63, |level| level.sea_level),
         }
     }
+
+    /// Vanilla `Level.isThundering`: the interpolated thunder level is
+    /// multiplied by the interpolated rain level before the `0.9` threshold.
+    pub(crate) fn is_thundering(&self) -> bool {
+        self.level
+            .as_ref()
+            .is_some_and(crate::WorldLevelInfo::can_have_weather)
+            && self.weather.thunder_level * self.weather.rain_level > 0.9
+    }
 }
