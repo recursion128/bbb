@@ -63,8 +63,6 @@ pub struct ItemProfiles {
     #[serde(default)]
     pub(crate) default_item_crafting_remainders_known: bool,
     #[serde(default)]
-    pub(crate) recipe_specific_crafting_remainder_item_ids: PublicationShared<BTreeSet<i32>>,
-    #[serde(default)]
     pub(crate) default_item_equipment_slots: PublicationShared<BTreeMap<i32, ItemEquipmentSlot>>,
     /// Source-derived prototype `Equippable.swappable` membership.
     #[serde(default)]
@@ -441,13 +439,6 @@ impl ItemProfiles {
             .filter(|(item_id, remainder_id)| *item_id >= 0 && *remainder_id >= 0)
             .collect::<BTreeMap<_, _>>()
             .into();
-    }
-
-    pub(crate) fn set_recipe_specific_crafting_remainder_item_ids(
-        &mut self,
-        item_ids: BTreeSet<i32>,
-    ) {
-        self.recipe_specific_crafting_remainder_item_ids = filter_item_ids(item_ids).into();
     }
 
     pub(crate) fn item_max_stack_size_for_protocol_id(&self, item_id: i32) -> i32 {

@@ -12,7 +12,6 @@ from item_membership_catalog_extractor import (  # noqa: E402
     ItemMembershipCatalogExtractionError,
     brewing_membership,
     menu_membership,
-    recipe_specific_crafting_remainder_membership,
 )
 from vanilla_java_source import JavaSource, parse_source  # noqa: E402
 
@@ -119,61 +118,6 @@ class CartographyTableMenu {
 
 
 class ItemMembershipCatalogExtractorTests(unittest.TestCase):
-    def test_recipe_specific_remainders_join_json_with_java_override_audit(self) -> None:
-        crafting_sources = [
-            source(
-                f"net/minecraft/world/item/crafting/{name}.java",
-                f'''package net.minecraft.world.item.crafting;
-class {name} {{ Object getRemainingItems(Object input) {{ return input; }} }}''',
-            )
-            for name in (
-                "BannerDuplicateRecipe",
-                "BookCloningRecipe",
-                "CraftingRecipe",
-            )
-        ]
-        resources = {
-            "data/minecraft/recipe/white_banner_duplicate.json": b'''{
-              "type": "minecraft:crafting_special_bannerduplicate",
-              "banner": "minecraft:white_banner",
-              "result": {"id": "minecraft:white_banner"}
-            }''',
-            "data/minecraft/recipe/book_cloning.json": b'''{
-              "type": "minecraft:crafting_special_bookcloning",
-              "source": "minecraft:written_book",
-              "result": {"id": "minecraft:written_book"}
-            }''',
-            "data/minecraft/recipe/ordinary.json": b'''{
-              "type": "minecraft:crafting_shaped"
-            }''',
-        }
-        self.assertEqual(
-            recipe_specific_crafting_remainder_membership(
-                crafting_sources, resources, 2
-            ),
-            ("minecraft:white_banner", "minecraft:written_book"),
-        )
-
-    def test_new_crafting_remainder_override_fails_the_reverse_audit(self) -> None:
-        crafting_sources = [
-            source(
-                f"net/minecraft/world/item/crafting/{name}.java",
-                f'''package net.minecraft.world.item.crafting;
-class {name} {{ Object getRemainingItems(Object input) {{ return input; }} }}''',
-            )
-            for name in (
-                "BannerDuplicateRecipe",
-                "BookCloningRecipe",
-                "CraftingRecipe",
-                "NewRecipe",
-            )
-        ]
-        with self.assertRaisesRegex(
-            ItemMembershipCatalogExtractionError,
-            "crafting getRemainingItems owner set changed",
-        ):
-            recipe_specific_crafting_remainder_membership(crafting_sources, {}, 0)
-
     def test_menu_memberships_select_the_unique_item_predicate(self) -> None:
         catalog = menu_membership(
             enchantment_menu_source(),

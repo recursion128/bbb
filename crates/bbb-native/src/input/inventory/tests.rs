@@ -5003,7 +5003,6 @@ fn crafting_result_with_recipe_specific_remainder_uses_default_client_prediction
     let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
     world.set_default_item_crafting_remainders(BTreeMap::new());
-    world.set_recipe_specific_crafting_remainder_item_ids(BTreeSet::from([42]));
     world.apply_open_screen(OpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,

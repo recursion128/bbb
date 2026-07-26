@@ -39,26 +39,6 @@ pub(super) const ENCHANTMENT_LAPIS_LAZULI_ITEM_IDS: &[&str] = &["minecraft:lapis
 pub(super) const CARTOGRAPHY_ADDITIONAL_ITEM_IDS: &[&str] =
     &["minecraft:paper", "minecraft:map", "minecraft:glass_pane"];
 
-pub(super) const RECIPE_SPECIFIC_CRAFTING_REMAINDER_ITEM_IDS: &[&str] = &[
-    "minecraft:black_banner",
-    "minecraft:blue_banner",
-    "minecraft:brown_banner",
-    "minecraft:cyan_banner",
-    "minecraft:gray_banner",
-    "minecraft:green_banner",
-    "minecraft:light_blue_banner",
-    "minecraft:light_gray_banner",
-    "minecraft:lime_banner",
-    "minecraft:magenta_banner",
-    "minecraft:orange_banner",
-    "minecraft:pink_banner",
-    "minecraft:purple_banner",
-    "minecraft:red_banner",
-    "minecraft:white_banner",
-    "minecraft:written_book",
-    "minecraft:yellow_banner",
-];
-
 #[cfg(test)]
 mod tests {
     use std::{collections::HashSet, fs, path::Path};
@@ -76,15 +56,6 @@ mod tests {
         assert_eq!(
             CARTOGRAPHY_ADDITIONAL_ITEM_IDS,
             &["minecraft:paper", "minecraft:map", "minecraft:glass_pane"]
-        );
-        assert_eq!(RECIPE_SPECIFIC_CRAFTING_REMAINDER_ITEM_IDS.len(), 17);
-        assert_eq!(
-            RECIPE_SPECIFIC_CRAFTING_REMAINDER_ITEM_IDS
-                .iter()
-                .copied()
-                .collect::<HashSet<_>>()
-                .len(),
-            17
         );
         assert_eq!(
             BREWING_POTION_ITEM_IDS
@@ -152,7 +123,6 @@ mod tests {
                         &["BREWING", "INGREDIENT", "ITEM"][..],
                         &["ENCHANT", "LAPIS", "ITEM"][..],
                         &["CARTOGRAPH", "ADDITIONAL", "ITEM"][..],
-                        &["CRAFT", "REMAINDER", "ITEM"][..],
                     ]
                     .iter()
                     .any(|words| words.iter().all(|word| upper.contains(word)));
@@ -167,10 +137,6 @@ mod tests {
                 for (name, resources) in [
                     ("brewing potion", BREWING_POTION_ITEM_IDS),
                     ("brewing ingredient", BREWING_INGREDIENT_ITEM_IDS),
-                    (
-                        "recipe-specific crafting remainder",
-                        RECIPE_SPECIFIC_CRAFTING_REMAINDER_ITEM_IDS,
-                    ),
                 ] {
                     if has_all_resource_literals(production, resources) {
                         violations

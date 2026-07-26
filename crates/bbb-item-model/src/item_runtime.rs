@@ -216,7 +216,7 @@ const TOOLTIP_TEXT_RED: [f32; 4] = [1.0, 85.0 / 255.0, 85.0 / 255.0, 1.0];
 
 use item_membership_catalog::{
     BREWING_INGREDIENT_ITEM_IDS, BREWING_POTION_ITEM_IDS, CARTOGRAPHY_ADDITIONAL_ITEM_IDS,
-    ENCHANTMENT_LAPIS_LAZULI_ITEM_IDS, RECIPE_SPECIFIC_CRAFTING_REMAINDER_ITEM_IDS,
+    ENCHANTMENT_LAPIS_LAZULI_ITEM_IDS,
 };
 
 #[derive(Debug)]
@@ -229,7 +229,6 @@ pub struct NativeItemRuntime {
     furnace_fuel_item_ids: BTreeSet<i32>,
     freeze_immune_wearable_item_ids: BTreeSet<i32>,
     powder_snow_walkable_foot_item_ids: BTreeSet<i32>,
-    recipe_specific_crafting_remainder_item_ids: BTreeSet<i32>,
     item_icon_models: HashMap<String, ItemIconModel>,
     item_display_transforms: HashMap<String, BlockModelDisplayTransforms>,
     client_item_properties: HashMap<String, ClientItemProperties>,
@@ -537,9 +536,6 @@ impl NativeItemRuntime {
             furnace_fuel_item_ids: self.furnace_fuel_item_ids.clone(),
             freeze_immune_wearable_item_ids: self.freeze_immune_wearable_item_ids.clone(),
             powder_snow_walkable_foot_item_ids: self.powder_snow_walkable_foot_item_ids.clone(),
-            recipe_specific_crafting_remainder_item_ids: self
-                .recipe_specific_crafting_remainder_item_ids
-                .clone(),
             item_icon_models: self.item_icon_models.clone(),
             item_display_transforms: self.item_display_transforms.clone(),
             client_item_properties: self.client_item_properties.clone(),
@@ -634,10 +630,6 @@ impl NativeItemRuntime {
             })
             .into_iter()
             .collect();
-        let recipe_specific_crafting_remainder_item_ids = registry
-            .as_ref()
-            .map(recipe_specific_crafting_remainder_item_ids)
-            .unwrap_or_default();
         let item_tags = roots
             .load_tag_catalog("item")
             .context("load native item tags")
@@ -752,7 +744,6 @@ impl NativeItemRuntime {
             furnace_fuel_item_ids,
             freeze_immune_wearable_item_ids,
             powder_snow_walkable_foot_item_ids,
-            recipe_specific_crafting_remainder_item_ids,
             equipment_assets,
             language,
             map_background_textures,
@@ -783,7 +774,6 @@ impl NativeItemRuntime {
         furnace_fuel_item_ids: BTreeSet<i32>,
         freeze_immune_wearable_item_ids: BTreeSet<i32>,
         powder_snow_walkable_foot_item_ids: BTreeSet<i32>,
-        recipe_specific_crafting_remainder_item_ids: BTreeSet<i32>,
         equipment_assets: EquipmentAssetCatalog,
         language: LanguageCatalog,
         map_background_textures: Vec<FirstPersonMapBackgroundTexture>,
@@ -874,7 +864,6 @@ impl NativeItemRuntime {
             furnace_fuel_item_ids,
             freeze_immune_wearable_item_ids,
             powder_snow_walkable_foot_item_ids,
-            recipe_specific_crafting_remainder_item_ids,
             item_icon_models,
             item_display_transforms,
             client_item_properties,
@@ -924,7 +913,6 @@ impl NativeItemRuntime {
             furnace_fuel_item_ids: BTreeSet::new(),
             freeze_immune_wearable_item_ids: BTreeSet::new(),
             powder_snow_walkable_foot_item_ids: BTreeSet::new(),
-            recipe_specific_crafting_remainder_item_ids: BTreeSet::new(),
             item_icon_models: HashMap::new(),
             item_display_transforms: HashMap::new(),
             client_item_properties: HashMap::new(),

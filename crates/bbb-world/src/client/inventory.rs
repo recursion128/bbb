@@ -3505,11 +3505,6 @@ impl WorldStore {
         self.items.set_default_item_crafting_remainders(remainders)
     }
 
-    pub fn set_recipe_specific_crafting_remainder_item_ids(&mut self, item_ids: BTreeSet<i32>) {
-        self.items
-            .set_recipe_specific_crafting_remainder_item_ids(item_ids)
-    }
-
     pub fn item_max_stack_size_for_protocol_id(&self, item_id: i32) -> i32 {
         self.items.item_max_stack_size_for_protocol_id(item_id)
     }

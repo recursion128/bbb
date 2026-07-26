@@ -4574,7 +4574,6 @@ fn inventory_menu_crafting_result_drops_default_remainder_when_inventory_is_full
 fn inventory_menu_crafting_result_uses_default_prediction_for_recipe_specific_input() {
     let mut store = WorldStore::new();
     store.set_default_item_crafting_remainders(BTreeMap::new());
-    store.set_recipe_specific_crafting_remainder_item_ids(BTreeSet::from([42]));
     let mut items = vec![ProtocolItemStackSummary::empty(); 46];
     items[0] = item_stack(90, 1);
     items[1] = item_stack(42, 2);
@@ -5168,7 +5167,6 @@ fn crafting_result_inserts_incompatible_default_remainder_into_player_inventory(
 fn crafting_result_uses_default_prediction_for_recipe_specific_input() {
     let mut store = WorldStore::new();
     store.set_default_item_crafting_remainders(BTreeMap::new());
-    store.set_recipe_specific_crafting_remainder_item_ids(BTreeSet::from([42]));
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,

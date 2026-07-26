@@ -39,12 +39,6 @@ pub(super) fn protocol_ids_for_resource_ids(
         .collect()
 }
 
-pub(super) fn recipe_specific_crafting_remainder_item_ids(
-    registry: &ItemRegistryCatalog,
-) -> BTreeSet<i32> {
-    protocol_ids_for_resource_ids(registry, RECIPE_SPECIFIC_CRAFTING_REMAINDER_ITEM_IDS)
-}
-
 pub(super) fn world_item_equipment_slot(slot: PackItemEquipmentSlot) -> WorldItemEquipmentSlot {
     match slot {
         PackItemEquipmentSlot::MainHand => WorldItemEquipmentSlot::MainHand,
@@ -325,14 +319,6 @@ impl NativeItemRuntime {
 
     pub fn item_crafting_remainder_count(&self) -> usize {
         self.item_crafting_remainders_by_protocol_id().len()
-    }
-
-    pub fn recipe_specific_crafting_remainder_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
-        self.recipe_specific_crafting_remainder_item_ids.clone()
-    }
-
-    pub fn recipe_specific_crafting_remainder_item_count(&self) -> usize {
-        self.recipe_specific_crafting_remainder_item_ids.len()
     }
 
     pub fn item_equipment_slots_by_protocol_id(&self) -> BTreeMap<i32, WorldItemEquipmentSlot> {

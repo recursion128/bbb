@@ -489,7 +489,6 @@ pub(crate) struct ItemRuntimeWorldDefaults {
     max_stack_sizes: BTreeMap<i32, i32>,
     max_damage: BTreeMap<i32, i32>,
     crafting_remainders: BTreeMap<i32, i32>,
-    recipe_specific_crafting_remainders: BTreeSet<i32>,
     equipment_slots: BTreeMap<i32, ItemEquipmentSlot>,
     swappable_equipment_item_ids: BTreeSet<i32>,
     player_swappable_equipment_item_ids: BTreeSet<i32>,
@@ -564,8 +563,6 @@ impl ItemRuntimeWorldDefaults {
             max_stack_sizes: items.item_max_stack_sizes_by_protocol_id(),
             max_damage: items.item_max_damage_by_protocol_id(),
             crafting_remainders: items.item_crafting_remainders_by_protocol_id(),
-            recipe_specific_crafting_remainders: items
-                .recipe_specific_crafting_remainder_item_ids_by_protocol_id(),
             equipment_slots: items.item_equipment_slots_by_protocol_id(),
             swappable_equipment_item_ids: items
                 .default_swappable_equipment_item_ids_by_protocol_id(),
@@ -620,9 +617,6 @@ impl ItemRuntimeWorldDefaults {
         world.set_default_item_max_stack_sizes(self.max_stack_sizes);
         world.set_default_item_max_damage(self.max_damage);
         world.set_default_item_crafting_remainders(self.crafting_remainders);
-        world.set_recipe_specific_crafting_remainder_item_ids(
-            self.recipe_specific_crafting_remainders,
-        );
         world.set_default_item_equipment_slots(self.equipment_slots);
         world.set_default_swappable_equipment_item_ids(self.swappable_equipment_item_ids);
         world.set_default_player_swappable_equipment_item_ids(

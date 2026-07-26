@@ -512,8 +512,6 @@ fn main() -> Result<()> {
             default_item_max_damage = items.item_max_damage_count(),
             default_damageable_items = items.default_damageable_item_count(),
             item_crafting_remainders = items.item_crafting_remainder_count(),
-            recipe_specific_crafting_remainder_items =
-                items.recipe_specific_crafting_remainder_item_count(),
             default_use_effect_items = items.item_use_effect_count(),
             item_mining_profiles = items.item_mining_profile_count(),
             furnace_fuel_items = items.furnace_fuel_item_count(),

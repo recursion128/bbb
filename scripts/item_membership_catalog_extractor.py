@@ -31,13 +31,6 @@ class MenuMembership:
     cartography_additional_item_ids: tuple[str, ...]
 
 
-EXPECTED_CRAFTING_REMAINDER_OWNERS = {
-    "net.minecraft.world.item.crafting.BannerDuplicateRecipe",
-    "net.minecraft.world.item.crafting.BookCloningRecipe",
-    "net.minecraft.world.item.crafting.CraftingRecipe",
-}
-
-
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     span = expression.span
     raise ItemMembershipCatalogExtractionError(
@@ -331,62 +324,3 @@ def menu_membership(
             expected_cartography_count,
         ),
     )
-
-
-def recipe_specific_crafting_remainder_membership(
-    crafting_sources: list[JavaSource],
-    recipe_resources: dict[str, bytes],
-    expected_count: int = 17,
-) -> tuple[str, ...]:
-    owners = {
-        method.owner
-        for source in crafting_sources
-        for method in source.methods
-        if method.name == "getRemainingItems"
-    }
-    if owners != EXPECTED_CRAFTING_REMAINDER_OWNERS:
-        raise ItemMembershipCatalogExtractionError(
-            "crafting getRemainingItems owner set changed: "
-            f"expected={sorted(EXPECTED_CRAFTING_REMAINDER_OWNERS)}, actual={sorted(owners)}"
-        )
-
-    item_ids: list[str] = []
-    target_resource_count = 0
-    for relative_path, raw in sorted(recipe_resources.items()):
-        try:
-            recipe = json.loads(raw)
-        except (json.JSONDecodeError, UnicodeDecodeError) as error:
-            raise ItemMembershipCatalogExtractionError(
-                f"{relative_path}: invalid recipe JSON: {error}"
-            ) from error
-        if not isinstance(recipe, dict):
-            raise ItemMembershipCatalogExtractionError(
-                f"{relative_path}: recipe root is not an object"
-            )
-        recipe_type = recipe.get("type")
-        if recipe_type == "minecraft:crafting_special_bannerduplicate":
-            source_id = recipe.get("banner")
-        elif recipe_type == "minecraft:crafting_special_bookcloning":
-            source_id = recipe.get("source")
-        else:
-            continue
-        target_resource_count += 1
-        result = recipe.get("result")
-        if (
-            not isinstance(source_id, str)
-            or not source_id.startswith("minecraft:")
-            or not isinstance(result, dict)
-            or result.get("id") != source_id
-        ):
-            raise ItemMembershipCatalogExtractionError(
-                f"{relative_path}: unsupported recipe-specific remainder declaration"
-            )
-        item_ids.append(source_id)
-
-    unique_ids = tuple(sorted(set(item_ids)))
-    if target_resource_count != expected_count or len(unique_ids) != expected_count:
-        raise ItemMembershipCatalogExtractionError(
-            f"expected {expected_count} recipe-specific remainder recipes/items, "
-            f"extracted {target_resource_count}/{len(unique_ids)}"
-        )
-    return unique_ids
