@@ -601,6 +601,12 @@ pub(super) fn block_state_for_placement(
                 ],
             );
         }
+        VanillaGetStateForPlacementOverride::RedstoneLampBlock => {
+            if placement_neighbor_signal_is_proven_absent(world, &[target_pos]).is_none() {
+                return BlockPlacementState::Unsupported;
+            }
+            return state_with_properties(world, block_type, default_state_id, [("lit", "false")]);
+        }
         VanillaGetStateForPlacementOverride::BannerBlock => {
             let Some(rotation) = rotation_segment(pose.y_rot + 180.0) else {
                 return BlockPlacementState::Unsupported;
