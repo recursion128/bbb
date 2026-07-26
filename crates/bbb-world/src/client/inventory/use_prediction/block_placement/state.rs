@@ -810,13 +810,15 @@ pub(super) fn block_state_for_placement(
                 ],
             );
         }
-        owner @ (VanillaGetStateForPlacementOverride::FaceAttachedHorizontalDirectionalBlock
+        owner @ (VanillaGetStateForPlacementOverride::CeilingHangingSignBlock
+        | VanillaGetStateForPlacementOverride::FaceAttachedHorizontalDirectionalBlock
         | VanillaGetStateForPlacementOverride::LadderBlock
         | VanillaGetStateForPlacementOverride::LanternBlock
         | VanillaGetStateForPlacementOverride::WallBannerBlock
         | VanillaGetStateForPlacementOverride::WallSignBlock
         | VanillaGetStateForPlacementOverride::WallTorchBlock
         | VanillaGetStateForPlacementOverride::RedstoneWallTorchBlock
+        | VanillaGetStateForPlacementOverride::WallHangingSignBlock
         | VanillaGetStateForPlacementOverride::WallSkullBlock) => {
             return attached_block_state_for_placement(
                 world,

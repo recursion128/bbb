@@ -37,11 +37,12 @@ use bbb_protocol::{
     },
     equipment_slots::VANILLA_EQUIPMENT_SLOTS,
     item_types::{
-        ItemTypeCatalogEntry, VanillaBlockTransform, VanillaItemInteractLivingEntityOverride,
-        VanillaItemUseOnOverride, VanillaItemUseOverride, VANILLA_AXE_SCRAPEABLES,
-        VANILLA_AXE_STRIPPABLES, VANILLA_AXE_WAX_OFF, VANILLA_HOE_TILLABLES,
-        VANILLA_HONEYCOMB_WAXABLES, VANILLA_ITEM_GOLDEN_DANDELION_ID, VANILLA_ITEM_IRON_INGOT_ID,
-        VANILLA_ITEM_LEAD_ID, VANILLA_ITEM_SHEARS_ID, VANILLA_SHOVEL_FLATTENABLES,
+        vanilla_item_type, ItemTypeCatalogEntry, VanillaBlockItemKind, VanillaBlockTransform,
+        VanillaItemInteractLivingEntityOverride, VanillaItemUseOnOverride, VanillaItemUseOverride,
+        VANILLA_AXE_SCRAPEABLES, VANILLA_AXE_STRIPPABLES, VANILLA_AXE_WAX_OFF,
+        VANILLA_HOE_TILLABLES, VANILLA_HONEYCOMB_WAXABLES, VANILLA_ITEM_GOLDEN_DANDELION_ID,
+        VANILLA_ITEM_IRON_INGOT_ID, VANILLA_ITEM_LEAD_ID, VANILLA_ITEM_SHEARS_ID,
+        VANILLA_SHOVEL_FLATTENABLES,
     },
     packets::{
         BlockPos as ProtocolBlockPos, ConsumableSummary, Direction as ProtocolDirection,
@@ -695,14 +696,21 @@ impl WorldStore {
         }
         let ignition_reaches_item_use =
             self.local_ignition_item_reaches_use_on(block_type.use_item_on_override, hand);
+        let hanging_sign_reaches_item_use = self.local_hanging_sign_item_reaches_use_on(
+            block_type.use_item_on_override,
+            hand,
+            context,
+        );
+        let specialized_item_reaches_use_on =
+            ignition_reaches_item_use || hanging_sign_reaches_item_use;
         if let Some(owner) = block_type.use_item_on_override {
-            if !ignition_reaches_item_use {
+            if !specialized_item_reaches_use_on {
                 return LocalTargetUsePrediction::UnsupportedBlockUseItemOn(owner);
             }
         }
         if hand == InteractionHand::MainHand {
             if let Some(owner) = block_type.use_without_item_override {
-                if !ignition_reaches_item_use {
+                if !specialized_item_reaches_use_on {
                     let Some(context) = context else {
                         return LocalTargetUsePrediction::UnsupportedBlockUseWithoutItem(owner);
                     };
@@ -721,6 +729,49 @@ impl WorldStore {
             }
         }
         self.predict_local_item_use_on(hand, context)
+    }
+
+    fn local_hanging_sign_item_reaches_use_on(
+        &self,
+        block_owner: Option<VanillaBlockUseItemOnOverride>,
+        hand: InteractionHand,
+        context: Option<LocalBlockUseContext>,
+    ) -> bool {
+        let Some(context) = context else {
+            return false;
+        };
+        let Some(stack) = self.local_item_in_hand(hand) else {
+            return false;
+        };
+        let Some(item_type) = stack.item_id.and_then(vanilla_item_type) else {
+            return false;
+        };
+        if item_type
+            .block_item_behavior
+            .is_none_or(|behavior| behavior.kind != VanillaBlockItemKind::HangingSignItem)
+            || !self.has_sign_block_entity_at(context.pos)
+            || !self.sign_run_commands_are_proven_absent(context.pos)
+        {
+            return false;
+        }
+        match block_owner {
+            Some(VanillaBlockUseItemOnOverride::CeilingHangingSignBlock) => {
+                context.face == ProtocolDirection::Down
+            }
+            Some(VanillaBlockUseItemOnOverride::WallHangingSignBlock) => {
+                let Some(block) = self.probe_block(context.pos) else {
+                    return false;
+                };
+                let Some(facing) = block.block_properties.get("facing") else {
+                    return false;
+                };
+                let Some(facing_axis) = horizontal_property_axis(facing) else {
+                    return false;
+                };
+                protocol_direction_axis(context.face) != facing_axis
+            }
+            _ => false,
+        }
     }
 
     fn local_ignition_item_reaches_use_on(
@@ -2343,6 +2394,22 @@ fn face_center_cursor(face: ProtocolDirection) -> [f64; 3] {
         ProtocolDirection::South => [0.5, 0.5, 1.0],
         ProtocolDirection::West => [0.0, 0.5, 0.5],
         ProtocolDirection::East => [1.0, 0.5, 0.5],
+    }
+}
+
+fn protocol_direction_axis(direction: ProtocolDirection) -> char {
+    match direction {
+        ProtocolDirection::West | ProtocolDirection::East => 'x',
+        ProtocolDirection::Down | ProtocolDirection::Up => 'y',
+        ProtocolDirection::North | ProtocolDirection::South => 'z',
+    }
+}
+
+fn horizontal_property_axis(direction: &str) -> Option<char> {
+    match direction {
+        "west" | "east" => Some('x'),
+        "north" | "south" => Some('z'),
+        _ => None,
     }
 }
 

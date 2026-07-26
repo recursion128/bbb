@@ -20,6 +20,7 @@ use bbb_protocol::attribute_types::{
 use bbb_protocol::block_entity_types::{
     VANILLA_BLOCK_ENTITY_TYPE_HANGING_SIGN_ID, VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,
 };
+use bbb_protocol::ComponentClickEvent;
 
 use crate::{BlockPos, ChunkColumn, PaletteKind, RegistrySet, SignTextSideState, WorldStore};
 
@@ -125,6 +126,20 @@ impl WorldStore {
             .probe_block(pos)
             .and_then(|block| block.block_name)
             .is_some_and(|name| sign_wood_and_form_for_block_name(&name).is_some())
+    }
+
+    /// Conservatively proves a hanging-sign click cannot execute a command,
+    /// allowing vanilla's item interaction to continue into sign chaining.
+    /// Both faces and both filtering variants are checked because this layer
+    /// does not own the player's active face/filter selection.
+    pub(crate) fn sign_run_commands_are_proven_absent(&self, pos: BlockPos) -> bool {
+        let Some(text) = self.sign_text_state_at(pos) else {
+            return self.has_sign_block_entity_at(pos);
+        };
+        if !text.is_waxed {
+            return true;
+        }
+        sign_text_run_commands_are_absent(text)
     }
 
     /// Whether Vanilla's active sign editor may keep editing `pos`: the sign
@@ -260,6 +275,21 @@ impl WorldStore {
     }
 }
 
+fn sign_text_run_commands_are_absent(text: &crate::SignBlockEntityTextState) -> bool {
+    [&text.front, &text.back].into_iter().all(|side| {
+        side.lines
+            .iter()
+            .chain(side.filtered_lines.iter().flat_map(|lines| lines.iter()))
+            .flat_map(|line| line.iter())
+            .all(|run| {
+                !matches!(
+                    run.style.click_event.as_ref(),
+                    Some(ComponentClickEvent::RunCommand { .. })
+                )
+            })
+    })
+}
+
 fn point_to_block_aabb_distance_squared(point: [f64; 3], pos: BlockPos) -> f64 {
     let min = [f64::from(pos.x), f64::from(pos.y), f64::from(pos.z)];
     let max = [min[0] + 1.0, min[1] + 1.0, min[2] + 1.0];
@@ -305,7 +335,7 @@ mod tests {
         SignBlockEntityTextState, SignTextDyeColor, WorldDimension,
     };
     use bbb_protocol::packets::{BlockEntityData, BlockPos as ProtocolBlockPos, BlockUpdate};
-    use bbb_protocol::{ComponentStyle, StyledTextRun};
+    use bbb_protocol::{ComponentClickEvent, ComponentStyle, StyledTextRun};
     use std::collections::BTreeMap;
 
     fn world_with_air_chunk() -> WorldStore {
@@ -703,6 +733,39 @@ mod tests {
         assert!(!world.sign_editor_is_valid_at(pos));
         world.local_player_id = None;
         assert!(!world.sign_editor_is_valid_at(pos));
+    }
+
+    #[test]
+    fn sign_command_guard_checks_raw_and_filtered_run_commands_only() {
+        let run = |click_event| StyledTextRun {
+            text: "action".to_string(),
+            style: ComponentStyle {
+                click_event: Some(click_event),
+                ..ComponentStyle::default()
+            },
+        };
+        let mut state = SignBlockEntityTextState::default();
+        state.front.lines[0].push(run(ComponentClickEvent::RunCommand {
+            command: "/say raw".to_string(),
+        }));
+        assert!(!sign_text_run_commands_are_absent(&state));
+
+        state.front.lines[0].clear();
+        state.back.filtered_lines = Some([
+            vec![run(ComponentClickEvent::RunCommand {
+                command: "/say filtered".to_string(),
+            })],
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+        ]);
+        assert!(!sign_text_run_commands_are_absent(&state));
+
+        state.back.filtered_lines = None;
+        state.front.lines[0].push(run(ComponentClickEvent::OpenUrl {
+            url: "https://example.invalid".to_string(),
+        }));
+        assert!(sign_text_run_commands_are_absent(&state));
     }
 
     #[test]

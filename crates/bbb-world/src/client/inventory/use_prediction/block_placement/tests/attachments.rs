@@ -1,6 +1,265 @@
 use super::*;
 
 #[test]
+fn hanging_sign_item_selects_ceiling_chain_and_wall_forms() {
+    let ceiling_support = BlockPos { x: 4, y: 10, z: 4 };
+    let ceiling_target = relative(ceiling_support, ProtocolDirection::Down);
+    let mut ceiling = placement_world();
+    set_block(
+        &mut ceiling,
+        ceiling_support,
+        state_id("minecraft:stone", []),
+    );
+    set_block_tag(&mut ceiling, "minecraft:all_hanging_signs", &[]);
+    set_held(&mut ceiling, VANILLA_ITEM_OAK_HANGING_SIGN_ID, 1);
+    assert!(matches!(
+        ceiling.predict_local_block_use_with_hit(
+            ceiling_support,
+            ProtocolDirection::Down,
+            [0.25, 0.0, 0.75],
+            false,
+            InteractionHand::MainHand,
+            false,
+            40,
+        ),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        ceiling.probe_block(ceiling_target).unwrap().block_state_id,
+        state_id(
+            "minecraft:oak_hanging_sign",
+            [
+                ("attached", "false"),
+                ("rotation", "8"),
+                ("waterlogged", "false"),
+            ],
+        )
+    );
+
+    let mut attached = placement_world();
+    attached.set_local_player_pose(LocalPlayerPoseState {
+        y_rot: 22.5,
+        position: Vec3d {
+            x: 8.0,
+            y: 8.0,
+            z: 8.0,
+        },
+        ..LocalPlayerPoseState::default()
+    });
+    set_block(
+        &mut attached,
+        ceiling_support,
+        state_id("minecraft:stone", []),
+    );
+    set_block_tag(&mut attached, "minecraft:all_hanging_signs", &[]);
+    set_held(&mut attached, VANILLA_ITEM_OAK_HANGING_SIGN_ID, 1);
+    assert!(matches!(
+        attached.predict_local_block_use_with_hit(
+            ceiling_support,
+            ProtocolDirection::Down,
+            [0.25, 0.0, 0.75],
+            false,
+            InteractionHand::MainHand,
+            true,
+            41,
+        ),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        attached.probe_block(ceiling_target).unwrap().block_state_id,
+        state_id(
+            "minecraft:oak_hanging_sign",
+            [
+                ("attached", "true"),
+                ("rotation", "9"),
+                ("waterlogged", "false"),
+            ],
+        )
+    );
+
+    let wall_clicked = BlockPos { x: 4, y: 8, z: 4 };
+    let wall_target = relative(wall_clicked, ProtocolDirection::East);
+    let mut wall = placement_world();
+    set_block(&mut wall, wall_clicked, state_id("minecraft:stone", []));
+    set_block_tag(&mut wall, "minecraft:wall_hanging_signs", &[]);
+    set_held(&mut wall, VANILLA_ITEM_OAK_HANGING_SIGN_ID, 1);
+    assert!(matches!(
+        wall.predict_local_block_use_with_hit(
+            wall_clicked,
+            ProtocolDirection::East,
+            [1.0, 0.5, 0.5],
+            false,
+            InteractionHand::MainHand,
+            false,
+            42,
+        ),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        wall.probe_block(wall_target).unwrap().block_state_id,
+        state_id(
+            "minecraft:oak_wall_hanging_sign",
+            [("facing", "north"), ("waterlogged", "false")],
+        )
+    );
+}
+
+#[test]
+fn hanging_sign_chain_snaps_axis_and_missing_support_fails_without_consuming() {
+    let chain_support = BlockPos { x: 4, y: 10, z: 4 };
+    let chain_target = relative(chain_support, ProtocolDirection::Down);
+    let mut chain = placement_world();
+    set_block(
+        &mut chain,
+        chain_support,
+        state_id(
+            "minecraft:oak_wall_hanging_sign",
+            [("facing", "north"), ("waterlogged", "false")],
+        ),
+    );
+    set_block_tag(
+        &mut chain,
+        "minecraft:all_hanging_signs",
+        &[VANILLA_BLOCK_OAK_WALL_HANGING_SIGN_ID],
+    );
+    set_held(&mut chain, VANILLA_ITEM_OAK_HANGING_SIGN_ID, 1);
+    let chain_result = chain.predict_local_block_use_with_hit(
+        chain_support,
+        ProtocolDirection::Down,
+        [0.25, 0.0, 0.75],
+        false,
+        InteractionHand::MainHand,
+        false,
+        43,
+    );
+    assert!(
+        matches!(
+            chain_result,
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+        ),
+        "unexpected chain result: {chain_result:?}"
+    );
+    assert_eq!(
+        chain.probe_block(chain_target).unwrap().block_state_id,
+        state_id(
+            "minecraft:oak_hanging_sign",
+            [
+                ("attached", "false"),
+                ("rotation", "8"),
+                ("waterlogged", "false"),
+            ],
+        )
+    );
+
+    let wall_chain_clicked = BlockPos { x: 4, y: 8, z: 4 };
+    let wall_chain_target = relative(wall_chain_clicked, ProtocolDirection::East);
+    let mut wall_chain = placement_world();
+    set_block(
+        &mut wall_chain,
+        wall_chain_clicked,
+        state_id(
+            "minecraft:oak_wall_hanging_sign",
+            [("facing", "north"), ("waterlogged", "false")],
+        ),
+    );
+    wall_chain.apply_update_tags(UpdateTags {
+        registries: vec![RegistryTags {
+            registry: "minecraft:block".to_string(),
+            tags: vec![
+                TagNetworkPayload {
+                    tag: "minecraft:all_hanging_signs".to_string(),
+                    entries: vec![VANILLA_BLOCK_OAK_WALL_HANGING_SIGN_ID],
+                },
+                TagNetworkPayload {
+                    tag: "minecraft:wall_hanging_signs".to_string(),
+                    entries: vec![VANILLA_BLOCK_OAK_WALL_HANGING_SIGN_ID],
+                },
+            ],
+        }],
+    });
+    set_held(&mut wall_chain, VANILLA_ITEM_OAK_HANGING_SIGN_ID, 1);
+    assert!(matches!(
+        wall_chain.predict_local_block_use_with_hit(
+            wall_chain_clicked,
+            ProtocolDirection::East,
+            [1.0, 0.5, 0.5],
+            false,
+            InteractionHand::MainHand,
+            false,
+            44,
+        ),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        wall_chain
+            .probe_block(wall_chain_target)
+            .unwrap()
+            .block_state_id,
+        state_id(
+            "minecraft:oak_wall_hanging_sign",
+            [("facing", "north"), ("waterlogged", "false")],
+        )
+    );
+
+    let mut editable_side = placement_world();
+    set_block(
+        &mut editable_side,
+        wall_chain_clicked,
+        state_id(
+            "minecraft:oak_wall_hanging_sign",
+            [("facing", "east"), ("waterlogged", "false")],
+        ),
+    );
+    set_held(&mut editable_side, VANILLA_ITEM_OAK_HANGING_SIGN_ID, 1);
+    assert_eq!(
+        editable_side.predict_local_block_use_with_hit(
+            wall_chain_clicked,
+            ProtocolDirection::East,
+            [1.0, 0.5, 0.5],
+            false,
+            InteractionHand::MainHand,
+            false,
+            45,
+        ),
+        LocalTargetUsePrediction::UnsupportedBlockUseItemOn(
+            VanillaBlockUseItemOnOverride::WallHangingSignBlock
+        )
+    );
+    assert_eq!(held(&editable_side).count, 1);
+    assert!(editable_side.local_block_predictions().is_empty());
+
+    let unsupported_clicked = BlockPos { x: 4, y: 8, z: 4 };
+    let mut unsupported = placement_world();
+    set_block(
+        &mut unsupported,
+        unsupported_clicked,
+        state_id("minecraft:stone", []),
+    );
+    unsupported.apply_update_tags(UpdateTags {
+        registries: vec![RegistryTags {
+            registry: "minecraft:block".to_string(),
+            tags: vec![
+                TagNetworkPayload {
+                    tag: "minecraft:all_hanging_signs".to_string(),
+                    entries: Vec::new(),
+                },
+                TagNetworkPayload {
+                    tag: "minecraft:wall_hanging_signs".to_string(),
+                    entries: Vec::new(),
+                },
+            ],
+        }],
+    });
+    set_held(&mut unsupported, VANILLA_ITEM_OAK_HANGING_SIGN_ID, 1);
+    assert_eq!(
+        use_block_at(&mut unsupported, unsupported_clicked, false, 46),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
+    );
+    assert_eq!(held(&unsupported).count, 1);
+    assert!(unsupported.local_block_predictions().is_empty());
+}
+
+#[test]
 fn gate_and_trapdoor_use_exact_wall_hit_and_signal_free_states() {
     let clicked = BlockPos { x: 4, y: 8, z: 4 };
     let gate_target = relative(clicked, ProtocolDirection::Up);

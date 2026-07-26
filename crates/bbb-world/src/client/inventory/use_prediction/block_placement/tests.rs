@@ -6,7 +6,7 @@ use crate::{
 use bbb_protocol::{
     block_types::{
         VANILLA_BLOCK_COBBLESTONE_WALL_ID, VANILLA_BLOCK_NETHER_BRICK_FENCE_ID,
-        VANILLA_BLOCK_OAK_FENCE_ID, VANILLA_BLOCK_STONE_ID,
+        VANILLA_BLOCK_OAK_FENCE_ID, VANILLA_BLOCK_OAK_WALL_HANGING_SIGN_ID, VANILLA_BLOCK_STONE_ID,
     },
     data_component_types::VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID,
     game_types::VANILLA_GAME_TYPE_SURVIVAL_ID,
@@ -594,28 +594,6 @@ fn door_item_predicts_hinge_and_both_halves_atomically() {
     );
     assert!(powered.local_block_predictions().is_empty());
     assert_eq!(held(&powered).count, 1);
-}
-
-#[test]
-fn remaining_hanging_sign_subclass_stays_explicit() {
-    let mut world = placement_world();
-    set_held(&mut world, VANILLA_ITEM_OAK_HANGING_SIGN_ID, 1);
-    assert_eq!(
-        world.predict_local_block_use_with_hit(
-            CLICKED,
-            ProtocolDirection::Up,
-            [0.25, 1.0, 0.75],
-            false,
-            InteractionHand::MainHand,
-            false,
-            3,
-        ),
-        LocalTargetUsePrediction::UnsupportedItemUseOn(VanillaItemUseOnOverride::BlockItem)
-    );
-    assert_eq!(
-        world.probe_block(TARGET).unwrap().block_state_id,
-        state_id("minecraft:air", [])
-    );
 }
 
 fn use_block(world: &mut WorldStore, sequence: i32) -> LocalTargetUsePrediction {

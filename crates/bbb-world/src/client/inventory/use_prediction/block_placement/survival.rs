@@ -345,6 +345,23 @@ impl WorldStore {
         })
     }
 
+    pub(super) fn placement_collision_face_is_full(
+        &self,
+        block: &BlockProbe,
+        direction: Direction,
+    ) -> Option<bool> {
+        let facts = vanilla_block_state_support_facts(block.block_state_id)?;
+        Some(if facts.dynamic_shape() {
+            self.block_empty_context_collision_face_covers_rectangle(
+                block,
+                direction,
+                [0.0, 1.0, 0.0, 1.0],
+            )
+        } else {
+            facts.collision_face_full(support_direction(direction))
+        })
+    }
+
     fn placement_full_support_or_collision_face(
         &self,
         block: &BlockProbe,

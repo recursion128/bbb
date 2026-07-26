@@ -11,8 +11,8 @@ use bbb_protocol::{
 use super::{
     super::{LocalBlockUseContext, WorldStore},
     context::{
-        direction_axis, direction_name, opposite, placement_directions, relative, world_click_y,
-        DirectionAxis,
+        clockwise, counterclockwise, direction_axis, direction_name, opposite,
+        placement_directions, relative, rotation_segment, world_click_y, DirectionAxis,
     },
     signal::placement_neighbor_signal_is_proven_absent,
     state::{
@@ -26,6 +26,13 @@ use crate::{BlockPos, BlockProbe, TerrainFluidKind};
 pub(super) struct BellPlacement {
     pub(super) facing: Direction,
     pub(super) attachment: &'static str,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct CeilingHangingSignPlacement {
+    attached: bool,
+    rotation: i32,
+    waterlogged: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -104,6 +111,26 @@ pub(super) fn attached_block_state_for_placement(
     default_state_id: i32,
 ) -> BlockPlacementState {
     match owner {
+        VanillaGetStateForPlacementOverride::CeilingHangingSignBlock => {
+            let Some(placement) =
+                ceiling_hanging_sign_placement(world, target_pos, horizontal, context)
+            else {
+                return BlockPlacementState::Unsupported;
+            };
+            state_with_owned_properties(
+                world,
+                block_type,
+                default_state_id,
+                [
+                    ("attached", boolean_name(placement.attached).to_string()),
+                    ("rotation", placement.rotation.to_string()),
+                    (
+                        "waterlogged",
+                        boolean_name(placement.waterlogged).to_string(),
+                    ),
+                ],
+            )
+        }
         VanillaGetStateForPlacementOverride::FaceAttachedHorizontalDirectionalBlock => {
             for direction in directions {
                 let (face, facing) = if direction_axis(direction) == DirectionAxis::Y {
@@ -273,6 +300,28 @@ pub(super) fn attached_block_state_for_placement(
             }
             BlockPlacementState::Fail
         }
+        VanillaGetStateForPlacementOverride::WallHangingSignBlock => {
+            let Some(facing) =
+                wall_hanging_sign_facing(world, target_pos, context.face, directions)
+            else {
+                return BlockPlacementState::Unsupported;
+            };
+            let Some(facing) = facing else {
+                return BlockPlacementState::Fail;
+            };
+            let Some(waterlogged) = target_is_source_water(world, target_pos) else {
+                return BlockPlacementState::Unsupported;
+            };
+            state_with_properties(
+                world,
+                block_type,
+                default_state_id,
+                [
+                    ("facing", direction_name(facing)),
+                    ("waterlogged", boolean_name(waterlogged)),
+                ],
+            )
+        }
         VanillaGetStateForPlacementOverride::WallSkullBlock => {
             for direction in directions {
                 if direction_axis(direction) != DirectionAxis::Y {
@@ -295,6 +344,112 @@ pub(super) fn attached_block_state_for_placement(
             BlockPlacementState::Fail
         }
         _ => BlockPlacementState::Unsupported,
+    }
+}
+
+fn ceiling_hanging_sign_placement(
+    world: &WorldStore,
+    target_pos: BlockPos,
+    horizontal: Direction,
+    context: LocalBlockUseContext,
+) -> Option<CeilingHangingSignPlacement> {
+    let above = world.probe_block(relative(target_pos, Direction::Up))?;
+    let is_below_hanging_sign =
+        world.placement_block_is_in_tag(&above, "minecraft:all_hanging_signs")?;
+    let mut attached = !world.placement_collision_face_is_full(&above, Direction::Down)?
+        || context.secondary_use_active;
+    if is_below_hanging_sign && !context.secondary_use_active {
+        if above.block_properties.contains_key("facing") {
+            let above_facing = direction_property(&above, "facing")?;
+            if direction_axis(above_facing) == direction_axis(horizontal) {
+                attached = false;
+            }
+        } else if let Some(rotation) = above.block_properties.get("rotation") {
+            let rotation = rotation.parse::<i32>().ok()?;
+            if cardinal_rotation_axis(rotation) == Some(direction_axis(horizontal)) {
+                attached = false;
+            }
+        }
+    }
+    let rotation = if attached {
+        rotation_segment(world.local_player().pose?.y_rot + 180.0)?
+    } else {
+        direction_rotation_segment(opposite(horizontal))?
+    };
+    Some(CeilingHangingSignPlacement {
+        attached,
+        rotation,
+        waterlogged: target_is_source_water(world, target_pos)?,
+    })
+}
+
+fn wall_hanging_sign_facing(
+    world: &WorldStore,
+    target_pos: BlockPos,
+    clicked_face: Direction,
+    directions: [Direction; 6],
+) -> Option<Option<Direction>> {
+    for direction in directions {
+        if direction_axis(direction) == DirectionAxis::Y
+            || direction_axis(direction) == direction_axis(clicked_face)
+        {
+            continue;
+        }
+        let facing = opposite(direction);
+        if wall_hanging_sign_can_place(world, target_pos, facing)? {
+            return Some(Some(facing));
+        }
+    }
+    Some(None)
+}
+
+fn wall_hanging_sign_can_place(
+    world: &WorldStore,
+    target_pos: BlockPos,
+    facing: Direction,
+) -> Option<bool> {
+    let clockwise = clockwise(facing)?;
+    let counterclockwise = counterclockwise(facing)?;
+    if wall_hanging_sign_can_attach(world, target_pos, facing, clockwise)? {
+        Some(true)
+    } else {
+        wall_hanging_sign_can_attach(world, target_pos, facing, counterclockwise)
+    }
+}
+
+fn wall_hanging_sign_can_attach(
+    world: &WorldStore,
+    target_pos: BlockPos,
+    facing: Direction,
+    support_direction: Direction,
+) -> Option<bool> {
+    let support = world.probe_block(relative(target_pos, support_direction))?;
+    if world.placement_block_is_in_tag(&support, "minecraft:wall_hanging_signs")? {
+        let support_facing = direction_property(&support, "facing")?;
+        return Some(direction_axis(support_facing) == direction_axis(facing));
+    }
+    world.placement_face_sturdy(
+        &support,
+        opposite(support_direction),
+        VanillaBlockSupportType::Full,
+    )
+}
+
+fn direction_rotation_segment(direction: Direction) -> Option<i32> {
+    Some(match direction {
+        Direction::South => 0,
+        Direction::West => 4,
+        Direction::North => 8,
+        Direction::East => 12,
+        Direction::Down | Direction::Up => return None,
+    })
+}
+
+fn cardinal_rotation_axis(rotation: i32) -> Option<DirectionAxis> {
+    match rotation {
+        0 | 8 => Some(DirectionAxis::Z),
+        4 | 12 => Some(DirectionAxis::X),
+        _ => None,
     }
 }
 

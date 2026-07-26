@@ -54,6 +54,7 @@ impl WorldStore {
             | VanillaBlockItemKind::BedItem
             | VanillaBlockItemKind::BannerItem
             | VanillaBlockItemKind::DoubleHighBlockItem
+            | VanillaBlockItemKind::HangingSignItem
             | VanillaBlockItemKind::PlayerHeadItem
             | VanillaBlockItemKind::SignItem
             | VanillaBlockItemKind::StandingAndWallBlockItem => {}
@@ -91,18 +92,24 @@ impl WorldStore {
         let standing_and_wall = matches!(
             behavior.kind,
             VanillaBlockItemKind::BannerItem
+                | VanillaBlockItemKind::HangingSignItem
                 | VanillaBlockItemKind::PlayerHeadItem
                 | VanillaBlockItemKind::SignItem
                 | VanillaBlockItemKind::StandingAndWallBlockItem
         );
         let placement = if standing_and_wall {
+            let attachment_direction = if behavior.kind == VanillaBlockItemKind::HangingSignItem {
+                ProtocolDirection::Up
+            } else {
+                ProtocolDirection::Down
+            };
             attachment::standing_and_wall_state_for_placement(
                 self,
                 behavior,
                 target_pos,
                 replace_clicked,
                 context,
-                ProtocolDirection::Down,
+                attachment_direction,
             )
         } else {
             state::block_state_for_placement(self, block_type, target_pos, replace_clicked, context)
