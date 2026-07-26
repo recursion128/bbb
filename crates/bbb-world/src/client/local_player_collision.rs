@@ -352,6 +352,40 @@ fn empty_context_block_collision(world: &WorldStore, bounds: LocalPlayerBounds) 
 }
 
 impl WorldStore {
+    /// Mirrors the block- and world-border halves of
+    /// `HangingEntity.hasLevelCollision` for one prospective non-living
+    /// entity. The entity position, rather than its AABB minimum, seeds
+    /// `EntityCollisionContext.entityBottom`, matching Vanilla's constructor.
+    pub(crate) fn local_non_living_entity_block_and_border_bounds_are_free(
+        &self,
+        entity_type_id: i32,
+        position: [f64; 3],
+        min: [f64; 3],
+        max: [f64; 3],
+    ) -> Option<bool> {
+        if !(0..3).all(|axis| {
+            position[axis].is_finite()
+                && min[axis].is_finite()
+                && max[axis].is_finite()
+                && min[axis] < max[axis]
+        }) {
+            return None;
+        }
+        let bounds = LocalPlayerBounds::from_min_max(min, max);
+        let block_context = LocalPlayerCollisionContext::new(position[1], false);
+        if local_player_collides_with_context(self, bounds, block_context) {
+            return Some(false);
+        }
+        let query = EntityCollisionQuery {
+            source_entity_id: None,
+            source_entity_type_id: entity_type_id,
+            source_position: position,
+            bounds,
+            block_context,
+        };
+        Some(self.world_border_collision_boxes(query, bounds).is_empty())
+    }
+
     /// Mirrors the block-shape half of
     /// `CollisionGetter.noCollision(null, bounds)`.
     ///

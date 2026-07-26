@@ -47,7 +47,8 @@ use bbb_protocol::entity_types::*;
 mod block_attached;
 
 pub(crate) use block_attached::{
-    item_frame_facing, item_frame_item, item_frame_map_id, item_frame_rotation, painting_facing,
+    hanging_facing, item_frame_facing, item_frame_item, item_frame_map_id, item_frame_rotation,
+    painting_facing, prospective_item_frame_geometry, prospective_painting_geometry,
 };
 
 const SLIME_BASE_SIZE: f32 = 0.52;

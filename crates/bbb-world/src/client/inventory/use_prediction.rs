@@ -1017,6 +1017,9 @@ impl WorldStore {
             VanillaItemUseOnOverride::ArmorStandItem => {
                 Some(self.predict_local_armor_stand_item_use_on(owner, hand, context))
             }
+            VanillaItemUseOnOverride::HangingEntityItem => {
+                Some(self.predict_local_hanging_entity_item_use_on(owner, hand, context))
+            }
             // `SpawnEggItem.useOn` returns before all server-only type,
             // spawner, difficulty, spawn, and stack-mutation work.
             VanillaItemUseOnOverride::SpawnEggItem => Some(client_success()),
@@ -2302,6 +2305,7 @@ fn above(pos: BlockPos) -> BlockPos {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::vanilla_entity_metadata_hanging_direction_accessor_for_entity_type;
     use bbb_protocol::{
         block_types::{
             vanilla_block_type, vanilla_block_type_for_resource_id, VanillaBlockUseItemOnOverride,
@@ -2320,13 +2324,16 @@ mod tests {
             VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
             VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID,
             VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
+            VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
             VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
             VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
         },
         entity_data_serializers::{
             VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID, VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-            VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID, VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+            VANILLA_ENTITY_DATA_SERIALIZER_DIRECTION_ID, VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
+            VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
             VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_LIVING_ENTITY_REFERENCE_ID,
+            VANILLA_ENTITY_DATA_SERIALIZER_PAINTING_VARIANT_ID,
         },
         entity_types::{
             VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
@@ -2334,13 +2341,14 @@ mod tests {
             VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
             VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID, VANILLA_ENTITY_TYPE_COW_ID,
             VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
-            VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
-            VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
-            VANILLA_ENTITY_TYPE_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
-            VANILLA_ENTITY_TYPE_LEASH_KNOT_ID, VANILLA_ENTITY_TYPE_MANNEQUIN_ID,
-            VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
-            VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
-            VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+            VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
+            VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
+            VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_ITEM_FRAME_ID,
+            VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_LEASH_KNOT_ID,
+            VANILLA_ENTITY_TYPE_MANNEQUIN_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
+            VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+            VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
+            VANILLA_ENTITY_TYPE_PAINTING_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
             VANILLA_ENTITY_TYPE_SHEEP_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
             VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
             VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
@@ -2355,25 +2363,27 @@ mod tests {
             VANILLA_ITEM_DEBUG_STICK_ID, VANILLA_ITEM_ENDER_EYE_ID, VANILLA_ITEM_END_CRYSTAL_ID,
             VANILLA_ITEM_FILLED_MAP_ID, VANILLA_ITEM_FIREWORK_ROCKET_ID,
             VANILLA_ITEM_FIRE_CHARGE_ID, VANILLA_ITEM_FLINT_AND_STEEL_ID,
-            VANILLA_ITEM_FROGSPAWN_ID, VANILLA_ITEM_GLASS_BOTTLE_ID, VANILLA_ITEM_GOAT_HORN_ID,
-            VANILLA_ITEM_HONEYCOMB_ID, VANILLA_ITEM_IRON_AXE_ID, VANILLA_ITEM_IRON_HOE_ID,
-            VANILLA_ITEM_IRON_SHOVEL_ID, VANILLA_ITEM_LAVA_BUCKET_ID, VANILLA_ITEM_LEAD_ID,
+            VANILLA_ITEM_FROGSPAWN_ID, VANILLA_ITEM_GLASS_BOTTLE_ID,
+            VANILLA_ITEM_GLOW_ITEM_FRAME_ID, VANILLA_ITEM_GOAT_HORN_ID, VANILLA_ITEM_HONEYCOMB_ID,
+            VANILLA_ITEM_IRON_AXE_ID, VANILLA_ITEM_IRON_HOE_ID, VANILLA_ITEM_IRON_SHOVEL_ID,
+            VANILLA_ITEM_ITEM_FRAME_ID, VANILLA_ITEM_LAVA_BUCKET_ID, VANILLA_ITEM_LEAD_ID,
             VANILLA_ITEM_LILY_PAD_ID, VANILLA_ITEM_MINECART_ID, VANILLA_ITEM_NAME_TAG_ID,
-            VANILLA_ITEM_OAK_BOAT_ID, VANILLA_ITEM_POPPY_ID, VANILLA_ITEM_POTION_ID,
-            VANILLA_ITEM_POWDER_SNOW_BUCKET_ID, VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_SADDLE_ID,
-            VANILLA_ITEM_SHEARS_ID, VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_STONE_ID,
-            VANILLA_ITEM_TRIDENT_ID, VANILLA_ITEM_TYPES, VANILLA_ITEM_WATER_BUCKET_ID,
+            VANILLA_ITEM_OAK_BOAT_ID, VANILLA_ITEM_PAINTING_ID, VANILLA_ITEM_POPPY_ID,
+            VANILLA_ITEM_POTION_ID, VANILLA_ITEM_POWDER_SNOW_BUCKET_ID, VANILLA_ITEM_RED_DYE_ID,
+            VANILLA_ITEM_SADDLE_ID, VANILLA_ITEM_SHEARS_ID, VANILLA_ITEM_SHIELD_ID,
+            VANILLA_ITEM_STONE_ID, VANILLA_ITEM_TRIDENT_ID, VANILLA_ITEM_TYPES,
+            VANILLA_ITEM_WATER_BUCKET_ID,
         },
         packets::{
             AddEntity, AdventureModePredicateDataSummary, BlockHitResult, BlockHolderSetSummary,
             BlockPos as ProtocolBlockPos, BlockPredicateSummary, BlockUpdate,
             CommonPlayerSpawnInfo, Cooldown, DataComponentPatchSummary, EntityDataValue,
             EntityDataValueKind, EntityEvent, EquipmentSlotUpdate, EquippableSummary, GameProfile,
-            GameType, InstrumentSummary, ItemEnchantmentSummary, ItemStackSummary, PlayLogin,
-            PlayerHealth, PlayerInfoAction, PlayerInfoEntry, PlayerInfoUpdate, RegistryData,
-            RegistryDataEntry, RegistryTags, SetChunkCacheCenter, SetEntityData, SetEntityLink,
-            SetEquipment, SetPassengers, SetPlayerInventory, SoundEventSummary, TagNetworkPayload,
-            UpdateEnabledFeatures, UpdateTags, Vec3d,
+            GameType, InstrumentSummary, ItemEnchantmentSummary, ItemStackSummary,
+            PaintingVariantSummary, PlayLogin, PlayerHealth, PlayerInfoAction, PlayerInfoEntry,
+            PlayerInfoUpdate, RegistryData, RegistryDataEntry, RegistryTags, SetChunkCacheCenter,
+            SetEntityData, SetEntityLink, SetEquipment, SetPassengers, SetPlayerInventory,
+            SoundEventSummary, TagNetworkPayload, UpdateEnabledFeatures, UpdateTags, Vec3d,
         },
     };
     use std::collections::{BTreeMap, BTreeSet};
@@ -3427,6 +3437,536 @@ mod tests {
             .player_slots
             .iter()
             .all(|slot| slot.item.item_id != Some(VANILLA_ITEM_BUCKET_ID)));
+    }
+
+    #[test]
+    fn hanging_entity_generated_owners_and_face_height_gates_are_exact() {
+        let owner_ids = VANILLA_ITEM_TYPES
+            .iter()
+            .filter(|item| {
+                item.use_on_override == Some(VanillaItemUseOnOverride::HangingEntityItem)
+            })
+            .map(|item| item.id)
+            .collect::<Vec<_>>();
+        assert_eq!(
+            owner_ids,
+            vec![
+                VANILLA_ITEM_PAINTING_ID,
+                VANILLA_ITEM_ITEM_FRAME_ID,
+                VANILLA_ITEM_GLOW_ITEM_FRAME_ID,
+            ]
+        );
+
+        let clicked = BlockPos { x: 8, y: 7, z: 8 };
+        let stone = block_state_id("minecraft:stone", []);
+        let mut world = tool_use_world(block_state_id("minecraft:air", []));
+        set_block(&mut world, clicked, stone);
+        set_main_hand(&mut world, VANILLA_ITEM_PAINTING_ID);
+        assert_eq!(
+            world.predict_local_block_use(
+                clicked,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                true,
+                65,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
+        );
+
+        let mut held_frame = stack(VANILLA_ITEM_ITEM_FRAME_ID);
+        held_frame.count = 2;
+        world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: held_frame,
+        });
+        assert_eq!(
+            world.predict_local_block_use(
+                clicked,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                true,
+                66,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction()
+            ))
+        );
+        assert_eq!(player_inventory_item(&world, 0).count, 1);
+        assert!(world.local_block_predictions().is_empty());
+
+        let top = BlockPos {
+            y: world.dimension().min_y + world.dimension().height - 1,
+            ..clicked
+        };
+        set_block(&mut world, top, stone);
+        set_main_hand(&mut world, VANILLA_ITEM_GLOW_ITEM_FRAME_ID);
+        assert_eq!(
+            world.predict_local_block_use(
+                top,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                true,
+                67,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
+        );
+        assert_eq!(
+            player_inventory_item(&world, 0).item_id,
+            Some(VANILLA_ITEM_GLOW_ITEM_FRAME_ID)
+        );
+    }
+
+    #[test]
+    fn hanging_item_frame_requires_wall_and_clear_block_but_ignores_ordinary_entities() {
+        let clicked = BlockPos { x: 8, y: 7, z: 8 };
+        let target = BlockPos {
+            x: clicked.x + 1,
+            ..clicked
+        };
+        let air = block_state_id("minecraft:air", []);
+        let stone = block_state_id("minecraft:stone", []);
+        let repeater = block_state_id(
+            "minecraft:repeater",
+            [
+                ("delay", "1"),
+                ("facing", "north"),
+                ("locked", "false"),
+                ("powered", "false"),
+            ],
+        );
+        let prepare = |support, target_state| {
+            let mut world = tool_use_world(air);
+            set_block(&mut world, clicked, support);
+            set_block(&mut world, target, target_state);
+            set_main_hand(&mut world, VANILLA_ITEM_ITEM_FRAME_ID);
+            world
+        };
+
+        let mut no_support = prepare(air, air);
+        assert_eq!(
+            no_support.predict_local_block_use(
+                clicked,
+                ProtocolDirection::East,
+                InteractionHand::MainHand,
+                true,
+                68,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::consume(false)
+            ))
+        );
+        assert_eq!(
+            player_inventory_item(&no_support, 0).item_id,
+            Some(VANILLA_ITEM_ITEM_FRAME_ID)
+        );
+
+        let mut collision = prepare(stone, stone);
+        assert_eq!(
+            collision.predict_local_block_use(
+                clicked,
+                ProtocolDirection::East,
+                InteractionHand::MainHand,
+                true,
+                69,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::consume(false)
+            ))
+        );
+
+        let mut diode = prepare(repeater, air);
+        assert!(matches!(
+            diode.predict_local_block_use(
+                clicked,
+                ProtocolDirection::East,
+                InteractionHand::MainHand,
+                true,
+                70,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess {
+                    swing_source: LocalInteractionSwingSource::Client,
+                    ..
+                }
+            ))
+        ));
+
+        let mut ordinary_entity = prepare(stone, air);
+        add_entity_at(
+            &mut ordinary_entity,
+            98,
+            VANILLA_ENTITY_TYPE_ITEM_ID,
+            Vec3d {
+                x: f64::from(target.x) + 0.5,
+                y: f64::from(target.y) + 0.5,
+                z: f64::from(target.z) + 0.5,
+            },
+        );
+        assert!(matches!(
+            ordinary_entity.predict_local_block_use(
+                clicked,
+                ProtocolDirection::East,
+                InteractionHand::MainHand,
+                true,
+                71,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess {
+                    swing_source: LocalInteractionSwingSource::Client,
+                    ..
+                }
+            ))
+        ));
+
+        let border_clicked = BlockPos { x: 1, y: 7, z: 0 };
+        let mut border_collision = tool_use_world(air);
+        set_block(&mut border_collision, border_clicked, stone);
+        set_main_hand(&mut border_collision, VANILLA_ITEM_ITEM_FRAME_ID);
+        border_collision.apply_set_border_size(bbb_protocol::packets::SetBorderSize { size: 4.0 });
+        assert_eq!(
+            border_collision.predict_local_block_use(
+                border_clicked,
+                ProtocolDirection::East,
+                InteractionHand::MainHand,
+                true,
+                72,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::consume(false)
+            ))
+        );
+    }
+
+    #[test]
+    fn hanging_painting_uses_placeable_registry_and_applied_variant_dimensions() {
+        let clicked = BlockPos { x: 8, y: 7, z: 8 };
+        let air = block_state_id("minecraft:air", []);
+        let stone = block_state_id("minecraft:stone", []);
+        let install_placeable = |world: &mut WorldStore| {
+            world.apply_update_tags(UpdateTags {
+                registries: vec![RegistryTags {
+                    registry: "minecraft:painting_variant".to_string(),
+                    tags: vec![TagNetworkPayload {
+                        tag: "minecraft:placeable".to_string(),
+                        entries: vec![0],
+                    }],
+                }],
+            });
+        };
+        let prepare = |support| {
+            let mut world = tool_use_world(air);
+            set_block(&mut world, clicked, support);
+            set_main_hand(&mut world, VANILLA_ITEM_PAINTING_ID);
+            world
+        };
+
+        let mut missing_tag = prepare(stone);
+        assert_eq!(
+            missing_tag.predict_local_block_use(
+                clicked,
+                ProtocolDirection::East,
+                InteractionHand::MainHand,
+                true,
+                72,
+            ),
+            LocalTargetUsePrediction::UnsupportedItemUseOn(
+                VanillaItemUseOnOverride::HangingEntityItem
+            )
+        );
+
+        let mut empty_tag = prepare(stone);
+        empty_tag.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: "minecraft:painting_variant".to_string(),
+                tags: Vec::new(),
+            }],
+        });
+        assert_eq!(
+            empty_tag.predict_local_block_use(
+                clicked,
+                ProtocolDirection::East,
+                InteractionHand::MainHand,
+                true,
+                73,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::consume(false)
+            ))
+        );
+
+        let mut placeable = prepare(stone);
+        install_placeable(&mut placeable);
+        assert_eq!(
+            placeable.predict_local_block_use(
+                clicked,
+                ProtocolDirection::East,
+                InteractionHand::MainHand,
+                true,
+                74,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction()
+            ))
+        );
+        assert_eq!(player_inventory_item(&placeable, 0).item_id, None);
+
+        let mut no_support = prepare(air);
+        install_placeable(&mut no_support);
+        assert_eq!(
+            no_support.predict_local_block_use(
+                clicked,
+                ProtocolDirection::East,
+                InteractionHand::MainHand,
+                true,
+                75,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::consume(false)
+            ))
+        );
+        assert_eq!(
+            player_inventory_item(&no_support, 0).item_id,
+            Some(VANILLA_ITEM_PAINTING_ID)
+        );
+
+        let mut forced_large = prepare(stone);
+        install_placeable(&mut forced_large);
+        forced_large.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: ItemStackSummary {
+                item_id: Some(VANILLA_ITEM_PAINTING_ID),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    added: 1,
+                    added_type_ids: vec![VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID],
+                    painting_variant_direct: Some(PaintingVariantSummary {
+                        width: 2,
+                        height: 2,
+                        asset_id: "example:large".to_string(),
+                        title: None,
+                        title_styled: None,
+                        title_nbt: None,
+                        author: None,
+                        author_styled: None,
+                        author_nbt: None,
+                    }),
+                    ..DataComponentPatchSummary::default()
+                },
+            },
+        });
+        assert_eq!(
+            forced_large.predict_local_block_use(
+                clicked,
+                ProtocolDirection::East,
+                InteractionHand::MainHand,
+                true,
+                76,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::consume(false)
+            ))
+        );
+        assert_eq!(
+            player_inventory_item(&forced_large, 0).item_id,
+            Some(VANILLA_ITEM_PAINTING_ID)
+        );
+    }
+
+    #[test]
+    fn hanging_overlap_matches_direction_and_same_painting_type_rules() {
+        let clicked = BlockPos { x: 8, y: 7, z: 8 };
+        let target = BlockPos {
+            x: clicked.x + 1,
+            ..clicked
+        };
+        let air = block_state_id("minecraft:air", []);
+        let stone = block_state_id("minecraft:stone", []);
+        let mut world = tool_use_world(air);
+        set_block(&mut world, clicked, stone);
+        set_main_hand(&mut world, VANILLA_ITEM_ITEM_FRAME_ID);
+        world.apply_add_entity(AddEntity {
+            id: 99,
+            uuid: Uuid::from_u128(99),
+            entity_type_id: VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
+            position: Vec3d {
+                x: f64::from(target.x),
+                y: f64::from(target.y),
+                z: f64::from(target.z),
+            },
+            delta_movement: Vec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: ProtocolDirection::East.id().into(),
+        });
+        let accessor = vanilla_entity_metadata_hanging_direction_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
+        )
+        .unwrap();
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 99,
+            values: vec![EntityDataValue {
+                data_id: accessor.direction_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_DIRECTION_ID,
+                value: EntityDataValueKind::Direction(i32::from(ProtocolDirection::East.id())),
+            }],
+        }));
+
+        assert_eq!(
+            world.predict_local_block_use(
+                clicked,
+                ProtocolDirection::East,
+                InteractionHand::MainHand,
+                true,
+                77,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::consume(false)
+            ))
+        );
+        assert_eq!(
+            player_inventory_item(&world, 0).item_id,
+            Some(VANILLA_ITEM_ITEM_FRAME_ID)
+        );
+
+        let mut painting_world = tool_use_world(air);
+        for y in 7..=8 {
+            for z in 7..=8 {
+                set_block(&mut painting_world, BlockPos { x: 8, y, z }, stone);
+            }
+        }
+        painting_world.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: "minecraft:painting_variant".to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: "minecraft:placeable".to_string(),
+                    entries: vec![0],
+                }],
+            }],
+        });
+        painting_world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: ItemStackSummary {
+                item_id: Some(VANILLA_ITEM_PAINTING_ID),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    added: 1,
+                    added_type_ids: vec![VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID],
+                    painting_variant_direct: Some(PaintingVariantSummary {
+                        width: 2,
+                        height: 2,
+                        asset_id: "example:large".to_string(),
+                        title: None,
+                        title_styled: None,
+                        title_nbt: None,
+                        author: None,
+                        author_styled: None,
+                        author_nbt: None,
+                    }),
+                    ..DataComponentPatchSummary::default()
+                },
+            },
+        });
+        painting_world.apply_add_entity(AddEntity {
+            id: 100,
+            uuid: Uuid::from_u128(100),
+            entity_type_id: VANILLA_ENTITY_TYPE_PAINTING_ID,
+            position: Vec3d {
+                x: f64::from(target.x),
+                y: f64::from(target.y),
+                z: f64::from(target.z),
+            },
+            delta_movement: Vec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: ProtocolDirection::North.id().into(),
+        });
+        let direction_accessor =
+            vanilla_entity_metadata_hanging_direction_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_PAINTING_ID,
+            )
+            .unwrap();
+        let variant_data_id =
+            crate::entities::vanilla_entity_metadata_painting_variant_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_PAINTING_ID,
+            )
+            .unwrap();
+        assert!(painting_world.apply_set_entity_data(SetEntityData {
+            id: 100,
+            values: vec![
+                EntityDataValue {
+                    data_id: direction_accessor.direction_data_id,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_DIRECTION_ID,
+                    value: EntityDataValueKind::Direction(
+                        i32::from(ProtocolDirection::North.id(),)
+                    ),
+                },
+                EntityDataValue {
+                    data_id: variant_data_id,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_PAINTING_VARIANT_ID,
+                    value: EntityDataValueKind::PaintingVariant(
+                        bbb_protocol::packets::PaintingVariantData {
+                            registry: Some(
+                                bbb_protocol::packets::EntityDataRegistryReference::unresolved(0),
+                            ),
+                            direct: None,
+                        },
+                    ),
+                },
+            ],
+        }));
+
+        assert_eq!(
+            painting_world.predict_local_block_use(
+                clicked,
+                ProtocolDirection::East,
+                InteractionHand::MainHand,
+                true,
+                78,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::consume(false)
+            ))
+        );
+        assert_eq!(
+            player_inventory_item(&painting_world, 0).item_id,
+            Some(VANILLA_ITEM_PAINTING_ID)
+        );
+    }
+
+    #[test]
+    fn armor_stand_creative_use_on_restores_the_pre_call_count() {
+        let clicked = BlockPos { x: 8, y: 7, z: 8 };
+        let stone = block_state_id("minecraft:stone", []);
+        let mut world = tool_use_world(block_state_id("minecraft:air", []));
+        set_block(&mut world, clicked, stone);
+        world.apply_player_abilities(bbb_protocol::packets::PlayerAbilities {
+            invulnerable: true,
+            flying: false,
+            can_fly: true,
+            instabuild: true,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        });
+        let mut held = stack(VANILLA_ITEM_ARMOR_STAND_ID);
+        held.count = 2;
+        world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: held,
+        });
+
+        assert!(matches!(
+            world.predict_local_block_use(
+                clicked,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                true,
+                79,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(player_inventory_item(&world, 0).count, 2);
     }
 
     #[test]
