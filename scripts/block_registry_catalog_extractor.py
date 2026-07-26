@@ -393,6 +393,74 @@ def extract_block_use_without_item_override_owners(
     )
 
 
+def extract_block_analog_output_owners(
+    declarations: Sequence[dict],
+    block_class_sources: Sequence[JavaSource],
+) -> dict[str, str | None]:
+    """Resolve blocks with analog output to their nearest signal implementation."""
+
+    has_analog_output_owner = _extract_block_method_override_owners(
+        declarations,
+        block_class_sources,
+        "hasAnalogOutputSignal",
+        "boolean",
+        ("BlockState",),
+        "net.minecraft.world.level.block.state.BlockBehaviour",
+    )
+    for owner in sorted(
+        {owner for owner in has_analog_output_owner.values() if owner is not None}
+    ):
+        matches = [
+            (source, method)
+            for source in block_class_sources
+            for method in source.methods
+            if method.owner.rsplit(".", 1)[-1] == owner
+            and _is_block_method(
+                source,
+                method,
+                "hasAnalogOutputSignal",
+                "boolean",
+                ("BlockState",),
+            )
+        ]
+        if len(matches) != 1:
+            raise BlockRegistryCatalogExtractionError(
+                f"expected exactly one {owner}.hasAnalogOutputSignal, got "
+                f"{len(matches)}"
+            )
+        source, method = matches[0]
+        body = method.node.child_by_field_name("body")
+        statements = [] if body is None else body.named_children
+        expression = (
+            statements[0].named_children[0]
+            if len(statements) == 1
+            and statements[0].type == "return_statement"
+            and len(statements[0].named_children) == 1
+            else None
+        )
+        if expression is None or source.expression(expression).canonical != "true":
+            raise BlockRegistryCatalogExtractionError(
+                f"{source.relative_path}: {owner}.hasAnalogOutputSignal must "
+                "remain the literal true override"
+            )
+    get_analog_output_owner = _extract_block_method_override_owners(
+        declarations,
+        block_class_sources,
+        "getAnalogOutputSignal",
+        "int",
+        ("BlockState", "Level", "BlockPos", "Direction"),
+        None,
+    )
+    return {
+        factory_class: (
+            get_analog_output_owner[factory_class]
+            if has_analog_output_owner[factory_class] is not None
+            else None
+        )
+        for factory_class in has_analog_output_owner
+    }
+
+
 def extract_block_can_survive_override_owners(
     declarations: Sequence[dict],
     block_class_sources: Sequence[JavaSource],

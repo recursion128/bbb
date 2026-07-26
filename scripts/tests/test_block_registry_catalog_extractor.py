@@ -11,6 +11,7 @@ sys.path.insert(0, str(SCRIPTS))
 from block_registry_catalog_extractor import (  # noqa: E402
     BlockRegistryCatalogExtractionError,
     block_factory_class,
+    extract_block_analog_output_owners,
     extract_block_bonemeal_target_override_owners,
     extract_block_bucket_pickup_owners,
     extract_block_can_survive_override_owners,
@@ -233,6 +234,13 @@ class BlockBehaviour {
       BlockState state, LevelReader level, BlockPos pos) {
     return true;
   }
+  protected boolean hasAnalogOutputSignal(BlockState state) {
+    return false;
+  }
+  protected int getAnalogOutputSignal(
+      BlockState state, Level level, BlockPos pos, Direction direction) {
+    return 0;
+  }
 }
 """,
             ),
@@ -280,7 +288,15 @@ class StairBlock extends Block {
                 "net/minecraft/world/level/block/ChainBlock.java",
                 """
 package net.minecraft.world.level.block;
-class ChainBlock extends Block {}
+class ChainBlock extends Block {
+  protected boolean hasAnalogOutputSignal(BlockState state) {
+    return true;
+  }
+  protected int getAnalogOutputSignal(
+      BlockState state, Level level, BlockPos pos, Direction direction) {
+    return 7;
+  }
+}
 """,
             ),
             parse(
@@ -312,6 +328,16 @@ class WeatheringCopperChainBlock extends ChainBlock {
 """,
             ),
         ]
+        self.assertEqual(
+            extract_block_analog_output_owners(declarations, sources),
+            {
+                "AirBlock": None,
+                "Block": None,
+                "ChainBlock": "ChainBlock",
+                "StairBlock": None,
+                "WeatheringCopperChainBlock": "ChainBlock",
+            },
+        )
         self.assertEqual(
             extract_block_use_item_on_override_owners(declarations, sources),
             {
