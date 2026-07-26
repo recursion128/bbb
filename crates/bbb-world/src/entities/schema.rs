@@ -760,6 +760,16 @@ pub enum VanillaEntityBabyBehavior {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VanillaEntityFoodPredicate {
+    Never,
+    ItemTag(&'static str),
+    Nautilus {
+        untamed_adult_tag: &'static str,
+        default_tag: &'static str,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaEntityDefaultAttribute {
     pub attribute_id: i32,
     /// Exact Java `double` bits passed to `AttributeSupplier.Builder.add`.
@@ -804,6 +814,11 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     /// `mobInteract(Player, InteractionHand)` for this runtime type.
     /// Absent for runtime classes that do not inherit `Mob`.
     pub mob_interact_owner: Option<&'static str>,
+    /// Nearest class declaration and source-interpreted predicate for
+    /// `isFood(ItemStack)`. The owner is absent when no class in the runtime
+    /// hierarchy declares that method; every generated `Animal` row has both.
+    pub food_predicate_owner: Option<&'static str>,
+    pub food_predicate: Option<VanillaEntityFoodPredicate>,
     /// Nearest runtime-class declarations for the two attachment hooks and
     /// the controller decision. These close the fixed-type reverse inventory
     /// without duplicating family membership in handwritten code.
@@ -4399,6 +4414,14 @@ pub(crate) fn vanilla_entity_metadata_mob_interact_owner(
     VANILLA_ENTITY_TYPE_METADATA_26_1
         .get(usize::try_from(entity_type_id).ok()?)
         .and_then(|entry| entry.mob_interact_owner)
+}
+
+pub(crate) fn vanilla_entity_metadata_food_predicate(
+    entity_type_id: i32,
+) -> Option<VanillaEntityFoodPredicate> {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).ok()?)
+        .and_then(|entry| entry.food_predicate)
 }
 
 pub(crate) fn vanilla_entity_metadata_passenger_attachment_owner(

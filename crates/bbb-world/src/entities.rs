@@ -321,6 +321,7 @@ pub use schema::{
     vanilla_entity_metadata_firework_rocket_accessors_for_entity_type,
     VanillaFireworkRocketMetadataAccessors,
 };
+pub(crate) use schema::{vanilla_entity_metadata_food_predicate, VanillaEntityFoodPredicate};
 pub use schema::{
     vanilla_entity_metadata_primed_tnt_accessors_for_entity_type, VanillaPrimedTntMetadataAccessors,
 };

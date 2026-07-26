@@ -2724,6 +2724,61 @@ def method_single_return_expression(
     return source.expression(returns[0].named_children[0]).canonical
 
 
+def item_tag_resources(result: ExtractionResult) -> dict[str, str]:
+    owner = "net.minecraft.tags.ItemTags"
+    source = source_for_owner(result, owner)
+    resources: dict[str, str] = {}
+    for field in source.fields_for(owner):
+        if field.initializer is None:
+            continue
+        compact = field.initializer.canonical.replace(" ", "")
+        match = re.fullmatch(r'bind\("([^"]+)"\)', compact)
+        if match is None:
+            raise ExtractionError(
+                f"{owner}.{field.name}: expected a direct bind string, got "
+                f"{field.initializer.canonical!r}"
+            )
+        resources[field.name] = f"minecraft:{match.group(1)}"
+    if not resources:
+        raise ExtractionError(f"{owner}: no item tag bindings")
+    return resources
+
+
+def food_predicate_rust(
+    result: ExtractionResult,
+    owner: str,
+    item_tags: dict[str, str],
+) -> str:
+    expression = method_single_return_expression(result, owner, "isFood", 1).replace(" ", "")
+    if expression == "false":
+        return "VanillaEntityFoodPredicate::Never"
+    match = re.fullmatch(r"[A-Za-z_$][A-Za-z0-9_$]*\.is\(ItemTags\.([A-Z0-9_]+)\)", expression)
+    if match is not None:
+        tag_name = match.group(1)
+        resource_id = item_tags.get(tag_name)
+        if resource_id is None:
+            raise ExtractionError(f"{owner}.isFood: unknown ItemTags.{tag_name}")
+        return (
+            "VanillaEntityFoodPredicate::ItemTag("
+            + rust_string(resource_id)
+            + ")"
+        )
+    nautilus = (
+        "!this.isTame()&&!this.isBaby()?"
+        "itemStack.is(ItemTags.NAUTILUS_TAMING_ITEMS):"
+        "itemStack.is(ItemTags.NAUTILUS_FOOD)"
+    )
+    if expression == nautilus:
+        return (
+            "VanillaEntityFoodPredicate::Nautilus { "
+            'untamed_adult_tag: "minecraft:nautilus_taming_items", '
+            'default_tag: "minecraft:nautilus_food" }'
+        )
+    raise ExtractionError(
+        f"{owner}.isFood: unsupported source expression {expression!r}"
+    )
+
+
 def class_nearest_method_owner(
     result: ExtractionResult,
     class_map: dict[str, JavaType],
@@ -4133,6 +4188,7 @@ def render(result: ExtractionResult) -> str:
     camera_post_effects = camera_post_effect_specs(result)
     entity_event_handlers = entity_event_handler_specs(result)
     sound_events = sound_event_resources_by_constant(result)
+    item_tags = item_tag_resources(result)
     flag_by_owner: dict[str, list[ResolvedFlag]] = {}
     for flag in flags:
         flag_by_owner.setdefault(flag.owner, []).append(flag)
@@ -4568,6 +4624,26 @@ def render(result: ExtractionResult) -> str:
             current = item.superclass if item is not None else None
         return None
 
+    food_predicate_cache: dict[str, tuple[str | None, str | None]] = {}
+
+    def food_predicate(runtime_class: str | None) -> tuple[str | None, str | None]:
+        if runtime_class is None:
+            return None, None
+        if runtime_class in food_predicate_cache:
+            return food_predicate_cache[runtime_class]
+        owner = nearest_optional_class_method_owner(runtime_class, "isFood", 1)
+        if owner is None:
+            value = (None, None)
+        else:
+            source, method = method_for(result, owner, "isFood", 1)
+            if method.body is None:
+                raise ExtractionError(
+                    f"{runtime_class}: nearest isFood declaration {owner} is abstract"
+                )
+            value = (owner, food_predicate_rust(result, owner, item_tags))
+        food_predicate_cache[runtime_class] = value
+        return value
+
     def effective_leash_offset_owner(runtime_class: str | None) -> str | None:
         if not implements_interface(runtime_class, "net.minecraft.world.entity.Leashable"):
             return None
@@ -4868,6 +4944,7 @@ def render(result: ExtractionResult) -> str:
         "pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogEntry] = &[",
     ])
     for item in result.entity_types:
+        food_owner, food_policy = food_predicate(item.runtime_class)
         lines.extend(
             [
                 "    VanillaEntityTypeMetadataCatalogEntry {",
@@ -4891,6 +4968,8 @@ def render(result: ExtractionResult) -> str:
                 f"        handle_entity_event_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'handleEntityEvent', 1, handle_entity_event_owner_cache) if item.runtime_class is not None else None)},",
                 f"        interact_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'interact', 3, interact_owner_cache) if item.runtime_class is not None else None)},",
                 f"        mob_interact_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'mobInteract', 2, mob_interact_owner_cache) if extends_class(item.runtime_class, 'net.minecraft.world.entity.Mob') else None)},",
+                f"        food_predicate_owner: {option_string(food_owner)},",
+                f"        food_predicate: {'Some(' + food_policy + ')' if food_policy is not None else 'None'},",
                 f"        passenger_attachment_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'getPassengerAttachmentPoint', 3, passenger_attachment_owner_cache) if item.runtime_class is not None else None)},",
                 f"        vehicle_attachment_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'getVehicleAttachmentPoint', 1, vehicle_attachment_owner_cache) if item.runtime_class is not None else None)},",
                 f"        controlling_passenger_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'getControllingPassenger', 0, controlling_passenger_owner_cache) if item.runtime_class is not None else None)},",
@@ -5155,6 +5234,27 @@ def render(result: ExtractionResult) -> str:
             "        assert!(owner(\"minecraft:zombie\").mob_interact_owner.unwrap().ends_with(\".Mob\"));",
             "        assert!(owner(\"minecraft:item\").mob_interact_owner.is_none());",
             "        assert!(owner(\"minecraft:player\").mob_interact_owner.is_none());",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn food_predicates_cover_every_animal_and_retain_source_owners() {",
+            "        for entry in super::VANILLA_ENTITY_TYPE_METADATA_26_1 {",
+            "            assert_eq!(entry.food_predicate_owner.is_some(), entry.food_predicate.is_some(), \"{}\", entry.resource_id);",
+            "            if entry.is_animal {",
+            "                assert!(entry.food_predicate.is_some(), \"{} lacks isFood predicate\", entry.resource_id);",
+            "            }",
+            "        }",
+            "        let owner = |resource_id| {",
+            "            super::VANILLA_ENTITY_TYPE_METADATA_26_1",
+            "                .iter()",
+            "                .find(|entry| entry.resource_id == resource_id)",
+            "                .unwrap()",
+            "        };",
+            "        assert_eq!(owner(\"minecraft:sheep\").food_predicate, Some(super::VanillaEntityFoodPredicate::ItemTag(\"minecraft:sheep_food\")));",
+            "        assert_eq!(owner(\"minecraft:parrot\").food_predicate, Some(super::VanillaEntityFoodPredicate::Never));",
+            "        assert_eq!(owner(\"minecraft:nautilus\").food_predicate, Some(super::VanillaEntityFoodPredicate::Nautilus { untamed_adult_tag: \"minecraft:nautilus_taming_items\", default_tag: \"minecraft:nautilus_food\" }));",
+            "        assert_eq!(owner(\"minecraft:tadpole\").food_predicate, Some(super::VanillaEntityFoodPredicate::ItemTag(\"minecraft:frog_food\")));",
+            "        assert!(owner(\"minecraft:zombie\").food_predicate.is_none());",
             "    }",
             "",
             "    #[test]",

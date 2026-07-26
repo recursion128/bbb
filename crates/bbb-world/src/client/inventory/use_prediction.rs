@@ -5,14 +5,14 @@ use crate::{
         vanilla_entity_metadata_age_locked_accessor_for_entity_type,
         vanilla_entity_metadata_armor_stand_accessors_for_entity_type,
         vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type,
-        vanilla_entity_metadata_interact_owner,
+        vanilla_entity_metadata_food_predicate, vanilla_entity_metadata_interact_owner,
         vanilla_entity_metadata_interaction_accessors_for_entity_type,
         vanilla_entity_metadata_mob_interact_owner,
         vanilla_entity_metadata_sheep_wool_accessor_for_entity_type,
         vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type,
         vanilla_entity_metadata_tamable_animal_accessors_for_entity_type,
         vanilla_entity_metadata_type_is_leashable, vanilla_entity_metadata_type_is_living,
-        vanilla_entity_type_is_minecart, vanilla_pick_bounds_for_type,
+        vanilla_entity_type_is_minecart, vanilla_pick_bounds_for_type, VanillaEntityFoodPredicate,
     },
     BlockPos, LevelEventSoundRandomState,
 };
@@ -79,6 +79,8 @@ pub use pov_item::{LocalItemUsePovFluidMode, LocalItemUsePovQuery, LocalItemUseP
 
 const VANILLA_DEFAULT_ENTITY_INTERACT_OWNER: &str = "net.minecraft.world.entity.Entity";
 const VANILLA_MOB_ENTITY_INTERACT_OWNER: &str = "net.minecraft.world.entity.Mob";
+const VANILLA_AGEABLE_MOB_INTERACT_OWNER: &str = "net.minecraft.world.entity.AgeableMob";
+const VANILLA_ANIMAL_MOB_INTERACT_OWNER: &str = "net.minecraft.world.entity.animal.Animal";
 const VANILLA_ARMOR_STAND_INTERACT_OWNER: &str = "net.minecraft.world.entity.decoration.ArmorStand";
 const VANILLA_BOAT_INTERACT_OWNER: &str = "net.minecraft.world.entity.vehicle.boat.AbstractBoat";
 const VANILLA_BOGGED_MOB_INTERACT_OWNER: &str =
@@ -116,12 +118,12 @@ const VANILLA_MINECART_FURNACE_INTERACT_OWNER: &str =
 const VANILLA_MOOSHROOM_MOB_INTERACT_OWNER: &str =
     "net.minecraft.world.entity.animal.cow.MushroomCow";
 const VANILLA_SHEEP_MOB_INTERACT_OWNER: &str = "net.minecraft.world.entity.animal.sheep.Sheep";
-const VANILLA_SHEEP_FOOD_TAG: &str = "minecraft:sheep_food";
 const VANILLA_SNOW_GOLEM_MOB_INTERACT_OWNER: &str =
     "net.minecraft.world.entity.animal.golem.SnowGolem";
 const VANILLA_ZOMBIE_HORSE_INTERACT_OWNER: &str =
     "net.minecraft.world.entity.animal.equine.ZombieHorse";
 const VANILLA_ZOMBIE_HORSE_FOOD_TAG: &str = "minecraft:zombie_horse_food";
+const VANILLA_CANNOT_BE_AGE_LOCKED_TAG: &str = "minecraft:cannot_be_age_locked";
 const MAX_PENDING_LOCAL_INTERACTION_PARTICLE_ACTIONS: usize = 64;
 const VANILLA_COPPER_GOLEM_POSES: [&str; 4] = ["standing", "sitting", "running", "star"];
 
@@ -1897,24 +1899,165 @@ impl WorldStore {
             );
         }
         if owner == VANILLA_SHEEP_MOB_INTERACT_OWNER {
-            if let Some(item_id) = held_item_id {
-                let Some(food_item_ids) =
-                    self.registry_holder_ids_for_tag("minecraft:item", VANILLA_SHEEP_FOOD_TAG)
-                else {
-                    return LocalTargetUsePrediction::UnsupportedEntityInteract(owner);
-                };
-                if food_item_ids.contains(&item_id) {
-                    // `Animal.mobInteract` depends on age and love state and
-                    // consumes Sheep food before `ItemStack.interactLivingEntity`.
-                    return LocalTargetUsePrediction::UnsupportedEntityInteract(owner);
-                }
-            }
-            return LocalTargetUsePrediction::Result(LocalInteractionResult::Pass);
+            return self.predict_local_animal_mob_interact(
+                entity_id,
+                entity_type_id,
+                hand,
+                held_item_id,
+                owner,
+            );
+        }
+        if owner == VANILLA_ANIMAL_MOB_INTERACT_OWNER {
+            return self.predict_local_animal_mob_interact(
+                entity_id,
+                entity_type_id,
+                hand,
+                held_item_id,
+                owner,
+            );
+        }
+        if owner == VANILLA_AGEABLE_MOB_INTERACT_OWNER {
+            return self.predict_local_ageable_mob_interact(
+                entity_id,
+                entity_type_id,
+                hand,
+                held_item_id,
+                owner,
+            );
         }
         if owner != VANILLA_MOB_ENTITY_INTERACT_OWNER {
             return LocalTargetUsePrediction::UnsupportedEntityInteract(owner);
         }
         LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+    }
+
+    fn predict_local_animal_mob_interact(
+        &mut self,
+        entity_id: i32,
+        entity_type_id: i32,
+        hand: InteractionHand,
+        held_item_id: Option<i32>,
+        owner: &'static str,
+    ) -> LocalTargetUsePrediction {
+        let is_food = match vanilla_entity_metadata_food_predicate(entity_type_id) {
+            Some(VanillaEntityFoodPredicate::Never) => false,
+            None => return LocalTargetUsePrediction::UnsupportedEntityInteract(owner),
+            Some(VanillaEntityFoodPredicate::ItemTag(tag)) => {
+                let Some(item_ids) = self.registry_holder_ids_for_tag("minecraft:item", tag) else {
+                    return LocalTargetUsePrediction::UnsupportedEntityInteract(owner);
+                };
+                held_item_id.is_some_and(|item_id| item_ids.contains(&item_id))
+            }
+            Some(VanillaEntityFoodPredicate::Nautilus {
+                untamed_adult_tag,
+                default_tag,
+            }) => {
+                let Some(is_baby) = self.entities.is_baby(entity_id) else {
+                    return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+                };
+                let Some(accessors) =
+                    vanilla_entity_metadata_tamable_animal_accessors_for_entity_type(
+                        entity_type_id,
+                    )
+                else {
+                    return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+                };
+                let Some(flags) = self.entities.metadata_byte_for_entity(
+                    entity_id,
+                    accessors.flags_data_id,
+                    accessors.flags_default,
+                ) else {
+                    return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+                };
+                let tag = if !is_baby && flags & accessors.tame_mask == 0 {
+                    untamed_adult_tag
+                } else {
+                    default_tag
+                };
+                let Some(item_ids) = self.registry_holder_ids_for_tag("minecraft:item", tag) else {
+                    return LocalTargetUsePrediction::UnsupportedEntityInteract(owner);
+                };
+                held_item_id.is_some_and(|item_id| item_ids.contains(&item_id))
+            }
+        };
+        if !is_food {
+            return self.predict_local_ageable_mob_interact(
+                entity_id,
+                entity_type_id,
+                hand,
+                held_item_id,
+                owner,
+            );
+        }
+
+        let Some(is_baby) = self.entities.is_baby(entity_id) else {
+            return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+        };
+        let can_age_up = if is_baby {
+            let Some((data_id, default)) =
+                vanilla_entity_metadata_age_locked_accessor_for_entity_type(entity_type_id)
+            else {
+                return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+            };
+            let Some(age_locked) = self
+                .entities
+                .metadata_bool_for_entity(entity_id, data_id, default)
+            else {
+                return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+            };
+            !age_locked
+        } else {
+            false
+        };
+        if !can_age_up {
+            return LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::consume(false),
+            ));
+        }
+        if !self.consume_local_item_in_hand(hand, 1) {
+            return LocalTargetUsePrediction::UnsupportedEntityInteract(owner);
+        }
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+            LocalInteractionSuccess::client_item_interaction(),
+        ))
+    }
+
+    fn predict_local_ageable_mob_interact(
+        &mut self,
+        entity_id: i32,
+        entity_type_id: i32,
+        hand: InteractionHand,
+        held_item_id: Option<i32>,
+        owner: &'static str,
+    ) -> LocalTargetUsePrediction {
+        if held_item_id != Some(VANILLA_ITEM_GOLDEN_DANDELION_ID) {
+            return LocalTargetUsePrediction::Result(LocalInteractionResult::Pass);
+        }
+        let Some(is_baby) = self.entities.is_baby(entity_id) else {
+            return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+        };
+        let Some(timer_ticks) = self.entities.age_lock_particle_timer_ticks(entity_id) else {
+            return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+        };
+        if !is_baby || timer_ticks != 0 {
+            return LocalTargetUsePrediction::Result(LocalInteractionResult::Pass);
+        }
+        let Some(excluded_entity_type_ids) = self
+            .registry_holder_ids_for_tag("minecraft:entity_type", VANILLA_CANNOT_BE_AGE_LOCKED_TAG)
+        else {
+            return LocalTargetUsePrediction::UnsupportedEntityInteract(owner);
+        };
+        if excluded_entity_type_ids.contains(&entity_type_id) {
+            return LocalTargetUsePrediction::Result(LocalInteractionResult::Pass);
+        }
+        if self.entities.apply_local_age_lock_use(entity_id).is_none()
+            || !self.consume_local_item_in_hand(hand, 1)
+        {
+            return LocalTargetUsePrediction::UnsupportedEntityInteract(owner);
+        }
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+            LocalInteractionSuccess::client_item_interaction(),
+        ))
     }
 
     fn predict_local_specialized_shearable_mob_interact(
@@ -2625,18 +2768,19 @@ mod tests {
         entity_types::{
             VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
             VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
-            VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
-            VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID, VANILLA_ENTITY_TYPE_COW_ID,
-            VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
-            VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
-            VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
-            VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_ITEM_FRAME_ID,
-            VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_LEASH_KNOT_ID,
-            VANILLA_ENTITY_TYPE_MANNEQUIN_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
-            VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
-            VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
-            VANILLA_ENTITY_TYPE_PAINTING_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-            VANILLA_ENTITY_TYPE_SHEEP_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+            VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_CHICKEN_ID,
+            VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID,
+            VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_CREEPER_ID,
+            VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
+            VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
+            VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
+            VANILLA_ENTITY_TYPE_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
+            VANILLA_ENTITY_TYPE_LEASH_KNOT_ID, VANILLA_ENTITY_TYPE_MANNEQUIN_ID,
+            VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
+            VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+            VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_PAINTING_ID,
+            VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
+            VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_SQUID_ID,
             VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
             VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
         },
@@ -2659,7 +2803,7 @@ mod tests {
             VANILLA_ITEM_POTION_ID, VANILLA_ITEM_POWDER_SNOW_BUCKET_ID, VANILLA_ITEM_RED_DYE_ID,
             VANILLA_ITEM_SADDLE_ID, VANILLA_ITEM_SHEARS_ID, VANILLA_ITEM_SHIELD_ID,
             VANILLA_ITEM_STONE_ID, VANILLA_ITEM_TRIDENT_ID, VANILLA_ITEM_TYPES,
-            VANILLA_ITEM_WATER_BUCKET_ID,
+            VANILLA_ITEM_WATER_BUCKET_ID, VANILLA_ITEM_WHEAT_SEEDS_ID,
         },
         packets::{
             AddEntity, AdventureModePredicateDataSummary, BlockHitResult, BlockHolderSetSummary,
@@ -7905,6 +8049,115 @@ mod tests {
     }
 
     #[test]
+    fn local_mob_interact_predicts_shared_animal_and_ageable_client_branches() {
+        let mut world = WorldStore::new();
+        add_entity(&mut world, 40, VANILLA_ENTITY_TYPE_CHICKEN_ID);
+        add_entity(&mut world, 41, VANILLA_ENTITY_TYPE_SQUID_ID);
+        world.apply_update_tags(UpdateTags {
+            registries: vec![
+                RegistryTags {
+                    registry: "minecraft:item".to_string(),
+                    tags: vec![TagNetworkPayload {
+                        tag: "minecraft:chicken_food".to_string(),
+                        entries: vec![VANILLA_ITEM_WHEAT_SEEDS_ID],
+                    }],
+                },
+                RegistryTags {
+                    registry: "minecraft:entity_type".to_string(),
+                    tags: vec![TagNetworkPayload {
+                        tag: VANILLA_CANNOT_BE_AGE_LOCKED_TAG.to_string(),
+                        entries: Vec::new(),
+                    }],
+                },
+            ],
+        });
+
+        set_main_hand(&mut world, VANILLA_ITEM_WHEAT_SEEDS_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(40, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::consume(false)
+            ))
+        );
+        assert_eq!(
+            world
+                .local_item_in_hand(InteractionHand::MainHand)
+                .unwrap()
+                .count,
+            1
+        );
+
+        let (chicken_baby_data_id, _) =
+            crate::entities::vanilla_entity_metadata_baby_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_CHICKEN_ID,
+            )
+            .unwrap();
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 40,
+            values: vec![EntityDataValue {
+                data_id: chicken_baby_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                value: EntityDataValueKind::Boolean(true),
+            }],
+        }));
+        assert_eq!(
+            world.predict_local_entity_interaction(40, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction()
+            ))
+        );
+        assert!(world
+            .local_item_in_hand(InteractionHand::MainHand)
+            .is_none());
+
+        let (squid_baby_data_id, _) =
+            crate::entities::vanilla_entity_metadata_baby_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_SQUID_ID,
+            )
+            .unwrap();
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 41,
+            values: vec![EntityDataValue {
+                data_id: squid_baby_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                value: EntityDataValueKind::Boolean(true),
+            }],
+        }));
+        set_main_hand(&mut world, VANILLA_ITEM_GOLDEN_DANDELION_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(41, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction()
+            ))
+        );
+        let (age_locked_data_id, age_locked_default) =
+            vanilla_entity_metadata_age_locked_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_SQUID_ID,
+            )
+            .unwrap();
+        assert_eq!(
+            world
+                .entities
+                .metadata_bool_for_entity(41, age_locked_data_id, age_locked_default),
+            Some(true)
+        );
+        assert_eq!(world.entities.age_lock_particle_timer_ticks(41), Some(40));
+
+        set_main_hand(&mut world, VANILLA_ITEM_GOLDEN_DANDELION_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(41, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+        assert_eq!(
+            world
+                .local_item_in_hand(InteractionHand::MainHand)
+                .unwrap()
+                .count,
+            1
+        );
+    }
+
+    #[test]
     fn item_stack_interact_living_entity_predicts_dye_name_tag_and_equippable_boundaries() {
         let mut world = WorldStore::new();
         add_entity(&mut world, 4, VANILLA_ENTITY_TYPE_SHEEP_ID);
@@ -7912,7 +8165,7 @@ mod tests {
             registries: vec![RegistryTags {
                 registry: "minecraft:item".to_string(),
                 tags: vec![TagNetworkPayload {
-                    tag: VANILLA_SHEEP_FOOD_TAG.to_string(),
+                    tag: "minecraft:sheep_food".to_string(),
                     entries: Vec::new(),
                 }],
             }],
@@ -7953,20 +8206,22 @@ mod tests {
             registries: vec![RegistryTags {
                 registry: "minecraft:item".to_string(),
                 tags: vec![TagNetworkPayload {
-                    tag: VANILLA_SHEEP_FOOD_TAG.to_string(),
+                    tag: "minecraft:sheep_food".to_string(),
                     entries: vec![VANILLA_ITEM_RED_DYE_ID],
                 }],
             }],
         });
         assert_eq!(
             world.predict_local_entity_interaction(4, InteractionHand::MainHand, false),
-            LocalTargetUsePrediction::UnsupportedEntityInteract(VANILLA_SHEEP_MOB_INTERACT_OWNER)
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::consume(false)
+            ))
         );
         world.apply_update_tags(UpdateTags {
             registries: vec![RegistryTags {
                 registry: "minecraft:item".to_string(),
                 tags: vec![TagNetworkPayload {
-                    tag: VANILLA_SHEEP_FOOD_TAG.to_string(),
+                    tag: "minecraft:sheep_food".to_string(),
                     entries: Vec::new(),
                 }],
             }],

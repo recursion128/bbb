@@ -43,6 +43,7 @@ DYE_COLOR_SOURCE = Path("net/minecraft/world/item/DyeColor.java")
 GAME_RENDERER_SOURCE = Path("net/minecraft/client/renderer/GameRenderer.java")
 BASE_SPAWNER_SOURCE = Path("net/minecraft/world/level/BaseSpawner.java")
 SOUND_EVENTS_SOURCE = Path("net/minecraft/sounds/SoundEvents.java")
+ITEM_TAGS_SOURCE = Path("net/minecraft/tags/ItemTags.java")
 SUPPORTING_SOURCES = (
     SERIALIZER_SOURCE,
     DIRECTION_SOURCE,
@@ -53,6 +54,7 @@ SUPPORTING_SOURCES = (
     GAME_RENDERER_SOURCE,
     BASE_SPAWNER_SOURCE,
     SOUND_EVENTS_SOURCE,
+    ITEM_TAGS_SOURCE,
 )
 
 
