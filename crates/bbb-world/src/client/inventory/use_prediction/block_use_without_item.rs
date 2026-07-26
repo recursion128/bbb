@@ -1,8 +1,11 @@
 use super::{
-    LocalBlockUseContext, LocalInteractionParticleAction, LocalInteractionResult,
-    LocalInteractionSuccess, LocalLeverAttachFace, LocalTargetUsePrediction,
+    redstone_wire::wire_connected_sides, LocalBlockUseContext, LocalInteractionParticleAction,
+    LocalInteractionResult, LocalInteractionSuccess, LocalLeverAttachFace,
+    LocalTargetUsePrediction,
 };
-use crate::{client::block_collision_shape_is_full_block, BlockPos, WorldStore};
+#[cfg(test)]
+use crate::BlockPos;
+use crate::WorldStore;
 use bbb_protocol::{
     block_types::{
         BlockTypeCatalogEntry, VanillaBlockUseWithoutItemOverride, VANILLA_BLOCK_IRON_DOOR_ID,
@@ -239,130 +242,6 @@ impl WorldStore {
         self.predict_local_block_properties(context, block_name, updated, owner)
     }
 
-    fn local_redstone_wire_connection_state(
-        &self,
-        pos: BlockPos,
-        mut state: BTreeMap<String, String>,
-        was_dot: bool,
-    ) -> Option<BTreeMap<String, String>> {
-        let can_connect_up = !self.local_block_is_redstone_conductor(above(pos), pos)?;
-        for direction in horizontal_directions() {
-            let property = direction_name(direction);
-            if state.get(property).is_none_or(|value| value == "none") {
-                state.insert(
-                    property.to_string(),
-                    self.local_redstone_wire_connecting_side(pos, direction, can_connect_up)?
-                        .to_string(),
-                );
-            }
-        }
-        let connected = wire_connected_sides(&state)?;
-        if was_dot && connected.iter().all(|connected| !*connected) {
-            return Some(state);
-        }
-
-        let [north, east, south, west] = connected;
-        let north_south_empty = !north && !south;
-        let east_west_empty = !east && !west;
-        if !west && north_south_empty {
-            state.insert("west".to_string(), "side".to_string());
-        }
-        if !east && north_south_empty {
-            state.insert("east".to_string(), "side".to_string());
-        }
-        if !north && east_west_empty {
-            state.insert("north".to_string(), "side".to_string());
-        }
-        if !south && east_west_empty {
-            state.insert("south".to_string(), "side".to_string());
-        }
-        Some(state)
-    }
-
-    fn local_redstone_wire_connecting_side(
-        &self,
-        pos: BlockPos,
-        direction: ProtocolDirection,
-        can_connect_up: bool,
-    ) -> Option<&'static str> {
-        let relative_pos = relative(pos, direction);
-        let relative = self.probe_block(relative_pos);
-        if can_connect_up {
-            let placeable_above = relative
-                .as_ref()
-                .and_then(|block| block.block_name.as_deref())
-                .is_some_and(is_trapdoor_name)
-                || relative.as_ref().is_some_and(|block| {
-                    self.block_has_full_sturdy_face(block, ProtocolDirection::Up)
-                        || block.block_name.as_deref() == Some("minecraft:hopper")
-                });
-            if placeable_above
-                && self.local_block_should_connect_redstone(above(relative_pos), None)?
-            {
-                if relative.as_ref().is_some_and(|block| {
-                    self.block_has_full_sturdy_face(block, opposite_direction(direction))
-                }) {
-                    return Some("up");
-                }
-                return Some("side");
-            }
-        }
-
-        let connects_relative =
-            self.local_block_should_connect_redstone(relative_pos, Some(direction))?;
-        let relative_conductor =
-            self.local_block_is_redstone_conductor(relative_pos, relative_pos)?;
-        let connects_below = self.local_block_should_connect_redstone(below(relative_pos), None)?;
-        if !connects_relative && (relative_conductor || !connects_below) {
-            Some("none")
-        } else {
-            Some("side")
-        }
-    }
-
-    fn local_block_should_connect_redstone(
-        &self,
-        pos: BlockPos,
-        direction: Option<ProtocolDirection>,
-    ) -> Option<bool> {
-        let Some(block) = self.probe_block(pos) else {
-            return Some(false);
-        };
-        let name = block.block_name.as_deref()?;
-        if name == "minecraft:redstone_wire" {
-            return Some(true);
-        }
-        if name == "minecraft:repeater" {
-            let facing = horizontal_direction_property(&block.block_properties, "facing")?;
-            return Some(
-                direction == Some(facing) || direction == Some(opposite_direction(facing)),
-            );
-        }
-        if name == "minecraft:observer" {
-            let facing = direction_property(&block.block_properties, "facing")?;
-            return Some(direction == Some(facing));
-        }
-        Some(direction.is_some() && block_name_is_redstone_signal_source(name))
-    }
-
-    fn local_block_is_redstone_conductor(
-        &self,
-        state_pos: BlockPos,
-        query_pos: BlockPos,
-    ) -> Option<bool> {
-        let Some(block) = self.probe_block(state_pos) else {
-            return Some(false);
-        };
-        let name = block.block_name.as_deref()?;
-        if matches!(name, "minecraft:soul_sand" | "minecraft:mud") {
-            return Some(true);
-        }
-        if block_name_has_never_redstone_conductor_override(name) {
-            return Some(false);
-        }
-        Some(block_collision_shape_is_full_block(&block, query_pos))
-    }
-
     fn predict_local_toggled_boolean_property(
         &mut self,
         context: LocalBlockUseContext,
@@ -456,21 +335,6 @@ fn horizontal_direction_property(
     }
 }
 
-fn direction_property(
-    properties: &BTreeMap<String, String>,
-    property: &str,
-) -> Option<ProtocolDirection> {
-    match properties.get(property)?.as_str() {
-        "down" => Some(ProtocolDirection::Down),
-        "up" => Some(ProtocolDirection::Up),
-        "north" => Some(ProtocolDirection::North),
-        "south" => Some(ProtocolDirection::South),
-        "west" => Some(ProtocolDirection::West),
-        "east" => Some(ProtocolDirection::East),
-        _ => None,
-    }
-}
-
 fn lever_attach_face(properties: &BTreeMap<String, String>) -> Option<LocalLeverAttachFace> {
     match properties.get("face")?.as_str() {
         "floor" => Some(LocalLeverAttachFace::Floor),
@@ -492,17 +356,6 @@ fn opposite_horizontal(direction: ProtocolDirection) -> ProtocolDirection {
     }
 }
 
-fn opposite_direction(direction: ProtocolDirection) -> ProtocolDirection {
-    match direction {
-        ProtocolDirection::Down => ProtocolDirection::Up,
-        ProtocolDirection::Up => ProtocolDirection::Down,
-        ProtocolDirection::North => ProtocolDirection::South,
-        ProtocolDirection::South => ProtocolDirection::North,
-        ProtocolDirection::West => ProtocolDirection::East,
-        ProtocolDirection::East => ProtocolDirection::West,
-    }
-}
-
 fn direction_name(direction: ProtocolDirection) -> &'static str {
     match direction {
         ProtocolDirection::North => "north",
@@ -515,15 +368,7 @@ fn direction_name(direction: ProtocolDirection) -> &'static str {
     }
 }
 
-fn horizontal_directions() -> [ProtocolDirection; 4] {
-    [
-        ProtocolDirection::North,
-        ProtocolDirection::East,
-        ProtocolDirection::South,
-        ProtocolDirection::West,
-    ]
-}
-
+#[cfg(test)]
 fn relative(pos: BlockPos, direction: ProtocolDirection) -> BlockPos {
     match direction {
         ProtocolDirection::Down => below(pos),
@@ -547,6 +392,7 @@ fn relative(pos: BlockPos, direction: ProtocolDirection) -> BlockPos {
     }
 }
 
+#[cfg(test)]
 fn above(pos: BlockPos) -> BlockPos {
     BlockPos {
         y: pos.y + 1,
@@ -554,79 +400,12 @@ fn above(pos: BlockPos) -> BlockPos {
     }
 }
 
+#[cfg(test)]
 fn below(pos: BlockPos) -> BlockPos {
     BlockPos {
         y: pos.y - 1,
         ..pos
     }
-}
-
-fn wire_connected_sides(properties: &BTreeMap<String, String>) -> Option<[bool; 4]> {
-    let side = |name| match properties.get(name)?.as_str() {
-        "none" => Some(false),
-        "side" | "up" => Some(true),
-        _ => None,
-    };
-    Some([side("north")?, side("east")?, side("south")?, side("west")?])
-}
-
-fn is_trapdoor_name(name: &str) -> bool {
-    name.ends_with("_trapdoor")
-}
-
-fn block_name_is_redstone_signal_source(name: &str) -> bool {
-    name.ends_with("_button")
-        || name.ends_with("_pressure_plate")
-        || name.ends_with("lightning_rod")
-        || matches!(
-            name,
-            "minecraft:lever"
-                | "minecraft:redstone_torch"
-                | "minecraft:redstone_wall_torch"
-                | "minecraft:jukebox"
-                | "minecraft:comparator"
-                | "minecraft:repeater"
-                | "minecraft:redstone_block"
-                | "minecraft:detector_rail"
-                | "minecraft:daylight_detector"
-                | "minecraft:target"
-                | "minecraft:sculk_sensor"
-                | "minecraft:calibrated_sculk_sensor"
-                | "minecraft:lectern"
-                | "minecraft:trapped_chest"
-                | "minecraft:observer"
-                | "minecraft:tripwire_hook"
-        )
-}
-
-fn block_name_has_never_redstone_conductor_override(name: &str) -> bool {
-    name.ends_with("_leaves")
-        || name.ends_with("_stained_glass")
-        || name.ends_with("_copper_grate")
-        || name.ends_with("_copper_bulb")
-        || matches!(
-            name,
-            "minecraft:glass"
-                | "minecraft:tinted_glass"
-                | "minecraft:moving_piston"
-                | "minecraft:piston"
-                | "minecraft:sticky_piston"
-                | "minecraft:tnt"
-                | "minecraft:ice"
-                | "minecraft:frosted_ice"
-                | "minecraft:glowstone"
-                | "minecraft:beacon"
-                | "minecraft:redstone_block"
-                | "minecraft:sea_lantern"
-                | "minecraft:chorus_flower"
-                | "minecraft:observer"
-                | "minecraft:bamboo"
-                | "minecraft:scaffolding"
-                | "minecraft:powder_snow"
-                | "minecraft:copper_grate"
-                | "minecraft:copper_bulb"
-                | "minecraft:pointed_dripstone"
-        )
 }
 
 fn success(success: LocalInteractionSuccess) -> LocalTargetUsePrediction {

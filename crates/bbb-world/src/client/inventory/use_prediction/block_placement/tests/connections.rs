@@ -287,6 +287,98 @@ fn mossy_carpet_placement_projects_supported_sides_and_requires_a_non_air_base()
 }
 
 #[test]
+fn redstone_wire_placement_reuses_connections_and_exact_support_rules() {
+    let clicked = BlockPos { x: 4, y: 8, z: 4 };
+    let target = relative(clicked, ProtocolDirection::Up);
+    let east = relative(target, ProtocolDirection::East);
+
+    let mut climbing = placement_world();
+    set_block(&mut climbing, clicked, state_id("minecraft:stone", []));
+    set_block(&mut climbing, east, state_id("minecraft:stone", []));
+    set_block(
+        &mut climbing,
+        relative(east, ProtocolDirection::Up),
+        state_id(
+            "minecraft:redstone_wire",
+            [
+                ("east", "none"),
+                ("north", "none"),
+                ("power", "0"),
+                ("south", "none"),
+                ("west", "none"),
+            ],
+        ),
+    );
+    set_held(&mut climbing, VANILLA_ITEM_REDSTONE_ID, 1);
+    assert!(matches!(
+        use_block_at(&mut climbing, clicked, false, 32),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        climbing.probe_block(target).unwrap().block_state_id,
+        state_id(
+            "minecraft:redstone_wire",
+            [
+                ("east", "up"),
+                ("north", "none"),
+                ("power", "0"),
+                ("south", "none"),
+                ("west", "side"),
+            ],
+        )
+    );
+
+    let mut hopper = placement_world();
+    set_block(
+        &mut hopper,
+        clicked,
+        state_id(
+            "minecraft:hopper",
+            [("enabled", "true"), ("facing", "down")],
+        ),
+    );
+    set_held(&mut hopper, VANILLA_ITEM_REDSTONE_ID, 1);
+    assert!(matches!(
+        use_block_at(&mut hopper, clicked, true, 33),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        hopper.probe_block(target).unwrap().block_state_id,
+        state_id(
+            "minecraft:redstone_wire",
+            [
+                ("east", "side"),
+                ("north", "side"),
+                ("power", "0"),
+                ("south", "side"),
+                ("west", "side"),
+            ],
+        )
+    );
+
+    let mut unsupported = placement_world();
+    set_block(
+        &mut unsupported,
+        clicked,
+        state_id(
+            "minecraft:oak_slab",
+            [("type", "bottom"), ("waterlogged", "false")],
+        ),
+    );
+    set_held(&mut unsupported, VANILLA_ITEM_REDSTONE_ID, 1);
+    assert_eq!(
+        use_block_at(&mut unsupported, clicked, false, 34),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
+    );
+    assert_eq!(
+        unsupported.probe_block(target).unwrap().block_state_id,
+        state_id("minecraft:air", [])
+    );
+    assert_eq!(held(&unsupported).count, 1);
+    assert!(unsupported.local_block_predictions().is_empty());
+}
+
+#[test]
 fn wall_placement_projects_side_height_and_center_post_from_the_block_above() {
     let clicked = BlockPos { x: 4, y: 8, z: 4 };
     let target = relative(clicked, ProtocolDirection::Up);

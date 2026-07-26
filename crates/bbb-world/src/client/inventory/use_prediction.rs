@@ -69,6 +69,7 @@ mod item_use_fov;
 mod knowledge_book;
 mod potion;
 mod pov_item;
+mod redstone_wire;
 mod thrown_projectile;
 mod trident;
 

@@ -618,6 +618,25 @@ pub(super) fn block_state_for_placement(
                 ],
             );
         }
+        VanillaGetStateForPlacementOverride::RedStoneWireBlock => {
+            let initial = BTreeMap::from([
+                ("north".to_string(), "none".to_string()),
+                ("east".to_string(), "none".to_string()),
+                ("south".to_string(), "none".to_string()),
+                ("west".to_string(), "none".to_string()),
+                ("power".to_string(), "0".to_string()),
+            ]);
+            // Vanilla passes its non-dot cross state into `getConnectionState`,
+            // whose first step rebuilds the missing sides from the default
+            // state. The shared evaluator takes that rebuilt state plus the
+            // original `wasDot` value.
+            let Some(properties) =
+                world.local_redstone_wire_connection_state(target_pos, initial, false)
+            else {
+                return BlockPlacementState::Unsupported;
+            };
+            return resolve_state(world, block_type.resource_id, properties);
+        }
         VanillaGetStateForPlacementOverride::DecoratedPotBlock => {
             let Some(waterlogged) = target_is_source_water(world, target_pos) else {
                 return BlockPlacementState::Unsupported;

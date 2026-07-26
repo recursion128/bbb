@@ -33,6 +33,7 @@ enum BlockCanSurviveRule {
     MossyCarpet,
     Multiface,
     PointedDripstone,
+    RedStoneWire,
     Scaffolding,
     SeaPickle,
     SmallDripleaf,
@@ -227,6 +228,14 @@ impl WorldStore {
                     return Some(true);
                 }
                 self.placement_face_sturdy(&behind, tip_direction, VanillaBlockSupportType::Full)
+            }
+            BlockCanSurviveRule::RedStoneWire => {
+                let below = self.probe_block(relative(pos, Direction::Down))?;
+                if below.block_name.as_deref() == Some("minecraft:hopper") {
+                    Some(true)
+                } else {
+                    self.placement_face_sturdy(&below, Direction::Up, VanillaBlockSupportType::Full)
+                }
             }
             BlockCanSurviveRule::Scaffolding => {
                 let below = self.probe_block(relative(pos, Direction::Down))?;
@@ -482,6 +491,7 @@ const fn block_can_survive_rule(owner: VanillaCanSurviveOverride) -> Option<Bloc
         VanillaCanSurviveOverride::MossyCarpetBlock => BlockCanSurviveRule::MossyCarpet,
         VanillaCanSurviveOverride::MultifaceBlock => BlockCanSurviveRule::Multiface,
         VanillaCanSurviveOverride::PointedDripstoneBlock => BlockCanSurviveRule::PointedDripstone,
+        VanillaCanSurviveOverride::RedStoneWireBlock => BlockCanSurviveRule::RedStoneWire,
         VanillaCanSurviveOverride::ScaffoldingBlock => BlockCanSurviveRule::Scaffolding,
         VanillaCanSurviveOverride::SeaPickleBlock => BlockCanSurviveRule::SeaPickle,
         VanillaCanSurviveOverride::SmallDripleafBlock => BlockCanSurviveRule::SmallDripleaf,
