@@ -378,21 +378,10 @@ impl WorldStore {
                 if !self.local_player_may_build() {
                     return pass();
                 }
-                let mode = match block.block_properties.get("mode").map(String::as_str) {
-                    Some("compare") => "subtract",
-                    Some("subtract") => "compare",
-                    _ => return unsupported(),
-                };
-                // Vanilla immediately calls `refreshOutputState` after this
-                // mode mutation. Its output derives from arbitrary analog
-                // block entities and item frames, which remain synchronized
-                // server state here; the mode itself is client canonical.
-                self.predict_local_block_property(
+                self.predict_local_comparator_use(
                     context,
                     block_name,
                     block.block_properties,
-                    "mode",
-                    mode,
                     owner,
                 )
             }
@@ -809,12 +798,15 @@ fn pass() -> LocalTargetUsePrediction {
 mod tests {
     use super::*;
     use crate::{
-        BlockEntityRecord, BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData,
-        LocalInteractionSoundAction, LocalPlayerPoseState, PaletteDomain, PaletteKind,
-        PalettedContainerData, WorldDimension,
+        BlockEntityRecord, BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState,
+        ItemFrameFacing, LightData, LocalInteractionSoundAction, LocalPlayerPoseState,
+        PaletteDomain, PaletteKind, PalettedContainerData, WorldDimension,
     };
     use bbb_protocol::{
-        block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_COPPER_GOLEM_STATUE_ID,
+        block_entity_types::{
+            VANILLA_BLOCK_ENTITY_TYPE_COMPARATOR_ID,
+            VANILLA_BLOCK_ENTITY_TYPE_COPPER_GOLEM_STATUE_ID,
+        },
         block_types::{
             vanilla_block_type_for_resource_id, VANILLA_BLOCK_POTTED_POPPY_ID,
             VANILLA_BLOCK_STONE_ID, VANILLA_BLOCK_TYPES,
@@ -826,6 +818,10 @@ mod tests {
             VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
             VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
         },
+        entity_data_serializers::{
+            VANILLA_ENTITY_DATA_SERIALIZER_INT_ID, VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+        },
+        entity_types::VANILLA_ENTITY_TYPE_ITEM_FRAME_ID,
         game_types::{
             VANILLA_GAME_TYPE_ADVENTURE_ID, VANILLA_GAME_TYPE_CREATIVE_ID,
             VANILLA_GAME_TYPE_SURVIVAL_ID,
@@ -843,14 +839,15 @@ mod tests {
             VANILLA_ITEM_WHITE_SHULKER_BOX_ID,
         },
         packets::{
-            BannerPatternLayerSummary, BlockPos as ProtocolBlockPos, BlockUpdate,
-            CommonPlayerSpawnInfo, DataComponentPatchSummary, Direction, EntityEvent,
-            InteractionHand, ItemStackSummary, PlayLogin, PlayerHealth, RecipePropertySetSummary,
-            RegistryTags, SetChunkCacheCenter, SetPlayerInventory, TagNetworkPayload,
-            UpdateRecipes, UpdateTags,
+            AddEntity, BannerPatternLayerSummary, BlockPos as ProtocolBlockPos, BlockUpdate,
+            CommonPlayerSpawnInfo, DataComponentPatchSummary, Direction, EntityDataValue,
+            EntityDataValueKind, EntityEvent, InteractionHand, ItemStackSummary, PlayLogin,
+            PlayerHealth, RecipePropertySetSummary, RegistryTags, SetChunkCacheCenter,
+            SetEntityData, SetPlayerInventory, TagNetworkPayload, UpdateRecipes, UpdateTags, Vec3d,
         },
     };
     use std::collections::BTreeSet;
+    use uuid::Uuid;
 
     const POS: BlockPos = BlockPos { x: 0, y: 8, z: 0 };
 
@@ -1074,6 +1071,8 @@ mod tests {
             ],
             VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
         );
+        insert_air_chunk(&mut survival, ChunkPos { x: 0, z: -1 });
+        insert_air_chunk(&mut survival, ChunkPos { x: -1, z: 0 });
         assert_eq!(
             use_main_hand(&mut survival, 41),
             success(LocalInteractionSuccess::client_item_interaction())
@@ -1101,6 +1100,264 @@ mod tests {
             block_property(&adventure, "mode"),
             Some("subtract".to_string())
         );
+    }
+
+    #[test]
+    fn comparator_refreshes_analog_output_power_and_side_input() {
+        let mut world = block_use_world_with_entity(
+            "minecraft:comparator",
+            [
+                ("facing", "north"),
+                ("mode", "compare"),
+                ("powered", "false"),
+            ],
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+            VANILLA_BLOCK_ENTITY_TYPE_COMPARATOR_ID,
+        );
+        insert_air_chunk(&mut world, ChunkPos { x: 0, z: -1 });
+        insert_air_chunk(&mut world, ChunkPos { x: -1, z: 0 });
+        insert_air_chunk(&mut world, ChunkPos { x: -1, z: -1 });
+        set_block_at(
+            &mut world,
+            BlockPos { z: -1, ..POS },
+            state_id("minecraft:cake", [("bites", "2")]),
+        );
+
+        assert_eq!(
+            use_main_hand(&mut world, 43),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        assert_eq!(block_property(&world, "mode").as_deref(), Some("subtract"));
+        assert_eq!(block_property(&world, "powered").as_deref(), Some("true"));
+        assert_eq!(world.comparator_output_at(POS), Some(10));
+
+        set_block_at(
+            &mut world,
+            BlockPos { x: 1, ..POS },
+            state_id("minecraft:redstone_block", []),
+        );
+        assert_eq!(
+            use_main_hand(&mut world, 44),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        assert_eq!(block_property(&world, "mode").as_deref(), Some("compare"));
+        assert_eq!(block_property(&world, "powered").as_deref(), Some("false"));
+        assert_eq!(world.comparator_output_at(POS), Some(0));
+    }
+
+    #[test]
+    fn comparator_reads_synchronized_decorated_pot_inventory() {
+        let mut world = block_use_world_with_entity(
+            "minecraft:comparator",
+            [
+                ("facing", "north"),
+                ("mode", "compare"),
+                ("powered", "false"),
+            ],
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+            VANILLA_BLOCK_ENTITY_TYPE_COMPARATOR_ID,
+        );
+        insert_air_chunk(&mut world, ChunkPos { x: 0, z: -1 });
+        insert_air_chunk(&mut world, ChunkPos { x: -1, z: 0 });
+        let pot_pos = BlockPos { z: -1, ..POS };
+        set_block_at(
+            &mut world,
+            pot_pos,
+            state_id(
+                "minecraft:decorated_pot",
+                [
+                    ("cracked", "false"),
+                    ("facing", "north"),
+                    ("waterlogged", "false"),
+                ],
+            ),
+        );
+        insert_block_entity_record(
+            &mut world,
+            pot_pos,
+            VANILLA_BLOCK_ENTITY_TYPE_DECORATED_POT_ID,
+            decorated_pot_item_nbt("minecraft:stone", 64),
+        );
+        assert_eq!(
+            world.block_entity_type_id_at(pot_pos),
+            Some(VANILLA_BLOCK_ENTITY_TYPE_DECORATED_POT_ID)
+        );
+        assert!(world
+            .block_entity_raw_nbt_at(pot_pos)
+            .is_some_and(|raw_nbt| !raw_nbt.is_empty()));
+
+        assert_eq!(
+            use_main_hand(&mut world, 45),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        assert_eq!(block_property(&world, "mode").as_deref(), Some("subtract"));
+        assert_eq!(world.comparator_output_at(POS), Some(15));
+        assert_eq!(block_property(&world, "powered").as_deref(), Some("true"));
+    }
+
+    #[test]
+    fn comparator_requires_exactly_one_matching_item_frame() {
+        let mut world = block_use_world_with_entity(
+            "minecraft:comparator",
+            [
+                ("facing", "north"),
+                ("mode", "compare"),
+                ("powered", "false"),
+            ],
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+            VANILLA_BLOCK_ENTITY_TYPE_COMPARATOR_ID,
+        );
+        insert_air_chunk(&mut world, ChunkPos { x: 0, z: -1 });
+        insert_air_chunk(&mut world, ChunkPos { x: -1, z: 0 });
+        insert_air_chunk(&mut world, ChunkPos { x: -1, z: -1 });
+        set_block_at(
+            &mut world,
+            BlockPos { z: -1, ..POS },
+            state_id("minecraft:stone", []),
+        );
+        add_item_frame(&mut world, 701, BlockPos { z: -2, ..POS }, 2, 5);
+        add_item_frame(&mut world, 702, BlockPos { z: -2, ..POS }, 3, 7);
+        assert_eq!(
+            world.entities.comparator_item_frame_analog_output(
+                BlockPos { z: -2, ..POS },
+                ItemFrameFacing::North,
+            ),
+            Some(Some(6))
+        );
+
+        assert_eq!(
+            use_main_hand(&mut world, 46),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        assert_eq!(world.comparator_output_at(POS), Some(6));
+
+        add_item_frame(&mut world, 703, BlockPos { z: -2, ..POS }, 2, 7);
+        assert_eq!(
+            use_main_hand(&mut world, 47),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        assert_eq!(world.comparator_output_at(POS), Some(0));
+        assert_eq!(block_property(&world, "powered").as_deref(), Some("false"));
+    }
+
+    #[test]
+    fn comparator_reads_lectern_pages_and_active_sculk_frequency() {
+        let mut world = block_use_world_with_entity(
+            "minecraft:comparator",
+            [
+                ("facing", "north"),
+                ("mode", "compare"),
+                ("powered", "false"),
+            ],
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+            VANILLA_BLOCK_ENTITY_TYPE_COMPARATOR_ID,
+        );
+        insert_air_chunk(&mut world, ChunkPos { x: 0, z: -1 });
+        insert_air_chunk(&mut world, ChunkPos { x: -1, z: 0 });
+        let input_pos = BlockPos { z: -1, ..POS };
+        set_block_at(
+            &mut world,
+            input_pos,
+            state_id(
+                "minecraft:lectern",
+                [
+                    ("facing", "north"),
+                    ("has_book", "true"),
+                    ("powered", "false"),
+                ],
+            ),
+        );
+        insert_block_entity_record(
+            &mut world,
+            input_pos,
+            bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_LECTERN_ID,
+            lectern_book_nbt(3, 1),
+        );
+
+        assert_eq!(
+            use_main_hand(&mut world, 48),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        assert_eq!(world.comparator_output_at(POS), Some(8));
+
+        set_block_at(
+            &mut world,
+            input_pos,
+            state_id(
+                "minecraft:sculk_sensor",
+                [
+                    ("power", "6"),
+                    ("sculk_sensor_phase", "active"),
+                    ("waterlogged", "false"),
+                ],
+            ),
+        );
+        insert_block_entity_record(
+            &mut world,
+            input_pos,
+            bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SCULK_SENSOR_ID,
+            int_nbt("last_vibration_frequency", 12),
+        );
+        assert_eq!(
+            use_main_hand(&mut world, 49),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        assert_eq!(world.comparator_output_at(POS), Some(12));
+    }
+
+    #[test]
+    fn comparator_reads_and_blocks_chest_inventory_signal() {
+        let mut world = block_use_world_with_entity(
+            "minecraft:comparator",
+            [
+                ("facing", "north"),
+                ("mode", "compare"),
+                ("powered", "false"),
+            ],
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+            VANILLA_BLOCK_ENTITY_TYPE_COMPARATOR_ID,
+        );
+        insert_air_chunk(&mut world, ChunkPos { x: 0, z: -1 });
+        insert_air_chunk(&mut world, ChunkPos { x: -1, z: 0 });
+        let chest_pos = BlockPos { z: -1, ..POS };
+        set_block_at(
+            &mut world,
+            chest_pos,
+            state_id(
+                "minecraft:chest",
+                [
+                    ("facing", "north"),
+                    ("type", "single"),
+                    ("waterlogged", "false"),
+                ],
+            ),
+        );
+        insert_block_entity_record(
+            &mut world,
+            chest_pos,
+            bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_CHEST_ID,
+            container_item_nbt(0, "minecraft:stone", 64),
+        );
+
+        assert_eq!(
+            use_main_hand(&mut world, 50),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        assert_eq!(world.comparator_output_at(POS), Some(1));
+
+        set_block_at(
+            &mut world,
+            BlockPos {
+                y: chest_pos.y + 1,
+                ..chest_pos
+            },
+            state_id("minecraft:stone", []),
+        );
+        assert_eq!(
+            use_main_hand(&mut world, 51),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        assert_eq!(world.comparator_output_at(POS), Some(0));
     }
 
     #[test]
@@ -3505,6 +3762,41 @@ mod tests {
         set_block_at(world, POS, block_state_id);
     }
 
+    fn insert_air_chunk(world: &mut WorldStore, pos: ChunkPos) {
+        let air = state_id("minecraft:air", []);
+        let section_count =
+            usize::try_from(world.dimension().height.div_euclid(16)).expect("section count");
+        world.insert_decoded_chunk(ChunkColumn {
+            pos,
+            state: ChunkState::Decoded,
+            heightmaps: Vec::new(),
+            sections: (0..section_count)
+                .map(|_| ChunkSection {
+                    non_empty_block_count: 0,
+                    fluid_count: 0,
+                    block_states: PalettedContainerData {
+                        domain: PaletteDomain::BlockStates,
+                        bits_per_entry: 0,
+                        palette_kind: PaletteKind::SingleValue,
+                        palette_global_ids: vec![air],
+                        packed_data: Vec::new(),
+                        entry_count: 4096,
+                    },
+                    biomes: PalettedContainerData {
+                        domain: PaletteDomain::Biomes,
+                        bits_per_entry: 0,
+                        palette_kind: PaletteKind::SingleValue,
+                        palette_global_ids: vec![0],
+                        packed_data: Vec::new(),
+                        entry_count: 64,
+                    },
+                })
+                .collect(),
+            block_entities: Vec::new(),
+            light: LightData::default(),
+        });
+    }
+
     fn set_block_at(world: &mut WorldStore, pos: BlockPos, block_state_id: i32) {
         assert!(world.apply_block_update(BlockUpdate {
             pos: ProtocolBlockPos {
@@ -3513,6 +3805,156 @@ mod tests {
                 z: pos.z,
             },
             block_state_id,
+        }));
+    }
+
+    fn insert_block_entity_record(
+        world: &mut WorldStore,
+        pos: BlockPos,
+        type_id: i32,
+        raw_nbt: Vec<u8>,
+    ) {
+        let chunk = world
+            .chunks
+            .iter_mut()
+            .find(|chunk| {
+                chunk.pos
+                    == ChunkPos {
+                        x: pos.x.div_euclid(16),
+                        z: pos.z.div_euclid(16),
+                    }
+            })
+            .expect("block entity chunk");
+        let mut record = BlockEntityRecord::empty(
+            pos.x.rem_euclid(16) as u8,
+            pos.y as i16,
+            pos.z.rem_euclid(16) as u8,
+            type_id,
+        );
+        record.raw_nbt = raw_nbt;
+        if let Some(existing) = chunk.block_entities.iter_mut().find(|existing| {
+            existing.local_x == record.local_x
+                && existing.y == record.y
+                && existing.local_z == record.local_z
+        }) {
+            *existing = record;
+        } else {
+            chunk.block_entities.push(record);
+        }
+    }
+
+    fn decorated_pot_item_nbt(resource_id: &str, count: i32) -> Vec<u8> {
+        let mut nbt = vec![10, 10];
+        write_nbt_string(&mut nbt, "item");
+        nbt.push(8);
+        write_nbt_string(&mut nbt, "id");
+        write_nbt_string(&mut nbt, resource_id);
+        nbt.push(3);
+        write_nbt_string(&mut nbt, "count");
+        nbt.extend_from_slice(&count.to_be_bytes());
+        nbt.extend_from_slice(&[0, 0]);
+        nbt
+    }
+
+    fn lectern_book_nbt(page_count: usize, page: i32) -> Vec<u8> {
+        let mut nbt = vec![10, 10];
+        write_nbt_string(&mut nbt, "Book");
+        nbt.push(8);
+        write_nbt_string(&mut nbt, "id");
+        write_nbt_string(&mut nbt, "minecraft:written_book");
+        nbt.push(10);
+        write_nbt_string(&mut nbt, "components");
+        nbt.push(10);
+        write_nbt_string(&mut nbt, "minecraft:written_book_content");
+        nbt.push(9);
+        write_nbt_string(&mut nbt, "pages");
+        nbt.push(10);
+        nbt.extend_from_slice(&(page_count as i32).to_be_bytes());
+        nbt.extend(std::iter::repeat_n(0, page_count));
+        nbt.extend_from_slice(&[0, 0, 0]);
+        nbt.push(3);
+        write_nbt_string(&mut nbt, "Page");
+        nbt.extend_from_slice(&page.to_be_bytes());
+        nbt.push(0);
+        nbt
+    }
+
+    fn int_nbt(name: &str, value: i32) -> Vec<u8> {
+        let mut nbt = vec![10, 3];
+        write_nbt_string(&mut nbt, name);
+        nbt.extend_from_slice(&value.to_be_bytes());
+        nbt.push(0);
+        nbt
+    }
+
+    fn container_item_nbt(slot: i8, resource_id: &str, count: i32) -> Vec<u8> {
+        let mut nbt = vec![10, 9];
+        write_nbt_string(&mut nbt, "Items");
+        nbt.push(10);
+        nbt.extend_from_slice(&1_i32.to_be_bytes());
+        nbt.push(1);
+        write_nbt_string(&mut nbt, "Slot");
+        nbt.push(slot as u8);
+        nbt.push(8);
+        write_nbt_string(&mut nbt, "id");
+        write_nbt_string(&mut nbt, resource_id);
+        nbt.push(3);
+        write_nbt_string(&mut nbt, "count");
+        nbt.extend_from_slice(&count.to_be_bytes());
+        nbt.extend_from_slice(&[0, 0]);
+        nbt
+    }
+
+    fn write_nbt_string(out: &mut Vec<u8>, value: &str) {
+        out.extend_from_slice(&(value.len() as u16).to_be_bytes());
+        out.extend_from_slice(value.as_bytes());
+    }
+
+    fn add_item_frame(
+        world: &mut WorldStore,
+        id: i32,
+        pos: BlockPos,
+        direction_data: i32,
+        rotation: i32,
+    ) {
+        world.apply_add_entity(AddEntity {
+            id,
+            uuid: Uuid::from_u128(id as u128),
+            entity_type_id: VANILLA_ENTITY_TYPE_ITEM_FRAME_ID,
+            position: Vec3d {
+                x: f64::from(pos.x),
+                y: f64::from(pos.y),
+                z: f64::from(pos.z),
+            },
+            delta_movement: Vec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: direction_data,
+        });
+        let accessors =
+            crate::entities::vanilla_entity_metadata_item_frame_accessors_for_entity_type(
+                VANILLA_ENTITY_TYPE_ITEM_FRAME_ID,
+            )
+            .expect("item-frame accessors");
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id,
+            values: vec![
+                EntityDataValue {
+                    data_id: accessors.item_data_id,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+                    value: EntityDataValueKind::ItemStack(ItemStackSummary {
+                        item_id: Some(VANILLA_ITEM_STONE_ID),
+                        count: 1,
+                        component_patch: DataComponentPatchSummary::default(),
+                    }),
+                },
+                EntityDataValue {
+                    data_id: accessors.rotation_data_id,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                    value: EntityDataValueKind::Int(rotation),
+                },
+            ],
         }));
     }
 

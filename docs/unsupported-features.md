@@ -653,10 +653,7 @@ Commands:
   command, and sign editing.
 - Complete the remaining specialized targeted local-use prediction from
   `Minecraft.startUseItem`, `MultiPlayerGameMode.interact`, and `useItemOn`.
-  Complete `ComparatorBlock.refreshOutputState` after predicted mode changes,
-  including
-  arbitrary analog block-entity and item-frame inputs; then apply each success
-  swing-source and held-item presentation.
+  Apply each success swing-source and held-item presentation.
   Interaction override ownership must stay generated from local vanilla classes.
   Entity, block, and inventory corrections remain server-authoritative.
 - Bottle dragon-breath client prediction is `not-needed`: `AreaEffectCloud.owner`

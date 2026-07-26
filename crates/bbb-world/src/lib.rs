@@ -9,6 +9,7 @@ mod client;
 mod climate;
 mod command_blocks;
 mod commands;
+mod comparator_blocks;
 mod conduit_blocks;
 mod counters;
 mod decorated_pot_blocks;

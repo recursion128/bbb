@@ -62,6 +62,11 @@
 # local neighbor facts. It is surfaced to diagnostics instead of guessing a
 # consuming result or mutating canonical block state.
 ^crates/bbb-world/src/client/inventory/use_prediction/block_use_without_item[.]rs$	UnsupportedBlockUseWithoutItem|unsupported[(][)]
+# Comparator mode/output prediction fails closed when a required neighboring
+# chunk, generated state fact, synchronized block-entity payload, or atomic
+# local block mutation is unavailable. The generated owner match is exhaustive,
+# and server correction retains canonical authority.
+^crates/bbb-world/src/client/inventory/use_prediction/comparator[.]rs$	UnsupportedBlockUseWithoutItem|unsupported[(][)]
 # Generated block-use-item-on dispatch uses the same explicit fail-closed result
 # for malformed state/component facts or unavailable local prediction inputs.
 # Every generated owner is matched exhaustively; these outcomes preserve server

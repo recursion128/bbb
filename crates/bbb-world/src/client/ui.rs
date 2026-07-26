@@ -2966,6 +2966,7 @@ mod tests {
                 end_gateway: None,
                 spawner: None,
                 command_block: None,
+                comparator_output: None,
                 structure_block: None,
                 jigsaw_block: None,
                 test_block: None,

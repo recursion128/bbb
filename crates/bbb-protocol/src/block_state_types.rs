@@ -17,8 +17,9 @@ use placement_defaults_26_1::{
     VANILLA_BLOCK_NOTE_INSTRUMENT_PALETTE, VANILLA_ITEM_DEFAULT_BLOCK_STATE_PROPERTIES,
 };
 use support_facts_26_1::{
-    VANILLA_BLOCK_STATE_LIQUID_BITS, VANILLA_BLOCK_STATE_SOLID_RENDER_BITS,
-    VANILLA_BLOCK_STATE_SUPPORT_FACT_INDICES, VANILLA_BLOCK_STATE_SUPPORT_FACT_PALETTE,
+    VANILLA_BLOCK_STATE_LIQUID_BITS, VANILLA_BLOCK_STATE_REDSTONE_CONDUCTOR_BITS,
+    VANILLA_BLOCK_STATE_SOLID_RENDER_BITS, VANILLA_BLOCK_STATE_SUPPORT_FACT_INDICES,
+    VANILLA_BLOCK_STATE_SUPPORT_FACT_PALETTE,
 };
 
 /// The checked-in Vanilla 26.1 global block-state registry report.
@@ -114,8 +115,8 @@ impl VanillaBlockSupportType {
     }
 }
 
-/// Runtime-generated support, collision, solid-render, and legacy liquid facts
-/// for one built-in Vanilla 26.1 block state.
+/// Runtime-generated support, collision, solid-render, redstone-conductor,
+/// and legacy liquid facts for one built-in Vanilla 26.1 block state.
 ///
 /// Support and collision-face results are exact state-cache facts when
 /// `dynamic_shape` is false. Dynamic shapes require a live world query instead
@@ -124,6 +125,7 @@ impl VanillaBlockSupportType {
 pub struct VanillaBlockStateSupportFacts {
     facts: u32,
     solid_render: bool,
+    redstone_conductor: bool,
     liquid: bool,
 }
 
@@ -138,6 +140,10 @@ impl VanillaBlockStateSupportFacts {
 
     pub const fn solid_render(self) -> bool {
         self.solid_render
+    }
+
+    pub const fn redstone_conductor(self) -> bool {
+        self.redstone_conductor
     }
 
     pub const fn liquid(self) -> bool {
@@ -169,6 +175,9 @@ pub fn vanilla_block_state_support_facts(id: i32) -> Option<VanillaBlockStateSup
     Some(VanillaBlockStateSupportFacts {
         facts: *VANILLA_BLOCK_STATE_SUPPORT_FACT_PALETTE.get(palette_index)?,
         solid_render: VANILLA_BLOCK_STATE_SOLID_RENDER_BITS
+            .get(id / 64)
+            .is_some_and(|word| word & (1_u64 << (id % 64)) != 0),
+        redstone_conductor: VANILLA_BLOCK_STATE_REDSTONE_CONDUCTOR_BITS
             .get(id / 64)
             .is_some_and(|word| word & (1_u64 << (id % 64)) != 0),
         liquid: VANILLA_BLOCK_STATE_LIQUID_BITS
@@ -393,6 +402,10 @@ mod tests {
             (VANILLA_BLOCK_STATE_COUNT as usize).div_ceil(64)
         );
         assert_eq!(
+            VANILLA_BLOCK_STATE_REDSTONE_CONDUCTOR_BITS.len(),
+            (VANILLA_BLOCK_STATE_COUNT as usize).div_ceil(64)
+        );
+        assert_eq!(
             VANILLA_BLOCK_STATE_LIQUID_BITS.len(),
             (VANILLA_BLOCK_STATE_COUNT as usize).div_ceil(64)
         );
@@ -401,6 +414,7 @@ mod tests {
         assert!(!air.legacy_solid());
         assert!(!air.dynamic_shape());
         assert!(!air.solid_render());
+        assert!(!air.redstone_conductor());
         assert!(!air.liquid());
         assert!(!air.face_sturdy(
             VanillaBlockSupportDirection::Up,
@@ -412,11 +426,22 @@ mod tests {
         let stone = vanilla_block_state_support_facts(state_id("minecraft:stone")).unwrap();
         assert!(stone.legacy_solid());
         assert!(stone.solid_render());
+        assert!(stone.redstone_conductor());
         assert!(!stone.liquid());
         assert!(
             !vanilla_block_state_support_facts(state_id("minecraft:glass"))
                 .unwrap()
                 .solid_render()
+        );
+        assert!(
+            !vanilla_block_state_support_facts(state_id("minecraft:glass"))
+                .unwrap()
+                .redstone_conductor()
+        );
+        assert!(
+            vanilla_block_state_support_facts(state_id("minecraft:soul_sand"))
+                .unwrap()
+                .redstone_conductor()
         );
         assert!(
             vanilla_block_state_support_facts(state_id("minecraft:water"))

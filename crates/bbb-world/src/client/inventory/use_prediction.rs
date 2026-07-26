@@ -57,6 +57,7 @@ mod bone_meal;
 mod book;
 mod bucket;
 mod bundle;
+mod comparator;
 mod crossbow;
 mod empty_map;
 mod entity_placement;
@@ -122,6 +123,14 @@ const VANILLA_ZOMBIE_HORSE_INTERACT_OWNER: &str =
     "net.minecraft.world.entity.animal.equine.ZombieHorse";
 const VANILLA_ZOMBIE_HORSE_FOOD_TAG: &str = "minecraft:zombie_horse_food";
 const MAX_PENDING_LOCAL_INTERACTION_PARTICLE_ACTIONS: usize = 64;
+const VANILLA_COPPER_GOLEM_POSES: [&str; 4] = ["standing", "sitting", "running", "star"];
+
+fn copper_golem_pose_ordinal(pose: &str) -> Option<i32> {
+    VANILLA_COPPER_GOLEM_POSES
+        .iter()
+        .position(|candidate| *candidate == pose)
+        .and_then(|index| i32::try_from(index).ok())
+}
 
 #[derive(Debug, Clone, Copy)]
 struct LocalBlockUseContext {

@@ -5,12 +5,12 @@ use bbb_protocol::packets::{
 use bbb_protocol::{
     block_entity_types::{
         VANILLA_BLOCK_ENTITY_TYPE_BANNER_ID, VANILLA_BLOCK_ENTITY_TYPE_COMMAND_BLOCK_ID,
-        VANILLA_BLOCK_ENTITY_TYPE_DECORATED_POT_ID, VANILLA_BLOCK_ENTITY_TYPE_END_GATEWAY_ID,
-        VANILLA_BLOCK_ENTITY_TYPE_HANGING_SIGN_ID, VANILLA_BLOCK_ENTITY_TYPE_JIGSAW_ID,
-        VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID, VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,
-        VANILLA_BLOCK_ENTITY_TYPE_SKULL_ID, VANILLA_BLOCK_ENTITY_TYPE_STRUCTURE_BLOCK_ID,
-        VANILLA_BLOCK_ENTITY_TYPE_TEST_BLOCK_ID, VANILLA_BLOCK_ENTITY_TYPE_TEST_INSTANCE_BLOCK_ID,
-        VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID,
+        VANILLA_BLOCK_ENTITY_TYPE_COMPARATOR_ID, VANILLA_BLOCK_ENTITY_TYPE_DECORATED_POT_ID,
+        VANILLA_BLOCK_ENTITY_TYPE_END_GATEWAY_ID, VANILLA_BLOCK_ENTITY_TYPE_HANGING_SIGN_ID,
+        VANILLA_BLOCK_ENTITY_TYPE_JIGSAW_ID, VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID,
+        VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID, VANILLA_BLOCK_ENTITY_TYPE_SKULL_ID,
+        VANILLA_BLOCK_ENTITY_TYPE_STRUCTURE_BLOCK_ID, VANILLA_BLOCK_ENTITY_TYPE_TEST_BLOCK_ID,
+        VANILLA_BLOCK_ENTITY_TYPE_TEST_INSTANCE_BLOCK_ID, VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID,
     },
     codec::{Decoder, ProtocolError},
     packets::JigsawJoint,
@@ -279,6 +279,13 @@ fn decode_block_entity_record(
     } else {
         None
     };
+    let comparator_output = if block_entity_type_id == VANILLA_BLOCK_ENTITY_TYPE_COMPARATOR_ID {
+        Some(crate::comparator_blocks::decode_comparator_output(
+            &raw_nbt,
+        )?)
+    } else {
+        None
+    };
     let structure_block = if block_entity_type_id == VANILLA_BLOCK_ENTITY_TYPE_STRUCTURE_BLOCK_ID {
         Some(crate::structure_blocks::decode_structure_block_entity_data(
             &raw_nbt,
@@ -329,6 +336,7 @@ fn decode_block_entity_record(
         end_gateway,
         spawner,
         command_block,
+        comparator_output,
         structure_block,
         jigsaw_block,
         test_block,

@@ -101,6 +101,8 @@ pub struct BlockEntityRecord {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub command_block: Option<crate::CommandBlockEntityDataState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub comparator_output: Option<i32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub structure_block: Option<crate::StructureBlockEntityDataState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub jigsaw_block: Option<crate::JigsawBlockEntityDataState>,
@@ -130,6 +132,7 @@ impl BlockEntityRecord {
             end_gateway: None,
             spawner: None,
             command_block: None,
+            comparator_output: None,
             structure_block: None,
             jigsaw_block: None,
             test_block: None,

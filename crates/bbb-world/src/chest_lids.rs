@@ -35,6 +35,8 @@ const CHEST_LID_SATURATION_TICKS: u32 = 11;
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct ChestLidState {
     pub pos: BlockPos,
+    #[serde(default)]
+    pub open_count: u8,
     pub should_be_open: bool,
     pub openness: f32,
     pub o_openness: f32,
@@ -190,16 +192,25 @@ impl WorldStore {
         }
         let should_be_open = b1 > 0;
         if let Some(lid) = self.chest_lids.iter_mut().find(|lid| lid.pos == pos) {
+            lid.open_count = b1;
             lid.should_be_open = should_be_open;
         } else {
             self.chest_lids.push(ChestLidState {
                 pos,
+                open_count: b1,
                 should_be_open,
                 openness: 0.0,
                 o_openness: 0.0,
             });
         }
         true
+    }
+
+    pub(crate) fn chest_open_count_at(&self, pos: BlockPos) -> u8 {
+        self.chest_lids
+            .iter()
+            .find(|lid| lid.pos == pos)
+            .map_or(0, |lid| lid.open_count)
     }
 
     /// Advances every tracked chest lid by `ticks` client ticks, transcribing
@@ -490,6 +501,7 @@ mod tests {
             world.chest_lid_states(),
             &[ChestLidState {
                 pos,
+                open_count: 1,
                 should_be_open: true,
                 openness: 0.0,
                 o_openness: 0.0,

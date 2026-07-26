@@ -2446,6 +2446,7 @@ fn applies_block_entity_data_update() {
             end_gateway: None,
             spawner: None,
             command_block: None,
+            comparator_output: None,
             structure_block: None,
             jigsaw_block: None,
             test_block: None,

@@ -20,6 +20,7 @@ from block_registry_catalog_extractor import (  # noqa: E402
     extract_block_liquid_container_owners,
     extract_block_registry_catalog,
     extract_block_propagates_skylight_down_override_owners,
+    extract_block_redstone_signal_owners,
     extract_block_replaceable_membership,
     extract_block_subclass_membership,
     extract_block_use_item_on_override_owners,
@@ -241,6 +242,17 @@ class BlockBehaviour {
       BlockState state, Level level, BlockPos pos, Direction direction) {
     return 0;
   }
+  protected boolean isSignalSource(BlockState state) {
+    return false;
+  }
+  protected int getSignal(
+      BlockState state, BlockGetter level, BlockPos pos, Direction direction) {
+    return 0;
+  }
+  protected int getDirectSignal(
+      BlockState state, BlockGetter level, BlockPos pos, Direction direction) {
+    return 0;
+  }
 }
 """,
             ),
@@ -296,6 +308,17 @@ class ChainBlock extends Block {
       BlockState state, Level level, BlockPos pos, Direction direction) {
     return 7;
   }
+  protected boolean isSignalSource(BlockState state) {
+    return true;
+  }
+  protected int getSignal(
+      BlockState state, BlockGetter level, BlockPos pos, Direction direction) {
+    return 15;
+  }
+  protected int getDirectSignal(
+      BlockState state, BlockGetter level, BlockPos pos, Direction direction) {
+    return 15;
+  }
 }
 """,
             ),
@@ -337,6 +360,32 @@ class WeatheringCopperChainBlock extends ChainBlock {
                 "StairBlock": None,
                 "WeatheringCopperChainBlock": "ChainBlock",
             },
+        )
+        self.assertEqual(
+            extract_block_redstone_signal_owners(declarations, sources),
+            (
+                {
+                    "AirBlock": None,
+                    "Block": None,
+                    "ChainBlock": "ChainBlock",
+                    "StairBlock": None,
+                    "WeatheringCopperChainBlock": "ChainBlock",
+                },
+                {
+                    "AirBlock": None,
+                    "Block": None,
+                    "ChainBlock": "ChainBlock",
+                    "StairBlock": None,
+                    "WeatheringCopperChainBlock": "ChainBlock",
+                },
+                {
+                    "AirBlock": None,
+                    "Block": None,
+                    "ChainBlock": "ChainBlock",
+                    "StairBlock": None,
+                    "WeatheringCopperChainBlock": "ChainBlock",
+                },
+            ),
         )
         self.assertEqual(
             extract_block_use_item_on_override_owners(declarations, sources),

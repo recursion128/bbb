@@ -5459,6 +5459,111 @@ impl EntityStore {
         Some(item_frame_item(accessors, &metadata.data_values).is_some())
     }
 
+    /// Vanilla `ComparatorBlock.getItemFrame`: selects exactly one item frame
+    /// whose canonical AABB intersects the queried block and whose hanging
+    /// direction matches the comparator facing. An empty matching frame has
+    /// analog output `0`; zero or multiple matches produce no frame input.
+    pub(crate) fn comparator_item_frame_analog_output(
+        &self,
+        pos: crate::BlockPos,
+        facing: super::ItemFrameFacing,
+    ) -> Option<Option<i32>> {
+        let query_min = [f64::from(pos.x), f64::from(pos.y), f64::from(pos.z)];
+        let query_max = [
+            f64::from(pos.x) + 1.0,
+            f64::from(pos.y) + 1.0,
+            f64::from(pos.z) + 1.0,
+        ];
+        let mut matched = None;
+        for id in &self.order {
+            let entity = self.by_protocol_id.get(id).copied()?;
+            let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+            let Some(accessors) = vanilla_entity_metadata_item_frame_accessors_for_entity_type(
+                identity.entity_type_id,
+            ) else {
+                continue;
+            };
+            let transform = self.ecs.get::<&EntityTransform>(entity).ok()?;
+            let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+            if item_frame_facing(accessors, identity.data, &metadata.data_values) != facing {
+                continue;
+            }
+            let bounds = self.debug_hitbox_bounds(*id)?;
+            let entity_min = [
+                transform.position.x + f64::from(bounds.min[0]),
+                transform.position.y + f64::from(bounds.min[1]),
+                transform.position.z + f64::from(bounds.min[2]),
+            ];
+            let entity_max = [
+                transform.position.x + f64::from(bounds.max[0]),
+                transform.position.y + f64::from(bounds.max[1]),
+                transform.position.z + f64::from(bounds.max[2]),
+            ];
+            if !(0..3).all(|axis| {
+                entity_min[axis] < query_max[axis] && entity_max[axis] > query_min[axis]
+            }) {
+                continue;
+            }
+            if matched.is_some() {
+                return Some(None);
+            }
+            matched = Some(
+                item_frame_item(accessors, &metadata.data_values).map_or(0, |_| {
+                    i32::from(item_frame_rotation(accessors, &metadata.data_values)) + 1
+                }),
+            );
+        }
+        Some(matched)
+    }
+
+    /// Vanilla `ChestBlock.isCatSittingOnChest`: any sitting cat whose
+    /// canonical AABB intersects the one-block volume directly above the
+    /// chest blocks container access and therefore comparator output.
+    pub(crate) fn sitting_cat_intersects_chest_top(&self, pos: crate::BlockPos) -> Option<bool> {
+        let query_min = [f64::from(pos.x), f64::from(pos.y) + 1.0, f64::from(pos.z)];
+        let query_max = [
+            f64::from(pos.x) + 1.0,
+            f64::from(pos.y) + 2.0,
+            f64::from(pos.z) + 1.0,
+        ];
+        for id in &self.order {
+            let entity = self.by_protocol_id.get(id).copied()?;
+            let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+            if identity.entity_type_id != VANILLA_ENTITY_TYPE_CAT_ID {
+                continue;
+            }
+            let accessors = vanilla_entity_metadata_tamable_animal_accessors_for_entity_type(
+                identity.entity_type_id,
+            )?;
+            let flags = self.metadata_byte(
+                identity.id,
+                accessors.flags_data_id,
+                accessors.flags_default,
+            )?;
+            if flags & accessors.sitting_mask == 0 {
+                continue;
+            }
+            let transform = self.ecs.get::<&EntityTransform>(entity).ok()?;
+            let bounds = self.debug_hitbox_bounds(*id)?;
+            let entity_min = [
+                transform.position.x + f64::from(bounds.min[0]),
+                transform.position.y + f64::from(bounds.min[1]),
+                transform.position.z + f64::from(bounds.min[2]),
+            ];
+            let entity_max = [
+                transform.position.x + f64::from(bounds.max[0]),
+                transform.position.y + f64::from(bounds.max[1]),
+                transform.position.z + f64::from(bounds.max[2]),
+            ];
+            if (0..3).all(|axis| {
+                entity_min[axis] < query_max[axis] && entity_max[axis] > query_min[axis]
+            }) {
+                return Some(true);
+            }
+        }
+        Some(false)
+    }
+
     pub(crate) fn raw_item_stack_for_entity(&self, id: i32) -> Option<ItemStackSummary> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;

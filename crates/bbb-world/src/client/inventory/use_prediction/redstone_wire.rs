@@ -1,8 +1,11 @@
 use std::collections::BTreeMap;
 
-use bbb_protocol::packets::Direction;
+use bbb_protocol::{
+    block_state_types::vanilla_block_state_support_facts,
+    block_types::vanilla_block_type_for_resource_id, packets::Direction,
+};
 
-use crate::{client::block_collision_shape_is_full_block, BlockPos, WorldStore};
+use crate::{BlockPos, WorldStore};
 
 impl WorldStore {
     pub(super) fn local_redstone_wire_connection_state(
@@ -111,25 +114,19 @@ impl WorldStore {
             let facing = direction_property(&block.block_properties, "facing")?;
             return Some(direction == Some(facing));
         }
-        Some(direction.is_some() && block_name_is_redstone_signal_source(name))
+        let block_type = vanilla_block_type_for_resource_id(name)?;
+        Some(direction.is_some() && block_type.is_signal_source_override.is_some())
     }
 
     fn local_block_is_redstone_conductor(
         &self,
         state_pos: BlockPos,
-        query_pos: BlockPos,
+        _query_pos: BlockPos,
     ) -> Option<bool> {
         let Some(block) = self.probe_block(state_pos) else {
             return Some(false);
         };
-        let name = block.block_name.as_deref()?;
-        if matches!(name, "minecraft:soul_sand" | "minecraft:mud") {
-            return Some(true);
-        }
-        if block_name_has_never_redstone_conductor_override(name) {
-            return Some(false);
-        }
-        Some(block_collision_shape_is_full_block(&block, query_pos))
+        Some(vanilla_block_state_support_facts(block.block_state_id)?.redstone_conductor())
     }
 }
 
@@ -228,59 +225,4 @@ fn relative(pos: BlockPos, direction: Direction) -> BlockPos {
 
 fn is_trapdoor_name(name: &str) -> bool {
     name.ends_with("_trapdoor")
-}
-
-fn block_name_is_redstone_signal_source(name: &str) -> bool {
-    name.ends_with("_button")
-        || name.ends_with("_pressure_plate")
-        || name.ends_with("lightning_rod")
-        || matches!(
-            name,
-            "minecraft:lever"
-                | "minecraft:redstone_torch"
-                | "minecraft:redstone_wall_torch"
-                | "minecraft:jukebox"
-                | "minecraft:comparator"
-                | "minecraft:repeater"
-                | "minecraft:redstone_block"
-                | "minecraft:detector_rail"
-                | "minecraft:daylight_detector"
-                | "minecraft:target"
-                | "minecraft:sculk_sensor"
-                | "minecraft:calibrated_sculk_sensor"
-                | "minecraft:lectern"
-                | "minecraft:trapped_chest"
-                | "minecraft:observer"
-                | "minecraft:tripwire_hook"
-        )
-}
-
-fn block_name_has_never_redstone_conductor_override(name: &str) -> bool {
-    name.ends_with("_leaves")
-        || name.ends_with("_stained_glass")
-        || name.ends_with("_copper_grate")
-        || name.ends_with("_copper_bulb")
-        || matches!(
-            name,
-            "minecraft:glass"
-                | "minecraft:tinted_glass"
-                | "minecraft:moving_piston"
-                | "minecraft:piston"
-                | "minecraft:sticky_piston"
-                | "minecraft:tnt"
-                | "minecraft:ice"
-                | "minecraft:frosted_ice"
-                | "minecraft:glowstone"
-                | "minecraft:beacon"
-                | "minecraft:redstone_block"
-                | "minecraft:sea_lantern"
-                | "minecraft:chorus_flower"
-                | "minecraft:observer"
-                | "minecraft:bamboo"
-                | "minecraft:scaffolding"
-                | "minecraft:powder_snow"
-                | "minecraft:copper_grate"
-                | "minecraft:copper_bulb"
-                | "minecraft:pointed_dripstone"
-        )
 }

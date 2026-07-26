@@ -21,6 +21,7 @@ from block_registry_catalog_extractor import (
     extract_block_liquid_container_owners,
     extract_block_registry_catalog,
     extract_block_propagates_skylight_down_override_owners,
+    extract_block_redstone_signal_owners,
     extract_block_replaceable_membership,
     extract_block_subclass_membership,
     extract_block_use_item_on_override_owners,
@@ -87,6 +88,9 @@ def format_rust(source: str) -> str:
 def render_protocol(
     catalog,
     analog_output_owner_by_factory: dict[str, str | None],
+    is_signal_source_owner_by_factory: dict[str, str | None],
+    signal_owner_by_factory: dict[str, str | None],
+    direct_signal_owner_by_factory: dict[str, str | None],
     use_item_on_owner_by_factory: dict[str, str | None],
     use_without_item_owner_by_factory: dict[str, str | None],
     can_survive_owner_by_factory: dict[str, str | None],
@@ -101,6 +105,18 @@ def render_protocol(
 ) -> str:
     analog_output_owners = [
         analog_output_owner_by_factory[block_factory_class(declaration)]
+        for declaration in catalog.declarations
+    ]
+    is_signal_source_owners = [
+        is_signal_source_owner_by_factory[block_factory_class(declaration)]
+        for declaration in catalog.declarations
+    ]
+    signal_owners = [
+        signal_owner_by_factory[block_factory_class(declaration)]
+        for declaration in catalog.declarations
+    ]
+    direct_signal_owners = [
+        direct_signal_owner_by_factory[block_factory_class(declaration)]
         for declaration in catalog.declarations
     ]
     use_item_on_owners = [
@@ -155,6 +171,18 @@ def render_protocol(
     analog_output_variants = sorted(
         {owner for owner in analog_output_owners if owner is not None}
     )
+    redstone_signal_variants = sorted(
+        {
+            owner
+            for owners in (
+                is_signal_source_owners,
+                signal_owners,
+                direct_signal_owners,
+            )
+            for owner in owners
+            if owner is not None
+        }
+    )
     use_without_item_variants = sorted(
         {owner for owner in use_without_item_owners if owner is not None}
     )
@@ -186,6 +214,15 @@ def render_protocol(
         "pub enum VanillaBlockAnalogOutputOverride {",
     ]
     lines.extend(f"    {owner}," for owner in analog_output_variants)
+    lines.extend(
+        [
+            "}",
+            "",
+            "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
+            "pub enum VanillaBlockRedstoneSignalOverride {",
+        ]
+    )
+    lines.extend(f"    {owner}," for owner in redstone_signal_variants)
     lines.extend(
         [
             "}",
@@ -269,6 +306,9 @@ def render_protocol(
             "    pub resource_id: &'static str,",
             "    pub block_entity_type_id: Option<i32>,",
             "    pub analog_output_override: Option<VanillaBlockAnalogOutputOverride>,",
+            "    pub is_signal_source_override: Option<VanillaBlockRedstoneSignalOverride>,",
+            "    pub signal_override: Option<VanillaBlockRedstoneSignalOverride>,",
+            "    pub direct_signal_override: Option<VanillaBlockRedstoneSignalOverride>,",
             "    pub use_item_on_override: Option<VanillaBlockUseItemOnOverride>,",
             "    pub use_without_item_override: Option<VanillaBlockUseWithoutItemOverride>,",
             "    pub can_survive_override: Option<VanillaCanSurviveOverride>,",
@@ -292,6 +332,9 @@ def render_protocol(
     for (
         declaration,
         analog_output_owner,
+        is_signal_source_owner,
+        signal_owner,
+        direct_signal_owner,
         use_item_on_owner,
         use_without_item_owner,
         can_survive_owner,
@@ -304,6 +347,9 @@ def render_protocol(
     ) in zip(
         catalog.declarations,
         analog_output_owners,
+        is_signal_source_owners,
+        signal_owners,
+        direct_signal_owners,
         use_item_on_owners,
         use_without_item_owners,
         can_survive_owners,
@@ -334,6 +380,24 @@ def render_protocol(
                     f"Some(VanillaBlockAnalogOutputOverride::{analog_output_owner}),"
                     if analog_output_owner is not None
                     else "        analog_output_override: None,"
+                ),
+                (
+                    "        is_signal_source_override: "
+                    f"Some(VanillaBlockRedstoneSignalOverride::{is_signal_source_owner}),"
+                    if is_signal_source_owner is not None
+                    else "        is_signal_source_override: None,"
+                ),
+                (
+                    "        signal_override: "
+                    f"Some(VanillaBlockRedstoneSignalOverride::{signal_owner}),"
+                    if signal_owner is not None
+                    else "        signal_override: None,"
+                ),
+                (
+                    "        direct_signal_override: "
+                    f"Some(VanillaBlockRedstoneSignalOverride::{direct_signal_owner}),"
+                    if direct_signal_owner is not None
+                    else "        direct_signal_override: None,"
                 ),
                 (
                     "        use_item_on_override: "
@@ -475,6 +539,12 @@ def render_protocol(
             "        assert_eq!(vanilla_block_type(VANILLA_BLOCK_STONE_ID).unwrap().analog_output_override, None);",
             "        assert_eq!(vanilla_block_type(VANILLA_BLOCK_CHEST_ID).unwrap().analog_output_override, Some(VanillaBlockAnalogOutputOverride::ChestBlock));",
             "        assert_eq!(vanilla_block_type(VANILLA_BLOCK_CAULDRON_ID).unwrap().analog_output_override, Some(VanillaBlockAnalogOutputOverride::BlockBehaviour));",
+            f"        assert_eq!(VANILLA_BLOCK_TYPES.iter().filter(|entry| entry.is_signal_source_override.is_some()).count(), {sum(owner is not None for owner in is_signal_source_owners)});",
+            f"        assert_eq!(VANILLA_BLOCK_TYPES.iter().filter(|entry| entry.signal_override.is_some()).count(), {sum(owner is not None for owner in signal_owners)});",
+            f"        assert_eq!(VANILLA_BLOCK_TYPES.iter().filter(|entry| entry.direct_signal_override.is_some()).count(), {sum(owner is not None for owner in direct_signal_owners)});",
+            "        assert_eq!(vanilla_block_type(VANILLA_BLOCK_STONE_ID).unwrap().is_signal_source_override, None);",
+            "        assert_eq!(vanilla_block_type(VANILLA_BLOCK_REDSTONE_BLOCK_ID).unwrap().signal_override, Some(VanillaBlockRedstoneSignalOverride::PoweredBlock));",
+            "        assert_eq!(vanilla_block_type(VANILLA_BLOCK_REDSTONE_WIRE_ID).unwrap().direct_signal_override, Some(VanillaBlockRedstoneSignalOverride::RedStoneWireBlock));",
             f"        assert_eq!(VANILLA_BLOCK_TYPES.iter().filter(|entry| entry.use_item_on_override.is_some()).count(), {sum(owner is not None for owner in use_item_on_owners)});",
             f"        assert_eq!(VANILLA_BLOCK_TYPES.iter().filter(|entry| entry.use_without_item_override.is_some()).count(), {sum(owner is not None for owner in use_without_item_owners)});",
             f"        assert_eq!(VANILLA_BLOCK_TYPES.iter().filter(|entry| entry.can_survive_override.is_some()).count(), {sum(owner is not None for owner in can_survive_owners)});",
@@ -590,6 +660,13 @@ def main() -> int:
     analog_output_owner_by_factory = extract_block_analog_output_owners(
         catalog.declarations, block_class_sources
     )
+    (
+        is_signal_source_owner_by_factory,
+        signal_owner_by_factory,
+        direct_signal_owner_by_factory,
+    ) = extract_block_redstone_signal_owners(
+        catalog.declarations, block_class_sources
+    )
     use_without_item_owner_by_factory = (
         extract_block_use_without_item_override_owners(
             catalog.declarations, block_class_sources
@@ -638,6 +715,9 @@ def main() -> int:
                 render_protocol(
                     catalog,
                     analog_output_owner_by_factory,
+                    is_signal_source_owner_by_factory,
+                    signal_owner_by_factory,
+                    direct_signal_owner_by_factory,
                     use_item_on_owner_by_factory,
                     use_without_item_owner_by_factory,
                     can_survive_owner_by_factory,

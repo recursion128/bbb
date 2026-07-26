@@ -528,6 +528,9 @@
 - **2026-07-25（9 类方块空手 useWithoutItem 基础预测工程关闭）**：Button、Lever、
   Door、TrapDoor、FenceGate、Repeater、DaylightDetector、Comparator 与 RedStoneWire
   已贯通 Vanilla 停机、Lever 粒子和导线邻接；Comparator 动态输出刷新仍为纯 TODO。
+- **2026-07-25（Comparator 动态输出刷新工程关闭）**：模式切换现按 Vanilla
+  `refreshOutputState` 重算弱/强红石、全部生成式 analog owner、容器方块实体及唯一
+  匹配物品展示框，并同步预测 `OutputSignal` 与 `powered`。
 - **2026-07-25（ContainerButtonClick 四菜单闭环）**：Lectern 保持服务端回写，
   Enchantment 补齐物品/材料/经验门槛，Loom 与 Stonecutter 按 Vanilla 顺序预测
   data、结果槽和 UI 音效；该 serverbound packet 的五维覆盖现全部关闭。

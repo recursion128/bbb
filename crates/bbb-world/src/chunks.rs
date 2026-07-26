@@ -25,6 +25,7 @@ pub(crate) use light::{
     merge_light_data, sample_terrain_light, updated_light_section_indices, validate_light_data,
     QueuedLightUpdate, RuntimeLightUpdateQueue,
 };
+pub(crate) use nbt::{decode_nbt_root, find_entry as find_nbt_entry, NbtValue};
 pub use palette::{PaletteDomain, PaletteKind, PaletteValue, PalettedContainerData};
 pub(crate) use pot_decorations::decode_decorated_pot_sherds;
 pub(crate) use skull::{decode_skull_note_block_sound, decode_skull_profile};

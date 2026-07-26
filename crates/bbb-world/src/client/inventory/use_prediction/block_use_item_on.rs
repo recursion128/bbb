@@ -880,13 +880,9 @@ fn item_stack_is_sign_applicator(item_id: Option<i32>) -> Option<bool> {
 }
 
 fn next_copper_golem_pose(pose: &str) -> Option<&'static str> {
-    match pose {
-        "standing" => Some("sitting"),
-        "sitting" => Some("running"),
-        "running" => Some("star"),
-        "star" => Some("standing"),
-        _ => None,
-    }
+    let ordinal = super::copper_golem_pose_ordinal(pose)?;
+    let next = usize::try_from((ordinal + 1) % 4).ok()?;
+    super::VANILLA_COPPER_GOLEM_POSES.get(next).copied()
 }
 
 fn boolean_property(properties: &BTreeMap<String, String>, property: &str) -> Option<bool> {

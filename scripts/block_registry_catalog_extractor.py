@@ -461,6 +461,44 @@ def extract_block_analog_output_owners(
     }
 
 
+def extract_block_redstone_signal_owners(
+    declarations: Sequence[dict],
+    block_class_sources: Sequence[JavaSource],
+) -> tuple[
+    dict[str, str | None],
+    dict[str, str | None],
+    dict[str, str | None],
+]:
+    """Resolve the nearest vanilla redstone signal implementation owners."""
+
+    default_owner = "net.minecraft.world.level.block.state.BlockBehaviour"
+    is_signal_source_owner = _extract_block_method_override_owners(
+        declarations,
+        block_class_sources,
+        "isSignalSource",
+        "boolean",
+        ("BlockState",),
+        default_owner,
+    )
+    signal_owner = _extract_block_method_override_owners(
+        declarations,
+        block_class_sources,
+        "getSignal",
+        "int",
+        ("BlockState", "BlockGetter", "BlockPos", "Direction"),
+        default_owner,
+    )
+    direct_signal_owner = _extract_block_method_override_owners(
+        declarations,
+        block_class_sources,
+        "getDirectSignal",
+        "int",
+        ("BlockState", "BlockGetter", "BlockPos", "Direction"),
+        default_owner,
+    )
+    return is_signal_source_owner, signal_owner, direct_signal_owner
+
+
 def extract_block_can_survive_override_owners(
     declarations: Sequence[dict],
     block_class_sources: Sequence[JavaSource],
