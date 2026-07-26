@@ -607,7 +607,7 @@ mod tests {
         for required in [
             "registries/revision.rs#fn build",
             "configuration_registry_and_tag_projections_commit_at_play_transition",
-            "hud_inventory_screen_reads_replaced_and_removed_tag_ghost_members",
+            "hud_inventory_screen_resolves_tag_ghost_recipe_ingredients",
         ] {
             assert!(entries.iter().any(|entry| entry
                 .coverage

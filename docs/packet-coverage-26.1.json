@@ -2060,7 +2060,8 @@
             "crates/bbb-native/src/runtime.rs#hud_debug_looking_at_block_tag_lines",
             "crates/bbb-native/src/recipe_book_ui.rs#push_slot_display_item_stack_candidates",
             "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#configuration_registry_and_tag_projections_commit_at_play_transition",
-            "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_reads_replaced_and_removed_tag_ghost_members",
+            "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_resolves_tag_ghost_recipe_ingredients",
+            "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_keeps_resolved_tag_ghost_recipe_snapshot",
             "vanilla:net/minecraft/client/multiplayer/RegistryDataCollector.java#resolveRegistryTags"
           ],
           "gap": null,
