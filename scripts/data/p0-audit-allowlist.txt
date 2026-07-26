@@ -148,6 +148,12 @@
 # registry facts and generated non-default canSurvive owners. These preserve
 # server authority and never select a renderer or canonical-state fallback.
 ^crates/bbb-world/src/client/inventory/use_prediction/bucket[.]rs$	unsupported
+# Block-item placement likewise fails closed when the hand snapshot, target
+# block/registry/tag/player facts, collision query, component payload, or atomic
+# prediction application is unavailable. The generated catalog reverse guard
+# proves all 1,023 BlockItem placement and canSurvive owners have evaluators, so
+# these bounded outcomes preserve server correction rather than hide an owner gap.
+^crates/bbb-world/src/client/inventory/use_prediction/block_placement[.]rs$	unsupported[(][)]|UnsupportedItemUseOn
 # Jigsaw block-entity inline tests name a local `fallback` value solely to
 # assert Vanilla codec defaults for wrong-typed optional fields. These exact
 # test lines do not admit a production renderer or canonical-state fallback.
