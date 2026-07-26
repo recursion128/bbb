@@ -219,6 +219,154 @@ fn copper_chest_placement_uses_least_oxidized_and_matching_wax_state() {
 }
 
 #[test]
+fn chorus_plant_placement_connects_six_ways_and_applies_branch_survival() {
+    let clicked = BlockPos { x: 4, y: 8, z: 4 };
+    let target = relative(clicked, ProtocolDirection::Up);
+
+    let mut supported_below = placement_world();
+    set_block_tag(
+        &mut supported_below,
+        "minecraft:supports_chorus_plant",
+        &[VANILLA_BLOCK_END_STONE_ID],
+    );
+    set_block(
+        &mut supported_below,
+        clicked,
+        state_id("minecraft:end_stone", []),
+    );
+    set_held(&mut supported_below, VANILLA_ITEM_CHORUS_PLANT_ID, 1);
+    assert!(matches!(
+        use_block_at(&mut supported_below, clicked, false, 38),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        supported_below.probe_block(target).unwrap().block_state_id,
+        state_id(
+            "minecraft:chorus_plant",
+            [
+                ("down", "true"),
+                ("east", "false"),
+                ("north", "false"),
+                ("south", "false"),
+                ("up", "false"),
+                ("west", "false"),
+            ],
+        )
+    );
+
+    let side_target = relative(clicked, ProtocolDirection::East);
+    let mut supported_branch = placement_world();
+    set_block_tag(
+        &mut supported_branch,
+        "minecraft:supports_chorus_plant",
+        &[VANILLA_BLOCK_END_STONE_ID],
+    );
+    set_block(
+        &mut supported_branch,
+        clicked,
+        state_id(
+            "minecraft:chorus_plant",
+            [
+                ("down", "true"),
+                ("east", "false"),
+                ("north", "false"),
+                ("south", "false"),
+                ("up", "false"),
+                ("west", "false"),
+            ],
+        ),
+    );
+    set_block(
+        &mut supported_branch,
+        relative(clicked, ProtocolDirection::Down),
+        state_id("minecraft:end_stone", []),
+    );
+    set_block(
+        &mut supported_branch,
+        relative(side_target, ProtocolDirection::Up),
+        state_id("minecraft:chorus_flower", [("age", "0")]),
+    );
+    set_block(
+        &mut supported_branch,
+        relative(side_target, ProtocolDirection::East),
+        state_id("minecraft:chorus_flower", [("age", "1")]),
+    );
+    set_held(&mut supported_branch, VANILLA_ITEM_CHORUS_PLANT_ID, 1);
+    assert!(matches!(
+        supported_branch.predict_local_block_use_with_hit(
+            clicked,
+            ProtocolDirection::East,
+            [1.0, 0.5, 0.5],
+            false,
+            InteractionHand::MainHand,
+            false,
+            39,
+        ),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        supported_branch
+            .probe_block(side_target)
+            .unwrap()
+            .block_state_id,
+        state_id(
+            "minecraft:chorus_plant",
+            [
+                ("down", "false"),
+                ("east", "true"),
+                ("north", "false"),
+                ("south", "false"),
+                ("up", "true"),
+                ("west", "true"),
+            ],
+        )
+    );
+
+    let mut blocked_branch = placement_world();
+    set_block_tag(
+        &mut blocked_branch,
+        "minecraft:supports_chorus_plant",
+        &[VANILLA_BLOCK_END_STONE_ID],
+    );
+    set_block(
+        &mut blocked_branch,
+        clicked,
+        state_id("minecraft:end_stone", []),
+    );
+    set_block(
+        &mut blocked_branch,
+        relative(target, ProtocolDirection::Up),
+        state_id("minecraft:stone", []),
+    );
+    set_block(
+        &mut blocked_branch,
+        relative(target, ProtocolDirection::North),
+        state_id(
+            "minecraft:chorus_plant",
+            [
+                ("down", "false"),
+                ("east", "false"),
+                ("north", "false"),
+                ("south", "false"),
+                ("up", "false"),
+                ("west", "false"),
+            ],
+        ),
+    );
+    set_held(&mut blocked_branch, VANILLA_ITEM_CHORUS_PLANT_ID, 1);
+    assert_eq!(
+        use_block_at(&mut blocked_branch, clicked, false, 40),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
+    );
+    assert_eq!(
+        blocked_branch.probe_block(target).unwrap().block_state_id,
+        state_id("minecraft:air", [])
+    );
+    assert_eq!(held(&blocked_branch).count, 1);
+    assert!(blocked_branch.local_block_predictions().is_empty());
+}
+
+#[test]
 fn mossy_carpet_placement_projects_supported_sides_and_requires_a_non_air_base() {
     let clicked = BlockPos { x: 4, y: 8, z: 4 };
     let target = relative(clicked, ProtocolDirection::Up);

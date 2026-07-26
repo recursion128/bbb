@@ -28,6 +28,7 @@ enum BlockCanSurviveRule {
     BelowCenter,
     AboveCenter,
     AboveFull,
+    ChorusPlant,
     Lantern,
     MangrovePropagule,
     MossyCarpet,
@@ -145,6 +146,32 @@ impl WorldStore {
             BlockCanSurviveRule::AboveFull => {
                 let above = self.probe_block(relative(pos, Direction::Up))?;
                 self.placement_face_sturdy(&above, Direction::Down, VanillaBlockSupportType::Full)
+            }
+            BlockCanSurviveRule::ChorusPlant => {
+                let below = self.probe_block(relative(pos, Direction::Down))?;
+                let above = self.probe_block(relative(pos, Direction::Up))?;
+                let block_above_or_below = !probe_is_air(&above)? && !probe_is_air(&below)?;
+                for direction in [
+                    Direction::North,
+                    Direction::East,
+                    Direction::South,
+                    Direction::West,
+                ] {
+                    let neighbour_pos = relative(pos, direction);
+                    let neighbour = self.probe_block(neighbour_pos)?;
+                    if neighbour.block_name.as_deref() != Some("minecraft:chorus_plant") {
+                        continue;
+                    }
+                    if block_above_or_below {
+                        return Some(false);
+                    }
+                    let neighbour_below =
+                        self.probe_block(relative(neighbour_pos, Direction::Down))?;
+                    if self.placement_block_is_chorus_support(&neighbour_below)? {
+                        return Some(true);
+                    }
+                }
+                self.placement_block_is_chorus_support(&below)
             }
             BlockCanSurviveRule::Lantern => {
                 let hanging = boolean_property(properties, "hanging")?;
@@ -404,6 +431,14 @@ impl WorldStore {
         self.registry_holder_ids_for_tag("minecraft:block", tag)
             .map(|holder_ids| holder_ids.contains(&block_type_id))
     }
+
+    fn placement_block_is_chorus_support(&self, block: &BlockProbe) -> Option<bool> {
+        if block.block_name.as_deref() == Some("minecraft:chorus_plant") {
+            Some(true)
+        } else {
+            self.placement_block_is_in_tag(block, "minecraft:supports_chorus_plant")
+        }
+    }
 }
 
 fn support_direction(direction: Direction) -> VanillaBlockSupportDirection {
@@ -464,6 +499,10 @@ fn block_type_id(block: &BlockProbe) -> Option<i32> {
         .map(|block_type| block_type.id)
 }
 
+fn probe_is_air(block: &BlockProbe) -> Option<bool> {
+    block.block_name.as_deref().map(block_name_is_air)
+}
+
 #[cfg(test)]
 pub(in super::super) const fn block_can_survive_owner_supported(
     owner: VanillaCanSurviveOverride,
@@ -485,6 +524,7 @@ const fn block_can_survive_rule(owner: VanillaCanSurviveOverride) -> Option<Bloc
         VanillaCanSurviveOverride::BellBlock => BlockCanSurviveRule::Bell,
         VanillaCanSurviveOverride::CandleBlock => BlockCanSurviveRule::BelowCenter,
         VanillaCanSurviveOverride::CeilingHangingSignBlock => BlockCanSurviveRule::AboveCenter,
+        VanillaCanSurviveOverride::ChorusPlantBlock => BlockCanSurviveRule::ChorusPlant,
         VanillaCanSurviveOverride::HangingRootsBlock => BlockCanSurviveRule::AboveFull,
         VanillaCanSurviveOverride::LanternBlock => BlockCanSurviveRule::Lantern,
         VanillaCanSurviveOverride::MangrovePropaguleBlock => BlockCanSurviveRule::MangrovePropagule,

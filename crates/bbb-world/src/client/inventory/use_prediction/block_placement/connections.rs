@@ -37,6 +37,16 @@ pub(super) struct CopperChestPlacement {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct ChorusPlantPlacement {
+    pub(super) down: bool,
+    pub(super) up: bool,
+    pub(super) north: bool,
+    pub(super) east: bool,
+    pub(super) south: bool,
+    pub(super) west: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ChestConnectionKind {
     SameBlock,
     CopperTag,
@@ -237,6 +247,32 @@ pub(super) fn copper_chest_placement(
         block_type_id: result_block_type_id,
         facing: placement.facing,
         chest_type: placement.chest_type,
+    })
+}
+
+pub(super) fn chorus_plant_placement(
+    world: &WorldStore,
+    pos: BlockPos,
+    block_type: &BlockTypeCatalogEntry,
+) -> Option<ChorusPlantPlacement> {
+    let down = world.probe_block(relative(pos, Direction::Down))?;
+    let up = world.probe_block(relative(pos, Direction::Up))?;
+    let north = world.probe_block(relative(pos, Direction::North))?;
+    let east = world.probe_block(relative(pos, Direction::East))?;
+    let south = world.probe_block(relative(pos, Direction::South))?;
+    let west = world.probe_block(relative(pos, Direction::West))?;
+
+    Some(ChorusPlantPlacement {
+        down: if chorus_connects(&down, block_type) {
+            true
+        } else {
+            world.placement_block_is_in_tag(&down, "minecraft:supports_chorus_plant")?
+        },
+        up: chorus_connects(&up, block_type),
+        north: chorus_connects(&north, block_type),
+        east: chorus_connects(&east, block_type),
+        south: chorus_connects(&south, block_type),
+        west: chorus_connects(&west, block_type),
     })
 }
 
@@ -574,6 +610,14 @@ fn block_type_is_in_tag(
     world
         .registry_holder_ids_for_tag("minecraft:block", tag)
         .map(|ids| ids.contains(&block_type.id))
+}
+
+fn chorus_connects(block: &BlockProbe, block_type: &BlockTypeCatalogEntry) -> bool {
+    matches!(
+        block.block_name.as_deref(),
+        Some(name)
+            if name == block_type.resource_id || name == "minecraft:chorus_flower"
+    )
 }
 
 fn catalog_block_type(block: &BlockProbe) -> Option<&'static BlockTypeCatalogEntry> {
