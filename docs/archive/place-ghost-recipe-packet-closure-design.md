@@ -1,5 +1,7 @@
 # Place-ghost-recipe packet coverage closure
 
+Archived after the packet reached complete coverage across every ledger dimension.
+
 ## Goal and completion contract
 
 Close the remaining canonical-apply and runtime-side-effect coverage cells for

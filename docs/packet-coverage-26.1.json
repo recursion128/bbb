@@ -10497,14 +10497,19 @@
         "canonical_apply": {
           "evidence": [
             "crates/bbb-world/src/client/ui.rs#apply_place_ghost_recipe",
+            "crates/bbb-world/src/client/ui.rs#ghost_recipe_places_inputs_in_the_active_crafting_grid",
+            "crates/bbb-world/src/client/ui.rs#furnace_family_ghost_recipe_snapshots_fuel_slot_emptiness",
+            "crates/bbb-world/src/recipes/slot_display/tests.rs#place_ghost_recipe_snapshots_every_builtin_slot_display_semantic",
+            "crates/bbb-world/src/recipes/slot_display/tests.rs#place_ghost_recipe_keeps_candidate_snapshots_and_rejects_invalid_updates_atomically",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handlePlaceRecipe"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
             "crates/bbb-protocol/src/packets/client_features/tests.rs#decodes_place_ghost_recipe_packet_wire_prefix",
+            "crates/bbb-protocol/src/packets/client_features/tests.rs#place_ghost_recipe_decodes_all_recipe_and_slot_display_variants",
             "vanilla:net/minecraft/network/protocol/game/ClientboundPlaceGhostRecipePacket.java#STREAM_CODEC"
           ],
           "gap": null,
@@ -10519,19 +10524,25 @@
         },
         "runtime_side_effect": {
           "evidence": [
+            "crates/bbb-native/src/runtime.rs#hud_recipe_book_ghost_layers_and_items",
             "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_projects_crafting_table_ghost_recipe_slots",
             "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_projects_furnace_ghost_recipe_slots",
+            "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_projects_blast_furnace_and_smoker_ghost_recipe_slots",
+            "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_projects_all_builtin_slot_display_ghost_recipe_candidates",
+            "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_ghost_recipe_tooltip_wins_only_while_recipe_book_is_visible",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handlePlaceRecipe"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
-            "crates/bbb-protocol/src/packets/client_features/tests.rs#decodes_place_ghost_recipe_packet_wire_prefix",
+            "crates/bbb-protocol/src/packets/client_features/tests.rs#place_ghost_recipe_decodes_all_recipe_and_slot_display_variants",
             "crates/bbb-world/src/client/ui.rs#ghost_recipe_ignores_inactive_container_without_caching_for_later",
-            "crates/bbb-world/src/client/ui.rs#tracks_client_ui_ghost_recipe_request",
-            "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_projects_crafting_table_ghost_recipe_slots"
+            "crates/bbb-world/src/client/ui.rs#replacing_the_screen_clears_its_ghost_recipe_snapshot",
+            "crates/bbb-world/src/recipes/slot_display/tests.rs#place_ghost_recipe_keeps_candidate_snapshots_and_rejects_invalid_updates_atomically",
+            "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_keeps_resolved_tag_ghost_recipe_snapshot",
+            "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_ghost_recipe_tooltip_wins_only_while_recipe_book_is_visible"
           ],
           "gap": null,
           "status": "complete"

@@ -1600,7 +1600,7 @@ mod tests {
     }
 
     #[test]
-    fn play_place_ghost_recipe_keeps_remaining_display_semantics_open() {
+    fn play_place_ghost_recipe_is_closed() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -1609,17 +1609,22 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "CLIENTBOUND_PLACE_GHOST_RECIPE"
             })
             .expect("play place ghost recipe coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "runtime_side_effect"])
-        );
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
+        for required in [
+            "place_ghost_recipe_decodes_all_recipe_and_slot_display_variants",
+            "place_ghost_recipe_snapshots_every_builtin_slot_display_semantic",
+            "hud_inventory_screen_projects_all_builtin_slot_display_ghost_recipe_candidates",
+            "hud_inventory_screen_ghost_recipe_tooltip_wins_only_while_recipe_book_is_visible",
+        ] {
+            assert!(entry
+                .coverage
+                .values()
+                .flat_map(|cell| &cell.evidence)
+                .any(|evidence| evidence.contains(required)));
+        }
     }
 
     #[test]

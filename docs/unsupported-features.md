@@ -674,10 +674,6 @@ Inventory:
   encoder and maintenance command exist, but the automatic UI lifecycle does
   not; do not leave highlights permanently animated or treat manual control as
   client parity.
-- Complete PlaceGhostRecipe presentation for every remaining SlotDisplay/item
-  component semantic. Active Inventory/Crafting/Furnace/Blast/Smoker container
-  gating and current crafting/furnace ghost overlays are covered; invalid or
-  mismatched container packets are ignored without caching stale displays.
 - Implement container `0` crafting-result parity: composite / component-aware /
   special recipe display matching, and recipe-specific remainder items.
 

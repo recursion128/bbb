@@ -565,3 +565,7 @@
   标签守卫；Vanilla 坐标、Merchant 组合及真实字形居中完成，clientbound
   `OPEN_SCREEN` 五维覆盖全部关闭，合同见
   `docs/archive/open-screen-presentation-closure-design.md`。
+- **2026-07-26（PlaceGhostRecipe 全语义闭环）**：五种 RecipeDisplay 与十一种
+  SlotDisplay 已贯通结构化解码、world 不可变候选快照、五类 screen 的 Vanilla
+  槽位/fill/tooltip 呈现；clientbound 五维覆盖全部关闭，合同见
+  `docs/archive/place-ghost-recipe-packet-closure-design.md`。
