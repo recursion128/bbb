@@ -24,6 +24,7 @@ use crate::entities::{
     is_vanilla_minecart_type, vanilla_entity_metadata_armadillo_state_accessor_for_entity_type,
     vanilla_entity_metadata_companion_variant_accessors_for_entity_type,
     vanilla_entity_metadata_copper_golem_accessors_for_entity_type,
+    vanilla_entity_metadata_eating_sound_policy,
     vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type,
     vanilla_entity_metadata_goat_accessors_for_entity_type,
     vanilla_entity_metadata_shulker_accessors_for_entity_type,
@@ -33,10 +34,11 @@ use crate::entities::{
     vanilla_entity_metadata_type_sound_volume_policy, CatSoundVariantIdentity,
     ChickenSoundVariantIdentity, CowSoundVariantIdentity, EntityClientMovementSoundKind,
     EntityClientMovementSoundState, LivingEntityItemBreakState, PigSoundVariantIdentity,
-    VanillaEntityDeathSoundPolicy, VanillaEntityEventKind, VanillaEntityHurtSoundPolicy,
-    VanillaEntitySoundCondition, VanillaEntitySoundSourceKind, VanillaEntitySoundVariantFamily,
-    VanillaEntitySoundVolumePolicy, WolfSoundVariantIdentity, VANILLA_ARMADILLO_STATE_IDLE_ID,
-    VANILLA_COPPER_GOLEM_WEATHER_STATE_EXPOSED_ID, VANILLA_COPPER_GOLEM_WEATHER_STATE_OXIDIZED_ID,
+    VanillaEntityDeathSoundPolicy, VanillaEntityEatingSoundPolicy, VanillaEntityEventKind,
+    VanillaEntityHurtSoundPolicy, VanillaEntitySoundCondition, VanillaEntitySoundSourceKind,
+    VanillaEntitySoundVariantFamily, VanillaEntitySoundVolumePolicy, WolfSoundVariantIdentity,
+    VANILLA_ARMADILLO_STATE_IDLE_ID, VANILLA_COPPER_GOLEM_WEATHER_STATE_EXPOSED_ID,
+    VANILLA_COPPER_GOLEM_WEATHER_STATE_OXIDIZED_ID,
     VANILLA_COPPER_GOLEM_WEATHER_STATE_UNAFFECTED_ID,
     VANILLA_COPPER_GOLEM_WEATHER_STATE_WEATHERED_ID, VANILLA_RABBIT_VARIANT_EVIL_ID,
 };
@@ -1892,6 +1894,38 @@ impl WorldStore {
             }
             LocalInteractionSoundAction::SuppressedCopperGolemSpawn => {
                 let _discarded_seed = self.next_sound_seed();
+                return None;
+            }
+            LocalInteractionSoundAction::SuppressedAnimalEating {
+                entity_id,
+                repetitions,
+            } => {
+                let entity_type_id = self.entities.identity(entity_id)?.entity_type_id;
+                let policy = vanilla_entity_metadata_eating_sound_policy(entity_type_id)?;
+                for _ in 0..repetitions {
+                    match policy {
+                        VanillaEntityEatingSoundPolicy::None => {}
+                        VanillaEntityEatingSoundPolicy::EntityVoicePitch => {
+                            self.entities
+                                .advance_local_eating_voice_pitch_random(entity_id)?;
+                            if !self.entities.is_silent(entity_id)? {
+                                let _discarded_seed = self.next_sound_seed();
+                            }
+                        }
+                        VanillaEntityEatingSoundPolicy::EntityFixedPitch => {
+                            if !self.entities.is_silent(entity_id)? {
+                                let _discarded_seed = self.next_sound_seed();
+                            }
+                        }
+                        VanillaEntityEatingSoundPolicy::LevelFixedPitch => {
+                            let _discarded_seed = self.next_sound_seed();
+                        }
+                        VanillaEntityEatingSoundPolicy::LevelUniformPitch => {
+                            let _discarded_pitch = 0.8 + random.next_float() * (1.2 - 0.8);
+                            let _discarded_seed = self.next_sound_seed();
+                        }
+                    }
+                }
                 return None;
             }
             LocalInteractionSoundAction::BlockPlace {

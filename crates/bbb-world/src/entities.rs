@@ -308,6 +308,10 @@ pub use schema::{
 pub use schema::{
     vanilla_entity_metadata_dolphin_accessors_for_entity_type, VanillaDolphinMetadataAccessors,
 };
+pub(crate) use schema::{
+    vanilla_entity_metadata_eating_sound_policy, vanilla_entity_metadata_food_predicate,
+    VanillaEntityEatingSoundPolicy, VanillaEntityFoodPredicate,
+};
 pub use schema::{
     vanilla_entity_metadata_end_crystal_accessors_for_entity_type,
     vanilla_entity_metadata_hanging_direction_accessor_for_entity_type,
@@ -321,7 +325,6 @@ pub use schema::{
     vanilla_entity_metadata_firework_rocket_accessors_for_entity_type,
     VanillaFireworkRocketMetadataAccessors,
 };
-pub(crate) use schema::{vanilla_entity_metadata_food_predicate, VanillaEntityFoodPredicate};
 pub use schema::{
     vanilla_entity_metadata_primed_tnt_accessors_for_entity_type, VanillaPrimedTntMetadataAccessors,
 };

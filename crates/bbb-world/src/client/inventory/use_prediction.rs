@@ -5,14 +5,16 @@ use crate::{
         vanilla_entity_metadata_age_locked_accessor_for_entity_type,
         vanilla_entity_metadata_armor_stand_accessors_for_entity_type,
         vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type,
-        vanilla_entity_metadata_food_predicate, vanilla_entity_metadata_interact_owner,
+        vanilla_entity_metadata_eating_sound_policy, vanilla_entity_metadata_food_predicate,
+        vanilla_entity_metadata_interact_owner,
         vanilla_entity_metadata_interaction_accessors_for_entity_type,
         vanilla_entity_metadata_mob_interact_owner,
         vanilla_entity_metadata_sheep_wool_accessor_for_entity_type,
         vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type,
         vanilla_entity_metadata_tamable_animal_accessors_for_entity_type,
         vanilla_entity_metadata_type_is_leashable, vanilla_entity_metadata_type_is_living,
-        vanilla_entity_type_is_minecart, vanilla_pick_bounds_for_type, VanillaEntityFoodPredicate,
+        vanilla_entity_type_is_minecart, vanilla_pick_bounds_for_type,
+        VanillaEntityEatingSoundPolicy, VanillaEntityFoodPredicate,
     },
     BlockPos, LevelEventSoundRandomState,
 };
@@ -195,6 +197,13 @@ pub enum LocalInteractionSoundAction {
     SuppressedRespawnAnchorCharge,
     SuppressedCopperGolemBecomeStatue,
     SuppressedCopperGolemSpawn,
+    /// `Animal.playEatingSound` passes `null` as ClientLevel's excluded
+    /// player, suppressing local playback while preserving per-implementation
+    /// random and sound-seed advancement.
+    SuppressedAnimalEating {
+        entity_id: i32,
+        repetitions: u8,
+    },
     BlockPlace {
         pos: BlockPos,
         sound_resource_id: &'static str,
@@ -341,6 +350,16 @@ impl LocalInteractionSuccess {
             extra_swing: None,
             sound_action: None,
             particle_action: None,
+        }
+    }
+
+    const fn client_item_interaction_with_eating(entity_id: i32, repetitions: u8) -> Self {
+        Self {
+            sound_action: Some(LocalInteractionSoundAction::SuppressedAnimalEating {
+                entity_id,
+                repetitions,
+            }),
+            ..Self::client_item_interaction()
         }
     }
 
@@ -2014,11 +2033,19 @@ impl WorldStore {
                 LocalInteractionSuccess::consume(false),
             ));
         }
+        let eating_sound_policy = vanilla_entity_metadata_eating_sound_policy(entity_type_id);
+        if eating_sound_policy.is_none() {
+            return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+        }
         if !self.consume_local_item_in_hand(hand, 1) {
             return LocalTargetUsePrediction::UnsupportedEntityInteract(owner);
         }
         LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
-            LocalInteractionSuccess::client_item_interaction(),
+            if eating_sound_policy == Some(VanillaEntityEatingSoundPolicy::None) {
+                LocalInteractionSuccess::client_item_interaction()
+            } else {
+                LocalInteractionSuccess::client_item_interaction_with_eating(entity_id, 1)
+            },
         ))
     }
 
@@ -2771,18 +2798,18 @@ mod tests {
             VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_CHICKEN_ID,
             VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID,
             VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_CREEPER_ID,
-            VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
-            VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
-            VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
-            VANILLA_ENTITY_TYPE_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
-            VANILLA_ENTITY_TYPE_LEASH_KNOT_ID, VANILLA_ENTITY_TYPE_MANNEQUIN_ID,
-            VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
-            VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
-            VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_PAINTING_ID,
-            VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
-            VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_SQUID_ID,
-            VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
-            VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+            VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, VANILLA_ENTITY_TYPE_FOX_ID,
+            VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
+            VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
+            VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_ITEM_FRAME_ID,
+            VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_LEASH_KNOT_ID,
+            VANILLA_ENTITY_TYPE_MANNEQUIN_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
+            VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+            VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
+            VANILLA_ENTITY_TYPE_PAINTING_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+            VANILLA_ENTITY_TYPE_SHEEP_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+            VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
         },
         equipment_slots::EquipmentSlot,
         game_types::{VANILLA_GAME_TYPE_CREATIVE_ID, VANILLA_GAME_TYPE_SURVIVAL_ID},
@@ -2802,8 +2829,8 @@ mod tests {
             VANILLA_ITEM_OAK_BOAT_ID, VANILLA_ITEM_PAINTING_ID, VANILLA_ITEM_POPPY_ID,
             VANILLA_ITEM_POTION_ID, VANILLA_ITEM_POWDER_SNOW_BUCKET_ID, VANILLA_ITEM_RED_DYE_ID,
             VANILLA_ITEM_SADDLE_ID, VANILLA_ITEM_SHEARS_ID, VANILLA_ITEM_SHIELD_ID,
-            VANILLA_ITEM_STONE_ID, VANILLA_ITEM_TRIDENT_ID, VANILLA_ITEM_TYPES,
-            VANILLA_ITEM_WATER_BUCKET_ID, VANILLA_ITEM_WHEAT_SEEDS_ID,
+            VANILLA_ITEM_STONE_ID, VANILLA_ITEM_SWEET_BERRIES_ID, VANILLA_ITEM_TRIDENT_ID,
+            VANILLA_ITEM_TYPES, VANILLA_ITEM_WATER_BUCKET_ID, VANILLA_ITEM_WHEAT_SEEDS_ID,
         },
         packets::{
             AddEntity, AdventureModePredicateDataSummary, BlockHitResult, BlockHolderSetSummary,
@@ -8154,6 +8181,112 @@ mod tests {
                 .unwrap()
                 .count,
             1
+        );
+    }
+
+    #[test]
+    fn local_animal_baby_feeding_retains_suppressed_eating_sound_side_effects() {
+        let mut world = WorldStore::new();
+        add_entity(&mut world, 42, VANILLA_ENTITY_TYPE_CHICKEN_ID);
+        add_entity(&mut world, 43, VANILLA_ENTITY_TYPE_FOX_ID);
+        add_entity(&mut world, 44, VANILLA_ENTITY_TYPE_FOX_ID);
+        world.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: "minecraft:item".to_string(),
+                tags: vec![
+                    TagNetworkPayload {
+                        tag: "minecraft:chicken_food".to_string(),
+                        entries: vec![VANILLA_ITEM_WHEAT_SEEDS_ID],
+                    },
+                    TagNetworkPayload {
+                        tag: "minecraft:fox_food".to_string(),
+                        entries: vec![VANILLA_ITEM_SWEET_BERRIES_ID],
+                    },
+                ],
+            }],
+        });
+        for (entity_id, entity_type_id) in [
+            (42, VANILLA_ENTITY_TYPE_CHICKEN_ID),
+            (43, VANILLA_ENTITY_TYPE_FOX_ID),
+            (44, VANILLA_ENTITY_TYPE_FOX_ID),
+        ] {
+            let (baby_data_id, _) =
+                crate::entities::vanilla_entity_metadata_baby_accessor_for_entity_type(
+                    entity_type_id,
+                )
+                .unwrap();
+            assert!(world.apply_set_entity_data(SetEntityData {
+                id: entity_id,
+                values: vec![EntityDataValue {
+                    data_id: baby_data_id,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                    value: EntityDataValueKind::Boolean(true),
+                }],
+            }));
+        }
+
+        set_main_hand(&mut world, VANILLA_ITEM_WHEAT_SEEDS_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(42, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction()
+            ))
+        );
+
+        set_main_hand(&mut world, VANILLA_ITEM_SWEET_BERRIES_ID);
+        let fox_action = LocalInteractionSoundAction::SuppressedAnimalEating {
+            entity_id: 43,
+            repetitions: 1,
+        };
+        assert_eq!(
+            world.predict_local_entity_interaction(43, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction_with_eating(43, 1)
+            ))
+        );
+        let mut expected_seed_world = WorldStore::new();
+        let _discarded_fox_seed = expected_seed_world.next_sound_seed();
+        let expected_after_fox = expected_seed_world.next_sound_seed();
+        assert_eq!(
+            world.apply_local_interaction_sound_action(
+                fox_action,
+                &mut LevelEventSoundRandomState::with_seed(7),
+            ),
+            None
+        );
+        assert_eq!(world.next_sound_seed(), expected_after_fox);
+
+        let entity_accessors = crate::entities::vanilla_entity_metadata_entity_accessors().unwrap();
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 44,
+            values: vec![EntityDataValue {
+                data_id: entity_accessors.silent_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                value: EntityDataValueKind::Boolean(true),
+            }],
+        }));
+        set_main_hand(&mut world, VANILLA_ITEM_SWEET_BERRIES_ID);
+        let silent_fox_action = LocalInteractionSoundAction::SuppressedAnimalEating {
+            entity_id: 44,
+            repetitions: 1,
+        };
+        assert_eq!(
+            world.predict_local_entity_interaction(44, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction_with_eating(44, 1)
+            ))
+        );
+        assert_eq!(
+            world.apply_local_interaction_sound_action(
+                silent_fox_action,
+                &mut LevelEventSoundRandomState::with_seed(11),
+            ),
+            None
+        );
+        assert_eq!(
+            world.next_sound_seed(),
+            expected_seed_world.next_sound_seed(),
+            "Entity.playSound must apply the silent gate before advancing the level sound seed"
         );
     }
 

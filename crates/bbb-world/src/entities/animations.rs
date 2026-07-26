@@ -35,6 +35,7 @@ use super::schema::{
     vanilla_entity_metadata_creaking_can_move_accessor_for_entity_type,
     vanilla_entity_metadata_creaking_tearing_down_accessor_for_entity_type,
     vanilla_entity_metadata_creeper_accessors_for_entity_type,
+    vanilla_entity_metadata_eating_sound_policy,
     vanilla_entity_metadata_ender_dragon_phase_accessor_for_entity_type,
     vanilla_entity_metadata_fox_accessors_for_entity_type,
     vanilla_entity_metadata_guardian_accessors_for_entity_type,
@@ -53,7 +54,7 @@ use super::schema::{
     vanilla_entity_metadata_warden_anger_level_accessor_for_entity_type,
     vanilla_entity_metadata_wither_side_head_target_accessors_for_entity_type,
     vanilla_entity_metadata_wolf_interested_accessor_for_entity_type,
-    VanillaVehicleMetadataAccessors,
+    VanillaEntityEatingSoundPolicy, VanillaVehicleMetadataAccessors,
     VANILLA_ARMADILLO_STATE_ROLLING_ID as ARMADILLO_STATE_ROLLING_ID,
     VANILLA_ARMADILLO_STATE_SCARED_ID as ARMADILLO_STATE_SCARED_ID,
     VANILLA_ARMADILLO_STATE_UNROLLING_ID as ARMADILLO_STATE_UNROLLING_ID,
@@ -82,6 +83,7 @@ use bbb_protocol::entity_types::*;
 /// Vanilla `AbstractBoat.tick` advances each active `paddlePositions[side]` by
 /// `PI / 8` per client tick, otherwise resetting it to zero.
 const BOAT_PADDLE_ADVANCE_PER_TICK: f32 = std::f32::consts::PI / 8.0;
+const EATING_VOICE_RANDOM_SALT: u64 = 0x6561_7469_6e67_5f76;
 /// Vanilla `EntityType.ARROW` / `EntityType.SPECTRAL_ARROW`: both extend
 /// `AbstractArrow` and share the same client-side `shakeTime` impact wobble.
 /// Vanilla `AbstractArrow.IN_GROUND`, the synced boolean after `ID_FLAGS` (`8`) and
@@ -632,6 +634,12 @@ pub struct EntityClientAnimationState {
     /// squish pitch in exact `Slime.tick` order.
     #[serde(skip)]
     pub(crate) slime_client_random_seed: Option<u64>,
+    /// Client-local entity RNG cursor for `Animal.playEatingSound` overrides
+    /// that evaluate `LivingEntity.getVoicePitch`. Nautilus shares its broader
+    /// cursor above; other supported eat paths retain this cursor for future
+    /// ambient/step/eat consolidation.
+    #[serde(skip)]
+    pub(crate) eating_voice_random_seed: Option<u64>,
     /// Client-local `PlayerRideableJumping` input retained between the local
     /// player's release edge and the controlled vehicle's ridden tick. It is
     /// cloned into immutable publications for old-generation isolation but is
@@ -4486,6 +4494,22 @@ impl EntityClientAnimationState {
         triggers
     }
 
+    pub(crate) fn advance_eating_voice_pitch_random(&mut self, entity_id: i32, nautilus: bool) {
+        let (random_seed, salt) = if nautilus {
+            (
+                &mut self.nautilus_client_random_seed,
+                NAUTILUS_CLIENT_RANDOM_SALT,
+            )
+        } else {
+            (&mut self.eating_voice_random_seed, EATING_VOICE_RANDOM_SALT)
+        };
+        let random_seed = random_seed.get_or_insert_with(|| {
+            java_random_seed(i64::from(entity_id).wrapping_add(salt as i64))
+        });
+        let _discarded_first = java_random_next_float(random_seed);
+        let _discarded_second = java_random_next_float(random_seed);
+    }
+
     pub(crate) fn needs_particle_trigger_bounds_snapshot(&self) -> bool {
         self.ravager.is_some() || self.evoker_fangs.is_some()
     }
@@ -4542,6 +4566,16 @@ impl EntityClientAnimationState {
                 java_random_seed(spawn_random_bits(
                     uuid,
                     SLIME_CLIENT_RANDOM_SALT ^ entity_type_id as u64,
+                ) as i64)
+            });
+        self.eating_voice_random_seed =
+            (vanilla_entity_metadata_eating_sound_policy(entity_type_id)
+                == Some(VanillaEntityEatingSoundPolicy::EntityVoicePitch)
+                && !is_vanilla_abstract_nautilus_type(entity_type_id))
+            .then(|| {
+                java_random_seed(spawn_random_bits(
+                    uuid,
+                    EATING_VOICE_RANDOM_SALT ^ entity_type_id as u64,
                 ) as i64)
             });
         self.nautilus_dash_cooldown = None;

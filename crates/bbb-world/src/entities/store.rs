@@ -1539,6 +1539,15 @@ impl EntityStore {
         })
     }
 
+    pub(crate) fn advance_local_eating_voice_pitch_random(&mut self, id: i32) -> Option<()> {
+        let nautilus = is_vanilla_abstract_nautilus_type(self.identity(id)?.entity_type_id);
+        self.with_client_animations_mut(id, |animations| {
+            animations
+                .animations
+                .advance_eating_voice_pitch_random(id, nautilus);
+        })
+    }
+
     pub(crate) fn with_ridden_jump_state_mut<R>(
         &mut self,
         id: i32,

@@ -2779,6 +2779,75 @@ def food_predicate_rust(
     )
 
 
+def eating_sound_policy_rust(result: ExtractionResult, owner: str) -> str:
+    """Interpret one effective ``Animal.playEatingSound`` implementation.
+
+    Every 26.1 body ultimately calls ``ClientLevel.playSeededSound`` with a
+    null excluded entity. The call is locally suppressed, but argument
+    evaluation, the entity/level random cursor, and the level sound-seed
+    generator retain observable ordering for later effects.
+    """
+    source, method = method_for(result, owner, "playEatingSound", 0)
+    body = method.node.child_by_field_name("body")
+    if body is None:
+        raise ExtractionError(f"{owner}.playEatingSound: method lacks body")
+    canonical = source.expression(body).canonical
+    policies = {
+        "net.minecraft.world.entity.animal.Animal": (
+            "{}",
+            "None",
+        ),
+        "net.minecraft.world.entity.animal.armadillo.Armadillo": (
+            "{this.makeSound (SoundEvents.ARMADILLO_EAT);}",
+            "EntityVoicePitch",
+        ),
+        "net.minecraft.world.entity.animal.feline.Cat": (
+            "{this.playSound (this.getSoundSet ().eatSound ().value (), 1.0F, 1.0F);}",
+            "EntityFixedPitch",
+        ),
+        "net.minecraft.world.entity.animal.fox.Fox": (
+            "{this.playSound (SoundEvents.FOX_EAT, 1.0F, 1.0F);}",
+            "EntityFixedPitch",
+        ),
+        "net.minecraft.world.entity.animal.frog.Frog": (
+            "{this.level ().playSound (null, this, SoundEvents.FROG_EAT, SoundSource.NEUTRAL, 2.0F, 1.0F);}",
+            "LevelFixedPitch",
+        ),
+        "net.minecraft.world.entity.animal.goat.Goat": (
+            "{this.level ().playSound (null, this, this.isScreamingGoat () ? SoundEvents.GOAT_SCREAMING_EAT : SoundEvents.GOAT_EAT, SoundSource.NEUTRAL, 1.0F, Mth.randomBetween (this.level ().getRandom (), 0.8F, 1.2F));}",
+            "LevelUniformPitch",
+        ),
+        "net.minecraft.world.entity.animal.nautilus.Nautilus": (
+            "{SoundEvent nautilusEatSound = this.isBaby () ? SoundEvents.BABY_NAUTILUS_EAT : SoundEvents.NAUTILUS_EAT; this.makeSound (nautilusEatSound);}",
+            "EntityVoicePitch",
+        ),
+        "net.minecraft.world.entity.animal.nautilus.ZombieNautilus": (
+            "{this.makeSound (SoundEvents.ZOMBIE_NAUTILUS_EAT);}",
+            "EntityVoicePitch",
+        ),
+        "net.minecraft.world.entity.animal.pig.Pig": (
+            "{this.makeSound (this.getSoundSet ().eatSound ().value ());}",
+            "EntityVoicePitch",
+        ),
+        "net.minecraft.world.entity.animal.sniffer.Sniffer": (
+            "{this.level ().playSound (null, this, SoundEvents.SNIFFER_EAT, SoundSource.NEUTRAL, 1.0F, Mth.randomBetween (this.level ().getRandom (), 0.8F, 1.2F));}",
+            "LevelUniformPitch",
+        ),
+    }
+    expected = policies.get(owner)
+    if expected is None:
+        raise ExtractionError(
+            f"{owner}.playEatingSound: unsupported declaration owner"
+        )
+    expected_body, policy = expected
+    if canonical != expected_body:
+        raise ExtractionError(
+            f"{owner}.playEatingSound: stale source body; "
+            f"expected {expected_body!r}, found {canonical!r}"
+        )
+    return f"VanillaEntityEatingSoundPolicy::{policy}"
+
+
 def class_nearest_method_owner(
     result: ExtractionResult,
     class_map: dict[str, JavaType],
@@ -4625,6 +4694,7 @@ def render(result: ExtractionResult) -> str:
         return None
 
     food_predicate_cache: dict[str, tuple[str | None, str | None]] = {}
+    eating_sound_cache: dict[str, tuple[str | None, str]] = {}
 
     def food_predicate(runtime_class: str | None) -> tuple[str | None, str | None]:
         if runtime_class is None:
@@ -4642,6 +4712,29 @@ def render(result: ExtractionResult) -> str:
                 )
             value = (owner, food_predicate_rust(result, owner, item_tags))
         food_predicate_cache[runtime_class] = value
+        return value
+
+    def eating_sound_policy(runtime_class: str | None) -> tuple[str | None, str]:
+        if runtime_class is None or not extends_class(
+            runtime_class, "net.minecraft.world.entity.animal.Animal"
+        ):
+            return None, "VanillaEntityEatingSoundPolicy::None"
+        if runtime_class in eating_sound_cache:
+            return eating_sound_cache[runtime_class]
+        owner = nearest_optional_class_method_owner(
+            runtime_class, "playEatingSound", 0
+        )
+        if owner is None:
+            raise ExtractionError(
+                f"{runtime_class}: Animal lacks playEatingSound declaration"
+            )
+        source, method = method_for(result, owner, "playEatingSound", 0)
+        if method.body is None:
+            raise ExtractionError(
+                f"{runtime_class}: nearest playEatingSound declaration {owner} is abstract"
+            )
+        value = (owner, eating_sound_policy_rust(result, owner))
+        eating_sound_cache[runtime_class] = value
         return value
 
     def effective_leash_offset_owner(runtime_class: str | None) -> str | None:
@@ -4945,6 +5038,7 @@ def render(result: ExtractionResult) -> str:
     ])
     for item in result.entity_types:
         food_owner, food_policy = food_predicate(item.runtime_class)
+        eating_sound_owner, eating_sound_value = eating_sound_policy(item.runtime_class)
         lines.extend(
             [
                 "    VanillaEntityTypeMetadataCatalogEntry {",
@@ -4970,6 +5064,8 @@ def render(result: ExtractionResult) -> str:
                 f"        mob_interact_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'mobInteract', 2, mob_interact_owner_cache) if extends_class(item.runtime_class, 'net.minecraft.world.entity.Mob') else None)},",
                 f"        food_predicate_owner: {option_string(food_owner)},",
                 f"        food_predicate: {'Some(' + food_policy + ')' if food_policy is not None else 'None'},",
+                f"        eating_sound_owner: {option_string(eating_sound_owner)},",
+                f"        eating_sound_policy: {eating_sound_value},",
                 f"        passenger_attachment_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'getPassengerAttachmentPoint', 3, passenger_attachment_owner_cache) if item.runtime_class is not None else None)},",
                 f"        vehicle_attachment_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'getVehicleAttachmentPoint', 1, vehicle_attachment_owner_cache) if item.runtime_class is not None else None)},",
                 f"        controlling_passenger_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'getControllingPassenger', 0, controlling_passenger_owner_cache) if item.runtime_class is not None else None)},",
@@ -5255,6 +5351,28 @@ def render(result: ExtractionResult) -> str:
             "        assert_eq!(owner(\"minecraft:nautilus\").food_predicate, Some(super::VanillaEntityFoodPredicate::Nautilus { untamed_adult_tag: \"minecraft:nautilus_taming_items\", default_tag: \"minecraft:nautilus_food\" }));",
             "        assert_eq!(owner(\"minecraft:tadpole\").food_predicate, Some(super::VanillaEntityFoodPredicate::ItemTag(\"minecraft:frog_food\")));",
             "        assert!(owner(\"minecraft:zombie\").food_predicate.is_none());",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn eating_sound_policies_cover_every_animal_and_retain_source_owners() {",
+            "        for entry in super::VANILLA_ENTITY_TYPE_METADATA_26_1 {",
+            "            assert_eq!(entry.eating_sound_owner.is_some(), entry.is_animal, \"{}\", entry.resource_id);",
+            "            if !entry.is_animal {",
+            "                assert_eq!(entry.eating_sound_policy, super::VanillaEntityEatingSoundPolicy::None);",
+            "            }",
+            "        }",
+            "        let owner = |resource_id| {",
+            "            super::VANILLA_ENTITY_TYPE_METADATA_26_1",
+            "                .iter()",
+            "                .find(|entry| entry.resource_id == resource_id)",
+            "                .unwrap()",
+            "        };",
+            "        assert_eq!(owner(\"minecraft:chicken\").eating_sound_policy, super::VanillaEntityEatingSoundPolicy::None);",
+            "        assert_eq!(owner(\"minecraft:fox\").eating_sound_policy, super::VanillaEntityEatingSoundPolicy::EntityFixedPitch);",
+            "        assert_eq!(owner(\"minecraft:frog\").eating_sound_policy, super::VanillaEntityEatingSoundPolicy::LevelFixedPitch);",
+            "        assert_eq!(owner(\"minecraft:pig\").eating_sound_policy, super::VanillaEntityEatingSoundPolicy::EntityVoicePitch);",
+            "        assert_eq!(owner(\"minecraft:goat\").eating_sound_policy, super::VanillaEntityEatingSoundPolicy::LevelUniformPitch);",
+            "        assert_eq!(owner(\"minecraft:nautilus\").eating_sound_owner, Some(\"net.minecraft.world.entity.animal.nautilus.Nautilus\"));",
             "    }",
             "",
             "    #[test]",

@@ -769,6 +769,21 @@ pub enum VanillaEntityFoodPredicate {
     },
 }
 
+/// Client-side side effects of the effective `Animal.playEatingSound` override.
+///
+/// Vanilla's implementations all route through `ClientLevel.playSeededSound`
+/// with `except = null`, so local interaction prediction does not emit audible
+/// sound. The policy retains which random owners and sound-seed cursor still
+/// advance before that suppression.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VanillaEntityEatingSoundPolicy {
+    None,
+    EntityVoicePitch,
+    EntityFixedPitch,
+    LevelFixedPitch,
+    LevelUniformPitch,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaEntityDefaultAttribute {
     pub attribute_id: i32,
@@ -819,6 +834,10 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     /// hierarchy declares that method; every generated `Animal` row has both.
     pub food_predicate_owner: Option<&'static str>,
     pub food_predicate: Option<VanillaEntityFoodPredicate>,
+    /// Effective virtual `Animal.playEatingSound()` declaration and its
+    /// source-interpreted client-side random/sound-seed effects.
+    pub eating_sound_owner: Option<&'static str>,
+    pub eating_sound_policy: VanillaEntityEatingSoundPolicy,
     /// Nearest runtime-class declarations for the two attachment hooks and
     /// the controller decision. These close the fixed-type reverse inventory
     /// without duplicating family membership in handwritten code.
@@ -4422,6 +4441,14 @@ pub(crate) fn vanilla_entity_metadata_food_predicate(
     VANILLA_ENTITY_TYPE_METADATA_26_1
         .get(usize::try_from(entity_type_id).ok()?)
         .and_then(|entry| entry.food_predicate)
+}
+
+pub(crate) fn vanilla_entity_metadata_eating_sound_policy(
+    entity_type_id: i32,
+) -> Option<VanillaEntityEatingSoundPolicy> {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).ok()?)
+        .map(|entry| entry.eating_sound_policy)
 }
 
 pub(crate) fn vanilla_entity_metadata_passenger_attachment_owner(
