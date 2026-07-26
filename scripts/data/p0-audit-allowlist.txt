@@ -62,6 +62,11 @@
 # local neighbor facts. It is surfaced to diagnostics instead of guessing a
 # consuming result or mutating canonical block state.
 ^crates/bbb-world/src/client/inventory/use_prediction/block_use_without_item[.]rs$	UnsupportedBlockUseWithoutItem|unsupported[(][)]
+# Generated block-use-item-on dispatch uses the same explicit fail-closed result
+# for malformed state/component facts or unavailable local prediction inputs.
+# Every generated owner is matched exhaustively; these outcomes preserve server
+# correction instead of hiding an unimplemented owner.
+^crates/bbb-world/src/client/inventory/use_prediction/block_use_item_on[.]rs$	UnsupportedBlockUseItemOn|unsupported[(][)]
 # Environment ambient particles keep one explicit diagnostic for complex
 # ParticleOptions codec shapes that are dropped at the renderer bridge. Simple
 # options render normally, and the complex-shape closure remains a concrete ledger
@@ -144,6 +149,10 @@
 ^crates/bbb-world/src/chunks/.*[.]rs$	fallback
 ^crates/bbb-world/src/(level|terrain|sign_blocks|banner_blocks)[.]rs$	fallback
 ^crates/bbb-world/src/play_apply[.]rs$	fallback
+# The runtime-only pending interaction effect queue intentionally carries an
+# already-produced block callback effect across a PASS result while vanilla
+# continues into the item callback; it is not canonical-state fallback.
+^crates/bbb-world/src/store[.]rs$	fallback can continue after the client-visible block callback
 # Bucket prediction uses explicit unsupported outcomes for unloaded/unknown
 # registry facts and generated non-default canSurvive owners. These preserve
 # server authority and never select a renderer or canonical-state fallback.
