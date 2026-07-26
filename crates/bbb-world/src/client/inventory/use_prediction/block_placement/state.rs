@@ -279,6 +279,17 @@ pub(super) fn block_state_for_placement(
                 ],
             );
         }
+        VanillaGetStateForPlacementOverride::HangingRootsBlock => {
+            let Some(waterlogged) = target_is_source_water(world, target_pos) else {
+                return BlockPlacementState::Unsupported;
+            };
+            return state_with_properties(
+                world,
+                block_type,
+                default_state_id,
+                [("waterlogged", boolean_name(waterlogged))],
+            );
+        }
         VanillaGetStateForPlacementOverride::ObserverBlock => [("facing", direction_name(nearest))],
         VanillaGetStateForPlacementOverride::RotatedPillarBlock
         | VanillaGetStateForPlacementOverride::InfestedRotatedPillarBlock => {

@@ -267,6 +267,78 @@ fn coral_fan_item_fails_without_a_floor_or_wall_support() {
 }
 
 #[test]
+fn hanging_roots_placement_reads_source_water_and_ceiling_support() {
+    let support = BlockPos { x: 4, y: 10, z: 4 };
+    let target = relative(support, ProtocolDirection::Down);
+    let place = |world: &mut WorldStore, sequence| {
+        world.predict_local_block_use_with_hit(
+            support,
+            ProtocolDirection::Down,
+            [0.5, 0.0, 0.5],
+            false,
+            InteractionHand::MainHand,
+            false,
+            sequence,
+        )
+    };
+
+    let mut source = placement_world();
+    set_block(&mut source, support, state_id("minecraft:stone", []));
+    set_block(
+        &mut source,
+        target,
+        state_id("minecraft:water", [("level", "0")]),
+    );
+    set_held(&mut source, VANILLA_ITEM_HANGING_ROOTS_ID, 1);
+    assert!(matches!(
+        place(&mut source, 64),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        source.probe_block(target).unwrap().block_state_id,
+        state_id("minecraft:hanging_roots", [("waterlogged", "true")])
+    );
+
+    let mut flowing = placement_world();
+    set_block(&mut flowing, support, state_id("minecraft:stone", []));
+    set_block(
+        &mut flowing,
+        target,
+        state_id("minecraft:water", [("level", "3")]),
+    );
+    set_held(&mut flowing, VANILLA_ITEM_HANGING_ROOTS_ID, 1);
+    assert!(matches!(
+        place(&mut flowing, 65),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        flowing.probe_block(target).unwrap().block_state_id,
+        state_id("minecraft:hanging_roots", [("waterlogged", "false")])
+    );
+
+    let mut unsupported = placement_world();
+    set_block(
+        &mut unsupported,
+        support,
+        state_id(
+            "minecraft:oak_slab",
+            [("type", "top"), ("waterlogged", "false")],
+        ),
+    );
+    set_held(&mut unsupported, VANILLA_ITEM_HANGING_ROOTS_ID, 1);
+    assert_eq!(
+        place(&mut unsupported, 66),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
+    );
+    assert_eq!(
+        unsupported.probe_block(target).unwrap().block_state_id,
+        state_id("minecraft:air", [])
+    );
+    assert_eq!(held(&unsupported).count, 1);
+    assert!(unsupported.local_block_predictions().is_empty());
+}
+
+#[test]
 fn bamboo_placement_selects_sapling_or_stalk_from_vertical_neighbours() {
     let support_entries = [
         VANILLA_BLOCK_BAMBOO_ID,
