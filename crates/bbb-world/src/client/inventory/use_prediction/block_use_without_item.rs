@@ -814,6 +814,7 @@ mod tests {
         PalettedContainerData, WorldDimension,
     };
     use bbb_protocol::{
+        block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_COPPER_GOLEM_STATUE_ID,
         block_types::{
             vanilla_block_type_for_resource_id, VANILLA_BLOCK_POTTED_POPPY_ID,
             VANILLA_BLOCK_STONE_ID, VANILLA_BLOCK_TYPES,
@@ -833,8 +834,8 @@ mod tests {
             VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_BONE_MEAL_ID, VANILLA_ITEM_BOOK_ID,
             VANILLA_ITEM_BUCKET_ID, VANILLA_ITEM_CANDLE_ID, VANILLA_ITEM_FIRE_CHARGE_ID,
             VANILLA_ITEM_FLINT_AND_STEEL_ID, VANILLA_ITEM_GLASS_BOTTLE_ID,
-            VANILLA_ITEM_GLOWSTONE_ID, VANILLA_ITEM_HONEY_BOTTLE_ID, VANILLA_ITEM_IRON_AXE_ID,
-            VANILLA_ITEM_LAVA_BUCKET_ID, VANILLA_ITEM_LEATHER_HELMET_ID,
+            VANILLA_ITEM_GLOWSTONE_ID, VANILLA_ITEM_HONEYCOMB_ID, VANILLA_ITEM_HONEY_BOTTLE_ID,
+            VANILLA_ITEM_IRON_AXE_ID, VANILLA_ITEM_LAVA_BUCKET_ID, VANILLA_ITEM_LEATHER_HELMET_ID,
             VANILLA_ITEM_MUSIC_DISC_13_ID, VANILLA_ITEM_NOTE_BLOCK_ID, VANILLA_ITEM_OAK_LOG_ID,
             VANILLA_ITEM_POPPY_ID, VANILLA_ITEM_POTION_ID, VANILLA_ITEM_POWDER_SNOW_BUCKET_ID,
             VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_SHEARS_ID, VANILLA_ITEM_STONE_ID,
@@ -1965,6 +1966,174 @@ mod tests {
         assert_eq!(
             obstructed.take_pending_local_interaction_particle_actions(),
             vec![LocalInteractionParticleAction::RedstoneOre { pos: POS }]
+        );
+    }
+
+    #[test]
+    fn weathering_copper_statue_routes_pose_wax_scrape_and_unaffected_axe_branches() {
+        let apply_axes_tag = |world: &mut WorldStore| {
+            world.apply_update_tags(UpdateTags {
+                registries: vec![RegistryTags {
+                    registry: "minecraft:item".to_string(),
+                    tags: vec![TagNetworkPayload {
+                        tag: "minecraft:axes".to_string(),
+                        entries: vec![VANILLA_ITEM_IRON_AXE_ID],
+                    }],
+                }],
+            });
+        };
+
+        let mut pose = block_use_world_with_entity(
+            "minecraft:weathered_copper_golem_statue",
+            [
+                ("facing", "north"),
+                ("copper_golem_pose", "standing"),
+                ("waterlogged", "false"),
+            ],
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+            VANILLA_BLOCK_ENTITY_TYPE_COPPER_GOLEM_STATUE_ID,
+        );
+        apply_axes_tag(&mut pose);
+        assert_eq!(
+            use_item_on(
+                &mut pose,
+                "minecraft:weathered_copper_golem_statue",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                158,
+            ),
+            success(LocalInteractionSuccess {
+                sound_action: Some(LocalInteractionSoundAction::SuppressedCopperGolemBecomeStatue,),
+                ..LocalInteractionSuccess::client_item_interaction()
+            })
+        );
+        assert_eq!(
+            block_property(&pose, "copper_golem_pose").as_deref(),
+            Some("sitting")
+        );
+
+        set_main_hand_stack(&mut pose, item_stack(VANILLA_ITEM_HONEYCOMB_ID, 2));
+        assert_eq!(
+            use_main_hand(&mut pose, 159),
+            success(LocalInteractionSuccess::client_item_interaction()),
+            "the owner PASS reaches HoneycombItem.useOn"
+        );
+        assert_eq!(
+            pose.probe_block(POS).and_then(|block| block.block_name),
+            Some("minecraft:waxed_weathered_copper_golem_statue".to_string())
+        );
+        assert_eq!(
+            pose.local_item_in_hand(InteractionHand::MainHand),
+            Some(&item_stack(VANILLA_ITEM_HONEYCOMB_ID, 1))
+        );
+
+        let mut scrape = block_use_world_with_entity(
+            "minecraft:exposed_copper_golem_statue",
+            [
+                ("facing", "east"),
+                ("copper_golem_pose", "running"),
+                ("waterlogged", "false"),
+            ],
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+            VANILLA_BLOCK_ENTITY_TYPE_COPPER_GOLEM_STATUE_ID,
+        );
+        apply_axes_tag(&mut scrape);
+        set_main_hand(&mut scrape, VANILLA_ITEM_IRON_AXE_ID);
+        assert_eq!(
+            use_main_hand(&mut scrape, 160),
+            success(LocalInteractionSuccess::client_item_interaction()),
+            "the weathered owner PASS reaches AxeItem.useOn"
+        );
+        assert_eq!(
+            scrape.probe_block(POS).and_then(|block| block.block_name),
+            Some("minecraft:copper_golem_statue".to_string())
+        );
+        assert_eq!(
+            block_property(&scrape, "copper_golem_pose").as_deref(),
+            Some("running")
+        );
+
+        let mut awaken = block_use_world_with_entity(
+            "minecraft:copper_golem_statue",
+            [
+                ("facing", "south"),
+                ("copper_golem_pose", "star"),
+                ("waterlogged", "false"),
+            ],
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+            VANILLA_BLOCK_ENTITY_TYPE_COPPER_GOLEM_STATUE_ID,
+        );
+        apply_axes_tag(&mut awaken);
+        set_main_hand(&mut awaken, VANILLA_ITEM_IRON_AXE_ID);
+        assert_eq!(
+            use_main_hand(&mut awaken, 161),
+            success(LocalInteractionSuccess {
+                sound_action: Some(LocalInteractionSoundAction::SuppressedCopperGolemSpawn),
+                ..LocalInteractionSuccess::client_item_interaction()
+            })
+        );
+        assert_eq!(
+            awaken.probe_block(POS).and_then(|block| block.block_name),
+            Some("minecraft:air".to_string())
+        );
+        assert_eq!(
+            awaken.entity_count(),
+            0,
+            "ClientLevel.addFreshEntity is a no-op"
+        );
+        assert_eq!(
+            awaken.local_item_in_hand(InteractionHand::MainHand),
+            Some(&item_stack(VANILLA_ITEM_IRON_AXE_ID, 1)),
+            "hurtAndBreak(LivingEntity) only mutates inside its ServerLevel branch"
+        );
+
+        let mut waterlogged = block_use_world_with_entity(
+            "minecraft:copper_golem_statue",
+            [
+                ("facing", "west"),
+                ("copper_golem_pose", "sitting"),
+                ("waterlogged", "true"),
+            ],
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+            VANILLA_BLOCK_ENTITY_TYPE_COPPER_GOLEM_STATUE_ID,
+        );
+        apply_axes_tag(&mut waterlogged);
+        set_main_hand(&mut waterlogged, VANILLA_ITEM_IRON_AXE_ID);
+        assert!(matches!(
+            use_main_hand(&mut waterlogged, 162),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(
+            waterlogged
+                .probe_block(POS)
+                .and_then(|block| block.block_name),
+            Some("minecraft:water".to_string()),
+            "Level.removeBlock restores the waterlogged FluidState legacy block"
+        );
+
+        let mut missing_entity = block_use_world(
+            "minecraft:oxidized_copper_golem_statue",
+            [
+                ("facing", "north"),
+                ("copper_golem_pose", "standing"),
+                ("waterlogged", "false"),
+            ],
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        missing_entity.remove_block_entity_record_at(POS);
+        assert_eq!(missing_entity.block_entity_type_id_at(POS), None);
+        set_main_hand(&mut missing_entity, VANILLA_ITEM_STONE_ID);
+        assert_eq!(
+            use_item_on(
+                &mut missing_entity,
+                "minecraft:oxidized_copper_golem_statue",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                163,
+            ),
+            pass()
         );
     }
 

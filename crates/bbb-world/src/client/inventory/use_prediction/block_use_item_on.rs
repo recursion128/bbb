@@ -6,10 +6,14 @@ use crate::{TerrainFluidKind, WorldStore};
 use bbb_protocol::{
     block_entity_types::{
         VANILLA_BLOCK_ENTITY_TYPE_CAMPFIRE_ID, VANILLA_BLOCK_ENTITY_TYPE_CHISELED_BOOKSHELF_ID,
+        VANILLA_BLOCK_ENTITY_TYPE_COPPER_GOLEM_STATUE_ID,
         VANILLA_BLOCK_ENTITY_TYPE_DECORATED_POT_ID, VANILLA_BLOCK_ENTITY_TYPE_HANGING_SIGN_ID,
         VANILLA_BLOCK_ENTITY_TYPE_SHELF_ID, VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,
     },
-    block_types::{BlockTypeCatalogEntry, VanillaBlockUseItemOnOverride, VANILLA_BLOCK_TYPES},
+    block_types::{
+        BlockTypeCatalogEntry, VanillaBlockUseItemOnOverride, VANILLA_BLOCK_COPPER_GOLEM_STATUE_ID,
+        VANILLA_BLOCK_TYPES,
+    },
     data_component_types::{
         VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID, VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
@@ -324,32 +328,12 @@ impl WorldStore {
                 if is_axe {
                     return pass();
                 }
-                let Some(next_pose) = block
-                    .block_properties
-                    .get("copper_golem_pose")
-                    .and_then(|pose| next_copper_golem_pose(pose))
-                else {
-                    return unsupported();
-                };
-                let mut properties = block.block_properties;
-                properties.insert("copper_golem_pose".to_string(), next_pose.to_string());
-                let Some(state_id) = self
-                    .registries
-                    .block_state_id_by_name_and_properties(block_type.resource_id, &properties)
-                else {
-                    return unsupported();
-                };
-                if !self.predict_local_block_state(context.pos, state_id, context.sequence) {
-                    return unsupported();
-                }
-                LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
-                    LocalInteractionSuccess {
-                        sound_action: Some(
-                            LocalInteractionSoundAction::SuppressedCopperGolemBecomeStatue,
-                        ),
-                        ..LocalInteractionSuccess::client_item_interaction()
-                    },
-                ))
+                self.predict_local_copper_golem_pose_cycle(
+                    owner,
+                    block_type,
+                    block.block_properties,
+                    context,
+                )
             }
             VanillaBlockUseItemOnOverride::DecoratedPotBlock => {
                 if self.block_entity_type_id_at(context.pos)
@@ -591,8 +575,92 @@ impl WorldStore {
                     _ => unsupported(),
                 }
             }
-            _ => unsupported(),
+            VanillaBlockUseItemOnOverride::WeatheringCopperGolemStatueBlock => {
+                if self.block_entity_type_id_at(context.pos)
+                    != Some(VANILLA_BLOCK_ENTITY_TYPE_COPPER_GOLEM_STATUE_ID)
+                {
+                    return pass();
+                }
+                let Some(is_axe) = self.local_item_in_hand_is_in_tag(hand, VANILLA_AXES_ITEM_TAG)
+                else {
+                    return unsupported();
+                };
+                if !is_axe {
+                    if self
+                        .local_item_in_hand(hand)
+                        .and_then(|stack| stack.item_id)
+                        == Some(VANILLA_ITEM_HONEYCOMB_ID)
+                    {
+                        return pass();
+                    }
+                    return self.predict_local_copper_golem_pose_cycle(
+                        owner,
+                        block_type,
+                        block.block_properties,
+                        context,
+                    );
+                }
+                if block_type.id != VANILLA_BLOCK_COPPER_GOLEM_STATUE_ID {
+                    return pass();
+                }
+                let Some(waterlogged) = boolean_property(&block.block_properties, "waterlogged")
+                else {
+                    return unsupported();
+                };
+                let (target_block, target_properties) = if waterlogged {
+                    (
+                        "minecraft:water",
+                        BTreeMap::from([("level".to_string(), "0".to_string())]),
+                    )
+                } else {
+                    ("minecraft:air", BTreeMap::new())
+                };
+                let Some(state_id) = self
+                    .registries
+                    .block_state_id_by_name_and_properties(target_block, &target_properties)
+                else {
+                    return unsupported();
+                };
+                if !self.predict_local_block_state(context.pos, state_id, context.sequence) {
+                    return unsupported();
+                }
+                LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                    LocalInteractionSuccess {
+                        sound_action: Some(LocalInteractionSoundAction::SuppressedCopperGolemSpawn),
+                        ..LocalInteractionSuccess::client_item_interaction()
+                    },
+                ))
+            }
         }
+    }
+
+    fn predict_local_copper_golem_pose_cycle(
+        &mut self,
+        owner: VanillaBlockUseItemOnOverride,
+        block_type: &BlockTypeCatalogEntry,
+        mut properties: BTreeMap<String, String>,
+        context: LocalBlockUseContext,
+    ) -> LocalTargetUsePrediction {
+        let Some(next_pose) = properties
+            .get("copper_golem_pose")
+            .and_then(|pose| next_copper_golem_pose(pose))
+        else {
+            return LocalTargetUsePrediction::UnsupportedBlockUseItemOn(owner);
+        };
+        properties.insert("copper_golem_pose".to_string(), next_pose.to_string());
+        let Some(state_id) = self
+            .registries
+            .block_state_id_by_name_and_properties(block_type.resource_id, &properties)
+        else {
+            return LocalTargetUsePrediction::UnsupportedBlockUseItemOn(owner);
+        };
+        if !self.predict_local_block_state(context.pos, state_id, context.sequence) {
+            return LocalTargetUsePrediction::UnsupportedBlockUseItemOn(owner);
+        }
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(LocalInteractionSuccess {
+            sound_action: Some(LocalInteractionSoundAction::SuppressedCopperGolemBecomeStatue),
+            ..LocalInteractionSuccess::client_item_interaction()
+        }))
     }
 
     fn local_item_in_hand_is_in_tag(&self, hand: InteractionHand, tag: &str) -> Option<bool> {

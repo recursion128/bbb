@@ -1706,7 +1706,8 @@ impl WorldStore {
     /// projectiles, fire charges, lodestone compasses, both potion
     /// mud-conversion sounds, candle extinguish/addition, decorated-pot insert
     /// failure, and tripwire-hook state transitions pass `null`, so their
-    /// local calls only advance the random streams.
+    /// local calls only advance the random streams. Copper-golem pose and
+    /// spawn sounds also pass `null`.
     pub fn apply_local_interaction_sound_action(
         &mut self,
         action: LocalInteractionSoundAction,
@@ -1886,6 +1887,10 @@ impl WorldStore {
                 return None;
             }
             LocalInteractionSoundAction::SuppressedCopperGolemBecomeStatue => {
+                let _discarded_seed = self.next_sound_seed();
+                return None;
+            }
+            LocalInteractionSoundAction::SuppressedCopperGolemSpawn => {
                 let _discarded_seed = self.next_sound_seed();
                 return None;
             }

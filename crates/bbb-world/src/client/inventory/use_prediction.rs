@@ -183,6 +183,7 @@ pub enum LocalInteractionSoundAction {
     SuppressedDecoratedPotInsertFail,
     SuppressedRespawnAnchorCharge,
     SuppressedCopperGolemBecomeStatue,
+    SuppressedCopperGolemSpawn,
     BlockPlace {
         pos: BlockPos,
         sound_resource_id: &'static str,
