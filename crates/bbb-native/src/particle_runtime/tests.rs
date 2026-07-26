@@ -117,6 +117,30 @@ fn candle_cake_extinguish_emits_one_upward_smoke_at_the_wick() {
 }
 
 #[test]
+fn candle_extinguish_emits_one_upward_smoke_at_each_vanilla_wick() {
+    let pos = WorldBlockPos { x: -2, y: 7, z: 4 };
+    let mut resolver = test_resolver(0);
+    let batch = resolver.local_interaction_particle_batch(
+        LocalInteractionParticleAction::CandleExtinguish { pos, candles: 4 },
+    );
+
+    assert_eq!(batch.commands.len(), 4);
+    let expected_positions = [
+        [-1.5625, 7.3125, 4.5625],
+        [-1.375, 7.4375, 4.5625],
+        [-1.625, 7.4375, 4.375],
+        [-1.4375, 7.5, 4.375],
+    ];
+    for (command, expected_position) in batch.commands.iter().zip(expected_positions) {
+        assert_eq!(command.position, expected_position);
+        assert_eq!(command.velocity, [0.0, f64::from(0.1_f32), 0.0]);
+        assert_eq!(command.particle_type_id, VANILLA_PARTICLE_TYPE_SMOKE_ID);
+        assert_eq!(command.particle_id, "minecraft:smoke");
+        assert!(!command.always_show);
+    }
+}
+
+#[test]
 fn local_destroy_hit_particle_uses_vanilla_shape_face_power_and_scale() {
     let pos = WorldBlockPos { x: 0, y: 8, z: 0 };
     let slab = test_block_state_id(

@@ -653,10 +653,9 @@ Commands:
   command, and sign editing.
 - Complete the remaining specialized targeted local-use prediction from
   `Minecraft.startUseItem`, `MultiPlayerGameMode.interact`, and `useItemOn`.
-  Generated specialized block `useWithoutItem` owners now have exhaustive exact
-  result routing, including stateful cake/candle-cake/flower-pot prediction and
-  their required inventory, food, sound-seed, and particle effects. Implement
-  the remaining generated specialized block `useItemOn` owners so main/offhand
+  Finish the generated `AbstractCauldronBlock`, `BeehiveBlock`, non-empty
+  `ComposterBlock`, `RedStoneOreBlock`, and
+  `WeatheringCopperGolemStatueBlock` `useItemOn` owners so main/offhand
   iteration can stop or continue on the exact `InteractionResult`; complete
   `ComparatorBlock.refreshOutputState` after predicted mode changes, including
   arbitrary analog block-entity and item-frame inputs; then apply each success

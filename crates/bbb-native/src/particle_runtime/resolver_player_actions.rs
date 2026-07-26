@@ -51,7 +51,49 @@ impl ParticleCommandResolver {
             LocalInteractionParticleAction::CandleCakeExtinguish { pos } => {
                 self.candle_cake_extinguish_particle_batch(pos)
             }
+            LocalInteractionParticleAction::CandleExtinguish { pos, candles } => {
+                self.candle_extinguish_particle_batch(pos, candles)
+            }
         }
+    }
+
+    fn candle_extinguish_particle_batch(
+        &mut self,
+        pos: WorldBlockPos,
+        candles: u8,
+    ) -> ParticleSpawnBatch {
+        let offsets: &[[f64; 3]] = match candles {
+            1 => &[[8.0, 8.0, 8.0]],
+            2 => &[[6.0, 7.0, 8.0], [10.0, 8.0, 7.0]],
+            3 => &[[8.0, 5.0, 10.0], [6.0, 7.0, 8.0], [9.0, 8.0, 7.0]],
+            4 => &[
+                [7.0, 5.0, 9.0],
+                [10.0, 7.0, 9.0],
+                [6.0, 7.0, 6.0],
+                [9.0, 8.0, 6.0],
+            ],
+            _ => &[],
+        };
+        self.simple_particle_batch(
+            VANILLA_PARTICLE_TYPE_SMOKE_ID,
+            offsets
+                .iter()
+                .map(|offset| {
+                    (
+                        Vec3d {
+                            x: f64::from(pos.x) + offset[0] / 16.0,
+                            y: f64::from(pos.y) + offset[1] / 16.0,
+                            z: f64::from(pos.z) + offset[2] / 16.0,
+                        },
+                        Vec3d {
+                            x: 0.0,
+                            y: f64::from(0.1_f32),
+                            z: 0.0,
+                        },
+                    )
+                })
+                .collect(),
+        )
     }
 
     fn candle_cake_extinguish_particle_batch(&mut self, pos: WorldBlockPos) -> ParticleSpawnBatch {

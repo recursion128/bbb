@@ -1874,6 +1874,14 @@ impl WorldStore {
                 let _discarded_seed = self.next_sound_seed();
                 return None;
             }
+            LocalInteractionSoundAction::SuppressedRespawnAnchorCharge => {
+                let _discarded_seed = self.next_sound_seed();
+                return None;
+            }
+            LocalInteractionSoundAction::SuppressedCopperGolemBecomeStatue => {
+                let _discarded_seed = self.next_sound_seed();
+                return None;
+            }
             LocalInteractionSoundAction::BlockPlace {
                 pos,
                 sound_resource_id,

@@ -817,17 +817,26 @@ mod tests {
         block_types::{
             vanilla_block_type_for_resource_id, VANILLA_BLOCK_POTTED_POPPY_ID, VANILLA_BLOCK_TYPES,
         },
+        data_component_types::VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
         game_types::{
             VANILLA_GAME_TYPE_ADVENTURE_ID, VANILLA_GAME_TYPE_CREATIVE_ID,
             VANILLA_GAME_TYPE_SURVIVAL_ID,
         },
-        item_types::{VANILLA_ITEM_CANDLE_ID, VANILLA_ITEM_POPPY_ID, VANILLA_ITEM_STONE_ID},
+        item_types::{
+            VANILLA_ITEM_BONE_MEAL_ID, VANILLA_ITEM_BOOK_ID, VANILLA_ITEM_CANDLE_ID,
+            VANILLA_ITEM_FIRE_CHARGE_ID, VANILLA_ITEM_FLINT_AND_STEEL_ID,
+            VANILLA_ITEM_GLOWSTONE_ID, VANILLA_ITEM_IRON_AXE_ID, VANILLA_ITEM_MUSIC_DISC_13_ID,
+            VANILLA_ITEM_NOTE_BLOCK_ID, VANILLA_ITEM_OAK_LOG_ID, VANILLA_ITEM_POPPY_ID,
+            VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_SHEARS_ID, VANILLA_ITEM_STONE_ID,
+        },
         packets::{
             BlockPos as ProtocolBlockPos, BlockUpdate, CommonPlayerSpawnInfo, Direction,
             EntityEvent, InteractionHand, ItemStackSummary, PlayLogin, PlayerHealth,
-            SetChunkCacheCenter, SetPlayerInventory,
+            RecipePropertySetSummary, RegistryTags, SetChunkCacheCenter, SetPlayerInventory,
+            TagNetworkPayload, UpdateRecipes, UpdateTags,
         },
     };
+    use std::collections::BTreeSet;
 
     const POS: BlockPos = BlockPos { x: 0, y: 8, z: 0 };
 
@@ -1571,6 +1580,463 @@ mod tests {
     }
 
     #[test]
+    fn fixed_item_on_owners_route_exact_client_results() {
+        let mut pumpkin =
+            block_use_world_first_state("minecraft:pumpkin", VANILLA_GAME_TYPE_SURVIVAL_ID as i8);
+        set_main_hand(&mut pumpkin, VANILLA_ITEM_SHEARS_ID);
+        assert_eq!(
+            use_item_on(
+                &mut pumpkin,
+                "minecraft:pumpkin",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                126,
+            ),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        set_main_hand(&mut pumpkin, VANILLA_ITEM_STONE_ID);
+        assert_eq!(
+            use_item_on(
+                &mut pumpkin,
+                "minecraft:pumpkin",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                127,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::TryEmptyHandInteraction)
+        );
+
+        let mut bush = block_use_world_first_state(
+            "minecraft:sweet_berry_bush",
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        set_test_block(
+            &mut bush,
+            state_id_with_property("minecraft:sweet_berry_bush", "age", "2"),
+        );
+        set_main_hand(&mut bush, VANILLA_ITEM_BONE_MEAL_ID);
+        assert_eq!(
+            use_item_on(
+                &mut bush,
+                "minecraft:sweet_berry_bush",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                128,
+            ),
+            pass()
+        );
+        set_test_block(
+            &mut bush,
+            state_id_with_property("minecraft:sweet_berry_bush", "age", "3"),
+        );
+        assert_eq!(
+            use_item_on(
+                &mut bush,
+                "minecraft:sweet_berry_bush",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                129,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::TryEmptyHandInteraction)
+        );
+
+        for item_id in [VANILLA_ITEM_FLINT_AND_STEEL_ID, VANILLA_ITEM_FIRE_CHARGE_ID] {
+            let mut tnt =
+                block_use_world_first_state("minecraft:tnt", VANILLA_GAME_TYPE_SURVIVAL_ID as i8);
+            set_main_hand(&mut tnt, item_id);
+            assert_eq!(
+                use_item_on(
+                    &mut tnt,
+                    "minecraft:tnt",
+                    InteractionHand::MainHand,
+                    Direction::Up,
+                    [0.5, 1.0, 0.5],
+                    130,
+                ),
+                success(LocalInteractionSuccess::client_item_interaction())
+            );
+            assert!(tnt.local_block_predictions().is_empty());
+        }
+
+        let mut vault =
+            block_use_world_first_state("minecraft:vault", VANILLA_GAME_TYPE_SURVIVAL_ID as i8);
+        set_test_block(
+            &mut vault,
+            state_id_with_property("minecraft:vault", "vault_state", "active"),
+        );
+        set_main_hand(&mut vault, VANILLA_ITEM_STONE_ID);
+        assert_eq!(
+            use_item_on(
+                &mut vault,
+                "minecraft:vault",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                131,
+            ),
+            success(LocalInteractionSuccess::server_item_interaction())
+        );
+    }
+
+    #[test]
+    fn tag_gated_item_on_owners_use_synchronized_item_tags() {
+        let tags = UpdateTags {
+            registries: vec![RegistryTags {
+                registry: "minecraft:item".to_string(),
+                tags: vec![
+                    TagNetworkPayload {
+                        tag: "minecraft:bookshelf_books".to_string(),
+                        entries: vec![VANILLA_ITEM_BOOK_ID],
+                    },
+                    TagNetworkPayload {
+                        tag: "minecraft:lectern_books".to_string(),
+                        entries: vec![VANILLA_ITEM_BOOK_ID],
+                    },
+                    TagNetworkPayload {
+                        tag: "minecraft:noteblock_top_instruments".to_string(),
+                        entries: vec![VANILLA_ITEM_NOTE_BLOCK_ID],
+                    },
+                ],
+            }],
+        };
+
+        let mut shelf = block_use_world_with_entity(
+            "minecraft:chiseled_bookshelf",
+            [
+                ("facing", "north"),
+                ("slot_0_occupied", "false"),
+                ("slot_1_occupied", "false"),
+                ("slot_2_occupied", "false"),
+                ("slot_3_occupied", "false"),
+                ("slot_4_occupied", "false"),
+                ("slot_5_occupied", "false"),
+            ],
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+            VANILLA_BLOCK_ENTITY_TYPE_CHISELED_BOOKSHELF_ID,
+        );
+        shelf.apply_update_tags(tags.clone());
+        set_main_hand(&mut shelf, VANILLA_ITEM_BOOK_ID);
+        assert_eq!(
+            use_item_on(
+                &mut shelf,
+                "minecraft:chiseled_bookshelf",
+                InteractionHand::MainHand,
+                Direction::North,
+                [0.9, 0.75, 0.0],
+                132,
+            ),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        set_test_block(
+            &mut shelf,
+            state_id(
+                "minecraft:chiseled_bookshelf",
+                [
+                    ("facing", "north"),
+                    ("slot_0_occupied", "true"),
+                    ("slot_1_occupied", "false"),
+                    ("slot_2_occupied", "false"),
+                    ("slot_3_occupied", "false"),
+                    ("slot_4_occupied", "false"),
+                    ("slot_5_occupied", "false"),
+                ],
+            ),
+        );
+        assert_eq!(
+            use_item_on(
+                &mut shelf,
+                "minecraft:chiseled_bookshelf",
+                InteractionHand::MainHand,
+                Direction::North,
+                [0.9, 0.75, 0.0],
+                133,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::TryEmptyHandInteraction)
+        );
+
+        let mut lectern =
+            block_use_world_first_state("minecraft:lectern", VANILLA_GAME_TYPE_SURVIVAL_ID as i8);
+        lectern.apply_update_tags(tags.clone());
+        set_test_block(
+            &mut lectern,
+            state_id_with_property("minecraft:lectern", "has_book", "false"),
+        );
+        set_main_hand(&mut lectern, VANILLA_ITEM_BOOK_ID);
+        assert_eq!(
+            use_item_on(
+                &mut lectern,
+                "minecraft:lectern",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                134,
+            ),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+
+        let mut note = block_use_world_first_state(
+            "minecraft:note_block",
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        note.apply_update_tags(tags);
+        set_main_hand(&mut note, VANILLA_ITEM_NOTE_BLOCK_ID);
+        assert_eq!(
+            use_item_on(
+                &mut note,
+                "minecraft:note_block",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                135,
+            ),
+            pass()
+        );
+        assert_eq!(
+            use_item_on(
+                &mut note,
+                "minecraft:note_block",
+                InteractionHand::MainHand,
+                Direction::North,
+                [0.5, 0.5, 0.0],
+                136,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::TryEmptyHandInteraction)
+        );
+    }
+
+    #[test]
+    fn entity_and_data_driven_item_on_owners_keep_server_mutations_authoritative() {
+        let mut pot = block_use_world_first_state_with_entity(
+            "minecraft:decorated_pot",
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+            VANILLA_BLOCK_ENTITY_TYPE_DECORATED_POT_ID,
+        );
+        set_main_hand(&mut pot, VANILLA_ITEM_STONE_ID);
+        assert_eq!(
+            use_item_on(
+                &mut pot,
+                "minecraft:decorated_pot",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                137,
+            ),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+
+        let mut shelf = block_use_world_with_entity(
+            "minecraft:oak_shelf",
+            [
+                ("facing", "north"),
+                ("powered", "false"),
+                ("side_chain", "unconnected"),
+                ("waterlogged", "false"),
+            ],
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+            bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SHELF_ID,
+        );
+        set_main_hand(&mut shelf, VANILLA_ITEM_STONE_ID);
+        assert_eq!(
+            use_item_on(
+                &mut shelf,
+                "minecraft:oak_shelf",
+                InteractionHand::MainHand,
+                Direction::North,
+                [0.5, 0.5, 0.0],
+                138,
+            ),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        assert_eq!(
+            use_item_on(
+                &mut shelf,
+                "minecraft:oak_shelf",
+                InteractionHand::OffHand,
+                Direction::North,
+                [0.5, 0.5, 0.0],
+                139,
+            ),
+            pass()
+        );
+
+        let mut campfire = block_use_world_first_state_with_entity(
+            "minecraft:campfire",
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+            bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_CAMPFIRE_ID,
+        );
+        campfire.apply_update_recipes(UpdateRecipes {
+            property_sets: vec![RecipePropertySetSummary {
+                key: "minecraft:campfire_input".to_string(),
+                item_ids: vec![VANILLA_ITEM_OAK_LOG_ID],
+            }],
+            stonecutter_recipes: Vec::new(),
+        });
+        set_main_hand(&mut campfire, VANILLA_ITEM_OAK_LOG_ID);
+        assert_eq!(
+            use_item_on(
+                &mut campfire,
+                "minecraft:campfire",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                140,
+            ),
+            success(LocalInteractionSuccess::consume(false))
+        );
+
+        let mut jukebox = block_use_world(
+            "minecraft:jukebox",
+            [("has_record", "false")],
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        jukebox.set_default_item_component_type_ids(BTreeMap::from([(
+            VANILLA_ITEM_MUSIC_DISC_13_ID,
+            BTreeSet::from([VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID]),
+        )]));
+        set_main_hand(&mut jukebox, VANILLA_ITEM_MUSIC_DISC_13_ID);
+        assert_eq!(
+            use_item_on(
+                &mut jukebox,
+                "minecraft:jukebox",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                141,
+            ),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+
+        let mut sign = block_use_world_first_state_with_entity(
+            "minecraft:oak_sign",
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+            VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,
+        );
+        set_main_hand(&mut sign, VANILLA_ITEM_RED_DYE_ID);
+        assert_eq!(
+            use_item_on(
+                &mut sign,
+                "minecraft:oak_sign",
+                InteractionHand::MainHand,
+                Direction::North,
+                [0.5, 0.5, 0.0],
+                142,
+            ),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+    }
+
+    #[test]
+    fn stateful_item_on_owners_predict_vanilla_state_inventory_and_effect_actions() {
+        let mut candle = block_use_world(
+            "minecraft:candle",
+            [("candles", "4"), ("lit", "true"), ("waterlogged", "false")],
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        assert_eq!(
+            use_item_on(
+                &mut candle,
+                "minecraft:candle",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                143,
+            ),
+            success(LocalInteractionSuccess {
+                sound_action: Some(LocalInteractionSoundAction::SuppressedCandleExtinguish),
+                particle_action: Some(LocalInteractionParticleAction::CandleExtinguish {
+                    pos: POS,
+                    candles: 4,
+                }),
+                ..LocalInteractionSuccess::client_item_interaction()
+            })
+        );
+        assert_eq!(block_property(&candle, "lit").as_deref(), Some("false"));
+
+        let mut anchor = block_use_world(
+            "minecraft:respawn_anchor",
+            [("charges", "0")],
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        set_main_hand(&mut anchor, VANILLA_ITEM_GLOWSTONE_ID);
+        assert_eq!(
+            use_item_on(
+                &mut anchor,
+                "minecraft:respawn_anchor",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                144,
+            ),
+            success(LocalInteractionSuccess {
+                sound_action: Some(LocalInteractionSoundAction::SuppressedRespawnAnchorCharge),
+                ..LocalInteractionSuccess::client_item_interaction()
+            })
+        );
+        assert_eq!(block_property(&anchor, "charges").as_deref(), Some("1"));
+        assert!(anchor
+            .local_item_in_hand(InteractionHand::MainHand)
+            .is_none());
+
+        let mut statue = block_use_world(
+            "minecraft:waxed_copper_golem_statue",
+            [
+                ("facing", "north"),
+                ("copper_golem_pose", "standing"),
+                ("waterlogged", "false"),
+            ],
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        assert_eq!(
+            use_item_on(
+                &mut statue,
+                "minecraft:waxed_copper_golem_statue",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                145,
+            ),
+            success(LocalInteractionSuccess {
+                sound_action: Some(LocalInteractionSoundAction::SuppressedCopperGolemBecomeStatue),
+                ..LocalInteractionSuccess::client_item_interaction()
+            })
+        );
+        assert_eq!(
+            block_property(&statue, "copper_golem_pose").as_deref(),
+            Some("sitting")
+        );
+
+        statue.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: "minecraft:item".to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: "minecraft:axes".to_string(),
+                    entries: vec![VANILLA_ITEM_IRON_AXE_ID],
+                }],
+            }],
+        });
+        set_main_hand(&mut statue, VANILLA_ITEM_IRON_AXE_ID);
+        assert_eq!(
+            use_item_on(
+                &mut statue,
+                "minecraft:waxed_copper_golem_statue",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                146,
+            ),
+            pass()
+        );
+        assert_eq!(
+            block_property(&statue, "copper_golem_pose").as_deref(),
+            Some("sitting")
+        );
+    }
+
+    #[test]
     fn property_gated_server_owned_actions_return_exact_client_results() {
         for (name, property, active, inactive, active_result, inactive_result) in [
             (
@@ -1947,6 +2413,41 @@ mod tests {
             false,
             sequence,
         )
+    }
+
+    fn use_item_on(
+        world: &mut WorldStore,
+        block_name: &str,
+        hand: InteractionHand,
+        face: Direction,
+        cursor: [f64; 3],
+        sequence: i32,
+    ) -> LocalTargetUsePrediction {
+        let block_type = vanilla_block_type_for_resource_id(block_name)
+            .unwrap_or_else(|| panic!("missing {block_name} block type"));
+        let owner = block_type
+            .use_item_on_override
+            .unwrap_or_else(|| panic!("missing {block_name} useItemOn owner"));
+        world.predict_local_block_use_item_on(
+            owner,
+            block_type,
+            hand,
+            LocalBlockUseContext {
+                pos: POS,
+                face,
+                cursor,
+                inside: false,
+                sequence,
+                secondary_use_active: false,
+            },
+        )
+    }
+
+    fn set_main_hand(world: &mut WorldStore, item_id: i32) {
+        assert!(world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: item_stack(item_id, 1),
+        }));
     }
 
     fn block_property(world: &WorldStore, property: &str) -> Option<String> {

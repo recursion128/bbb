@@ -5,15 +5,26 @@ use super::{
 use crate::WorldStore;
 use bbb_protocol::{
     block_entity_types::{
-        VANILLA_BLOCK_ENTITY_TYPE_CHISELED_BOOKSHELF_ID,
+        VANILLA_BLOCK_ENTITY_TYPE_CAMPFIRE_ID, VANILLA_BLOCK_ENTITY_TYPE_CHISELED_BOOKSHELF_ID,
         VANILLA_BLOCK_ENTITY_TYPE_DECORATED_POT_ID, VANILLA_BLOCK_ENTITY_TYPE_HANGING_SIGN_ID,
-        VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,
+        VANILLA_BLOCK_ENTITY_TYPE_SHELF_ID, VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,
     },
     block_types::{BlockTypeCatalogEntry, VanillaBlockUseItemOnOverride, VANILLA_BLOCK_TYPES},
-    item_types::{vanilla_item_type, VANILLA_ITEM_GLOWSTONE_ID},
-    packets::InteractionHand,
+    data_component_types::VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+    item_types::{
+        vanilla_item_type, VanillaItemInteractLivingEntityOverride, VanillaItemUseOnOverride,
+        VANILLA_ITEM_BONE_MEAL_ID, VANILLA_ITEM_FIRE_CHARGE_ID, VANILLA_ITEM_FLINT_AND_STEEL_ID,
+        VANILLA_ITEM_GLOWSTONE_ID, VANILLA_ITEM_GLOW_INK_SAC_ID, VANILLA_ITEM_HONEYCOMB_ID,
+        VANILLA_ITEM_INK_SAC_ID, VANILLA_ITEM_SHEARS_ID,
+    },
+    packets::{Direction as ProtocolDirection, InteractionHand},
 };
 use std::collections::BTreeMap;
+
+const VANILLA_BOOKSHELF_BOOKS_ITEM_TAG: &str = "minecraft:bookshelf_books";
+const VANILLA_LECTERN_BOOKS_ITEM_TAG: &str = "minecraft:lectern_books";
+const VANILLA_NOTEBLOCK_TOP_INSTRUMENTS_ITEM_TAG: &str = "minecraft:noteblock_top_instruments";
+const VANILLA_AXES_ITEM_TAG: &str = "minecraft:axes";
 
 impl WorldStore {
     pub(super) fn predict_local_block_use_item_on(
@@ -32,15 +43,32 @@ impl WorldStore {
         }
 
         match owner {
-            VanillaBlockUseItemOnOverride::ChiseledBookShelfBlock
-                if self.local_item_in_hand(hand).is_none() =>
-            {
+            VanillaBlockUseItemOnOverride::ChiseledBookShelfBlock => {
                 if self.block_entity_type_id_at(context.pos)
-                    == Some(VANILLA_BLOCK_ENTITY_TYPE_CHISELED_BOOKSHELF_ID)
+                    != Some(VANILLA_BLOCK_ENTITY_TYPE_CHISELED_BOOKSHELF_ID)
                 {
-                    try_empty_hand()
-                } else {
-                    pass()
+                    return pass();
+                }
+                let Some(is_book) =
+                    self.local_item_in_hand_is_in_tag(hand, VANILLA_BOOKSHELF_BOOKS_ITEM_TAG)
+                else {
+                    return unsupported();
+                };
+                if !is_book {
+                    return try_empty_hand();
+                }
+                let Some(facing) = horizontal_direction_property(&block.block_properties, "facing")
+                else {
+                    return unsupported();
+                };
+                let Some(slot) = selectable_slot_hit(facing, context.face, context.cursor, 2, 3)
+                else {
+                    return pass();
+                };
+                match boolean_property(&block.block_properties, &format!("slot_{slot}_occupied")) {
+                    Some(true) => try_empty_hand(),
+                    Some(false) => success(),
+                    None => unsupported(),
                 }
             }
             VanillaBlockUseItemOnOverride::CakeBlock => {
@@ -70,6 +98,43 @@ impl WorldStore {
                     BTreeMap::from([("lit".to_string(), "false".to_string())]),
                     Some(LocalInteractionSoundAction::SuppressedCakeAddCandle),
                 )
+            }
+            VanillaBlockUseItemOnOverride::CandleBlock => {
+                let Some(lit) = boolean_property(&block.block_properties, "lit") else {
+                    return unsupported();
+                };
+                let Some(candles) = integer_property(&block.block_properties, "candles", 1..=4)
+                else {
+                    return unsupported();
+                };
+                if self.local_item_in_hand(hand).is_some()
+                    || self.local_player_is_adventure()
+                    || self.local_player_is_spectator()
+                    || !lit
+                {
+                    return try_empty_hand();
+                }
+                let mut properties = block.block_properties;
+                properties.insert("lit".to_string(), "false".to_string());
+                let Some(state_id) = self
+                    .registries
+                    .block_state_id_by_name_and_properties(block_type.resource_id, &properties)
+                else {
+                    return unsupported();
+                };
+                if !self.predict_local_block_state(context.pos, state_id, context.sequence) {
+                    return unsupported();
+                }
+                LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                    LocalInteractionSuccess {
+                        sound_action: Some(LocalInteractionSoundAction::SuppressedCandleExtinguish),
+                        particle_action: Some(LocalInteractionParticleAction::CandleExtinguish {
+                            pos: context.pos,
+                            candles,
+                        }),
+                        ..LocalInteractionSuccess::client_item_interaction()
+                    },
+                ))
             }
             VanillaBlockUseItemOnOverride::FlowerPotBlock => {
                 let Some(stack) = self.local_item_in_hand(hand) else {
@@ -126,16 +191,69 @@ impl WorldStore {
                     _ => unsupported(),
                 }
             }
+            VanillaBlockUseItemOnOverride::CampfireBlock => {
+                let Some(item_id) = self
+                    .local_item_in_hand(hand)
+                    .and_then(|stack| stack.item_id)
+                else {
+                    return try_empty_hand();
+                };
+                if self.block_entity_type_id_at(context.pos)
+                    != Some(VANILLA_BLOCK_ENTITY_TYPE_CAMPFIRE_ID)
+                {
+                    return try_empty_hand();
+                }
+                let Some(inputs) = self.recipes().property_sets.get("minecraft:campfire_input")
+                else {
+                    return unsupported();
+                };
+                if inputs.contains(&item_id) {
+                    consume()
+                } else {
+                    try_empty_hand()
+                }
+            }
             VanillaBlockUseItemOnOverride::ComposterBlock
-            | VanillaBlockUseItemOnOverride::NoteBlock
-            | VanillaBlockUseItemOnOverride::SweetBerryBushBlock
                 if self.local_item_in_hand(hand).is_none() =>
             {
                 try_empty_hand()
             }
-            VanillaBlockUseItemOnOverride::DecoratedPotBlock
-                if self.local_item_in_hand(hand).is_none() =>
-            {
+            VanillaBlockUseItemOnOverride::CopperGolemStatueBlock => {
+                let Some(is_axe) = self.local_item_in_hand_is_in_tag(hand, VANILLA_AXES_ITEM_TAG)
+                else {
+                    return unsupported();
+                };
+                if is_axe {
+                    return pass();
+                }
+                let Some(next_pose) = block
+                    .block_properties
+                    .get("copper_golem_pose")
+                    .and_then(|pose| next_copper_golem_pose(pose))
+                else {
+                    return unsupported();
+                };
+                let mut properties = block.block_properties;
+                properties.insert("copper_golem_pose".to_string(), next_pose.to_string());
+                let Some(state_id) = self
+                    .registries
+                    .block_state_id_by_name_and_properties(block_type.resource_id, &properties)
+                else {
+                    return unsupported();
+                };
+                if !self.predict_local_block_state(context.pos, state_id, context.sequence) {
+                    return unsupported();
+                }
+                LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                    LocalInteractionSuccess {
+                        sound_action: Some(
+                            LocalInteractionSoundAction::SuppressedCopperGolemBecomeStatue,
+                        ),
+                        ..LocalInteractionSuccess::client_item_interaction()
+                    },
+                ))
+            }
+            VanillaBlockUseItemOnOverride::DecoratedPotBlock => {
                 if self.block_entity_type_id_at(context.pos)
                     == Some(VANILLA_BLOCK_ENTITY_TYPE_DECORATED_POT_ID)
                 {
@@ -144,52 +262,145 @@ impl WorldStore {
                     pass()
                 }
             }
-            VanillaBlockUseItemOnOverride::JukeboxBlock
-                if self.local_item_in_hand(hand).is_none() =>
-            {
+            VanillaBlockUseItemOnOverride::JukeboxBlock => {
                 match block.block_properties.get("has_record").map(String::as_str) {
-                    Some("false" | "true") => try_empty_hand(),
+                    Some("true") => try_empty_hand(),
+                    Some("false") => {
+                        let Some(stack) = self.local_item_in_hand(hand) else {
+                            return try_empty_hand();
+                        };
+                        if self.item_stack_has_effective_component(
+                            stack,
+                            VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+                        ) {
+                            success()
+                        } else {
+                            try_empty_hand()
+                        }
+                    }
                     _ => unsupported(),
                 }
             }
-            VanillaBlockUseItemOnOverride::LecternBlock
-                if self.local_item_in_hand(hand).is_none() =>
-            {
+            VanillaBlockUseItemOnOverride::LecternBlock => {
                 match block.block_properties.get("has_book").map(String::as_str) {
                     Some("true") => try_empty_hand(),
-                    Some("false") if hand == InteractionHand::MainHand => pass(),
-                    Some("false") => try_empty_hand(),
+                    Some("false") => {
+                        let Some(is_book) =
+                            self.local_item_in_hand_is_in_tag(hand, VANILLA_LECTERN_BOOKS_ITEM_TAG)
+                        else {
+                            return unsupported();
+                        };
+                        if is_book {
+                            success()
+                        } else if self.local_item_in_hand(hand).is_none()
+                            && hand == InteractionHand::MainHand
+                        {
+                            pass()
+                        } else {
+                            try_empty_hand()
+                        }
+                    }
                     _ => unsupported(),
                 }
             }
-            VanillaBlockUseItemOnOverride::RespawnAnchorBlock
-                if self.local_item_in_hand(hand).is_none() =>
-            {
+            VanillaBlockUseItemOnOverride::NoteBlock => {
+                let Some(is_top_instrument) = self
+                    .local_item_in_hand_is_in_tag(hand, VANILLA_NOTEBLOCK_TOP_INSTRUMENTS_ITEM_TAG)
+                else {
+                    return unsupported();
+                };
+                if is_top_instrument && context.face == ProtocolDirection::Up {
+                    pass()
+                } else {
+                    try_empty_hand()
+                }
+            }
+            VanillaBlockUseItemOnOverride::PumpkinBlock => {
+                if self
+                    .local_item_in_hand(hand)
+                    .and_then(|stack| stack.item_id)
+                    == Some(VANILLA_ITEM_SHEARS_ID)
+                {
+                    success()
+                } else {
+                    try_empty_hand()
+                }
+            }
+            VanillaBlockUseItemOnOverride::RespawnAnchorBlock => {
                 let charges = block
                     .block_properties
                     .get("charges")
                     .and_then(|charges| charges.parse::<u8>().ok())
                     .filter(|charges| *charges <= 4);
-                match charges {
-                    Some(charges)
-                        if hand == InteractionHand::MainHand
-                            && charges < 4
-                            && self
-                                .local_item_in_hand(InteractionHand::OffHand)
-                                .and_then(|stack| stack.item_id)
-                                == Some(VANILLA_ITEM_GLOWSTONE_ID) =>
-                    {
-                        pass()
+                let Some(charges) = charges else {
+                    return unsupported();
+                };
+                let held_item_id = self
+                    .local_item_in_hand(hand)
+                    .and_then(|stack| stack.item_id);
+                if held_item_id == Some(VANILLA_ITEM_GLOWSTONE_ID) && charges < 4 {
+                    let mut properties = block.block_properties;
+                    properties.insert("charges".to_string(), (charges + 1).to_string());
+                    let Some(state_id) = self
+                        .registries
+                        .block_state_id_by_name_and_properties(block_type.resource_id, &properties)
+                    else {
+                        return unsupported();
+                    };
+                    if !self.predict_local_block_state(context.pos, state_id, context.sequence) {
+                        return unsupported();
                     }
-                    Some(_) => try_empty_hand(),
-                    None => unsupported(),
+                    let should_shrink = !self
+                        .local_player()
+                        .abilities
+                        .is_some_and(|abilities| abilities.instabuild);
+                    if should_shrink && !self.shrink_local_item_in_hand(hand, 1) {
+                        return unsupported();
+                    }
+                    return LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                        LocalInteractionSuccess {
+                            sound_action: Some(
+                                LocalInteractionSoundAction::SuppressedRespawnAnchorCharge,
+                            ),
+                            ..LocalInteractionSuccess::client_item_interaction()
+                        },
+                    ));
+                }
+                if hand == InteractionHand::MainHand
+                    && charges < 4
+                    && self
+                        .local_item_in_hand(InteractionHand::OffHand)
+                        .and_then(|stack| stack.item_id)
+                        == Some(VANILLA_ITEM_GLOWSTONE_ID)
+                {
+                    pass()
+                } else {
+                    try_empty_hand()
+                }
+            }
+            VanillaBlockUseItemOnOverride::ShelfBlock => {
+                if self.block_entity_type_id_at(context.pos)
+                    != Some(VANILLA_BLOCK_ENTITY_TYPE_SHELF_ID)
+                    || hand == InteractionHand::OffHand
+                {
+                    return pass();
+                }
+                let Some(facing) = horizontal_direction_property(&block.block_properties, "facing")
+                else {
+                    return unsupported();
+                };
+                if selectable_slot_hit(facing, context.face, context.cursor, 1, 3).is_none() {
+                    return pass();
+                }
+                if self.local_item_in_hand(InteractionHand::MainHand).is_some() {
+                    success()
+                } else {
+                    pass()
                 }
             }
             VanillaBlockUseItemOnOverride::SignBlock
             | VanillaBlockUseItemOnOverride::CeilingHangingSignBlock
-            | VanillaBlockUseItemOnOverride::WallHangingSignBlock
-                if self.local_item_in_hand(hand).is_none() =>
-            {
+            | VanillaBlockUseItemOnOverride::WallHangingSignBlock => {
                 if !matches!(
                     self.block_entity_type_id_at(context.pos),
                     Some(
@@ -199,14 +410,78 @@ impl WorldStore {
                 ) {
                     return pass();
                 }
+                let Some(has_usable_applicator) =
+                    self.local_item_in_hand(hand).map_or(Some(false), |stack| {
+                        item_stack_is_sign_applicator(stack.item_id).map(|is_applicator| {
+                            is_applicator
+                                && !self.local_player_is_adventure()
+                                && !self.local_player_is_spectator()
+                        })
+                    })
+                else {
+                    return unsupported();
+                };
                 match self.sign_text_state_at(context.pos) {
                     Some(text) if text.is_waxed => success(),
+                    Some(_) if has_usable_applicator => success(),
                     Some(_) => consume(),
                     None => unsupported(),
                 }
             }
+            VanillaBlockUseItemOnOverride::SweetBerryBushBlock => {
+                let Some(age) = integer_property(&block.block_properties, "age", 0..=3) else {
+                    return unsupported();
+                };
+                let held_item_id = self
+                    .local_item_in_hand(hand)
+                    .and_then(|stack| stack.item_id);
+                if age < 3 && held_item_id == Some(VANILLA_ITEM_BONE_MEAL_ID) {
+                    pass()
+                } else {
+                    try_empty_hand()
+                }
+            }
+            VanillaBlockUseItemOnOverride::TntBlock => {
+                match self
+                    .local_item_in_hand(hand)
+                    .and_then(|stack| stack.item_id)
+                {
+                    Some(VANILLA_ITEM_FLINT_AND_STEEL_ID | VANILLA_ITEM_FIRE_CHARGE_ID) => {
+                        success()
+                    }
+                    _ => try_empty_hand(),
+                }
+            }
+            VanillaBlockUseItemOnOverride::VaultBlock => {
+                match (
+                    self.local_item_in_hand(hand).is_some(),
+                    block
+                        .block_properties
+                        .get("vault_state")
+                        .map(String::as_str),
+                ) {
+                    (true, Some("active")) => {
+                        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                            LocalInteractionSuccess::server_item_interaction(),
+                        ))
+                    }
+                    (_, Some("inactive" | "unlocking" | "ejecting")) | (false, Some("active")) => {
+                        try_empty_hand()
+                    }
+                    _ => unsupported(),
+                }
+            }
             _ => unsupported(),
         }
+    }
+
+    fn local_item_in_hand_is_in_tag(&self, hand: InteractionHand, tag: &str) -> Option<bool> {
+        let Some(stack) = self.local_item_in_hand(hand) else {
+            return Some(false);
+        };
+        let item_id = stack.item_id?;
+        let item_ids = self.registries.holder_ids_for_tag("minecraft:item", tag)?;
+        Some(item_ids.contains(&item_id))
     }
 
     fn predict_local_block_item_replacement(
@@ -271,6 +546,92 @@ fn block_type_for_item(item_id: i32) -> Option<&'static BlockTypeCatalogEntry> {
         .block_item_behavior?
         .block_type_id;
     VANILLA_BLOCK_TYPES.get(usize::try_from(block_type_id).ok()?)
+}
+
+fn item_stack_is_sign_applicator(item_id: Option<i32>) -> Option<bool> {
+    let item = vanilla_item_type(item_id?)?;
+    Some(
+        item.interact_living_entity_override
+            == Some(VanillaItemInteractLivingEntityOverride::DyeItem)
+            || item.use_on_override == Some(VanillaItemUseOnOverride::HoneycombItem)
+            || matches!(
+                item.id,
+                VANILLA_ITEM_INK_SAC_ID | VANILLA_ITEM_GLOW_INK_SAC_ID | VANILLA_ITEM_HONEYCOMB_ID
+            ),
+    )
+}
+
+fn next_copper_golem_pose(pose: &str) -> Option<&'static str> {
+    match pose {
+        "standing" => Some("sitting"),
+        "sitting" => Some("running"),
+        "running" => Some("star"),
+        "star" => Some("standing"),
+        _ => None,
+    }
+}
+
+fn boolean_property(properties: &BTreeMap<String, String>, property: &str) -> Option<bool> {
+    match properties.get(property)?.as_str() {
+        "false" => Some(false),
+        "true" => Some(true),
+        _ => None,
+    }
+}
+
+fn integer_property(
+    properties: &BTreeMap<String, String>,
+    property: &str,
+    range: std::ops::RangeInclusive<u8>,
+) -> Option<u8> {
+    properties
+        .get(property)?
+        .parse::<u8>()
+        .ok()
+        .filter(|value| range.contains(value))
+}
+
+fn horizontal_direction_property(
+    properties: &BTreeMap<String, String>,
+    property: &str,
+) -> Option<ProtocolDirection> {
+    match properties.get(property)?.as_str() {
+        "north" => Some(ProtocolDirection::North),
+        "south" => Some(ProtocolDirection::South),
+        "west" => Some(ProtocolDirection::West),
+        "east" => Some(ProtocolDirection::East),
+        _ => None,
+    }
+}
+
+fn selectable_slot_hit(
+    facing: ProtocolDirection,
+    clicked_direction: ProtocolDirection,
+    cursor: [f64; 3],
+    rows: usize,
+    columns: usize,
+) -> Option<usize> {
+    if facing != clicked_direction || rows == 0 || columns == 0 {
+        return None;
+    }
+    let relative_x = match clicked_direction {
+        ProtocolDirection::North => 1.0 - cursor[0] as f32,
+        ProtocolDirection::South => cursor[0] as f32,
+        ProtocolDirection::West => cursor[2] as f32,
+        ProtocolDirection::East => 1.0 - cursor[2] as f32,
+        ProtocolDirection::Down | ProtocolDirection::Up => return None,
+    };
+    let row = selectable_slot_section(1.0 - cursor[1] as f32, rows);
+    let column = selectable_slot_section(relative_x, columns);
+    Some(column + row * columns)
+}
+
+fn selectable_slot_section(relative_coordinate: f32, sections: usize) -> usize {
+    let targeted_pixel = relative_coordinate * 16.0;
+    let section_size = 16.0 / sections as f32;
+    (targeted_pixel / section_size)
+        .floor()
+        .clamp(0.0, (sections - 1) as f32) as usize
 }
 
 fn pass() -> LocalTargetUsePrediction {

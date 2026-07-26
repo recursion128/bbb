@@ -179,6 +179,8 @@ pub enum LocalInteractionSoundAction {
     SuppressedCandleExtinguish,
     SuppressedCakeAddCandle,
     SuppressedDecoratedPotInsertFail,
+    SuppressedRespawnAnchorCharge,
+    SuppressedCopperGolemBecomeStatue,
     BlockPlace {
         pos: BlockPos,
         sound_resource_id: &'static str,
@@ -216,6 +218,10 @@ pub enum LocalInteractionParticleAction {
     },
     CandleCakeExtinguish {
         pos: BlockPos,
+    },
+    CandleExtinguish {
+        pos: BlockPos,
+        candles: u8,
     },
 }
 
