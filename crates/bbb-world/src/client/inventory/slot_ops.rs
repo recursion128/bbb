@@ -736,8 +736,6 @@ pub(super) fn inventory_menu_result_click_requires_server_authority(
     input: ProtocolContainerInput,
     slots: &[ContainerSlot],
     default_item_crafting_remainders_known: bool,
-    default_item_crafting_remainders: &BTreeMap<i32, i32>,
-    recipe_specific_crafting_remainder_item_ids: &BTreeSet<i32>,
 ) -> bool {
     if container_id != INVENTORY_MENU_CONTAINER_ID
         || slot_num != 0
@@ -751,13 +749,8 @@ pub(super) fn inventory_menu_result_click_requires_server_authority(
     }
 
     !inventory_menu_non_empty_crafting_slot_nums(slots).is_empty()
-        && inventory_menu_predictable_input_slot_nums(
-            slots,
-            default_item_crafting_remainders_known,
-            default_item_crafting_remainders,
-            recipe_specific_crafting_remainder_item_ids,
-        )
-        .is_none()
+        && inventory_menu_predictable_input_slot_nums(slots, default_item_crafting_remainders_known)
+            .is_none()
 }
 
 pub(super) fn apply_inventory_menu_result_take_side_effects(
@@ -765,14 +758,15 @@ pub(super) fn apply_inventory_menu_result_take_side_effects(
     default_item_crafting_remainders: &BTreeMap<i32, i32>,
     selected_hotbar_slot: u8,
     default_item_max_stack_sizes: &BTreeMap<i32, i32>,
-) -> Option<CraftingResultTakeSideEffects> {
+) {
     let input_slot_nums = inventory_menu_non_empty_crafting_slot_nums(slots);
-    apply_crafting_result_take_side_effects_for_slots(
+    apply_crafting_result_take_side_effects(
         INVENTORY_MENU_CONTAINER_ID,
         slots,
         &input_slot_nums,
         default_item_crafting_remainders,
-        Some(PlayerInventoryAddSlots::inventory_menu()),
+        PlayerInventoryAddSlots::inventory_menu(),
+        None,
         selected_hotbar_slot,
         default_item_max_stack_sizes,
     )
@@ -797,24 +791,6 @@ pub(super) fn non_empty_slot_nums(
         .collect()
 }
 
-pub(super) fn inventory_menu_inputs_can_take_result(
-    slots: &[ContainerSlot],
-    input_slot_nums: &[i16],
-) -> bool {
-    !input_slot_nums.is_empty()
-        && input_slot_nums.iter().all(|slot_num| {
-            slots
-                .iter()
-                .find(|slot| slot.slot == *slot_num)
-                .is_some_and(|slot| item_stack_is_non_empty(&slot.item))
-        })
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) struct CraftingResultTakeSideEffects {
-    pub(super) inputs_can_still_take_result: bool,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct PlayerInventoryAddSlots {
     main_start: i16,
@@ -834,18 +810,44 @@ impl PlayerInventoryAddSlots {
             offhand_slot: Some(INVENTORY_MENU_OFFHAND_SLOT),
         }
     }
+
+    pub(super) fn crafting_menu() -> Self {
+        Self {
+            main_start: CRAFTING_MENU_PLAYER_MAIN_START,
+            main_end: CRAFTING_MENU_PLAYER_MAIN_END,
+            hotbar_start: CRAFTING_MENU_HOTBAR_START,
+            hotbar_end: CRAFTING_MENU_HOTBAR_END,
+            offhand_slot: None,
+        }
+    }
+
+    fn for_container_menu(container_id: i32, container_slots: &[ContainerSlot]) -> Option<Self> {
+        if container_id == INVENTORY_MENU_CONTAINER_ID {
+            return Some(Self::inventory_menu());
+        }
+        let total_slots = container_slots.iter().map(|slot| slot.slot + 1).max()?;
+        let player_start = total_slots.checked_sub(GENERIC_CONTAINER_PLAYER_SLOT_COUNT)?;
+        let hotbar_start = total_slots.checked_sub(PLAYER_HOTBAR_SIZE as i16)?;
+        Some(Self {
+            main_start: player_start,
+            main_end: hotbar_start,
+            hotbar_start,
+            hotbar_end: total_slots,
+            offhand_slot: None,
+        })
+    }
 }
 
-pub(super) fn apply_crafting_result_take_side_effects_for_slots(
+pub(super) fn apply_crafting_result_take_side_effects(
     container_id: i32,
     slots: &mut [ContainerSlot],
     input_slot_nums: &[i16],
     default_item_crafting_remainders: &BTreeMap<i32, i32>,
-    player_inventory_add_slots: Option<PlayerInventoryAddSlots>,
+    player_inventory_add_slots: PlayerInventoryAddSlots,
+    mut external_offhand: Option<&mut ProtocolItemStackSummary>,
     selected_hotbar_slot: u8,
     default_item_max_stack_sizes: &BTreeMap<i32, i32>,
-) -> Option<CraftingResultTakeSideEffects> {
-    let mut inputs_can_still_take_result = true;
+) {
     for slot_num in input_slot_nums {
         let Some(slot_index) = slots.iter().position(|slot| slot.slot == *slot_num) else {
             continue;
@@ -869,70 +871,74 @@ pub(super) fn apply_crafting_result_take_side_effects_for_slots(
                 normalize_item_stack(&mut replacement);
                 slots[slot_index].item = replacement;
             } else {
-                let player_inventory_add_slots = player_inventory_add_slots?;
-                if !add_item_stack_to_visible_player_inventory(
+                add_item_stack_to_player_inventory(
                     container_id,
                     slots,
                     &mut replacement,
                     player_inventory_add_slots,
+                    external_offhand.as_deref_mut(),
                     selected_hotbar_slot,
                     default_item_max_stack_sizes,
-                ) || item_stack_is_non_empty(&replacement)
-                {
-                    return None;
-                }
+                );
             }
         }
         normalize_container_slot_selection(&mut slots[slot_index]);
-        if !item_stack_is_non_empty(&slots[slot_index].item)
-            || !same_item_same_components(&slots[slot_index].item, &input_before)
-        {
-            inputs_can_still_take_result = false;
-        }
     }
-    Some(CraftingResultTakeSideEffects {
-        inputs_can_still_take_result,
-    })
 }
 
-pub(super) fn add_item_stack_to_visible_player_inventory(
+pub(super) fn add_item_stack_to_player_inventory(
     container_id: i32,
     slots: &mut [ContainerSlot],
     moving: &mut ProtocolItemStackSummary,
     player_inventory_add_slots: PlayerInventoryAddSlots,
+    mut external_offhand: Option<&mut ProtocolItemStackSummary>,
     selected_hotbar_slot: u8,
     default_item_max_stack_sizes: &BTreeMap<i32, i32>,
 ) -> bool {
     let mut changed = false;
-    if item_stack_max_stack_size(moving, default_item_max_stack_sizes) > 1 {
-        for dest_slot in
-            player_inventory_merge_slot_order(player_inventory_add_slots, selected_hotbar_slot)
-        {
+    let damaged = moving
+        .component_patch
+        .damage
+        .is_some_and(|damage| damage > 0);
+    if !damaged && item_stack_max_stack_size(moving, default_item_max_stack_sizes) > 1 {
+        let selected_hotbar_slot =
+            player_inventory_add_slots.hotbar_start + i16::from(selected_hotbar_slot.min(8));
+        changed |= merge_item_stack_into_container_slot(
+            container_id,
+            slots,
+            moving,
+            selected_hotbar_slot,
+            default_item_max_stack_sizes,
+        );
+        if let Some(offhand_slot) = player_inventory_add_slots.offhand_slot {
+            changed |= merge_item_stack_into_container_slot(
+                container_id,
+                slots,
+                moving,
+                offhand_slot,
+                default_item_max_stack_sizes,
+            );
+        } else if let Some(offhand) = external_offhand.as_deref_mut() {
+            changed |= merge_item_stack_into_external_inventory_slot(
+                moving,
+                offhand,
+                default_item_max_stack_sizes,
+            );
+        }
+        for dest_slot in player_inventory_remaining_merge_slot_order(
+            player_inventory_add_slots,
+            selected_hotbar_slot,
+        ) {
             if item_stack_is_empty(moving) {
                 break;
             }
-            let Some(dest_index) = slots.iter().position(|slot| slot.slot == dest_slot) else {
-                continue;
-            };
-            let slot = &mut slots[dest_index];
-            if item_stack_is_empty(&slot.item) || !same_item_same_components(moving, &slot.item) {
-                continue;
-            }
-            let max_stack_size = container_slot_max_stack_size(
+            changed |= merge_item_stack_into_container_slot(
                 container_id,
+                slots,
+                moving,
                 dest_slot,
-                &slot.item,
                 default_item_max_stack_sizes,
             );
-            let moved = moving.count.min((max_stack_size - slot.item.count).max(0));
-            if moved <= 0 {
-                continue;
-            }
-            slot.item.count += moved;
-            moving.count -= moved;
-            normalize_item_stack(moving);
-            normalize_container_slot_selection(slot);
-            changed = true;
         }
     }
 
@@ -965,17 +971,70 @@ pub(super) fn add_item_stack_to_visible_player_inventory(
     changed
 }
 
-pub(super) fn player_inventory_merge_slot_order(
-    slots: PlayerInventoryAddSlots,
-    selected_hotbar_slot: u8,
-) -> Vec<i16> {
-    let selected_hotbar_slot = slots.hotbar_start + i16::from(selected_hotbar_slot.min(8));
-    let mut order = Vec::with_capacity(38);
-    order.push(selected_hotbar_slot);
-    if let Some(offhand_slot) = slots.offhand_slot {
-        order.push(offhand_slot);
+pub(super) fn merge_item_stack_into_container_slot(
+    container_id: i32,
+    slots: &mut [ContainerSlot],
+    moving: &mut ProtocolItemStackSummary,
+    dest_slot: i16,
+    default_item_max_stack_sizes: &BTreeMap<i32, i32>,
+) -> bool {
+    if item_stack_is_empty(moving) {
+        return false;
     }
-    order.extend(slots.hotbar_start..slots.hotbar_end);
+    let Some(dest_index) = slots.iter().position(|slot| slot.slot == dest_slot) else {
+        return false;
+    };
+    let slot = &mut slots[dest_index];
+    if item_stack_is_empty(&slot.item) || !same_item_same_components(moving, &slot.item) {
+        return false;
+    }
+    let max_stack_size = container_slot_max_stack_size(
+        container_id,
+        dest_slot,
+        &slot.item,
+        default_item_max_stack_sizes,
+    );
+    let moved = moving.count.min((max_stack_size - slot.item.count).max(0));
+    if moved <= 0 {
+        return false;
+    }
+    slot.item.count += moved;
+    moving.count -= moved;
+    normalize_item_stack(moving);
+    normalize_container_slot_selection(slot);
+    true
+}
+
+pub(super) fn merge_item_stack_into_external_inventory_slot(
+    moving: &mut ProtocolItemStackSummary,
+    dest: &mut ProtocolItemStackSummary,
+    default_item_max_stack_sizes: &BTreeMap<i32, i32>,
+) -> bool {
+    if item_stack_is_empty(moving)
+        || item_stack_is_empty(dest)
+        || !same_item_same_components(moving, dest)
+    {
+        return false;
+    }
+    let max_stack_size = item_stack_max_stack_size(dest, default_item_max_stack_sizes);
+    let moved = moving.count.min((max_stack_size - dest.count).max(0));
+    if moved <= 0 {
+        return false;
+    }
+    dest.count += moved;
+    moving.count -= moved;
+    normalize_item_stack(moving);
+    true
+}
+
+pub(super) fn player_inventory_remaining_merge_slot_order(
+    slots: PlayerInventoryAddSlots,
+    selected_hotbar_slot: i16,
+) -> Vec<i16> {
+    let mut order = Vec::with_capacity(35);
+    order.extend(
+        (slots.hotbar_start..slots.hotbar_end).filter(|slot| *slot != selected_hotbar_slot),
+    );
     order.extend(slots.main_start..slots.main_end);
     order
 }
@@ -990,17 +1049,8 @@ pub(super) fn player_inventory_free_slot_order(slots: PlayerInventoryAddSlots) -
 pub(super) fn inventory_menu_predictable_input_slot_nums(
     slots: &[ContainerSlot],
     default_item_crafting_remainders_known: bool,
-    default_item_crafting_remainders: &BTreeMap<i32, i32>,
-    recipe_specific_crafting_remainder_item_ids: &BTreeSet<i32>,
 ) -> Option<Vec<i16>> {
-    crafting_result_predictable_input_slot_nums(
-        slots,
-        1,
-        5,
-        default_item_crafting_remainders_known,
-        default_item_crafting_remainders,
-        recipe_specific_crafting_remainder_item_ids,
-    )
+    crafting_result_predictable_input_slot_nums(slots, 1, 5, default_item_crafting_remainders_known)
 }
 
 pub(super) fn simple_item_stack(item_id: i32) -> ProtocolItemStackSummary {
@@ -1016,8 +1066,6 @@ pub(super) fn crafting_result_predictable_input_slot_nums(
     start_slot: i16,
     end_slot: i16,
     default_item_crafting_remainders_known: bool,
-    _default_item_crafting_remainders: &BTreeMap<i32, i32>,
-    recipe_specific_crafting_remainder_item_ids: &BTreeSet<i32>,
 ) -> Option<Vec<i16>> {
     if !default_item_crafting_remainders_known {
         return None;
@@ -1029,13 +1077,9 @@ pub(super) fn crafting_result_predictable_input_slot_nums(
                 .iter()
                 .find(|slot| slot.slot == *slot_num)
                 .is_some_and(|slot| {
-                    let item_id = slot.item.item_id;
                     item_stack_is_non_empty(&slot.item)
-                        && item_id.is_some()
+                        && slot.item.item_id.is_some()
                         && slot.item.count > 0
-                        && !item_id.is_some_and(|item_id| {
-                            recipe_specific_crafting_remainder_item_ids.contains(&item_id)
-                        })
                 })
         });
     can_predict.then_some(input_slot_nums)
@@ -1613,100 +1657,20 @@ fn add_item_to_external_player_inventory(
     selected_hotbar_slot: u8,
     default_item_max_stack_sizes: &BTreeMap<i32, i32>,
 ) {
-    if item_stack_is_empty(&moving) {
+    let Some(player_inventory_add_slots) =
+        PlayerInventoryAddSlots::for_container_menu(container_id, slots)
+    else {
         return;
-    }
-    let damaged = moving
-        .component_patch
-        .damage
-        .is_some_and(|damage| damage > 0);
-    if !damaged {
-        let selected = i32::from(selected_hotbar_slot.min(8));
-        for inventory_slot in std::iter::once(selected)
-            .chain(std::iter::once(VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT))
-            .chain(0..36)
-        {
-            if item_stack_is_empty(&moving) {
-                return;
-            }
-            if inventory_slot == VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT {
-                merge_item_stack_into_external_slot(
-                    offhand,
-                    &mut moving,
-                    default_item_max_stack_sizes,
-                );
-                continue;
-            }
-            let Some(slot_num) =
-                container_menu_slot_for_player_inventory_slot(container_id, slots, inventory_slot)
-            else {
-                continue;
-            };
-            let Some(slot_index) = slots.iter().position(|slot| slot.slot == slot_num) else {
-                continue;
-            };
-            merge_item_stack_into_external_slot(
-                &mut slots[slot_index].item,
-                &mut moving,
-                default_item_max_stack_sizes,
-            );
-        }
-    }
-    if item_stack_is_empty(&moving) {
-        return;
-    }
-    for inventory_slot in 0..36 {
-        let Some(slot_num) =
-            container_menu_slot_for_player_inventory_slot(container_id, slots, inventory_slot)
-        else {
-            continue;
-        };
-        let Some(slot) = slots.iter_mut().find(|slot| slot.slot == slot_num) else {
-            continue;
-        };
-        if item_stack_is_empty(&slot.item) {
-            slot.item = moving;
-            normalize_container_slot_selection(slot);
-            return;
-        }
-    }
-    // Vanilla drops the remainder when Inventory.add cannot accept it.
-}
-
-fn merge_item_stack_into_external_slot(
-    slot: &mut ProtocolItemStackSummary,
-    moving: &mut ProtocolItemStackSummary,
-    default_item_max_stack_sizes: &BTreeMap<i32, i32>,
-) {
-    if item_stack_is_empty(slot)
-        || !same_item_same_components(slot, moving)
-        || item_stack_max_stack_size(slot, default_item_max_stack_sizes) <= 1
-    {
-        return;
-    }
-    let max_stack_size = item_stack_max_stack_size(slot, default_item_max_stack_sizes);
-    let moved = moving.count.min((max_stack_size - slot.count).max(0));
-    slot.count += moved;
-    moving.count -= moved;
-    normalize_item_stack(moving);
-}
-
-fn container_menu_slot_for_player_inventory_slot(
-    container_id: i32,
-    slots: &[ContainerSlot],
-    inventory_slot: i32,
-) -> Option<i16> {
-    if container_id == INVENTORY_MENU_CONTAINER_ID {
-        return inventory_slot_to_inventory_menu_slot(inventory_slot);
-    }
-    let inventory_slot = i16::try_from(inventory_slot).ok()?;
-    let total_slots = slots.iter().map(|slot| slot.slot + 1).max()?;
-    let player_start = total_slots.checked_sub(GENERIC_CONTAINER_PLAYER_SLOT_COUNT)?;
-    match inventory_slot {
-        0..=8 => Some(total_slots - PLAYER_HOTBAR_SIZE as i16 + inventory_slot),
-        9..=35 => Some(player_start + inventory_slot - 9),
-        _ => None,
-    }
+    };
+    add_item_stack_to_player_inventory(
+        container_id,
+        slots,
+        &mut moving,
+        player_inventory_add_slots,
+        Some(offhand),
+        selected_hotbar_slot,
+        default_item_max_stack_sizes,
+    );
 }
 
 fn visible_player_slot_range(container_id: i32, slots: &[ContainerSlot]) -> (i16, i16) {
@@ -2128,82 +2092,38 @@ pub(super) fn apply_inventory_menu_result_quick_move_to_slots(
         return;
     }
 
-    let result_template = slots[result_index].item.clone();
     let input_slot_nums = inventory_menu_non_empty_crafting_slot_nums(slots);
-    if input_slot_nums.is_empty() {
-        let mut moving = result_template;
-        if move_item_stack_to_slots(
-            INVENTORY_MENU_CONTAINER_ID,
-            slots,
-            result_index,
-            &mut moving,
-            INVENTORY_MENU_MAIN_START,
-            INVENTORY_MENU_HOTBAR_END,
-            true,
-            default_item_max_stack_sizes,
-        ) {
-            normalize_item_stack(&mut moving);
-            slots[result_index].item = moving;
-            normalize_container_slot_selection(&mut slots[result_index]);
-        }
+    let mut candidate_slots = slots.to_vec();
+    let mut moving = candidate_slots[result_index].item.clone();
+    if !move_item_stack_to_slots(
+        INVENTORY_MENU_CONTAINER_ID,
+        &mut candidate_slots,
+        result_index,
+        &mut moving,
+        INVENTORY_MENU_MAIN_START,
+        INVENTORY_MENU_HOTBAR_END,
+        true,
+        default_item_max_stack_sizes,
+    ) {
         return;
     }
 
-    let max_crafts = input_slot_nums
-        .iter()
-        .filter_map(|slot_num| {
-            slots
-                .iter()
-                .find(|slot| slot.slot == *slot_num)
-                .map(|slot| slot.item.count)
-        })
-        .min()
-        .unwrap_or(0)
-        .max(0);
-
-    for _ in 0..max_crafts {
-        let result_still_same = container_slot_item(slots, 0).is_some_and(|item| {
-            item_stack_is_non_empty(item) && same_item_same_components(item, &result_template)
-        });
-        if !result_still_same || !inventory_menu_inputs_can_take_result(slots, &input_slot_nums) {
-            break;
-        }
-
-        let mut candidate_slots = slots.to_vec();
-        candidate_slots[result_index].item = result_template.clone();
-        let mut moving = result_template.clone();
-        if !move_item_stack_to_slots(
-            INVENTORY_MENU_CONTAINER_ID,
-            &mut candidate_slots,
-            result_index,
-            &mut moving,
-            INVENTORY_MENU_MAIN_START,
-            INVENTORY_MENU_HOTBAR_END,
-            true,
-            default_item_max_stack_sizes,
-        ) {
-            break;
-        }
-
-        candidate_slots[result_index].item = ProtocolItemStackSummary::empty();
-        normalize_container_slot_selection(&mut candidate_slots[result_index]);
-        let Some(side_effects) = apply_crafting_result_take_side_effects_for_slots(
+    normalize_item_stack(&mut moving);
+    candidate_slots[result_index].item = moving;
+    normalize_container_slot_selection(&mut candidate_slots[result_index]);
+    if !input_slot_nums.is_empty() {
+        apply_crafting_result_take_side_effects(
             INVENTORY_MENU_CONTAINER_ID,
             &mut candidate_slots,
             &input_slot_nums,
             default_item_crafting_remainders,
-            Some(PlayerInventoryAddSlots::inventory_menu()),
+            PlayerInventoryAddSlots::inventory_menu(),
+            None,
             selected_hotbar_slot,
             default_item_max_stack_sizes,
-        ) else {
-            break;
-        };
-        if side_effects.inputs_can_still_take_result {
-            candidate_slots[result_index].item = result_template.clone();
-            normalize_container_slot_selection(&mut candidate_slots[result_index]);
-        }
-        slots.clone_from_slice(&candidate_slots);
+        );
     }
+    slots.clone_from_slice(&candidate_slots);
 }
 
 pub(super) fn apply_furnace_quick_move_to_slots(

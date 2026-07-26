@@ -6,8 +6,10 @@ Match the Vanilla 26.1 remote client's ownership of the Inventory and Crafting
 menu result slots. Server `ContainerSetContent` / `ContainerSetSlot` packets own
 the result stack. A local result click may predict only the client-visible
 `ResultSlot.onTake` effects: consume one item from each occupied positioned input
-slot, apply each input item's default crafting remainder, and leave the result
-slot empty until the server sends a correction.
+slot and apply each input item's default crafting remainder. Primary pickup and
+a fully transferred quick-move leave the result slot empty until the server
+sends a correction; a capacity-limited transfer retains only its unmoved result
+count.
 
 Completion means Inventory menu input clicks never synthesize or clear result
 slot `0` from RecipeBookAdd displays; Inventory and Crafting result pickup and
@@ -86,10 +88,10 @@ Vanilla 26.1 source tree.
    and quick-move. Focused tests:
    `scripts/cargo-dev.sh test -p bbb-world inventory_menu_crafting_result`.
 2. Make Inventory and Crafting result pickup/quick-move consume one positioned
-   input set, use only default item remainders, leave the result empty, and keep
-   unknown-default metadata fail-closed. Cover merge, inventory insertion, full
-   inventory, component-rich result, recipe-specific inputs, and server
-   correction. Focused tests:
+   input set, use only default item remainders, retain only an unmoved result
+   remainder, and keep unknown-default metadata fail-closed. Cover merge,
+   inventory insertion, full inventory, component-rich result, recipe-specific
+   inputs, and server correction. Focused tests:
    `scripts/cargo-dev.sh test -p bbb-world crafting_result` and
    `scripts/cargo-dev.sh test -p bbb-native crafting_result`.
 3. Remove recipe-specific remainder extraction, generated constants, item-model

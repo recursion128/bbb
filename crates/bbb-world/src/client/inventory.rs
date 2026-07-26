@@ -2022,13 +2022,19 @@ impl InventoryState {
         let mut cursor_after = self.cursor_item.clone();
         let mut quick_craft_after = self.local_quick_craft.clone();
         let external_offhand_before = (container_id != INVENTORY_MENU_CONTAINER_ID
-            && request.input == ProtocolContainerInput::Swap
-            && request.button_num == VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT as i8)
-            .then(|| {
-                self.local_offhand_item()
-                    .cloned()
-                    .unwrap_or_else(ProtocolItemStackSummary::empty)
-            });
+            && ((request.input == ProtocolContainerInput::Swap
+                && request.button_num == VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT as i8)
+                || (menu_type_id == Some(VANILLA_MENU_TYPE_CRAFTING_ID)
+                    && request.slot_num == CRAFTING_MENU_RESULT_SLOT
+                    && matches!(
+                        request.input,
+                        ProtocolContainerInput::Pickup | ProtocolContainerInput::QuickMove
+                    ))))
+        .then(|| {
+            self.local_offhand_item()
+                .cloned()
+                .unwrap_or_else(ProtocolItemStackSummary::empty)
+        });
         let mut external_offhand_after = external_offhand_before.clone();
         let anvil_result_may_pickup = anvil_result_may_pickup(
             &data_values,
@@ -2047,8 +2053,6 @@ impl InventoryState {
             request.input,
             &slots_after,
             ctx.items.default_item_crafting_remainders_known,
-            &ctx.items.default_item_crafting_remainders,
-            &ctx.items.recipe_specific_crafting_remainder_item_ids,
         ) {
             return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
                 request.input,
@@ -2069,7 +2073,7 @@ impl InventoryState {
                         request.button_num,
                         ctx.items.default_item_crafting_remainders_known,
                         &ctx.items.default_item_crafting_remainders,
-                        &ctx.items.recipe_specific_crafting_remainder_item_ids,
+                        external_offhand_after.as_mut(),
                         ctx.local_player.selected_hotbar_slot,
                         &ctx.items.default_item_max_stack_sizes,
                     ) {
@@ -2291,7 +2295,7 @@ impl InventoryState {
                                 &mut slots_after,
                                 ctx.items.default_item_crafting_remainders_known,
                                 &ctx.items.default_item_crafting_remainders,
-                                &ctx.items.recipe_specific_crafting_remainder_item_ids,
+                                external_offhand_after.as_mut(),
                                 ctx.local_player.selected_hotbar_slot,
                                 &ctx.items.default_item_max_stack_sizes,
                             ) {
@@ -2692,18 +2696,12 @@ impl InventoryState {
             && request.input != ProtocolContainerInput::QuickMove
             && inventory_menu_result_was_taken(&slots_before, &slots_after)
         {
-            if apply_inventory_menu_result_take_side_effects(
+            apply_inventory_menu_result_take_side_effects(
                 &mut slots_after,
                 &ctx.items.default_item_crafting_remainders,
                 ctx.local_player.selected_hotbar_slot,
                 &ctx.items.default_item_max_stack_sizes,
-            )
-            .is_none()
-            {
-                return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
-                    request.input,
-                ));
-            }
+            );
         }
         let changed_slots = changed_hashed_slots(ctx, &slots_before, &slots_after)?;
         let carried_item = hashed_stack_from_summary(ctx, &cursor_after)
