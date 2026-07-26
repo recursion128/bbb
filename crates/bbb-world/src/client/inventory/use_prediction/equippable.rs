@@ -678,7 +678,7 @@ mod tests {
                 &stack(VANILLA_ITEM_WOLF_ARMOR_ID, 1),
             ),
             Ok(false),
-            "wolf armor is a known BODY equippable, not an unsupported horse profile"
+            "wolf armor is a known BODY equippable, not an unresolved horse profile"
         );
     }
 
