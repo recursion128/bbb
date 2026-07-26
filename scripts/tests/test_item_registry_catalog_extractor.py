@@ -10,6 +10,7 @@ sys.path.insert(0, str(SCRIPTS))
 
 from item_registry_catalog_extractor import (  # noqa: E402
     ItemRegistryCatalogExtractionError,
+    extract_block_item_behaviors,
     extract_bucket_item_behaviors,
     extract_item_interact_living_entity_override_owners,
     extract_item_registry_catalog,
@@ -155,7 +156,6 @@ class Items {
             parse("net/minecraft/world/item/Item.java", ITEM),
             foods(),
         )
-
         self.assertEqual(
             extract_bucket_item_behaviors(extracted.declarations),
             {
@@ -165,6 +165,73 @@ class Items {
                 "COD_BUCKET": {
                     "fluid": "WATER",
                     "mob_empty_sound": "BUCKET_EMPTY_FISH",
+                },
+                "STICK": None,
+            },
+        )
+
+    def test_extracts_block_item_primary_wall_and_subclass_facts(self) -> None:
+        items = parse(
+            "net/minecraft/world/item/Items.java",
+            """
+package net.minecraft.world.item;
+class Items {
+  public static final Item STONE = registerBlock(Blocks.STONE);
+  public static final Item OAK_SIGN = registerBlock(
+      Blocks.OAK_SIGN,
+      (block, properties) -> new SignItem(block, Blocks.OAK_WALL_SIGN, properties));
+  public static final Item TORCH = registerBlock(
+      Blocks.TORCH,
+      (block, properties) -> new StandingAndWallBlockItem(
+          block, Blocks.WALL_TORCH, Direction.DOWN, properties));
+  public static final Item SCAFFOLDING =
+      registerBlock(Blocks.SCAFFOLDING, ScaffoldingBlockItem::new);
+  public static final Item REDSTONE =
+      registerItem("redstone", createBlockItemWithCustomItemName(Blocks.REDSTONE_WIRE));
+  public static final Item STICK = registerItem("stick");
+}
+""",
+        )
+        extracted = extract_item_registry_catalog(
+            items,
+            parse("net/minecraft/references/ItemIds.java", ITEM_IDS),
+            parse("net/minecraft/world/item/Item.java", ITEM),
+            foods(),
+        )
+        owners = {
+            "BlockItem": "BlockItem",
+            "ScaffoldingBlockItem": "BlockItem",
+            "SignItem": "BlockItem",
+            "StandingAndWallBlockItem": "BlockItem",
+            "Item": None,
+        }
+        self.assertEqual(
+            extract_block_item_behaviors(extracted.declarations, owners),
+            {
+                "STONE": {
+                    "kind": "BlockItem",
+                    "primary_block": "STONE",
+                    "wall_block": None,
+                },
+                "OAK_SIGN": {
+                    "kind": "SignItem",
+                    "primary_block": "OAK_SIGN",
+                    "wall_block": "OAK_WALL_SIGN",
+                },
+                "TORCH": {
+                    "kind": "StandingAndWallBlockItem",
+                    "primary_block": "TORCH",
+                    "wall_block": "WALL_TORCH",
+                },
+                "SCAFFOLDING": {
+                    "kind": "ScaffoldingBlockItem",
+                    "primary_block": "SCAFFOLDING",
+                    "wall_block": None,
+                },
+                "REDSTONE": {
+                    "kind": "BlockItem",
+                    "primary_block": "REDSTONE_WIRE",
+                    "wall_block": None,
                 },
                 "STICK": None,
             },

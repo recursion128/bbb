@@ -30,6 +30,25 @@ ITEM_OWNER = "net.minecraft.world.item.Item"
 ITEM_IDS_OWNER = "net.minecraft.references.ItemIds"
 FOODS_OWNER = "net.minecraft.world.food.Foods"
 ITEM_FIELD_TYPES = {"Item", "WeatheringCopperItems"}
+BLOCK_ITEM_FACTORY_CLASSES = {
+    "BannerItem",
+    "BedItem",
+    "BlockItem",
+    "DoubleHighBlockItem",
+    "GameMasterBlockItem",
+    "HangingSignItem",
+    "PlayerHeadItem",
+    "ScaffoldingBlockItem",
+    "SignItem",
+    "StandingAndWallBlockItem",
+}
+WALL_BLOCK_ITEM_FACTORY_CLASSES = {
+    "BannerItem",
+    "HangingSignItem",
+    "PlayerHeadItem",
+    "SignItem",
+    "StandingAndWallBlockItem",
+}
 
 
 def _walk_expression_facts(expression: dict):
@@ -134,6 +153,99 @@ def extract_bucket_item_behaviors(
         behaviors[declaration["field"]] = {
             "fluid": fluid,
             "mob_empty_sound": empty_sound,
+        }
+    return behaviors
+
+
+def extract_block_item_behaviors(
+    declarations: Sequence[dict],
+    use_on_owner_by_factory: dict[str, str | None],
+) -> dict[str, dict[str, str | None] | None]:
+    """Extract exact ``BlockItem`` registration and subclass placement facts."""
+
+    behaviors: dict[str, dict[str, str | None] | None] = {}
+    for declaration in declarations:
+        factory_class = item_factory_class(declaration)
+        if use_on_owner_by_factory[factory_class] != "BlockItem":
+            behaviors[declaration["field"]] = None
+            continue
+        if factory_class not in BLOCK_ITEM_FACTORY_CLASSES:
+            raise ItemRegistryCatalogExtractionError(
+                f"Items.{declaration['field']}: unsupported BlockItem factory "
+                f"{factory_class}"
+            )
+
+        initializer = declaration["initializer"]
+        arguments = initializer.get("arguments", [])
+        primary_block = None
+        if (
+            declaration["field_type"] == "WeatheringCopperItems"
+            or initializer.get("name") == "registerBlock"
+        ):
+            primary_block = (
+                _qualified_field(arguments[0], "Blocks") if arguments else None
+            )
+        elif initializer.get("name") == "registerItem":
+            custom_name_factories = [
+                fact
+                for fact in _walk_expression_facts(initializer)
+                if fact.get("kind") == "method_invocation"
+                and fact.get("name") == "createBlockItemWithCustomItemName"
+            ]
+            if len(custom_name_factories) == 1:
+                factory_arguments = custom_name_factories[0].get("arguments", [])
+                primary_block = (
+                    _qualified_field(factory_arguments[0], "Blocks")
+                    if factory_arguments
+                    else None
+                )
+        if primary_block is None:
+            raise ItemRegistryCatalogExtractionError(
+                f"Items.{declaration['field']}: BlockItem registration lacks "
+                "a primary Blocks constant"
+            )
+
+        wall_block = None
+        if factory_class in WALL_BLOCK_ITEM_FACTORY_CLASSES:
+            creations = [
+                fact
+                for fact in _walk_expression_facts(initializer)
+                if fact.get("kind") == "object_creation_expression"
+                and fact.get("name") == factory_class
+            ]
+            if len(creations) != 1:
+                raise ItemRegistryCatalogExtractionError(
+                    f"Items.{declaration['field']}: expected one "
+                    f"{factory_class} constructor"
+                )
+            wall_blocks = [
+                block
+                for argument in creations[0].get("arguments", [])
+                if (block := _qualified_field(argument, "Blocks")) is not None
+            ]
+            if len(wall_blocks) != 1:
+                raise ItemRegistryCatalogExtractionError(
+                    f"Items.{declaration['field']}: expected one wall Blocks "
+                    f"constant, got {wall_blocks}"
+                )
+            wall_block = wall_blocks[0]
+            if factory_class == "StandingAndWallBlockItem":
+                directions = [
+                    direction
+                    for argument in creations[0].get("arguments", [])
+                    if (direction := _qualified_field(argument, "Direction"))
+                    is not None
+                ]
+                if directions != ["DOWN"]:
+                    raise ItemRegistryCatalogExtractionError(
+                        f"Items.{declaration['field']}: expected "
+                        "StandingAndWallBlockItem attachment Direction.DOWN"
+                    )
+
+        behaviors[declaration["field"]] = {
+            "kind": factory_class,
+            "primary_block": primary_block,
+            "wall_block": wall_block,
         }
     return behaviors
 

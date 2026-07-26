@@ -14,6 +14,7 @@ from block_registry_catalog_extractor import (  # noqa: E402
     extract_block_bonemeal_target_override_owners,
     extract_block_bucket_pickup_owners,
     extract_block_can_survive_override_owners,
+    extract_block_get_state_for_placement_override_owners,
     extract_block_liquid_container_owners,
     extract_block_registry_catalog,
     extract_block_propagates_skylight_down_override_owners,
@@ -206,7 +207,11 @@ class BlockBehaviour {
                 """
 package net.minecraft.world.level.block;
 import net.minecraft.world.level.block.state.BlockBehaviour;
-class Block extends BlockBehaviour {}
+class Block extends BlockBehaviour {
+  public BlockState getStateForPlacement(BlockPlaceContext context) {
+    return defaultBlockState();
+  }
+}
 """,
             ),
             parse(
@@ -230,6 +235,9 @@ class StairBlock extends Block {
   protected boolean canSurvive(
       BlockState state, LevelReader level, BlockPos pos) {
     return false;
+  }
+  public BlockState getStateForPlacement(BlockPlaceContext context) {
+    return defaultBlockState();
   }
 }
 """,
@@ -294,6 +302,18 @@ class WeatheringCopperChainBlock extends ChainBlock {
         )
         self.assertEqual(
             extract_block_can_survive_override_owners(declarations, sources),
+            {
+                "AirBlock": None,
+                "Block": None,
+                "ChainBlock": None,
+                "StairBlock": "StairBlock",
+                "WeatheringCopperChainBlock": None,
+            },
+        )
+        self.assertEqual(
+            extract_block_get_state_for_placement_override_owners(
+                declarations, sources
+            ),
             {
                 "AirBlock": None,
                 "Block": None,

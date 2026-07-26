@@ -409,6 +409,22 @@ def extract_block_can_survive_override_owners(
     )
 
 
+def extract_block_get_state_for_placement_override_owners(
+    declarations: Sequence[dict],
+    block_class_sources: Sequence[JavaSource],
+) -> dict[str, str | None]:
+    """Resolve non-default ``Block.getStateForPlacement`` owners."""
+
+    return _extract_block_method_override_owners(
+        declarations,
+        block_class_sources,
+        "getStateForPlacement",
+        "BlockState",
+        ("BlockPlaceContext",),
+        "net.minecraft.world.level.block.Block",
+    )
+
+
 def extract_block_bonemeal_target_override_owners(
     declarations: Sequence[dict],
     block_class_sources: Sequence[JavaSource],
