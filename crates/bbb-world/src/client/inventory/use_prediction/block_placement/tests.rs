@@ -30,7 +30,7 @@ use bbb_protocol::{
         VANILLA_ITEM_OAK_SHELF_ID, VANILLA_ITEM_OAK_SIGN_ID, VANILLA_ITEM_OAK_SLAB_ID,
         VANILLA_ITEM_OAK_STAIRS_ID, VANILLA_ITEM_OAK_TRAPDOOR_ID, VANILLA_ITEM_OBSERVER_ID,
         VANILLA_ITEM_OXIDIZED_COPPER_CHEST_ID, VANILLA_ITEM_PALE_MOSS_CARPET_ID,
-        VANILLA_ITEM_POINTED_DRIPSTONE_ID, VANILLA_ITEM_REDSTONE_ID,
+        VANILLA_ITEM_POINTED_DRIPSTONE_ID, VANILLA_ITEM_REDSTONE_ID, VANILLA_ITEM_REPEATER_ID,
         VANILLA_ITEM_RESPAWN_ANCHOR_ID, VANILLA_ITEM_SMALL_DRIPLEAF_ID, VANILLA_ITEM_STONE_ID,
         VANILLA_ITEM_STRING_ID, VANILLA_ITEM_SUNFLOWER_ID, VANILLA_ITEM_TEST_BLOCK_ID,
         VANILLA_ITEM_TUBE_CORAL_FAN_ID, VANILLA_ITEM_WAXED_COPPER_CHEST_ID,
@@ -298,6 +298,33 @@ fn shelf_placement_uses_horizontal_facing_source_water_and_no_signal() {
                 ("powered", "false"),
                 ("side_chain", "unconnected"),
                 ("waterlogged", "true")
+            ],
+        )
+    );
+    assert_eq!(held(&world).count, 0);
+}
+
+#[test]
+fn repeater_placement_uses_diode_facing_support_and_no_side_lock() {
+    let clicked = BlockPos { x: 4, y: 8, z: 4 };
+    let target = relative(clicked, ProtocolDirection::Up);
+    let mut world = placement_world();
+    set_block(&mut world, clicked, state_id("minecraft:stone", []));
+    set_held(&mut world, VANILLA_ITEM_REPEATER_ID, 1);
+
+    assert!(matches!(
+        use_block_at(&mut world, clicked, false, 73),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        world.probe_block(target).unwrap().block_state_id,
+        state_id(
+            "minecraft:repeater",
+            [
+                ("delay", "1"),
+                ("facing", "north"),
+                ("locked", "false"),
+                ("powered", "false")
             ],
         )
     );
