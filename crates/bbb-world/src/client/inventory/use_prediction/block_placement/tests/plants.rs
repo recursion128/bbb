@@ -1,6 +1,96 @@
 use super::*;
 
 #[test]
+fn coral_fan_item_selects_floor_or_wall_form_with_full_water_state() {
+    let mut floor = placement_world();
+    set_held(&mut floor, VANILLA_ITEM_TUBE_CORAL_FAN_ID, 1);
+    assert!(matches!(
+        use_block(&mut floor, 47),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        floor.probe_block(TARGET).unwrap().block_state_id,
+        state_id("minecraft:tube_coral_fan", [("waterlogged", "false")])
+    );
+
+    let wall_target = relative(CLICKED, ProtocolDirection::East);
+    let mut wall = placement_world();
+    set_block(
+        &mut wall,
+        wall_target,
+        state_id("minecraft:water", [("level", "0")]),
+    );
+    set_held(&mut wall, VANILLA_ITEM_TUBE_CORAL_FAN_ID, 1);
+    assert!(matches!(
+        wall.predict_local_block_use_with_hit(
+            CLICKED,
+            ProtocolDirection::East,
+            [1.0, 0.5, 0.5],
+            false,
+            InteractionHand::MainHand,
+            false,
+            48,
+        ),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        wall.probe_block(wall_target).unwrap().block_state_id,
+        state_id(
+            "minecraft:tube_coral_wall_fan",
+            [("facing", "east"), ("waterlogged", "true")],
+        )
+    );
+
+    let mut flowing = placement_world();
+    set_block(
+        &mut flowing,
+        wall_target,
+        state_id("minecraft:water", [("level", "1")]),
+    );
+    set_held(&mut flowing, VANILLA_ITEM_TUBE_CORAL_FAN_ID, 1);
+    assert!(matches!(
+        flowing.predict_local_block_use_with_hit(
+            CLICKED,
+            ProtocolDirection::East,
+            [1.0, 0.5, 0.5],
+            false,
+            InteractionHand::MainHand,
+            false,
+            49,
+        ),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        flowing.probe_block(wall_target).unwrap().block_state_id,
+        state_id(
+            "minecraft:tube_coral_wall_fan",
+            [("facing", "east"), ("waterlogged", "false")],
+        )
+    );
+}
+
+#[test]
+fn coral_fan_item_fails_without_a_floor_or_wall_support() {
+    let target = BlockPos { x: 4, y: 8, z: 4 };
+    let mut world = placement_world();
+    set_held(&mut world, VANILLA_ITEM_TUBE_CORAL_FAN_ID, 1);
+    assert_eq!(
+        world.predict_local_block_use_with_hit(
+            target,
+            ProtocolDirection::Up,
+            [0.5, 0.5, 0.5],
+            false,
+            InteractionHand::MainHand,
+            false,
+            50,
+        ),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
+    );
+    assert_eq!(held(&world).count, 1);
+    assert!(world.local_block_predictions().is_empty());
+}
+
+#[test]
 fn bamboo_placement_selects_sapling_or_stalk_from_vertical_neighbours() {
     let support_entries = [
         VANILLA_BLOCK_BAMBOO_ID,

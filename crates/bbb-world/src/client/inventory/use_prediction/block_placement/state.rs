@@ -1011,7 +1011,8 @@ pub(super) fn block_state_for_placement(
                 ],
             );
         }
-        owner @ (VanillaGetStateForPlacementOverride::CeilingHangingSignBlock
+        owner @ (VanillaGetStateForPlacementOverride::BaseCoralWallFanBlock
+        | VanillaGetStateForPlacementOverride::CeilingHangingSignBlock
         | VanillaGetStateForPlacementOverride::FaceAttachedHorizontalDirectionalBlock
         | VanillaGetStateForPlacementOverride::LadderBlock
         | VanillaGetStateForPlacementOverride::LanternBlock
@@ -1141,7 +1142,7 @@ fn target_is_source_water(world: &WorldStore, target_pos: BlockPos) -> Option<bo
     })
 }
 
-fn target_is_full_water(world: &WorldStore, target_pos: BlockPos) -> Option<bool> {
+pub(super) fn target_is_full_water(world: &WorldStore, target_pos: BlockPos) -> Option<bool> {
     world.probe_block(target_pos).map(|block| {
         block
             .fluid

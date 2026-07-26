@@ -17,7 +17,7 @@ use super::{
     signal::placement_neighbor_signal_is_proven_absent,
     state::{
         block_state_for_placement, state_with_owned_properties, state_with_properties,
-        BlockPlacementState,
+        target_is_full_water, BlockPlacementState,
     },
 };
 use crate::{BlockPos, BlockProbe, TerrainFluidKind};
@@ -239,19 +239,30 @@ pub(super) fn attached_block_state_for_placement(
             }
             BlockPlacementState::Fail
         }
-        VanillaGetStateForPlacementOverride::WallBannerBlock
+        VanillaGetStateForPlacementOverride::BaseCoralWallFanBlock
+        | VanillaGetStateForPlacementOverride::WallBannerBlock
         | VanillaGetStateForPlacementOverride::WallSignBlock
         | VanillaGetStateForPlacementOverride::WallTorchBlock
         | VanillaGetStateForPlacementOverride::RedstoneWallTorchBlock => {
-            let waterlogged = if owner == VanillaGetStateForPlacementOverride::WallSignBlock {
-                let Some(waterlogged) = target_is_source_water(world, target_pos) else {
-                    return BlockPlacementState::Unsupported;
-                };
-                Some(waterlogged)
-            } else {
-                None
+            let waterlogged = match owner {
+                VanillaGetStateForPlacementOverride::BaseCoralWallFanBlock => {
+                    let Some(waterlogged) = target_is_full_water(world, target_pos) else {
+                        return BlockPlacementState::Unsupported;
+                    };
+                    Some(waterlogged)
+                }
+                VanillaGetStateForPlacementOverride::WallSignBlock => {
+                    let Some(waterlogged) = target_is_source_water(world, target_pos) else {
+                        return BlockPlacementState::Unsupported;
+                    };
+                    Some(waterlogged)
+                }
+                _ => None,
             };
             let survival_owner = match owner {
+                VanillaGetStateForPlacementOverride::BaseCoralWallFanBlock => {
+                    VanillaCanSurviveOverride::BaseCoralWallFanBlock
+                }
                 VanillaGetStateForPlacementOverride::WallBannerBlock => {
                     VanillaCanSurviveOverride::WallBannerBlock
                 }
