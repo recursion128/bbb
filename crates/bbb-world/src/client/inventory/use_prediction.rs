@@ -51,6 +51,7 @@ use bbb_protocol::{
 };
 
 mod block_placement;
+mod block_use_item_on;
 mod block_use_without_item;
 mod bone_meal;
 mod book;
@@ -785,28 +786,46 @@ impl WorldStore {
         );
         let specialized_item_reaches_use_on =
             ignition_reaches_item_use || hanging_sign_reaches_item_use;
-        if let Some(owner) = block_type.use_item_on_override {
-            if !specialized_item_reaches_use_on {
-                return LocalTargetUsePrediction::UnsupportedBlockUseItemOn(owner);
+        let item_on_prediction = match block_type.use_item_on_override {
+            Some(_) if specialized_item_reaches_use_on => {
+                LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
             }
+            Some(owner) => {
+                let Some(context) = context else {
+                    return LocalTargetUsePrediction::UnsupportedBlockUseItemOn(owner);
+                };
+                self.predict_local_block_use_item_on(owner, block_type, hand, context)
+            }
+            None => {
+                LocalTargetUsePrediction::Result(LocalInteractionResult::TryEmptyHandInteraction)
+            }
+        };
+        match item_on_prediction {
+            LocalTargetUsePrediction::Result(
+                LocalInteractionResult::Pass | LocalInteractionResult::TryEmptyHandInteraction,
+            ) => {}
+            prediction => return prediction,
         }
-        if hand == InteractionHand::MainHand {
+        if hand == InteractionHand::MainHand
+            && matches!(
+                item_on_prediction,
+                LocalTargetUsePrediction::Result(LocalInteractionResult::TryEmptyHandInteraction)
+            )
+        {
             if let Some(owner) = block_type.use_without_item_override {
-                if !specialized_item_reaches_use_on {
-                    let Some(context) = context else {
-                        return LocalTargetUsePrediction::UnsupportedBlockUseWithoutItem(owner);
-                    };
-                    let prediction =
-                        self.predict_local_block_use_without_item(owner, block_type, context);
-                    if !matches!(
-                        prediction,
-                        LocalTargetUsePrediction::Result(
-                            LocalInteractionResult::Pass
-                                | LocalInteractionResult::TryEmptyHandInteraction
-                        )
-                    ) {
-                        return prediction;
-                    }
+                let Some(context) = context else {
+                    return LocalTargetUsePrediction::UnsupportedBlockUseWithoutItem(owner);
+                };
+                let prediction =
+                    self.predict_local_block_use_without_item(owner, block_type, context);
+                if !matches!(
+                    prediction,
+                    LocalTargetUsePrediction::Result(
+                        LocalInteractionResult::Pass
+                            | LocalInteractionResult::TryEmptyHandInteraction
+                    )
+                ) {
+                    return prediction;
                 }
             }
         }

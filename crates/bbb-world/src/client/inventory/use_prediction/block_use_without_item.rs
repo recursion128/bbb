@@ -34,6 +34,34 @@ impl WorldStore {
         }
 
         match owner {
+            VanillaBlockUseWithoutItemOverride::AbstractFurnaceBlock
+            | VanillaBlockUseWithoutItemOverride::AnvilBlock
+            | VanillaBlockUseWithoutItemOverride::BarrelBlock
+            | VanillaBlockUseWithoutItemOverride::BeaconBlock
+            | VanillaBlockUseWithoutItemOverride::BrewingStandBlock
+            | VanillaBlockUseWithoutItemOverride::CartographyTableBlock
+            | VanillaBlockUseWithoutItemOverride::ChestBlock
+            | VanillaBlockUseWithoutItemOverride::CrafterBlock
+            | VanillaBlockUseWithoutItemOverride::CraftingTableBlock
+            | VanillaBlockUseWithoutItemOverride::DispenserBlock
+            | VanillaBlockUseWithoutItemOverride::EnchantingTableBlock
+            | VanillaBlockUseWithoutItemOverride::EnderChestBlock
+            | VanillaBlockUseWithoutItemOverride::GrindstoneBlock
+            | VanillaBlockUseWithoutItemOverride::HopperBlock
+            | VanillaBlockUseWithoutItemOverride::LoomBlock
+            | VanillaBlockUseWithoutItemOverride::ShulkerBoxBlock
+            | VanillaBlockUseWithoutItemOverride::SmithingTableBlock
+            | VanillaBlockUseWithoutItemOverride::StonecutterBlock => {
+                // These owners open or request a server-owned menu, but their
+                // client branch unconditionally returns `SUCCESS`.
+                success(LocalInteractionSuccess::client_item_interaction())
+            }
+            VanillaBlockUseWithoutItemOverride::BedBlock => {
+                // `BedBlock` returns `SUCCESS_SERVER` immediately on a
+                // `ClientLevel`; sleep, explosions, occupancy, and messages
+                // remain authoritative server behavior.
+                success(LocalInteractionSuccess::server_item_interaction())
+            }
             VanillaBlockUseWithoutItemOverride::ButtonBlock => {
                 let Some(powered) = boolean_property(&block.block_properties, "powered") else {
                     return unsupported();
@@ -149,6 +177,21 @@ impl WorldStore {
                     owner,
                 )
             }
+            VanillaBlockUseWithoutItemOverride::CaveVinesBlock
+            | VanillaBlockUseWithoutItemOverride::CaveVinesPlantBlock => {
+                match boolean_property(&block.block_properties, "berries") {
+                    Some(true) => success(LocalInteractionSuccess::client_item_interaction()),
+                    Some(false) => pass(),
+                    None => unsupported(),
+                }
+            }
+            VanillaBlockUseWithoutItemOverride::ComposterBlock => {
+                match integer_property(&block.block_properties, "level", 0..=8) {
+                    Some(8) => success(LocalInteractionSuccess::client_item_interaction()),
+                    Some(_) => pass(),
+                    None => unsupported(),
+                }
+            }
             VanillaBlockUseWithoutItemOverride::DaylightDetectorBlock => {
                 if self.local_player_may_build() {
                     // `DaylightDetectorBlock.useWithoutItem` changes the state
@@ -158,6 +201,35 @@ impl WorldStore {
                 } else {
                     pass()
                 }
+            }
+            VanillaBlockUseWithoutItemOverride::DragonEggBlock => {
+                // The random teleport is synchronized by the resulting block
+                // updates; the client still consumes and swings immediately.
+                success(LocalInteractionSuccess::client_item_interaction())
+            }
+            VanillaBlockUseWithoutItemOverride::FenceBlock
+            | VanillaBlockUseWithoutItemOverride::MovingPistonBlock => {
+                // Fence leash binding and stale moving-piston removal execute
+                // only on the logical server. Their `ClientLevel` result is
+                // exactly `PASS`.
+                pass()
+            }
+            VanillaBlockUseWithoutItemOverride::LecternBlock => {
+                match boolean_property(&block.block_properties, "has_book") {
+                    Some(true) => success(LocalInteractionSuccess::client_item_interaction()),
+                    Some(false) => success(LocalInteractionSuccess::consume(false)),
+                    None => unsupported(),
+                }
+            }
+            VanillaBlockUseWithoutItemOverride::LightBlock => {
+                // The state cycle is guarded by `!level.isClientSide()`;
+                // every client invocation therefore returns `CONSUME`.
+                success(LocalInteractionSuccess::consume(false))
+            }
+            VanillaBlockUseWithoutItemOverride::NoteBlock => {
+                // Tuning and note playback are server-side, while the client
+                // result is an unconditional immediate success.
+                success(LocalInteractionSuccess::client_item_interaction())
             }
             VanillaBlockUseWithoutItemOverride::ComparatorBlock => {
                 if !self.local_player_may_build() {
@@ -181,6 +253,13 @@ impl WorldStore {
                     owner,
                 )
             }
+            VanillaBlockUseWithoutItemOverride::RespawnAnchorBlock => {
+                match integer_property(&block.block_properties, "charges", 0..=4) {
+                    Some(0) => pass(),
+                    Some(_) => success(LocalInteractionSuccess::consume(false)),
+                    None => unsupported(),
+                }
+            }
             VanillaBlockUseWithoutItemOverride::RedStoneWireBlock => {
                 if !self.local_player_may_build() {
                     return pass();
@@ -191,6 +270,13 @@ impl WorldStore {
                     block.block_properties,
                     owner,
                 )
+            }
+            VanillaBlockUseWithoutItemOverride::SweetBerryBushBlock => {
+                match integer_property(&block.block_properties, "age", 0..=3) {
+                    Some(2 | 3) => success(LocalInteractionSuccess::client_item_interaction()),
+                    Some(_) => pass(),
+                    None => unsupported(),
+                }
             }
             _ => unsupported(),
         }
@@ -320,6 +406,18 @@ fn boolean_property(properties: &BTreeMap<String, String>, property: &str) -> Op
         "true" => Some(true),
         _ => None,
     }
+}
+
+fn integer_property(
+    properties: &BTreeMap<String, String>,
+    property: &str,
+    range: std::ops::RangeInclusive<u8>,
+) -> Option<u8> {
+    properties
+        .get(property)?
+        .parse::<u8>()
+        .ok()
+        .filter(|value| range.contains(value))
 }
 
 fn horizontal_direction_property(
@@ -844,6 +942,131 @@ mod tests {
     }
 
     #[test]
+    fn server_owned_menu_blocks_return_client_success_for_every_generated_owner_family() {
+        for name in [
+            "minecraft:furnace",
+            "minecraft:anvil",
+            "minecraft:barrel",
+            "minecraft:beacon",
+            "minecraft:brewing_stand",
+            "minecraft:cartography_table",
+            "minecraft:chest",
+            "minecraft:crafter",
+            "minecraft:crafting_table",
+            "minecraft:dispenser",
+            "minecraft:enchanting_table",
+            "minecraft:ender_chest",
+            "minecraft:grindstone",
+            "minecraft:hopper",
+            "minecraft:loom",
+            "minecraft:shulker_box",
+            "minecraft:smithing_table",
+            "minecraft:stonecutter",
+        ] {
+            let mut world = block_use_world_first_state(name, VANILLA_GAME_TYPE_SURVIVAL_ID as i8);
+            assert_eq!(
+                use_main_hand(&mut world, 81),
+                success(LocalInteractionSuccess::client_item_interaction()),
+                "{name}"
+            );
+            assert!(
+                world.local_block_predictions().is_empty(),
+                "{name} keeps menu contents and block state server-owned"
+            );
+        }
+    }
+
+    #[test]
+    fn fixed_client_branch_results_match_bed_note_light_fence_piston_and_dragon_egg() {
+        for (name, expected) in [
+            (
+                "minecraft:red_bed",
+                success(LocalInteractionSuccess::server_item_interaction()),
+            ),
+            (
+                "minecraft:note_block",
+                success(LocalInteractionSuccess::client_item_interaction()),
+            ),
+            (
+                "minecraft:light",
+                success(LocalInteractionSuccess::consume(false)),
+            ),
+            ("minecraft:oak_fence", pass()),
+            ("minecraft:moving_piston", pass()),
+            (
+                "minecraft:dragon_egg",
+                success(LocalInteractionSuccess::client_item_interaction()),
+            ),
+        ] {
+            let mut world = block_use_world_first_state(name, VANILLA_GAME_TYPE_SURVIVAL_ID as i8);
+            assert_eq!(use_main_hand(&mut world, 82), expected, "{name}");
+            assert!(world.local_block_predictions().is_empty(), "{name}");
+        }
+    }
+
+    #[test]
+    fn property_gated_server_owned_actions_return_exact_client_results() {
+        for (name, property, active, inactive, active_result, inactive_result) in [
+            (
+                "minecraft:cave_vines_plant",
+                "berries",
+                "true",
+                "false",
+                success(LocalInteractionSuccess::client_item_interaction()),
+                pass(),
+            ),
+            (
+                "minecraft:composter",
+                "level",
+                "8",
+                "7",
+                success(LocalInteractionSuccess::client_item_interaction()),
+                pass(),
+            ),
+            (
+                "minecraft:lectern",
+                "has_book",
+                "true",
+                "false",
+                success(LocalInteractionSuccess::client_item_interaction()),
+                pass(),
+            ),
+            (
+                "minecraft:respawn_anchor",
+                "charges",
+                "1",
+                "0",
+                success(LocalInteractionSuccess::consume(false)),
+                pass(),
+            ),
+            (
+                "minecraft:sweet_berry_bush",
+                "age",
+                "2",
+                "1",
+                success(LocalInteractionSuccess::client_item_interaction()),
+                pass(),
+            ),
+        ] {
+            let mut world = block_use_world_first_state(name, VANILLA_GAME_TYPE_SURVIVAL_ID as i8);
+            set_test_block(&mut world, state_id_with_property(name, property, active));
+            assert_eq!(
+                use_main_hand(&mut world, 83),
+                active_result,
+                "{name} active"
+            );
+
+            set_test_block(&mut world, state_id_with_property(name, property, inactive));
+            assert_eq!(
+                use_main_hand(&mut world, 84),
+                inactive_result,
+                "{name} inactive"
+            );
+            assert!(world.local_block_predictions().is_empty(), "{name}");
+        }
+    }
+
+    #[test]
     fn offhand_skips_empty_hand_block_owner_and_main_hand_pass_continues_dispatch() {
         let mut world = block_use_world(
             "minecraft:oak_door",
@@ -912,6 +1135,23 @@ mod tests {
         game_type: i8,
     ) -> WorldStore {
         block_use_world_vec(name, properties.into_iter().collect(), game_type)
+    }
+
+    fn block_use_world_first_state(name: &str, game_type: i8) -> WorldStore {
+        let registry = crate::registries::BlockStateRegistry::vanilla_26_1();
+        let state = registry
+            .iter()
+            .find(|state| state.name == name)
+            .unwrap_or_else(|| panic!("missing {name} state"));
+        block_use_world_vec(
+            name,
+            state
+                .properties
+                .iter()
+                .map(|(name, value)| (name.as_str(), value.as_str()))
+                .collect(),
+            game_type,
+        )
     }
 
     fn block_use_world_vec(name: &str, properties: Vec<(&str, &str)>, game_type: i8) -> WorldStore {
@@ -1010,5 +1250,21 @@ mod tests {
                 .unwrap_or("unknown");
             panic!("missing {owner} state")
         })
+    }
+
+    fn state_id_with_property(name: &str, property: &str, value: &str) -> i32 {
+        let registry = crate::registries::BlockStateRegistry::vanilla_26_1();
+        let state_id = registry
+            .iter()
+            .find(|state| {
+                state.name == name
+                    && state
+                        .properties
+                        .get(property)
+                        .is_some_and(|actual| actual == value)
+            })
+            .map(|state| state.id)
+            .unwrap_or_else(|| panic!("missing {name} state with {property}={value}"));
+        state_id
     }
 }
