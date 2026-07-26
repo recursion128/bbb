@@ -72,6 +72,11 @@
 # Every generated owner is matched exhaustively; these outcomes preserve server
 # correction instead of hiding an unimplemented owner.
 ^crates/bbb-world/src/client/inventory/use_prediction/block_use_item_on[.]rs$	UnsupportedBlockUseItemOn|unsupported[(][)]
+# Generated mob-interact dispatch likewise classifies every fixed entity row.
+# Its one explicit helper is used only when required live metadata, tags,
+# inventory capacity, or an atomic client mutation is unavailable; these paths
+# fail closed to server correction rather than conceal an owner gap.
+^crates/bbb-world/src/client/inventory/use_prediction/mob_interact[.]rs$	return unsupported|Err[(]unsupported|fn unsupported
 # Environment ambient particles keep one explicit diagnostic for complex
 # ParticleOptions codec shapes that are dropped at the renderer bridge. Simple
 # options render normally, and the complex-shape closure remains a concrete ledger
