@@ -527,6 +527,94 @@ fn redstone_wire_placement_reuses_connections_and_exact_support_rules() {
 }
 
 #[test]
+fn huge_mushroom_placement_hides_only_faces_against_the_same_block() {
+    let clicked = BlockPos { x: 4, y: 8, z: 4 };
+    let target = relative(clicked, ProtocolDirection::Up);
+    let mushroom_state = || {
+        state_id(
+            "minecraft:brown_mushroom_block",
+            [
+                ("down", "true"),
+                ("east", "true"),
+                ("north", "true"),
+                ("south", "true"),
+                ("up", "true"),
+                ("west", "true"),
+            ],
+        )
+    };
+
+    let mut world = placement_world();
+    set_block(&mut world, clicked, mushroom_state());
+    set_block(
+        &mut world,
+        relative(target, ProtocolDirection::Up),
+        state_id(
+            "minecraft:red_mushroom_block",
+            [
+                ("down", "true"),
+                ("east", "true"),
+                ("north", "true"),
+                ("south", "true"),
+                ("up", "true"),
+                ("west", "true"),
+            ],
+        ),
+    );
+    set_block(
+        &mut world,
+        relative(target, ProtocolDirection::North),
+        mushroom_state(),
+    );
+    set_block(
+        &mut world,
+        relative(target, ProtocolDirection::East),
+        state_id(
+            "minecraft:mushroom_stem",
+            [
+                ("down", "true"),
+                ("east", "true"),
+                ("north", "true"),
+                ("south", "true"),
+                ("up", "true"),
+                ("west", "true"),
+            ],
+        ),
+    );
+    set_block(
+        &mut world,
+        relative(target, ProtocolDirection::South),
+        mushroom_state(),
+    );
+    set_block(
+        &mut world,
+        relative(target, ProtocolDirection::West),
+        state_id("minecraft:stone", []),
+    );
+    set_held(&mut world, VANILLA_ITEM_BROWN_MUSHROOM_BLOCK_ID, 1);
+
+    assert!(matches!(
+        use_block_at(&mut world, clicked, false, 61),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        world.probe_block(target).unwrap().block_state_id,
+        state_id(
+            "minecraft:brown_mushroom_block",
+            [
+                ("down", "false"),
+                ("east", "true"),
+                ("north", "false"),
+                ("south", "false"),
+                ("up", "true"),
+                ("west", "true"),
+            ],
+        )
+    );
+    assert_eq!(held(&world).count, 0);
+}
+
+#[test]
 fn wall_placement_projects_side_height_and_center_post_from_the_block_above() {
     let clicked = BlockPos { x: 4, y: 8, z: 4 };
     let target = relative(clicked, ProtocolDirection::Up);

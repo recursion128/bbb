@@ -53,6 +53,16 @@ pub(super) struct LeavesPlacement {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct HugeMushroomPlacement {
+    pub(super) down: bool,
+    pub(super) up: bool,
+    pub(super) north: bool,
+    pub(super) east: bool,
+    pub(super) south: bool,
+    pub(super) west: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ChestConnectionKind {
     SameBlock,
     CopperTag,
@@ -317,6 +327,26 @@ pub(super) fn leaves_placement(world: &WorldStore, pos: BlockPos) -> Option<Leav
         waterlogged: target
             .fluid
             .is_some_and(|fluid| fluid.kind == TerrainFluidKind::Water),
+    })
+}
+
+pub(super) fn huge_mushroom_placement(
+    world: &WorldStore,
+    pos: BlockPos,
+    block_type: &BlockTypeCatalogEntry,
+) -> Option<HugeMushroomPlacement> {
+    let face_is_exposed = |direction| {
+        let neighbour = world.probe_block(relative(pos, direction))?;
+        Some(neighbour.block_name.as_deref()? != block_type.resource_id)
+    };
+
+    Some(HugeMushroomPlacement {
+        down: face_is_exposed(Direction::Down)?,
+        up: face_is_exposed(Direction::Up)?,
+        north: face_is_exposed(Direction::North)?,
+        east: face_is_exposed(Direction::East)?,
+        south: face_is_exposed(Direction::South)?,
+        west: face_is_exposed(Direction::West)?,
     })
 }
 
