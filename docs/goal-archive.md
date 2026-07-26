@@ -551,3 +551,6 @@
 - **2026-07-25（PlaceOnWaterBlockItem 本地放置工程关闭）**：睡莲与蛙卵现按
   生成 ownership、实时流体/方块标签、精确替换与实体阻挡规则委托至本地
   `BlockItem` 放置，贯通库存、声音及 prediction sequence 回滚。
+- **2026-07-25（1023 个 BlockItem 本地放置工程关闭）**：生成目录中的全部
+  BlockItem 主/墙体 placement owner 现按 Vanilla 26.1 命中上下文、实时邻域/
+  标签/流体、共享随机流、组合方块写入及 prediction sequence 原子回滚执行。

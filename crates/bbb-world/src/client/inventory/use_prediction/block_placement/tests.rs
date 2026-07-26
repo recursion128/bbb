@@ -23,9 +23,10 @@ use bbb_protocol::{
         VANILLA_ITEM_BUBBLE_CORAL_BLOCK_ID, VANILLA_ITEM_CANDLE_ID, VANILLA_ITEM_CHEST_ID,
         VANILLA_ITEM_CHORUS_PLANT_ID, VANILLA_ITEM_COBBLESTONE_WALL_ID,
         VANILLA_ITEM_COCOA_BEANS_ID, VANILLA_ITEM_COMMAND_BLOCK_ID, VANILLA_ITEM_COMPARATOR_ID,
-        VANILLA_ITEM_CRAFTER_ID, VANILLA_ITEM_CREAKING_HEART_ID, VANILLA_ITEM_FARMLAND_ID,
-        VANILLA_ITEM_FIRE_CORAL_BLOCK_ID, VANILLA_ITEM_FURNACE_ID, VANILLA_ITEM_GLOW_BERRIES_ID,
-        VANILLA_ITEM_GRASS_BLOCK_ID, VANILLA_ITEM_HANGING_ROOTS_ID, VANILLA_ITEM_HEAVY_CORE_ID,
+        VANILLA_ITEM_CRAFTER_ID, VANILLA_ITEM_CREAKING_HEART_ID, VANILLA_ITEM_DIRT_PATH_ID,
+        VANILLA_ITEM_FARMLAND_ID, VANILLA_ITEM_FIRE_CORAL_BLOCK_ID, VANILLA_ITEM_FURNACE_ID,
+        VANILLA_ITEM_GLOW_BERRIES_ID, VANILLA_ITEM_GLOW_LICHEN_ID, VANILLA_ITEM_GRASS_BLOCK_ID,
+        VANILLA_ITEM_HANGING_ROOTS_ID, VANILLA_ITEM_HEAVY_CORE_ID,
         VANILLA_ITEM_HORN_CORAL_BLOCK_ID, VANILLA_ITEM_IRON_BARS_ID, VANILLA_ITEM_KELP_ID,
         VANILLA_ITEM_LADDER_ID, VANILLA_ITEM_LANTERN_ID, VANILLA_ITEM_MANGROVE_PROPAGULE_ID,
         VANILLA_ITEM_MYCELIUM_ID, VANILLA_ITEM_NOTE_BLOCK_ID, VANILLA_ITEM_OAK_DOOR_ID,
@@ -36,14 +37,15 @@ use bbb_protocol::{
         VANILLA_ITEM_OXIDIZED_COPPER_CHEST_ID, VANILLA_ITEM_PALE_MOSS_CARPET_ID,
         VANILLA_ITEM_PITCHER_POD_ID, VANILLA_ITEM_PODZOL_ID, VANILLA_ITEM_POINTED_DRIPSTONE_ID,
         VANILLA_ITEM_REDSTONE_ID, VANILLA_ITEM_REDSTONE_LAMP_ID, VANILLA_ITEM_REPEATER_ID,
-        VANILLA_ITEM_RESPAWN_ANCHOR_ID, VANILLA_ITEM_SEAGRASS_ID, VANILLA_ITEM_SMALL_DRIPLEAF_ID,
+        VANILLA_ITEM_RESIN_CLUMP_ID, VANILLA_ITEM_RESPAWN_ANCHOR_ID, VANILLA_ITEM_SCAFFOLDING_ID,
+        VANILLA_ITEM_SCULK_VEIN_ID, VANILLA_ITEM_SEAGRASS_ID, VANILLA_ITEM_SMALL_DRIPLEAF_ID,
         VANILLA_ITEM_STONE_ID, VANILLA_ITEM_STRING_ID, VANILLA_ITEM_SUNFLOWER_ID,
         VANILLA_ITEM_TEST_BLOCK_ID, VANILLA_ITEM_TRIPWIRE_HOOK_ID,
         VANILLA_ITEM_TUBE_CORAL_BLOCK_ID, VANILLA_ITEM_TUBE_CORAL_FAN_ID,
-        VANILLA_ITEM_TWISTING_VINES_ID, VANILLA_ITEM_WAXED_COPPER_CHEST_ID,
-        VANILLA_ITEM_WAXED_OXIDIZED_COPPER_CHEST_ID, VANILLA_ITEM_WAXED_WEATHERED_COPPER_CHEST_ID,
-        VANILLA_ITEM_WEEPING_VINES_ID, VANILLA_ITEM_WHITE_BED_ID,
-        VANILLA_ITEM_WHITE_CONCRETE_POWDER_ID,
+        VANILLA_ITEM_TWISTING_VINES_ID, VANILLA_ITEM_TYPES, VANILLA_ITEM_VINE_ID,
+        VANILLA_ITEM_WAXED_COPPER_CHEST_ID, VANILLA_ITEM_WAXED_OXIDIZED_COPPER_CHEST_ID,
+        VANILLA_ITEM_WAXED_WEATHERED_COPPER_CHEST_ID, VANILLA_ITEM_WEEPING_VINES_ID,
+        VANILLA_ITEM_WHITE_BED_ID, VANILLA_ITEM_WHITE_CONCRETE_POWDER_ID,
     },
     packets::{
         BlockPos as ProtocolBlockPos, BlockUpdate, CommonPlayerSpawnInfo,
@@ -57,9 +59,75 @@ mod attachments;
 mod connections;
 mod fluids;
 mod plants;
+mod surfaces;
+mod survival_rules;
 
 const CLICKED: BlockPos = BlockPos { x: 0, y: 8, z: 0 };
 const TARGET: BlockPos = BlockPos { x: 0, y: 9, z: 0 };
+
+#[test]
+fn generated_block_item_placement_and_survival_owners_all_have_client_evaluators() {
+    let block_items = VANILLA_ITEM_TYPES
+        .iter()
+        .filter_map(|item| item.block_item_behavior.map(|behavior| (item, behavior)))
+        .collect::<Vec<_>>();
+    let mut missing_placement = Vec::new();
+    let mut missing_survival = Vec::new();
+    for (item, behavior) in &block_items {
+        for block_type_id in [Some(behavior.block_type_id), behavior.wall_block_type_id]
+            .into_iter()
+            .flatten()
+        {
+            let block_type = vanilla_block_type(block_type_id).expect("generated block item owner");
+            if block_type
+                .get_state_for_placement_override
+                .is_some_and(|owner| {
+                    !state::block_item_get_state_for_placement_owner_supported(owner)
+                })
+            {
+                missing_placement.push((item.resource_id, block_type.resource_id));
+            }
+            if let Some(owner) = block_type.can_survive_override {
+                if !survival::block_can_survive_owner_supported(owner, block_type.resource_id) {
+                    missing_survival.push((item.resource_id, block_type.resource_id, owner));
+                }
+            }
+        }
+    }
+
+    assert_eq!(block_items.len(), 1_023);
+    assert!(
+        missing_placement.is_empty(),
+        "block items without placement evaluators: {missing_placement:?}"
+    );
+    assert!(
+        missing_survival.is_empty(),
+        "block items without survival evaluators: {missing_survival:?}"
+    );
+}
+
+#[test]
+fn generated_vegetation_survival_owners_all_dispatch_virtual_may_place_on() {
+    let missing = bbb_protocol::block_types::VANILLA_BLOCK_TYPES
+        .iter()
+        .filter(|block| {
+            block.can_survive_override
+                == Some(bbb_protocol::block_types::VanillaCanSurviveOverride::VegetationBlock)
+        })
+        .filter(|block| {
+            !survival::block_can_survive_owner_supported(
+                bbb_protocol::block_types::VanillaCanSurviveOverride::VegetationBlock,
+                block.resource_id,
+            )
+        })
+        .map(|block| block.resource_id)
+        .collect::<Vec<_>>();
+
+    assert!(
+        missing.is_empty(),
+        "vegetation blocks without virtual mayPlaceOn dispatch: {missing:?}"
+    );
+}
 
 #[test]
 fn plain_block_item_places_consumes_sounds_and_rolls_back_on_ack() {
@@ -1118,15 +1186,50 @@ fn set_support_tag(world: &mut WorldStore, tag: &str) {
 }
 
 fn set_block_tag(world: &mut WorldStore, tag: &str, entries: &[i32]) {
+    set_block_tags(world, &[(tag, entries)]);
+}
+
+fn set_block_tags(world: &mut WorldStore, tags: &[(&str, &[i32])]) {
+    set_registry_tags(world, "minecraft:block", tags);
+}
+
+fn set_fluid_tags(world: &mut WorldStore, tags: &[(&str, &[i32])]) {
+    set_registry_tags(world, "minecraft:fluid", tags);
+}
+
+fn set_registry_tags(world: &mut WorldStore, registry: &str, tags: &[(&str, &[i32])]) {
     world.apply_update_tags(UpdateTags {
         registries: vec![RegistryTags {
-            registry: "minecraft:block".to_string(),
-            tags: vec![TagNetworkPayload {
-                tag: tag.to_string(),
-                entries: entries.to_vec(),
-            }],
+            registry: registry.to_string(),
+            tags: tags
+                .iter()
+                .map(|(tag, entries)| TagNetworkPayload {
+                    tag: (*tag).to_string(),
+                    entries: entries.to_vec(),
+                })
+                .collect(),
         }],
     });
+}
+
+fn set_raw_light(world: &mut WorldStore, pos: BlockPos, sky: u8, block: u8) {
+    let light_section_index = pos.y.div_euclid(16) - (world.dimension().min_section_y() - 1);
+    let light_section_mask = 1_i64 << u32::try_from(light_section_index).expect("light section");
+    let packed_nibbles = |value: u8| value | (value << 4);
+    assert!(world
+        .apply_light_update(LightUpdate {
+            chunk_x: pos.x.div_euclid(16),
+            chunk_z: pos.z.div_euclid(16),
+            light_data: LightUpdateData {
+                sky_y_mask: vec![light_section_mask],
+                block_y_mask: vec![light_section_mask],
+                empty_sky_y_mask: Vec::new(),
+                empty_block_y_mask: Vec::new(),
+                sky_updates: vec![vec![packed_nibbles(sky); 2048]],
+                block_updates: vec![vec![packed_nibbles(block); 2048]],
+            },
+        })
+        .unwrap());
 }
 
 fn held(world: &WorldStore) -> &ItemStackSummary {

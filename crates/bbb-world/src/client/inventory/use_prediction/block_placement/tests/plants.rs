@@ -76,6 +76,70 @@ fn farmland_placement_uses_above_solidity_and_maintaining_tag() {
 }
 
 #[test]
+fn dirt_path_placement_falls_back_to_dirt_below_solid_non_gate_blocks() {
+    let clicked = BlockPos { x: 4, y: 8, z: 4 };
+    let target = relative(clicked, ProtocolDirection::Up);
+    let above = relative(target, ProtocolDirection::Up);
+
+    let mut open = placement_world();
+    set_block(&mut open, clicked, state_id("minecraft:stone", []));
+    set_held(&mut open, VANILLA_ITEM_DIRT_PATH_ID, 1);
+    assert!(matches!(
+        use_block_at(&mut open, clicked, false, 104),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        open.probe_block(target).unwrap().block_state_id,
+        state_id("minecraft:dirt_path", [])
+    );
+
+    let mut blocked = placement_world();
+    set_block(&mut blocked, clicked, state_id("minecraft:stone", []));
+    set_block(&mut blocked, above, state_id("minecraft:stone", []));
+    set_held(&mut blocked, VANILLA_ITEM_DIRT_PATH_ID, 1);
+    assert!(matches!(
+        use_block_at(&mut blocked, clicked, false, 105),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        blocked.probe_block(target).unwrap().block_state_id,
+        state_id("minecraft:dirt", [])
+    );
+    assert_eq!(held(&blocked).count, 0);
+    blocked.apply_block_changed_ack(bbb_protocol::packets::BlockChangedAck { sequence: 105 });
+    assert_eq!(
+        blocked.probe_block(target).unwrap().block_state_id,
+        state_id("minecraft:air", [])
+    );
+
+    let mut fence_gate = placement_world();
+    set_block(&mut fence_gate, clicked, state_id("minecraft:stone", []));
+    set_block(
+        &mut fence_gate,
+        above,
+        state_id(
+            "minecraft:oak_fence_gate",
+            [
+                ("facing", "north"),
+                ("in_wall", "false"),
+                ("open", "false"),
+                ("powered", "false"),
+            ],
+        ),
+    );
+    set_held(&mut fence_gate, VANILLA_ITEM_DIRT_PATH_ID, 1);
+    assert!(matches!(
+        use_block_at(&mut fence_gate, clicked, false, 106),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        fence_gate.probe_block(target).unwrap().block_state_id,
+        state_id("minecraft:dirt_path", [])
+    );
+    assert_eq!(held(&fence_gate).count, 0);
+}
+
+#[test]
 fn leaves_placement_computes_decay_distance_and_waterlogged_persistence() {
     let clicked = BlockPos { x: 4, y: 8, z: 4 };
     let target = relative(clicked, ProtocolDirection::Up);

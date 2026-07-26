@@ -6,22 +6,27 @@ use bbb_protocol::{
     },
     block_types::{
         vanilla_block_type_for_resource_id, VanillaCanSurviveOverride,
-        VANILLA_BLOCK_BIG_DRIPLEAF_ID, VANILLA_BLOCK_BIG_DRIPLEAF_STEM_ID,
-        VANILLA_BLOCK_POINTED_DRIPSTONE_ID, VANILLA_BLOCK_SCAFFOLDING_ID,
+        VanillaGetStateForPlacementOverride, VANILLA_BLOCK_BIG_DRIPLEAF_ID,
+        VANILLA_BLOCK_BIG_DRIPLEAF_STEM_ID, VANILLA_BLOCK_POINTED_DRIPSTONE_ID,
         VANILLA_BLOCK_SMALL_DRIPLEAF_ID,
     },
     packets::Direction,
 };
 
 use super::super::WorldStore;
-use super::context::{opposite, relative};
-use crate::{block_name_is_air, BlockPos, BlockProbe};
+use super::{
+    context::{opposite, relative},
+    scaffolding, surface,
+};
+use crate::{block_name_is_air, BlockPos, BlockProbe, TerrainFluidKind};
 
 #[derive(Debug, Clone, Copy)]
 enum BlockCanSurviveRule {
+    Always,
     FacingFull,
     BelowFull,
     BelowRigid,
+    BasePressurePlate,
     BigDripleaf,
     BigDripleafStem,
     Bell,
@@ -29,7 +34,15 @@ enum BlockCanSurviveRule {
     AboveCenter,
     AboveFull,
     Bamboo,
+    Cactus,
+    CactusFlower,
+    Cake,
+    Carpet,
+    ChorusFlower,
     ChorusPlant,
+    Crop,
+    DirtPath,
+    DoublePlant,
     Farmland,
     GrowingPlant {
         growth_direction: Direction,
@@ -37,10 +50,13 @@ enum BlockCanSurviveRule {
         body_name: &'static str,
         cannot_attach_tag: Option<&'static str>,
     },
+    HangingMoss,
     Lantern,
+    LilyPad,
     MangrovePropagule,
     MossyCarpet,
     Multiface,
+    Mushroom,
     PitcherCrop,
     PointedDripstone,
     RedStoneWire,
@@ -48,6 +64,10 @@ enum BlockCanSurviveRule {
     SeaPickle,
     Seagrass,
     SmallDripleaf,
+    SnowLayer,
+    SporeBlossom,
+    SugarCane,
+    Vine,
     BelowLegacySolid,
     FacingLegacySolid,
     FacingTag(&'static str),
@@ -63,25 +83,23 @@ impl WorldStore {
         owner: VanillaCanSurviveOverride,
     ) -> Option<bool> {
         let state = self.registries().block_state(block_state_id)?;
-        let rule = if owner == VanillaCanSurviveOverride::GrowingPlantBlock {
-            growing_plant_rule(&state.name)?
-        } else if owner == VanillaCanSurviveOverride::VegetationBlock
-            && state.name == "minecraft:seagrass"
-        {
-            BlockCanSurviveRule::Seagrass
-        } else {
-            block_can_survive_rule(owner)?
+        let rule = match owner {
+            VanillaCanSurviveOverride::GrowingPlantBlock => growing_plant_rule(&state.name)?,
+            VanillaCanSurviveOverride::VegetationBlock => vegetation_rule(&state.name)?,
+            _ => block_can_survive_rule(owner)?,
         };
-        self.evaluate_block_can_survive(pos, &state.properties, rule)
+        self.evaluate_block_can_survive(pos, &state.name, &state.properties, rule)
     }
 
     fn evaluate_block_can_survive(
         &self,
         pos: BlockPos,
+        block_name: &str,
         properties: &BTreeMap<String, String>,
         rule: BlockCanSurviveRule,
     ) -> Option<bool> {
         match rule {
+            BlockCanSurviveRule::Always => Some(true),
             BlockCanSurviveRule::FacingFull => {
                 let facing = direction_property(properties, "facing")?;
                 let support = self.probe_block(relative(pos, opposite(facing)))?;
@@ -94,6 +112,23 @@ impl WorldStore {
             BlockCanSurviveRule::BelowRigid => {
                 let below = self.probe_block(relative(pos, Direction::Down))?;
                 self.placement_face_sturdy(&below, Direction::Up, VanillaBlockSupportType::Rigid)
+            }
+            BlockCanSurviveRule::BasePressurePlate => {
+                let below = self.probe_block(relative(pos, Direction::Down))?;
+                let rigid = self.placement_face_sturdy(
+                    &below,
+                    Direction::Up,
+                    VanillaBlockSupportType::Rigid,
+                )?;
+                if rigid {
+                    Some(true)
+                } else {
+                    self.placement_face_sturdy(
+                        &below,
+                        Direction::Up,
+                        VanillaBlockSupportType::Center,
+                    )
+                }
             }
             BlockCanSurviveRule::BigDripleaf => {
                 let below = self.probe_block(relative(pos, Direction::Down))?;
@@ -169,6 +204,78 @@ impl WorldStore {
                 let below = self.probe_block(relative(pos, Direction::Down))?;
                 self.placement_block_is_in_tag(&below, "minecraft:supports_bamboo")
             }
+            BlockCanSurviveRule::Cactus => {
+                for direction in [
+                    Direction::North,
+                    Direction::East,
+                    Direction::South,
+                    Direction::West,
+                ] {
+                    let neighbor = self.probe_block(relative(pos, direction))?;
+                    let solid =
+                        vanilla_block_state_support_facts(neighbor.block_state_id)?.legacy_solid();
+                    let lava = self.placement_fluid_is_in_tag(&neighbor, "minecraft:lava")?;
+                    if solid || lava {
+                        return Some(false);
+                    }
+                }
+                let below = self.probe_block(relative(pos, Direction::Down))?;
+                let supported = below.block_name.as_deref() == Some("minecraft:cactus")
+                    || self.placement_block_is_in_tag(&below, "minecraft:supports_cactus")?;
+                if !supported {
+                    return Some(false);
+                }
+                let above = self.probe_block(relative(pos, Direction::Up))?;
+                vanilla_block_state_support_facts(above.block_state_id).map(|facts| !facts.liquid())
+            }
+            BlockCanSurviveRule::CactusFlower => {
+                let below = self.probe_block(relative(pos, Direction::Down))?;
+                if self
+                    .placement_block_is_in_tag(&below, "minecraft:support_override_cactus_flower")?
+                {
+                    return Some(true);
+                }
+                self.placement_face_sturdy(&below, Direction::Up, VanillaBlockSupportType::Center)
+            }
+            BlockCanSurviveRule::Cake => {
+                let below = self.probe_block(relative(pos, Direction::Down))?;
+                vanilla_block_state_support_facts(below.block_state_id)
+                    .map(|facts| facts.legacy_solid())
+            }
+            BlockCanSurviveRule::Carpet => {
+                let below = self.probe_block(relative(pos, Direction::Down))?;
+                probe_is_air(&below).map(|air| !air)
+            }
+            BlockCanSurviveRule::ChorusFlower => {
+                let below = self.probe_block(relative(pos, Direction::Down))?;
+                if below.block_name.as_deref() == Some("minecraft:chorus_plant")
+                    || self.placement_block_is_in_tag(&below, "minecraft:supports_chorus_flower")?
+                {
+                    return Some(true);
+                }
+                if !probe_is_air(&below)? {
+                    return Some(false);
+                }
+
+                let mut chorus_neighbor = false;
+                for direction in [
+                    Direction::North,
+                    Direction::East,
+                    Direction::South,
+                    Direction::West,
+                ] {
+                    let neighbor = self.probe_block(relative(pos, direction))?;
+                    if neighbor.block_name.as_deref() == Some("minecraft:chorus_plant") {
+                        if chorus_neighbor {
+                            return Some(false);
+                        }
+                        chorus_neighbor = true;
+                    } else if !probe_is_air(&neighbor)? {
+                        return Some(false);
+                    }
+                }
+                Some(chorus_neighbor)
+            }
             BlockCanSurviveRule::ChorusPlant => {
                 let below = self.probe_block(relative(pos, Direction::Down))?;
                 let above = self.probe_block(relative(pos, Direction::Up))?;
@@ -195,6 +302,13 @@ impl WorldStore {
                 }
                 self.placement_block_is_chorus_support(&below)
             }
+            BlockCanSurviveRule::Crop => {
+                if self.placement_raw_brightness(pos)? < 8 {
+                    return Some(false);
+                }
+                let below = self.probe_block(relative(pos, Direction::Down))?;
+                self.placement_block_is_in_tag(&below, "minecraft:supports_crops")
+            }
             BlockCanSurviveRule::Farmland => {
                 let above = self.probe_block(relative(pos, Direction::Up))?;
                 let solid = vanilla_block_state_support_facts(above.block_state_id)?.legacy_solid();
@@ -204,6 +318,36 @@ impl WorldStore {
                     self.placement_block_is_in_tag(&above, "minecraft:maintains_farmland")
                 }
             }
+            BlockCanSurviveRule::DirtPath => {
+                let above = self.probe_block(relative(pos, Direction::Up))?;
+                let solid = vanilla_block_state_support_facts(above.block_state_id)?.legacy_solid();
+                let fence_gate = above
+                    .block_name
+                    .as_deref()
+                    .and_then(vanilla_block_type_for_resource_id)
+                    .is_some_and(|block_type| {
+                        block_type.get_state_for_placement_override
+                            == Some(VanillaGetStateForPlacementOverride::FenceGateBlock)
+                    });
+                Some(!solid || fence_gate)
+            }
+            BlockCanSurviveRule::DoublePlant => match properties.get("half")?.as_str() {
+                "lower" => {
+                    let below = self.probe_block(relative(pos, Direction::Down))?;
+                    self.placement_block_is_in_tag(&below, "minecraft:supports_vegetation")
+                }
+                "upper" => {
+                    let below = self.probe_block(relative(pos, Direction::Down))?;
+                    Some(
+                        below.block_name.as_deref() == Some(block_name)
+                            && below
+                                .block_properties
+                                .get("half")
+                                .is_some_and(|half| half == "lower"),
+                    )
+                }
+                _ => None,
+            },
             BlockCanSurviveRule::GrowingPlant {
                 growth_direction,
                 head_name,
@@ -229,6 +373,14 @@ impl WorldStore {
                     VanillaBlockSupportType::Full,
                 )
             }
+            BlockCanSurviveRule::HangingMoss => {
+                let above = self.probe_block(relative(pos, Direction::Up))?;
+                if above.block_name.as_deref() == Some("minecraft:pale_hanging_moss") {
+                    Some(true)
+                } else {
+                    self.placement_full_support_or_collision_face(&above, Direction::Down)
+                }
+            }
             BlockCanSurviveRule::Lantern => {
                 let hanging = boolean_property(properties, "hanging")?;
                 let (support_direction, sturdy_direction) = if hanging {
@@ -248,6 +400,16 @@ impl WorldStore {
                     sturdy_direction,
                     VanillaBlockSupportType::Center,
                 )
+            }
+            BlockCanSurviveRule::LilyPad => {
+                let below = self.probe_block(relative(pos, Direction::Down))?;
+                let supported = self
+                    .placement_fluid_is_in_tag(&below, "minecraft:supports_lily_pad")?
+                    || self.placement_block_is_in_tag(&below, "minecraft:supports_lily_pad")?;
+                if !supported {
+                    return Some(false);
+                }
+                self.probe_block(pos).map(|target| target.fluid.is_none())
             }
             BlockCanSurviveRule::MangrovePropagule => {
                 let hanging = boolean_property(properties, "hanging")?;
@@ -301,15 +463,22 @@ impl WorldStore {
                 }
                 Some(has_face)
             }
+            BlockCanSurviveRule::Mushroom => {
+                let below = self.probe_block(relative(pos, Direction::Down))?;
+                if self.placement_block_is_in_tag(
+                    &below,
+                    "minecraft:overrides_mushroom_light_requirement",
+                )? {
+                    return Some(true);
+                }
+                Some(
+                    self.placement_raw_brightness(pos)? < 13
+                        && vanilla_block_state_support_facts(below.block_state_id)?.solid_render(),
+                )
+            }
             BlockCanSurviveRule::PitcherCrop => match properties.get("half")?.as_str() {
                 "lower" => {
-                    let light = self.sample_block_light(pos)?;
-                    let sky = if self.level_info()?.has_sky_light() {
-                        light.sky
-                    } else {
-                        0
-                    };
-                    if sky.max(light.block) < 8 {
+                    if self.placement_raw_brightness(pos)? < 8 {
                         return Some(false);
                     }
                     let below = self.probe_block(relative(pos, Direction::Down))?;
@@ -347,34 +516,7 @@ impl WorldStore {
                 }
             }
             BlockCanSurviveRule::Scaffolding => {
-                let below = self.probe_block(relative(pos, Direction::Down))?;
-                let mut distance = 7;
-                if block_type_id(&below)? == VANILLA_BLOCK_SCAFFOLDING_ID {
-                    distance = integer_property(&below.block_properties, "distance")?;
-                } else if self.placement_face_sturdy(
-                    &below,
-                    Direction::Up,
-                    VanillaBlockSupportType::Full,
-                )? {
-                    return Some(true);
-                }
-
-                for direction in [
-                    Direction::North,
-                    Direction::East,
-                    Direction::South,
-                    Direction::West,
-                ] {
-                    let neighbour = self.probe_block(relative(pos, direction))?;
-                    if block_type_id(&neighbour)? == VANILLA_BLOCK_SCAFFOLDING_ID {
-                        distance = distance
-                            .min(integer_property(&neighbour.block_properties, "distance")? + 1);
-                        if distance == 1 {
-                            break;
-                        }
-                    }
-                }
-                Some(distance < 7)
+                scaffolding::distance(self, pos).map(|distance| distance < 7)
             }
             BlockCanSurviveRule::SeaPickle => {
                 let below = self.probe_block(relative(pos, Direction::Down))?;
@@ -416,6 +558,63 @@ impl WorldStore {
                     _ => None,
                 }
             }
+            BlockCanSurviveRule::SnowLayer => {
+                let below = self.probe_block(relative(pos, Direction::Down))?;
+                if self.placement_block_is_in_tag(&below, "minecraft:cannot_support_snow_layer")? {
+                    return Some(false);
+                }
+                if self
+                    .placement_block_is_in_tag(&below, "minecraft:support_override_snow_layer")?
+                {
+                    return Some(true);
+                }
+                if below.block_name.as_deref() == Some("minecraft:snow")
+                    && below
+                        .block_properties
+                        .get("layers")
+                        .is_some_and(|layers| layers == "8")
+                {
+                    return Some(true);
+                }
+                self.placement_collision_face_is_full(&below, Direction::Up)
+            }
+            BlockCanSurviveRule::SporeBlossom => {
+                let target = self.probe_block(pos)?;
+                if self.placement_fluid_is_in_tag(&target, "minecraft:water")? {
+                    return Some(false);
+                }
+                let above = self.probe_block(relative(pos, Direction::Up))?;
+                self.placement_face_sturdy(&above, Direction::Down, VanillaBlockSupportType::Center)
+            }
+            BlockCanSurviveRule::SugarCane => {
+                let below_pos = relative(pos, Direction::Down);
+                let below = self.probe_block(below_pos)?;
+                if below.block_name.as_deref() == Some("minecraft:sugar_cane") {
+                    return Some(true);
+                }
+                if !self.placement_block_is_in_tag(&below, "minecraft:supports_sugar_cane")? {
+                    return Some(false);
+                }
+                for direction in [
+                    Direction::North,
+                    Direction::East,
+                    Direction::South,
+                    Direction::West,
+                ] {
+                    let adjacent = self.probe_block(relative(below_pos, direction))?;
+                    if self.placement_fluid_is_in_tag(
+                        &adjacent,
+                        "minecraft:supports_sugar_cane_adjacently",
+                    )? || self.placement_block_is_in_tag(
+                        &adjacent,
+                        "minecraft:supports_sugar_cane_adjacently",
+                    )? {
+                        return Some(true);
+                    }
+                }
+                Some(false)
+            }
+            BlockCanSurviveRule::Vine => surface::vine_can_survive(self, pos, properties),
             BlockCanSurviveRule::BelowLegacySolid => {
                 let below = self.probe_block(relative(pos, Direction::Down))?;
                 vanilla_block_state_support_facts(below.block_state_id)
@@ -526,6 +725,32 @@ impl WorldStore {
             .map(|holder_ids| holder_ids.contains(&block_type_id))
     }
 
+    fn placement_fluid_is_in_tag(&self, block: &BlockProbe, tag: &str) -> Option<bool> {
+        let fluid_resource_id = match block.fluid {
+            None => "minecraft:empty",
+            Some(fluid) => match (fluid.kind, fluid.amount == 8 && !fluid.falling) {
+                (TerrainFluidKind::Water, true) => "minecraft:water",
+                (TerrainFluidKind::Water, false) => "minecraft:flowing_water",
+                (TerrainFluidKind::Lava, true) => "minecraft:lava",
+                (TerrainFluidKind::Lava, false) => "minecraft:flowing_lava",
+            },
+        };
+        let holder_id =
+            self.registry_holder_id_by_resource_id("minecraft:fluid", fluid_resource_id)?;
+        self.registry_holder_ids_for_tag("minecraft:fluid", tag)
+            .map(|holder_ids| holder_ids.contains(&holder_id))
+    }
+
+    fn placement_raw_brightness(&self, pos: BlockPos) -> Option<u8> {
+        let light = self.sample_block_light(pos)?;
+        let sky = if self.level_info()?.has_sky_light() {
+            light.sky
+        } else {
+            0
+        };
+        Some(sky.max(light.block))
+    }
+
     fn placement_block_is_chorus_support(&self, block: &BlockProbe) -> Option<bool> {
         if block.block_name.as_deref() == Some("minecraft:chorus_plant") {
             Some(true)
@@ -581,10 +806,6 @@ fn parse_boolean_property(value: &str) -> Option<bool> {
     }
 }
 
-fn integer_property(properties: &BTreeMap<String, String>, property: &str) -> Option<i32> {
-    properties.get(property)?.parse().ok()
-}
-
 fn block_type_id(block: &BlockProbe) -> Option<i32> {
     block
         .block_name
@@ -598,13 +819,86 @@ fn probe_is_air(block: &BlockProbe) -> Option<bool> {
 }
 
 #[cfg(test)]
-pub(in super::super) const fn block_can_survive_owner_supported(
+pub(in super::super) fn block_can_survive_owner_supported(
     owner: VanillaCanSurviveOverride,
+    block_name: &str,
 ) -> bool {
     match owner {
-        VanillaCanSurviveOverride::GrowingPlantBlock => true,
+        VanillaCanSurviveOverride::GrowingPlantBlock => growing_plant_rule(block_name).is_some(),
+        VanillaCanSurviveOverride::VegetationBlock => vegetation_rule(block_name).is_some(),
         _ => block_can_survive_rule(owner).is_some(),
     }
+}
+
+fn vegetation_rule(block_name: &str) -> Option<BlockCanSurviveRule> {
+    Some(match block_name {
+        "minecraft:seagrass" => BlockCanSurviveRule::Seagrass,
+        "minecraft:cactus_flower" => BlockCanSurviveRule::CactusFlower,
+        "minecraft:lily_pad" => BlockCanSurviveRule::LilyPad,
+        "minecraft:dead_bush" | "minecraft:short_dry_grass" | "minecraft:tall_dry_grass" => {
+            BlockCanSurviveRule::BelowTag("minecraft:supports_dry_vegetation")
+        }
+        "minecraft:wither_rose" => BlockCanSurviveRule::BelowTag("minecraft:supports_wither_rose"),
+        "minecraft:attached_pumpkin_stem" | "minecraft:pumpkin_stem" => {
+            BlockCanSurviveRule::BelowTag("minecraft:supports_pumpkin_stem")
+        }
+        "minecraft:attached_melon_stem" | "minecraft:melon_stem" => {
+            BlockCanSurviveRule::BelowTag("minecraft:supports_melon_stem")
+        }
+        "minecraft:nether_wart" => BlockCanSurviveRule::BelowTag("minecraft:supports_nether_wart"),
+        "minecraft:warped_fungus" => {
+            BlockCanSurviveRule::BelowTag("minecraft:supports_warped_fungus")
+        }
+        "minecraft:crimson_fungus" => {
+            BlockCanSurviveRule::BelowTag("minecraft:supports_crimson_fungus")
+        }
+        "minecraft:warped_roots" => {
+            BlockCanSurviveRule::BelowTag("minecraft:supports_warped_roots")
+        }
+        "minecraft:crimson_roots" => {
+            BlockCanSurviveRule::BelowTag("minecraft:supports_crimson_roots")
+        }
+        "minecraft:nether_sprouts" => {
+            BlockCanSurviveRule::BelowTag("minecraft:supports_nether_sprouts")
+        }
+        "minecraft:azalea" | "minecraft:flowering_azalea" => {
+            BlockCanSurviveRule::BelowTag("minecraft:supports_azalea")
+        }
+        "minecraft:oak_sapling"
+        | "minecraft:spruce_sapling"
+        | "minecraft:birch_sapling"
+        | "minecraft:jungle_sapling"
+        | "minecraft:acacia_sapling"
+        | "minecraft:cherry_sapling"
+        | "minecraft:dark_oak_sapling"
+        | "minecraft:pale_oak_sapling"
+        | "minecraft:short_grass"
+        | "minecraft:fern"
+        | "minecraft:bush"
+        | "minecraft:dandelion"
+        | "minecraft:golden_dandelion"
+        | "minecraft:torchflower"
+        | "minecraft:poppy"
+        | "minecraft:blue_orchid"
+        | "minecraft:allium"
+        | "minecraft:azure_bluet"
+        | "minecraft:red_tulip"
+        | "minecraft:orange_tulip"
+        | "minecraft:white_tulip"
+        | "minecraft:pink_tulip"
+        | "minecraft:oxeye_daisy"
+        | "minecraft:cornflower"
+        | "minecraft:lily_of_the_valley"
+        | "minecraft:sweet_berry_bush"
+        | "minecraft:pink_petals"
+        | "minecraft:wildflowers"
+        | "minecraft:open_eyeblossom"
+        | "minecraft:closed_eyeblossom"
+        | "minecraft:firefly_bush" => {
+            BlockCanSurviveRule::BelowTag("minecraft:supports_vegetation")
+        }
+        _ => return None,
+    })
 }
 
 fn growing_plant_rule(block_name: &str) -> Option<BlockCanSurviveRule> {
@@ -655,26 +949,41 @@ const fn block_can_survive_rule(owner: VanillaCanSurviveOverride) -> Option<Bloc
         VanillaCanSurviveOverride::BaseRailBlock | VanillaCanSurviveOverride::DiodeBlock => {
             BlockCanSurviveRule::BelowRigid
         }
+        VanillaCanSurviveOverride::BasePressurePlateBlock => BlockCanSurviveRule::BasePressurePlate,
+        VanillaCanSurviveOverride::BaseTorchBlock => BlockCanSurviveRule::BelowCenter,
         VanillaCanSurviveOverride::BigDripleafBlock => BlockCanSurviveRule::BigDripleaf,
         VanillaCanSurviveOverride::BigDripleafStemBlock => BlockCanSurviveRule::BigDripleafStem,
         VanillaCanSurviveOverride::BellBlock => BlockCanSurviveRule::Bell,
         VanillaCanSurviveOverride::BambooSaplingBlock
         | VanillaCanSurviveOverride::BambooStalkBlock => BlockCanSurviveRule::Bamboo,
+        VanillaCanSurviveOverride::CactusBlock => BlockCanSurviveRule::Cactus,
+        VanillaCanSurviveOverride::CakeBlock => BlockCanSurviveRule::Cake,
+        VanillaCanSurviveOverride::CarpetBlock => BlockCanSurviveRule::Carpet,
         VanillaCanSurviveOverride::CandleBlock => BlockCanSurviveRule::BelowCenter,
         VanillaCanSurviveOverride::CeilingHangingSignBlock => BlockCanSurviveRule::AboveCenter,
+        VanillaCanSurviveOverride::ChorusFlowerBlock => BlockCanSurviveRule::ChorusFlower,
         VanillaCanSurviveOverride::ChorusPlantBlock => BlockCanSurviveRule::ChorusPlant,
+        VanillaCanSurviveOverride::CropBlock => BlockCanSurviveRule::Crop,
+        VanillaCanSurviveOverride::DirtPathBlock => BlockCanSurviveRule::DirtPath,
         VanillaCanSurviveOverride::FarmlandBlock => BlockCanSurviveRule::Farmland,
+        VanillaCanSurviveOverride::GrindstoneBlock => BlockCanSurviveRule::Always,
+        VanillaCanSurviveOverride::HangingMossBlock => BlockCanSurviveRule::HangingMoss,
         VanillaCanSurviveOverride::HangingRootsBlock => BlockCanSurviveRule::AboveFull,
         VanillaCanSurviveOverride::LanternBlock => BlockCanSurviveRule::Lantern,
         VanillaCanSurviveOverride::MangrovePropaguleBlock => BlockCanSurviveRule::MangrovePropagule,
         VanillaCanSurviveOverride::MossyCarpetBlock => BlockCanSurviveRule::MossyCarpet,
         VanillaCanSurviveOverride::MultifaceBlock => BlockCanSurviveRule::Multiface,
+        VanillaCanSurviveOverride::MushroomBlock => BlockCanSurviveRule::Mushroom,
         VanillaCanSurviveOverride::PitcherCropBlock => BlockCanSurviveRule::PitcherCrop,
         VanillaCanSurviveOverride::PointedDripstoneBlock => BlockCanSurviveRule::PointedDripstone,
         VanillaCanSurviveOverride::RedStoneWireBlock => BlockCanSurviveRule::RedStoneWire,
         VanillaCanSurviveOverride::ScaffoldingBlock => BlockCanSurviveRule::Scaffolding,
         VanillaCanSurviveOverride::SeaPickleBlock => BlockCanSurviveRule::SeaPickle,
         VanillaCanSurviveOverride::SmallDripleafBlock => BlockCanSurviveRule::SmallDripleaf,
+        VanillaCanSurviveOverride::SnowLayerBlock => BlockCanSurviveRule::SnowLayer,
+        VanillaCanSurviveOverride::SporeBlossomBlock => BlockCanSurviveRule::SporeBlossom,
+        VanillaCanSurviveOverride::SugarCaneBlock => BlockCanSurviveRule::SugarCane,
+        VanillaCanSurviveOverride::VineBlock => BlockCanSurviveRule::Vine,
         VanillaCanSurviveOverride::StandingSignBlock => BlockCanSurviveRule::BelowLegacySolid,
         VanillaCanSurviveOverride::BannerBlock => BlockCanSurviveRule::BelowLegacySolid,
         VanillaCanSurviveOverride::WallBannerBlock | VanillaCanSurviveOverride::WallSignBlock => {
@@ -688,9 +997,7 @@ const fn block_can_survive_rule(owner: VanillaCanSurviveOverride) -> Option<Bloc
         VanillaCanSurviveOverride::FaceAttachedHorizontalDirectionalBlock => {
             BlockCanSurviveRule::FaceAttached
         }
-        VanillaCanSurviveOverride::DoublePlantBlock => {
-            BlockCanSurviveRule::BelowTag("minecraft:supports_vegetation")
-        }
+        VanillaCanSurviveOverride::DoublePlantBlock => BlockCanSurviveRule::DoublePlant,
         _ => return None,
     })
 }

@@ -4607,23 +4607,23 @@ mod tests {
     #[test]
     fn bucket_pickup_generated_can_survive_owners_all_have_exact_evaluators() {
         let mut owners = Vec::new();
-        for owner in VANILLA_BLOCK_TYPES
-            .iter()
-            .filter(|block| {
-                block.bucket_pickup_override
-                    == Some(VanillaBucketPickupOverride::SimpleWaterloggedBlock)
-            })
-            .filter_map(|block| block.can_survive_override)
-        {
-            if !owners.contains(&owner) {
-                owners.push(owner);
+        let mut missing_evaluators = Vec::new();
+        for block in VANILLA_BLOCK_TYPES.iter().filter(|block| {
+            block.bucket_pickup_override
+                == Some(VanillaBucketPickupOverride::SimpleWaterloggedBlock)
+        }) {
+            if let Some(owner) = block.can_survive_override {
+                if !owners.contains(&owner) {
+                    owners.push(owner);
+                }
+                if !block_placement::survival::block_can_survive_owner_supported(
+                    owner,
+                    block.resource_id,
+                ) {
+                    missing_evaluators.push((block.resource_id, owner));
+                }
             }
         }
-        let missing_evaluators = owners
-            .iter()
-            .copied()
-            .filter(|owner| !block_placement::survival::block_can_survive_owner_supported(*owner))
-            .collect::<Vec<_>>();
 
         assert!(
             missing_evaluators.is_empty(),

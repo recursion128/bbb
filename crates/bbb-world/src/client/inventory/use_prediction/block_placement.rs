@@ -20,8 +20,10 @@ mod composite;
 mod connections;
 mod context;
 mod fluid_contact;
+mod scaffolding;
 mod signal;
 mod state;
+mod surface;
 pub(super) mod survival;
 
 use state::BlockPlacementState;
@@ -63,6 +65,7 @@ impl WorldStore {
             | VanillaBlockItemKind::DoubleHighBlockItem
             | VanillaBlockItemKind::HangingSignItem
             | VanillaBlockItemKind::PlayerHeadItem
+            | VanillaBlockItemKind::ScaffoldingBlockItem
             | VanillaBlockItemKind::SignItem
             | VanillaBlockItemKind::StandingAndWallBlockItem => {}
             VanillaBlockItemKind::GameMasterBlockItem => {
@@ -76,7 +79,6 @@ impl WorldStore {
                     return block_item_fallback(self, hand, &stack, LocalInteractionResult::Fail);
                 }
             }
-            _ => return unsupported(),
         }
         let Some(block_type) = vanilla_block_type(behavior.block_type_id) else {
             return unsupported();
@@ -101,6 +103,22 @@ impl WorldStore {
                 return block_item_fallback(self, hand, &stack, LocalInteractionResult::Fail);
             }
         }
+        let (target_pos, replace_clicked, context) = if behavior.kind
+            == VanillaBlockItemKind::ScaffoldingBlockItem
+        {
+            match scaffolding::update_placement_context(self, context, target_pos, replace_clicked)
+            {
+                scaffolding::ScaffoldingContextUpdate::Context(updated) => {
+                    (updated.target_pos, updated.replace_clicked, updated.context)
+                }
+                scaffolding::ScaffoldingContextUpdate::Fail => {
+                    return block_item_fallback(self, hand, &stack, LocalInteractionResult::Fail);
+                }
+                scaffolding::ScaffoldingContextUpdate::Unsupported => return unsupported(),
+            }
+        } else {
+            (target_pos, replace_clicked, context)
+        };
 
         let standing_and_wall = matches!(
             behavior.kind,
@@ -158,9 +176,13 @@ impl WorldStore {
                 && placed_block_type.id == VANILLA_BLOCK_BAMBOO_SAPLING_ID
             || vanilla_concrete_block_type_id_for_powder(block_type.id)
                 == Some(placed_block_type.id)
-            || block_type.get_state_for_placement_override
-                == Some(VanillaGetStateForPlacementOverride::FarmlandBlock)
-                && placed_block_type.id == VANILLA_BLOCK_DIRT_ID
+            || matches!(
+                block_type.get_state_for_placement_override,
+                Some(
+                    VanillaGetStateForPlacementOverride::DirtPathBlock
+                        | VanillaGetStateForPlacementOverride::FarmlandBlock
+                )
+            ) && placed_block_type.id == VANILLA_BLOCK_DIRT_ID
             || block_type.get_state_for_placement_override
                 == Some(VanillaGetStateForPlacementOverride::CopperChestBlock)
                 && placed_block_type.get_state_for_placement_override
@@ -170,13 +192,20 @@ impl WorldStore {
         if !expected_placement_block {
             return unsupported();
         }
-        if let Some(owner) = placed_block_type.can_survive_override {
-            match self.local_block_state_can_survive(target_pos, placement_state_id, owner) {
-                Some(true) => {}
-                Some(false) => {
-                    return block_item_fallback(self, hand, &stack, LocalInteractionResult::Fail);
+        if behavior.kind != VanillaBlockItemKind::ScaffoldingBlockItem {
+            if let Some(owner) = placed_block_type.can_survive_override {
+                match self.local_block_state_can_survive(target_pos, placement_state_id, owner) {
+                    Some(true) => {}
+                    Some(false) => {
+                        return block_item_fallback(
+                            self,
+                            hand,
+                            &stack,
+                            LocalInteractionResult::Fail,
+                        );
+                    }
+                    None => return unsupported(),
                 }
-                None => return unsupported(),
             }
         }
         let unobstructed = if standing_and_wall {

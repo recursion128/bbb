@@ -9,7 +9,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
- * Emits the built-in block-state support facts cached by Vanilla.
+ * Emits the built-in block-state support, collision, solid-render, and legacy
+ * liquid facts cached by Vanilla.
  *
  * <p>Dynamic-shape states are marked explicitly because their support and
  * collision shapes can depend on the live level and position. Consumers must
@@ -80,7 +81,15 @@ public final class BlockStateSupportReport {
                 }
             }
 
-            Bootstrap.STDOUT.println(id + "\t" + facts);
+            Bootstrap.STDOUT.println(
+                id
+                    + "\t"
+                    + facts
+                    + "\t"
+                    + (state.isSolidRender() ? 1 : 0)
+                    + "\t"
+                    + (state.liquid() ? 1 : 0)
+            );
         }
     }
 }

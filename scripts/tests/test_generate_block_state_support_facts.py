@@ -19,21 +19,29 @@ class GenerateBlockStateSupportFactsTests(unittest.TestCase):
         source = "\n".join(
             [
                 "version=26.1 count=5",
-                "0\t0",
-                "1\t0",
-                "2\t7",
-                "3\t7",
-                "4\t0",
+                "0\t0\t0\t0",
+                "1\t0\t1\t0",
+                "2\t7\t0\t1",
+                "3\t7\t1\t0",
+                "4\t0\t0\t1",
             ]
         )
 
         self.assertEqual(
             GENERATOR.parse_facts(source, 5),
-            (0, 0, 7, 7, 0),
+            (
+                (0, 0, 7, 7, 0),
+                (False, True, False, True, False),
+                (False, False, True, False, True),
+            ),
         )
 
     def test_render_rust_uses_a_first_seen_palette_and_u8_state_indices(self):
-        rendered = GENERATOR.render_rust((0, 0xFFFF_FFFF, 0, 7))
+        rendered = GENERATOR.render_rust(
+            (0, 0xFFFF_FFFF, 0, 7),
+            (False, True, False, True),
+            (False, False, True, True),
+        )
 
         self.assertIn("@generated", rendered)
         self.assertIn("Dynamic-shape states are marked", rendered)
@@ -41,18 +49,26 @@ class GenerateBlockStateSupportFactsTests(unittest.TestCase):
         self.assertIn("    0xffffffff,", rendered)
         self.assertIn("    0x00000007,", rendered)
         self.assertIn("    0, 1, 0, 2,", rendered)
-        self.assertEqual(rendered.count("#[rustfmt::skip]"), 2)
+        self.assertIn("VANILLA_BLOCK_STATE_SOLID_RENDER_BITS", rendered)
+        self.assertIn("    0x000000000000000a,", rendered)
+        self.assertIn("VANILLA_BLOCK_STATE_LIQUID_BITS", rendered)
+        self.assertIn("    0x000000000000000c,", rendered)
+        self.assertEqual(rendered.count("#[rustfmt::skip]"), 4)
 
     def test_render_rust_rejects_a_palette_that_does_not_fit_u8(self):
         with self.assertRaisesRegex(ValueError, "does not fit in u8"):
-            GENERATOR.render_rust(tuple(range(257)))
+            GENERATOR.render_rust(
+                tuple(range(257)),
+                (False,) * 257,
+                (False,) * 257,
+            )
 
     def test_parse_facts_rejects_missing_or_reordered_ids(self):
         source = "\n".join(
             [
                 "version=26.1 count=2",
-                "1\t1",
-                "0\t0",
+                "1\t1\t0\t0",
+                "0\t0\t0\t0",
             ]
         )
 
@@ -63,11 +79,33 @@ class GenerateBlockStateSupportFactsTests(unittest.TestCase):
         source = "\n".join(
             [
                 "version=26.1 count=1",
-                "0\t4294967296",
+                "0\t4294967296\t0\t0",
             ]
         )
 
         with self.assertRaisesRegex(ValueError, "outside u32"):
+            GENERATOR.parse_facts(source, 1)
+
+    def test_parse_facts_rejects_invalid_solid_render_fact(self):
+        source = "\n".join(
+            [
+                "version=26.1 count=1",
+                "0\t0\ttrue\t0",
+            ]
+        )
+
+        with self.assertRaisesRegex(ValueError, "invalid solid-render fact"):
+            GENERATOR.parse_facts(source, 1)
+
+    def test_parse_facts_rejects_invalid_liquid_fact(self):
+        source = "\n".join(
+            [
+                "version=26.1 count=1",
+                "0\t0\t0\tliquid",
+            ]
+        )
+
+        with self.assertRaisesRegex(ValueError, "invalid liquid fact"):
             GENERATOR.parse_facts(source, 1)
 
     def test_parse_facts_rejects_flipped_version_or_count(self):

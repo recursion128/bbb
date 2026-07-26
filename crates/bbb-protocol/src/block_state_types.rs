@@ -17,6 +17,7 @@ use placement_defaults_26_1::{
     VANILLA_BLOCK_NOTE_INSTRUMENT_PALETTE, VANILLA_ITEM_DEFAULT_BLOCK_STATE_PROPERTIES,
 };
 use support_facts_26_1::{
+    VANILLA_BLOCK_STATE_LIQUID_BITS, VANILLA_BLOCK_STATE_SOLID_RENDER_BITS,
     VANILLA_BLOCK_STATE_SUPPORT_FACT_INDICES, VANILLA_BLOCK_STATE_SUPPORT_FACT_PALETTE,
 };
 
@@ -113,7 +114,8 @@ impl VanillaBlockSupportType {
     }
 }
 
-/// Runtime-generated support facts for one built-in Vanilla 26.1 block state.
+/// Runtime-generated support, collision, solid-render, and legacy liquid facts
+/// for one built-in Vanilla 26.1 block state.
 ///
 /// Support and collision-face results are exact state-cache facts when
 /// `dynamic_shape` is false. Dynamic shapes require a live world query instead
@@ -121,6 +123,8 @@ impl VanillaBlockSupportType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaBlockStateSupportFacts {
     facts: u32,
+    solid_render: bool,
+    liquid: bool,
 }
 
 impl VanillaBlockStateSupportFacts {
@@ -130,6 +134,14 @@ impl VanillaBlockStateSupportFacts {
 
     pub const fn dynamic_shape(self) -> bool {
         self.facts & (1 << 1) != 0
+    }
+
+    pub const fn solid_render(self) -> bool {
+        self.solid_render
+    }
+
+    pub const fn liquid(self) -> bool {
+        self.liquid
     }
 
     pub const fn face_sturdy(
@@ -156,6 +168,12 @@ pub fn vanilla_block_state_support_facts(id: i32) -> Option<VanillaBlockStateSup
     let palette_index = usize::from(*VANILLA_BLOCK_STATE_SUPPORT_FACT_INDICES.get(id)?);
     Some(VanillaBlockStateSupportFacts {
         facts: *VANILLA_BLOCK_STATE_SUPPORT_FACT_PALETTE.get(palette_index)?,
+        solid_render: VANILLA_BLOCK_STATE_SOLID_RENDER_BITS
+            .get(id / 64)
+            .is_some_and(|word| word & (1_u64 << (id % 64)) != 0),
+        liquid: VANILLA_BLOCK_STATE_LIQUID_BITS
+            .get(id / 64)
+            .is_some_and(|word| word & (1_u64 << (id % 64)) != 0),
     })
 }
 
@@ -370,10 +388,20 @@ mod tests {
         assert!(VANILLA_BLOCK_STATE_SUPPORT_FACT_INDICES
             .iter()
             .all(|index| usize::from(*index) < VANILLA_BLOCK_STATE_SUPPORT_FACT_PALETTE.len()));
+        assert_eq!(
+            VANILLA_BLOCK_STATE_SOLID_RENDER_BITS.len(),
+            (VANILLA_BLOCK_STATE_COUNT as usize).div_ceil(64)
+        );
+        assert_eq!(
+            VANILLA_BLOCK_STATE_LIQUID_BITS.len(),
+            (VANILLA_BLOCK_STATE_COUNT as usize).div_ceil(64)
+        );
 
         let air = vanilla_block_state_support_facts(state_id("minecraft:air")).unwrap();
         assert!(!air.legacy_solid());
         assert!(!air.dynamic_shape());
+        assert!(!air.solid_render());
+        assert!(!air.liquid());
         assert!(!air.face_sturdy(
             VanillaBlockSupportDirection::Up,
             VanillaBlockSupportType::Full
@@ -383,6 +411,23 @@ mod tests {
 
         let stone = vanilla_block_state_support_facts(state_id("minecraft:stone")).unwrap();
         assert!(stone.legacy_solid());
+        assert!(stone.solid_render());
+        assert!(!stone.liquid());
+        assert!(
+            !vanilla_block_state_support_facts(state_id("minecraft:glass"))
+                .unwrap()
+                .solid_render()
+        );
+        assert!(
+            vanilla_block_state_support_facts(state_id("minecraft:water"))
+                .unwrap()
+                .liquid()
+        );
+        assert!(
+            vanilla_block_state_support_facts(state_id("minecraft:bubble_column"))
+                .unwrap()
+                .liquid()
+        );
         for direction in [
             VanillaBlockSupportDirection::Down,
             VanillaBlockSupportDirection::Up,

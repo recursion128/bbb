@@ -32,6 +32,7 @@ use super::context::{
 };
 use super::fluid_contact::concrete_powder_solidifies;
 use super::signal::placement_neighbor_signal_is_proven_absent;
+use super::{scaffolding, surface};
 use crate::{BlockPos, EnvironmentBiomeSampling, TerrainFluidKind};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -264,6 +265,21 @@ pub(super) fn block_state_for_placement(
                 Some(false) => {}
                 None => return BlockPlacementState::Unsupported,
             }
+            return vanilla_block_default_state_id(VANILLA_BLOCK_DIRT_ID)
+                .map_or(BlockPlacementState::Unsupported, BlockPlacementState::State);
+        }
+        VanillaGetStateForPlacementOverride::DirtPathBlock => {
+            match world.local_block_state_can_survive(
+                target_pos,
+                default_state_id,
+                VanillaCanSurviveOverride::DirtPathBlock,
+            ) {
+                Some(true) => return BlockPlacementState::State(default_state_id),
+                Some(false) => {}
+                None => return BlockPlacementState::Unsupported,
+            }
+            // Vanilla calls `Block.pushEntitiesUp` before returning dirt here,
+            // but `Entity.teleportTo` only mutates entities in `ServerLevel`.
             return vanilla_block_default_state_id(VANILLA_BLOCK_DIRT_ID)
                 .map_or(BlockPlacementState::Unsupported, BlockPlacementState::State);
         }
@@ -725,6 +741,42 @@ pub(super) fn block_state_for_placement(
                 block_type,
                 default_state_id,
                 [("snowy", boolean_name(snowy))],
+            );
+        }
+        VanillaGetStateForPlacementOverride::MultifaceBlock => {
+            return surface::multiface_state_for_placement(
+                world,
+                block_type,
+                target_pos,
+                directions,
+                default_state_id,
+            );
+        }
+        VanillaGetStateForPlacementOverride::VineBlock => {
+            return surface::vine_state_for_placement(
+                world,
+                block_type,
+                target_pos,
+                directions,
+                default_state_id,
+            );
+        }
+        VanillaGetStateForPlacementOverride::ScaffoldingBlock => {
+            let Some(placement) = scaffolding::placement(world, target_pos) else {
+                return BlockPlacementState::Unsupported;
+            };
+            return state_with_owned_properties(
+                world,
+                block_type,
+                default_state_id,
+                [
+                    ("bottom", boolean_name(placement.bottom).to_string()),
+                    ("distance", placement.distance.to_string()),
+                    (
+                        "waterlogged",
+                        boolean_name(placement.waterlogged).to_string(),
+                    ),
+                ],
             );
         }
         VanillaGetStateForPlacementOverride::PitcherCropBlock => {
@@ -1319,10 +1371,26 @@ pub(super) fn block_state_for_placement(
                 default_state_id,
             );
         }
-        _ => return BlockPlacementState::Unsupported,
+        VanillaGetStateForPlacementOverride::BaseFireBlock
+        | VanillaGetStateForPlacementOverride::FireBlock
+        | VanillaGetStateForPlacementOverride::TallSeagrassBlock => {
+            return BlockPlacementState::Unsupported;
+        }
     };
 
     state_with_properties(world, block_type, default_state_id, properties)
+}
+
+#[cfg(test)]
+pub(super) const fn block_item_get_state_for_placement_owner_supported(
+    owner: VanillaGetStateForPlacementOverride,
+) -> bool {
+    !matches!(
+        owner,
+        VanillaGetStateForPlacementOverride::BaseFireBlock
+            | VanillaGetStateForPlacementOverride::FireBlock
+            | VanillaGetStateForPlacementOverride::TallSeagrassBlock
+    )
 }
 
 #[derive(Debug, Clone, Copy)]
