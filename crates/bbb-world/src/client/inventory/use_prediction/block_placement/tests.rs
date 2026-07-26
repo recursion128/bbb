@@ -21,13 +21,14 @@ use bbb_protocol::{
         VANILLA_ITEM_BROWN_MUSHROOM_BLOCK_ID, VANILLA_ITEM_CANDLE_ID, VANILLA_ITEM_CHEST_ID,
         VANILLA_ITEM_CHORUS_PLANT_ID, VANILLA_ITEM_COBBLESTONE_WALL_ID,
         VANILLA_ITEM_COCOA_BEANS_ID, VANILLA_ITEM_COMMAND_BLOCK_ID, VANILLA_ITEM_COMPARATOR_ID,
-        VANILLA_ITEM_CREAKING_HEART_ID, VANILLA_ITEM_FARMLAND_ID, VANILLA_ITEM_FURNACE_ID,
-        VANILLA_ITEM_HANGING_ROOTS_ID, VANILLA_ITEM_HEAVY_CORE_ID, VANILLA_ITEM_IRON_BARS_ID,
-        VANILLA_ITEM_LADDER_ID, VANILLA_ITEM_LANTERN_ID, VANILLA_ITEM_MANGROVE_PROPAGULE_ID,
-        VANILLA_ITEM_NOTE_BLOCK_ID, VANILLA_ITEM_OAK_DOOR_ID, VANILLA_ITEM_OAK_FENCE_GATE_ID,
-        VANILLA_ITEM_OAK_FENCE_ID, VANILLA_ITEM_OAK_HANGING_SIGN_ID, VANILLA_ITEM_OAK_LEAVES_ID,
-        VANILLA_ITEM_OAK_LOG_ID, VANILLA_ITEM_OAK_SIGN_ID, VANILLA_ITEM_OAK_SLAB_ID,
-        VANILLA_ITEM_OAK_STAIRS_ID, VANILLA_ITEM_OAK_TRAPDOOR_ID, VANILLA_ITEM_OBSERVER_ID,
+        VANILLA_ITEM_CRAFTER_ID, VANILLA_ITEM_CREAKING_HEART_ID, VANILLA_ITEM_FARMLAND_ID,
+        VANILLA_ITEM_FURNACE_ID, VANILLA_ITEM_HANGING_ROOTS_ID, VANILLA_ITEM_HEAVY_CORE_ID,
+        VANILLA_ITEM_IRON_BARS_ID, VANILLA_ITEM_LADDER_ID, VANILLA_ITEM_LANTERN_ID,
+        VANILLA_ITEM_MANGROVE_PROPAGULE_ID, VANILLA_ITEM_NOTE_BLOCK_ID, VANILLA_ITEM_OAK_DOOR_ID,
+        VANILLA_ITEM_OAK_FENCE_GATE_ID, VANILLA_ITEM_OAK_FENCE_ID,
+        VANILLA_ITEM_OAK_HANGING_SIGN_ID, VANILLA_ITEM_OAK_LEAVES_ID, VANILLA_ITEM_OAK_LOG_ID,
+        VANILLA_ITEM_OAK_SIGN_ID, VANILLA_ITEM_OAK_SLAB_ID, VANILLA_ITEM_OAK_STAIRS_ID,
+        VANILLA_ITEM_OAK_TRAPDOOR_ID, VANILLA_ITEM_OBSERVER_ID,
         VANILLA_ITEM_OXIDIZED_COPPER_CHEST_ID, VANILLA_ITEM_PALE_MOSS_CARPET_ID,
         VANILLA_ITEM_POINTED_DRIPSTONE_ID, VANILLA_ITEM_REDSTONE_ID,
         VANILLA_ITEM_RESPAWN_ANCHOR_ID, VANILLA_ITEM_SMALL_DRIPLEAF_ID, VANILLA_ITEM_STONE_ID,
@@ -215,6 +216,58 @@ fn directional_and_axis_placement_owners_use_exact_player_and_hit_directions() {
         state_id(
             "minecraft:observer",
             [("facing", "south"), ("powered", "false")]
+        )
+    );
+}
+
+#[test]
+fn crafter_placement_uses_nearest_front_top_orientation_without_signal() {
+    let clicked = BlockPos { x: 4, y: 8, z: 4 };
+    let target = relative(clicked, ProtocolDirection::Up);
+    let mut horizontal = placement_world();
+    set_block(&mut horizontal, clicked, state_id("minecraft:stone", []));
+    set_held(&mut horizontal, VANILLA_ITEM_CRAFTER_ID, 1);
+    assert!(matches!(
+        use_block_at(&mut horizontal, clicked, false, 69),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        horizontal.probe_block(target).unwrap().block_state_id,
+        state_id(
+            "minecraft:crafter",
+            [
+                ("crafting", "false"),
+                ("orientation", "north_up"),
+                ("triggered", "false")
+            ],
+        )
+    );
+
+    let mut vertical = placement_world();
+    set_block(&mut vertical, clicked, state_id("minecraft:stone", []));
+    vertical.set_local_player_pose(LocalPlayerPoseState {
+        position: Vec3d {
+            x: 8.0,
+            y: 8.0,
+            z: 8.0,
+        },
+        x_rot: 90.0,
+        ..LocalPlayerPoseState::default()
+    });
+    set_held(&mut vertical, VANILLA_ITEM_CRAFTER_ID, 1);
+    assert!(matches!(
+        use_block_at(&mut vertical, clicked, false, 70),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        vertical.probe_block(target).unwrap().block_state_id,
+        state_id(
+            "minecraft:crafter",
+            [
+                ("crafting", "false"),
+                ("orientation", "up_south"),
+                ("triggered", "false")
+            ],
         )
     );
 }

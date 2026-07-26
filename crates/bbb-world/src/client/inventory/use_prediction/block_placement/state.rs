@@ -27,6 +27,7 @@ use super::context::{
     rotation_segment, world_click_y, DirectionAxis,
 };
 use super::fluid_contact::concrete_powder_solidifies;
+use super::signal::placement_neighbor_signal_is_proven_absent;
 use crate::{BlockPos, EnvironmentBiomeSampling, TerrainFluidKind};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -528,6 +529,28 @@ pub(super) fn block_state_for_placement(
                 block_type,
                 default_state_id,
                 [("orientation", orientation)],
+            );
+        }
+        VanillaGetStateForPlacementOverride::CrafterBlock => {
+            if placement_neighbor_signal_is_proven_absent(world, &[target_pos]).is_none() {
+                return BlockPlacementState::Unsupported;
+            }
+            let front = opposite(nearest);
+            let top = match front {
+                Direction::Down => opposite(horizontal),
+                Direction::Up => horizontal,
+                Direction::North | Direction::South | Direction::West | Direction::East => {
+                    Direction::Up
+                }
+            };
+            let Some(orientation) = front_and_top_name(front, top) else {
+                return BlockPlacementState::Unsupported;
+            };
+            return state_with_properties(
+                world,
+                block_type,
+                default_state_id,
+                [("orientation", orientation), ("triggered", "false")],
             );
         }
         VanillaGetStateForPlacementOverride::BannerBlock => {
