@@ -1,0 +1,523 @@
+use std::collections::BTreeMap;
+
+use bbb_protocol::{
+    block_state_types::{
+        vanilla_block_default_state_id, vanilla_item_default_block_state_properties,
+    },
+    block_types::vanilla_block_type,
+    data_component_types::VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID,
+    item_types::{ItemTypeCatalogEntry, VanillaBlockItemKind, VanillaItemUseOnOverride},
+    packets::{Direction as ProtocolDirection, ItemStackSummary as ProtocolItemStackSummary},
+};
+
+use super::*;
+
+impl WorldStore {
+    pub(super) fn predict_local_block_item_use_on(
+        &mut self,
+        owner: VanillaItemUseOnOverride,
+        item_type: &ItemTypeCatalogEntry,
+        hand: InteractionHand,
+        context: LocalBlockUseContext,
+    ) -> LocalTargetUsePrediction {
+        let unsupported = || LocalTargetUsePrediction::UnsupportedItemUseOn(owner);
+        let Some(stack) = self.local_item_in_hand(hand).cloned() else {
+            return unsupported();
+        };
+        if stack.item_id != Some(item_type.id) || stack.count < 1 {
+            return unsupported();
+        }
+        if !context
+            .cursor
+            .iter()
+            .all(|coordinate| coordinate.is_finite())
+        {
+            return unsupported();
+        }
+        // Base `Block.getStateForPlacement` does not inspect `isInside`; the
+        // exact value remains in the context for specialized state owners.
+        let _inside = context.inside;
+        let Some(behavior) = item_type.block_item_behavior else {
+            return unsupported();
+        };
+
+        // The core stage owns plain BlockItem. Specialized item subclasses
+        // retain explicit ownership until their context and multi-block rules
+        // are implemented.
+        if behavior.kind != VanillaBlockItemKind::BlockItem {
+            return unsupported();
+        }
+        let Some(block_type) = vanilla_block_type(behavior.block_type_id) else {
+            return unsupported();
+        };
+        if block_type.get_state_for_placement_override.is_some()
+            || block_type.can_survive_override.is_some()
+        {
+            return unsupported();
+        }
+
+        let Some(replace_clicked) = self.local_block_is_replaceable_by_different_item(context.pos)
+        else {
+            return unsupported();
+        };
+        let target_pos = if replace_clicked {
+            context.pos
+        } else {
+            relative(context.pos, context.face)
+        };
+        if !replace_clicked {
+            let Some(replace_target) =
+                self.local_block_is_replaceable_by_different_item(target_pos)
+            else {
+                return unsupported();
+            };
+            if !replace_target {
+                return block_item_fallback(self, hand, &stack, LocalInteractionResult::Fail);
+            }
+        }
+
+        let Some(placement_state_id) = vanilla_block_default_state_id(block_type.id) else {
+            return unsupported();
+        };
+        let Some(placement_state) = self.registries().block_state(placement_state_id) else {
+            return unsupported();
+        };
+        if placement_state.name != block_type.resource_id {
+            return unsupported();
+        }
+        let Some(unobstructed) =
+            self.local_block_state_placement_is_unobstructed(target_pos, placement_state_id)
+        else {
+            return unsupported();
+        };
+        if !unobstructed {
+            return block_item_fallback(self, hand, &stack, LocalInteractionResult::Fail);
+        }
+
+        let final_state_id =
+            match self.block_item_state_after_component(item_type.id, &stack, placement_state_id) {
+                Some(state_id) => state_id,
+                None => return unsupported(),
+            };
+        if !self.predict_local_block_state(target_pos, final_state_id, context.sequence) {
+            return unsupported();
+        }
+        // The cloned non-empty hand stack above freezes the same precondition
+        // consumed by ItemStack.consume after the successful setBlock.
+        if !self.consume_local_item_in_hand(hand, 1) {
+            return unsupported();
+        }
+
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+            LocalInteractionSuccess::block_place_from_profile(target_pos, block_type.id),
+        ))
+    }
+
+    fn block_item_state_after_component(
+        &self,
+        item_type_id: i32,
+        stack: &ProtocolItemStackSummary,
+        placement_state_id: i32,
+    ) -> Option<i32> {
+        let properties = block_state_component_properties(item_type_id, stack);
+        if properties.is_empty() {
+            return Some(placement_state_id);
+        }
+        let placement_state = self.registries().block_state(placement_state_id)?;
+        let block_name = placement_state.name.clone();
+        let mut effective_properties = placement_state.properties.clone();
+        let mut state_id = placement_state_id;
+        for (name, value) in properties {
+            let Some(previous) = effective_properties.get(&name).cloned() else {
+                continue;
+            };
+            effective_properties.insert(name.clone(), value);
+            if let Some(candidate) = self
+                .registries()
+                .block_state_id_by_name_and_properties(&block_name, &effective_properties)
+            {
+                state_id = candidate;
+            } else {
+                effective_properties.insert(name, previous);
+            }
+        }
+        Some(state_id)
+    }
+}
+
+fn block_item_fallback(
+    world: &WorldStore,
+    hand: InteractionHand,
+    stack: &ProtocolItemStackSummary,
+    placement_result: LocalInteractionResult,
+) -> LocalTargetUsePrediction {
+    if !world.item_stack_has_effective_component(
+        stack,
+        bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
+    ) {
+        return LocalTargetUsePrediction::Result(placement_result);
+    }
+    if !world.local_item_in_hand_can_start_consuming(hand) {
+        return LocalTargetUsePrediction::Result(LocalInteractionResult::Fail);
+    }
+    let Some(consumable) = world.effective_item_consumable(stack) else {
+        return LocalTargetUsePrediction::UnsupportedItemUseOn(VanillaItemUseOnOverride::BlockItem);
+    };
+    LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+        LocalInteractionSuccess::consume(consumable.consume_seconds > 0.0),
+    ))
+}
+
+fn block_state_component_properties(
+    item_type_id: i32,
+    stack: &ProtocolItemStackSummary,
+) -> BTreeMap<String, String> {
+    if stack
+        .component_patch
+        .removed_type_ids
+        .contains(&VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID)
+    {
+        return BTreeMap::new();
+    }
+    if stack
+        .component_patch
+        .added_type_ids
+        .contains(&VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID)
+    {
+        return stack.component_patch.block_state_properties.clone();
+    }
+    vanilla_item_default_block_state_properties(item_type_id)
+        .unwrap_or_default()
+        .iter()
+        .map(|(name, value)| ((*name).to_string(), (*value).to_string()))
+        .collect()
+}
+
+fn relative(pos: BlockPos, direction: ProtocolDirection) -> BlockPos {
+    match direction {
+        ProtocolDirection::Down => BlockPos {
+            y: pos.y - 1,
+            ..pos
+        },
+        ProtocolDirection::Up => BlockPos {
+            y: pos.y + 1,
+            ..pos
+        },
+        ProtocolDirection::North => BlockPos {
+            z: pos.z - 1,
+            ..pos
+        },
+        ProtocolDirection::South => BlockPos {
+            z: pos.z + 1,
+            ..pos
+        },
+        ProtocolDirection::West => BlockPos {
+            x: pos.x - 1,
+            ..pos
+        },
+        ProtocolDirection::East => BlockPos {
+            x: pos.x + 1,
+            ..pos
+        },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, LocalPlayerPoseState,
+        PaletteDomain, PaletteKind, PalettedContainerData, WorldBlockSoundProfile, WorldDimension,
+    };
+    use bbb_protocol::{
+        data_component_types::VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID,
+        game_types::VANILLA_GAME_TYPE_SURVIVAL_ID,
+        item_types::{
+            VANILLA_ITEM_OAK_LOG_ID, VANILLA_ITEM_RESPAWN_ANCHOR_ID, VANILLA_ITEM_STONE_ID,
+        },
+        packets::{
+            BlockPos as ProtocolBlockPos, BlockUpdate, CommonPlayerSpawnInfo,
+            DataComponentPatchSummary, ItemStackSummary, PlayLogin, SetChunkCacheCenter,
+            SetPlayerInventory, Vec3d,
+        },
+    };
+
+    const CLICKED: BlockPos = BlockPos { x: 0, y: 8, z: 0 };
+    const TARGET: BlockPos = BlockPos { x: 0, y: 9, z: 0 };
+
+    #[test]
+    fn plain_block_item_places_consumes_sounds_and_rolls_back_on_ack() {
+        let mut world = placement_world();
+        set_held(&mut world, VANILLA_ITEM_STONE_ID, 2);
+        world.set_default_block_sound_profiles(BTreeMap::from([(
+            "minecraft:stone".to_string(),
+            WorldBlockSoundProfile {
+                break_sound: "minecraft:block.stone.break".to_string(),
+                place_sound: "minecraft:block.stone.place".to_string(),
+                hit_sound: "minecraft:block.stone.hit".to_string(),
+                volume: 1.0,
+                pitch: 1.0,
+            },
+        )]));
+
+        assert_eq!(
+            use_block(&mut world, 17),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::block_place_from_profile(
+                    TARGET,
+                    bbb_protocol::block_types::VANILLA_BLOCK_STONE_ID,
+                )
+            ))
+        );
+        assert_eq!(
+            world.probe_block(TARGET).unwrap().block_state_id,
+            state_id("minecraft:stone", [])
+        );
+        assert_eq!(held(&world).count, 1);
+        assert_eq!(world.local_block_predictions().len(), 1);
+        assert_eq!(world.local_block_predictions()[0].sequence, 17);
+
+        let mut random = crate::LevelEventSoundRandomState::default();
+        let effect = world
+            .apply_local_interaction_sound_action(
+                LocalInteractionSoundAction::BlockPlaceFromProfile {
+                    pos: TARGET,
+                    block_type_id: bbb_protocol::block_types::VANILLA_BLOCK_STONE_ID,
+                },
+                &mut random,
+            )
+            .unwrap();
+        let crate::LocalInteractionSoundEffect::Positioned(sound) = effect else {
+            panic!("block placement sound must be positioned");
+        };
+        assert_eq!(
+            sound.sound.location.as_deref(),
+            Some("minecraft:block.stone.place")
+        );
+        assert_eq!((sound.volume, sound.pitch), (1.0, 0.8));
+
+        world.apply_block_changed_ack(bbb_protocol::packets::BlockChangedAck { sequence: 17 });
+        assert_eq!(
+            world.probe_block(TARGET).unwrap().block_state_id,
+            state_id("minecraft:air", [])
+        );
+        assert!(world.local_block_predictions().is_empty());
+    }
+
+    #[test]
+    fn block_state_component_applies_known_values_and_ignores_unknown_properties() {
+        let mut world = placement_world();
+        let mut stack = ItemStackSummary {
+            item_id: Some(VANILLA_ITEM_RESPAWN_ANCHOR_ID),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        stack.component_patch.added = 1;
+        stack
+            .component_patch
+            .added_type_ids
+            .push(VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID);
+        stack.component_patch.block_state_properties = BTreeMap::from([
+            ("charges".to_string(), "2".to_string()),
+            ("missing".to_string(), "ignored".to_string()),
+        ]);
+        world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: stack,
+        });
+
+        assert!(matches!(
+            use_block(&mut world, 18),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(
+            world.probe_block(TARGET).unwrap().block_state_id,
+            state_id("minecraft:respawn_anchor", [("charges", "2")])
+        );
+        assert_eq!(held(&world).count, 0);
+    }
+
+    #[test]
+    fn plain_block_item_replaces_clicked_block_but_rejects_player_obstruction() {
+        let mut replace = placement_world();
+        set_block(&mut replace, CLICKED, state_id("minecraft:short_grass", []));
+        set_held(&mut replace, VANILLA_ITEM_STONE_ID, 1);
+        assert!(matches!(
+            use_block(&mut replace, 1),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(
+            replace.probe_block(CLICKED).unwrap().block_state_id,
+            state_id("minecraft:stone", [])
+        );
+
+        let mut obstructed = placement_world();
+        obstructed.set_local_player_pose(LocalPlayerPoseState {
+            position: Vec3d {
+                x: 0.5,
+                y: 9.0,
+                z: 0.5,
+            },
+            ..LocalPlayerPoseState::default()
+        });
+        set_held(&mut obstructed, VANILLA_ITEM_STONE_ID, 1);
+        assert_eq!(
+            use_block(&mut obstructed, 2),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
+        );
+        assert_eq!(
+            obstructed.probe_block(TARGET).unwrap().block_state_id,
+            state_id("minecraft:air", [])
+        );
+        assert_eq!(held(&obstructed).count, 1);
+        assert!(obstructed.local_block_predictions().is_empty());
+    }
+
+    #[test]
+    fn specialized_placement_owner_remains_explicit_for_the_next_stage() {
+        let mut world = placement_world();
+        set_held(&mut world, VANILLA_ITEM_OAK_LOG_ID, 1);
+        assert_eq!(
+            world.predict_local_block_use_with_hit(
+                CLICKED,
+                ProtocolDirection::Up,
+                [0.25, 1.0, 0.75],
+                false,
+                InteractionHand::MainHand,
+                false,
+                3,
+            ),
+            LocalTargetUsePrediction::UnsupportedItemUseOn(VanillaItemUseOnOverride::BlockItem)
+        );
+        assert_eq!(
+            world.probe_block(TARGET).unwrap().block_state_id,
+            state_id("minecraft:air", [])
+        );
+    }
+
+    fn use_block(world: &mut WorldStore, sequence: i32) -> LocalTargetUsePrediction {
+        world.predict_local_block_use_with_hit(
+            CLICKED,
+            ProtocolDirection::Up,
+            [0.25, 1.0, 0.75],
+            false,
+            InteractionHand::MainHand,
+            false,
+            sequence,
+        )
+    }
+
+    fn placement_world() -> WorldStore {
+        let air = state_id("minecraft:air", []);
+        let single_value = |domain, entry_count, global_id| PalettedContainerData {
+            domain,
+            bits_per_entry: 0,
+            palette_kind: PaletteKind::SingleValue,
+            palette_global_ids: vec![global_id],
+            packed_data: Vec::new(),
+            entry_count,
+        };
+        let mut world = WorldStore::with_dimension(WorldDimension {
+            min_y: 0,
+            height: 16,
+        });
+        world.apply_login(&PlayLogin {
+            player_id: 7,
+            hardcore: false,
+            levels: vec!["minecraft:overworld".to_string()],
+            max_players: 20,
+            chunk_radius: 8,
+            simulation_distance: 6,
+            reduced_debug_info: false,
+            show_death_screen: true,
+            do_limited_crafting: false,
+            common_spawn_info: CommonPlayerSpawnInfo {
+                dimension_type_id: 0,
+                dimension: "minecraft:overworld".to_string(),
+                seed: 0,
+                game_type: VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+                previous_game_type: -1,
+                is_debug: false,
+                is_flat: false,
+                last_death_location: None,
+                portal_cooldown: 0,
+                sea_level: 63,
+            },
+            enforces_secure_chat: true,
+        });
+        world.apply_set_chunk_cache_center(SetChunkCacheCenter {
+            chunk_x: 0,
+            chunk_z: 0,
+        });
+        let section_count =
+            usize::try_from(world.dimension().height.div_euclid(16)).expect("section count");
+        world.insert_decoded_chunk(ChunkColumn {
+            pos: ChunkPos { x: 0, z: 0 },
+            state: ChunkState::Decoded,
+            heightmaps: Vec::new(),
+            sections: (0..section_count)
+                .map(|_| ChunkSection {
+                    non_empty_block_count: 0,
+                    fluid_count: 0,
+                    block_states: single_value(PaletteDomain::BlockStates, 4096, air),
+                    biomes: single_value(PaletteDomain::Biomes, 64, 0),
+                })
+                .collect(),
+            block_entities: Vec::new(),
+            light: LightData::default(),
+        });
+        set_block(&mut world, CLICKED, state_id("minecraft:stone", []));
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: Vec3d {
+                x: 8.0,
+                y: 8.0,
+                z: 8.0,
+            },
+            ..LocalPlayerPoseState::default()
+        });
+        world
+    }
+
+    fn set_held(world: &mut WorldStore, item_id: i32, count: i32) {
+        world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: ItemStackSummary {
+                item_id: Some(item_id),
+                count,
+                component_patch: DataComponentPatchSummary::default(),
+            },
+        });
+    }
+
+    fn held(world: &WorldStore) -> &ItemStackSummary {
+        &world
+            .inventory()
+            .player_slots
+            .iter()
+            .find(|slot| slot.slot == 0)
+            .expect("selected slot")
+            .item
+    }
+
+    fn set_block(world: &mut WorldStore, pos: BlockPos, block_state_id: i32) {
+        assert!(world.apply_block_update(BlockUpdate {
+            pos: ProtocolBlockPos {
+                x: pos.x,
+                y: pos.y,
+                z: pos.z,
+            },
+            block_state_id,
+        }));
+    }
+
+    fn state_id<const N: usize>(name: &str, properties: [(&str, &str); N]) -> i32 {
+        crate::vanilla_block_state_id(
+            name,
+            &properties
+                .into_iter()
+                .map(|(name, value)| (name.to_string(), value.to_string()))
+                .collect(),
+        )
+        .expect("vanilla block state")
+    }
+}

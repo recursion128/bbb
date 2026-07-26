@@ -1873,6 +1873,18 @@ impl WorldStore {
                 f32::from_bits(pitch_bits),
                 SoundSource::Blocks.as_str(),
             ),
+            LocalInteractionSoundAction::BlockPlaceFromProfile { pos, block_type_id } => {
+                let block_name =
+                    bbb_protocol::block_types::vanilla_block_type(block_type_id)?.resource_id;
+                let profile = self.items.default_block_sound_profiles.get(block_name)?;
+                block_sound_state(
+                    pos,
+                    &profile.place_sound,
+                    (profile.volume + 1.0) / 2.0,
+                    profile.pitch * 0.8,
+                    SoundSource::Blocks.as_str(),
+                )
+            }
         };
         state.seed = self.next_sound_seed();
         Some(LocalInteractionSoundEffect::Positioned(

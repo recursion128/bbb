@@ -37,11 +37,11 @@ use bbb_protocol::{
     },
     equipment_slots::VANILLA_EQUIPMENT_SLOTS,
     item_types::{
-        VanillaBlockTransform, VanillaItemInteractLivingEntityOverride, VanillaItemUseOnOverride,
-        VanillaItemUseOverride, VANILLA_AXE_SCRAPEABLES, VANILLA_AXE_STRIPPABLES,
-        VANILLA_AXE_WAX_OFF, VANILLA_HOE_TILLABLES, VANILLA_HONEYCOMB_WAXABLES,
-        VANILLA_ITEM_GOLDEN_DANDELION_ID, VANILLA_ITEM_IRON_INGOT_ID, VANILLA_ITEM_LEAD_ID,
-        VANILLA_ITEM_SHEARS_ID, VANILLA_SHOVEL_FLATTENABLES,
+        ItemTypeCatalogEntry, VanillaBlockTransform, VanillaItemInteractLivingEntityOverride,
+        VanillaItemUseOnOverride, VanillaItemUseOverride, VANILLA_AXE_SCRAPEABLES,
+        VANILLA_AXE_STRIPPABLES, VANILLA_AXE_WAX_OFF, VANILLA_HOE_TILLABLES,
+        VANILLA_HONEYCOMB_WAXABLES, VANILLA_ITEM_GOLDEN_DANDELION_ID, VANILLA_ITEM_IRON_INGOT_ID,
+        VANILLA_ITEM_LEAD_ID, VANILLA_ITEM_SHEARS_ID, VANILLA_SHOVEL_FLATTENABLES,
     },
     packets::{
         BlockPos as ProtocolBlockPos, ConsumableSummary, Direction as ProtocolDirection,
@@ -49,6 +49,7 @@ use bbb_protocol::{
     },
 };
 
+mod block_placement;
 mod block_use_without_item;
 mod bone_meal;
 mod book;
@@ -122,6 +123,8 @@ const VANILLA_ZOMBIE_HORSE_FOOD_TAG: &str = "minecraft:zombie_horse_food";
 struct LocalBlockUseContext {
     pos: BlockPos,
     face: ProtocolDirection,
+    cursor: [f64; 3],
+    inside: bool,
     sequence: i32,
     secondary_use_active: bool,
 }
@@ -175,6 +178,10 @@ pub enum LocalInteractionSoundAction {
         sound_resource_id: &'static str,
         volume_bits: u32,
         pitch_bits: u32,
+    },
+    BlockPlaceFromProfile {
+        pos: BlockPos,
+        block_type_id: i32,
     },
 }
 
@@ -315,6 +322,20 @@ impl LocalInteractionSuccess {
                 sound_resource_id,
                 volume_bits: volume.to_bits(),
                 pitch_bits: pitch.to_bits(),
+            }),
+            particle_action: None,
+        }
+    }
+
+    const fn block_place_from_profile(pos: BlockPos, block_type_id: i32) -> Self {
+        Self {
+            swing_source: LocalInteractionSwingSource::Client,
+            was_item_interaction: true,
+            starts_using_item: false,
+            extra_swing: None,
+            sound_action: Some(LocalInteractionSoundAction::BlockPlaceFromProfile {
+                pos,
+                block_type_id,
             }),
             particle_action: None,
         }
@@ -610,6 +631,29 @@ impl WorldStore {
         secondary_use_active: bool,
         sequence: i32,
     ) -> LocalTargetUsePrediction {
+        self.predict_local_block_use_with_hit(
+            pos,
+            face,
+            face_center_cursor(face),
+            false,
+            hand,
+            secondary_use_active,
+            sequence,
+        )
+    }
+
+    /// Predicts targeted use with the exact native block-hit cursor and
+    /// inside flag carried by the serverbound `UseItemOn` packet.
+    pub fn predict_local_block_use_with_hit(
+        &mut self,
+        pos: BlockPos,
+        face: ProtocolDirection,
+        cursor: [f64; 3],
+        inside: bool,
+        hand: InteractionHand,
+        secondary_use_active: bool,
+        sequence: i32,
+    ) -> LocalTargetUsePrediction {
         if self.local_player_is_spectator() {
             return LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
                 LocalInteractionSuccess::consume_without_item(),
@@ -618,6 +662,8 @@ impl WorldStore {
         let context = LocalBlockUseContext {
             pos,
             face,
+            cursor,
+            inside,
             sequence,
             secondary_use_active,
         };
@@ -742,7 +788,7 @@ impl WorldStore {
                     return result;
                 }
                 if let Some(result) =
-                    self.predict_local_client_owned_item_use_on(owner, hand, context)
+                    self.predict_local_client_owned_item_use_on(owner, item_type, hand, context)
                 {
                     return result;
                 }
@@ -901,6 +947,7 @@ impl WorldStore {
     fn predict_local_client_owned_item_use_on(
         &mut self,
         owner: VanillaItemUseOnOverride,
+        item_type: &ItemTypeCatalogEntry,
         hand: InteractionHand,
         context: LocalBlockUseContext,
     ) -> Option<LocalTargetUsePrediction> {
@@ -916,6 +963,9 @@ impl WorldStore {
         };
         let pass = || LocalTargetUsePrediction::Result(LocalInteractionResult::Pass);
         match owner {
+            VanillaItemUseOnOverride::BlockItem => {
+                Some(self.predict_local_block_item_use_on(owner, item_type, hand, context))
+            }
             // `BrushItem.useOn` always consumes the action and its block hit
             // starts the fixed-duration brushing use animation.
             VanillaItemUseOnOverride::BrushItem => Some(consume()),
@@ -2282,6 +2332,17 @@ impl WorldStore {
                     .map(|item| item.resource_id)
             })
             .map(str::to_owned)
+    }
+}
+
+fn face_center_cursor(face: ProtocolDirection) -> [f64; 3] {
+    match face {
+        ProtocolDirection::Down => [0.5, 0.0, 0.5],
+        ProtocolDirection::Up => [0.5, 1.0, 0.5],
+        ProtocolDirection::North => [0.5, 0.5, 0.0],
+        ProtocolDirection::South => [0.5, 0.5, 1.0],
+        ProtocolDirection::West => [0.0, 0.5, 0.5],
+        ProtocolDirection::East => [1.0, 0.5, 0.5],
     }
 }
 

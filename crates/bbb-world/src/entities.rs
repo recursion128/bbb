@@ -4026,11 +4026,14 @@ impl WorldStore {
         let obstructing = self
             .entities
             .block_placement_obstruction_ids_intersecting(query_min, query_max)?;
-        Some(
-            obstructing
-                .into_iter()
-                .all(|entity_id| !self.entity_passes_spectator_filter(entity_id)),
-        )
+        if obstructing
+            .into_iter()
+            .any(|entity_id| self.entity_passes_spectator_filter(entity_id))
+        {
+            return Some(false);
+        }
+        self.local_player_bounds_intersect(query_min, query_max)
+            .map(|intersects| !intersects)
     }
 
     /// Mirrors the `getEntities(null, box).isEmpty()` half of

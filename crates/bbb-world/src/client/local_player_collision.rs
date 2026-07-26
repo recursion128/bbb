@@ -2451,6 +2451,36 @@ fn block_probe_for_state(
 }
 
 impl WorldStore {
+    /// Mirrors `Level.isUnobstructed(state, pos,
+    /// CollisionContext.placementContext(player))` for a prospective built-in
+    /// state. Placement context makes powder snow and scaffolding collision
+    /// shapes empty; every other supported state uses the shared canonical
+    /// collision-shape projection.
+    pub(crate) fn local_block_state_placement_is_unobstructed(
+        &self,
+        pos: BlockPos,
+        block_state_id: i32,
+    ) -> Option<bool> {
+        let template = self.probe_block(pos)?;
+        let block = block_probe_for_state(self, &template, block_state_id)?;
+        if matches!(
+            block.block_name.as_deref(),
+            Some("minecraft:powder_snow" | "minecraft:scaffolding")
+        ) {
+            return Some(true);
+        }
+        let Some(shape) = block_collision_shape(&block, pos) else {
+            return Some(true);
+        };
+        for shape_box in shape.boxes() {
+            let bounds = world_collision_box(pos, shape_box);
+            if !self.local_block_placement_is_unobstructed(bounds.min, bounds.max)? {
+                return Some(false);
+            }
+        }
+        Some(true)
+    }
+
     pub(crate) fn move_entities_for_piston_tick(
         &mut self,
         moving: &crate::MovingPistonState,
