@@ -569,3 +569,7 @@
   SlotDisplay 已贯通结构化解码、world 不可变候选快照、五类 screen 的 Vanilla
   槽位/fill/tooltip 呈现；clientbound 五维覆盖全部关闭，合同见
   `docs/archive/place-ghost-recipe-packet-closure-design.md`。
+- **2026-07-26（远端合成结果预测工程关闭）**：Inventory/Crafting 结果槽保持
+  服务端权威，客户端按 Vanilla `ResultSlot` 仅预测一次定位输入消耗与物品默认
+  余留物；RecipeBook 结果合成和配方特定余留物目录已移除，合同见
+  `docs/archive/client-crafting-result-prediction-design.md`。
