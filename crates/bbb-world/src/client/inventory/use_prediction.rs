@@ -4467,7 +4467,7 @@ mod tests {
         let missing_evaluators = owners
             .iter()
             .copied()
-            .filter(|owner| !bucket::bucket_can_survive_owner_supported(*owner))
+            .filter(|owner| !block_placement::survival::block_can_survive_owner_supported(*owner))
             .collect::<Vec<_>>();
 
         assert!(

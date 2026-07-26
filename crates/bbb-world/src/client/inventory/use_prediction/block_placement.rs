@@ -1,9 +1,7 @@
 use std::collections::BTreeMap;
 
 use bbb_protocol::{
-    block_state_types::{
-        vanilla_block_default_state_id, vanilla_item_default_block_state_properties,
-    },
+    block_state_types::vanilla_item_default_block_state_properties,
     block_types::vanilla_block_type,
     data_component_types::VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID,
     item_types::{ItemTypeCatalogEntry, VanillaBlockItemKind, VanillaItemUseOnOverride},
@@ -11,6 +9,11 @@ use bbb_protocol::{
 };
 
 use super::*;
+
+mod state;
+pub(super) mod survival;
+
+use state::BlockPlacementState;
 
 impl WorldStore {
     pub(super) fn predict_local_block_item_use_on(
@@ -50,13 +53,8 @@ impl WorldStore {
         let Some(block_type) = vanilla_block_type(behavior.block_type_id) else {
             return unsupported();
         };
-        if block_type.get_state_for_placement_override.is_some()
-            || block_type.can_survive_override.is_some()
-        {
-            return unsupported();
-        }
-
-        let Some(replace_clicked) = self.local_block_is_replaceable_by_different_item(context.pos)
+        let Some(replace_clicked) =
+            state::block_item_can_replace(self, context.pos, block_type, context, true)
         else {
             return unsupported();
         };
@@ -67,7 +65,7 @@ impl WorldStore {
         };
         if !replace_clicked {
             let Some(replace_target) =
-                self.local_block_is_replaceable_by_different_item(target_pos)
+                state::block_item_can_replace(self, target_pos, block_type, context, false)
             else {
                 return unsupported();
             };
@@ -76,14 +74,30 @@ impl WorldStore {
             }
         }
 
-        let Some(placement_state_id) = vanilla_block_default_state_id(block_type.id) else {
-            return unsupported();
+        let placement_state_id = match state::block_state_for_placement(
+            self,
+            block_type,
+            target_pos,
+            replace_clicked,
+            context,
+        ) {
+            BlockPlacementState::State(state_id) => state_id,
+            BlockPlacementState::Unsupported => return unsupported(),
         };
         let Some(placement_state) = self.registries().block_state(placement_state_id) else {
             return unsupported();
         };
         if placement_state.name != block_type.resource_id {
             return unsupported();
+        }
+        if let Some(owner) = block_type.can_survive_override {
+            match self.local_block_state_can_survive(target_pos, placement_state_id, owner) {
+                Some(true) => {}
+                Some(false) => {
+                    return block_item_fallback(self, hand, &stack, LocalInteractionResult::Fail);
+                }
+                None => return unsupported(),
+            }
         }
         let Some(unobstructed) =
             self.local_block_state_placement_is_unobstructed(target_pos, placement_state_id)
@@ -233,7 +247,10 @@ mod tests {
         data_component_types::VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID,
         game_types::VANILLA_GAME_TYPE_SURVIVAL_ID,
         item_types::{
-            VANILLA_ITEM_OAK_LOG_ID, VANILLA_ITEM_RESPAWN_ANCHOR_ID, VANILLA_ITEM_STONE_ID,
+            VANILLA_ITEM_AMETHYST_CLUSTER_ID, VANILLA_ITEM_CANDLE_ID, VANILLA_ITEM_FURNACE_ID,
+            VANILLA_ITEM_HEAVY_CORE_ID, VANILLA_ITEM_OAK_LOG_ID, VANILLA_ITEM_OAK_SIGN_ID,
+            VANILLA_ITEM_OAK_SLAB_ID, VANILLA_ITEM_OBSERVER_ID, VANILLA_ITEM_RESPAWN_ANCHOR_ID,
+            VANILLA_ITEM_STONE_ID,
         },
         packets::{
             BlockPos as ProtocolBlockPos, BlockUpdate, CommonPlayerSpawnInfo,
@@ -374,9 +391,158 @@ mod tests {
     }
 
     #[test]
-    fn specialized_placement_owner_remains_explicit_for_the_next_stage() {
+    fn directional_and_axis_placement_owners_use_exact_player_and_hit_directions() {
+        let mut log = placement_world();
+        set_held(&mut log, VANILLA_ITEM_OAK_LOG_ID, 1);
+        assert!(matches!(
+            use_block(&mut log, 3),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(
+            log.probe_block(TARGET).unwrap().block_state_id,
+            state_id("minecraft:oak_log", [("axis", "y")])
+        );
+
+        let mut furnace = placement_world();
+        set_held(&mut furnace, VANILLA_ITEM_FURNACE_ID, 1);
+        assert!(matches!(
+            use_block(&mut furnace, 4),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(
+            furnace.probe_block(TARGET).unwrap().block_state_id,
+            state_id("minecraft:furnace", [("facing", "north"), ("lit", "false")])
+        );
+
+        let mut observer = placement_world();
+        set_held(&mut observer, VANILLA_ITEM_OBSERVER_ID, 1);
+        assert!(matches!(
+            use_block(&mut observer, 5),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(
+            observer.probe_block(TARGET).unwrap().block_state_id,
+            state_id(
+                "minecraft:observer",
+                [("facing", "south"), ("powered", "false")]
+            )
+        );
+    }
+
+    #[test]
+    fn same_item_replace_context_stacks_slabs_and_candles_in_place() {
+        let mut slab = placement_world();
+        set_held(&mut slab, VANILLA_ITEM_OAK_SLAB_ID, 2);
+        assert!(matches!(
+            use_block(&mut slab, 9),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(
+            slab.probe_block(TARGET).unwrap().block_state_id,
+            state_id(
+                "minecraft:oak_slab",
+                [("type", "bottom"), ("waterlogged", "false")]
+            )
+        );
+        assert!(matches!(
+            use_block(&mut slab, 10),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(
+            slab.probe_block(TARGET).unwrap().block_state_id,
+            state_id(
+                "minecraft:oak_slab",
+                [("type", "double"), ("waterlogged", "false")]
+            )
+        );
+        assert_eq!(held(&slab).count, 0);
+
+        let mut candle = placement_world();
+        set_held(&mut candle, VANILLA_ITEM_CANDLE_ID, 2);
+        assert!(matches!(
+            use_block(&mut candle, 11),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert!(matches!(
+            use_block(&mut candle, 12),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(
+            candle.probe_block(TARGET).unwrap().block_state_id,
+            state_id(
+                "minecraft:candle",
+                [("candles", "2"), ("lit", "false"), ("waterlogged", "false"),]
+            )
+        );
+    }
+
+    #[test]
+    fn placement_survival_uses_the_shared_exact_face_support_evaluator() {
+        let mut supported = placement_world();
+        set_held(&mut supported, VANILLA_ITEM_AMETHYST_CLUSTER_ID, 1);
+        assert!(matches!(
+            use_block(&mut supported, 7),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(
+            supported.probe_block(TARGET).unwrap().block_state_id,
+            state_id(
+                "minecraft:amethyst_cluster",
+                [("facing", "up"), ("waterlogged", "false")]
+            )
+        );
+
+        let mut unsupported = placement_world();
+        set_block(
+            &mut unsupported,
+            CLICKED,
+            state_id(
+                "minecraft:glass_pane",
+                [
+                    ("east", "false"),
+                    ("north", "false"),
+                    ("south", "false"),
+                    ("waterlogged", "false"),
+                    ("west", "false"),
+                ],
+            ),
+        );
+        set_held(&mut unsupported, VANILLA_ITEM_AMETHYST_CLUSTER_ID, 1);
+        assert_eq!(
+            use_block(&mut unsupported, 8),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
+        );
+        assert_eq!(
+            unsupported.probe_block(TARGET).unwrap().block_state_id,
+            state_id("minecraft:air", [])
+        );
+        assert_eq!(held(&unsupported).count, 1);
+    }
+
+    #[test]
+    fn waterlogged_placement_reads_the_replaced_source_fluid() {
         let mut world = placement_world();
-        set_held(&mut world, VANILLA_ITEM_OAK_LOG_ID, 1);
+        set_block(
+            &mut world,
+            CLICKED,
+            state_id("minecraft:water", [("level", "0")]),
+        );
+        set_held(&mut world, VANILLA_ITEM_HEAVY_CORE_ID, 1);
+
+        assert!(matches!(
+            use_block(&mut world, 6),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(
+            world.probe_block(CLICKED).unwrap().block_state_id,
+            state_id("minecraft:heavy_core", [("waterlogged", "true")])
+        );
+    }
+
+    #[test]
+    fn specialized_item_subclass_remains_explicit_for_the_next_stage() {
+        let mut world = placement_world();
+        set_held(&mut world, VANILLA_ITEM_OAK_SIGN_ID, 1);
         assert_eq!(
             world.predict_local_block_use_with_hit(
                 CLICKED,
