@@ -30,6 +30,7 @@ struct SoundTypeSourceDeclaration {
     volume_expression: String,
     pitch_expression: String,
     break_sound: String,
+    place_sound: String,
     hit_sound: String,
     source_path: String,
     start_byte: usize,
@@ -39,6 +40,7 @@ struct SoundTypeSourceDeclaration {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BlockSoundProfile {
     pub break_sound: String,
+    pub place_sound: String,
     pub hit_sound: String,
     pub volume: f32,
     pub pitch: f32,
@@ -52,6 +54,7 @@ pub struct BlockSoundProfileCatalog {
 #[derive(Debug, Clone)]
 struct SoundTypeProfile {
     break_sound: String,
+    place_sound: String,
     hit_sound: String,
     volume: f32,
     pitch: f32,
@@ -140,10 +143,13 @@ fn load_sound_types() -> Result<BTreeMap<String, SoundTypeProfile>> {
         }
         ResourceLocation::parse(&declaration.break_sound)
             .context("invalid generated SoundType break sound")?;
+        ResourceLocation::parse(&declaration.place_sound)
+            .context("invalid generated SoundType place sound")?;
         ResourceLocation::parse(&declaration.hit_sound)
             .context("invalid generated SoundType hit sound")?;
         let profile = SoundTypeProfile {
             break_sound: declaration.break_sound.clone(),
+            place_sound: declaration.place_sound.clone(),
             hit_sound: declaration.hit_sound.clone(),
             volume: parse_java_float(&declaration.volume_expression)?,
             pitch: parse_java_float(&declaration.pitch_expression)?,
@@ -204,6 +210,7 @@ fn block_profile_for_sound_type(
     };
     Ok(BlockSoundProfile {
         break_sound: profile.break_sound.clone(),
+        place_sound: profile.place_sound.clone(),
         hit_sound: profile.hit_sound.clone(),
         volume: profile.volume,
         pitch: profile.pitch,
@@ -280,6 +287,7 @@ mod tests {
             catalog.profile("minecraft:grass_block").unwrap(),
             &BlockSoundProfile {
                 break_sound: "minecraft:block.grass.break".to_string(),
+                place_sound: "minecraft:block.grass.place".to_string(),
                 hit_sound: "minecraft:block.grass.hit".to_string(),
                 volume: 1.0,
                 pitch: 1.0,

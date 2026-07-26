@@ -368,6 +368,8 @@ pub struct SoundHolderState {
 pub struct WorldBlockSoundProfile {
     #[serde(default)]
     pub break_sound: String,
+    #[serde(default)]
+    pub place_sound: String,
     pub hit_sound: String,
     pub volume: f32,
     pub pitch: f32,
@@ -411,6 +413,7 @@ impl WorldStore {
             .filter(|(block_name, profile)| {
                 !block_name.is_empty()
                     && !profile.hit_sound.is_empty()
+                    && !profile.place_sound.is_empty()
                     && profile.volume.is_finite()
                     && profile.pitch.is_finite()
             })
@@ -3990,6 +3993,7 @@ mod tests {
             "minecraft:grass_block".to_string(),
             WorldBlockSoundProfile {
                 break_sound: "minecraft:block.grass.break".to_string(),
+                place_sound: "minecraft:block.grass.place".to_string(),
                 hit_sound: "minecraft:block.grass.hit".to_string(),
                 volume: 0.8,
                 pitch: 1.2,

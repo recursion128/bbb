@@ -284,6 +284,7 @@ fn level_event_2001_emits_vanilla_block_break_sound() {
         "minecraft:grass_block".to_string(),
         WorldBlockSoundProfile {
             break_sound: "minecraft:block.grass.break".to_string(),
+            place_sound: "minecraft:block.grass.place".to_string(),
             hit_sound: "minecraft:block.grass.hit".to_string(),
             volume: 0.8,
             pitch: 1.2,

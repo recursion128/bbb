@@ -8,9 +8,13 @@ use std::{
 use serde::Deserialize;
 
 mod fluid_replaceability_26_1;
+mod placement_defaults_26_1;
 mod support_facts_26_1;
 
 use fluid_replaceability_26_1::VANILLA_BLOCK_STATE_FLUID_REPLACEABLE_RANGES;
+use placement_defaults_26_1::{
+    VANILLA_BLOCK_DEFAULT_STATE_IDS, VANILLA_ITEM_DEFAULT_BLOCK_STATE_PROPERTIES,
+};
 use support_facts_26_1::{
     VANILLA_BLOCK_STATE_SUPPORT_FACT_INDICES, VANILLA_BLOCK_STATE_SUPPORT_FACT_PALETTE,
 };
@@ -29,6 +33,23 @@ static VANILLA_BLOCK_PROPERTIES: OnceLock<BTreeMap<String, BTreeSet<String>>> = 
 
 pub fn vanilla_block_state_id(id: i32) -> Option<i32> {
     (0..VANILLA_BLOCK_STATE_COUNT).contains(&id).then_some(id)
+}
+
+/// Returns the built-in block's Vanilla 26.1 default global state id.
+pub fn vanilla_block_default_state_id(block_type_id: i32) -> Option<i32> {
+    let block_type_id = usize::try_from(block_type_id).ok()?;
+    VANILLA_BLOCK_DEFAULT_STATE_IDS.get(block_type_id).copied()
+}
+
+/// Returns an item's prototype `BLOCK_STATE` properties when Vanilla supplies
+/// that component by default.
+pub fn vanilla_item_default_block_state_properties(
+    item_type_id: i32,
+) -> Option<&'static [(&'static str, &'static str)]> {
+    VANILLA_ITEM_DEFAULT_BLOCK_STATE_PROPERTIES
+        .binary_search_by_key(&item_type_id, |(id, _)| *id)
+        .ok()
+        .map(|index| VANILLA_ITEM_DEFAULT_BLOCK_STATE_PROPERTIES[index].1)
 }
 
 /// Returns Vanilla's fluid replacement predicate for a built-in block state.
@@ -196,6 +217,59 @@ mod tests {
             Some(VANILLA_BLOCK_STATE_COUNT - 1)
         );
         assert_eq!(vanilla_block_state_id(VANILLA_BLOCK_STATE_COUNT), None);
+    }
+
+    #[test]
+    fn runtime_generated_default_states_and_item_components_match_vanilla() {
+        assert_eq!(
+            VANILLA_BLOCK_DEFAULT_STATE_IDS.len(),
+            crate::block_types::VANILLA_BLOCK_TYPES.len()
+        );
+        assert_eq!(VANILLA_ITEM_DEFAULT_BLOCK_STATE_PROPERTIES.len(), 12);
+
+        let report: BlockStateReport =
+            serde_json::from_str(VANILLA_BLOCK_STATES_26_1_JSON).unwrap();
+        let default_state = |block_type_id| {
+            &report.states[vanilla_block_default_state_id(block_type_id).unwrap() as usize]
+        };
+
+        let grass = default_state(crate::block_types::VANILLA_BLOCK_GRASS_BLOCK_ID);
+        assert_eq!(grass.name, "minecraft:grass_block");
+        assert_eq!(grass.properties.get("snowy").unwrap(), "false");
+
+        let oak_log = default_state(crate::block_types::VANILLA_BLOCK_OAK_LOG_ID);
+        assert_eq!(oak_log.name, "minecraft:oak_log");
+        assert_eq!(oak_log.properties.get("axis").unwrap(), "y");
+
+        assert_eq!(
+            vanilla_item_default_block_state_properties(crate::item_types::VANILLA_ITEM_LIGHT_ID),
+            Some(&[("level", "15")][..])
+        );
+        assert_eq!(
+            vanilla_item_default_block_state_properties(
+                crate::item_types::VANILLA_ITEM_TEST_BLOCK_ID
+            ),
+            Some(&[("mode", "start")][..])
+        );
+        assert_eq!(
+            vanilla_item_default_block_state_properties(crate::item_types::VANILLA_ITEM_BEEHIVE_ID),
+            Some(&[("honey_level", "0")][..])
+        );
+        assert_eq!(
+            vanilla_item_default_block_state_properties(
+                crate::item_types::VANILLA_ITEM_COPPER_GOLEM_STATUE_ID
+            ),
+            Some(&[("copper_golem_pose", "standing")][..])
+        );
+        assert_eq!(
+            vanilla_item_default_block_state_properties(crate::item_types::VANILLA_ITEM_STONE_ID),
+            None
+        );
+        assert_eq!(vanilla_block_default_state_id(-1), None);
+        assert_eq!(
+            vanilla_block_default_state_id(crate::block_types::VANILLA_BLOCK_TYPES.len() as i32),
+            None
+        );
     }
 
     #[test]

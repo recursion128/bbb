@@ -694,6 +694,7 @@ pub(crate) fn block_sound_profiles_for_world(
 fn world_block_sound_profile(profile: &PackBlockSoundProfile) -> WorldBlockSoundProfile {
     WorldBlockSoundProfile {
         break_sound: profile.break_sound.clone(),
+        place_sound: profile.place_sound.clone(),
         hit_sound: profile.hit_sound.clone(),
         volume: profile.volume,
         pitch: profile.pitch,

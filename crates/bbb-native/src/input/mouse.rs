@@ -4584,6 +4584,7 @@ mod tests {
             "minecraft:grass_block".to_string(),
             WorldBlockSoundProfile {
                 break_sound: "minecraft:block.grass.break".to_string(),
+                place_sound: "minecraft:block.grass.place".to_string(),
                 hit_sound: "minecraft:block.grass.hit".to_string(),
                 volume: 1.0,
                 pitch: 1.2,

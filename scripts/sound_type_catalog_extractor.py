@@ -100,11 +100,15 @@ def extract_sound_type_catalog(
             for argument in arguments.named_children
         ]
         break_constant = _field_constant(sound_type_source, args[2], "SoundEvents")
+        place_constant = _field_constant(sound_type_source, args[4], "SoundEvents")
         hit_constant = _field_constant(sound_type_source, args[5], "SoundEvents")
         break_sound = sound_events.get(break_constant)
+        place_sound = sound_events.get(place_constant)
         hit_sound = sound_events.get(hit_constant)
         if break_sound is None:
             _fail(sound_type_source, args[2], f"unresolved SoundEvents.{break_constant}")
+        if place_sound is None:
+            _fail(sound_type_source, args[4], f"unresolved SoundEvents.{place_constant}")
         if hit_sound is None:
             _fail(sound_type_source, args[5], f"unresolved SoundEvents.{hit_constant}")
         declarations.append(
@@ -114,6 +118,7 @@ def extract_sound_type_catalog(
                 "volume_expression": args[0].canonical,
                 "pitch_expression": args[1].canonical,
                 "break_sound": break_sound,
+                "place_sound": place_sound,
                 "hit_sound": hit_sound,
                 "source_path": sound_type_source.relative_path,
                 "start_byte": initializer.span.start_byte,

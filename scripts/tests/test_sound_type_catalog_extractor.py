@@ -62,6 +62,7 @@ class SoundTypeCatalogExtractorTests(unittest.TestCase):
         self.assertEqual(declaration["volume_expression"], "1.0F")
         self.assertEqual(declaration["pitch_expression"], "1.0F")
         self.assertEqual(declaration["break_sound"], "minecraft:block.stone.break")
+        self.assertEqual(declaration["place_sound"], "minecraft:block.stone.place")
         self.assertEqual(declaration["hit_sound"], "minecraft:block.stone.hit")
         self.assertLess(declaration["start_byte"], declaration["end_byte"])
 
@@ -85,6 +86,7 @@ class SoundTypeCatalogExtractorTests(unittest.TestCase):
             "volume_expression",
             "pitch_expression",
             "break_sound",
+            "place_sound",
             "hit_sound",
         ]
         self.assertEqual(
