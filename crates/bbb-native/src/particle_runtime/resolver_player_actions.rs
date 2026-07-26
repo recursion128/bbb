@@ -48,7 +48,28 @@ impl ParticleCommandResolver {
             LocalInteractionParticleAction::BucketWaterEvaporate { pos } => {
                 self.bucket_water_evaporation_particle_batch(pos)
             }
+            LocalInteractionParticleAction::CandleCakeExtinguish { pos } => {
+                self.candle_cake_extinguish_particle_batch(pos)
+            }
         }
+    }
+
+    fn candle_cake_extinguish_particle_batch(&mut self, pos: WorldBlockPos) -> ParticleSpawnBatch {
+        self.simple_particle_batch(
+            VANILLA_PARTICLE_TYPE_SMOKE_ID,
+            vec![(
+                Vec3d {
+                    x: f64::from(pos.x) + 0.5,
+                    y: f64::from(pos.y) + 1.0,
+                    z: f64::from(pos.z) + 0.5,
+                },
+                Vec3d {
+                    x: 0.0,
+                    y: f64::from(0.1_f32),
+                    z: 0.0,
+                },
+            )],
+        )
     }
 
     fn bucket_water_evaporation_particle_batch(

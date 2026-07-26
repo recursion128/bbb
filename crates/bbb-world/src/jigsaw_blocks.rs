@@ -114,7 +114,7 @@ impl WorldStore {
     }
 
     pub fn try_open_jigsaw_block_editor(&mut self, pos: BlockPos) -> bool {
-        if !self.local_player_has_gamemaster_permission() || !self.jigsaw_block_is_present_at(pos) {
+        if !self.local_player_can_use_gamemaster_blocks() || !self.jigsaw_block_is_present_at(pos) {
             return false;
         }
         let Some(data) = self.jigsaw_block_data_at(pos).cloned() else {
@@ -379,6 +379,14 @@ mod tests {
             entity_id: 11,
             event_id: 26,
         }));
+        store.apply_player_abilities(bbb_protocol::packets::PlayerAbilities {
+            invulnerable: true,
+            flying: false,
+            can_fly: true,
+            instabuild: true,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        });
     }
 
     fn jigsaw_world(pos: BlockPos, orientation: &str, joint: Option<&str>) -> WorldStore {

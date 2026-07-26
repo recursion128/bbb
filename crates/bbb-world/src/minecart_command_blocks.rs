@@ -49,7 +49,7 @@ impl WorldStore {
     }
 
     pub fn try_open_minecart_command_block_editor(&mut self, entity_id: i32) -> bool {
-        if !self.local_player_has_gamemaster_permission() {
+        if !self.local_player_can_use_gamemaster_blocks() {
             return false;
         }
         let Some(target_incarnation) = self.entities.incarnation(entity_id) else {
@@ -201,7 +201,7 @@ mod tests {
         );
         assert!(!store.try_open_minecart_command_block_editor(300));
 
-        grant_gamemaster_permission(&mut store);
+        grant_gamemaster_block_access(&mut store);
         assert!(store.try_open_minecart_command_block_editor(300));
         assert_eq!(store.minecart_command_block_editor_open_count(), 1);
         assert_eq!(
@@ -227,7 +227,7 @@ mod tests {
             300,
             VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
         );
-        grant_gamemaster_permission(&mut store);
+        grant_gamemaster_block_access(&mut store);
         assert!(store.try_open_minecart_command_block_editor(300));
         assert!(store.set_minecart_command_block_editor_track_output(false));
 
@@ -285,7 +285,7 @@ mod tests {
             300,
             VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
         );
-        grant_gamemaster_permission(&mut store);
+        grant_gamemaster_block_access(&mut store);
         assert!(store.try_open_minecart_command_block_editor(300));
         assert!(store.set_minecart_command_block_editor_track_output(false));
 
@@ -321,7 +321,7 @@ mod tests {
             300,
             VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
         );
-        grant_gamemaster_permission(&mut store);
+        grant_gamemaster_block_access(&mut store);
         assert!(store.try_open_minecart_command_block_editor(300));
 
         store.apply_login(&PlayLogin {
@@ -351,12 +351,20 @@ mod tests {
         assert!(store.minecart_command_block_editor().is_none());
     }
 
-    fn grant_gamemaster_permission(store: &mut WorldStore) {
+    fn grant_gamemaster_block_access(store: &mut WorldStore) {
         store.local_player_id = Some(7);
         assert!(store.apply_entity_event(EntityEvent {
             entity_id: 7,
             event_id: 26,
         }));
+        store.apply_player_abilities(bbb_protocol::packets::PlayerAbilities {
+            invulnerable: true,
+            flying: false,
+            can_fly: true,
+            instabuild: true,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        });
     }
 
     fn add_entity(store: &mut WorldStore, id: i32, entity_type_id: i32) {

@@ -387,6 +387,18 @@ impl WorldStore {
                 .has_gamemaster_permission()
     }
 
+    /// Vanilla `Player.canUseGameMasterBlocks`: command/structure/test block
+    /// interaction requires both the synchronized game-master permission and
+    /// the current `Abilities.instabuild` capability.
+    pub fn local_player_can_use_gamemaster_blocks(&self) -> bool {
+        self.local_player_has_gamemaster_permission()
+            && self
+                .local_player
+                .abilities
+                .as_ref()
+                .is_some_and(|abilities| abilities.instabuild)
+    }
+
     pub fn adjust_local_flying_speed(&mut self, delta: f32) -> bool {
         let Some(abilities) = self.local_player.abilities.as_mut() else {
             return false;

@@ -1702,11 +1702,11 @@ impl WorldStore {
     /// calls `LocalPlayer.playSound`, so these are immediate positioned sounds.
     /// Bucket emptying, evaporation, and client-predicted block placement pass
     /// the local player as `except` and stay block-positioned. Bundle
-    /// content-drop, fishing rods, bow
-    /// release, Riptide release, thrown projectiles, fire charges, lodestone
-    /// compasses, both potion mud-conversion sounds, and tripwire-hook state
-    /// transitions pass `null`, so their local calls only advance the random
-    /// streams.
+    /// content-drop, fishing rods, bow release, Riptide release, thrown
+    /// projectiles, fire charges, lodestone compasses, both potion
+    /// mud-conversion sounds, candle extinguish/addition, decorated-pot insert
+    /// failure, and tripwire-hook state transitions pass `null`, so their
+    /// local calls only advance the random streams.
     pub fn apply_local_interaction_sound_action(
         &mut self,
         action: LocalInteractionSoundAction,
@@ -1862,6 +1862,18 @@ impl WorldStore {
                 2.6 + (random.next_float() - random.next_float()) * 0.8,
                 SoundSource::Blocks.as_str(),
             ),
+            LocalInteractionSoundAction::SuppressedCandleExtinguish => {
+                let _discarded_seed = self.next_sound_seed();
+                return None;
+            }
+            LocalInteractionSoundAction::SuppressedCakeAddCandle => {
+                let _discarded_seed = self.next_sound_seed();
+                return None;
+            }
+            LocalInteractionSoundAction::SuppressedDecoratedPotInsertFail => {
+                let _discarded_seed = self.next_sound_seed();
+                return None;
+            }
             LocalInteractionSoundAction::BlockPlace {
                 pos,
                 sound_resource_id,

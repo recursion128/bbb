@@ -5,13 +5,26 @@ use super::{
 };
 #[cfg(test)]
 use crate::BlockPos;
-use crate::WorldStore;
+use crate::{LocalPlayerHealthState, WorldStore};
 use bbb_protocol::{
+    block_entity_types::{
+        VANILLA_BLOCK_ENTITY_TYPE_CHISELED_BOOKSHELF_ID,
+        VANILLA_BLOCK_ENTITY_TYPE_COMMAND_BLOCK_ID, VANILLA_BLOCK_ENTITY_TYPE_DECORATED_POT_ID,
+        VANILLA_BLOCK_ENTITY_TYPE_HANGING_SIGN_ID, VANILLA_BLOCK_ENTITY_TYPE_JIGSAW_ID,
+        VANILLA_BLOCK_ENTITY_TYPE_JUKEBOX_ID, VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,
+        VANILLA_BLOCK_ENTITY_TYPE_STRUCTURE_BLOCK_ID, VANILLA_BLOCK_ENTITY_TYPE_TEST_BLOCK_ID,
+        VANILLA_BLOCK_ENTITY_TYPE_TEST_INSTANCE_BLOCK_ID,
+    },
     block_types::{
         BlockTypeCatalogEntry, VanillaBlockUseWithoutItemOverride, VANILLA_BLOCK_IRON_DOOR_ID,
-        VANILLA_BLOCK_IRON_TRAPDOOR_ID,
+        VANILLA_BLOCK_IRON_TRAPDOOR_ID, VANILLA_BLOCK_TYPES,
     },
-    packets::Direction as ProtocolDirection,
+    item_types::VANILLA_ITEM_TYPES,
+    packets::{
+        DataComponentPatchSummary as ProtocolDataComponentPatchSummary,
+        Direction as ProtocolDirection, InteractionHand,
+        ItemStackSummary as ProtocolItemStackSummary,
+    },
 };
 use std::collections::BTreeMap;
 
@@ -61,6 +74,13 @@ impl WorldStore {
                 // `ClientLevel`; sleep, explosions, occupancy, and messages
                 // remain authoritative server behavior.
                 success(LocalInteractionSuccess::server_item_interaction())
+            }
+            VanillaBlockUseWithoutItemOverride::BellBlock => {
+                match bell_hit_is_proper(&block.block_properties, context.face, context.cursor[1]) {
+                    Some(true) => success(LocalInteractionSuccess::client_item_interaction()),
+                    Some(false) => pass(),
+                    None => unsupported(),
+                }
             }
             VanillaBlockUseWithoutItemOverride::ButtonBlock => {
                 let Some(powered) = boolean_property(&block.block_properties, "powered") else {
@@ -185,11 +205,77 @@ impl WorldStore {
                     None => unsupported(),
                 }
             }
+            VanillaBlockUseWithoutItemOverride::CakeBlock => self.predict_local_cake_eat(
+                context,
+                block_name,
+                block.block_properties,
+                true,
+                owner,
+            ),
+            VanillaBlockUseWithoutItemOverride::CandleCakeBlock => self.predict_local_cake_eat(
+                context,
+                "minecraft:cake",
+                BTreeMap::from([("bites".to_string(), "1".to_string())]),
+                false,
+                owner,
+            ),
             VanillaBlockUseWithoutItemOverride::ComposterBlock => {
                 match integer_property(&block.block_properties, "level", 0..=8) {
                     Some(8) => success(LocalInteractionSuccess::client_item_interaction()),
                     Some(_) => pass(),
                     None => unsupported(),
+                }
+            }
+            VanillaBlockUseWithoutItemOverride::ChiseledBookShelfBlock => {
+                if self.block_entity_type_id_at(context.pos)
+                    != Some(VANILLA_BLOCK_ENTITY_TYPE_CHISELED_BOOKSHELF_ID)
+                {
+                    return pass();
+                }
+                let Some(facing) = horizontal_direction_property(&block.block_properties, "facing")
+                else {
+                    return unsupported();
+                };
+                let Some(slot) = chiseled_bookshelf_hit_slot(facing, context.face, context.cursor)
+                else {
+                    return pass();
+                };
+                let property = format!("slot_{slot}_occupied");
+                match boolean_property(&block.block_properties, &property) {
+                    Some(true) => success(LocalInteractionSuccess::client_item_interaction()),
+                    Some(false) => success(LocalInteractionSuccess::consume(false)),
+                    None => unsupported(),
+                }
+            }
+            owner @ (VanillaBlockUseWithoutItemOverride::CommandBlock
+            | VanillaBlockUseWithoutItemOverride::JigsawBlock
+            | VanillaBlockUseWithoutItemOverride::StructureBlock
+            | VanillaBlockUseWithoutItemOverride::TestBlock
+            | VanillaBlockUseWithoutItemOverride::TestInstanceBlock) => {
+                let expected_type_id = match owner {
+                    VanillaBlockUseWithoutItemOverride::CommandBlock => {
+                        VANILLA_BLOCK_ENTITY_TYPE_COMMAND_BLOCK_ID
+                    }
+                    VanillaBlockUseWithoutItemOverride::JigsawBlock => {
+                        VANILLA_BLOCK_ENTITY_TYPE_JIGSAW_ID
+                    }
+                    VanillaBlockUseWithoutItemOverride::StructureBlock => {
+                        VANILLA_BLOCK_ENTITY_TYPE_STRUCTURE_BLOCK_ID
+                    }
+                    VanillaBlockUseWithoutItemOverride::TestBlock => {
+                        VANILLA_BLOCK_ENTITY_TYPE_TEST_BLOCK_ID
+                    }
+                    VanillaBlockUseWithoutItemOverride::TestInstanceBlock => {
+                        VANILLA_BLOCK_ENTITY_TYPE_TEST_INSTANCE_BLOCK_ID
+                    }
+                    _ => unreachable!("owner is restricted by the enclosing pattern"),
+                };
+                if self.block_entity_type_id_at(context.pos) == Some(expected_type_id)
+                    && self.local_player_can_use_gamemaster_blocks()
+                {
+                    success(LocalInteractionSuccess::client_item_interaction())
+                } else {
+                    pass()
                 }
             }
             VanillaBlockUseWithoutItemOverride::DaylightDetectorBlock => {
@@ -207,12 +293,55 @@ impl WorldStore {
                 // updates; the client still consumes and swings immediately.
                 success(LocalInteractionSuccess::client_item_interaction())
             }
+            VanillaBlockUseWithoutItemOverride::DecoratedPotBlock => {
+                if self.block_entity_type_id_at(context.pos)
+                    == Some(VANILLA_BLOCK_ENTITY_TYPE_DECORATED_POT_ID)
+                {
+                    // The `playSound(null, ...)` call advances the client sound
+                    // seed but is suppressed; wobble sends a block event only
+                    // from the logical server.
+                    success(LocalInteractionSuccess {
+                        sound_action: Some(
+                            super::LocalInteractionSoundAction::SuppressedDecoratedPotInsertFail,
+                        ),
+                        ..LocalInteractionSuccess::client_item_interaction()
+                    })
+                } else {
+                    pass()
+                }
+            }
             VanillaBlockUseWithoutItemOverride::FenceBlock
             | VanillaBlockUseWithoutItemOverride::MovingPistonBlock => {
                 // Fence leash binding and stale moving-piston removal execute
                 // only on the logical server. Their `ClientLevel` result is
                 // exactly `PASS`.
                 pass()
+            }
+            VanillaBlockUseWithoutItemOverride::FlowerPotBlock => {
+                if block_type.resource_id == "minecraft:flower_pot" {
+                    return success(LocalInteractionSuccess::consume(false));
+                }
+                let Some(item_id) = potted_flower_item_id(block_type) else {
+                    return unsupported();
+                };
+                let Some(state_id) = self.registries.block_state_id_by_name_and_properties(
+                    "minecraft:flower_pot",
+                    &BTreeMap::new(),
+                ) else {
+                    return unsupported();
+                };
+                if !self.predict_local_block_state(context.pos, state_id, context.sequence) {
+                    return unsupported();
+                }
+                let added = self.add_local_item_from_block_interaction(ProtocolItemStackSummary {
+                    item_id: Some(item_id),
+                    count: 1,
+                    component_patch: ProtocolDataComponentPatchSummary::default(),
+                });
+                success(LocalInteractionSuccess {
+                    extra_swing: (!added).then_some(InteractionHand::MainHand),
+                    ..LocalInteractionSuccess::client_item_interaction()
+                })
             }
             VanillaBlockUseWithoutItemOverride::LecternBlock => {
                 match boolean_property(&block.block_properties, "has_book") {
@@ -225,6 +354,20 @@ impl WorldStore {
                 // The state cycle is guarded by `!level.isClientSide()`;
                 // every client invocation therefore returns `CONSUME`.
                 success(LocalInteractionSuccess::consume(false))
+            }
+            VanillaBlockUseWithoutItemOverride::JukeboxBlock => {
+                match boolean_property(&block.block_properties, "has_record") {
+                    Some(true)
+                        if self.block_entity_type_id_at(context.pos)
+                            == Some(VANILLA_BLOCK_ENTITY_TYPE_JUKEBOX_ID) =>
+                    {
+                        // `JukeboxBlockEntity.popOutTheItem` is server-only;
+                        // the client result still swings immediately.
+                        success(LocalInteractionSuccess::client_item_interaction())
+                    }
+                    Some(_) => pass(),
+                    None => unsupported(),
+                }
             }
             VanillaBlockUseWithoutItemOverride::NoteBlock => {
                 // Tuning and note playback are server-side, while the client
@@ -278,8 +421,88 @@ impl WorldStore {
                     None => unsupported(),
                 }
             }
-            _ => unsupported(),
+            VanillaBlockUseWithoutItemOverride::SignBlock => {
+                if matches!(
+                    self.block_entity_type_id_at(context.pos),
+                    Some(
+                        VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID
+                            | VANILLA_BLOCK_ENTITY_TYPE_HANGING_SIGN_ID
+                    )
+                ) {
+                    // `SignBlock.useWithoutItem` should only be invoked on the
+                    // server, but its defensive `ClientLevel` branch is the
+                    // exact no-swing `CONSUME` result.
+                    success(LocalInteractionSuccess::consume(false))
+                } else {
+                    pass()
+                }
+            }
         }
+    }
+
+    fn predict_local_cake_eat(
+        &mut self,
+        context: LocalBlockUseContext,
+        target_block_name: &str,
+        mut target_properties: BTreeMap<String, String>,
+        cake_empty_hand_consumes: bool,
+        owner: VanillaBlockUseWithoutItemOverride,
+    ) -> LocalTargetUsePrediction {
+        let Some(abilities) = self.local_player.abilities else {
+            return LocalTargetUsePrediction::UnsupportedBlockUseWithoutItem(owner);
+        };
+        let can_eat = abilities.invulnerable
+            || self
+                .local_player
+                .health
+                .is_some_and(|health| health.food < 20);
+        if !can_eat {
+            if cake_empty_hand_consumes
+                && self.local_item_in_hand(InteractionHand::MainHand).is_none()
+            {
+                return success(LocalInteractionSuccess::consume(false));
+            }
+            return pass();
+        }
+
+        if owner == VanillaBlockUseWithoutItemOverride::CakeBlock {
+            let Some(bites) = integer_property(&target_properties, "bites", 0..=6) else {
+                return LocalTargetUsePrediction::UnsupportedBlockUseWithoutItem(owner);
+            };
+            if bites < 6 {
+                target_properties.insert("bites".to_string(), (bites + 1).to_string());
+            } else {
+                target_properties.clear();
+            }
+        }
+        let resolved_block_name = if owner == VanillaBlockUseWithoutItemOverride::CakeBlock
+            && target_properties.is_empty()
+        {
+            "minecraft:air"
+        } else {
+            target_block_name
+        };
+        let Some(state_id) = self
+            .registries
+            .block_state_id_by_name_and_properties(resolved_block_name, &target_properties)
+        else {
+            return LocalTargetUsePrediction::UnsupportedBlockUseWithoutItem(owner);
+        };
+        if !self.predict_local_block_state(context.pos, state_id, context.sequence) {
+            return LocalTargetUsePrediction::UnsupportedBlockUseWithoutItem(owner);
+        }
+
+        let health = self
+            .local_player
+            .health
+            .get_or_insert(LocalPlayerHealthState {
+                health: 20.0,
+                food: 20,
+                saturation: 5.0,
+            });
+        health.food = (health.food + 2).clamp(0, 20);
+        health.saturation = (health.saturation + 0.4_f32).clamp(0.0, health.food as f32);
+        success(LocalInteractionSuccess::client_item_interaction())
     }
 
     fn predict_local_redstone_wire_toggle(
@@ -420,6 +643,52 @@ fn integer_property(
         .filter(|value| range.contains(value))
 }
 
+fn bell_hit_is_proper(
+    properties: &BTreeMap<String, String>,
+    clicked_direction: ProtocolDirection,
+    click_y: f64,
+) -> Option<bool> {
+    if direction_axis(clicked_direction) == 'y' || click_y > f64::from(0.8124_f32) {
+        return Some(false);
+    }
+    let facing = horizontal_direction_property(properties, "facing")?;
+    let same_axis = direction_axis(facing) == direction_axis(clicked_direction);
+    match properties.get("attachment")?.as_str() {
+        "floor" => Some(same_axis),
+        "single_wall" | "double_wall" => Some(!same_axis),
+        "ceiling" => Some(true),
+        _ => None,
+    }
+}
+
+fn chiseled_bookshelf_hit_slot(
+    facing: ProtocolDirection,
+    clicked_direction: ProtocolDirection,
+    cursor: [f64; 3],
+) -> Option<usize> {
+    if facing != clicked_direction {
+        return None;
+    }
+    let relative_x = match clicked_direction {
+        ProtocolDirection::North => 1.0 - cursor[0] as f32,
+        ProtocolDirection::South => cursor[0] as f32,
+        ProtocolDirection::West => cursor[2] as f32,
+        ProtocolDirection::East => 1.0 - cursor[2] as f32,
+        ProtocolDirection::Down | ProtocolDirection::Up => return None,
+    };
+    let row = selectable_slot_section(1.0 - cursor[1] as f32, 2);
+    let column = selectable_slot_section(relative_x, 3);
+    Some(column + row * 3)
+}
+
+fn selectable_slot_section(relative_coordinate: f32, sections: usize) -> usize {
+    let targeted_pixel = relative_coordinate * 16.0;
+    let section_size = 16.0 / sections as f32;
+    (targeted_pixel / section_size)
+        .floor()
+        .clamp(0.0, (sections - 1) as f32) as usize
+}
+
 fn horizontal_direction_property(
     properties: &BTreeMap<String, String>,
     property: &str,
@@ -430,6 +699,14 @@ fn horizontal_direction_property(
         "west" => Some(ProtocolDirection::West),
         "east" => Some(ProtocolDirection::East),
         _ => None,
+    }
+}
+
+fn direction_axis(direction: ProtocolDirection) -> char {
+    match direction {
+        ProtocolDirection::West | ProtocolDirection::East => 'x',
+        ProtocolDirection::Down | ProtocolDirection::Up => 'y',
+        ProtocolDirection::North | ProtocolDirection::South => 'z',
     }
 }
 
@@ -464,6 +741,20 @@ fn direction_name(direction: ProtocolDirection) -> &'static str {
             unreachable!("horizontal direction cannot be vertical")
         }
     }
+}
+
+fn potted_flower_item_id(block_type: &BlockTypeCatalogEntry) -> Option<i32> {
+    let content_constant = block_type.constant_name.strip_prefix("POTTED_")?;
+    let content = VANILLA_BLOCK_TYPES
+        .iter()
+        .find(|candidate| candidate.constant_name == content_constant)?;
+    VANILLA_ITEM_TYPES
+        .iter()
+        .find(|item| {
+            item.block_item_behavior
+                .is_some_and(|behavior| behavior.block_type_id == content.id)
+        })
+        .map(|item| item.id)
 }
 
 #[cfg(test)]
@@ -518,15 +809,23 @@ fn pass() -> LocalTargetUsePrediction {
 mod tests {
     use super::*;
     use crate::{
-        BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, LocalPlayerPoseState,
-        PaletteDomain, PaletteKind, PalettedContainerData, WorldDimension,
+        BlockEntityRecord, BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData,
+        LocalInteractionSoundAction, LocalPlayerPoseState, PaletteDomain, PaletteKind,
+        PalettedContainerData, WorldDimension,
     };
     use bbb_protocol::{
-        block_types::vanilla_block_type_for_resource_id,
-        game_types::{VANILLA_GAME_TYPE_ADVENTURE_ID, VANILLA_GAME_TYPE_SURVIVAL_ID},
+        block_types::{
+            vanilla_block_type_for_resource_id, VANILLA_BLOCK_POTTED_POPPY_ID, VANILLA_BLOCK_TYPES,
+        },
+        game_types::{
+            VANILLA_GAME_TYPE_ADVENTURE_ID, VANILLA_GAME_TYPE_CREATIVE_ID,
+            VANILLA_GAME_TYPE_SURVIVAL_ID,
+        },
+        item_types::{VANILLA_ITEM_CANDLE_ID, VANILLA_ITEM_POPPY_ID, VANILLA_ITEM_STONE_ID},
         packets::{
             BlockPos as ProtocolBlockPos, BlockUpdate, CommonPlayerSpawnInfo, Direction,
-            InteractionHand, PlayLogin, SetChunkCacheCenter,
+            EntityEvent, InteractionHand, ItemStackSummary, PlayLogin, PlayerHealth,
+            SetChunkCacheCenter, SetPlayerInventory,
         },
     };
 
@@ -1005,6 +1304,273 @@ mod tests {
     }
 
     #[test]
+    fn bell_result_follows_vanilla_attachment_face_and_hit_height() {
+        let mut world = block_use_world(
+            "minecraft:bell",
+            [
+                ("attachment", "floor"),
+                ("facing", "north"),
+                ("powered", "false"),
+            ],
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        assert_eq!(
+            world.predict_local_block_use_with_hit(
+                POS,
+                Direction::North,
+                [0.5, 0.75, 0.0],
+                false,
+                InteractionHand::MainHand,
+                false,
+                91,
+            ),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        for (face, cursor) in [
+            (Direction::East, [1.0, 0.5, 0.5]),
+            (Direction::North, [0.5, 0.9, 0.0]),
+            (Direction::Up, [0.5, 1.0, 0.5]),
+        ] {
+            assert_eq!(
+                world.predict_local_block_use_with_hit(
+                    POS,
+                    face,
+                    cursor,
+                    false,
+                    InteractionHand::MainHand,
+                    false,
+                    92,
+                ),
+                pass()
+            );
+        }
+
+        set_test_block(
+            &mut world,
+            state_id(
+                "minecraft:bell",
+                [
+                    ("attachment", "single_wall"),
+                    ("facing", "north"),
+                    ("powered", "false"),
+                ],
+            ),
+        );
+        assert_eq!(
+            world.predict_local_block_use_with_hit(
+                POS,
+                Direction::East,
+                [1.0, 0.5, 0.5],
+                false,
+                InteractionHand::MainHand,
+                false,
+                93,
+            ),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+    }
+
+    #[test]
+    fn chiseled_bookshelf_routes_front_hit_to_exact_occupied_slot() {
+        let properties = [
+            ("facing", "north"),
+            ("slot_0_occupied", "false"),
+            ("slot_1_occupied", "false"),
+            ("slot_2_occupied", "false"),
+            ("slot_3_occupied", "false"),
+            ("slot_4_occupied", "false"),
+            ("slot_5_occupied", "false"),
+        ];
+        let mut world = block_use_world_with_entity(
+            "minecraft:chiseled_bookshelf",
+            properties,
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+            VANILLA_BLOCK_ENTITY_TYPE_CHISELED_BOOKSHELF_ID,
+        );
+        assert_eq!(
+            world.predict_local_block_use_with_hit(
+                POS,
+                Direction::North,
+                [0.9, 0.75, 0.0],
+                false,
+                InteractionHand::MainHand,
+                false,
+                101,
+            ),
+            success(LocalInteractionSuccess::consume(false)),
+            "NORTH mirrors X, targeting empty slot 0"
+        );
+        assert_eq!(
+            world.predict_local_block_use_with_hit(
+                POS,
+                Direction::East,
+                [1.0, 0.75, 0.5],
+                false,
+                InteractionHand::MainHand,
+                false,
+                102,
+            ),
+            pass(),
+            "non-front faces expose no selectable slot"
+        );
+
+        set_test_block(
+            &mut world,
+            state_id(
+                "minecraft:chiseled_bookshelf",
+                [
+                    ("facing", "north"),
+                    ("slot_0_occupied", "true"),
+                    ("slot_1_occupied", "false"),
+                    ("slot_2_occupied", "false"),
+                    ("slot_3_occupied", "false"),
+                    ("slot_4_occupied", "false"),
+                    ("slot_5_occupied", "false"),
+                ],
+            ),
+        );
+        assert_eq!(
+            world.predict_local_block_use_with_hit(
+                POS,
+                Direction::North,
+                [0.9, 0.75, 0.0],
+                false,
+                InteractionHand::MainHand,
+                false,
+                103,
+            ),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+    }
+
+    #[test]
+    fn gamemaster_block_owners_require_matching_entity_permission_and_instabuild() {
+        for (name, type_id) in [
+            (
+                "minecraft:command_block",
+                VANILLA_BLOCK_ENTITY_TYPE_COMMAND_BLOCK_ID,
+            ),
+            ("minecraft:jigsaw", VANILLA_BLOCK_ENTITY_TYPE_JIGSAW_ID),
+            (
+                "minecraft:structure_block",
+                VANILLA_BLOCK_ENTITY_TYPE_STRUCTURE_BLOCK_ID,
+            ),
+            (
+                "minecraft:test_block",
+                VANILLA_BLOCK_ENTITY_TYPE_TEST_BLOCK_ID,
+            ),
+            (
+                "minecraft:test_instance_block",
+                VANILLA_BLOCK_ENTITY_TYPE_TEST_INSTANCE_BLOCK_ID,
+            ),
+        ] {
+            let mut creative = block_use_world_first_state_with_entity(
+                name,
+                VANILLA_GAME_TYPE_CREATIVE_ID as i8,
+                type_id,
+            );
+            assert_eq!(use_main_hand(&mut creative, 111), pass(), "{name}");
+            assert!(creative.apply_entity_event(EntityEvent {
+                entity_id: 7,
+                event_id: 26,
+            }));
+            assert_eq!(
+                use_main_hand(&mut creative, 112),
+                success(LocalInteractionSuccess::client_item_interaction()),
+                "{name}"
+            );
+
+            let mut survival = block_use_world_first_state_with_entity(
+                name,
+                VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+                type_id,
+            );
+            assert!(survival.apply_entity_event(EntityEvent {
+                entity_id: 7,
+                event_id: 26,
+            }));
+            assert_eq!(
+                use_main_hand(&mut survival, 113),
+                pass(),
+                "{name} permission without instabuild"
+            );
+        }
+    }
+
+    #[test]
+    fn entity_backed_pot_jukebox_and_sign_results_keep_server_mutations_authoritative() {
+        for (name, type_id, expected) in [
+            (
+                "minecraft:decorated_pot",
+                VANILLA_BLOCK_ENTITY_TYPE_DECORATED_POT_ID,
+                success(LocalInteractionSuccess::client_item_interaction()),
+            ),
+            (
+                "minecraft:oak_sign",
+                VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,
+                success(LocalInteractionSuccess::consume(false)),
+            ),
+            (
+                "minecraft:oak_hanging_sign",
+                VANILLA_BLOCK_ENTITY_TYPE_HANGING_SIGN_ID,
+                success(LocalInteractionSuccess::consume(false)),
+            ),
+        ] {
+            let mut world = block_use_world_first_state_with_entity(
+                name,
+                VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+                type_id,
+            );
+            assert_eq!(use_main_hand(&mut world, 121), expected, "{name}");
+
+            let mut missing =
+                block_use_world_first_state(name, VANILLA_GAME_TYPE_SURVIVAL_ID as i8);
+            missing.remove_block_entity_record_at(POS);
+            assert_eq!(use_main_hand(&mut missing, 122), pass(), "{name}");
+        }
+
+        let mut decorated = block_use_world_first_state_with_entity(
+            "minecraft:decorated_pot",
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+            VANILLA_BLOCK_ENTITY_TYPE_DECORATED_POT_ID,
+        );
+        assert_eq!(
+            decorated.predict_local_block_use_without_item(
+                VanillaBlockUseWithoutItemOverride::DecoratedPotBlock,
+                vanilla_block_type_for_resource_id("minecraft:decorated_pot").unwrap(),
+                LocalBlockUseContext {
+                    pos: POS,
+                    face: Direction::Up,
+                    cursor: [0.5, 1.0, 0.5],
+                    inside: false,
+                    sequence: 125,
+                    secondary_use_active: false,
+                },
+            ),
+            success(LocalInteractionSuccess {
+                sound_action: Some(LocalInteractionSoundAction::SuppressedDecoratedPotInsertFail,),
+                ..LocalInteractionSuccess::client_item_interaction()
+            })
+        );
+
+        let mut jukebox = block_use_world_with_entity(
+            "minecraft:jukebox",
+            [("has_record", "true")],
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+            VANILLA_BLOCK_ENTITY_TYPE_JUKEBOX_ID,
+        );
+        assert_eq!(
+            use_main_hand(&mut jukebox, 123),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        set_test_block(
+            &mut jukebox,
+            state_id("minecraft:jukebox", [("has_record", "false")]),
+        );
+        assert_eq!(use_main_hand(&mut jukebox, 124), pass());
+    }
+
+    #[test]
     fn property_gated_server_owned_actions_return_exact_client_results() {
         for (name, property, active, inactive, active_result, inactive_result) in [
             (
@@ -1067,6 +1633,293 @@ mod tests {
     }
 
     #[test]
+    fn cake_eating_updates_food_saturation_and_the_exact_predicted_state() {
+        let mut cake = block_use_world(
+            "minecraft:cake",
+            [("bites", "0")],
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        cake.apply_player_health(PlayerHealth {
+            health: 20.0,
+            food: 18,
+            saturation: 2.0,
+        });
+        assert_eq!(
+            use_main_hand(&mut cake, 131),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        assert_eq!(block_property(&cake, "bites").as_deref(), Some("1"));
+        assert_eq!(
+            cake.local_player().health,
+            Some(LocalPlayerHealthState {
+                health: 20.0,
+                food: 20,
+                saturation: 2.4,
+            })
+        );
+        assert_eq!(cake.local_block_predictions()[0].sequence, 131);
+
+        let mut last_slice = block_use_world(
+            "minecraft:cake",
+            [("bites", "6")],
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        last_slice.apply_player_health(PlayerHealth {
+            health: 19.0,
+            food: 17,
+            saturation: 1.0,
+        });
+        assert_eq!(
+            use_main_hand(&mut last_slice, 132),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        assert_eq!(
+            last_slice
+                .probe_block(POS)
+                .and_then(|block| block.block_name),
+            Some("minecraft:air".to_string())
+        );
+        assert_eq!(last_slice.local_player().health.unwrap().food, 19);
+    }
+
+    #[test]
+    fn full_food_cake_consumes_empty_hand_but_candle_cake_passes() {
+        let mut cake = block_use_world(
+            "minecraft:cake",
+            [("bites", "0")],
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        cake.apply_player_health(PlayerHealth {
+            health: 20.0,
+            food: 20,
+            saturation: 5.0,
+        });
+        assert_eq!(
+            use_main_hand(&mut cake, 133),
+            success(LocalInteractionSuccess::consume(false))
+        );
+        assert_eq!(block_property(&cake, "bites").as_deref(), Some("0"));
+        assert!(cake.local_block_predictions().is_empty());
+
+        let mut candle_cake = block_use_world(
+            "minecraft:candle_cake",
+            [("lit", "false")],
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        candle_cake.apply_player_health(PlayerHealth {
+            health: 20.0,
+            food: 20,
+            saturation: 5.0,
+        });
+        assert_eq!(use_main_hand(&mut candle_cake, 134), pass());
+        assert_eq!(
+            candle_cake
+                .probe_block(POS)
+                .and_then(|block| block.block_name),
+            Some("minecraft:candle_cake".to_string())
+        );
+    }
+
+    #[test]
+    fn candle_cake_eating_replaces_it_with_one_bite_of_cake() {
+        let mut world = block_use_world(
+            "minecraft:white_candle_cake",
+            [("lit", "false")],
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        world.apply_player_health(PlayerHealth {
+            health: 20.0,
+            food: 16,
+            saturation: 1.0,
+        });
+        assert_eq!(
+            use_main_hand(&mut world, 135),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        assert_eq!(
+            world.probe_block(POS).and_then(|block| block.block_name),
+            Some("minecraft:cake".to_string())
+        );
+        assert_eq!(block_property(&world, "bites").as_deref(), Some("1"));
+        assert_eq!(world.local_player().health.unwrap().food, 18);
+    }
+
+    #[test]
+    fn lit_candle_cake_hit_extinguishes_before_the_empty_hand_eat_path() {
+        let mut world = block_use_world(
+            "minecraft:red_candle_cake",
+            [("lit", "true")],
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        world.apply_player_health(PlayerHealth {
+            health: 20.0,
+            food: 16,
+            saturation: 1.0,
+        });
+        assert_eq!(
+            world.predict_local_block_use_with_hit(
+                POS,
+                Direction::Up,
+                [0.5, 0.75, 0.5],
+                false,
+                InteractionHand::MainHand,
+                false,
+                136,
+            ),
+            success(LocalInteractionSuccess {
+                sound_action: Some(LocalInteractionSoundAction::SuppressedCandleExtinguish),
+                particle_action: Some(LocalInteractionParticleAction::CandleCakeExtinguish {
+                    pos: POS,
+                }),
+                ..LocalInteractionSuccess::client_item_interaction()
+            })
+        );
+        assert_eq!(block_property(&world, "lit").as_deref(), Some("false"));
+        assert_eq!(world.local_player().health.unwrap().food, 16);
+        assert_eq!(world.local_block_predictions()[0].sequence, 136);
+    }
+
+    #[test]
+    fn candle_item_on_whole_cake_predicts_candle_cake_and_consumes_one() {
+        let mut world = block_use_world(
+            "minecraft:cake",
+            [("bites", "0")],
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        assert!(world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: item_stack(VANILLA_ITEM_CANDLE_ID, 2),
+        }));
+        assert_eq!(
+            use_main_hand(&mut world, 137),
+            success(LocalInteractionSuccess {
+                sound_action: Some(LocalInteractionSoundAction::SuppressedCakeAddCandle),
+                ..LocalInteractionSuccess::client_item_interaction()
+            })
+        );
+        assert_eq!(
+            world.probe_block(POS).and_then(|block| block.block_name),
+            Some("minecraft:candle_cake".to_string())
+        );
+        assert_eq!(block_property(&world, "lit").as_deref(), Some("false"));
+        assert_eq!(
+            world.local_item_in_hand(InteractionHand::MainHand),
+            Some(&item_stack(VANILLA_ITEM_CANDLE_ID, 1))
+        );
+    }
+
+    #[test]
+    fn flower_pot_empty_and_potted_branches_update_inventory_and_block_state() {
+        let mut empty = block_use_world_first_state(
+            "minecraft:flower_pot",
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        assert_eq!(
+            use_main_hand(&mut empty, 141),
+            success(LocalInteractionSuccess::consume(false))
+        );
+        assert!(empty.local_block_predictions().is_empty());
+
+        let mut potted = block_use_world_first_state(
+            "minecraft:potted_poppy",
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        assert_eq!(
+            use_main_hand(&mut potted, 142),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        assert_eq!(
+            potted.probe_block(POS).and_then(|block| block.block_name),
+            Some("minecraft:flower_pot".to_string())
+        );
+        assert_eq!(
+            potted.local_item_in_hand(InteractionHand::MainHand),
+            Some(&item_stack(VANILLA_ITEM_POPPY_ID, 1))
+        );
+
+        let mut plant = block_use_world_first_state(
+            "minecraft:flower_pot",
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        assert!(plant.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: item_stack(VANILLA_ITEM_POPPY_ID, 2),
+        }));
+        assert_eq!(
+            use_main_hand(&mut plant, 144),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        assert_eq!(
+            plant.probe_block(POS).and_then(|block| block.block_name),
+            Some("minecraft:potted_poppy".to_string())
+        );
+        assert_eq!(
+            plant.local_item_in_hand(InteractionHand::MainHand),
+            Some(&item_stack(VANILLA_ITEM_POPPY_ID, 1))
+        );
+
+        assert_eq!(
+            use_main_hand(&mut plant, 145),
+            success(LocalInteractionSuccess::consume(false)),
+            "a pottable item against an occupied pot consumes without replacing it"
+        );
+        assert_eq!(
+            plant.probe_block(POS).and_then(|block| block.block_name),
+            Some("minecraft:potted_poppy".to_string())
+        );
+    }
+
+    #[test]
+    fn potted_flower_full_inventory_requests_vanilla_drop_swing() {
+        let mut world = block_use_world_first_state(
+            "minecraft:potted_poppy",
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        for slot in (0..36).chain(std::iter::once(40)) {
+            assert!(world.apply_set_player_inventory(SetPlayerInventory {
+                slot,
+                item: item_stack(VANILLA_ITEM_STONE_ID, 64),
+            }));
+        }
+        assert_eq!(
+            use_main_hand(&mut world, 143),
+            success(LocalInteractionSuccess {
+                extra_swing: Some(InteractionHand::MainHand),
+                ..LocalInteractionSuccess::client_item_interaction()
+            })
+        );
+        assert_eq!(
+            world.probe_block(POS).and_then(|block| block.block_name),
+            Some("minecraft:flower_pot".to_string())
+        );
+    }
+
+    #[test]
+    fn every_generated_potted_flower_owner_maps_back_to_its_block_item() {
+        let mut owner_count = 0;
+        for block_type in VANILLA_BLOCK_TYPES.iter().filter(|block_type| {
+            block_type.use_without_item_override
+                == Some(VanillaBlockUseWithoutItemOverride::FlowerPotBlock)
+        }) {
+            owner_count += 1;
+            if block_type.resource_id == "minecraft:flower_pot" {
+                assert_eq!(potted_flower_item_id(block_type), None);
+            } else {
+                assert!(
+                    potted_flower_item_id(block_type).is_some(),
+                    "{}",
+                    block_type.resource_id
+                );
+            }
+        }
+        assert!(owner_count > 1);
+        assert_eq!(
+            potted_flower_item_id(&VANILLA_BLOCK_TYPES[VANILLA_BLOCK_POTTED_POPPY_ID as usize]),
+            Some(VANILLA_ITEM_POPPY_ID)
+        );
+    }
+
+    #[test]
     fn offhand_skips_empty_hand_block_owner_and_main_hand_pass_continues_dispatch() {
         let mut world = block_use_world(
             "minecraft:oak_door",
@@ -1100,6 +1953,14 @@ mod tests {
         world
             .probe_block(POS)
             .and_then(|block| block.block_properties.get(property).cloned())
+    }
+
+    fn item_stack(item_id: i32, count: i32) -> ItemStackSummary {
+        ItemStackSummary {
+            item_id: Some(item_id),
+            count,
+            component_patch: Default::default(),
+        }
     }
 
     fn assert_wire_sides(world: &WorldStore, sides: [&str; 4], power: &str) {
@@ -1138,12 +1999,32 @@ mod tests {
     }
 
     fn block_use_world_first_state(name: &str, game_type: i8) -> WorldStore {
+        block_use_world_first_state_with_optional_entity(name, game_type, None)
+    }
+
+    fn block_use_world_first_state_with_entity(
+        name: &str,
+        game_type: i8,
+        block_entity_type_id: i32,
+    ) -> WorldStore {
+        block_use_world_first_state_with_optional_entity(
+            name,
+            game_type,
+            Some(block_entity_type_id),
+        )
+    }
+
+    fn block_use_world_first_state_with_optional_entity(
+        name: &str,
+        game_type: i8,
+        block_entity_type_id: Option<i32>,
+    ) -> WorldStore {
         let registry = crate::registries::BlockStateRegistry::vanilla_26_1();
         let state = registry
             .iter()
             .find(|state| state.name == name)
             .unwrap_or_else(|| panic!("missing {name} state"));
-        block_use_world_vec(
+        block_use_world_vec_with_optional_entity(
             name,
             state
                 .properties
@@ -1151,10 +2032,34 @@ mod tests {
                 .map(|(name, value)| (name.as_str(), value.as_str()))
                 .collect(),
             game_type,
+            block_entity_type_id,
         )
     }
 
     fn block_use_world_vec(name: &str, properties: Vec<(&str, &str)>, game_type: i8) -> WorldStore {
+        block_use_world_vec_with_optional_entity(name, properties, game_type, None)
+    }
+
+    fn block_use_world_with_entity<const N: usize>(
+        name: &str,
+        properties: [(&str, &str); N],
+        game_type: i8,
+        block_entity_type_id: i32,
+    ) -> WorldStore {
+        block_use_world_vec_with_optional_entity(
+            name,
+            properties.into_iter().collect(),
+            game_type,
+            Some(block_entity_type_id),
+        )
+    }
+
+    fn block_use_world_vec_with_optional_entity(
+        name: &str,
+        properties: Vec<(&str, &str)>,
+        game_type: i8,
+        block_entity_type_id: Option<i32>,
+    ) -> WorldStore {
         let air = state_id("minecraft:air", []);
         let single_value = |domain, entry_count, global_id| PalettedContainerData {
             domain,
@@ -1198,6 +2103,23 @@ mod tests {
         });
         let section_count =
             usize::try_from(world.dimension().height.div_euclid(16)).expect("section count");
+        let block_entities = block_entity_type_id
+            .map(|type_id| {
+                let mut record = BlockEntityRecord::empty(
+                    POS.x.rem_euclid(16) as u8,
+                    POS.y as i16,
+                    POS.z.rem_euclid(16) as u8,
+                    type_id,
+                );
+                if matches!(
+                    type_id,
+                    VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID | VANILLA_BLOCK_ENTITY_TYPE_HANGING_SIGN_ID
+                ) {
+                    record.sign_text = Some(crate::SignBlockEntityTextState::default());
+                }
+                vec![record]
+            })
+            .unwrap_or_default();
         world.insert_decoded_chunk(ChunkColumn {
             pos: ChunkPos { x: 0, z: 0 },
             state: ChunkState::Decoded,
@@ -1210,7 +2132,7 @@ mod tests {
                     biomes: single_value(PaletteDomain::Biomes, 64, 0),
                 })
                 .collect(),
-            block_entities: Vec::new(),
+            block_entities,
             light: LightData::default(),
         });
         set_test_block(&mut world, state_id_vec(name, properties));

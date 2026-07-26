@@ -99,6 +99,24 @@ fn bucket_water_evaporation_emits_eight_large_smoke_particles_inside_block() {
 }
 
 #[test]
+fn candle_cake_extinguish_emits_one_upward_smoke_at_the_wick() {
+    let pos = WorldBlockPos { x: -2, y: 7, z: 4 };
+    let mut resolver = test_resolver(0);
+    let batch = resolver.local_interaction_particle_batch(
+        LocalInteractionParticleAction::CandleCakeExtinguish { pos },
+    );
+
+    let [command] = batch.commands.as_slice() else {
+        panic!("candle cake extinguish should emit one particle");
+    };
+    assert_eq!(command.position, [-1.5, 8.0, 4.5]);
+    assert_eq!(command.velocity, [0.0, f64::from(0.1_f32), 0.0]);
+    assert_eq!(command.particle_type_id, VANILLA_PARTICLE_TYPE_SMOKE_ID);
+    assert_eq!(command.particle_id, "minecraft:smoke");
+    assert!(!command.always_show);
+}
+
+#[test]
 fn local_destroy_hit_particle_uses_vanilla_shape_face_power_and_scale() {
     let pos = WorldBlockPos { x: 0, y: 8, z: 0 };
     let slab = test_block_state_id(

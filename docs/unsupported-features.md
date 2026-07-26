@@ -653,11 +653,14 @@ Commands:
   command, and sign editing.
 - Complete the remaining specialized targeted local-use prediction from
   `Minecraft.startUseItem`, `MultiPlayerGameMode.interact`, and `useItemOn`.
-  Implement the remaining generated specialized block `useItemOn` /
-  `useWithoutItem` owners so main/offhand iteration can stop or continue on the
-  exact `InteractionResult`; complete `ComparatorBlock.refreshOutputState` after
-  predicted mode changes, including arbitrary analog block-entity and item-frame
-  inputs; then apply each success swing-source and held-item presentation.
+  Generated specialized block `useWithoutItem` owners now have exhaustive exact
+  result routing, including stateful cake/candle-cake/flower-pot prediction and
+  their required inventory, food, sound-seed, and particle effects. Implement
+  the remaining generated specialized block `useItemOn` owners so main/offhand
+  iteration can stop or continue on the exact `InteractionResult`; complete
+  `ComparatorBlock.refreshOutputState` after predicted mode changes, including
+  arbitrary analog block-entity and item-frame inputs; then apply each success
+  swing-source and held-item presentation.
   Interaction override ownership must stay generated from local vanilla classes.
   Entity, block, and inventory corrections remain server-authoritative.
 - Bottle dragon-breath client prediction is `not-needed`: `AreaEffectCloud.owner`

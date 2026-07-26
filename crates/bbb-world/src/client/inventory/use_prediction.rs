@@ -176,6 +176,9 @@ pub enum LocalInteractionSoundAction {
     BucketWaterEvaporate {
         pos: BlockPos,
     },
+    SuppressedCandleExtinguish,
+    SuppressedCakeAddCandle,
+    SuppressedDecoratedPotInsertFail,
     BlockPlace {
         pos: BlockPos,
         sound_resource_id: &'static str,
@@ -209,6 +212,9 @@ pub enum LocalInteractionParticleAction {
         face: LocalLeverAttachFace,
     },
     BucketWaterEvaporate {
+        pos: BlockPos,
+    },
+    CandleCakeExtinguish {
         pos: BlockPos,
     },
 }
@@ -1673,7 +1679,7 @@ impl WorldStore {
             | VANILLA_MINECART_CHEST_INTERACT_OWNER
             | VANILLA_MINECART_FURNACE_INTERACT_OWNER => Some(success()),
             VANILLA_MINECART_COMMAND_BLOCK_INTERACT_OWNER => {
-                Some(if self.local_player_has_gamemaster_permission() {
+                Some(if self.local_player_can_use_gamemaster_blocks() {
                     success()
                 } else {
                     LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
@@ -8555,6 +8561,14 @@ mod tests {
             entity_id: 7,
             event_id: 26,
         }));
+        world.apply_player_abilities(bbb_protocol::packets::PlayerAbilities {
+            invulnerable: true,
+            flying: false,
+            can_fly: true,
+            instabuild: true,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        });
         assert_eq!(
             world.predict_local_entity_interaction(14, InteractionHand::MainHand, false),
             success

@@ -3258,6 +3258,18 @@ impl WorldStore {
         )
     }
 
+    pub(crate) fn add_local_item_from_block_interaction(
+        &mut self,
+        item: ProtocolItemStackSummary,
+    ) -> bool {
+        let added = self
+            .inventory
+            .add_local_item_to_player_inventory(inventory_ctx!(self), item);
+        self.inventory
+            .update_inventory_slot_count(&mut self.counters);
+        added
+    }
+
     /// Vanilla `LivingEntity.canGlideUsing`: any equipment slot may carry the
     /// usable glider, but the effective EQUIPPABLE slot must match and the
     /// next durability point must not break the stack.

@@ -69,7 +69,7 @@ impl WorldStore {
     }
 
     pub fn try_open_test_block_editor(&mut self, pos: BlockPos) -> bool {
-        if !self.local_player_has_gamemaster_permission() || !self.test_block_is_present_at(pos) {
+        if !self.local_player_can_use_gamemaster_blocks() || !self.test_block_is_present_at(pos) {
             return false;
         }
         let Some(data) = self.test_block_data_at(pos).cloned() else {
@@ -180,7 +180,7 @@ mod tests {
         let mut store = test_block_world(pos, TestBlockMode::Log, "initial", false);
         assert!(!store.try_open_test_block_editor(pos));
 
-        grant_gamemaster_permission(&mut store);
+        grant_gamemaster_block_access(&mut store);
         assert!(store.try_open_test_block_editor(pos));
         assert_eq!(store.test_block_editor_open_count(), 1);
         assert_eq!(
@@ -237,7 +237,7 @@ mod tests {
     fn editor_keeps_copied_data_after_block_removal_and_closes_with_level() {
         let pos = BlockPos { x: 0, y: 0, z: 0 };
         let mut store = test_block_world(pos, TestBlockMode::Start, "copied", true);
-        grant_gamemaster_permission(&mut store);
+        grant_gamemaster_block_access(&mut store);
         assert!(store.try_open_test_block_editor(pos));
 
         let stone = crate::vanilla_block_state_id("minecraft:stone", &BTreeMap::new()).unwrap();
@@ -258,7 +258,7 @@ mod tests {
         assert!(!store.try_open_test_block_editor(pos));
 
         let mut store = test_block_world(pos, TestBlockMode::Fail, "level-bound", false);
-        grant_gamemaster_permission(&mut store);
+        grant_gamemaster_block_access(&mut store);
         assert!(store.try_open_test_block_editor(pos));
         store.clear_client_level();
         assert!(store.test_block_editor().is_none());
@@ -310,12 +310,20 @@ mod tests {
         store
     }
 
-    fn grant_gamemaster_permission(store: &mut WorldStore) {
+    fn grant_gamemaster_block_access(store: &mut WorldStore) {
         store.local_player_id = Some(9);
         assert!(store.apply_entity_event(EntityEvent {
             entity_id: 9,
             event_id: 26,
         }));
+        store.apply_player_abilities(bbb_protocol::packets::PlayerAbilities {
+            invulnerable: true,
+            flying: false,
+            can_fly: true,
+            instabuild: true,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        });
     }
 
     fn single_value_palette(

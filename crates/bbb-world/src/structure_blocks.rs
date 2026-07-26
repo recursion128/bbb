@@ -161,7 +161,7 @@ impl WorldStore {
     }
 
     pub fn try_open_structure_block_editor(&mut self, pos: BlockPos) -> bool {
-        if !self.local_player_has_gamemaster_permission()
+        if !self.local_player_can_use_gamemaster_blocks()
             || !self.structure_block_is_present_at(pos)
         {
             return false;
@@ -344,11 +344,7 @@ mod tests {
         let mut store = structure_block_world(pos);
         assert!(!store.try_open_structure_block_editor(pos));
 
-        store.local_player_id = Some(11);
-        assert!(store.apply_entity_event(EntityEvent {
-            entity_id: 11,
-            event_id: 26,
-        }));
+        grant_permission(&mut store);
         assert!(store.try_open_structure_block_editor(pos));
         assert_eq!(store.structure_block_editor_open_count(), 1);
         assert_eq!(
@@ -409,6 +405,14 @@ mod tests {
             entity_id: 11,
             event_id: 26,
         }));
+        store.apply_player_abilities(bbb_protocol::packets::PlayerAbilities {
+            invulnerable: true,
+            flying: false,
+            can_fly: true,
+            instabuild: true,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        });
     }
 
     fn structure_block_world(pos: BlockPos) -> WorldStore {

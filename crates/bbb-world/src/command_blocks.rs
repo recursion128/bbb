@@ -102,7 +102,7 @@ impl WorldStore {
     }
 
     pub fn try_open_command_block_editor(&mut self, pos: BlockPos) -> bool {
-        if !self.local_player_has_gamemaster_permission() {
+        if !self.local_player_can_use_gamemaster_blocks() {
             return false;
         }
         let Some((mode, conditional)) = self.command_block_mode_at(pos) else {
@@ -339,11 +339,7 @@ mod tests {
         let mut store = command_block_world(pos, "say initial");
 
         assert!(!store.try_open_command_block_editor(pos));
-        store.local_player_id = Some(7);
-        assert!(store.apply_entity_event(EntityEvent {
-            entity_id: 7,
-            event_id: 26,
-        }));
+        grant_gamemaster_block_access(&mut store, 7);
         assert!(store.try_open_command_block_editor(pos));
         assert_eq!(store.command_block_editor_open_count(), 1);
         let editor = store.command_block_editor().unwrap();
@@ -400,11 +396,7 @@ mod tests {
     fn forgetting_editor_chunk_closes_editor() {
         let pos = BlockPos { x: 0, y: 0, z: 0 };
         let mut store = command_block_world(pos, "say initial");
-        store.local_player_id = Some(7);
-        store.apply_entity_event(EntityEvent {
-            entity_id: 7,
-            event_id: 26,
-        });
+        grant_gamemaster_block_access(&mut store, 7);
         assert!(store.try_open_command_block_editor(pos));
 
         assert!(store.forget_chunk(ChunkPos { x: 0, z: 0 }));
@@ -448,6 +440,22 @@ mod tests {
             light: LightData::default(),
         });
         store
+    }
+
+    fn grant_gamemaster_block_access(store: &mut WorldStore, entity_id: i32) {
+        store.local_player_id = Some(entity_id);
+        assert!(store.apply_entity_event(EntityEvent {
+            entity_id,
+            event_id: 26,
+        }));
+        store.apply_player_abilities(bbb_protocol::packets::PlayerAbilities {
+            invulnerable: true,
+            flying: false,
+            can_fly: true,
+            instabuild: true,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        });
     }
 
     fn single_value_palette(
