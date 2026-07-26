@@ -102,8 +102,9 @@ pub use crate::client::stats::{
 pub use crate::client::ui::{
     code_of_conduct_text_hash, java_string_hash_code, ClientGameEventScreenState, ClientUiState,
     CodeOfConductState, DialogBodyFocusPartState, DialogFocusState, DialogInputValueState,
-    DialogLinkConfirmationState, DialogPreviousScreenState, DialogTextEditState, GhostRecipeState,
-    MountScreenState, OpenSignEditorState, PongResponseState,
+    DialogLinkConfirmationState, DialogPreviousScreenState, DialogTextEditState,
+    GhostRecipeSlotState, GhostRecipeState, MountScreenState, OpenSignEditorState,
+    PongResponseState,
 };
 pub use crate::client::waypoints::{
     ClientWaypointsState, WaypointDataState, WaypointEventState, WaypointState, WaypointVec3iState,

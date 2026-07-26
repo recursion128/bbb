@@ -395,6 +395,18 @@ pub struct ContainerState {
     pub merchant_offers: Option<MerchantOffersState>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct RecipeUpdateListenerContext {
+    pub(crate) container_id: i32,
+    pub(crate) layout: RecipeUpdateListenerLayout,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum RecipeUpdateListenerLayout {
+    Crafting { grid_width: i32, grid_height: i32 },
+    Furnace { fuel_slot_empty: bool },
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MountInventoryKind {
     Horse,
@@ -936,21 +948,37 @@ impl InventoryState {
             })
     }
 
-    pub(crate) fn recipe_update_listener_container_id(&self) -> Option<i32> {
+    pub(crate) fn recipe_update_listener_context(&self) -> Option<RecipeUpdateListenerContext> {
         if self.local_inventory_open {
-            return Some(INVENTORY_MENU_CONTAINER_ID);
+            return Some(RecipeUpdateListenerContext {
+                container_id: INVENTORY_MENU_CONTAINER_ID,
+                layout: RecipeUpdateListenerLayout::Crafting {
+                    grid_width: 2,
+                    grid_height: 2,
+                },
+            });
         }
         let container = self.open_container.as_ref()?;
-        matches!(
-            container.menu_type_id,
-            Some(
-                VANILLA_MENU_TYPE_CRAFTING_ID
-                    | VANILLA_MENU_TYPE_FURNACE_ID
-                    | VANILLA_MENU_TYPE_BLAST_FURNACE_ID
-                    | VANILLA_MENU_TYPE_SMOKER_ID
-            )
-        )
-        .then_some(container.container_id)
+        let layout = match container.menu_type_id? {
+            VANILLA_MENU_TYPE_CRAFTING_ID => RecipeUpdateListenerLayout::Crafting {
+                grid_width: 3,
+                grid_height: 3,
+            },
+            VANILLA_MENU_TYPE_FURNACE_ID
+            | VANILLA_MENU_TYPE_BLAST_FURNACE_ID
+            | VANILLA_MENU_TYPE_SMOKER_ID => RecipeUpdateListenerLayout::Furnace {
+                fuel_slot_empty: container
+                    .slots
+                    .iter()
+                    .find(|slot| slot.slot == 1)
+                    .is_none_or(|slot| item_stack_is_empty(&slot.item)),
+            },
+            _ => return None,
+        };
+        Some(RecipeUpdateListenerContext {
+            container_id: container.container_id,
+            layout,
+        })
     }
 
     pub(crate) fn open_container_data_value(&self, id: i16) -> Option<i16> {
@@ -3079,8 +3107,8 @@ impl WorldStore {
         self.inventory.open_container_id()
     }
 
-    pub(crate) fn recipe_update_listener_container_id(&self) -> Option<i32> {
-        self.inventory.recipe_update_listener_container_id()
+    pub(crate) fn recipe_update_listener_context(&self) -> Option<RecipeUpdateListenerContext> {
+        self.inventory.recipe_update_listener_context()
     }
 
     pub fn open_container_data_value(&self, id: i16) -> Option<i16> {

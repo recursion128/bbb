@@ -1,9 +1,9 @@
 use bbb_protocol::{
     packets::{
-        DialogHolder, MountScreenOpen as ProtocolMountScreenOpen,
-        OpenSignEditor as ProtocolOpenSignEditor, PlaceGhostRecipe as ProtocolPlaceGhostRecipe,
-        PongResponse as ProtocolPongResponse, RecipeDisplaySummary as ProtocolRecipeDisplaySummary,
-        ShowDialog as ProtocolShowDialog,
+        CraftingRecipeDisplaySummary, DialogHolder, ItemStackSummary as ProtocolItemStackSummary,
+        MountScreenOpen as ProtocolMountScreenOpen, OpenSignEditor as ProtocolOpenSignEditor,
+        PlaceGhostRecipe as ProtocolPlaceGhostRecipe, PongResponse as ProtocolPongResponse,
+        RecipeDisplaySummary as ProtocolRecipeDisplaySummary, ShowDialog as ProtocolShowDialog,
     },
     NbtSummaryValue,
 };
@@ -15,11 +15,15 @@ use crate::{
         decode_component_click_dialog, decode_dialog_registry_entry, CommonDialogDataState,
         DialogBodyState, DialogDataState, DialogInputControlState, DialogState,
     },
+    client::inventory::{RecipeUpdateListenerContext, RecipeUpdateListenerLayout},
     entities::{is_vanilla_abstract_horse_type, is_vanilla_abstract_nautilus_type},
-    protocol_block_pos, BlockPos, WorldStore,
+    for_each_shaped_recipe_grid_slot, protocol_block_pos,
+    recipes::slot_display_holders_are_resolved,
+    BlockPos, WorldStore,
 };
 
 const DIALOG_WAITING_CLOSE_ACTIVE_TICKS: u32 = 101;
+const MAX_GHOST_RECIPE_CANDIDATES: usize = 65_536;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ClientUiState {
@@ -439,6 +443,7 @@ impl ClientUiState {
 
     pub(crate) fn replace_screen(&mut self) {
         self.replace_dialog();
+        self.last_ghost_recipe = None;
         self.current_book = None;
         self.current_advancements_screen = false;
         self.current_stats_screen = false;
@@ -550,6 +555,15 @@ pub struct GhostRecipeState {
     pub recipe_display_body_len: usize,
     #[serde(default)]
     pub recipe_display: Option<ProtocolRecipeDisplaySummary>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub slots: Vec<GhostRecipeSlotState>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GhostRecipeSlotState {
+    pub slot_id: i16,
+    pub items: Vec<ProtocolItemStackSummary>,
+    pub is_result: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -801,19 +815,119 @@ impl WorldStore {
 
     pub fn apply_place_ghost_recipe(&mut self, packet: ProtocolPlaceGhostRecipe) {
         self.counters.ghost_recipe_packets += 1;
-        if self.recipe_update_listener_container_id() != Some(packet.container_id) {
+        let Some(context) = self
+            .recipe_update_listener_context()
+            .filter(|context| context.container_id == packet.container_id)
+        else {
+            self.counters.ghost_recipe_updates_ignored += 1;
+            return;
+        };
+        let recipe_display = packet.recipe_display;
+        let Some(displays) = recipe_display.slot_displays() else {
+            self.counters.ghost_recipe_updates_ignored += 1;
+            return;
+        };
+        if !displays
+            .into_iter()
+            .all(|display| slot_display_holders_are_resolved(self, display))
+        {
             self.counters.ghost_recipe_updates_ignored += 1;
             return;
         }
+        let Some(slots) = self.resolve_ghost_recipe_slots(&recipe_display, context) else {
+            self.counters.ghost_recipe_updates_ignored += 1;
+            return;
+        };
         self.counters.ghost_recipe_updates_applied += 1;
-        let recipe_display = packet.recipe_display;
         self.client_ui.last_ghost_recipe = Some(GhostRecipeState {
             container_id: packet.container_id,
             recipe_display_type_id: recipe_display.display_type.id(),
             recipe_display_type: recipe_display.display_type.as_str().to_string(),
             recipe_display_body_len: recipe_display.raw_body.len(),
             recipe_display: Some(recipe_display),
+            slots,
         });
+    }
+
+    fn resolve_ghost_recipe_slots(
+        &self,
+        display: &ProtocolRecipeDisplaySummary,
+        context: RecipeUpdateListenerContext,
+    ) -> Option<Vec<GhostRecipeSlotState>> {
+        let result = display.result()?;
+        let mut assignments = Vec::new();
+        match context.layout {
+            RecipeUpdateListenerLayout::Crafting {
+                grid_width,
+                grid_height,
+            } => {
+                assignments.push((0, result, true));
+                match display.crafting.as_ref() {
+                    Some(CraftingRecipeDisplaySummary::Shapeless { ingredients, .. }) => {
+                        let slot_count = ingredients
+                            .len()
+                            .min(usize::try_from(grid_width * grid_height).ok()?);
+                        for (index, ingredient) in ingredients.iter().take(slot_count).enumerate() {
+                            assignments.push((
+                                i16::try_from(index).ok()?.checked_add(1)?,
+                                ingredient,
+                                false,
+                            ));
+                        }
+                    }
+                    Some(CraftingRecipeDisplaySummary::Shaped {
+                        width,
+                        height,
+                        ingredients,
+                        ..
+                    }) => {
+                        for_each_shaped_recipe_grid_slot(
+                            grid_width,
+                            grid_height,
+                            *width,
+                            *height,
+                            ingredients,
+                            |ingredient, grid_index, _, _| {
+                                if let Some(slot_id) = i16::try_from(grid_index)
+                                    .ok()
+                                    .and_then(|slot| slot.checked_add(1))
+                                {
+                                    assignments.push((slot_id, ingredient, false));
+                                }
+                            },
+                        );
+                    }
+                    None => {}
+                }
+            }
+            RecipeUpdateListenerLayout::Furnace { fuel_slot_empty } => {
+                assignments.push((2, result, true));
+                if let Some(furnace) = display.furnace.as_ref() {
+                    assignments.push((0, &furnace.ingredient, false));
+                    if fuel_slot_empty {
+                        assignments.push((1, &furnace.fuel, false));
+                    }
+                }
+            }
+        }
+
+        let mut slots = Vec::with_capacity(assignments.len());
+        let mut candidate_count = 0usize;
+        for (slot_id, display, is_result) in assignments {
+            let items = self.resolve_slot_display_stacks(display).ok()?;
+            candidate_count = candidate_count.checked_add(items.len())?;
+            if candidate_count > MAX_GHOST_RECIPE_CANDIDATES {
+                return None;
+            }
+            if !items.is_empty() {
+                slots.push(GhostRecipeSlotState {
+                    slot_id,
+                    items,
+                    is_result,
+                });
+            }
+        }
+        Some(slots)
     }
 
     pub fn clear_ghost_recipe(&mut self) -> bool {
@@ -1578,16 +1692,25 @@ pub fn java_string_hash_code(text: &str) -> i32 {
 mod tests {
     use super::*;
     use bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID;
+    use bbb_protocol::codec::Encoder;
     use bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID;
     use bbb_protocol::entity_types::{VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_PLAYER_ID};
-    use bbb_protocol::menu_types::VANILLA_MENU_TYPE_GENERIC_9X1_ID;
+    use bbb_protocol::menu_types::{
+        VANILLA_MENU_TYPE_BLAST_FURNACE_ID, VANILLA_MENU_TYPE_CRAFTING_ID,
+        VANILLA_MENU_TYPE_FURNACE_ID, VANILLA_MENU_TYPE_GENERIC_9X1_ID,
+        VANILLA_MENU_TYPE_SMOKER_ID,
+    };
     use bbb_protocol::packets::{
-        AddEntity as ProtocolAddEntity, BlockPos as ProtocolBlockPos, DataComponentPatchSummary,
-        DialogHolder, InteractionHand, ItemStackSummary, OpenBook as ProtocolOpenBook,
+        AddEntity as ProtocolAddEntity, BlockPos as ProtocolBlockPos,
+        ContainerSetSlot as ProtocolContainerSetSlot, DataComponentPatchSummary, DialogHolder,
+        InteractionHand, ItemStackSummary, OpenBook as ProtocolOpenBook,
         OpenScreen as ProtocolOpenScreen, SetPlayerInventory as ProtocolSetPlayerInventory,
         Vec3d as ProtocolVec3d, WrittenBookContentSummary,
     };
-    use bbb_protocol::recipe_wire_types::VANILLA_RECIPE_DISPLAY_TYPE_STONECUTTER_ID;
+    use bbb_protocol::recipe_wire_types::{
+        VANILLA_RECIPE_DISPLAY_TYPE_STONECUTTER_ID, VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
+        VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID,
+    };
     use bbb_protocol::NbtSummaryEntry;
     use uuid::Uuid;
 
@@ -2996,17 +3119,11 @@ mod tests {
     fn tracks_client_ui_ghost_recipe_request() {
         let mut store = WorldStore::new();
         assert!(store.open_local_inventory());
+        let recipe_display = stonecutter_recipe_display(100, 101, 102);
 
         store.apply_place_ghost_recipe(ProtocolPlaceGhostRecipe {
             container_id: 0,
-            recipe_display: bbb_protocol::packets::RecipeDisplaySummary {
-                display_type: bbb_protocol::packets::RecipeDisplayType::Stonecutter,
-                raw_body: vec![3, 4, 100, 4, 101, 4, 102],
-                crafting: None,
-                furnace: None,
-                stonecutter: None,
-                smithing: None,
-            },
+            recipe_display: recipe_display.clone(),
         });
 
         assert_eq!(
@@ -3016,14 +3133,12 @@ mod tests {
                 recipe_display_type_id: VANILLA_RECIPE_DISPLAY_TYPE_STONECUTTER_ID,
                 recipe_display_type: "stonecutter".to_string(),
                 recipe_display_body_len: 7,
-                recipe_display: Some(bbb_protocol::packets::RecipeDisplaySummary {
-                    display_type: bbb_protocol::packets::RecipeDisplayType::Stonecutter,
-                    raw_body: vec![3, 4, 100, 4, 101, 4, 102],
-                    crafting: None,
-                    furnace: None,
-                    stonecutter: None,
-                    smithing: None,
-                }),
+                recipe_display: Some(recipe_display),
+                slots: vec![GhostRecipeSlotState {
+                    slot_id: 0,
+                    items: vec![item_stack(101, 1)],
+                    is_result: true,
+                }],
             })
         );
         assert_eq!(store.counters().ghost_recipe_packets, 1);
@@ -3036,14 +3151,7 @@ mod tests {
         let mut store = WorldStore::new();
         let packet = ProtocolPlaceGhostRecipe {
             container_id: 9,
-            recipe_display: bbb_protocol::packets::RecipeDisplaySummary {
-                display_type: bbb_protocol::packets::RecipeDisplayType::Stonecutter,
-                raw_body: vec![3],
-                crafting: None,
-                furnace: None,
-                stonecutter: None,
-                smithing: None,
-            },
+            recipe_display: stonecutter_recipe_display(100, 101, 102),
         };
 
         store.apply_place_ghost_recipe(packet.clone());
@@ -3065,19 +3173,249 @@ mod tests {
 
         store.apply_place_ghost_recipe(ProtocolPlaceGhostRecipe {
             container_id: 0,
-            recipe_display: bbb_protocol::packets::RecipeDisplaySummary {
-                display_type: bbb_protocol::packets::RecipeDisplayType::Stonecutter,
-                raw_body: vec![3],
-                crafting: None,
-                furnace: None,
-                stonecutter: None,
-                smithing: None,
-            },
+            recipe_display: stonecutter_recipe_display(100, 101, 102),
         });
 
         assert!(store.clear_ghost_recipe());
         assert_eq!(store.last_ghost_recipe(), None);
         assert!(!store.clear_ghost_recipe());
         assert_eq!(store.counters().ghost_recipe_packets, 1);
+    }
+
+    #[test]
+    fn ghost_recipe_places_inputs_in_the_active_crafting_grid() {
+        let mut store = WorldStore::new();
+        assert!(store.open_local_inventory());
+        let shaped = crafting_shaped_recipe_display(1, 1, vec![110], 120);
+        store.apply_place_ghost_recipe(ProtocolPlaceGhostRecipe {
+            container_id: 0,
+            recipe_display: shaped.clone(),
+        });
+        assert_eq!(
+            ghost_slot_ids(store.last_ghost_recipe().unwrap()),
+            vec![(0, true), (1, false)]
+        );
+
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
+            title: bbb_protocol::RichTextComponent::plain("Crafting"),
+        });
+        assert_eq!(store.last_ghost_recipe(), None);
+        store.apply_place_ghost_recipe(ProtocolPlaceGhostRecipe {
+            container_id: 7,
+            recipe_display: shaped,
+        });
+        assert_eq!(
+            ghost_slot_ids(store.last_ghost_recipe().unwrap()),
+            vec![(0, true), (5, false)]
+        );
+
+        assert!(store.close_local_container(7));
+        assert!(store.open_local_inventory());
+        let shapeless = crafting_shapeless_recipe_display(vec![101, 102, 103, 104, 105], 121);
+        store.apply_place_ghost_recipe(ProtocolPlaceGhostRecipe {
+            container_id: 0,
+            recipe_display: shapeless,
+        });
+        assert_eq!(
+            ghost_slot_ids(store.last_ghost_recipe().unwrap()),
+            vec![(0, true), (1, false), (2, false), (3, false), (4, false)]
+        );
+    }
+
+    #[test]
+    fn furnace_family_ghost_recipe_snapshots_fuel_slot_emptiness() {
+        for menu_type_id in [
+            VANILLA_MENU_TYPE_FURNACE_ID,
+            VANILLA_MENU_TYPE_BLAST_FURNACE_ID,
+            VANILLA_MENU_TYPE_SMOKER_ID,
+        ] {
+            let mut store = WorldStore::new();
+            store.apply_open_screen(ProtocolOpenScreen {
+                container_id: 7,
+                menu_type_id,
+                title: bbb_protocol::RichTextComponent::plain("Furnace"),
+            });
+            let display = furnace_recipe_display(110, 111, 112);
+            store.apply_place_ghost_recipe(ProtocolPlaceGhostRecipe {
+                container_id: 7,
+                recipe_display: display.clone(),
+            });
+            assert_eq!(
+                ghost_slot_ids(store.last_ghost_recipe().unwrap()),
+                vec![(2, true), (0, false), (1, false)]
+            );
+
+            assert!(store.apply_container_set_slot(ProtocolContainerSetSlot {
+                container_id: 7,
+                state_id: 1,
+                slot: 1,
+                item: item_stack(113, 1),
+            }));
+            store.apply_place_ghost_recipe(ProtocolPlaceGhostRecipe {
+                container_id: 7,
+                recipe_display: display,
+            });
+            assert_eq!(
+                ghost_slot_ids(store.last_ghost_recipe().unwrap()),
+                vec![(2, true), (0, false)]
+            );
+
+            store.apply_place_ghost_recipe(ProtocolPlaceGhostRecipe {
+                container_id: 7,
+                recipe_display: stonecutter_recipe_display(114, 115, 116),
+            });
+            assert_eq!(
+                ghost_slot_ids(store.last_ghost_recipe().unwrap()),
+                vec![(2, true)]
+            );
+        }
+    }
+
+    #[test]
+    fn replacing_the_screen_clears_its_ghost_recipe_snapshot() {
+        let mut store = WorldStore::new();
+        assert!(store.open_local_inventory());
+        store.apply_place_ghost_recipe(ProtocolPlaceGhostRecipe {
+            container_id: 0,
+            recipe_display: stonecutter_recipe_display(100, 101, 102),
+        });
+        assert!(store.last_ghost_recipe().is_some());
+
+        assert!(store.open_stats_screen());
+        assert_eq!(store.last_ghost_recipe(), None);
+    }
+
+    fn ghost_slot_ids(state: &GhostRecipeState) -> Vec<(i16, bool)> {
+        state
+            .slots
+            .iter()
+            .map(|slot| (slot.slot_id, slot.is_result))
+            .collect()
+    }
+
+    fn crafting_shapeless_recipe_display(
+        ingredients: Vec<i32>,
+        result: i32,
+    ) -> bbb_protocol::packets::RecipeDisplaySummary {
+        let ingredients = ingredients
+            .into_iter()
+            .map(item_slot_display)
+            .collect::<Vec<_>>();
+        bbb_protocol::packets::RecipeDisplaySummary {
+            display_type: bbb_protocol::packets::RecipeDisplayType::CraftingShapeless,
+            raw_body: Vec::new(),
+            crafting: Some(
+                bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
+                    ingredients,
+                    result: item_slot_display(result),
+                    crafting_station: empty_slot_display(),
+                },
+            ),
+            furnace: None,
+            stonecutter: None,
+            smithing: None,
+        }
+    }
+
+    fn crafting_shaped_recipe_display(
+        width: i32,
+        height: i32,
+        ingredients: Vec<i32>,
+        result: i32,
+    ) -> bbb_protocol::packets::RecipeDisplaySummary {
+        let ingredients = ingredients
+            .into_iter()
+            .map(item_slot_display)
+            .collect::<Vec<_>>();
+        bbb_protocol::packets::RecipeDisplaySummary {
+            display_type: bbb_protocol::packets::RecipeDisplayType::CraftingShaped,
+            raw_body: Vec::new(),
+            crafting: Some(
+                bbb_protocol::packets::CraftingRecipeDisplaySummary::Shaped {
+                    width,
+                    height,
+                    ingredients,
+                    result: item_slot_display(result),
+                    crafting_station: empty_slot_display(),
+                },
+            ),
+            furnace: None,
+            stonecutter: None,
+            smithing: None,
+        }
+    }
+
+    fn furnace_recipe_display(
+        ingredient: i32,
+        fuel: i32,
+        result: i32,
+    ) -> bbb_protocol::packets::RecipeDisplaySummary {
+        bbb_protocol::packets::RecipeDisplaySummary {
+            display_type: bbb_protocol::packets::RecipeDisplayType::Furnace,
+            raw_body: Vec::new(),
+            crafting: None,
+            furnace: Some(bbb_protocol::packets::FurnaceRecipeDisplaySummary {
+                ingredient: item_slot_display(ingredient),
+                fuel: item_slot_display(fuel),
+                result: item_slot_display(result),
+                crafting_station: empty_slot_display(),
+                duration: 200,
+                experience_bits: 0.35_f32.to_bits(),
+            }),
+            stonecutter: None,
+            smithing: None,
+        }
+    }
+
+    fn stonecutter_recipe_display(
+        input: i32,
+        result: i32,
+        crafting_station: i32,
+    ) -> bbb_protocol::packets::RecipeDisplaySummary {
+        let input = item_slot_display(input);
+        let result = item_slot_display(result);
+        let crafting_station = item_slot_display(crafting_station);
+        let mut raw_body = Encoder::new();
+        raw_body.write_var_i32(bbb_protocol::packets::RecipeDisplayType::Stonecutter.id());
+        raw_body.write_bytes(&input.raw_payload);
+        raw_body.write_bytes(&result.raw_payload);
+        raw_body.write_bytes(&crafting_station.raw_payload);
+        bbb_protocol::packets::RecipeDisplaySummary {
+            display_type: bbb_protocol::packets::RecipeDisplayType::Stonecutter,
+            raw_body: raw_body.into_inner(),
+            crafting: None,
+            furnace: None,
+            stonecutter: Some(bbb_protocol::packets::StonecutterRecipeDisplaySummary {
+                input,
+                result,
+                crafting_station,
+            }),
+            smithing: None,
+        }
+    }
+
+    fn item_slot_display(item_id: i32) -> bbb_protocol::packets::SlotDisplaySummary {
+        let mut raw_payload = Encoder::new();
+        raw_payload.write_var_i32(VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID);
+        raw_payload.write_var_i32(item_id);
+        bbb_protocol::packets::SlotDisplaySummary {
+            display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID,
+            raw_payload: raw_payload.into_inner(),
+            item_stack: Some(item_stack(item_id, 1)),
+            tag: None,
+        }
+    }
+
+    fn empty_slot_display() -> bbb_protocol::packets::SlotDisplaySummary {
+        let mut raw_payload = Encoder::new();
+        raw_payload.write_var_i32(VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID);
+        bbb_protocol::packets::SlotDisplaySummary {
+            display_type_id: VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
+            raw_payload: raw_payload.into_inner(),
+            item_stack: None,
+            tag: None,
+        }
     }
 }

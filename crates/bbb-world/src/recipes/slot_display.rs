@@ -59,7 +59,7 @@ impl WorldStore {
     }
 }
 
-pub(super) fn slot_display_holders_are_resolved(
+pub(crate) fn slot_display_holders_are_resolved(
     world: &WorldStore,
     display: &SlotDisplaySummary,
 ) -> bool {

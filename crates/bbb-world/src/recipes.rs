@@ -11,7 +11,7 @@ use crate::WorldStore;
 
 mod slot_display;
 
-use slot_display::slot_display_holders_are_resolved;
+pub(crate) use slot_display::slot_display_holders_are_resolved;
 pub use slot_display::SlotDisplayResolveError;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -76,6 +76,56 @@ pub(crate) fn ingredient_holder_set_is_resolved(
     }
 }
 
+/// Vanilla `PlaceRecipeHelper.placeRecipe` grid traversal shared by canonical
+/// ghost-slot placement and native recipe-book overlays.
+pub fn for_each_shaped_recipe_grid_slot<'a, T>(
+    grid_width: i32,
+    grid_height: i32,
+    recipe_width: i32,
+    recipe_height: i32,
+    ingredients: &'a [T],
+    mut visit: impl FnMut(&'a T, i32, i32, i32),
+) {
+    let mut ingredients = ingredients.iter().peekable();
+    let mut grid_index = 0;
+    let mut grid_y = 0;
+    while grid_y < grid_height {
+        let should_center_y = (recipe_height as f32) < (grid_height as f32 / 2.0);
+        let start_y = (grid_height as f32 / 2.0 - recipe_height as f32 / 2.0).floor() as i32;
+        if should_center_y && start_y > grid_y {
+            grid_index += grid_width;
+            grid_y += 1;
+        }
+
+        let mut grid_x = 0;
+        while grid_x < grid_width {
+            if ingredients.peek().is_none() {
+                return;
+            }
+            let should_center_x = (recipe_width as f32) < (grid_width as f32 / 2.0);
+            let start_x = (grid_width as f32 / 2.0 - recipe_width as f32 / 2.0).floor() as i32;
+            let mut total_recipe_width_in_grid = recipe_width;
+            let mut add_ingredient_to_slot = grid_x < recipe_width;
+            if should_center_x {
+                total_recipe_width_in_grid = start_x + recipe_width;
+                add_ingredient_to_slot = start_x <= grid_x && grid_x < start_x + recipe_width;
+            }
+
+            if add_ingredient_to_slot {
+                let ingredient = ingredients.next().expect("ingredient presence checked");
+                visit(ingredient, grid_index, grid_x, grid_y);
+            } else if total_recipe_width_in_grid == grid_x {
+                grid_index += grid_width - grid_x;
+                break;
+            }
+
+            grid_index += 1;
+            grid_x += 1;
+        }
+        grid_y += 1;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -84,6 +134,27 @@ mod tests {
         StonecutterSelectableRecipeSummary,
     };
     use bbb_protocol::recipe_wire_types::VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID;
+
+    #[test]
+    fn shaped_recipe_grid_slots_follow_vanilla_narrow_dimension_centering() {
+        let mut slots = Vec::new();
+        for_each_shaped_recipe_grid_slot(3, 3, 1, 1, &[10], |item, index, x, y| {
+            slots.push((*item, index, x, y));
+        });
+        assert_eq!(slots, vec![(10, 4, 1, 1)]);
+
+        slots.clear();
+        for_each_shaped_recipe_grid_slot(2, 2, 1, 1, &[20], |item, index, x, y| {
+            slots.push((*item, index, x, y));
+        });
+        assert_eq!(slots, vec![(20, 0, 0, 0)]);
+
+        slots.clear();
+        for_each_shaped_recipe_grid_slot(3, 3, 1, 2, &[30, 31], |item, index, x, y| {
+            slots.push((*item, index, x, y));
+        });
+        assert_eq!(slots, vec![(30, 1, 1, 0), (31, 4, 1, 1)]);
+    }
 
     #[test]
     fn update_recipes_replaces_client_recipe_access_state() {
