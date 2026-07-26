@@ -30,8 +30,9 @@ playable gates pass at the milestone head.
   bounded collections/strings, identifier normalization, and trailing-byte
   rejection.
 - `bbb-world` owns the serializable advancement tree, progress, exact display
-  projections, deterministic presentation sequence, bounded recent toast-event
-  handoff, counters, and session cleanup.
+  projections, counters, and session cleanup. Its completion snapshots enter
+  the bounded, globally sequenced client-toast handoff shared with recipe
+  notifications.
 - `bbb-native` owns consumption of unseen toast events, the five-slot visible
   set and FIFO queue, wall-clock animation, rich screen/toast projection,
   component-aware icon projection, and ordered local UI sound commands.
@@ -69,13 +70,14 @@ only when packet `showAdvancements` is true and the node has display data whose
 not only a false-to-true edge. The event copies the display and icon so later
 tree removal cannot mutate an already queued toast.
 
-Canonical world state assigns each toast event a monotonically increasing
-sequence and retains a fixed recent window large enough for one maximum packet
-drain. Native remembers the last consumed sequence per client-level generation,
-ingests each unseen event once in sequence order, and records an explicit drop
-counter if publication lag ever overtakes the retained window. Reset packets do
-not enqueue, while Login/Respawn/reconfiguration/disconnect clear both the
-canonical recent handoff and native visible/queued presentation.
+Canonical client-toast state assigns each toast event a monotonically
+increasing sequence across notification families and retains a fixed recent
+window large enough for one maximum packet drain. Native remembers the last
+consumed sequence per client-level generation, ingests each unseen event once
+in sequence order, and records an explicit drop counter if publication lag ever
+overtakes the retained window. Reset packets do not enqueue, while
+Login/Respawn/reconfiguration/disconnect clear both the canonical recent
+handoff and native visible/queued presentation.
 
 `ToastManager` exposes five vertical slots. `AdvancementToast` occupies one
 slot for 5000 ms multiplied by the notification-time option; bbb has no in-game

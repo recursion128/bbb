@@ -10,9 +10,9 @@ use crate::{
     BlockChangedAckState, BlockDestructionProgress, BlockEventRecord, ChunkColumn, ChunkPos,
     ChunkViewState, ClientAdvancementsState, ClientAudioState, ClientChatState, ClientCombatState,
     ClientDebugGameState, ClientDebugQueryState, ClientEffectsState, ClientFeatureState,
-    ClientHudState, ClientRecipesState, ClientStatsState, ClientUiState, ClientWaypointsState,
-    CommandSuggestionsState, CommandTreeState, InventoryState, ItemCooldownState,
-    LastMapColorPatchState, LevelEventRecord, LocalBlockPredictionState,
+    ClientHudState, ClientRecipesState, ClientStatsState, ClientToastState, ClientUiState,
+    ClientWaypointsState, CommandSuggestionsState, CommandTreeState, InventoryState,
+    ItemCooldownState, LastMapColorPatchState, LevelEventRecord, LocalBlockPredictionState,
     LocalInteractionParticleAction, LocalPlayerState, MapItemState, PlayerInfoState,
     PlayerSocialState, ProjectilePowerUpdateState, PublicationShared, RegistrySet, ScoreboardState,
     ServerPresentationState, WorldApplyDiagnosticsState, WorldBorderState, WorldCounters,
@@ -174,6 +174,8 @@ pub struct WorldStore {
     pub(crate) recipes: ClientRecipesState,
     #[serde(default)]
     pub(crate) advancements: ClientAdvancementsState,
+    #[serde(default)]
+    pub(crate) client_toasts: ClientToastState,
     #[serde(default)]
     pub(crate) maps: BTreeMap<i32, MapItemState>,
     #[serde(default)]

@@ -47,6 +47,7 @@ mod terrain;
 mod terrain_state;
 mod test_blocks;
 mod test_instance_blocks;
+mod toasts;
 mod world_state;
 
 pub use exports::*;

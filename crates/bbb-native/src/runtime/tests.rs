@@ -10758,8 +10758,18 @@ fn advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing()
             .collect::<Vec<_>>(),
         vec![0, 1, 2, 3, 4]
     );
-    assert_eq!(state.visible[0].event.advancement_id, "test:toast_0");
-    assert_eq!(state.queued[0].advancement_id, "test:toast_5");
+    assert_eq!(
+        state.visible[0]
+            .event
+            .advancement()
+            .expect("advancement toast")
+            .0,
+        "test:toast_0"
+    );
+    assert_eq!(
+        state.queued[0].advancement().expect("advancement toast").0,
+        "test:toast_5"
+    );
     assert_eq!(
         sound_locations(&admission_sounds),
         vec!["minecraft:ui.toast.challenge_complete"]
@@ -10801,7 +10811,14 @@ fn advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing()
 
     let next_admission = state.update(&world, start + Duration::from_millis(6_201));
     assert_eq!(state.visible.len(), 1);
-    assert_eq!(state.visible[0].event.advancement_id, "test:toast_5");
+    assert_eq!(
+        state.visible[0]
+            .event
+            .advancement()
+            .expect("advancement toast")
+            .0,
+        "test:toast_5"
+    );
     assert_eq!(state.visible[0].slot, 0);
     assert_eq!(
         sound_locations(&next_admission),
@@ -10814,7 +10831,7 @@ fn advancement_toast_runtime_counts_retained_window_lag_and_consumes_once() {
     let mut world = WorldStore::new();
     enqueue_runtime_advancement_toasts(
         &mut world,
-        bbb_world::MAX_ADVANCEMENT_TOAST_EVENTS + 1,
+        bbb_world::MAX_CLIENT_TOAST_EVENTS + 1,
         AdvancementFrameType::Task,
     );
     let start = Instant::now();
@@ -10823,12 +10840,12 @@ fn advancement_toast_runtime_counts_retained_window_lag_and_consumes_once() {
     assert_eq!(state.dropped_events, 1);
     assert_eq!(
         state.next_sequence,
-        u64::try_from(bbb_world::MAX_ADVANCEMENT_TOAST_EVENTS + 1).unwrap()
+        u64::try_from(bbb_world::MAX_CLIENT_TOAST_EVENTS + 1).unwrap()
     );
     assert_eq!(state.visible.len(), 5);
     assert_eq!(
         state.queued.len(),
-        bbb_world::MAX_ADVANCEMENT_TOAST_EVENTS - bbb_renderer::HUD_ADVANCEMENT_TOAST_SLOTS
+        bbb_world::MAX_CLIENT_TOAST_EVENTS - bbb_renderer::HUD_ADVANCEMENT_TOAST_SLOTS
     );
 
     state.update(&world, start);
@@ -10836,7 +10853,7 @@ fn advancement_toast_runtime_counts_retained_window_lag_and_consumes_once() {
     assert_eq!(state.visible.len(), 5);
     assert_eq!(
         state.queued.len(),
-        bbb_world::MAX_ADVANCEMENT_TOAST_EVENTS - bbb_renderer::HUD_ADVANCEMENT_TOAST_SLOTS
+        bbb_world::MAX_CLIENT_TOAST_EVENTS - bbb_renderer::HUD_ADVANCEMENT_TOAST_SLOTS
     );
 }
 

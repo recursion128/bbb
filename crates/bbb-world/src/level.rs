@@ -386,7 +386,7 @@ impl WorldStore {
         self.clear_death_screen();
         self.close_game_rules_screen();
         self.advance_client_level_generation();
-        self.reset_advancement_toasts_for_new_level();
+        self.reset_client_toasts_for_new_level();
         let dimension_changed = self
             .level
             .as_ref()
@@ -644,6 +644,7 @@ impl WorldStore {
         self.reset_command_suggestions_for_new_listener();
         self.reset_recipes_for_new_listener();
         self.reset_advancements_for_new_listener();
+        self.reset_client_toasts_for_new_level();
         self.clear_level_bound_state();
     }
 
@@ -1369,12 +1370,12 @@ mod tests {
             }],
             show_advancements: true,
         });
-        assert_eq!(store.advancement_toast_events().len(), 1);
+        assert_eq!(store.client_toast_events().len(), 1);
 
         store.apply_respawn(&respawn_packet(0));
 
-        assert!(store.advancement_toast_events().is_empty());
-        assert_eq!(store.client_advancements().next_toast_sequence, 0);
+        assert!(store.client_toast_events().is_empty());
+        assert_eq!(store.client_toasts().next_sequence, 0);
         assert!(store
             .client_advancements()
             .advancements

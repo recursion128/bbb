@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::collections::{BTreeMap, BTreeSet};
 
 use bbb_protocol::packets::{
     AdvancementCriterionProgressSummary as ProtocolAdvancementCriterionProgressSummary,
@@ -13,7 +13,6 @@ use serde::{Deserialize, Serialize};
 use crate::WorldStore;
 
 pub const MAX_ADVANCEMENT_ROOT_TABS: usize = 26;
-pub const MAX_ADVANCEMENT_TOAST_EVENTS: usize = 4096;
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct ClientAdvancementsState {
@@ -25,17 +24,6 @@ pub struct ClientAdvancementsState {
     pub root_order: Vec<String>,
     #[serde(default)]
     pub node_order: Vec<String>,
-    #[serde(default)]
-    pub toast_events: VecDeque<AdvancementToastEvent>,
-    #[serde(default)]
-    pub next_toast_sequence: u64,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct AdvancementToastEvent {
-    pub sequence: u64,
-    pub advancement_id: String,
-    pub display: bbb_protocol::packets::AdvancementDisplaySummary,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -188,10 +176,6 @@ impl WorldStore {
         widgets
     }
 
-    pub fn advancement_toast_events(&self) -> &VecDeque<AdvancementToastEvent> {
-        &self.advancements.toast_events
-    }
-
     pub fn ensure_advancements_screen_selected_tab(&mut self) -> Option<String> {
         if self
             .advancements
@@ -210,11 +194,6 @@ impl WorldStore {
     pub(crate) fn reset_advancements_for_new_listener(&mut self) {
         self.advancements = ClientAdvancementsState::default();
         self.refresh_advancement_counters();
-    }
-
-    pub(crate) fn reset_advancement_toasts_for_new_level(&mut self) {
-        self.advancements.toast_events.clear();
-        self.advancements.next_toast_sequence = 0;
     }
 
     fn remove_advancement_and_children(&mut self, id: &str) -> usize {
@@ -401,35 +380,6 @@ impl WorldStore {
             .values()
             .map(|progress| progress.criteria.len())
             .sum();
-    }
-
-    fn push_advancement_toast_event(
-        &mut self,
-        advancement_id: String,
-        display: bbb_protocol::packets::AdvancementDisplaySummary,
-    ) {
-        let sequence = self.advancements.next_toast_sequence;
-        self.advancements.next_toast_sequence = self
-            .advancements
-            .next_toast_sequence
-            .checked_add(1)
-            .expect("advancement toast sequence overflow");
-        if self.advancements.toast_events.len() == MAX_ADVANCEMENT_TOAST_EVENTS {
-            self.advancements.toast_events.pop_front();
-            self.counters.advancement_toast_events_dropped = self
-                .counters
-                .advancement_toast_events_dropped
-                .saturating_add(1);
-        }
-        self.advancements
-            .toast_events
-            .push_back(AdvancementToastEvent {
-                sequence,
-                advancement_id,
-                display,
-            });
-        self.counters.advancement_toast_events =
-            self.counters.advancement_toast_events.saturating_add(1);
     }
 }
 
@@ -943,7 +893,7 @@ mod tests {
             progress: vec![progress("minecraft:story/toast", vec![("done", Some(1))])],
             show_advancements: true,
         });
-        assert!(store.advancement_toast_events().is_empty());
+        assert!(store.client_toast_events().is_empty());
 
         for obtained in [2, 3] {
             store.apply_update_advancements(UpdateAdvancements {
@@ -969,44 +919,16 @@ mod tests {
             show_advancements: false,
         });
 
-        let events = store.advancement_toast_events();
+        let events = store.client_toast_events();
         assert_eq!(events.len(), 2);
         assert_eq!(events[0].sequence, 0);
         assert_eq!(events[1].sequence, 1);
-        assert_eq!(events[0].advancement_id, "minecraft:story/toast");
-        assert_eq!(events[0].display.title.text(), "Toast");
-        assert_eq!(
-            events[0].display.title.styled()[0].style.color,
-            Some(0x55_FF55)
-        );
+        let (advancement_id, display) = events[0].advancement().expect("advancement toast");
+        assert_eq!(advancement_id, "minecraft:story/toast");
+        assert_eq!(display.title.text(), "Toast");
+        assert_eq!(display.title.styled()[0].style.color, Some(0x55_FF55));
         assert_eq!(store.counters().advancement_toast_events, 2);
         assert_eq!(store.counters().advancement_toast_events_dropped, 0);
-    }
-
-    #[test]
-    fn advancement_toast_handoff_is_bounded_and_level_scoped() {
-        let display = displayed_advancement("minecraft:story/toast", None)
-            .display
-            .unwrap();
-        let mut store = WorldStore::new();
-        for index in 0..=MAX_ADVANCEMENT_TOAST_EVENTS {
-            store.push_advancement_toast_event(format!("minecraft:test/{index}"), display.clone());
-        }
-        assert_eq!(
-            store.advancement_toast_events().len(),
-            MAX_ADVANCEMENT_TOAST_EVENTS
-        );
-        assert_eq!(store.advancement_toast_events()[0].sequence, 1);
-        assert_eq!(store.counters().advancement_toast_events_dropped, 1);
-
-        store.clear_client_level();
-        assert!(store.advancement_toast_events().is_empty());
-        assert_eq!(store.client_advancements().next_toast_sequence, 0);
-        assert_eq!(
-            store.counters().advancement_toast_events,
-            MAX_ADVANCEMENT_TOAST_EVENTS + 1
-        );
-        assert_eq!(store.counters().advancement_toast_events_dropped, 1);
     }
 
     fn advancement(id: &str, parent: Option<&str>) -> AdvancementSummary {

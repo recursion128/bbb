@@ -8,7 +8,7 @@ use std::{
 use bbb_item_model::{ItemModelKeybindContext, NativeItemRuntime};
 use bbb_protocol::packets::{AdvancementFrameType, ItemStackSummary};
 use bbb_renderer::{HudAdvancementToast, HUD_ADVANCEMENT_TOAST_SLOTS};
-use bbb_world::{AdvancementToastEvent, LocalSoundEventState, SoundHolderState, WorldStore};
+use bbb_world::{ClientToastEvent, LocalSoundEventState, SoundHolderState, WorldStore};
 
 use crate::terrain_runtime::TerrainTextureState;
 
@@ -17,7 +17,7 @@ use super::{
     localized_gui_text,
 };
 
-const MAX_NATIVE_ADVANCEMENT_TOASTS: usize = bbb_world::MAX_ADVANCEMENT_TOAST_EVENTS;
+const MAX_NATIVE_ADVANCEMENT_TOASTS: usize = bbb_world::MAX_CLIENT_TOAST_EVENTS;
 const ADVANCEMENT_TOAST_SLIDE_DURATION: Duration = Duration::from_millis(600);
 const ADVANCEMENT_TOAST_VISIBLE_DURATION: Duration = Duration::from_millis(5_000);
 
@@ -25,14 +25,14 @@ const ADVANCEMENT_TOAST_VISIBLE_DURATION: Duration = Duration::from_millis(5_000
 pub(super) struct AdvancementToastRuntime {
     pub(super) level_generation: Option<u64>,
     pub(super) next_sequence: u64,
-    pub(super) queued: VecDeque<AdvancementToastEvent>,
+    pub(super) queued: VecDeque<ClientToastEvent>,
     pub(super) visible: Vec<AdvancementToastInstance>,
     pub(super) dropped_events: u64,
 }
 
 #[derive(Debug)]
 pub(super) struct AdvancementToastInstance {
-    pub(super) event: AdvancementToastEvent,
+    pub(super) event: ClientToastEvent,
     pub(super) slot: u8,
     animation_started_at: Option<Instant>,
     became_fully_visible_at: Option<Instant>,
@@ -45,7 +45,7 @@ pub(super) struct AdvancementToastInstance {
 impl AdvancementToastRuntime {
     pub(super) fn update(&mut self, world: &WorldStore, now: Instant) -> Vec<LocalSoundEventState> {
         let level_generation = world.client_level_generation();
-        let canonical_next_sequence = world.client_advancements().next_toast_sequence;
+        let canonical_next_sequence = world.client_toasts().next_sequence;
         if self.level_generation != Some(level_generation)
             || canonical_next_sequence < self.next_sequence
         {
@@ -57,7 +57,7 @@ impl AdvancementToastRuntime {
             };
         }
 
-        for event in world.advancement_toast_events() {
+        for event in world.client_toast_events() {
             if event.sequence < self.next_sequence {
                 continue;
             }
@@ -67,6 +67,9 @@ impl AdvancementToastRuntime {
                     .saturating_add(event.sequence - self.next_sequence);
             }
             self.next_sequence = event.sequence.saturating_add(1);
+            if event.advancement().is_none() {
+                continue;
+            }
             if self.queued.len() == MAX_NATIVE_ADVANCEMENT_TOASTS {
                 self.queued.pop_front();
                 self.dropped_events = self.dropped_events.saturating_add(1);
@@ -99,9 +102,10 @@ impl AdvancementToastRuntime {
             let Some(event) = self.queued.pop_front() else {
                 break;
             };
-            if event.display.frame_type == AdvancementFrameType::Challenge
-                && !challenge_sound_played
-            {
+            let (_, display) = event
+                .advancement()
+                .expect("advancement runtime queues only advancement toast events");
+            if display.frame_type == AdvancementFrameType::Challenge && !challenge_sound_played {
                 sounds.push(ui_sound("minecraft:ui.toast.challenge_complete"));
                 challenge_sound_played = true;
             }
@@ -133,7 +137,10 @@ impl AdvancementToastRuntime {
         self.visible
             .iter()
             .filter_map(|toast| {
-                let display = &toast.event.display;
+                let (_, display) = toast
+                    .event
+                    .advancement()
+                    .expect("advancement runtime stores only advancement toast events");
                 let stack = ItemStackSummary {
                     item_id: Some(display.icon.item_id),
                     count: display.icon.count,
