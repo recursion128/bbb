@@ -14193,6 +14193,8 @@ fn hud_inventory_screen_projects_crafting_table_ghost_recipe_slots() {
                 },
             ),
             furnace: None,
+            stonecutter: None,
+            smithing: None,
         },
     });
 
@@ -14281,6 +14283,8 @@ fn hud_inventory_screen_projects_crafting_table_ghost_recipe_slots() {
                 },
             ),
             furnace: None,
+            stonecutter: None,
+            smithing: None,
         },
     });
     let stale = hud_inventory_screen(&world, Some(&item_runtime), None, 0.0).unwrap();
@@ -14360,6 +14364,8 @@ fn hud_inventory_screen_resolves_tag_ghost_recipe_ingredients() {
                 },
             ),
             furnace: None,
+            stonecutter: None,
+            smithing: None,
         },
     });
 
@@ -14403,6 +14409,8 @@ fn hud_inventory_screen_cycles_tag_ghost_recipe_ingredients() {
                 },
             ),
             furnace: None,
+            stonecutter: None,
+            smithing: None,
         },
     });
 
@@ -14451,6 +14459,8 @@ fn hud_inventory_screen_reads_replaced_and_removed_tag_ghost_members() {
                 },
             ),
             furnace: None,
+            stonecutter: None,
+            smithing: None,
         },
     });
 
@@ -14502,6 +14512,8 @@ fn hud_inventory_screen_cycles_composite_ghost_recipe_ingredients() {
                 },
             ),
             furnace: None,
+            stonecutter: None,
+            smithing: None,
         },
     });
 
@@ -14551,6 +14563,8 @@ fn hud_inventory_screen_projects_local_inventory_ghost_result_without_big_slot_f
                 },
             ),
             furnace: None,
+            stonecutter: None,
+            smithing: None,
         },
     });
 
@@ -14814,6 +14828,8 @@ fn hud_inventory_screen_projects_crafting_recipe_book_buttons() {
                         },
                     ),
                     furnace: None,
+                    stonecutter: None,
+                    smithing: None,
                 },
                 group: None,
                 category_id: VANILLA_RECIPE_BOOK_CATEGORY_CRAFTING_MISC_ID,
@@ -22091,6 +22107,8 @@ fn shapeless_crafting_recipe_book_entry_with_requirement_summaries(
                     },
                 ),
                 furnace: None,
+                stonecutter: None,
+                smithing: None,
             },
             group,
             category_id,
@@ -22126,6 +22144,8 @@ fn furnace_recipe_book_entry_with_requirements(
                 raw_body: Vec::new(),
                 crafting: None,
                 furnace: Some(furnace_recipe_display_body(2, 1, result_item_id)),
+                stonecutter: None,
+                smithing: None,
             },
             group,
             category_id,
@@ -22159,6 +22179,8 @@ fn furnace_recipe_display(
             fuel_item_id,
             result_item_id,
         )),
+        stonecutter: None,
+        smithing: None,
     }
 }
 

@@ -2955,6 +2955,8 @@ mod tests {
                     raw_body: vec![3, 4, 100, 4, 101, 4, 102],
                     crafting: None,
                     furnace: None,
+                    stonecutter: None,
+                    smithing: None,
                 },
             }))
             .await
@@ -5147,6 +5149,8 @@ mod tests {
                     raw_body: vec![3, id as u8],
                     crafting: None,
                     furnace: None,
+                    stonecutter: None,
+                    smithing: None,
                 },
                 group: None,
                 category_id: probe_recipe_category_id(id),

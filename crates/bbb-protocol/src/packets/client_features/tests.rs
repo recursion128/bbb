@@ -95,6 +95,12 @@ fn decodes_place_ghost_recipe_packet_wire_prefix() {
                 raw_body: vec![3, 4, 100, 4, 101, 4, 102],
                 crafting: None,
                 furnace: None,
+                stonecutter: Some(StonecutterRecipeDisplaySummary {
+                    input: item_slot_display_summary(100),
+                    result: item_slot_display_summary(101),
+                    crafting_station: item_slot_display_summary(102),
+                }),
+                smithing: None,
             },
         })
     );
@@ -165,6 +171,12 @@ fn decodes_recipe_book_add_packet_wire_order() {
                         raw_body: vec![3, 0, 0, 0],
                         crafting: None,
                         furnace: None,
+                        stonecutter: Some(StonecutterRecipeDisplaySummary {
+                            input: empty_slot_display_summary(),
+                            result: empty_slot_display_summary(),
+                            crafting_station: empty_slot_display_summary(),
+                        }),
+                        smithing: None,
                     },
                     group: Some(7),
                     category_id: VANILLA_RECIPE_BOOK_CATEGORY_STONECUTTER_ID,
@@ -830,6 +842,155 @@ fn decodes_all_builtin_slot_display_values_and_preserves_exact_raw_payloads() {
 }
 
 #[test]
+fn place_ghost_recipe_decodes_all_recipe_and_slot_display_variants() {
+    let empty = slot_display_type_payload(VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID);
+    let any_fuel = slot_display_type_payload(VANILLA_SLOT_DISPLAY_TYPE_ANY_FUEL_ID);
+    let item = slot_display_item_payload(55);
+    let item_stack_payload = slot_display_item_stack_payload(56, 2);
+    let tag = slot_display_tag_payload("planks");
+    let all_slot_displays = vec![
+        empty.clone(),
+        any_fuel,
+        slot_display_unary_payload(VANILLA_SLOT_DISPLAY_TYPE_WITH_ANY_POTION_ID, &item),
+        slot_display_with_component_payload(&item_stack_payload, 0),
+        item.clone(),
+        item_stack_payload.clone(),
+        tag.clone(),
+        slot_display_binary_payload(
+            VANILLA_SLOT_DISPLAY_TYPE_DYED_ID,
+            &item,
+            &item_stack_payload,
+        ),
+        slot_display_smithing_trim_payload(&item, &item_stack_payload, 3),
+        slot_display_binary_payload(
+            VANILLA_SLOT_DISPLAY_TYPE_WITH_REMAINDER_ID,
+            &item,
+            &item_stack_payload,
+        ),
+        slot_display_composite_payload(&[item.clone(), tag]),
+    ];
+
+    let mut shapeless = Encoder::new();
+    shapeless.write_var_i32(RecipeDisplayType::CraftingShapeless.id());
+    shapeless.write_var_i32(all_slot_displays.len() as i32);
+    for display in &all_slot_displays {
+        shapeless.write_bytes(display);
+    }
+    shapeless.write_bytes(&slot_display_item_payload(60));
+    shapeless.write_bytes(&empty);
+    let shapeless = shapeless.into_inner();
+
+    let mut shaped = Encoder::new();
+    shaped.write_var_i32(RecipeDisplayType::CraftingShaped.id());
+    shaped.write_var_i32(1);
+    shaped.write_var_i32(1);
+    shaped.write_var_i32(1);
+    shaped.write_bytes(&item);
+    shaped.write_bytes(&slot_display_item_payload(61));
+    shaped.write_bytes(&empty);
+    let shaped = shaped.into_inner();
+
+    let mut furnace = Encoder::new();
+    furnace.write_var_i32(RecipeDisplayType::Furnace.id());
+    furnace.write_bytes(&item);
+    furnace.write_bytes(&slot_display_type_payload(
+        VANILLA_SLOT_DISPLAY_TYPE_ANY_FUEL_ID,
+    ));
+    furnace.write_bytes(&slot_display_item_payload(62));
+    furnace.write_bytes(&empty);
+    furnace.write_var_i32(200);
+    furnace.write_f32(0.35);
+    let furnace = furnace.into_inner();
+
+    let mut stonecutter = Encoder::new();
+    stonecutter.write_var_i32(RecipeDisplayType::Stonecutter.id());
+    stonecutter.write_bytes(&item);
+    stonecutter.write_bytes(&slot_display_item_payload(63));
+    stonecutter.write_bytes(&empty);
+    let stonecutter = stonecutter.into_inner();
+
+    let mut smithing = Encoder::new();
+    smithing.write_var_i32(RecipeDisplayType::Smithing.id());
+    smithing.write_bytes(&item);
+    smithing.write_bytes(&item_stack_payload);
+    smithing.write_bytes(&slot_display_item_payload(57));
+    smithing.write_bytes(&slot_display_item_payload(64));
+    smithing.write_bytes(&empty);
+    let smithing = smithing.into_inner();
+
+    let cases = [
+        (
+            RecipeDisplayType::CraftingShapeless,
+            shapeless.as_slice(),
+            13,
+            60,
+        ),
+        (RecipeDisplayType::CraftingShaped, shaped.as_slice(), 3, 61),
+        (RecipeDisplayType::Furnace, furnace.as_slice(), 4, 62),
+        (
+            RecipeDisplayType::Stonecutter,
+            stonecutter.as_slice(),
+            3,
+            63,
+        ),
+        (RecipeDisplayType::Smithing, smithing.as_slice(), 5, 64),
+    ];
+
+    for (display_type, raw_body, slot_count, result_item_id) in cases {
+        let display = decode_place_ghost_recipe_display(raw_body);
+        assert_eq!(display.display_type, display_type);
+        assert_eq!(display.raw_body, raw_body);
+        assert_eq!(display.slot_displays().unwrap().len(), slot_count);
+        assert_eq!(
+            display
+                .result()
+                .and_then(|result| result.item_stack.as_ref()),
+            Some(&item_stack(result_item_id, 1))
+        );
+        assert_eq!(
+            (
+                display.crafting.is_some(),
+                display.furnace.is_some(),
+                display.stonecutter.is_some(),
+                display.smithing.is_some(),
+            ),
+            match display_type {
+                RecipeDisplayType::CraftingShapeless | RecipeDisplayType::CraftingShaped => {
+                    (true, false, false, false)
+                }
+                RecipeDisplayType::Furnace => (false, true, false, false),
+                RecipeDisplayType::Stonecutter => (false, false, true, false),
+                RecipeDisplayType::Smithing => (false, false, false, true),
+            }
+        );
+    }
+
+    let display = decode_place_ghost_recipe_display(&shapeless);
+    assert_eq!(
+        display
+            .slot_displays()
+            .unwrap()
+            .into_iter()
+            .take(all_slot_displays.len())
+            .map(|display| display.display_type_id)
+            .collect::<Vec<_>>(),
+        vec![
+            VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
+            VANILLA_SLOT_DISPLAY_TYPE_ANY_FUEL_ID,
+            VANILLA_SLOT_DISPLAY_TYPE_WITH_ANY_POTION_ID,
+            VANILLA_SLOT_DISPLAY_TYPE_ONLY_WITH_COMPONENT_ID,
+            VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID,
+            VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID,
+            VANILLA_SLOT_DISPLAY_TYPE_TAG_ID,
+            VANILLA_SLOT_DISPLAY_TYPE_DYED_ID,
+            VANILLA_SLOT_DISPLAY_TYPE_SMITHING_TRIM_ID,
+            VANILLA_SLOT_DISPLAY_TYPE_WITH_REMAINDER_ID,
+            VANILLA_SLOT_DISPLAY_TYPE_COMPOSITE_ID,
+        ]
+    );
+}
+
+#[test]
 fn slot_display_decode_enforces_recursive_depth_count_and_byte_budgets() {
     let mut within_depth = slot_display_type_payload(VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID);
     for _ in 0..MAX_SLOT_DISPLAY_DEPTH {
@@ -1413,6 +1574,38 @@ fn item_stack(item_id: i32, count: i32) -> ItemStackSummary {
         count,
         component_patch: DataComponentPatchSummary::default(),
     }
+}
+
+fn item_slot_display_summary(item_id: i32) -> SlotDisplaySummary {
+    SlotDisplaySummary {
+        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID,
+        raw_payload: slot_display_item_payload(item_id),
+        item_stack: Some(item_stack(item_id, 1)),
+        tag: None,
+    }
+}
+
+fn empty_slot_display_summary() -> SlotDisplaySummary {
+    SlotDisplaySummary {
+        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
+        raw_payload: slot_display_type_payload(VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID),
+        item_stack: None,
+        tag: None,
+    }
+}
+
+fn decode_place_ghost_recipe_display(raw_body: &[u8]) -> RecipeDisplaySummary {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(9);
+    payload.write_bytes(raw_body);
+    let PlayClientbound::PlaceGhostRecipe(packet) = decode_play_clientbound(
+        ids::play::CLIENTBOUND_PLACE_GHOST_RECIPE,
+        &payload.into_inner(),
+    )
+    .unwrap() else {
+        panic!("expected place ghost recipe packet");
+    };
+    packet.recipe_display
 }
 
 fn decode_update_recipes_option_display(option_display: Vec<u8>) -> SlotDisplaySummary {

@@ -2355,6 +2355,19 @@ mod tests {
             NetEvent::Play(PlayClientbound::OpenSignEditor(update)) if update == open_sign
         );
 
+        let item_display = |item_id| packets::SlotDisplaySummary {
+            display_type_id: bbb_protocol::recipe_wire_types::VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID,
+            raw_payload: vec![
+                bbb_protocol::recipe_wire_types::VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID as u8,
+                item_id as u8,
+            ],
+            item_stack: Some(packets::ItemStackSummary {
+                item_id: Some(item_id),
+                count: 1,
+                component_patch: packets::DataComponentPatchSummary::default(),
+            }),
+            tag: None,
+        };
         let ghost_recipe = packets::PlaceGhostRecipe {
             container_id: 9,
             recipe_display: packets::RecipeDisplaySummary {
@@ -2362,6 +2375,12 @@ mod tests {
                 raw_body: vec![3, 4, 100, 4, 101, 4, 102],
                 crafting: None,
                 furnace: None,
+                stonecutter: Some(packets::StonecutterRecipeDisplaySummary {
+                    input: item_display(100),
+                    result: item_display(101),
+                    crafting_station: item_display(102),
+                }),
+                smithing: None,
             },
         };
         assert_matching_event!(
@@ -3986,6 +4005,8 @@ mod tests {
                         raw_body: vec![1, 2, 3],
                         crafting: None,
                         furnace: None,
+                        stonecutter: None,
+                        smithing: None,
                     },
                     group: Some(4),
                     category_id: VANILLA_RECIPE_BOOK_CATEGORY_CRAFTING_EQUIPMENT_ID,

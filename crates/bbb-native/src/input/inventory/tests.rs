@@ -8520,6 +8520,8 @@ fn crafting_recipe_book_entry_with_requirement_summaries(
                     },
                 ),
                 furnace: None,
+                stonecutter: None,
+                smithing: None,
             },
             group: None,
             category_id,

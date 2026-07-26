@@ -169,6 +169,10 @@ pub struct RecipeDisplaySummary {
     pub raw_body: Vec<u8>,
     pub crafting: Option<CraftingRecipeDisplaySummary>,
     pub furnace: Option<FurnaceRecipeDisplaySummary>,
+    #[serde(default)]
+    pub stonecutter: Option<StonecutterRecipeDisplaySummary>,
+    #[serde(default)]
+    pub smithing: Option<SmithingRecipeDisplaySummary>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -201,6 +205,90 @@ pub struct FurnaceRecipeDisplaySummary {
     pub crafting_station: SlotDisplaySummary,
     pub duration: i32,
     pub experience_bits: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StonecutterRecipeDisplaySummary {
+    pub input: SlotDisplaySummary,
+    pub result: SlotDisplaySummary,
+    pub crafting_station: SlotDisplaySummary,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SmithingRecipeDisplaySummary {
+    pub template: SlotDisplaySummary,
+    pub base: SlotDisplaySummary,
+    pub addition: SlotDisplaySummary,
+    pub result: SlotDisplaySummary,
+    pub crafting_station: SlotDisplaySummary,
+}
+
+impl RecipeDisplaySummary {
+    pub fn result(&self) -> Option<&SlotDisplaySummary> {
+        match self.display_type {
+            RecipeDisplayType::CraftingShapeless | RecipeDisplayType::CraftingShaped => {
+                match self.crafting.as_ref()? {
+                    CraftingRecipeDisplaySummary::Shapeless { result, .. }
+                    | CraftingRecipeDisplaySummary::Shaped { result, .. } => Some(result),
+                }
+            }
+            RecipeDisplayType::Furnace => Some(&self.furnace.as_ref()?.result),
+            RecipeDisplayType::Stonecutter => Some(&self.stonecutter.as_ref()?.result),
+            RecipeDisplayType::Smithing => Some(&self.smithing.as_ref()?.result),
+        }
+    }
+
+    pub fn slot_displays(&self) -> Option<Vec<&SlotDisplaySummary>> {
+        match self.display_type {
+            RecipeDisplayType::CraftingShapeless | RecipeDisplayType::CraftingShaped => {
+                match self.crafting.as_ref()? {
+                    CraftingRecipeDisplaySummary::Shapeless {
+                        ingredients,
+                        result,
+                        crafting_station,
+                    }
+                    | CraftingRecipeDisplaySummary::Shaped {
+                        ingredients,
+                        result,
+                        crafting_station,
+                        ..
+                    } => {
+                        let mut displays = Vec::with_capacity(ingredients.len() + 2);
+                        displays.extend(ingredients);
+                        displays.extend([result, crafting_station]);
+                        Some(displays)
+                    }
+                }
+            }
+            RecipeDisplayType::Furnace => {
+                let furnace = self.furnace.as_ref()?;
+                Some(vec![
+                    &furnace.ingredient,
+                    &furnace.fuel,
+                    &furnace.result,
+                    &furnace.crafting_station,
+                ])
+            }
+            RecipeDisplayType::Stonecutter => {
+                let stonecutter = self.stonecutter.as_ref()?;
+                Some(vec![
+                    &stonecutter.input,
+                    &stonecutter.result,
+                    &stonecutter.crafting_station,
+                ])
+            }
+            RecipeDisplayType::Smithing => {
+                let smithing = self.smithing.as_ref()?;
+                Some(vec![
+                    &smithing.template,
+                    &smithing.base,
+                    &smithing.addition,
+                    &smithing.result,
+                    &smithing.crafting_station,
+                ])
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -363,7 +451,7 @@ fn decode_recipe_display_summary(decoder: &mut Decoder<'_>) -> Result<RecipeDisp
         ProtocolError::InvalidData(format!("invalid recipe display type id {type_id}"))
     })?;
 
-    let (crafting, furnace) = match display_type {
+    let (crafting, furnace, stonecutter, smithing) = match display_type {
         RecipeDisplayType::CraftingShapeless => {
             let ingredients = decode_slot_display_list(decoder)?;
             let result = decode_slot_display_summary(decoder)?;
@@ -374,6 +462,8 @@ fn decode_recipe_display_summary(decoder: &mut Decoder<'_>) -> Result<RecipeDisp
                     result,
                     crafting_station,
                 }),
+                None,
+                None,
                 None,
             )
         }
@@ -391,6 +481,8 @@ fn decode_recipe_display_summary(decoder: &mut Decoder<'_>) -> Result<RecipeDisp
                     result,
                     crafting_station,
                 }),
+                None,
+                None,
                 None,
             )
         }
@@ -411,21 +503,43 @@ fn decode_recipe_display_summary(decoder: &mut Decoder<'_>) -> Result<RecipeDisp
                     duration,
                     experience_bits,
                 }),
+                None,
+                None,
             )
         }
         RecipeDisplayType::Stonecutter => {
-            skip_slot_display(decoder)?;
-            skip_slot_display(decoder)?;
-            skip_slot_display(decoder)?;
-            (None, None)
+            let input = decode_slot_display_summary(decoder)?;
+            let result = decode_slot_display_summary(decoder)?;
+            let crafting_station = decode_slot_display_summary(decoder)?;
+            (
+                None,
+                None,
+                Some(StonecutterRecipeDisplaySummary {
+                    input,
+                    result,
+                    crafting_station,
+                }),
+                None,
+            )
         }
         RecipeDisplayType::Smithing => {
-            skip_slot_display(decoder)?;
-            skip_slot_display(decoder)?;
-            skip_slot_display(decoder)?;
-            skip_slot_display(decoder)?;
-            skip_slot_display(decoder)?;
-            (None, None)
+            let template = decode_slot_display_summary(decoder)?;
+            let base = decode_slot_display_summary(decoder)?;
+            let addition = decode_slot_display_summary(decoder)?;
+            let result = decode_slot_display_summary(decoder)?;
+            let crafting_station = decode_slot_display_summary(decoder)?;
+            (
+                None,
+                None,
+                None,
+                Some(SmithingRecipeDisplaySummary {
+                    template,
+                    base,
+                    addition,
+                    result,
+                    crafting_station,
+                }),
+            )
         }
     };
 
@@ -441,6 +555,8 @@ fn decode_recipe_display_summary(decoder: &mut Decoder<'_>) -> Result<RecipeDisp
         raw_body: display_start[..consumed].to_vec(),
         crafting,
         furnace,
+        stonecutter,
+        smithing,
     })
 }
 
@@ -546,10 +662,6 @@ fn decode_slot_display_list(decoder: &mut Decoder<'_>) -> Result<Vec<SlotDisplay
         displays.push(decode_slot_display_summary(decoder)?);
     }
     Ok(displays)
-}
-
-fn skip_slot_display(decoder: &mut Decoder<'_>) -> Result<()> {
-    decode_slot_display_summary(decoder).map(drop)
 }
 
 fn decode_slot_display_value(

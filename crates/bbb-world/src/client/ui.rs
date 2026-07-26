@@ -3004,6 +3004,8 @@ mod tests {
                 raw_body: vec![3, 4, 100, 4, 101, 4, 102],
                 crafting: None,
                 furnace: None,
+                stonecutter: None,
+                smithing: None,
             },
         });
 
@@ -3019,6 +3021,8 @@ mod tests {
                     raw_body: vec![3, 4, 100, 4, 101, 4, 102],
                     crafting: None,
                     furnace: None,
+                    stonecutter: None,
+                    smithing: None,
                 }),
             })
         );
@@ -3037,6 +3041,8 @@ mod tests {
                 raw_body: vec![3],
                 crafting: None,
                 furnace: None,
+                stonecutter: None,
+                smithing: None,
             },
         };
 
@@ -3064,6 +3070,8 @@ mod tests {
                 raw_body: vec![3],
                 crafting: None,
                 furnace: None,
+                stonecutter: None,
+                smithing: None,
             },
         });
 

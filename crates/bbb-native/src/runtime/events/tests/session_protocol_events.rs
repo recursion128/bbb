@@ -1279,6 +1279,8 @@ fn client_feature_events_update_world_and_world_counters() {
                 raw_body: vec![3, 4, 100, 4, 101, 4, 102],
                 crafting: None,
                 furnace: None,
+                stonecutter: None,
+                smithing: None,
             },
         },
     )))

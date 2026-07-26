@@ -23900,6 +23900,8 @@ fn recipe_book_uncraftable_recipe_button_retry_is_guarded() {
             raw_body: Vec::new(),
             crafting: None,
             furnace: None,
+            stonecutter: None,
+            smithing: None,
         },
     });
     let surface_size = PhysicalSize::new(800, 600);
@@ -26646,6 +26648,8 @@ fn recipe_book_shapeless_entry_with_group(
                     },
                 ),
                 furnace: None,
+                stonecutter: None,
+                smithing: None,
             },
             group,
             category_id,
@@ -26687,6 +26691,8 @@ fn recipe_book_furnace_entry(
                     duration: 200,
                     experience_bits: 0.0_f32.to_bits(),
                 }),
+                stonecutter: None,
+                smithing: None,
             },
             group: None,
             category_id,

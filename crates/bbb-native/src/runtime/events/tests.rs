@@ -363,6 +363,8 @@ fn recipe_book_entry(id: i32, notification: bool, highlight: bool) -> RecipeBook
                 raw_body: vec![3, 0, 0, 0],
                 crafting: None,
                 furnace: None,
+                stonecutter: None,
+                smithing: None,
             },
             group: None,
             category_id: VANILLA_RECIPE_BOOK_CATEGORY_STONECUTTER_ID,
