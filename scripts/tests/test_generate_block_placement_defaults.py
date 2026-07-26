@@ -25,8 +25,8 @@ class GenerateBlockPlacementDefaultsTests(unittest.TestCase):
         source = "\n".join(
             [
                 "version=26.1 blocks=2 items=3 states=3",
-                "block\t0\tminecraft:air\t0",
-                "block\t1\tminecraft:stone\t1",
+                "block\t0\tminecraft:air\t0\tharp",
+                "block\t1\tminecraft:stone\t1\tbasedrum",
                 "item\t0\tminecraft:air\t-",
                 "item\t1\tminecraft:stone\t-",
                 "item\t2\tminecraft:test\tlevel=15,mode=start",
@@ -42,6 +42,7 @@ class GenerateBlockPlacementDefaultsTests(unittest.TestCase):
             ),
             (
                 (0, 1),
+                ("harp", "basedrum"),
                 ((2, (("level", "15"), ("mode", "start"))),),
             ),
         )
@@ -54,7 +55,7 @@ class GenerateBlockPlacementDefaultsTests(unittest.TestCase):
         wrong_block = "\n".join(
             [
                 "version=26.1 blocks=1 items=1 states=2",
-                "block\t0\tminecraft:air\t1",
+                "block\t0\tminecraft:air\t1\tharp",
                 "item\t0\tminecraft:air\t-",
             ]
         )
@@ -80,12 +81,15 @@ class GenerateBlockPlacementDefaultsTests(unittest.TestCase):
     def test_render_rust_preserves_defaults_and_prototype_components(self):
         rendered = GENERATOR.render_rust(
             (0, 9, 12),
+            ("harp", "basedrum", "harp"),
             ((42, (("honey_level", "0"),)),),
             expected_item_default_count=1,
         )
 
         self.assertIn("@generated", rendered)
         self.assertIn("    0, 9, 12,", rendered)
+        self.assertIn('    "harp",\n    "basedrum",', rendered)
+        self.assertIn("    0, 1, 0,", rendered)
         self.assertIn('    (42, &[("honey_level", "0")]),', rendered)
 
     def test_parse_facts_rejects_flipped_version_or_count(self):

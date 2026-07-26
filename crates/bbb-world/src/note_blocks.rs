@@ -1,6 +1,9 @@
 use std::collections::BTreeMap;
 
-use bbb_protocol::packets::Vec3d as ProtocolVec3d;
+use bbb_protocol::{
+    block_state_types::vanilla_block_note_instrument,
+    block_types::vanilla_block_type_for_resource_id, packets::Vec3d as ProtocolVec3d,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -39,7 +42,39 @@ fn note_instrument_sound(instrument: &str) -> Option<NoteInstrumentSound> {
     Some(sound)
 }
 
+fn note_instrument_works_above(instrument: &str) -> Option<bool> {
+    Some(!matches!(
+        note_instrument_sound(instrument)?,
+        NoteInstrumentSound::Tunable
+    ))
+}
+
 impl WorldStore {
+    pub(crate) fn note_block_instrument_for_placement(
+        &self,
+        pos: BlockPos,
+    ) -> Option<&'static str> {
+        let above = self.probe_block(BlockPos {
+            y: pos.y + 1,
+            ..pos
+        })?;
+        let above_instrument = block_note_instrument(&above)?;
+        if note_instrument_works_above(above_instrument)? {
+            return Some(above_instrument);
+        }
+
+        let below = self.probe_block(BlockPos {
+            y: pos.y - 1,
+            ..pos
+        })?;
+        let below_instrument = block_note_instrument(&below)?;
+        if note_instrument_works_above(below_instrument)? {
+            Some("harp")
+        } else {
+            Some(below_instrument)
+        }
+    }
+
     /// Mirrors `NoteBlock.triggerEvent`: `b0`/`b1` are ignored; the current
     /// block state's instrument and note choose the particle, sound and pitch.
     pub(crate) fn trigger_note_block_event(
@@ -123,6 +158,14 @@ impl WorldStore {
         effects.positioned_sound(&state);
         true
     }
+}
+
+fn block_note_instrument(block: &crate::BlockProbe) -> Option<&'static str> {
+    let block_type = block
+        .block_name
+        .as_deref()
+        .and_then(vanilla_block_type_for_resource_id)?;
+    vanilla_block_note_instrument(block_type.id)
 }
 
 #[cfg(test)]

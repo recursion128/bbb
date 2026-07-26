@@ -20,8 +20,8 @@ use bbb_protocol::{
         VANILLA_ITEM_CHEST_ID, VANILLA_ITEM_COBBLESTONE_WALL_ID, VANILLA_ITEM_COCOA_BEANS_ID,
         VANILLA_ITEM_COMMAND_BLOCK_ID, VANILLA_ITEM_CREAKING_HEART_ID, VANILLA_ITEM_FURNACE_ID,
         VANILLA_ITEM_HEAVY_CORE_ID, VANILLA_ITEM_IRON_BARS_ID, VANILLA_ITEM_LADDER_ID,
-        VANILLA_ITEM_LANTERN_ID, VANILLA_ITEM_MANGROVE_PROPAGULE_ID, VANILLA_ITEM_OAK_DOOR_ID,
-        VANILLA_ITEM_OAK_FENCE_GATE_ID, VANILLA_ITEM_OAK_FENCE_ID,
+        VANILLA_ITEM_LANTERN_ID, VANILLA_ITEM_MANGROVE_PROPAGULE_ID, VANILLA_ITEM_NOTE_BLOCK_ID,
+        VANILLA_ITEM_OAK_DOOR_ID, VANILLA_ITEM_OAK_FENCE_GATE_ID, VANILLA_ITEM_OAK_FENCE_ID,
         VANILLA_ITEM_OAK_HANGING_SIGN_ID, VANILLA_ITEM_OAK_LOG_ID, VANILLA_ITEM_OAK_SIGN_ID,
         VANILLA_ITEM_OAK_SLAB_ID, VANILLA_ITEM_OAK_STAIRS_ID, VANILLA_ITEM_OAK_TRAPDOOR_ID,
         VANILLA_ITEM_OBSERVER_ID, VANILLA_ITEM_OXIDIZED_COPPER_CHEST_ID,
@@ -300,6 +300,85 @@ fn creaking_heart_placement_uses_hit_axis_logs_and_environment_default() {
                 ("creaking_heart_state", "uprooted"),
                 ("natural", "false"),
             ],
+        )
+    );
+}
+
+#[test]
+fn note_block_placement_uses_above_instrument_then_below_base_instrument() {
+    let clicked = BlockPos { x: 4, y: 8, z: 4 };
+    let target = relative(clicked, ProtocolDirection::Up);
+    let above = relative(target, ProtocolDirection::Up);
+
+    let mut below_base = placement_world();
+    set_block(
+        &mut below_base,
+        clicked,
+        state_id("minecraft:oak_planks", []),
+    );
+    set_held(&mut below_base, VANILLA_ITEM_NOTE_BLOCK_ID, 1);
+    assert!(matches!(
+        use_block_at(&mut below_base, clicked, false, 35),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        below_base.probe_block(target).unwrap().block_state_id,
+        state_id(
+            "minecraft:note_block",
+            [("instrument", "bass"), ("note", "0"), ("powered", "false"),],
+        )
+    );
+
+    let mut above_head = placement_world();
+    set_block(
+        &mut above_head,
+        clicked,
+        state_id("minecraft:oak_planks", []),
+    );
+    set_block(
+        &mut above_head,
+        above,
+        state_id(
+            "minecraft:skeleton_skull",
+            [("powered", "false"), ("rotation", "0")],
+        ),
+    );
+    set_held(&mut above_head, VANILLA_ITEM_NOTE_BLOCK_ID, 1);
+    assert!(matches!(
+        use_block_at(&mut above_head, clicked, false, 36),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        above_head.probe_block(target).unwrap().block_state_id,
+        state_id(
+            "minecraft:note_block",
+            [
+                ("instrument", "skeleton"),
+                ("note", "0"),
+                ("powered", "false"),
+            ],
+        )
+    );
+
+    let mut below_head = placement_world();
+    set_block(
+        &mut below_head,
+        clicked,
+        state_id(
+            "minecraft:player_head",
+            [("powered", "false"), ("rotation", "0")],
+        ),
+    );
+    set_held(&mut below_head, VANILLA_ITEM_NOTE_BLOCK_ID, 1);
+    assert!(matches!(
+        use_block_at(&mut below_head, clicked, false, 37),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        below_head.probe_block(target).unwrap().block_state_id,
+        state_id(
+            "minecraft:note_block",
+            [("instrument", "harp"), ("note", "0"), ("powered", "false"),],
         )
     );
 }

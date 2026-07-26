@@ -13,8 +13,8 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
- * Emits the built-in block default-state ids and item prototype BLOCK_STATE
- * component properties used by BlockItem placement.
+ * Emits the built-in block default-state ids, note-block instruments, and item
+ * prototype BLOCK_STATE component properties used by BlockItem placement.
  */
 public final class BlockPlacementDefaultsReport {
     private BlockPlacementDefaultsReport() {
@@ -48,6 +48,7 @@ public final class BlockPlacementDefaultsReport {
                 "block\t" + id
                     + "\t" + BuiltInRegistries.BLOCK.getKey(block)
                     + "\t" + Block.getId(state)
+                    + "\t" + state.instrument().getSerializedName()
             );
         }
 

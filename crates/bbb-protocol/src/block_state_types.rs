@@ -13,7 +13,8 @@ mod support_facts_26_1;
 
 use fluid_replaceability_26_1::VANILLA_BLOCK_STATE_FLUID_REPLACEABLE_RANGES;
 use placement_defaults_26_1::{
-    VANILLA_BLOCK_DEFAULT_STATE_IDS, VANILLA_ITEM_DEFAULT_BLOCK_STATE_PROPERTIES,
+    VANILLA_BLOCK_DEFAULT_STATE_IDS, VANILLA_BLOCK_NOTE_INSTRUMENT_INDICES,
+    VANILLA_BLOCK_NOTE_INSTRUMENT_PALETTE, VANILLA_ITEM_DEFAULT_BLOCK_STATE_PROPERTIES,
 };
 use support_facts_26_1::{
     VANILLA_BLOCK_STATE_SUPPORT_FACT_INDICES, VANILLA_BLOCK_STATE_SUPPORT_FACT_PALETTE,
@@ -39,6 +40,15 @@ pub fn vanilla_block_state_id(id: i32) -> Option<i32> {
 pub fn vanilla_block_default_state_id(block_type_id: i32) -> Option<i32> {
     let block_type_id = usize::try_from(block_type_id).ok()?;
     VANILLA_BLOCK_DEFAULT_STATE_IDS.get(block_type_id).copied()
+}
+
+/// Returns the built-in block's Vanilla 26.1 note-block instrument.
+pub fn vanilla_block_note_instrument(block_type_id: i32) -> Option<&'static str> {
+    let block_type_id = usize::try_from(block_type_id).ok()?;
+    let palette_index = usize::from(*VANILLA_BLOCK_NOTE_INSTRUMENT_INDICES.get(block_type_id)?);
+    VANILLA_BLOCK_NOTE_INSTRUMENT_PALETTE
+        .get(palette_index)
+        .copied()
 }
 
 /// Returns an item's prototype `BLOCK_STATE` properties when Vanilla supplies
@@ -225,6 +235,14 @@ mod tests {
             VANILLA_BLOCK_DEFAULT_STATE_IDS.len(),
             crate::block_types::VANILLA_BLOCK_TYPES.len()
         );
+        assert_eq!(
+            VANILLA_BLOCK_NOTE_INSTRUMENT_INDICES.len(),
+            crate::block_types::VANILLA_BLOCK_TYPES.len()
+        );
+        assert_eq!(VANILLA_BLOCK_NOTE_INSTRUMENT_PALETTE.len(), 27);
+        assert!(VANILLA_BLOCK_NOTE_INSTRUMENT_INDICES
+            .iter()
+            .all(|index| usize::from(*index) < VANILLA_BLOCK_NOTE_INSTRUMENT_PALETTE.len()));
         assert_eq!(VANILLA_ITEM_DEFAULT_BLOCK_STATE_PROPERTIES.len(), 12);
 
         let report: BlockStateReport =
@@ -265,7 +283,24 @@ mod tests {
             vanilla_item_default_block_state_properties(crate::item_types::VANILLA_ITEM_STONE_ID),
             None
         );
+        assert_eq!(
+            vanilla_block_note_instrument(crate::block_types::VANILLA_BLOCK_STONE_ID),
+            Some("basedrum")
+        );
+        assert_eq!(
+            vanilla_block_note_instrument(crate::block_types::VANILLA_BLOCK_OAK_PLANKS_ID),
+            Some("bass")
+        );
+        assert_eq!(
+            vanilla_block_note_instrument(crate::block_types::VANILLA_BLOCK_SKELETON_SKULL_ID),
+            Some("skeleton")
+        );
         assert_eq!(vanilla_block_default_state_id(-1), None);
+        assert_eq!(vanilla_block_note_instrument(-1), None);
+        assert_eq!(
+            vanilla_block_note_instrument(crate::block_types::VANILLA_BLOCK_TYPES.len() as i32),
+            None
+        );
         assert_eq!(
             vanilla_block_default_state_id(crate::block_types::VANILLA_BLOCK_TYPES.len() as i32),
             None

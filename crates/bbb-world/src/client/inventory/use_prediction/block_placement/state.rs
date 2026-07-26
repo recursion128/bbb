@@ -618,6 +618,17 @@ pub(super) fn block_state_for_placement(
                 ],
             );
         }
+        VanillaGetStateForPlacementOverride::NoteBlock => {
+            let Some(instrument) = world.note_block_instrument_for_placement(target_pos) else {
+                return BlockPlacementState::Unsupported;
+            };
+            return state_with_properties(
+                world,
+                block_type,
+                default_state_id,
+                [("instrument", instrument)],
+            );
+        }
         VanillaGetStateForPlacementOverride::RedStoneWireBlock => {
             let initial = BTreeMap::from([
                 ("north".to_string(), "none".to_string()),
