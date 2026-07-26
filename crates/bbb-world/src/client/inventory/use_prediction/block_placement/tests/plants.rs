@@ -487,6 +487,70 @@ fn pitcher_crop_placement_requires_crop_support_and_raw_brightness_eight() {
 }
 
 #[test]
+fn snowy_block_placement_reads_the_live_snow_tag_for_all_three_items() {
+    let clicked = BlockPos { x: 4, y: 8, z: 4 };
+    let target = relative(clicked, ProtocolDirection::Up);
+    let above = relative(target, ProtocolDirection::Up);
+
+    for (sequence, item_id, block_name) in [
+        (84, VANILLA_ITEM_GRASS_BLOCK_ID, "minecraft:grass_block"),
+        (85, VANILLA_ITEM_PODZOL_ID, "minecraft:podzol"),
+        (86, VANILLA_ITEM_MYCELIUM_ID, "minecraft:mycelium"),
+    ] {
+        let mut world = placement_world();
+        set_block_tag(&mut world, "minecraft:snow", &[VANILLA_BLOCK_SNOW_ID]);
+        set_block(&mut world, clicked, state_id("minecraft:stone", []));
+        set_block(
+            &mut world,
+            above,
+            state_id("minecraft:snow", [("layers", "1")]),
+        );
+        set_held(&mut world, item_id, 1);
+        assert!(matches!(
+            use_block_at(&mut world, clicked, false, sequence),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(
+            world.probe_block(target).unwrap().block_state_id,
+            state_id(block_name, [("snowy", "true")])
+        );
+        assert_eq!(held(&world).count, 0);
+    }
+
+    let mut remapped = placement_world();
+    set_block_tag(&mut remapped, "minecraft:snow", &[VANILLA_BLOCK_STONE_ID]);
+    set_block(&mut remapped, clicked, state_id("minecraft:stone", []));
+    set_block(&mut remapped, above, state_id("minecraft:stone", []));
+    set_held(&mut remapped, VANILLA_ITEM_GRASS_BLOCK_ID, 1);
+    assert!(matches!(
+        use_block_at(&mut remapped, clicked, false, 87),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        remapped.probe_block(target).unwrap().block_state_id,
+        state_id("minecraft:grass_block", [("snowy", "true")])
+    );
+
+    let mut excluded = placement_world();
+    set_block_tag(&mut excluded, "minecraft:snow", &[]);
+    set_block(&mut excluded, clicked, state_id("minecraft:stone", []));
+    set_block(
+        &mut excluded,
+        above,
+        state_id("minecraft:snow", [("layers", "1")]),
+    );
+    set_held(&mut excluded, VANILLA_ITEM_PODZOL_ID, 1);
+    assert!(matches!(
+        use_block_at(&mut excluded, clicked, false, 88),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        excluded.probe_block(target).unwrap().block_state_id,
+        state_id("minecraft:podzol", [("snowy", "false")])
+    );
+}
+
+#[test]
 fn bamboo_placement_selects_sapling_or_stalk_from_vertical_neighbours() {
     let support_entries = [
         VANILLA_BLOCK_BAMBOO_ID,

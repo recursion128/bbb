@@ -645,6 +645,20 @@ pub(super) fn block_state_for_placement(
                 None => BlockPlacementState::Unsupported,
             };
         }
+        VanillaGetStateForPlacementOverride::SnowyBlock => {
+            let Some(above) = world.probe_block(relative(target_pos, Direction::Up)) else {
+                return BlockPlacementState::Unsupported;
+            };
+            let Some(snowy) = world.placement_block_is_in_tag(&above, "minecraft:snow") else {
+                return BlockPlacementState::Unsupported;
+            };
+            return state_with_properties(
+                world,
+                block_type,
+                default_state_id,
+                [("snowy", boolean_name(snowy))],
+            );
+        }
         VanillaGetStateForPlacementOverride::PitcherCropBlock => {
             return BlockPlacementState::State(default_state_id);
         }
