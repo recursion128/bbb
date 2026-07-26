@@ -2747,7 +2747,6 @@ mod tests {
             local_player: &store.local_player,
             entities: &store.entities,
             recipes: &store.recipes,
-            recipe_book: &store.recipe_book,
             registries: &store.registries,
         }
     }

@@ -43,16 +43,13 @@ use bbb_protocol::packets::{
     ContainerClose as ProtocolContainerClose, ContainerInput as ProtocolContainerInput,
     ContainerSetContent as ProtocolContainerSetContent,
     ContainerSetData as ProtocolContainerSetData, ContainerSetSlot as ProtocolContainerSetSlot,
-    CraftingRecipeDisplaySummary as ProtocolCraftingRecipeDisplaySummary,
     DataComponentPatchSummary as ProtocolDataComponentPatchSummary,
-    EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
-    IngredientSummary as ProtocolIngredientSummary, InteractionHand,
+    EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind, InteractionHand,
     ItemCostSummary as ProtocolItemCostSummary, ItemStackSummary as ProtocolItemStackSummary,
     LodestoneTargetSummary as ProtocolLodestoneTargetSummary,
     MerchantOffer as ProtocolMerchantOffer, MerchantOffers as ProtocolMerchantOffers,
-    OpenScreen as ProtocolOpenScreen, RecipeDisplayEntry as ProtocolRecipeDisplayEntry,
-    SetCursorItem as ProtocolSetCursorItem, SetPlayerInventory as ProtocolSetPlayerInventory,
-    SlotDisplaySummary as ProtocolSlotDisplaySummary,
+    OpenScreen as ProtocolOpenScreen, SetCursorItem as ProtocolSetCursorItem,
+    SetPlayerInventory as ProtocolSetPlayerInventory,
     StonecutterSelectableRecipeSummary as ProtocolStonecutterSelectableRecipeSummary,
     SwingAnimationSummary as ProtocolSwingAnimationSummary,
 };
@@ -73,9 +70,9 @@ use crate::entities::{
 };
 use crate::item_profiles::{clamp_vanilla_item_max_stack_size, ItemProfiles};
 use crate::{
-    ClientRecipeBookState, ClientRecipesState, ClientUiState, LocalPlayerAbilitiesState,
-    LocalPlayerExperienceState, LocalPlayerState, MountScreenState, RegistrySet, RegistryTagState,
-    WorldCounters, WorldStore, BANNER_PATTERN_REGISTRY,
+    ClientRecipesState, ClientUiState, LocalPlayerAbilitiesState, LocalPlayerExperienceState,
+    LocalPlayerState, MountScreenState, RegistrySet, RegistryTagState, WorldCounters, WorldStore,
+    BANNER_PATTERN_REGISTRY,
 };
 
 mod container_button;
@@ -2708,14 +2705,6 @@ impl InventoryState {
                 ));
             }
         }
-        if container_id == INVENTORY_MENU_CONTAINER_ID {
-            let item_tags = ctx.registries.tags.get("minecraft:item");
-            sync_inventory_menu_crafting_result_from_recipe_book(
-                &ctx.recipe_book.known,
-                item_tags,
-                &mut slots_after,
-            );
-        }
         let changed_slots = changed_hashed_slots(ctx, &slots_before, &slots_after)?;
         let carried_item = hashed_stack_from_summary(ctx, &cursor_after)
             .ok_or(ContainerClickBuildError::UnhashableCarriedItem)?;
@@ -3011,7 +3000,6 @@ pub(crate) struct InventoryCtx<'a> {
     pub(crate) local_player: &'a LocalPlayerState,
     pub(crate) entities: &'a EntityStore,
     pub(crate) recipes: &'a ClientRecipesState,
-    pub(crate) recipe_book: &'a ClientRecipeBookState,
     pub(crate) registries: &'a RegistrySet,
 }
 
@@ -3022,7 +3010,6 @@ macro_rules! inventory_ctx {
             local_player: &$store.local_player,
             entities: &$store.entities,
             recipes: &$store.recipes,
-            recipe_book: &$store.recipe_book,
             registries: &$store.registries,
         }
     };
