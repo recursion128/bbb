@@ -557,3 +557,6 @@
 - **2026-07-25（1023 个 BlockItem 本地放置工程关闭）**：生成目录中的全部
   BlockItem 主/墙体 placement owner 现按 Vanilla 26.1 命中上下文、实时邻域/
   标签/流体、共享随机流、组合方块写入及 prediction sequence 原子回滚执行。
+- **2026-07-26（定向本地使用预测工程关闭）**：生成式 entity/mob、item 与 block
+  owner 已贯通本地结果、canonical 预测及精确挥手/首人称反馈；`INTERACT`、
+  `USE_ITEM_ON` 与 `USE_ITEM` 三条 serverbound 覆盖行不再含预测 `partial`。

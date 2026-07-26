@@ -142,6 +142,28 @@ const VANILLA_CANNOT_BE_AGE_LOCKED_TAG: &str = "minecraft:cannot_be_age_locked";
 const MAX_PENDING_LOCAL_INTERACTION_PARTICLE_ACTIONS: usize = 64;
 const VANILLA_COPPER_GOLEM_POSES: [&str; 4] = ["standing", "sitting", "running", "star"];
 
+fn generated_entity_interact_owner_is_classified(owner: &str) -> bool {
+    matches!(
+        owner,
+        VANILLA_DEFAULT_ENTITY_INTERACT_OWNER
+            | VANILLA_MOB_ENTITY_INTERACT_OWNER
+            | VANILLA_CAMEL_HUSK_INTERACT_OWNER
+            | VANILLA_NAUTILUS_INTERACT_OWNER
+            | VANILLA_ZOMBIE_HORSE_INTERACT_OWNER
+            | VANILLA_ARMOR_STAND_INTERACT_OWNER
+            | VANILLA_INTERACTION_ENTITY_INTERACT_OWNER
+            | VANILLA_ITEM_FRAME_INTERACT_OWNER
+            | VANILLA_LEASH_KNOT_INTERACT_OWNER
+            | VANILLA_MINECART_INTERACT_OWNER
+            | VANILLA_MINECART_CONTAINER_INTERACT_OWNER
+            | VANILLA_MINECART_CHEST_INTERACT_OWNER
+            | VANILLA_MINECART_COMMAND_BLOCK_INTERACT_OWNER
+            | VANILLA_MINECART_FURNACE_INTERACT_OWNER
+            | VANILLA_BOAT_INTERACT_OWNER
+            | VANILLA_CHEST_BOAT_INTERACT_OWNER
+    )
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct VanillaAbstractHorseFoodEffect {
     heal: f32,
@@ -363,9 +385,45 @@ pub enum LocalTargetUsePrediction {
     UnknownItemType(Option<i32>),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum GeneratedItemUseOnRoute {
+    Tool,
+    ClientOwned,
+    EntitySpawning,
+}
+
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct LocalUsingItemTickActions {
     pub bundle_drops: u32,
+}
+
+const fn generated_item_use_on_route(owner: VanillaItemUseOnOverride) -> GeneratedItemUseOnRoute {
+    match owner {
+        VanillaItemUseOnOverride::AxeItem
+        | VanillaItemUseOnOverride::HoneycombItem
+        | VanillaItemUseOnOverride::HoeItem
+        | VanillaItemUseOnOverride::ShearsItem
+        | VanillaItemUseOnOverride::ShovelItem => GeneratedItemUseOnRoute::Tool,
+        VanillaItemUseOnOverride::BlockItem
+        | VanillaItemUseOnOverride::BoneMealItem
+        | VanillaItemUseOnOverride::BrushItem
+        | VanillaItemUseOnOverride::CompassItem
+        | VanillaItemUseOnOverride::DebugStickItem
+        | VanillaItemUseOnOverride::EnderEyeItem
+        | VanillaItemUseOnOverride::FireChargeItem
+        | VanillaItemUseOnOverride::FlintAndSteelItem
+        | VanillaItemUseOnOverride::LeadItem
+        | VanillaItemUseOnOverride::MapItem
+        | VanillaItemUseOnOverride::PlaceOnWaterBlockItem
+        | VanillaItemUseOnOverride::PotionItem
+        | VanillaItemUseOnOverride::SolidBucketItem => GeneratedItemUseOnRoute::ClientOwned,
+        VanillaItemUseOnOverride::ArmorStandItem
+        | VanillaItemUseOnOverride::EndCrystalItem
+        | VanillaItemUseOnOverride::FireworkRocketItem
+        | VanillaItemUseOnOverride::HangingEntityItem
+        | VanillaItemUseOnOverride::MinecartItem
+        | VanillaItemUseOnOverride::SpawnEggItem => GeneratedItemUseOnRoute::EntitySpawning,
+    }
 }
 
 impl LocalInteractionSuccess {
@@ -1097,21 +1155,23 @@ impl WorldStore {
         };
         if let Some(owner) = item_type.use_on_override {
             if let Some(context) = context {
-                if let Some(result) = self.predict_local_tool_item_use_on(owner, hand, context) {
-                    return result;
-                }
-                if let Some(result) = self.predict_local_client_owned_item_use_on(
-                    owner,
-                    item_type,
-                    hand,
-                    context,
-                    random.as_deref_mut(),
-                ) {
-                    return result;
-                }
-                if let Some(result) =
-                    self.predict_local_entity_spawning_item_use_on(owner, hand, context)
-                {
+                let result = match generated_item_use_on_route(owner) {
+                    GeneratedItemUseOnRoute::Tool => {
+                        self.predict_local_tool_item_use_on(owner, hand, context)
+                    }
+                    GeneratedItemUseOnRoute::ClientOwned => self
+                        .predict_local_client_owned_item_use_on(
+                            owner,
+                            item_type,
+                            hand,
+                            context,
+                            random.as_deref_mut(),
+                        ),
+                    GeneratedItemUseOnRoute::EntitySpawning => {
+                        self.predict_local_entity_spawning_item_use_on(owner, hand, context)
+                    }
+                };
+                if let Some(result) = result {
                     return result;
                 }
             }
@@ -1621,6 +1681,10 @@ impl WorldStore {
         ) {
             result
         } else {
+            debug_assert!(
+                !generated_entity_interact_owner_is_classified(owner),
+                "classified generated Entity.interact owner reached generic fallback: {owner}"
+            );
             return LocalTargetUsePrediction::UnsupportedEntityInteract(owner);
         };
         if interact_result != LocalTargetUsePrediction::Result(LocalInteractionResult::Pass) {
@@ -3102,24 +3166,25 @@ mod tests {
             VANILLA_ENTITY_DATA_SERIALIZER_PAINTING_VARIANT_ID,
         },
         entity_types::{
-            VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
-            VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
-            VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_CHICKEN_ID,
-            VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID,
-            VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_CREEPER_ID,
-            VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, VANILLA_ENTITY_TYPE_FOX_ID,
-            VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
-            VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
-            VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_ITEM_FRAME_ID,
-            VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_LEASH_KNOT_ID,
-            VANILLA_ENTITY_TYPE_MANNEQUIN_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
-            VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
-            VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
-            VANILLA_ENTITY_TYPE_PAINTING_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-            VANILLA_ENTITY_TYPE_SHEEP_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
-            VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
-            VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
-            VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+            VANILLA_ENTITY_TYPES, VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID,
+            VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_BOGGED_ID,
+            VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
+            VANILLA_ENTITY_TYPE_CHICKEN_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
+            VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID, VANILLA_ENTITY_TYPE_COW_ID,
+            VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
+            VANILLA_ENTITY_TYPE_FOX_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
+            VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
+            VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
+            VANILLA_ENTITY_TYPE_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
+            VANILLA_ENTITY_TYPE_LEASH_KNOT_ID, VANILLA_ENTITY_TYPE_MANNEQUIN_ID,
+            VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
+            VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+            VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_PAINTING_ID,
+            VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
+            VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_SQUID_ID,
+            VANILLA_ENTITY_TYPE_VILLAGER_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
+            VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
         },
         equipment_slots::{EquipmentSlot, VANILLA_EQUIPMENT_SLOT_BODY_ID},
         game_types::{VANILLA_GAME_TYPE_CREATIVE_ID, VANILLA_GAME_TYPE_SURVIVAL_ID},
@@ -3606,6 +3671,26 @@ mod tests {
             world.predict_local_item_use(InteractionHand::MainHand),
             LocalItemUsePrediction::Result(LocalInteractionResult::Pass)
         );
+    }
+
+    #[test]
+    fn generated_item_use_on_owners_are_exhaustively_routed() {
+        let mut route_counts = [0_usize; 3];
+        let mut generated_rows = 0;
+        for owner in VANILLA_ITEM_TYPES
+            .iter()
+            .filter_map(|item| item.use_on_override)
+        {
+            generated_rows += 1;
+            route_counts[match generated_item_use_on_route(owner) {
+                GeneratedItemUseOnRoute::Tool => 0,
+                GeneratedItemUseOnRoute::ClientOwned => 1,
+                GeneratedItemUseOnRoute::EntitySpawning => 2,
+            }] += 1;
+        }
+
+        assert_eq!(generated_rows, 1_160);
+        assert!(route_counts.into_iter().all(|count| count > 0));
     }
 
     #[test]
@@ -8396,6 +8481,24 @@ mod tests {
             world.predict_local_entity_interaction(3, InteractionHand::MainHand, false),
             LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
         );
+    }
+
+    #[test]
+    fn local_entity_interact_generated_owners_are_exhaustively_classified() {
+        let mut interact_rows = 0;
+        for (entity_type_id, entity_type) in VANILLA_ENTITY_TYPES.iter().enumerate() {
+            let entity_type_id = i32::try_from(entity_type_id).unwrap();
+            let Some(owner) = vanilla_entity_metadata_interact_owner(entity_type_id) else {
+                continue;
+            };
+            interact_rows += 1;
+            assert!(
+                generated_entity_interact_owner_is_classified(owner),
+                "{} ({entity_type_id}) leaves generated Entity.interact owner {owner} on the generic fallback",
+                entity_type.resource_id,
+            );
+        }
+        assert_eq!(interact_rows, VANILLA_ENTITY_TYPES.len());
     }
 
     #[test]

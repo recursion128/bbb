@@ -3393,7 +3393,7 @@ mod tests {
     }
 
     #[test]
-    fn play_serverbound_interact_keeps_local_interaction_semantics_open() {
+    fn play_serverbound_interact_closes_local_interaction_prediction() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -3405,19 +3405,21 @@ mod tests {
             entry.coverage["ack_response"].status,
             PacketCoverageStatus::NotApplicable
         );
-        for dimension in ["command_surface", "encoder"] {
+        for dimension in ["command_surface", "encoder", "state_guard", "tests"] {
             assert_eq!(
                 entry.coverage[dimension].status,
                 PacketCoverageStatus::Complete,
                 "{dimension}"
             );
         }
-        for dimension in ["state_guard", "tests"] {
-            assert_eq!(
-                entry.coverage[dimension].status,
-                PacketCoverageStatus::Partial,
-                "{dimension}"
-            );
+        for reverse_guard in [
+            "local_entity_interact_generated_owners_are_exhaustively_classified",
+            "local_mob_interact_generated_owners_are_exhaustively_classified",
+        ] {
+            assert!(entry.coverage["tests"]
+                .evidence
+                .iter()
+                .any(|evidence| evidence.contains(reverse_guard)));
         }
     }
 
@@ -4043,51 +4045,39 @@ mod tests {
     }
 
     #[test]
-    fn play_serverbound_use_item_on_keeps_local_prediction_open() {
+    fn play_serverbound_use_item_on_closes_targeted_prediction() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
             .iter()
             .find(|entry| entry.state == "play" && entry.constant_name == "SERVERBOUND_USE_ITEM_ON")
             .expect("play serverbound use item on coverage row");
-        for dimension in ["command_surface", "encoder"] {
-            assert_eq!(
-                entry.coverage[dimension].status,
-                PacketCoverageStatus::Complete,
-                "{dimension}"
-            );
-        }
-        for dimension in ["ack_response", "state_guard", "tests"] {
-            assert_eq!(
-                entry.coverage[dimension].status,
-                PacketCoverageStatus::Partial,
-                "{dimension}"
-            );
-        }
+        assert!(entry
+            .coverage
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
+        assert!(entry.coverage["tests"]
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("generated_item_use_on_owners")));
     }
 
     #[test]
-    fn play_serverbound_use_item_keeps_item_semantic_prediction_open() {
+    fn play_serverbound_use_item_closes_item_semantic_prediction() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
             .iter()
             .find(|entry| entry.state == "play" && entry.constant_name == "SERVERBOUND_USE_ITEM")
             .expect("play serverbound use item coverage row");
-        for dimension in ["command_surface", "encoder"] {
-            assert_eq!(
-                entry.coverage[dimension].status,
-                PacketCoverageStatus::Complete,
-                "{dimension}"
-            );
-        }
-        for dimension in ["ack_response", "state_guard", "tests"] {
-            assert_eq!(
-                entry.coverage[dimension].status,
-                PacketCoverageStatus::Partial,
-                "{dimension}"
-            );
-        }
+        assert!(entry
+            .coverage
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
+        assert!(entry.coverage["tests"]
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("generated_owner_fluid_modes")));
     }
 
     #[test]

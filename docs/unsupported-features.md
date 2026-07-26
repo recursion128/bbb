@@ -651,11 +651,6 @@ Commands:
 
 - Add focused command-queue and encode tests for inventory, interaction, chat,
   command, and sign editing.
-- Complete every remaining generated concrete targeted local-use owner from
-  `Minecraft.startUseItem` and `useItemOn`, and add reverse guards that reject
-  any generated item or block owner still routed to generic unsupported
-  handling. Interaction override ownership must stay generated from local
-  vanilla classes; block and inventory corrections remain server-authoritative.
 - Bottle dragon-breath client prediction is `not-needed`: `AreaEffectCloud.owner`
   is absent from both `ClientboundAddEntityPacket` and synchronized metadata, so
   the remote 26.1 client leaves that branch server-authoritative. Reopen if the
