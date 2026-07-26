@@ -14451,7 +14451,7 @@
             "crates/bbb-net/src/event_stream.rs#play_passive_world_apply_packets_emit_matching_events",
             "crates/bbb-net/src/probe/play.rs#probe_applies_advancement_packets_to_world",
             "crates/bbb-world/src/advancements.rs#update_advancements_retains_rich_display_and_packet_node_order",
-            "crates/bbb-world/src/advancements.rs#advancement_toast_handoff_is_bounded_and_level_scoped",
+            "crates/bbb-world/src/toasts.rs#client_toast_handoff_is_globally_sequenced_bounded_and_level_scoped",
             "crates/bbb-world/src/level.rs#respawn_clears_advancement_toast_handoff_without_dropping_tree",
             "crates/bbb-native/src/runtime/tests.rs#advancement_toast_runtime_counts_retained_window_lag_and_consumes_once",
             "crates/bbb-renderer/src/hud.rs#advancement_toast_block_icon_uses_after_blur_gui_residency"
