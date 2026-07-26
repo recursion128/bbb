@@ -3684,6 +3684,15 @@ impl EquineTailAnimationState {
         }
     }
 
+    fn next_double(&mut self) -> f64 {
+        java_random_next_double(&mut self.random_seed)
+    }
+
+    fn advance_eating_pitch(&mut self) {
+        let _discarded_first = java_random_next_float(&mut self.random_seed);
+        let _discarded_second = java_random_next_float(&mut self.random_seed);
+    }
+
     fn animate_tail(self) -> bool {
         self.tail_counter > 0
     }
@@ -4508,6 +4517,23 @@ impl EntityClientAnimationState {
         });
         let _discarded_first = java_random_next_float(random_seed);
         let _discarded_second = java_random_next_float(random_seed);
+    }
+
+    pub(crate) fn next_equine_feeding_particle_units(&mut self, entity_id: i32) -> [f64; 3] {
+        let equine = self
+            .equine_tail
+            .get_or_insert_with(|| EquineTailAnimationState::new(entity_id));
+        [
+            equine.next_double(),
+            equine.next_double(),
+            equine.next_double(),
+        ]
+    }
+
+    pub(crate) fn advance_equine_eating_pitch_random(&mut self, entity_id: i32) {
+        self.equine_tail
+            .get_or_insert_with(|| EquineTailAnimationState::new(entity_id))
+            .advance_eating_pitch();
     }
 
     pub(crate) fn needs_particle_trigger_bounds_snapshot(&self) -> bool {

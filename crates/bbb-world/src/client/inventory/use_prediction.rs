@@ -42,9 +42,12 @@ use bbb_protocol::{
         vanilla_item_type, ItemTypeCatalogEntry, VanillaBlockItemKind, VanillaBlockTransform,
         VanillaItemInteractLivingEntityOverride, VanillaItemUseOnOverride, VanillaItemUseOverride,
         VANILLA_AXE_SCRAPEABLES, VANILLA_AXE_STRIPPABLES, VANILLA_AXE_WAX_OFF,
-        VANILLA_HOE_TILLABLES, VANILLA_HONEYCOMB_WAXABLES, VANILLA_ITEM_GOLDEN_DANDELION_ID,
-        VANILLA_ITEM_IRON_INGOT_ID, VANILLA_ITEM_LEAD_ID, VANILLA_ITEM_SHEARS_ID,
-        VANILLA_SHOVEL_FLATTENABLES,
+        VANILLA_HOE_TILLABLES, VANILLA_HONEYCOMB_WAXABLES, VANILLA_ITEM_APPLE_ID,
+        VANILLA_ITEM_CARROT_ID, VANILLA_ITEM_ENCHANTED_GOLDEN_APPLE_ID,
+        VANILLA_ITEM_GOLDEN_APPLE_ID, VANILLA_ITEM_GOLDEN_CARROT_ID,
+        VANILLA_ITEM_GOLDEN_DANDELION_ID, VANILLA_ITEM_HAY_BLOCK_ID, VANILLA_ITEM_IRON_INGOT_ID,
+        VANILLA_ITEM_LEAD_ID, VANILLA_ITEM_RED_MUSHROOM_ID, VANILLA_ITEM_SHEARS_ID,
+        VANILLA_ITEM_SUGAR_ID, VANILLA_ITEM_WHEAT_ID, VANILLA_SHOVEL_FLATTENABLES,
     },
     packets::{
         BlockPos as ProtocolBlockPos, ConsumableSummary, Direction as ProtocolDirection,
@@ -122,12 +125,38 @@ const VANILLA_MOOSHROOM_MOB_INTERACT_OWNER: &str =
 const VANILLA_SHEEP_MOB_INTERACT_OWNER: &str = "net.minecraft.world.entity.animal.sheep.Sheep";
 const VANILLA_SNOW_GOLEM_MOB_INTERACT_OWNER: &str =
     "net.minecraft.world.entity.animal.golem.SnowGolem";
+const VANILLA_VILLAGER_MOB_INTERACT_OWNER: &str =
+    "net.minecraft.world.entity.npc.villager.Villager";
+const VANILLA_WANDERING_TRADER_MOB_INTERACT_OWNER: &str =
+    "net.minecraft.world.entity.npc.wanderingtrader.WanderingTrader";
 const VANILLA_ZOMBIE_HORSE_INTERACT_OWNER: &str =
     "net.minecraft.world.entity.animal.equine.ZombieHorse";
 const VANILLA_ZOMBIE_HORSE_FOOD_TAG: &str = "minecraft:zombie_horse_food";
+const VANILLA_CAN_WEAR_HORSE_ARMOR_TAG: &str = "minecraft:can_wear_horse_armor";
 const VANILLA_CANNOT_BE_AGE_LOCKED_TAG: &str = "minecraft:cannot_be_age_locked";
 const MAX_PENDING_LOCAL_INTERACTION_PARTICLE_ACTIONS: usize = 64;
 const VANILLA_COPPER_GOLEM_POSES: [&str; 4] = ["standing", "sitting", "running", "star"];
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct VanillaAbstractHorseFoodEffect {
+    heal: f32,
+    age_up: i32,
+}
+
+fn vanilla_abstract_horse_food_effect(item_id: i32) -> Option<VanillaAbstractHorseFoodEffect> {
+    let (heal, age_up) = match item_id {
+        VANILLA_ITEM_WHEAT_ID => (2.0, 20),
+        VANILLA_ITEM_SUGAR_ID => (1.0, 30),
+        VANILLA_ITEM_HAY_BLOCK_ID => (20.0, 180),
+        VANILLA_ITEM_APPLE_ID => (3.0, 60),
+        VANILLA_ITEM_RED_MUSHROOM_ID => (3.0, 0),
+        VANILLA_ITEM_CARROT_ID => (3.0, 60),
+        VANILLA_ITEM_GOLDEN_CARROT_ID => (4.0, 60),
+        VANILLA_ITEM_GOLDEN_APPLE_ID | VANILLA_ITEM_ENCHANTED_GOLDEN_APPLE_ID => (10.0, 240),
+        _ => return None,
+    };
+    Some(VanillaAbstractHorseFoodEffect { heal, age_up })
+}
 
 fn copper_golem_pose_ordinal(pose: &str) -> Option<i32> {
     VANILLA_COPPER_GOLEM_POSES
@@ -204,6 +233,12 @@ pub enum LocalInteractionSoundAction {
         entity_id: i32,
         repetitions: u8,
     },
+    /// `AbstractHorse.eating` passes a null excluded player to
+    /// `ClientLevel.playSound`, so the local call advances the entity pitch
+    /// cursor and level sound seed without producing audible playback.
+    SuppressedEquineEating {
+        entity_id: i32,
+    },
     BlockPlace {
         pos: BlockPos,
         sound_resource_id: &'static str,
@@ -248,6 +283,9 @@ pub enum LocalInteractionParticleAction {
     CandleExtinguish {
         pos: BlockPos,
         candles: u8,
+    },
+    EquineBabyFeeding {
+        position_bits: [u64; 3],
     },
 }
 
@@ -360,6 +398,22 @@ impl LocalInteractionSuccess {
                 repetitions,
             }),
             ..Self::client_item_interaction()
+        }
+    }
+
+    const fn server_equine_food(
+        entity_id: i32,
+        ate_food: bool,
+        particle_action: Option<LocalInteractionParticleAction>,
+    ) -> Self {
+        Self {
+            sound_action: if ate_food {
+                Some(LocalInteractionSoundAction::SuppressedEquineEating { entity_id })
+            } else {
+                None
+            },
+            particle_action,
+            ..Self::server_item_interaction()
         }
     }
 
@@ -1817,7 +1871,7 @@ impl WorldStore {
         let Some(health) = self.entities.living_entity_health(entity_id) else {
             return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
         };
-        if health <= 0.0 {
+        if !(health > 0.0) {
             return LocalTargetUsePrediction::Result(LocalInteractionResult::Pass);
         }
 
@@ -1926,6 +1980,22 @@ impl WorldStore {
                 owner,
             );
         }
+        if owner == VANILLA_VILLAGER_MOB_INTERACT_OWNER {
+            return self.predict_local_villager_mob_interact(
+                entity_id,
+                entity_type_id,
+                hand,
+                held_item_id,
+            );
+        }
+        if owner == VANILLA_WANDERING_TRADER_MOB_INTERACT_OWNER {
+            return self.predict_local_wandering_trader_mob_interact(
+                entity_id,
+                entity_type_id,
+                hand,
+                held_item_id,
+            );
+        }
         if owner == VANILLA_ANIMAL_MOB_INTERACT_OWNER {
             return self.predict_local_animal_mob_interact(
                 entity_id,
@@ -1957,6 +2027,25 @@ impl WorldStore {
         hand: InteractionHand,
         held_item_id: Option<i32>,
         owner: &'static str,
+    ) -> LocalTargetUsePrediction {
+        self.predict_local_animal_mob_interact_with_can_age_up(
+            entity_id,
+            entity_type_id,
+            hand,
+            held_item_id,
+            owner,
+            true,
+        )
+    }
+
+    fn predict_local_animal_mob_interact_with_can_age_up(
+        &mut self,
+        entity_id: i32,
+        entity_type_id: i32,
+        hand: InteractionHand,
+        held_item_id: Option<i32>,
+        owner: &'static str,
+        can_age_up: bool,
     ) -> LocalTargetUsePrediction {
         let is_food = match vanilla_entity_metadata_food_predicate(entity_type_id) {
             Some(VanillaEntityFoodPredicate::Never) => false,
@@ -2012,7 +2101,7 @@ impl WorldStore {
         let Some(is_baby) = self.entities.is_baby(entity_id) else {
             return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
         };
-        let can_age_up = if is_baby {
+        let can_age_up = if is_baby && can_age_up {
             let Some((data_id, default)) =
                 vanilla_entity_metadata_age_locked_accessor_for_entity_type(entity_type_id)
             else {
@@ -2234,7 +2323,7 @@ impl WorldStore {
     }
 
     fn predict_local_zombie_horse_mob_interact(
-        &self,
+        &mut self,
         entity_id: i32,
         entity_type_id: i32,
         hand: InteractionHand,
@@ -2258,38 +2347,196 @@ impl WorldStore {
         };
         let is_tamed = flags & accessors.tame_mask != 0;
         let is_vehicle = self.entities.entity_has_passengers(entity_id);
+        let should_open_inventory = !is_baby && is_tamed && secondary_use_active;
 
-        // `ZombieHorse.mobInteract` reaches `AbstractHorse.mobInteract` for this
-        // case, which opens the inventory before consulting the held item.
-        if !is_baby && !is_vehicle && is_tamed && secondary_use_active {
+        if !is_vehicle && !should_open_inventory {
+            if let Some(item_id) = held_item_id {
+                let Some(food_item_ids) = self
+                    .registry_holder_ids_for_tag("minecraft:item", VANILLA_ZOMBIE_HORSE_FOOD_TAG)
+                else {
+                    return LocalTargetUsePrediction::UnsupportedEntityInteract(
+                        VANILLA_ZOMBIE_HORSE_INTERACT_OWNER,
+                    );
+                };
+                if food_item_ids.contains(&item_id) {
+                    return self.predict_local_abstract_horse_fed_food(
+                        entity_id,
+                        entity_type_id,
+                        hand,
+                        item_id,
+                        VANILLA_ZOMBIE_HORSE_INTERACT_OWNER,
+                    );
+                }
+                if !is_tamed {
+                    // `makeMad` is server-only; the client still returns
+                    // `InteractionResult.SUCCESS`.
+                    return LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                        LocalInteractionSuccess::client_item_interaction(),
+                    ));
+                }
+            }
+        }
+
+        self.predict_local_abstract_horse_mob_interact(
+            entity_id,
+            entity_type_id,
+            hand,
+            held_item_id,
+            secondary_use_active,
+            VANILLA_ZOMBIE_HORSE_INTERACT_OWNER,
+            false,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn predict_local_abstract_horse_mob_interact(
+        &mut self,
+        entity_id: i32,
+        entity_type_id: i32,
+        hand: InteractionHand,
+        held_item_id: Option<i32>,
+        secondary_use_active: bool,
+        owner: &'static str,
+        can_age_up: bool,
+    ) -> LocalTargetUsePrediction {
+        let Some(is_baby) = self.entities.is_baby(entity_id) else {
+            return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+        };
+        let is_vehicle = self.entities.entity_has_passengers(entity_id);
+        if is_vehicle || is_baby {
+            return self.predict_local_animal_mob_interact_with_can_age_up(
+                entity_id,
+                entity_type_id,
+                hand,
+                held_item_id,
+                owner,
+                can_age_up,
+            );
+        }
+
+        let Some(accessors) =
+            vanilla_entity_metadata_abstract_horse_accessors_for_entity_type(entity_type_id)
+        else {
+            return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+        };
+        let Some(flags) = self.entities.metadata_byte_for_entity(
+            entity_id,
+            accessors.flags_data_id,
+            accessors.flags_default,
+        ) else {
+            return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+        };
+        if flags & accessors.tame_mask != 0 && secondary_use_active {
+            // `openCustomInventoryScreen` is server-only, but the method
+            // returns client `SUCCESS` before consulting the held stack.
             return LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
                 LocalInteractionSuccess::client_item_interaction(),
             ));
         }
 
-        let Some(item_id) = held_item_id else {
-            return if is_baby || is_vehicle {
-                LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
-            } else {
-                LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
-                    LocalInteractionSuccess::client_item_interaction(),
-                ))
+        if let Some(item_id) = held_item_id {
+            let Some(stack) = self.local_item_in_hand(hand).cloned() else {
+                return LocalTargetUsePrediction::UnknownItemType(Some(item_id));
             };
-        };
-        let Some(food_item_ids) =
-            self.registry_holder_ids_for_tag("minecraft:item", VANILLA_ZOMBIE_HORSE_FOOD_TAG)
-        else {
-            return LocalTargetUsePrediction::UnsupportedEntityInteract(
-                VANILLA_ZOMBIE_HORSE_INTERACT_OWNER,
+            let item_interaction = self.predict_local_item_stack_interact_living_entity(
+                entity_id,
+                entity_type_id,
+                &stack,
             );
-        };
-        if food_item_ids.contains(&item_id) {
-            if !is_baby && !is_vehicle {
-                return LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
-                    LocalInteractionSuccess::server_item_interaction(),
-                ));
+            if item_interaction != LocalTargetUsePrediction::Result(LocalInteractionResult::Pass) {
+                return item_interaction;
             }
-            if is_baby {
+
+            let equippable = match self
+                .local_item_stack_is_equippable_in_horse_body_slot(entity_type_id, &stack)
+            {
+                Ok(equippable) => equippable,
+                Err(prediction) => return prediction,
+            };
+            if equippable {
+                let wearing_body_armor = if let Some(body_item) =
+                    self.entities.equipment_item(entity_id, EquipmentSlot::Body)
+                {
+                    match self.local_item_stack_is_equippable_in_horse_body_slot(
+                        entity_type_id,
+                        &body_item,
+                    ) {
+                        Ok(equippable) => equippable,
+                        Err(prediction) => return prediction,
+                    }
+                } else {
+                    false
+                };
+                if !wearing_body_armor {
+                    let mut equipped = stack;
+                    equipped.count = 1;
+                    if !self.consume_local_item_in_hand(hand, 1)
+                        || !self.entities.set_local_equipment_item(
+                            entity_id,
+                            EquipmentSlot::Body,
+                            equipped,
+                        )
+                    {
+                        return LocalTargetUsePrediction::UnsupportedEntityInteract(owner);
+                    }
+                    return LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                        LocalInteractionSuccess::client_item_interaction(),
+                    ));
+                }
+            }
+        }
+
+        if self
+            .entities
+            .apply_local_horse_ride_pose_reset(entity_id)
+            .is_none()
+        {
+            return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+        }
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+            LocalInteractionSuccess::client_item_interaction(),
+        ))
+    }
+
+    fn predict_local_abstract_horse_fed_food(
+        &mut self,
+        entity_id: i32,
+        entity_type_id: i32,
+        hand: InteractionHand,
+        held_item_id: i32,
+        owner: &'static str,
+    ) -> LocalTargetUsePrediction {
+        let effect = vanilla_abstract_horse_food_effect(held_item_id);
+        let ate_food = if let Some(effect) = effect {
+            let Some(health) = self.entities.living_entity_health(entity_id) else {
+                return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+            };
+            let Some(max_health) = self
+                .entities
+                .attribute_value(entity_id, VANILLA_ATTRIBUTE_MAX_HEALTH_ID)
+            else {
+                return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+            };
+            if health < max_health as f32 {
+                let Some(healed) = self
+                    .entities
+                    .apply_local_living_heal(entity_id, effect.heal)
+                else {
+                    return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+                };
+                healed
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+
+        let particle_action = if let Some(effect) = effect {
+            let Some(is_baby) = self.entities.is_baby(entity_id) else {
+                return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+            };
+            if is_baby && effect.age_up > 0 {
                 let Some((data_id, default)) =
                     vanilla_entity_metadata_age_locked_accessor_for_entity_type(entity_type_id)
                 else {
@@ -2302,41 +2549,97 @@ impl WorldStore {
                     return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
                 };
                 if !age_locked {
-                    return LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
-                        LocalInteractionSuccess::client_item_interaction(),
-                    ));
+                    let Some(position) = self
+                        .entities
+                        .next_local_equine_feeding_particle_position(entity_id)
+                    else {
+                        return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+                    };
+                    Some(LocalInteractionParticleAction::EquineBabyFeeding {
+                        position_bits: [
+                            position.x.to_bits(),
+                            position.y.to_bits(),
+                            position.z.to_bits(),
+                        ],
+                    })
+                } else {
+                    None
                 }
+            } else {
+                None
             }
-            return LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
-                LocalInteractionSuccess::consume(false),
-            ));
-        }
+        } else {
+            None
+        };
 
-        if !is_baby && !is_vehicle {
-            if !is_tamed {
-                return LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
-                    LocalInteractionSuccess::client_item_interaction(),
-                ));
-            }
-            let Some(stack) = self.local_item_in_hand(hand) else {
-                return LocalTargetUsePrediction::UnknownItemType(Some(item_id));
-            };
-            let item_interaction = self.predict_local_item_stack_interact_living_entity(
+        if ate_food && !self.consume_local_item_in_hand(hand, 1) {
+            return LocalTargetUsePrediction::UnsupportedEntityInteract(owner);
+        }
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+            LocalInteractionSuccess::server_equine_food(entity_id, ate_food, particle_action),
+        ))
+    }
+
+    fn predict_local_villager_mob_interact(
+        &mut self,
+        entity_id: i32,
+        entity_type_id: i32,
+        hand: InteractionHand,
+        held_item_id: Option<i32>,
+    ) -> LocalTargetUsePrediction {
+        // Spawn eggs and dead mobs have already returned from `Mob.interact`.
+        // `AbstractVillager.tradingPlayer` is written only by server-side
+        // branches, so the client has no speculative trading state here.
+        if self.entities.sleeping_pos(entity_id).is_some() {
+            return self.predict_local_ageable_mob_interact(
                 entity_id,
                 entity_type_id,
-                stack,
+                hand,
+                held_item_id,
+                VANILLA_VILLAGER_MOB_INTERACT_OWNER,
             );
-            if item_interaction != LocalTargetUsePrediction::Result(LocalInteractionResult::Pass) {
-                return item_interaction;
-            }
-            return LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
-                LocalInteractionSuccess::client_item_interaction(),
-            ));
         }
+        let Some(is_baby) = self.entities.is_baby(entity_id) else {
+            return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+        };
+        if is_baby
+            && self
+                .entities
+                .set_local_abstract_villager_unhappy_counter(entity_id, 40)
+                .is_none()
+        {
+            return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+        }
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+            LocalInteractionSuccess::client_item_interaction(),
+        ))
+    }
 
-        // Zombie horses are in `EntityTypeTags.CANNOT_BE_AGE_LOCKED`, so their
-        // baby/vehicle `AgeableMob` fallback has no golden-dandelion success.
-        LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+    fn predict_local_wandering_trader_mob_interact(
+        &mut self,
+        entity_id: i32,
+        entity_type_id: i32,
+        hand: InteractionHand,
+        held_item_id: Option<i32>,
+    ) -> LocalTargetUsePrediction {
+        // Both writes to `tradingPlayer` are server-only. Adult traders thus
+        // return client `SUCCESS`, while babies inherit `AgeableMob`.
+        let Some(is_baby) = self.entities.is_baby(entity_id) else {
+            return LocalTargetUsePrediction::UnknownEntityType(Some(entity_type_id));
+        };
+        if is_baby {
+            self.predict_local_ageable_mob_interact(
+                entity_id,
+                entity_type_id,
+                hand,
+                held_item_id,
+                VANILLA_WANDERING_TRADER_MOB_INTERACT_OWNER,
+            )
+        } else {
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction(),
+            ))
+        }
     }
 
     fn predict_local_nautilus_mob_interact(
@@ -2788,7 +3091,8 @@ mod tests {
         entity_data_serializers::{
             VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID, VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
             VANILLA_ENTITY_DATA_SERIALIZER_DIRECTION_ID, VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
-            VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+            VANILLA_ENTITY_DATA_SERIALIZER_INT_ID, VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+            VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
             VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_LIVING_ENTITY_REFERENCE_ID,
             VANILLA_ENTITY_DATA_SERIALIZER_PAINTING_VARIANT_ID,
         },
@@ -2808,10 +3112,11 @@ mod tests {
             VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
             VANILLA_ENTITY_TYPE_PAINTING_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
             VANILLA_ENTITY_TYPE_SHEEP_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
-            VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+            VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
+            VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
             VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
         },
-        equipment_slots::EquipmentSlot,
+        equipment_slots::{EquipmentSlot, VANILLA_EQUIPMENT_SLOT_BODY_ID},
         game_types::{VANILLA_GAME_TYPE_CREATIVE_ID, VANILLA_GAME_TYPE_SURVIVAL_ID},
         item_types::{
             VanillaItemInteractLivingEntityOverride, VanillaItemUseOnOverride,
@@ -2828,9 +3133,10 @@ mod tests {
             VANILLA_ITEM_LILY_PAD_ID, VANILLA_ITEM_MINECART_ID, VANILLA_ITEM_NAME_TAG_ID,
             VANILLA_ITEM_OAK_BOAT_ID, VANILLA_ITEM_PAINTING_ID, VANILLA_ITEM_POPPY_ID,
             VANILLA_ITEM_POTION_ID, VANILLA_ITEM_POWDER_SNOW_BUCKET_ID, VANILLA_ITEM_RED_DYE_ID,
-            VANILLA_ITEM_SADDLE_ID, VANILLA_ITEM_SHEARS_ID, VANILLA_ITEM_SHIELD_ID,
-            VANILLA_ITEM_STONE_ID, VANILLA_ITEM_SWEET_BERRIES_ID, VANILLA_ITEM_TRIDENT_ID,
-            VANILLA_ITEM_TYPES, VANILLA_ITEM_WATER_BUCKET_ID, VANILLA_ITEM_WHEAT_SEEDS_ID,
+            VANILLA_ITEM_RED_MUSHROOM_ID, VANILLA_ITEM_SADDLE_ID, VANILLA_ITEM_SHEARS_ID,
+            VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_STONE_ID, VANILLA_ITEM_SWEET_BERRIES_ID,
+            VANILLA_ITEM_TRIDENT_ID, VANILLA_ITEM_TYPES, VANILLA_ITEM_WATER_BUCKET_ID,
+            VANILLA_ITEM_WHEAT_ID, VANILLA_ITEM_WHEAT_SEEDS_ID,
         },
         packets::{
             AddEntity, AdventureModePredicateDataSummary, BlockHitResult, BlockHolderSetSummary,
@@ -8185,6 +8491,136 @@ mod tests {
     }
 
     #[test]
+    fn local_mob_interact_predicts_villager_and_wandering_trader_client_branches() {
+        let mut world = WorldStore::new();
+        add_entity(&mut world, 45, VANILLA_ENTITY_TYPE_VILLAGER_ID);
+        add_entity(&mut world, 46, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID);
+        add_entity(&mut world, 47, VANILLA_ENTITY_TYPE_VILLAGER_ID);
+        add_entity(&mut world, 48, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID);
+        world.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: "minecraft:entity_type".to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: VANILLA_CANNOT_BE_AGE_LOCKED_TAG.to_string(),
+                    entries: Vec::new(),
+                }],
+            }],
+        });
+
+        for (entity_id, entity_type_id) in [
+            (45, VANILLA_ENTITY_TYPE_VILLAGER_ID),
+            (46, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID),
+            (47, VANILLA_ENTITY_TYPE_VILLAGER_ID),
+        ] {
+            let (baby_data_id, _) =
+                crate::entities::vanilla_entity_metadata_baby_accessor_for_entity_type(
+                    entity_type_id,
+                )
+                .unwrap();
+            assert!(world.apply_set_entity_data(SetEntityData {
+                id: entity_id,
+                values: vec![EntityDataValue {
+                    data_id: baby_data_id,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                    value: EntityDataValueKind::Boolean(true),
+                }],
+            }));
+        }
+
+        let client_success = LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+            LocalInteractionSuccess::client_item_interaction(),
+        ));
+        assert_eq!(
+            world.predict_local_entity_interaction(45, InteractionHand::MainHand, false),
+            client_success
+        );
+        let (unhappy_data_id, unhappy_default) =
+            crate::entities::vanilla_entity_metadata_abstract_villager_unhappy_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_VILLAGER_ID,
+            )
+            .unwrap();
+        assert_eq!(
+            world
+                .entities
+                .metadata_int_for_entity(45, unhappy_data_id, unhappy_default),
+            Some(40)
+        );
+        world.advance_entity_client_animations(1);
+        assert_eq!(
+            world
+                .entities
+                .metadata_int_for_entity(45, unhappy_data_id, unhappy_default),
+            Some(39),
+            "Villager.tick decrements the client-local unhappy counter"
+        );
+        assert_eq!(
+            world.predict_local_entity_interaction(46, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+
+        let living_accessors =
+            crate::entities::vanilla_entity_metadata_living_entity_accessors_for_entity_type(
+                VANILLA_ENTITY_TYPE_VILLAGER_ID,
+            )
+            .unwrap();
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 47,
+            values: vec![EntityDataValue {
+                data_id: living_accessors.sleeping_pos_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
+                value: EntityDataValueKind::OptionalBlockPos(Some(ProtocolBlockPos {
+                    x: 1,
+                    y: 2,
+                    z: 3,
+                })),
+            }],
+        }));
+        set_main_hand(&mut world, VANILLA_ITEM_GOLDEN_DANDELION_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(47, InteractionHand::MainHand, false),
+            client_success
+        );
+        let (age_locked_data_id, age_locked_default) =
+            vanilla_entity_metadata_age_locked_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_VILLAGER_ID,
+            )
+            .unwrap();
+        assert_eq!(
+            world
+                .entities
+                .metadata_bool_for_entity(47, age_locked_data_id, age_locked_default),
+            Some(true)
+        );
+        assert_eq!(
+            world
+                .entities
+                .metadata_int_for_entity(47, unhappy_data_id, unhappy_default),
+            Some(0),
+            "sleeping villager delegates to AgeableMob before its baby branch"
+        );
+
+        assert_eq!(
+            world.predict_local_entity_interaction(48, InteractionHand::MainHand, false),
+            client_success
+        );
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 45,
+            values: vec![EntityDataValue {
+                data_id: unhappy_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                value: EntityDataValueKind::Int(3),
+            }],
+        }));
+        assert_eq!(
+            world
+                .entities
+                .metadata_int_for_entity(45, unhappy_data_id, unhappy_default),
+            Some(3),
+            "server metadata correction remains authoritative"
+        );
+    }
+
+    #[test]
     fn local_animal_baby_feeding_retains_suppressed_eating_sound_side_effects() {
         let mut world = WorldStore::new();
         add_entity(&mut world, 42, VANILLA_ENTITY_TYPE_CHICKEN_ID);
@@ -8919,6 +9355,25 @@ mod tests {
                 LocalInteractionSuccess::server_item_interaction()
             ))
         );
+        add_entity(&mut world, 5, VANILLA_ENTITY_TYPE_ZOMBIE_ID);
+        let living_accessors =
+            crate::entities::vanilla_entity_metadata_living_entity_accessors_for_entity_type(
+                VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            )
+            .unwrap();
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 5,
+            values: vec![EntityDataValue {
+                data_id: living_accessors.health_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
+                value: EntityDataValueKind::Float(f32::NAN),
+            }],
+        }));
+        assert_eq!(
+            world.predict_local_entity_interaction(5, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Pass),
+            "LivingEntity.isAlive uses `health > 0`, so NaN must fail closed"
+        );
 
         set_main_hand(&mut world, VANILLA_ITEM_LEAD_ID);
         assert_eq!(
@@ -9544,12 +9999,12 @@ mod tests {
                 value: EntityDataValueKind::Byte(horse_accessors.tame_mask),
             }],
         }));
+        set_main_hand(&mut world, VANILLA_ITEM_STONE_ID);
         assert_eq!(
             world.predict_local_entity_interaction(81, InteractionHand::MainHand, true),
             client_success
         );
 
-        set_main_hand(&mut world, VANILLA_ITEM_STONE_ID);
         assert_eq!(
             world.predict_local_entity_interaction(81, InteractionHand::MainHand, false),
             LocalTargetUsePrediction::UnsupportedEntityInteract(
@@ -9601,7 +10056,9 @@ mod tests {
         set_main_hand(&mut world, VANILLA_ITEM_STONE_ID);
         assert_eq!(
             world.predict_local_entity_interaction(81, InteractionHand::MainHand, false),
-            client_success
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::server_item_interaction()
+            ))
         );
         assert!(world.apply_set_entity_data(SetEntityData {
             id: 81,
@@ -9614,7 +10071,7 @@ mod tests {
         assert_eq!(
             world.predict_local_entity_interaction(81, InteractionHand::MainHand, false),
             LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
-                LocalInteractionSuccess::consume(false)
+                LocalInteractionSuccess::server_item_interaction()
             ))
         );
 
@@ -9645,6 +10102,190 @@ mod tests {
         assert_eq!(
             world.predict_local_entity_interaction(81, InteractionHand::MainHand, true),
             LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
+        );
+    }
+
+    #[test]
+    fn zombie_horse_food_applies_client_heal_consumption_particle_and_sound_side_effects() {
+        let mut world = WorldStore::new();
+        add_entity_at(
+            &mut world,
+            81,
+            VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+            Vec3d {
+                x: 1.0,
+                y: 2.0,
+                z: 3.0,
+            },
+        );
+        world.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: "minecraft:item".to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: VANILLA_ZOMBIE_HORSE_FOOD_TAG.to_string(),
+                    entries: vec![VANILLA_ITEM_RED_MUSHROOM_ID, VANILLA_ITEM_WHEAT_ID],
+                }],
+            }],
+        });
+        let (baby_data_id, _) =
+            crate::entities::vanilla_entity_metadata_baby_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+            )
+            .unwrap();
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 81,
+            values: vec![EntityDataValue {
+                data_id: baby_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                value: EntityDataValueKind::Boolean(true),
+            }],
+        }));
+        set_main_hand(&mut world, VANILLA_ITEM_WHEAT_ID);
+
+        let particle_action = LocalInteractionParticleAction::EquineBabyFeeding {
+            position_bits: [
+                4_609_177_415_567_282_494,
+                4_614_194_517_259_326_966,
+                4_614_298_779_471_186_992,
+            ],
+        };
+        assert_eq!(
+            world.predict_local_entity_interaction(81, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::server_equine_food(81, true, Some(particle_action))
+            ))
+        );
+        assert_eq!(world.entities.living_entity_health(81), Some(3.0));
+        assert!(world
+            .local_item_in_hand(InteractionHand::MainHand)
+            .is_none());
+
+        let mut expected_seed_world = WorldStore::new();
+        let _discarded_eating_seed = expected_seed_world.next_sound_seed();
+        let expected_after_eating = expected_seed_world.next_sound_seed();
+        assert_eq!(
+            world.apply_local_interaction_sound_action(
+                LocalInteractionSoundAction::SuppressedEquineEating { entity_id: 81 },
+                &mut LevelEventSoundRandomState::with_seed(3),
+            ),
+            None
+        );
+        assert_eq!(world.next_sound_seed(), expected_after_eating);
+
+        set_main_hand(&mut world, VANILLA_ITEM_RED_MUSHROOM_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(81, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::server_equine_food(81, true, None)
+            ))
+        );
+        assert_eq!(world.entities.living_entity_health(81), Some(6.0));
+    }
+
+    #[test]
+    fn zombie_horse_abstract_fallback_equips_body_armor_and_clears_ride_pose() {
+        let mut world = WorldStore::new();
+        add_entity(&mut world, 83, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID);
+        world.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: "minecraft:item".to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: VANILLA_ZOMBIE_HORSE_FOOD_TAG.to_string(),
+                    entries: Vec::new(),
+                }],
+            }],
+        });
+        let horse_accessors = vanilla_entity_metadata_abstract_horse_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+        )
+        .unwrap();
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 83,
+            values: vec![EntityDataValue {
+                data_id: horse_accessors.flags_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                value: EntityDataValueKind::Byte(horse_accessors.tame_mask),
+            }],
+        }));
+
+        let mut body_armor = stack(VANILLA_ITEM_STONE_ID);
+        body_armor.count = 2;
+        body_armor.component_patch = DataComponentPatchSummary {
+            added: 1,
+            added_type_ids: vec![VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID],
+            equippable: Some(EquippableSummary {
+                slot_id: VANILLA_EQUIPMENT_SLOT_BODY_ID,
+                equip_sound: SoundEventSummary {
+                    registry_id: Some(0),
+                    sound_id: None,
+                    fixed_range_bits: None,
+                },
+                asset_id: Some("example:test_horse_armor".to_string()),
+                camera_overlay: None,
+                allowed_entities: None,
+                dispensable: true,
+                swappable: true,
+                damage_on_hurt: false,
+                equip_on_interact: false,
+                can_be_sheared: true,
+                shearing_sound: SoundEventSummary {
+                    registry_id: Some(0),
+                    sound_id: None,
+                    fixed_range_bits: None,
+                },
+            }),
+            ..DataComponentPatchSummary::default()
+        };
+        assert!(world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: body_armor,
+        }));
+        assert_eq!(
+            world.predict_local_entity_interaction(83, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction()
+            ))
+        );
+        assert_eq!(
+            world
+                .entities
+                .equipment_item(83, EquipmentSlot::Body)
+                .unwrap()
+                .count,
+            1
+        );
+        assert_eq!(
+            world
+                .local_item_in_hand(InteractionHand::MainHand)
+                .unwrap()
+                .count,
+            1
+        );
+
+        let ride_flags =
+            horse_accessors.tame_mask | horse_accessors.eating_mask | horse_accessors.standing_mask;
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 83,
+            values: vec![EntityDataValue {
+                data_id: horse_accessors.flags_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                value: EntityDataValueKind::Byte(ride_flags),
+            }],
+        }));
+        set_main_hand(&mut world, VANILLA_ITEM_RED_DYE_ID);
+        assert_eq!(
+            world.predict_local_entity_interaction(83, InteractionHand::MainHand, false),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction()
+            ))
+        );
+        assert_eq!(
+            world.entities.metadata_byte_for_entity(
+                83,
+                horse_accessors.flags_data_id,
+                horse_accessors.flags_default
+            ),
+            Some(horse_accessors.tame_mask)
         );
     }
 

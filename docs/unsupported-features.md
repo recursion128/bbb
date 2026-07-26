@@ -651,11 +651,15 @@ Commands:
 
 - Add focused command-queue and encode tests for inventory, interaction, chat,
   command, and sign editing.
-- Complete the remaining specialized targeted local-use prediction from
-  `Minecraft.startUseItem`, `MultiPlayerGameMode.interact`, and `useItemOn`.
-  Apply each success swing-source and held-item presentation.
-  Interaction override ownership must stay generated from local vanilla classes.
-  Entity, block, and inventory corrections remain server-authoritative.
+- Complete every remaining generated concrete targeted local-use owner from
+  `Minecraft.startUseItem`, `MultiPlayerGameMode.interact`, and `useItemOn`, and
+  add a reverse guard that rejects any generated owner still routed to generic
+  unsupported handling. Interaction override ownership must stay generated from
+  local vanilla classes; entity, block, and inventory corrections remain
+  server-authoritative.
+- Apply each targeted-use success's exact swing source and first-person held-item
+  presentation, including client-item swap properties, hand-height interpolation,
+  and the damage component's ignore-swap-animation rule.
 - Bottle dragon-breath client prediction is `not-needed`: `AreaEffectCloud.owner`
   is absent from both `ClientboundAddEntityPacket` and synchronized metadata, so
   the remote 26.1 client leaves that branch server-authoritative. Reopen if the

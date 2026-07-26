@@ -1928,6 +1928,14 @@ impl WorldStore {
                 }
                 return None;
             }
+            LocalInteractionSoundAction::SuppressedEquineEating { entity_id } => {
+                if !self.entities.is_silent(entity_id)? {
+                    self.entities
+                        .advance_local_equine_eating_pitch_random(entity_id)?;
+                    let _discarded_seed = self.next_sound_seed();
+                }
+                return None;
+            }
             LocalInteractionSoundAction::BlockPlace {
                 pos,
                 sound_resource_id,

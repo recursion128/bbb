@@ -58,6 +58,18 @@ impl ParticleCommandResolver {
             LocalInteractionParticleAction::CandleExtinguish { pos, candles } => {
                 self.candle_extinguish_particle_batch(pos, candles)
             }
+            LocalInteractionParticleAction::EquineBabyFeeding { position_bits } => self
+                .simple_particle_batch(
+                    VANILLA_PARTICLE_TYPE_HAPPY_VILLAGER_ID,
+                    vec![(
+                        Vec3d {
+                            x: f64::from_bits(position_bits[0]),
+                            y: f64::from_bits(position_bits[1]),
+                            z: f64::from_bits(position_bits[2]),
+                        },
+                        Vec3d::default(),
+                    )],
+                ),
         }
     }
 

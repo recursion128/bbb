@@ -149,6 +149,31 @@ fn candle_extinguish_emits_one_upward_smoke_at_each_vanilla_wick() {
 }
 
 #[test]
+fn equine_baby_feeding_emits_one_stationary_happy_villager_particle() {
+    let world = WorldStore::new();
+    let mut resolver = test_resolver(0);
+    let position = [1.25_f64, 2.5, -3.75];
+    let batch = resolver.local_interaction_particle_batch(
+        &world,
+        LocalInteractionParticleAction::EquineBabyFeeding {
+            position_bits: position.map(f64::to_bits),
+        },
+    );
+
+    let [command] = batch.commands.as_slice() else {
+        panic!("equine baby feeding should emit one particle");
+    };
+    assert_eq!(command.position, position);
+    assert_eq!(command.velocity, [0.0; 3]);
+    assert_eq!(
+        command.particle_type_id,
+        VANILLA_PARTICLE_TYPE_HAPPY_VILLAGER_ID
+    );
+    assert_eq!(command.particle_id, "minecraft:happy_villager");
+    assert!(!command.always_show);
+}
+
+#[test]
 fn local_destroy_hit_particle_uses_vanilla_shape_face_power_and_scale() {
     let pos = WorldBlockPos { x: 0, y: 8, z: 0 };
     let slab = test_block_state_id(

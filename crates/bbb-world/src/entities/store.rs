@@ -13,10 +13,10 @@ use bbb_protocol::attribute_types::{
 };
 use bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID;
 use bbb_protocol::entity_data_serializers::{
-    VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID, VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
-    VANILLA_ENTITY_DATA_SERIALIZER_INT_ID, VANILLA_ENTITY_DATA_SERIALIZER_LONG_ID,
-    VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID, VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
-    VANILLA_ENTITY_DATA_SERIALIZER_SNIFFER_STATE_ID,
+    VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID, VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+    VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID, VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+    VANILLA_ENTITY_DATA_SERIALIZER_LONG_ID, VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
+    VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID, VANILLA_ENTITY_DATA_SERIALIZER_SNIFFER_STATE_ID,
 };
 use bbb_protocol::entity_poses::{
     VANILLA_ENTITY_POSE_CROUCHING_ID, VANILLA_ENTITY_POSE_DYING_ID,
@@ -34,7 +34,8 @@ use bbb_protocol::entity_types::{
     vanilla_entity_type, vanilla_entity_type_dimensions, VANILLA_ENTITY_TYPE_BLAZE_ID,
     VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID,
     VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
-    VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
+    VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_PIG_ID,
+    VANILLA_ENTITY_TYPE_VILLAGER_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
     VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
 };
 use bbb_protocol::equipment_slots::vanilla_equipment_slot_by_ordinal;
@@ -57,6 +58,7 @@ use super::components::{
 use super::display::{display_entity_culling_state, display_entity_render_source};
 use super::renderer_catalog::vanilla_living_entity_renderer_name_is_upside_down;
 use super::schema::{
+    vanilla_entity_metadata_abstract_horse_accessors_for_entity_type,
     vanilla_entity_metadata_abstract_minecart_accessors_for_entity_type,
     vanilla_entity_metadata_abstract_villager_unhappy_accessor_for_entity_type,
     vanilla_entity_metadata_accessor_for_entity_type,
@@ -1548,6 +1550,39 @@ impl EntityStore {
         })
     }
 
+    /// Advances the shared client-local `AbstractHorse.random` cursor for
+    /// `handleEating`'s three `getRandom*` calls and resolves the resulting
+    /// happy-villager particle position against the entity's current scaled
+    /// dimensions.
+    pub(crate) fn next_local_equine_feeding_particle_position(
+        &mut self,
+        id: i32,
+    ) -> Option<super::EntityVec3> {
+        let entity_type_id = self.identity(id)?.entity_type_id;
+        vanilla_entity_metadata_abstract_horse_accessors_for_entity_type(entity_type_id)?;
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let position = self.ecs.get::<&EntityTransform>(entity).ok()?.position;
+        let bounds = self.pick_bounds(id)?;
+        let width = f64::from(bounds.max[0] - bounds.min[0]);
+        let height = f64::from(bounds.max[1] - bounds.min[1]);
+        let units = self.with_client_animations_mut(id, |animations| {
+            animations.animations.next_equine_feeding_particle_units(id)
+        })?;
+        Some(super::EntityVec3 {
+            x: position.x + width * (2.0 * units[0] - 1.0),
+            y: position.y + height * units[1] + 0.5,
+            z: position.z + width * (2.0 * units[2] - 1.0),
+        })
+    }
+
+    pub(crate) fn advance_local_equine_eating_pitch_random(&mut self, id: i32) -> Option<()> {
+        let entity_type_id = self.identity(id)?.entity_type_id;
+        vanilla_entity_metadata_abstract_horse_accessors_for_entity_type(entity_type_id)?;
+        self.with_client_animations_mut(id, |animations| {
+            animations.animations.advance_equine_eating_pitch_random(id);
+        })
+    }
+
     pub(crate) fn with_ridden_jump_state_mut<R>(
         &mut self,
         id: i32,
@@ -1735,6 +1770,63 @@ impl EntityStore {
             },
         );
         Some(true)
+    }
+
+    /// Applies `AbstractVillager.setUnhappyCounter` to synchronized client
+    /// metadata. Vanilla's baby-villager interaction writes 40 on both sides;
+    /// later server metadata remains authoritative through the same storage.
+    pub(crate) fn set_local_abstract_villager_unhappy_counter(
+        &mut self,
+        id: i32,
+        value: i32,
+    ) -> Option<()> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let entity_type_id = self.ecs.get::<&EntityIdentity>(entity).ok()?.entity_type_id;
+        let (data_id, _) =
+            vanilla_entity_metadata_abstract_villager_unhappy_accessor_for_entity_type(
+                entity_type_id,
+            )?;
+        let mut metadata = self.ecs.get::<&mut EntityMetadata>(entity).ok()?;
+        upsert_metadata_value(
+            &mut metadata,
+            ProtocolEntityDataValue {
+                data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                value: EntityDataValueKind::Int(value),
+            },
+        );
+        Some(())
+    }
+
+    fn advance_villager_unhappy_counter(&mut self, entity: Entity) {
+        let Ok(identity) = self.ecs.get::<&EntityIdentity>(entity) else {
+            return;
+        };
+        if identity.entity_type_id != VANILLA_ENTITY_TYPE_VILLAGER_ID {
+            return;
+        }
+        let Some((data_id, default)) =
+            vanilla_entity_metadata_abstract_villager_unhappy_accessor_for_entity_type(
+                identity.entity_type_id,
+            )
+        else {
+            return;
+        };
+        drop(identity);
+        let Ok(mut metadata) = self.ecs.get::<&mut EntityMetadata>(entity) else {
+            return;
+        };
+        let counter = entity_data_int(&metadata.data_values, data_id, default);
+        if counter > 0 {
+            upsert_metadata_value(
+                &mut metadata,
+                ProtocolEntityDataValue {
+                    data_id,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                    value: EntityDataValueKind::Int(counter - 1),
+                },
+            );
+        }
     }
 
     pub(crate) fn living_entity_dead(&self, id: i32) -> Option<bool> {
@@ -5720,6 +5812,65 @@ impl EntityStore {
         .unwrap_or(false)
     }
 
+    pub(crate) fn set_local_equipment_item(
+        &mut self,
+        id: i32,
+        slot: ProtocolEquipmentSlot,
+        item: ItemStackSummary,
+    ) -> bool {
+        self.with_equipment_mut(id, |equipment| {
+            if let Some(update) = equipment
+                .equipment
+                .iter_mut()
+                .find(|update| update.slot == slot)
+            {
+                update.item = item;
+            } else {
+                equipment
+                    .equipment
+                    .push(bbb_protocol::packets::EquipmentSlotUpdate { slot, item });
+                equipment
+                    .equipment
+                    .sort_by_key(|update| update.slot.ordinal());
+            }
+        })
+        .is_some()
+    }
+
+    /// Applies the client half of `AbstractHorse.doPlayerRide`: clear the
+    /// eating and standing flags immediately, reset the client-owned stand
+    /// counter, and retarget the existing pose interpolation. Passenger state
+    /// remains server-authoritative because `startRiding` is server-only.
+    pub(crate) fn apply_local_horse_ride_pose_reset(&mut self, id: i32) -> Option<()> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let entity_type_id = self.ecs.get::<&EntityIdentity>(entity).ok()?.entity_type_id;
+        let accessors =
+            vanilla_entity_metadata_abstract_horse_accessors_for_entity_type(entity_type_id)?;
+        let flags = self.metadata_byte(id, accessors.flags_data_id, accessors.flags_default)?;
+        let reset_flags = flags & !(accessors.eating_mask | accessors.standing_mask);
+        let (metadata, animations) = self
+            .ecs
+            .query_one_mut::<(&mut EntityMetadata, &mut EntityClientAnimations)>(entity)
+            .ok()?;
+        if reset_flags != flags {
+            upsert_metadata_value(
+                metadata,
+                ProtocolEntityDataValue {
+                    data_id: accessors.flags_data_id,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                    value: EntityDataValueKind::Byte(reset_flags),
+                },
+            );
+        }
+        if let Some(ridden_jump) = animations.animations.ridden_jump.as_mut() {
+            ridden_jump.local_stand_ticks_remaining = 0;
+        }
+        animations
+            .animations
+            .sync_targets_from_metadata(entity_type_id, &metadata.data_values);
+        Some(())
+    }
+
     /// Collects the unique generated ITEM_STACK accessor carried by every requested entity type.
     /// This covers dropped items and owner-specific thrown-item projectile accessors without treating
     /// their coincident wire indices as shared ownership.
@@ -7601,6 +7752,13 @@ impl EntityStore {
                 };
                 if entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID {
                     self.advance_player_sleep_counter(entity);
+                }
+                if entity_type_id == VANILLA_ENTITY_TYPE_VILLAGER_ID {
+                    // `Villager.tick` runs this after its common entity tick.
+                    // No other client-local work reads the counter during that
+                    // common tick, so apply the same final metadata transition
+                    // before the consolidated animation query.
+                    self.advance_villager_unhappy_counter(entity);
                 }
                 // `AbstractMinecart.tick` runs `NewMinecartBehavior.tick`
                 // before any concrete minecart subclass work. TNT smoke and

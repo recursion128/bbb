@@ -4,10 +4,11 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
         VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
         VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
-        VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_PIG_ID,
-        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
-        VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+        VANILLA_ENTITY_TYPE_LLAMA_ID, VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+        VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+        VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
+        VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID, VANILLA_ENTITY_TYPE_WOLF_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
     },
     equipment_slots::{vanilla_equipment_slot_by_id, EquipmentSlot},
     item_types::VanillaItemEquipOnInteract,
@@ -16,8 +17,84 @@ use bbb_protocol::{
 const ENTITY_TYPE_REGISTRY: &str = "minecraft:entity_type";
 const CAN_EQUIP_SADDLE_TAG: &str = "minecraft:can_equip_saddle";
 const CAN_EQUIP_HARNESS_TAG: &str = "minecraft:can_equip_harness";
+const CAN_WEAR_NAUTILUS_ARMOR_TAG: &str = "minecraft:can_wear_nautilus_armor";
 
 impl WorldStore {
+    pub(super) fn local_item_stack_is_equippable_in_horse_body_slot(
+        &self,
+        entity_type_id: i32,
+        stack: &ProtocolItemStackSummary,
+    ) -> Result<bool, LocalTargetUsePrediction> {
+        if !self
+            .item_stack_has_effective_component(stack, VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID)
+        {
+            return Ok(false);
+        }
+        if stack
+            .component_patch
+            .added_type_ids
+            .contains(&VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID)
+        {
+            let Some(equippable) = stack.component_patch.equippable.as_ref() else {
+                return Err(unsupported_target_equippable());
+            };
+            let Some(slot) =
+                vanilla_equipment_slot_by_id(equippable.slot_id).map(|entry| entry.slot)
+            else {
+                return Err(unsupported_target_equippable());
+            };
+            let Some(allowed) = self.local_equippable_holder_set_accepts(
+                equippable.allowed_entities.as_ref(),
+                entity_type_id,
+            ) else {
+                return Err(unsupported_target_equippable());
+            };
+            return Ok(slot == EquipmentSlot::Body && allowed);
+        }
+
+        let Some(item_id) = stack.item_id else {
+            return Ok(false);
+        };
+        let slot = self
+            .items
+            .default_item_equipment_slots
+            .get(&item_id)
+            .copied()
+            .map(ItemEquipmentSlot::protocol_slot);
+        if slot != Some(EquipmentSlot::Body) {
+            return Ok(false);
+        }
+        let allowed = match self.items.default_mount_body_armor_kinds.get(&item_id) {
+            Some(MountArmorSlotKind::Horse) => self.local_entity_type_tag_contains(
+                super::VANILLA_CAN_WEAR_HORSE_ARMOR_TAG,
+                entity_type_id,
+            ),
+            Some(MountArmorSlotKind::Llama) => Some(matches!(
+                entity_type_id,
+                VANILLA_ENTITY_TYPE_LLAMA_ID | VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID
+            )),
+            Some(MountArmorSlotKind::Nautilus) => {
+                self.local_entity_type_tag_contains(CAN_WEAR_NAUTILUS_ARMOR_TAG, entity_type_id)
+            }
+            None if self
+                .items
+                .default_wolf_body_armor_materials
+                .contains_key(&item_id) =>
+            {
+                Some(entity_type_id == VANILLA_ENTITY_TYPE_WOLF_ID)
+            }
+            None if self
+                .items
+                .default_happy_ghast_harness_colors
+                .contains_key(&item_id) =>
+            {
+                self.local_entity_type_tag_contains(CAN_EQUIP_HARNESS_TAG, entity_type_id)
+            }
+            None => None,
+        };
+        allowed.ok_or_else(unsupported_target_equippable)
+    }
+
     pub(super) fn predict_local_equippable_equip_on_target(
         &self,
         entity_id: i32,
@@ -346,11 +423,12 @@ fn target_equippable_pass() -> LocalTargetUsePrediction {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::entities::ArmorMaterialKind;
     use bbb_protocol::{
         data_component_types::VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
         entity_types::{
             VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
-            VANILLA_ENTITY_TYPE_PIG_ID,
+            VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
         },
         equipment_slots::{
             VANILLA_EQUIPMENT_SLOT_BODY_ID, VANILLA_EQUIPMENT_SLOT_CHEST_ID,
@@ -359,8 +437,9 @@ mod tests {
         },
         game_types::{VANILLA_GAME_TYPE_CREATIVE_ID, VANILLA_GAME_TYPE_SURVIVAL_ID},
         item_types::{
-            VANILLA_ITEM_IRON_CHESTPLATE_ID, VANILLA_ITEM_SADDLE_ID, VANILLA_ITEM_SHIELD_ID,
-            VANILLA_ITEM_STONE_ID, VANILLA_ITEM_WHITE_HARNESS_ID,
+            VANILLA_ITEM_IRON_CHESTPLATE_ID, VANILLA_ITEM_IRON_HORSE_ARMOR_ID,
+            VANILLA_ITEM_SADDLE_ID, VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_STONE_ID,
+            VANILLA_ITEM_WHITE_HARNESS_ID, VANILLA_ITEM_WOLF_ARMOR_ID,
         },
         packets::{
             AddEntity, CommonPlayerSpawnInfo, DataComponentPatchSummary,
@@ -544,6 +623,62 @@ mod tests {
         assert_eq!(
             world.predict_local_equippable_equip_on_target(20, VANILLA_ENTITY_TYPE_PIG_ID, &saddle),
             pass
+        );
+    }
+
+    #[test]
+    fn default_body_equippables_resolve_exact_allowed_entity_profiles() {
+        let mut world = WorldStore::new();
+        world.set_default_item_component_type_ids(BTreeMap::from([
+            (
+                VANILLA_ITEM_IRON_HORSE_ARMOR_ID,
+                BTreeSet::from([VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID]),
+            ),
+            (
+                VANILLA_ITEM_WOLF_ARMOR_ID,
+                BTreeSet::from([VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID]),
+            ),
+        ]));
+        world.set_default_item_equipment_slots(BTreeMap::from([
+            (VANILLA_ITEM_IRON_HORSE_ARMOR_ID, ItemEquipmentSlot::Body),
+            (VANILLA_ITEM_WOLF_ARMOR_ID, ItemEquipmentSlot::Body),
+        ]));
+        world.set_default_mount_body_armor_kinds(BTreeMap::from([(
+            VANILLA_ITEM_IRON_HORSE_ARMOR_ID,
+            MountArmorSlotKind::Horse,
+        )]));
+        world.set_default_horse_body_armor_materials(BTreeMap::from([(
+            VANILLA_ITEM_IRON_HORSE_ARMOR_ID,
+            ArmorMaterialKind::Iron,
+        )]));
+        world.set_default_wolf_body_armor_materials(BTreeMap::from([(
+            VANILLA_ITEM_WOLF_ARMOR_ID,
+            ArmorMaterialKind::ArmadilloScute,
+        )]));
+        world.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: ENTITY_TYPE_REGISTRY.to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: super::super::VANILLA_CAN_WEAR_HORSE_ARMOR_TAG.to_string(),
+                    entries: vec![VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID],
+                }],
+            }],
+        });
+
+        assert_eq!(
+            world.local_item_stack_is_equippable_in_horse_body_slot(
+                VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+                &stack(VANILLA_ITEM_IRON_HORSE_ARMOR_ID, 1),
+            ),
+            Ok(true)
+        );
+        assert_eq!(
+            world.local_item_stack_is_equippable_in_horse_body_slot(
+                VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+                &stack(VANILLA_ITEM_WOLF_ARMOR_ID, 1),
+            ),
+            Ok(false),
+            "wolf armor is a known BODY equippable, not an unsupported horse profile"
         );
     }
 
