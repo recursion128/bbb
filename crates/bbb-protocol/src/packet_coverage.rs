@@ -1623,24 +1623,25 @@ mod tests {
     }
 
     #[test]
-    fn play_open_screen_keeps_rich_title_and_menu_presentation_open() {
+    fn play_open_screen_is_closed() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
             .iter()
             .find(|entry| entry.state == "play" && entry.constant_name == "CLIENTBOUND_OPEN_SCREEN")
             .expect("play open screen coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
+        assert!(entry.coverage["canonical_apply"]
+            .evidence
             .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "runtime_side_effect"])
-        );
+            .any(|evidence| evidence.contains("open_screen_exact_title_is_stored")));
+        assert!(entry.coverage["runtime_side_effect"]
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("all_generated_open_screen_menu_types")));
     }
 
     #[test]

@@ -28,7 +28,7 @@ use bbb_protocol::{
         VANILLA_PARTICLE_TYPE_CRIT_ID, VANILLA_PARTICLE_TYPE_ENTITY_EFFECT_ID,
         VANILLA_PARTICLE_TYPE_SMOKE_ID,
     },
-    RichTextComponent, MC_VERSION,
+    ComponentStyle, RichTextComponent, StyledTextRun, MC_VERSION,
 };
 use bbb_renderer::{
     hud_command_block_editor_layout, hud_jigsaw_block_editor_layout,
@@ -51,7 +51,7 @@ use bbb_renderer::{
     HudGameModeSwitcherMode, HudHeartKind, HudHotbarMode, HudIconLayer,
     HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryFillLayer,
     HudInventoryFillStage, HudInventoryGhostItem, HudInventoryItem, HudInventoryItemScissor,
-    HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground,
+    HudInventoryScreen, HudInventoryScrollingText, HudInventorySlot, HudInventoryTextBackground,
     HudInventoryTextInputDecoration, HudInventoryTextLabel, HudInventoryTooltip,
     HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
     HudJigsawBlockEditorScreen, HudJigsawBlockEditorTextField, HudJumpBar, HudMobEffect,
@@ -97,6 +97,7 @@ use crate::{
     },
     chest_scene::chest_model_instances_from_world_at_partial_tick,
     code_of_conduct::CodeOfConductAcceptance,
+    component_text::{localized_component_runs, visit_localized_template, LocalizedTemplatePart},
     conduit_scene::conduit_model_instances_from_world_at_partial_tick,
     crosshair::{
         crosshair_target_from_camera_at_partial_tick, debug_looking_at_block_hit_from_camera,
@@ -443,6 +444,10 @@ const BOOK_PAGE_TEXT_WIDTH: u32 = 114;
 const BOOK_PAGE_TEXT_HEIGHT: u32 = 128;
 const BOOK_PAGE_LINE_HEIGHT: i32 = 9;
 const BOOK_TEXT_COLOR: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
+const CONTAINER_LABEL_TEXT_COLOR: [f32; 4] = rgba32(-12_566_464);
+const CONTAINER_LABEL_WIDTH: u32 = 512;
+const CONTAINER_CENTERED_LABEL_WIDTH: u32 = 512;
+const CONTAINER_TEXT_LINE_HEIGHT: u32 = 9;
 const ADVANCEMENTS_WINDOW_WIDTH: u32 = 252;
 const ADVANCEMENTS_WINDOW_HEIGHT: u32 = 140;
 const ADVANCEMENTS_WINDOW_INSIDE_X: i32 = 9;
@@ -5664,9 +5669,11 @@ fn hud_mob_effect_duration_text(
 }
 
 fn hud_styled_runs_from_rich_text(component: &RichTextComponent) -> Vec<HudStyledTextRun> {
-    component
-        .styled()
-        .iter()
+    hud_styled_runs_from_component_runs(component.styled())
+}
+
+fn hud_styled_runs_from_component_runs(runs: &[StyledTextRun]) -> Vec<HudStyledTextRun> {
+    runs.iter()
         .filter(|run| !run.text.is_empty())
         .map(|run| HudStyledTextRun {
             text: run.text.clone(),
@@ -9155,7 +9162,13 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
         partial_tick,
     );
     offset_hud_entity_previews(&mut entity_previews, main_offset_x);
-    let mut text_labels = hud_inventory_text_labels(world, layout.background, &local_state);
+    let mut text_labels = hud_inventory_text_labels(
+        world,
+        item_runtime,
+        layout.background,
+        layout.height,
+        &local_state,
+    );
     offset_hud_inventory_text_labels(&mut text_labels, main_offset_x);
     let mut recipe_book_text_labels = Vec::new();
     if let Some(label) =
@@ -10450,6 +10463,9 @@ fn offset_hud_inventory_text_labels(labels: &mut [HudInventoryTextLabel], x_offs
         label.x += x_offset;
         if let Some(background) = &mut label.background {
             background.x += x_offset;
+        }
+        if let Some(scrolling) = &mut label.scrolling {
+            scrolling.x += x_offset;
         }
     }
 }
@@ -12381,12 +12397,15 @@ fn push_centered_advancements_label(
 
 fn hud_inventory_text_labels(
     world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
     background: InventoryScreenBackground,
+    screen_height: i32,
     local_state: &InventoryHudLocalState,
 ) -> Vec<HudInventoryTextLabel> {
+    let mut labels =
+        hud_server_opened_container_labels(world, item_runtime, background, screen_height);
     match background {
         InventoryScreenBackground::Anvil => {
-            let mut labels = Vec::new();
             if let Some(text) = local_state
                 .anvil_rename_text
                 .as_ref()
@@ -12408,11 +12427,237 @@ fn hud_inventory_text_labels(
             if let Some(label) = anvil_cost_text_label(world) {
                 labels.push(label);
             }
-            labels
         }
-        InventoryScreenBackground::EnchantmentTable => enchanting_table_cost_text_labels(world),
-        InventoryScreenBackground::Lectern => lectern_book_text_labels(world),
-        _ => Vec::new(),
+        InventoryScreenBackground::EnchantmentTable => {
+            labels.extend(enchanting_table_cost_text_labels(world));
+        }
+        InventoryScreenBackground::Lectern => labels.extend(lectern_book_text_labels(world)),
+        _ => {}
+    }
+    labels
+}
+
+fn hud_server_opened_container_labels(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    background: InventoryScreenBackground,
+    screen_height: i32,
+) -> Vec<HudInventoryTextLabel> {
+    let Some(container) = world.inventory().open_container.as_ref() else {
+        return Vec::new();
+    };
+    let Some(title) = container.title.as_ref() else {
+        return Vec::new();
+    };
+    if matches!(
+        background,
+        InventoryScreenBackground::LocalInventory
+            | InventoryScreenBackground::Mount { .. }
+            | InventoryScreenBackground::Lectern
+    ) {
+        return Vec::new();
+    }
+
+    let title_runs = localized_component_runs(title, &ComponentStyle::default(), item_runtime);
+    let mut labels = Vec::with_capacity(if background == InventoryScreenBackground::Merchant {
+        3
+    } else {
+        2
+    });
+    if background == InventoryScreenBackground::Merchant {
+        let title_runs = hud_merchant_title_runs(world, item_runtime, title_runs);
+        push_centered_container_label(&mut labels, title_runs, 187, 6);
+        push_plain_container_label(
+            &mut labels,
+            localized_gui_text(item_runtime, "container.inventory", "Inventory"),
+            107,
+            screen_height - 94,
+        );
+        push_centered_container_label(
+            &mut labels,
+            vec![StyledTextRun {
+                text: localized_gui_text(item_runtime, "merchant.trades", "Trades"),
+                style: ComponentStyle::default(),
+            }],
+            53,
+            6,
+        );
+        return labels;
+    }
+
+    match background {
+        InventoryScreenBackground::Generic3x3
+        | InventoryScreenBackground::Crafter
+        | InventoryScreenBackground::BlastFurnace
+        | InventoryScreenBackground::BrewingStand
+        | InventoryScreenBackground::Furnace
+        | InventoryScreenBackground::Smoker => {
+            push_centered_container_label(&mut labels, title_runs, 88, 6);
+        }
+        InventoryScreenBackground::Anvil => {
+            push_component_container_label(&mut labels, title_runs, 60, 6);
+        }
+        InventoryScreenBackground::CraftingTable => {
+            push_component_container_label(&mut labels, title_runs, 29, 6);
+        }
+        InventoryScreenBackground::Loom | InventoryScreenBackground::CartographyTable => {
+            push_component_container_label(&mut labels, title_runs, 8, 4);
+        }
+        InventoryScreenBackground::Smithing => {
+            push_component_container_label(&mut labels, title_runs, 44, 15);
+        }
+        InventoryScreenBackground::Stonecutter => {
+            push_component_container_label(&mut labels, title_runs, 8, 5);
+        }
+        InventoryScreenBackground::Generic9xRows { .. }
+        | InventoryScreenBackground::Beacon
+        | InventoryScreenBackground::EnchantmentTable
+        | InventoryScreenBackground::Grindstone
+        | InventoryScreenBackground::Hopper
+        | InventoryScreenBackground::ShulkerBox => {
+            push_component_container_label(&mut labels, title_runs, 8, 6);
+        }
+        InventoryScreenBackground::LocalInventory
+        | InventoryScreenBackground::Mount { .. }
+        | InventoryScreenBackground::Lectern
+        | InventoryScreenBackground::Merchant => {
+            unreachable!("non-standard container labels returned above")
+        }
+    }
+    push_plain_container_label(
+        &mut labels,
+        localized_gui_text(item_runtime, "container.inventory", "Inventory"),
+        8,
+        screen_height - 94,
+    );
+    labels
+}
+
+fn hud_merchant_title_runs(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    title_runs: Vec<StyledTextRun>,
+) -> Vec<StyledTextRun> {
+    let Some(offers) = merchant_offers_state(world)
+        .filter(|offers| offers.show_progress && (1..=5).contains(&offers.villager_level))
+    else {
+        return title_runs;
+    };
+    let level_key = format!("merchant.level.{}", offers.villager_level);
+    let level_fallback = match offers.villager_level {
+        1 => "Novice",
+        2 => "Apprentice",
+        3 => "Journeyman",
+        4 => "Expert",
+        5 => "Master",
+        _ => unreachable!("merchant level was range checked"),
+    };
+    let level_runs = vec![StyledTextRun {
+        text: localized_gui_text(item_runtime, &level_key, level_fallback),
+        style: ComponentStyle::default(),
+    }];
+    let template = localized_gui_text(item_runtime, "merchant.title", "%s - %s");
+    let arguments = [&title_runs, &level_runs];
+    let mut runs = Vec::new();
+    visit_localized_template(&template, |part| match part {
+        LocalizedTemplatePart::Literal(text) => {
+            push_component_text_run(&mut runs, text, &ComponentStyle::default());
+        }
+        LocalizedTemplatePart::Argument { index, raw } => {
+            if let Some(argument) = arguments.get(index) {
+                for run in *argument {
+                    push_component_text_run(&mut runs, &run.text, &run.style);
+                }
+            } else {
+                push_component_text_run(&mut runs, raw, &ComponentStyle::default());
+            }
+        }
+    });
+    runs
+}
+
+fn push_plain_container_label(
+    labels: &mut Vec<HudInventoryTextLabel>,
+    text: String,
+    x: i32,
+    y: i32,
+) {
+    push_component_container_label(
+        labels,
+        vec![StyledTextRun {
+            text,
+            style: ComponentStyle::default(),
+        }],
+        x,
+        y,
+    );
+}
+
+fn push_component_container_label(
+    labels: &mut Vec<HudInventoryTextLabel>,
+    runs: Vec<StyledTextRun>,
+    x: i32,
+    y: i32,
+) {
+    let text = runs.iter().map(|run| run.text.as_str()).collect::<String>();
+    if text.is_empty() {
+        return;
+    }
+    labels.push(HudInventoryTextLabel {
+        x,
+        y,
+        width: CONTAINER_LABEL_WIDTH,
+        text,
+        tint: CONTAINER_LABEL_TEXT_COLOR,
+        background: None,
+        input: None,
+        scrolling: None,
+        shadow: false,
+        runs: hud_styled_runs_from_component_runs(&runs),
+    });
+}
+
+fn push_centered_container_label(
+    labels: &mut Vec<HudInventoryTextLabel>,
+    runs: Vec<StyledTextRun>,
+    center_x: i32,
+    y: i32,
+) {
+    let text = runs.iter().map(|run| run.text.as_str()).collect::<String>();
+    if text.is_empty() {
+        return;
+    }
+    let bounds_x = center_x - i32::try_from(CONTAINER_CENTERED_LABEL_WIDTH).unwrap_or(i32::MAX) / 2;
+    labels.push(HudInventoryTextLabel {
+        x: bounds_x,
+        y,
+        width: CONTAINER_LABEL_WIDTH,
+        text,
+        tint: CONTAINER_LABEL_TEXT_COLOR,
+        background: None,
+        input: None,
+        scrolling: Some(HudInventoryScrollingText {
+            x: bounds_x,
+            y: y - 1,
+            width: CONTAINER_CENTERED_LABEL_WIDTH,
+            height: CONTAINER_TEXT_LINE_HEIGHT,
+        }),
+        shadow: false,
+        runs: hud_styled_runs_from_component_runs(&runs),
+    });
+}
+
+fn push_component_text_run(runs: &mut Vec<StyledTextRun>, text: &str, style: &ComponentStyle) {
+    if text.is_empty() {
+        return;
+    }
+    if let Some(previous) = runs.last_mut().filter(|previous| previous.style == *style) {
+        previous.text.push_str(text);
+    } else {
+        runs.push(StyledTextRun {
+            text: text.to_string(),
+            style: style.clone(),
+        });
     }
 }
 

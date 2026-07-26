@@ -10269,15 +10269,16 @@
         "canonical_apply": {
           "evidence": [
             "crates/bbb-world/src/client/inventory.rs#apply_open_screen",
+            "crates/bbb-world/src/client/inventory/tests.rs#open_screen_exact_title_is_stored_and_survives_set_content",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleOpenScreen"
           ],
-          "gap": "docs/unsupported-features.md#container-menu-presentation-parity",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
             "crates/bbb-protocol/src/packets/inventory.rs#open_screen_rejects_unknown_menu_type_and_trailing_bytes",
-            "crates/bbb-protocol/src/packets/inventory.rs#decodes_container_and_inventory_item_updates",
+            "crates/bbb-protocol/src/packets/inventory.rs#open_screen_preserves_exact_trusted_title_component",
             "vanilla:net/minecraft/network/protocol/game/ClientboundOpenScreenPacket.java#STREAM_CODEC"
           ],
           "gap": null,
@@ -10292,20 +10293,27 @@
         },
         "runtime_side_effect": {
           "evidence": [
-            "crates/bbb-native/src/input/inventory/tests.rs#generic_container_layout_matches_vanilla_chest_menu",
-            "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_projects_crafting_table_layout",
-            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleOpenScreen"
+            "crates/bbb-native/src/input/inventory/tests.rs#every_generated_server_opened_menu_type_has_a_native_layout",
+            "crates/bbb-native/src/runtime/tests.rs#all_generated_open_screen_menu_types_project_native_labels",
+            "crates/bbb-native/src/runtime/tests.rs#open_screen_title_localizes_rich_component_runs_and_uses_real_glyph_centering",
+            "crates/bbb-renderer/src/hud.rs#scrolling_widget_text_layout_matches_vanilla_period_and_centering",
+            "vanilla:net/minecraft/client/gui/screens/MenuScreens.java#SCREENS",
+            "vanilla:net/minecraft/client/gui/screens/inventory/AbstractContainerScreen.java#extractLabels"
           ],
-          "gap": "docs/unsupported-features.md#container-menu-presentation-parity",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
+            "crates/bbb-protocol/src/packets/inventory.rs#open_screen_preserves_exact_trusted_title_component",
             "crates/bbb-protocol/src/packets/inventory.rs#open_screen_rejects_unknown_menu_type_and_trailing_bytes",
             "crates/bbb-net/src/event_stream.rs#play_inventory_packets_emit_matching_events_without_responses",
             "crates/bbb-net/src/probe/play.rs#probe_applies_inventory_container_packets_to_world",
             "crates/bbb-world/src/client/inventory/tests.rs#open_screen_exact_title_is_stored_and_survives_set_content",
-            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#inventory_events_update_world_and_world_counters"
+            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#inventory_events_update_world_and_world_counters",
+            "crates/bbb-native/src/input/inventory/tests.rs#every_generated_server_opened_menu_type_has_a_native_layout",
+            "crates/bbb-native/src/runtime/tests.rs#all_generated_open_screen_menu_types_project_native_labels",
+            "crates/bbb-native/src/runtime/tests.rs#open_screen_title_localizes_rich_component_runs_and_uses_real_glyph_centering"
           ],
           "gap": null,
           "status": "complete"

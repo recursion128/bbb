@@ -10,6 +10,7 @@ use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_DONKEY_ID;
 use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_NAUTILUS_ID;
 use bbb_protocol::game_event_types::VANILLA_CLIENT_GAME_EVENT_CHANGE_GAME_MODE_ID;
 use bbb_protocol::game_types::VANILLA_GAME_TYPE_ADVENTURE_ID;
+use bbb_protocol::menu_types::VANILLA_MENU_TYPES;
 use bbb_protocol::mob_effect_types::{
     VANILLA_MOB_EFFECT_REGENERATION_ID, VANILLA_MOB_EFFECT_SPEED_ID, VANILLA_MOB_EFFECT_STRENGTH_ID,
 };
@@ -167,6 +168,26 @@ fn generic_container_layout_matches_vanilla_chest_menu() {
             y: 197,
         }
     );
+}
+
+#[test]
+fn every_generated_server_opened_menu_type_has_a_native_layout() {
+    assert_eq!(VANILLA_MENU_TYPES.len(), 25);
+    for menu_type in VANILLA_MENU_TYPES {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: menu_type.id,
+            title: bbb_protocol::RichTextComponent::plain(menu_type.resource_id),
+        });
+
+        assert!(
+            inventory_screen_layout(&world).is_some(),
+            "generated menu {} ({}) has no native layout",
+            menu_type.constant_name,
+            menu_type.resource_id
+        );
+    }
 }
 
 #[test]

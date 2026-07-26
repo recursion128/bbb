@@ -39,9 +39,10 @@ use bbb_protocol::entity_types::{
 use bbb_protocol::heightmap_types::VANILLA_HEIGHTMAP_TYPES;
 use bbb_protocol::item_types::{VANILLA_ITEM_BOW_ID, VANILLA_ITEM_SPYGLASS_ID};
 use bbb_protocol::menu_types::{
-    VANILLA_MENU_TYPE_ANVIL_ID, VANILLA_MENU_TYPE_BEACON_ID, VANILLA_MENU_TYPE_BREWING_STAND_ID,
-    VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID, VANILLA_MENU_TYPE_CRAFTER_3X3_ID,
-    VANILLA_MENU_TYPE_CRAFTING_ID, VANILLA_MENU_TYPE_ENCHANTMENT_ID, VANILLA_MENU_TYPE_FURNACE_ID,
+    VANILLA_MENU_TYPES, VANILLA_MENU_TYPE_ANVIL_ID, VANILLA_MENU_TYPE_BEACON_ID,
+    VANILLA_MENU_TYPE_BREWING_STAND_ID, VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
+    VANILLA_MENU_TYPE_CRAFTER_3X3_ID, VANILLA_MENU_TYPE_CRAFTING_ID,
+    VANILLA_MENU_TYPE_ENCHANTMENT_ID, VANILLA_MENU_TYPE_FURNACE_ID,
     VANILLA_MENU_TYPE_GENERIC_3X3_ID, VANILLA_MENU_TYPE_GENERIC_9X3_ID,
     VANILLA_MENU_TYPE_GENERIC_9X6_ID, VANILLA_MENU_TYPE_GRINDSTONE_ID, VANILLA_MENU_TYPE_HOPPER_ID,
     VANILLA_MENU_TYPE_LECTERN_ID, VANILLA_MENU_TYPE_LOOM_ID, VANILLA_MENU_TYPE_MERCHANT_ID,
@@ -13613,6 +13614,158 @@ fn hud_inventory_screen_projects_generic_container_layout() {
 }
 
 #[test]
+fn all_generated_open_screen_menu_types_project_native_labels() {
+    assert_eq!(VANILLA_MENU_TYPES.len(), 25);
+    for menu_type in VANILLA_MENU_TYPES {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: menu_type.id,
+            title: bbb_protocol::RichTextComponent::plain(menu_type.resource_id),
+        });
+
+        let screen = hud_inventory_screen(&world, None, None, 0.0).unwrap_or_else(|| {
+            panic!(
+                "generated menu {} ({}) has no native presentation",
+                menu_type.constant_name, menu_type.resource_id
+            )
+        });
+        if menu_type.id == VANILLA_MENU_TYPE_LECTERN_ID {
+            assert!(
+                screen
+                    .text_labels
+                    .iter()
+                    .all(|label| label.text != menu_type.resource_id && label.text != "Inventory"),
+                "lectern must retain BookViewScreen label behavior"
+            );
+        } else {
+            let title = &screen.text_labels[0];
+            let inventory = &screen.text_labels[1];
+            let (title_x, title_y, centered) = match menu_type.resource_id {
+                "minecraft:generic_3x3"
+                | "minecraft:crafter_3x3"
+                | "minecraft:blast_furnace"
+                | "minecraft:brewing_stand"
+                | "minecraft:furnace"
+                | "minecraft:smoker" => (-168, 6, true),
+                "minecraft:merchant" => (-69, 6, true),
+                "minecraft:anvil" => (60, 6, false),
+                "minecraft:crafting" => (29, 6, false),
+                "minecraft:loom" | "minecraft:cartography_table" => (8, 4, false),
+                "minecraft:smithing" => (44, 15, false),
+                "minecraft:stonecutter" => (8, 5, false),
+                _ => (8, 6, false),
+            };
+            assert_eq!(
+                (title.text.as_str(), title.x, title.y),
+                (menu_type.resource_id, title_x, title_y),
+                "generated menu {} title contract",
+                menu_type.constant_name
+            );
+            assert_eq!(title.tint, CONTAINER_LABEL_TEXT_COLOR);
+            assert!(!title.shadow);
+            assert_eq!(
+                title.scrolling.is_some(),
+                centered,
+                "generated menu {} centering contract",
+                menu_type.constant_name
+            );
+            assert_eq!(
+                (
+                    inventory.text.as_str(),
+                    inventory.x,
+                    inventory.y,
+                    inventory.tint,
+                    inventory.shadow,
+                ),
+                (
+                    "Inventory",
+                    if menu_type.id == VANILLA_MENU_TYPE_MERCHANT_ID {
+                        107
+                    } else {
+                        8
+                    },
+                    i32::try_from(screen.height).unwrap() - 94,
+                    CONTAINER_LABEL_TEXT_COLOR,
+                    false,
+                ),
+                "generated menu {} inventory-label contract",
+                menu_type.constant_name
+            );
+        }
+    }
+}
+
+#[test]
+fn open_screen_title_localizes_rich_component_runs_and_uses_real_glyph_centering() {
+    let title =
+        bbb_protocol::RichTextComponent::try_from_component_nbt(NbtSummaryValue::Compound(vec![
+            NbtSummaryEntry {
+                name: "translate".to_string(),
+                value: NbtSummaryValue::String("missing.container.title".to_string()),
+            },
+            NbtSummaryEntry {
+                name: "fallback".to_string(),
+                value: NbtSummaryValue::String("Open %s".to_string()),
+            },
+            NbtSummaryEntry {
+                name: "with".to_string(),
+                value: NbtSummaryValue::List(vec![NbtSummaryValue::Compound(vec![
+                    NbtSummaryEntry {
+                        name: "text".to_string(),
+                        value: NbtSummaryValue::String("Chest".to_string()),
+                    },
+                    NbtSummaryEntry {
+                        name: "bold".to_string(),
+                        value: NbtSummaryValue::Byte(1),
+                    },
+                    NbtSummaryEntry {
+                        name: "color".to_string(),
+                        value: NbtSummaryValue::String("red".to_string()),
+                    },
+                ])]),
+            },
+        ]))
+        .expect("rich open-screen title");
+    let mut world = WorldStore::new();
+    world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_3X3_ID,
+        title,
+    });
+
+    let screen = hud_inventory_screen(&world, None, None, 0.0).expect("container HUD");
+
+    assert_eq!(screen.text_labels.len(), 2);
+    let title = &screen.text_labels[0];
+    assert_eq!(title.text, "Open Chest");
+    assert_eq!(title.tint, CONTAINER_LABEL_TEXT_COLOR);
+    assert!(!title.shadow);
+    assert_eq!(
+        title.scrolling,
+        Some(HudInventoryScrollingText {
+            x: -168,
+            y: 5,
+            width: 512,
+            height: 9,
+        })
+    );
+    assert_eq!(title.runs.len(), 2);
+    assert_eq!(title.runs[0], HudStyledTextRun::plain("Open "));
+    assert_eq!(title.runs[1].text, "Chest");
+    assert!(title.runs[1].style.bold);
+    assert_eq!(title.runs[1].color, Some(0xFF_55_55));
+    assert_eq!(
+        (
+            screen.text_labels[1].text.as_str(),
+            screen.text_labels[1].x,
+            screen.text_labels[1].y,
+        ),
+        ("Inventory", 8, 72)
+    );
+}
+
+#[test]
 fn hud_inventory_screen_projects_generic_3x3_layout() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
@@ -14714,6 +14867,14 @@ fn hud_inventory_screen_projects_furnace_recipe_book_buttons() {
     .unwrap();
 
     assert_eq!(screen.width, 320);
+    assert_eq!(
+        (
+            screen.text_labels[0].text.as_str(),
+            screen.text_labels[0].x,
+            screen.text_labels[0].scrolling.map(|scrolling| scrolling.x),
+        ),
+        ("Furnace", -19, Some(-19))
+    );
     assert!(screen.background_layers.iter().any(|layer| {
         *layer
             == hud_inventory_background_layer(
@@ -15812,9 +15973,10 @@ fn hud_inventory_screen_projects_enchanting_table_enabled_option_layers() {
             [0.0, 0.0],
             [1.0, 1.0],
         )));
+    assert_eq!(screen.text_labels.len(), 3);
     assert_eq!(
-        screen.text_labels,
-        vec![HudInventoryTextLabel {
+        screen.text_labels.last(),
+        Some(&HudInventoryTextLabel {
             x: 154,
             y: 42,
             width: 12,
@@ -15825,7 +15987,7 @@ fn hud_inventory_screen_projects_enchanting_table_enabled_option_layers() {
             scrolling: None,
             shadow: false,
             runs: Vec::new(),
-        }]
+        })
     );
 }
 
@@ -15880,9 +16042,10 @@ fn hud_inventory_screen_projects_enchanting_table_disabled_cost_label() {
             [0.0, 0.0],
             [1.0, 1.0],
         )));
+    assert_eq!(screen.text_labels.len(), 3);
     assert_eq!(
-        screen.text_labels,
-        vec![HudInventoryTextLabel {
+        screen.text_labels.last(),
+        Some(&HudInventoryTextLabel {
             x: 154,
             y: 61,
             width: 12,
@@ -15893,7 +16056,7 @@ fn hud_inventory_screen_projects_enchanting_table_disabled_cost_label() {
             scrolling: None,
             shadow: false,
             runs: Vec::new(),
-        }]
+        })
     );
 }
 
@@ -16297,9 +16460,10 @@ fn hud_inventory_screen_projects_anvil_rename_text_label() {
     )
     .unwrap();
 
+    assert_eq!(screen.text_labels.len(), 3);
     assert_eq!(
-        screen.text_labels,
-        vec![HudInventoryTextLabel {
+        screen.text_labels.last(),
+        Some(&HudInventoryTextLabel {
             x: 62,
             y: 24,
             width: 103,
@@ -16310,7 +16474,7 @@ fn hud_inventory_screen_projects_anvil_rename_text_label() {
             scrolling: None,
             shadow: false,
             runs: Vec::new(),
-        }]
+        })
     );
 }
 
@@ -16344,9 +16508,10 @@ fn hud_inventory_screen_projects_anvil_cost_label() {
 
     let screen = hud_inventory_screen(&world, None, None, 0.0).unwrap();
 
+    assert_eq!(screen.text_labels.len(), 3);
     assert_eq!(
-        screen.text_labels,
-        vec![HudInventoryTextLabel {
+        screen.text_labels.last(),
+        Some(&HudInventoryTextLabel {
             x: 126,
             y: ANVIL_COST_LABEL_Y,
             width: 40,
@@ -16363,7 +16528,7 @@ fn hud_inventory_screen_projects_anvil_cost_label() {
             scrolling: None,
             shadow: false,
             runs: Vec::new(),
-        }]
+        })
     );
 }
 
@@ -16396,9 +16561,10 @@ fn hud_inventory_screen_projects_anvil_too_expensive_label() {
 
     let screen = hud_inventory_screen(&world, None, None, 0.0).unwrap();
 
+    assert_eq!(screen.text_labels.len(), 3);
     assert_eq!(
-        screen.text_labels,
-        vec![HudInventoryTextLabel {
+        screen.text_labels.last(),
+        Some(&HudInventoryTextLabel {
             x: 84,
             y: ANVIL_COST_LABEL_Y,
             width: 82,
@@ -16415,7 +16581,7 @@ fn hud_inventory_screen_projects_anvil_too_expensive_label() {
             scrolling: None,
             shadow: false,
             runs: Vec::new(),
-        }]
+        })
     );
 }
 
@@ -18972,6 +19138,32 @@ fn hud_inventory_screen_projects_merchant_layout() {
     assert_eq!(screen.hovered_slot_id, Some(38));
     assert_eq!(screen.slots.len(), 39);
     assert!(screen.floating_items.is_empty());
+    assert_eq!(
+        screen
+            .text_labels
+            .iter()
+            .map(|label| label.text.as_str())
+            .collect::<Vec<_>>(),
+        vec!["Merchant", "Inventory", "Trades"]
+    );
+    assert_eq!(
+        screen.text_labels[0].scrolling,
+        Some(HudInventoryScrollingText {
+            x: -69,
+            y: 5,
+            width: 512,
+            height: 9,
+        })
+    );
+    assert_eq!(
+        screen.text_labels[2].scrolling,
+        Some(HudInventoryScrollingText {
+            x: -203,
+            y: 5,
+            width: 512,
+            height: 9,
+        })
+    );
     let payment_a = screen.slots.iter().find(|slot| slot.slot_id == 0).unwrap();
     assert_eq!((payment_a.x, payment_a.y), (136, 37));
     let payment_b = screen.slots.iter().find(|slot| slot.slot_id == 1).unwrap();
@@ -19019,6 +19211,7 @@ fn hud_inventory_screen_projects_merchant_trade_layers() {
     assert_eq!(screen.width, 276);
     assert_eq!(screen.height, 166);
     assert!(screen.floating_items.is_empty());
+    assert_eq!(screen.text_labels[0].text, "Merchant - Journeyman");
     assert_eq!(
         screen.background_layers[0],
         hud_inventory_background_layer(

@@ -560,3 +560,8 @@
 - **2026-07-26（定向本地使用预测工程关闭）**：生成式 entity/mob、item 与 block
   owner 已贯通本地结果、canonical 预测及精确挥手/首人称反馈；`INTERACT`、
   `USE_ITEM_ON` 与 `USE_ITEM` 三条 serverbound 覆盖行不再含预测 `partial`。
+- **2026-07-26（OpenScreen 精确标题与全菜单呈现闭环）**：可信 title Component
+  从协议解码到 world 生命周期保持 exact，25 个生成式 MenuType 均有反向布局与
+  标签守卫；Vanilla 坐标、Merchant 组合及真实字形居中完成，clientbound
+  `OPEN_SCREEN` 五维覆盖全部关闭，合同见
+  `docs/archive/open-screen-presentation-closure-design.md`。

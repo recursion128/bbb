@@ -680,8 +680,6 @@ Inventory:
   mismatched container packets are ignored without caching stale displays.
 - Implement container `0` crafting-result parity: composite / component-aware /
   special recipe display matching, and recipe-specific remainder items.
-- Add the dedicated server-opened menu layouts not covered by the
-  `generic_9xN` / `generic_3x3` baseline families.
 
 ## Particle runtime vanilla parity
 
@@ -1009,11 +1007,6 @@ back into a todo. Do not delete these.
 - Crafter slot-state requests cover the empty-grid pickup toggle, but still need
   vanilla's hotbar `SWAP` enable path plus immediate local menu data/audio mutation.
   The server's CrafterBlockEntity remains authoritative and has no dedicated ack.
-- Preserve the full trusted OpenScreen title Component and finish dedicated
-  presentation for every generated vanilla MenuType. The fixed 25-entry menu
-  catalog and unknown-id rejection are covered; current canonical state keeps
-  styled runs plus a plain title while remaining menu-specific UI gaps stay
-  listed below.
 - Keep clientbound container lifecycle audits aligned with vanilla even when a
   packet field is redundant: ContainerClose carries an id but the 26.1 client
   closes its current menu unconditionally; matching-id behavior is not an
