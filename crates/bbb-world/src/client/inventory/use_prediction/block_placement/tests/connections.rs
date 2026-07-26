@@ -615,6 +615,81 @@ fn huge_mushroom_placement_hides_only_faces_against_the_same_block() {
 }
 
 #[test]
+fn trip_wire_placement_connects_to_wire_and_inward_facing_hooks() {
+    let clicked = BlockPos { x: 4, y: 8, z: 4 };
+    let target = relative(clicked, ProtocolDirection::Up);
+    let trip_wire_state = || {
+        state_id(
+            "minecraft:tripwire",
+            [
+                ("attached", "false"),
+                ("disarmed", "false"),
+                ("east", "false"),
+                ("north", "false"),
+                ("powered", "false"),
+                ("south", "false"),
+                ("west", "false"),
+            ],
+        )
+    };
+    let hook_state = |facing| {
+        state_id(
+            "minecraft:tripwire_hook",
+            [
+                ("attached", "false"),
+                ("facing", facing),
+                ("powered", "false"),
+            ],
+        )
+    };
+
+    let mut world = placement_world();
+    set_block(&mut world, clicked, state_id("minecraft:stone", []));
+    set_block(
+        &mut world,
+        relative(target, ProtocolDirection::North),
+        trip_wire_state(),
+    );
+    set_block(
+        &mut world,
+        relative(target, ProtocolDirection::East),
+        hook_state("west"),
+    );
+    set_block(
+        &mut world,
+        relative(target, ProtocolDirection::South),
+        hook_state("south"),
+    );
+    set_block(
+        &mut world,
+        relative(target, ProtocolDirection::West),
+        state_id("minecraft:stone", []),
+    );
+    set_held(&mut world, VANILLA_ITEM_STRING_ID, 1);
+
+    assert!(matches!(
+        use_block_at(&mut world, clicked, false, 71),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        world.probe_block(target).unwrap().block_state_id,
+        state_id(
+            "minecraft:tripwire",
+            [
+                ("attached", "false"),
+                ("disarmed", "false"),
+                ("east", "true"),
+                ("north", "true"),
+                ("powered", "false"),
+                ("south", "false"),
+                ("west", "false"),
+            ],
+        )
+    );
+    assert_eq!(held(&world).count, 0);
+}
+
+#[test]
 fn wall_placement_projects_side_height_and_center_post_from_the_block_above() {
     let clicked = BlockPos { x: 4, y: 8, z: 4 };
     let target = relative(clicked, ProtocolDirection::Up);

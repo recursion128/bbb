@@ -128,6 +128,23 @@ pub(super) fn iron_bars_connections(
     })
 }
 
+pub(super) fn trip_wire_connections(
+    world: &WorldStore,
+    pos: BlockPos,
+    block_type: &BlockTypeCatalogEntry,
+) -> Option<CardinalConnections> {
+    cardinal_connections(world, pos, |_world, neighbour, direction| {
+        let neighbour_name = neighbour.block_name.as_deref()?;
+        if neighbour_name == block_type.resource_id {
+            return Some(true);
+        }
+        if neighbour_name != "minecraft:tripwire_hook" {
+            return Some(false);
+        }
+        Some(direction_property(neighbour, "facing")? == opposite(direction))
+    })
+}
+
 pub(super) fn wall_placement(world: &WorldStore, pos: BlockPos) -> Option<WallPlacement> {
     let connections = cardinal_connections(world, pos, |world, neighbour, direction| {
         wall_connects_to(world, neighbour, opposite(direction))

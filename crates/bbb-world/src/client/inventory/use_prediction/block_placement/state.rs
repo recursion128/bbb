@@ -19,7 +19,7 @@ use super::composite::{door_placement, double_high_above_can_replace};
 use super::connections::{
     chest_placement, chorus_plant_placement, copper_chest_placement, fence_connections,
     fence_gate_placement, huge_mushroom_placement, iron_bars_connections, leaves_placement,
-    mossy_carpet_placement, stair_shape, wall_placement,
+    mossy_carpet_placement, stair_shape, trip_wire_connections, wall_placement,
 };
 use super::context::{
     clockwise, direction_axis, direction_axis_name, direction_name, front_and_top_name,
@@ -551,6 +551,22 @@ pub(super) fn block_state_for_placement(
                 block_type,
                 default_state_id,
                 [("orientation", orientation), ("triggered", "false")],
+            );
+        }
+        VanillaGetStateForPlacementOverride::TripWireBlock => {
+            let Some(connections) = trip_wire_connections(world, target_pos, block_type) else {
+                return BlockPlacementState::Unsupported;
+            };
+            return state_with_properties(
+                world,
+                block_type,
+                default_state_id,
+                [
+                    ("north", boolean_name(connections.north)),
+                    ("east", boolean_name(connections.east)),
+                    ("south", boolean_name(connections.south)),
+                    ("west", boolean_name(connections.west)),
+                ],
             );
         }
         VanillaGetStateForPlacementOverride::BannerBlock => {
