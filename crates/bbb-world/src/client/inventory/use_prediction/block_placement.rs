@@ -10,6 +10,7 @@ use bbb_protocol::{
 
 use super::*;
 
+mod context;
 mod state;
 pub(super) mod survival;
 
@@ -44,11 +45,19 @@ impl WorldStore {
             return unsupported();
         };
 
-        // The core stage owns plain BlockItem. Specialized item subclasses
-        // retain explicit ownership until their context and multi-block rules
-        // are implemented.
-        if behavior.kind != VanillaBlockItemKind::BlockItem {
-            return unsupported();
+        match behavior.kind {
+            VanillaBlockItemKind::BlockItem
+            | VanillaBlockItemKind::BedItem
+            | VanillaBlockItemKind::BannerItem
+            | VanillaBlockItemKind::PlayerHeadItem
+            | VanillaBlockItemKind::SignItem
+            | VanillaBlockItemKind::StandingAndWallBlockItem => {}
+            VanillaBlockItemKind::GameMasterBlockItem => {
+                if !self.local_player_has_gamemaster_permission() {
+                    return block_item_fallback(self, hand, &stack, LocalInteractionResult::Fail);
+                }
+            }
+            _ => return unsupported(),
         }
         let Some(block_type) = vanilla_block_type(behavior.block_type_id) else {
             return unsupported();
@@ -74,23 +83,48 @@ impl WorldStore {
             }
         }
 
-        let placement_state_id = match state::block_state_for_placement(
-            self,
-            block_type,
-            target_pos,
-            replace_clicked,
-            context,
-        ) {
+        let standing_and_wall = matches!(
+            behavior.kind,
+            VanillaBlockItemKind::BannerItem
+                | VanillaBlockItemKind::PlayerHeadItem
+                | VanillaBlockItemKind::SignItem
+                | VanillaBlockItemKind::StandingAndWallBlockItem
+        );
+        let placement = if standing_and_wall {
+            state::standing_and_wall_state_for_placement(
+                self,
+                behavior,
+                target_pos,
+                replace_clicked,
+                context,
+                ProtocolDirection::Down,
+            )
+        } else {
+            state::block_state_for_placement(self, block_type, target_pos, replace_clicked, context)
+        };
+        let placement_state_id = match placement {
             BlockPlacementState::State(state_id) => state_id,
+            BlockPlacementState::Fail => {
+                return block_item_fallback(self, hand, &stack, LocalInteractionResult::Fail);
+            }
             BlockPlacementState::Unsupported => return unsupported(),
         };
         let Some(placement_state) = self.registries().block_state(placement_state_id) else {
             return unsupported();
         };
-        if placement_state.name != block_type.resource_id {
+        let Some(placed_block_type) =
+            bbb_protocol::block_types::vanilla_block_type_for_resource_id(&placement_state.name)
+        else {
+            return unsupported();
+        };
+        let expected_placement_block = placed_block_type.id == block_type.id
+            || behavior
+                .wall_block_type_id
+                .is_some_and(|wall_block_type_id| wall_block_type_id == placed_block_type.id);
+        if !expected_placement_block {
             return unsupported();
         }
-        if let Some(owner) = block_type.can_survive_override {
+        if let Some(owner) = placed_block_type.can_survive_override {
             match self.local_block_state_can_survive(target_pos, placement_state_id, owner) {
                 Some(true) => {}
                 Some(false) => {
@@ -99,9 +133,12 @@ impl WorldStore {
                 None => return unsupported(),
             }
         }
-        let Some(unobstructed) =
+        let unobstructed = if standing_and_wall {
+            self.local_block_state_empty_context_is_unobstructed(target_pos, placement_state_id)
+        } else {
             self.local_block_state_placement_is_unobstructed(target_pos, placement_state_id)
-        else {
+        };
+        let Some(unobstructed) = unobstructed else {
             return unsupported();
         };
         if !unobstructed {
@@ -123,7 +160,7 @@ impl WorldStore {
         }
 
         LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
-            LocalInteractionSuccess::block_place_from_profile(target_pos, block_type.id),
+            LocalInteractionSuccess::block_place_from_profile(target_pos, placed_block_type.id),
         ))
     }
 
@@ -247,10 +284,12 @@ mod tests {
         data_component_types::VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID,
         game_types::VANILLA_GAME_TYPE_SURVIVAL_ID,
         item_types::{
-            VANILLA_ITEM_AMETHYST_CLUSTER_ID, VANILLA_ITEM_CANDLE_ID, VANILLA_ITEM_FURNACE_ID,
-            VANILLA_ITEM_HEAVY_CORE_ID, VANILLA_ITEM_OAK_LOG_ID, VANILLA_ITEM_OAK_SIGN_ID,
-            VANILLA_ITEM_OAK_SLAB_ID, VANILLA_ITEM_OBSERVER_ID, VANILLA_ITEM_RESPAWN_ANCHOR_ID,
-            VANILLA_ITEM_STONE_ID,
+            VANILLA_ITEM_AMETHYST_CLUSTER_ID, VANILLA_ITEM_CANDLE_ID,
+            VANILLA_ITEM_COMMAND_BLOCK_ID, VANILLA_ITEM_FURNACE_ID, VANILLA_ITEM_HEAVY_CORE_ID,
+            VANILLA_ITEM_LADDER_ID, VANILLA_ITEM_LANTERN_ID, VANILLA_ITEM_OAK_HANGING_SIGN_ID,
+            VANILLA_ITEM_OAK_LOG_ID, VANILLA_ITEM_OAK_SIGN_ID, VANILLA_ITEM_OAK_SLAB_ID,
+            VANILLA_ITEM_OAK_STAIRS_ID, VANILLA_ITEM_OBSERVER_ID, VANILLA_ITEM_RESPAWN_ANCHOR_ID,
+            VANILLA_ITEM_STONE_ID, VANILLA_ITEM_WHITE_BED_ID,
         },
         packets::{
             BlockPos as ProtocolBlockPos, BlockUpdate, CommonPlayerSpawnInfo,
@@ -477,6 +516,125 @@ mod tests {
     }
 
     #[test]
+    fn ordered_direction_placement_selects_exact_ladder_lantern_and_stair_states() {
+        let east_target = BlockPos { x: 1, y: 8, z: 0 };
+        let mut ladder = placement_world();
+        set_held(&mut ladder, VANILLA_ITEM_LADDER_ID, 1);
+        assert!(matches!(
+            ladder.predict_local_block_use_with_hit(
+                CLICKED,
+                ProtocolDirection::East,
+                [1.0, 0.5, 0.5],
+                false,
+                InteractionHand::MainHand,
+                false,
+                13,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(
+            ladder.probe_block(east_target).unwrap().block_state_id,
+            state_id(
+                "minecraft:ladder",
+                [("facing", "east"), ("waterlogged", "false")]
+            )
+        );
+
+        let mut lantern = placement_world();
+        set_held(&mut lantern, VANILLA_ITEM_LANTERN_ID, 1);
+        assert!(matches!(
+            use_block(&mut lantern, 14),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(
+            lantern.probe_block(TARGET).unwrap().block_state_id,
+            state_id(
+                "minecraft:lantern",
+                [("hanging", "false"), ("waterlogged", "false")]
+            )
+        );
+
+        let stair_clicked = BlockPos { x: 8, y: 8, z: 8 };
+        let stair_target = BlockPos {
+            y: 9,
+            ..stair_clicked
+        };
+        let mut stair = placement_world();
+        set_block(&mut stair, stair_clicked, state_id("minecraft:stone", []));
+        stair.set_local_player_pose(LocalPlayerPoseState {
+            position: Vec3d {
+                x: 4.0,
+                y: 8.0,
+                z: 4.0,
+            },
+            ..LocalPlayerPoseState::default()
+        });
+        set_held(&mut stair, VANILLA_ITEM_OAK_STAIRS_ID, 1);
+        assert!(matches!(
+            stair.predict_local_block_use_with_hit(
+                stair_clicked,
+                ProtocolDirection::Up,
+                [0.25, 1.0, 0.75],
+                false,
+                InteractionHand::MainHand,
+                false,
+                15,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(
+            stair.probe_block(stair_target).unwrap().block_state_id,
+            state_id(
+                "minecraft:oak_stairs",
+                [
+                    ("facing", "south"),
+                    ("half", "bottom"),
+                    ("shape", "straight"),
+                    ("waterlogged", "false"),
+                ]
+            )
+        );
+    }
+
+    #[test]
+    fn bed_item_places_its_client_foot_and_gamemaster_item_checks_permission() {
+        let mut bed = placement_world();
+        set_held(&mut bed, VANILLA_ITEM_WHITE_BED_ID, 1);
+        assert!(matches!(
+            use_block(&mut bed, 16),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(
+            bed.probe_block(TARGET).unwrap().block_state_id,
+            state_id(
+                "minecraft:white_bed",
+                [("facing", "south"), ("occupied", "false"), ("part", "foot"),]
+            )
+        );
+        assert_eq!(
+            bed.probe_block(BlockPos {
+                z: TARGET.z + 1,
+                ..TARGET
+            })
+            .unwrap()
+            .block_state_id,
+            state_id("minecraft:air", [])
+        );
+
+        let mut command = placement_world();
+        set_held(&mut command, VANILLA_ITEM_COMMAND_BLOCK_ID, 1);
+        assert_eq!(
+            use_block(&mut command, 17),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
+        );
+        assert_eq!(held(&command).count, 1);
+        assert_eq!(
+            command.probe_block(TARGET).unwrap().block_state_id,
+            state_id("minecraft:air", [])
+        );
+    }
+
+    #[test]
     fn placement_survival_uses_the_shared_exact_face_support_evaluator() {
         let mut supported = placement_world();
         set_held(&mut supported, VANILLA_ITEM_AMETHYST_CLUSTER_ID, 1);
@@ -540,9 +698,49 @@ mod tests {
     }
 
     #[test]
-    fn specialized_item_subclass_remains_explicit_for_the_next_stage() {
+    fn standing_and_wall_item_selects_the_exact_attachment_form() {
+        let mut standing = placement_world();
+        set_held(&mut standing, VANILLA_ITEM_OAK_SIGN_ID, 1);
+        assert!(matches!(
+            use_block(&mut standing, 18),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(
+            standing.probe_block(TARGET).unwrap().block_state_id,
+            state_id(
+                "minecraft:oak_sign",
+                [("rotation", "8"), ("waterlogged", "false")]
+            )
+        );
+
+        let east_target = BlockPos { x: 1, y: 8, z: 0 };
+        let mut wall = placement_world();
+        set_held(&mut wall, VANILLA_ITEM_OAK_SIGN_ID, 1);
+        assert!(matches!(
+            wall.predict_local_block_use_with_hit(
+                CLICKED,
+                ProtocolDirection::East,
+                [1.0, 0.5, 0.5],
+                false,
+                InteractionHand::MainHand,
+                false,
+                19,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(
+            wall.probe_block(east_target).unwrap().block_state_id,
+            state_id(
+                "minecraft:oak_wall_sign",
+                [("facing", "east"), ("waterlogged", "false")]
+            )
+        );
+    }
+
+    #[test]
+    fn remaining_hanging_sign_subclass_stays_explicit() {
         let mut world = placement_world();
-        set_held(&mut world, VANILLA_ITEM_OAK_SIGN_ID, 1);
+        set_held(&mut world, VANILLA_ITEM_OAK_HANGING_SIGN_ID, 1);
         assert_eq!(
             world.predict_local_block_use_with_hit(
                 CLICKED,

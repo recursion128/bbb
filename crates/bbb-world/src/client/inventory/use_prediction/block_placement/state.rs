@@ -2,16 +2,23 @@ use std::collections::BTreeMap;
 
 use bbb_protocol::{
     block_state_types::vanilla_block_default_state_id,
-    block_types::{BlockTypeCatalogEntry, VanillaGetStateForPlacementOverride},
+    block_types::{vanilla_block_type, BlockTypeCatalogEntry, VanillaGetStateForPlacementOverride},
+    item_types::VanillaBlockItemBehavior,
     packets::Direction,
 };
 
 use super::super::{LocalBlockUseContext, WorldStore};
+use super::context::{
+    clockwise, counterclockwise, direction_axis, direction_axis_name, direction_name,
+    front_and_top_name, horizontal_direction, nearest_directions, opposite, placement_directions,
+    relative, rotation_segment, world_click_y, DirectionAxis,
+};
 use crate::{BlockPos, TerrainFluidKind};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum BlockPlacementState {
     State(i32),
+    Fail,
     Unsupported,
 }
 
@@ -95,7 +102,7 @@ pub(super) fn block_state_for_placement(
     world: &WorldStore,
     block_type: &BlockTypeCatalogEntry,
     target_pos: BlockPos,
-    _replace_clicked: bool,
+    replace_clicked: bool,
     context: LocalBlockUseContext,
 ) -> BlockPlacementState {
     let Some(default_state_id) = vanilla_block_default_state_id(block_type.id) else {
@@ -110,10 +117,14 @@ pub(super) fn block_state_for_placement(
     let Some(horizontal) = horizontal_direction(pose.y_rot) else {
         return BlockPlacementState::Unsupported;
     };
-    let Some(nearest) = nearest_directions(pose.x_rot, pose.y_rot).map(|directions| directions[0])
+    let Some(nearest_directions) = nearest_directions(pose.x_rot, pose.y_rot) else {
+        return BlockPlacementState::Unsupported;
+    };
+    let Some(directions) = placement_directions(pose.x_rot, pose.y_rot, context, replace_clicked)
     else {
         return BlockPlacementState::Unsupported;
     };
+    let nearest = nearest_directions[0];
 
     let properties = match owner {
         VanillaGetStateForPlacementOverride::AbstractFurnaceBlock
@@ -122,6 +133,7 @@ pub(super) fn block_state_for_placement(
         | VanillaGetStateForPlacementOverride::ChiseledBookShelfBlock
         | VanillaGetStateForPlacementOverride::EndPortalFrameBlock
         | VanillaGetStateForPlacementOverride::GlazedTerracottaBlock
+        | VanillaGetStateForPlacementOverride::LecternBlock
         | VanillaGetStateForPlacementOverride::LoomBlock
         | VanillaGetStateForPlacementOverride::StonecutterBlock
         | VanillaGetStateForPlacementOverride::VaultBlock => {
@@ -183,6 +195,141 @@ pub(super) fn block_state_for_placement(
                 facing
             };
             [("facing", direction_name(facing))]
+        }
+        VanillaGetStateForPlacementOverride::BaseRailBlock => {
+            let Some(waterlogged) = target_is_source_water(world, target_pos) else {
+                return BlockPlacementState::Unsupported;
+            };
+            let shape = if direction_axis(horizontal) == DirectionAxis::X {
+                "east_west"
+            } else {
+                "north_south"
+            };
+            return state_with_properties(
+                world,
+                block_type,
+                default_state_id,
+                [("shape", shape), ("waterlogged", boolean_name(waterlogged))],
+            );
+        }
+        VanillaGetStateForPlacementOverride::BigDripleafBlock => {
+            let Some(waterlogged) = target_is_source_water(world, target_pos) else {
+                return BlockPlacementState::Unsupported;
+            };
+            let Some(below) = world.probe_block(relative(target_pos, Direction::Down)) else {
+                return BlockPlacementState::Unsupported;
+            };
+            let facing = if matches!(
+                below.block_name.as_deref(),
+                Some("minecraft:big_dripleaf" | "minecraft:big_dripleaf_stem")
+            ) {
+                let Some(facing) = direction_property(&below.block_properties, "facing") else {
+                    return BlockPlacementState::Unsupported;
+                };
+                facing
+            } else {
+                opposite(horizontal)
+            };
+            return state_with_properties(
+                world,
+                block_type,
+                default_state_id,
+                [
+                    ("facing", direction_name(facing)),
+                    ("waterlogged", boolean_name(waterlogged)),
+                ],
+            );
+        }
+        VanillaGetStateForPlacementOverride::BedBlock => {
+            let head_pos = relative(target_pos, horizontal);
+            let Some(replaceable) =
+                block_item_can_replace(world, head_pos, block_type, context, false)
+            else {
+                return BlockPlacementState::Unsupported;
+            };
+            if !replaceable || !world.world_border().contains_block_pos(head_pos) {
+                return BlockPlacementState::Fail;
+            }
+            return state_with_properties(
+                world,
+                block_type,
+                default_state_id,
+                [("facing", direction_name(horizontal))],
+            );
+        }
+        VanillaGetStateForPlacementOverride::EndRodBlock => {
+            let Some(behind) = world.probe_block(relative(target_pos, opposite(context.face)))
+            else {
+                return BlockPlacementState::Unsupported;
+            };
+            let same_direction = behind.block_name.as_deref() == Some(block_type.resource_id)
+                && direction_property(&behind.block_properties, "facing") == Some(context.face);
+            let facing = if same_direction {
+                opposite(context.face)
+            } else {
+                context.face
+            };
+            return state_with_properties(
+                world,
+                block_type,
+                default_state_id,
+                [("facing", direction_name(facing))],
+            );
+        }
+        VanillaGetStateForPlacementOverride::JigsawBlock => {
+            let top = if direction_axis(context.face) == DirectionAxis::Y {
+                opposite(horizontal)
+            } else {
+                Direction::Up
+            };
+            let Some(orientation) = front_and_top_name(context.face, top) else {
+                return BlockPlacementState::Unsupported;
+            };
+            return state_with_properties(
+                world,
+                block_type,
+                default_state_id,
+                [("orientation", orientation)],
+            );
+        }
+        VanillaGetStateForPlacementOverride::BannerBlock => {
+            let Some(rotation) = rotation_segment(pose.y_rot + 180.0) else {
+                return BlockPlacementState::Unsupported;
+            };
+            return state_with_owned_properties(
+                world,
+                block_type,
+                default_state_id,
+                [("rotation", rotation.to_string())],
+            );
+        }
+        VanillaGetStateForPlacementOverride::StandingSignBlock => {
+            let Some(rotation) = rotation_segment(pose.y_rot + 180.0) else {
+                return BlockPlacementState::Unsupported;
+            };
+            let Some(waterlogged) = target_is_source_water(world, target_pos) else {
+                return BlockPlacementState::Unsupported;
+            };
+            return state_with_owned_properties(
+                world,
+                block_type,
+                default_state_id,
+                [
+                    ("rotation", rotation.to_string()),
+                    ("waterlogged", boolean_name(waterlogged).to_string()),
+                ],
+            );
+        }
+        VanillaGetStateForPlacementOverride::SkullBlock => {
+            let Some(rotation) = rotation_segment(pose.y_rot) else {
+                return BlockPlacementState::Unsupported;
+            };
+            return state_with_owned_properties(
+                world,
+                block_type,
+                default_state_id,
+                [("rotation", rotation.to_string())],
+            );
         }
         VanillaGetStateForPlacementOverride::DecoratedPotBlock => {
             let Some(waterlogged) = target_is_source_water(world, target_pos) else {
@@ -386,10 +533,278 @@ pub(super) fn block_state_for_placement(
                 [("facing", direction_name(opposite(horizontal)))],
             );
         }
+        VanillaGetStateForPlacementOverride::StairBlock => {
+            let Some(waterlogged) = target_is_source_water(world, target_pos) else {
+                return BlockPlacementState::Unsupported;
+            };
+            let local_y = world_click_y(context) - f64::from(target_pos.y);
+            let half = if context.face != Direction::Down
+                && (context.face == Direction::Up || local_y <= 0.5)
+            {
+                "bottom"
+            } else {
+                "top"
+            };
+            let Some(shape) = stair_shape(world, target_pos, horizontal, half) else {
+                return BlockPlacementState::Unsupported;
+            };
+            return state_with_properties(
+                world,
+                block_type,
+                default_state_id,
+                [
+                    ("facing", direction_name(horizontal)),
+                    ("half", half),
+                    ("shape", shape),
+                    ("waterlogged", boolean_name(waterlogged)),
+                ],
+            );
+        }
+        VanillaGetStateForPlacementOverride::FaceAttachedHorizontalDirectionalBlock => {
+            for direction in directions {
+                let (face, facing) = if direction_axis(direction) == DirectionAxis::Y {
+                    (
+                        if direction == Direction::Up {
+                            "ceiling"
+                        } else {
+                            "floor"
+                        },
+                        horizontal,
+                    )
+                } else {
+                    ("wall", opposite(direction))
+                };
+                let candidate = state_with_properties(
+                    world,
+                    block_type,
+                    default_state_id,
+                    [("face", face), ("facing", direction_name(facing))],
+                );
+                let BlockPlacementState::State(state_id) = candidate else {
+                    return candidate;
+                };
+                match world.local_block_state_can_survive(
+                    target_pos,
+                    state_id,
+                    bbb_protocol::block_types::VanillaCanSurviveOverride::FaceAttachedHorizontalDirectionalBlock,
+                ) {
+                    Some(true) => return BlockPlacementState::State(state_id),
+                    Some(false) => {}
+                    None => return BlockPlacementState::Unsupported,
+                }
+            }
+            return BlockPlacementState::Fail;
+        }
+        VanillaGetStateForPlacementOverride::LadderBlock => {
+            if !replace_clicked {
+                let Some(behind) = world.probe_block(relative(target_pos, opposite(context.face)))
+                else {
+                    return BlockPlacementState::Unsupported;
+                };
+                if behind.block_name.as_deref() == Some(block_type.resource_id)
+                    && direction_property(&behind.block_properties, "facing") == Some(context.face)
+                {
+                    return BlockPlacementState::Fail;
+                }
+            }
+            let Some(waterlogged) = target_is_source_water(world, target_pos) else {
+                return BlockPlacementState::Unsupported;
+            };
+            for direction in directions {
+                if direction_axis(direction) != DirectionAxis::Y {
+                    let candidate = state_with_properties(
+                        world,
+                        block_type,
+                        default_state_id,
+                        [
+                            ("facing", direction_name(opposite(direction))),
+                            ("waterlogged", boolean_name(waterlogged)),
+                        ],
+                    );
+                    let BlockPlacementState::State(state_id) = candidate else {
+                        return candidate;
+                    };
+                    match world.local_block_state_can_survive(
+                        target_pos,
+                        state_id,
+                        bbb_protocol::block_types::VanillaCanSurviveOverride::LadderBlock,
+                    ) {
+                        Some(true) => return BlockPlacementState::State(state_id),
+                        Some(false) => {}
+                        None => return BlockPlacementState::Unsupported,
+                    }
+                }
+            }
+            return BlockPlacementState::Fail;
+        }
+        VanillaGetStateForPlacementOverride::LanternBlock => {
+            let Some(waterlogged) = target_is_source_water(world, target_pos) else {
+                return BlockPlacementState::Unsupported;
+            };
+            for direction in directions {
+                if direction_axis(direction) == DirectionAxis::Y {
+                    let candidate = state_with_properties(
+                        world,
+                        block_type,
+                        default_state_id,
+                        [
+                            ("hanging", boolean_name(direction == Direction::Up)),
+                            ("waterlogged", boolean_name(waterlogged)),
+                        ],
+                    );
+                    let BlockPlacementState::State(state_id) = candidate else {
+                        return candidate;
+                    };
+                    match world.local_block_state_can_survive(
+                        target_pos,
+                        state_id,
+                        bbb_protocol::block_types::VanillaCanSurviveOverride::LanternBlock,
+                    ) {
+                        Some(true) => return BlockPlacementState::State(state_id),
+                        Some(false) => {}
+                        None => return BlockPlacementState::Unsupported,
+                    }
+                }
+            }
+            return BlockPlacementState::Fail;
+        }
+        VanillaGetStateForPlacementOverride::WallBannerBlock
+        | VanillaGetStateForPlacementOverride::WallSignBlock
+        | VanillaGetStateForPlacementOverride::WallTorchBlock
+        | VanillaGetStateForPlacementOverride::RedstoneWallTorchBlock => {
+            let waterlogged = if owner == VanillaGetStateForPlacementOverride::WallSignBlock {
+                let Some(waterlogged) = target_is_source_water(world, target_pos) else {
+                    return BlockPlacementState::Unsupported;
+                };
+                Some(waterlogged)
+            } else {
+                None
+            };
+            let survival_owner = match owner {
+                VanillaGetStateForPlacementOverride::WallBannerBlock => {
+                    bbb_protocol::block_types::VanillaCanSurviveOverride::WallBannerBlock
+                }
+                VanillaGetStateForPlacementOverride::WallSignBlock => {
+                    bbb_protocol::block_types::VanillaCanSurviveOverride::WallSignBlock
+                }
+                VanillaGetStateForPlacementOverride::WallTorchBlock => {
+                    bbb_protocol::block_types::VanillaCanSurviveOverride::WallTorchBlock
+                }
+                VanillaGetStateForPlacementOverride::RedstoneWallTorchBlock => {
+                    bbb_protocol::block_types::VanillaCanSurviveOverride::RedstoneWallTorchBlock
+                }
+                _ => unreachable!("matched wall support owner"),
+            };
+            for direction in directions {
+                if direction_axis(direction) != DirectionAxis::Y {
+                    let facing = direction_name(opposite(direction)).to_string();
+                    let candidate = if let Some(waterlogged) = waterlogged {
+                        state_with_owned_properties(
+                            world,
+                            block_type,
+                            default_state_id,
+                            [
+                                ("facing", facing),
+                                ("waterlogged", boolean_name(waterlogged).to_string()),
+                            ],
+                        )
+                    } else {
+                        state_with_owned_properties(
+                            world,
+                            block_type,
+                            default_state_id,
+                            [("facing", facing)],
+                        )
+                    };
+                    let BlockPlacementState::State(state_id) = candidate else {
+                        return candidate;
+                    };
+                    match world.local_block_state_can_survive(target_pos, state_id, survival_owner)
+                    {
+                        Some(true) => return BlockPlacementState::State(state_id),
+                        Some(false) => {}
+                        None => return BlockPlacementState::Unsupported,
+                    }
+                }
+            }
+            return BlockPlacementState::Fail;
+        }
+        VanillaGetStateForPlacementOverride::WallSkullBlock => {
+            for direction in directions {
+                if direction_axis(direction) != DirectionAxis::Y {
+                    let support_pos = relative(target_pos, direction);
+                    let Some(replaceable) =
+                        world.local_block_is_replaceable_by_different_item(support_pos)
+                    else {
+                        return BlockPlacementState::Unsupported;
+                    };
+                    if !replaceable {
+                        return state_with_properties(
+                            world,
+                            block_type,
+                            default_state_id,
+                            [("facing", direction_name(opposite(direction)))],
+                        );
+                    }
+                }
+            }
+            return BlockPlacementState::Fail;
+        }
         _ => return BlockPlacementState::Unsupported,
     };
 
     state_with_properties(world, block_type, default_state_id, properties)
+}
+
+pub(super) fn standing_and_wall_state_for_placement(
+    world: &WorldStore,
+    behavior: VanillaBlockItemBehavior,
+    target_pos: BlockPos,
+    replace_clicked: bool,
+    context: LocalBlockUseContext,
+    attachment_direction: Direction,
+) -> BlockPlacementState {
+    let Some(primary) = vanilla_block_type(behavior.block_type_id) else {
+        return BlockPlacementState::Unsupported;
+    };
+    let Some(wall) = behavior.wall_block_type_id.and_then(vanilla_block_type) else {
+        return BlockPlacementState::Unsupported;
+    };
+    let primary_state =
+        block_state_for_placement(world, primary, target_pos, replace_clicked, context);
+    let wall_state = block_state_for_placement(world, wall, target_pos, replace_clicked, context);
+    let Some(pose) = world.local_player().pose else {
+        return BlockPlacementState::Unsupported;
+    };
+    let Some(directions) = placement_directions(pose.x_rot, pose.y_rot, context, replace_clicked)
+    else {
+        return BlockPlacementState::Unsupported;
+    };
+
+    for direction in directions {
+        if direction == opposite(attachment_direction) {
+            continue;
+        }
+        let (candidate, block_type) = if direction == attachment_direction {
+            (primary_state, primary)
+        } else {
+            (wall_state, wall)
+        };
+        let state_id = match candidate {
+            BlockPlacementState::State(state_id) => state_id,
+            BlockPlacementState::Fail => continue,
+            BlockPlacementState::Unsupported => return BlockPlacementState::Unsupported,
+        };
+        match block_type.can_survive_override {
+            None => return BlockPlacementState::State(state_id),
+            Some(owner) => match world.local_block_state_can_survive(target_pos, state_id, owner) {
+                Some(true) => return BlockPlacementState::State(state_id),
+                Some(false) => {}
+                None => return BlockPlacementState::Unsupported,
+            },
+        }
+    }
+    BlockPlacementState::Fail
 }
 
 fn state_with_properties<const N: usize>(
@@ -410,6 +825,28 @@ fn state_with_properties<const N: usize>(
             return BlockPlacementState::Unsupported;
         }
         properties.insert(name.to_string(), value.to_string());
+    }
+    resolve_state(world, block_type.resource_id, properties)
+}
+
+fn state_with_owned_properties<const N: usize>(
+    world: &WorldStore,
+    block_type: &BlockTypeCatalogEntry,
+    default_state_id: i32,
+    updates: [(&str, String); N],
+) -> BlockPlacementState {
+    let Some(default_state) = world.registries().block_state(default_state_id) else {
+        return BlockPlacementState::Unsupported;
+    };
+    if default_state.name != block_type.resource_id {
+        return BlockPlacementState::Unsupported;
+    }
+    let mut properties = default_state.properties.clone();
+    for (name, value) in updates {
+        if !properties.contains_key(name) {
+            return BlockPlacementState::Unsupported;
+        }
+        properties.insert(name.to_string(), value);
     }
     resolve_state(world, block_type.resource_id, properties)
 }
@@ -439,8 +876,84 @@ fn integer_property(properties: &BTreeMap<String, String>, property: &str) -> Op
     properties.get(property)?.parse().ok()
 }
 
-fn world_click_y(context: LocalBlockUseContext) -> f64 {
-    f64::from(context.pos.y) + context.cursor[1]
+fn direction_property(properties: &BTreeMap<String, String>, property: &str) -> Option<Direction> {
+    match properties.get(property)?.as_str() {
+        "down" => Some(Direction::Down),
+        "up" => Some(Direction::Up),
+        "north" => Some(Direction::North),
+        "south" => Some(Direction::South),
+        "west" => Some(Direction::West),
+        "east" => Some(Direction::East),
+        _ => None,
+    }
+}
+
+fn stair_shape(
+    world: &WorldStore,
+    pos: BlockPos,
+    facing: Direction,
+    half: &str,
+) -> Option<&'static str> {
+    let behind = world.probe_block(relative(pos, facing))?;
+    if block_is_stair(&behind)
+        && behind.block_properties.get("half").map(String::as_str) == Some(half)
+    {
+        let behind_facing = direction_property(&behind.block_properties, "facing")?;
+        if direction_axis(behind_facing) != direction_axis(facing)
+            && stair_can_take_shape(world, pos, facing, half, opposite(behind_facing))?
+        {
+            return Some(if behind_facing == counterclockwise(facing)? {
+                "outer_left"
+            } else {
+                "outer_right"
+            });
+        }
+    }
+
+    let front = world.probe_block(relative(pos, opposite(facing)))?;
+    if block_is_stair(&front)
+        && front.block_properties.get("half").map(String::as_str) == Some(half)
+    {
+        let front_facing = direction_property(&front.block_properties, "facing")?;
+        if direction_axis(front_facing) != direction_axis(facing)
+            && stair_can_take_shape(world, pos, facing, half, front_facing)?
+        {
+            return Some(if front_facing == counterclockwise(facing)? {
+                "inner_left"
+            } else {
+                "inner_right"
+            });
+        }
+    }
+    Some("straight")
+}
+
+fn stair_can_take_shape(
+    world: &WorldStore,
+    pos: BlockPos,
+    facing: Direction,
+    half: &str,
+    neighbour_direction: Direction,
+) -> Option<bool> {
+    let neighbour = world.probe_block(relative(pos, neighbour_direction))?;
+    if !block_is_stair(&neighbour) {
+        return Some(true);
+    }
+    Some(
+        direction_property(&neighbour.block_properties, "facing")? != facing
+            || neighbour.block_properties.get("half").map(String::as_str) != Some(half),
+    )
+}
+
+fn block_is_stair(block: &crate::BlockProbe) -> bool {
+    block
+        .block_name
+        .as_deref()
+        .and_then(bbb_protocol::block_types::vanilla_block_type_for_resource_id)
+        .is_some_and(|block_type| {
+            block_type.get_state_for_placement_override
+                == Some(VanillaGetStateForPlacementOverride::StairBlock)
+        })
 }
 
 fn target_is_source_water(world: &WorldStore, target_pos: BlockPos) -> Option<bool> {
@@ -464,201 +977,5 @@ fn boolean_name(value: bool) -> &'static str {
         "true"
     } else {
         "false"
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum DirectionAxis {
-    X,
-    Y,
-    Z,
-}
-
-fn direction_axis(direction: Direction) -> DirectionAxis {
-    match direction {
-        Direction::Down | Direction::Up => DirectionAxis::Y,
-        Direction::North | Direction::South => DirectionAxis::Z,
-        Direction::West | Direction::East => DirectionAxis::X,
-    }
-}
-
-fn direction_axis_name(direction: Direction) -> &'static str {
-    match direction_axis(direction) {
-        DirectionAxis::X => "x",
-        DirectionAxis::Y => "y",
-        DirectionAxis::Z => "z",
-    }
-}
-
-fn direction_name(direction: Direction) -> &'static str {
-    match direction {
-        Direction::Down => "down",
-        Direction::Up => "up",
-        Direction::North => "north",
-        Direction::South => "south",
-        Direction::West => "west",
-        Direction::East => "east",
-    }
-}
-
-fn opposite(direction: Direction) -> Direction {
-    match direction {
-        Direction::Down => Direction::Up,
-        Direction::Up => Direction::Down,
-        Direction::North => Direction::South,
-        Direction::South => Direction::North,
-        Direction::West => Direction::East,
-        Direction::East => Direction::West,
-    }
-}
-
-fn relative(pos: BlockPos, direction: Direction) -> BlockPos {
-    match direction {
-        Direction::Down => BlockPos {
-            y: pos.y - 1,
-            ..pos
-        },
-        Direction::Up => BlockPos {
-            y: pos.y + 1,
-            ..pos
-        },
-        Direction::North => BlockPos {
-            z: pos.z - 1,
-            ..pos
-        },
-        Direction::South => BlockPos {
-            z: pos.z + 1,
-            ..pos
-        },
-        Direction::West => BlockPos {
-            x: pos.x - 1,
-            ..pos
-        },
-        Direction::East => BlockPos {
-            x: pos.x + 1,
-            ..pos
-        },
-    }
-}
-
-fn clockwise(direction: Direction) -> Option<Direction> {
-    match direction {
-        Direction::North => Some(Direction::East),
-        Direction::South => Some(Direction::West),
-        Direction::West => Some(Direction::North),
-        Direction::East => Some(Direction::South),
-        Direction::Down | Direction::Up => None,
-    }
-}
-
-fn horizontal_direction(y_rot: f32) -> Option<Direction> {
-    if !y_rot.is_finite() {
-        return None;
-    }
-    let data_value = ((f64::from(y_rot) / 90.0 + 0.5).floor() as i32) & 3;
-    Some(match data_value {
-        0 => Direction::South,
-        1 => Direction::West,
-        2 => Direction::North,
-        3 => Direction::East,
-        _ => unreachable!("masked horizontal direction"),
-    })
-}
-
-fn nearest_directions(x_rot: f32, y_rot: f32) -> Option<[Direction; 6]> {
-    if !x_rot.is_finite() || !y_rot.is_finite() {
-        return None;
-    }
-    let pitch = x_rot.to_radians();
-    let yaw = -y_rot.to_radians();
-    let pitch_sin = pitch.sin();
-    let pitch_cos = pitch.cos();
-    let yaw_sin = yaw.sin();
-    let yaw_cos = yaw.cos();
-    let x_pos = yaw_sin > 0.0;
-    let y_pos = pitch_sin < 0.0;
-    let z_pos = yaw_cos > 0.0;
-    let x_yaw = yaw_sin.abs();
-    let y_mag = pitch_sin.abs();
-    let z_yaw = yaw_cos.abs();
-    let x_mag = x_yaw * pitch_cos;
-    let z_mag = z_yaw * pitch_cos;
-    let axis_x = if x_pos {
-        Direction::East
-    } else {
-        Direction::West
-    };
-    let axis_y = if y_pos {
-        Direction::Up
-    } else {
-        Direction::Down
-    };
-    let axis_z = if z_pos {
-        Direction::South
-    } else {
-        Direction::North
-    };
-    Some(if x_yaw > z_yaw {
-        if y_mag > x_mag {
-            direction_array(axis_y, axis_x, axis_z)
-        } else if z_mag > y_mag {
-            direction_array(axis_x, axis_z, axis_y)
-        } else {
-            direction_array(axis_x, axis_y, axis_z)
-        }
-    } else if y_mag > z_mag {
-        direction_array(axis_y, axis_z, axis_x)
-    } else if x_mag > y_mag {
-        direction_array(axis_z, axis_x, axis_y)
-    } else {
-        direction_array(axis_z, axis_y, axis_x)
-    })
-}
-
-fn direction_array(axis_1: Direction, axis_2: Direction, axis_3: Direction) -> [Direction; 6] {
-    [
-        axis_1,
-        axis_2,
-        axis_3,
-        opposite(axis_3),
-        opposite(axis_2),
-        opposite(axis_1),
-    ]
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn horizontal_direction_matches_vanilla_quadrants_and_boundaries() {
-        assert_eq!(horizontal_direction(0.0), Some(Direction::South));
-        assert_eq!(horizontal_direction(44.999), Some(Direction::South));
-        assert_eq!(horizontal_direction(45.0), Some(Direction::West));
-        assert_eq!(horizontal_direction(90.0), Some(Direction::West));
-        assert_eq!(horizontal_direction(180.0), Some(Direction::North));
-        assert_eq!(horizontal_direction(270.0), Some(Direction::East));
-        assert_eq!(horizontal_direction(-90.0), Some(Direction::East));
-        assert_eq!(horizontal_direction(f32::NAN), None);
-    }
-
-    #[test]
-    fn nearest_direction_matches_vanilla_view_axes() {
-        assert_eq!(
-            nearest_directions(0.0, 0.0).map(|directions| directions[0]),
-            Some(Direction::South)
-        );
-        assert_eq!(
-            nearest_directions(0.0, 90.0).map(|directions| directions[0]),
-            Some(Direction::West)
-        );
-        assert_eq!(
-            nearest_directions(-90.0, 0.0).map(|directions| directions[0]),
-            Some(Direction::Up)
-        );
-        assert_eq!(
-            nearest_directions(90.0, 0.0).map(|directions| directions[0]),
-            Some(Direction::Down)
-        );
     }
 }

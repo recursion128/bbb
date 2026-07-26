@@ -14,6 +14,7 @@ use bbb_protocol::{
 };
 
 use super::super::WorldStore;
+use super::context::{opposite, relative};
 use crate::{BlockPos, BlockProbe};
 
 #[derive(Debug, Clone, Copy)]
@@ -35,6 +36,7 @@ enum BlockCanSurviveRule {
     SmallDripleaf,
     BelowLegacySolid,
     FacingLegacySolid,
+    FaceAttached,
 }
 
 impl WorldStore {
@@ -250,6 +252,21 @@ impl WorldStore {
                 vanilla_block_state_support_facts(support.block_state_id)
                     .map(|facts| facts.legacy_solid())
             }
+            BlockCanSurviveRule::FaceAttached => {
+                let face = properties.get("face")?.as_str();
+                let support_direction = match face {
+                    "ceiling" => Direction::Up,
+                    "floor" => Direction::Down,
+                    "wall" => opposite(direction_property(properties, "facing")?),
+                    _ => return None,
+                };
+                let support = self.probe_block(relative(pos, support_direction))?;
+                self.placement_face_sturdy(
+                    &support,
+                    opposite(support_direction),
+                    VanillaBlockSupportType::Full,
+                )
+            }
         }
     }
 
@@ -306,46 +323,6 @@ impl WorldStore {
         let block_type_id = block_type_id(block)?;
         self.registry_holder_ids_for_tag("minecraft:block", tag)
             .map(|holder_ids| holder_ids.contains(&block_type_id))
-    }
-}
-
-fn relative(pos: BlockPos, direction: Direction) -> BlockPos {
-    match direction {
-        Direction::Down => BlockPos {
-            y: pos.y - 1,
-            ..pos
-        },
-        Direction::Up => BlockPos {
-            y: pos.y + 1,
-            ..pos
-        },
-        Direction::North => BlockPos {
-            z: pos.z - 1,
-            ..pos
-        },
-        Direction::South => BlockPos {
-            z: pos.z + 1,
-            ..pos
-        },
-        Direction::West => BlockPos {
-            x: pos.x - 1,
-            ..pos
-        },
-        Direction::East => BlockPos {
-            x: pos.x + 1,
-            ..pos
-        },
-    }
-}
-
-fn opposite(direction: Direction) -> Direction {
-    match direction {
-        Direction::Down => Direction::Up,
-        Direction::Up => Direction::Down,
-        Direction::North => Direction::South,
-        Direction::South => Direction::North,
-        Direction::West => Direction::East,
-        Direction::East => Direction::West,
     }
 }
 
@@ -435,7 +412,15 @@ const fn block_can_survive_rule(owner: VanillaCanSurviveOverride) -> Option<Bloc
         VanillaCanSurviveOverride::SeaPickleBlock => BlockCanSurviveRule::SeaPickle,
         VanillaCanSurviveOverride::SmallDripleafBlock => BlockCanSurviveRule::SmallDripleaf,
         VanillaCanSurviveOverride::StandingSignBlock => BlockCanSurviveRule::BelowLegacySolid,
-        VanillaCanSurviveOverride::WallSignBlock => BlockCanSurviveRule::FacingLegacySolid,
+        VanillaCanSurviveOverride::BannerBlock => BlockCanSurviveRule::BelowLegacySolid,
+        VanillaCanSurviveOverride::WallBannerBlock | VanillaCanSurviveOverride::WallSignBlock => {
+            BlockCanSurviveRule::FacingLegacySolid
+        }
+        VanillaCanSurviveOverride::RedstoneWallTorchBlock
+        | VanillaCanSurviveOverride::WallTorchBlock => BlockCanSurviveRule::FacingFull,
+        VanillaCanSurviveOverride::FaceAttachedHorizontalDirectionalBlock => {
+            BlockCanSurviveRule::FaceAttached
+        }
         _ => return None,
     })
 }
