@@ -9,7 +9,8 @@ use bbb_protocol::{
         vanilla_block_type_for_resource_id, VanillaBucketPickupOverride, VanillaCanSurviveOverride,
         VanillaLiquidBlockContainerOverride, VANILLA_BLOCK_AIR_ID, VANILLA_BLOCK_BIG_DRIPLEAF_ID,
         VANILLA_BLOCK_BIG_DRIPLEAF_STEM_ID, VANILLA_BLOCK_POINTED_DRIPSTONE_ID,
-        VANILLA_BLOCK_SCAFFOLDING_ID, VANILLA_BLOCK_SMALL_DRIPLEAF_ID,
+        VANILLA_BLOCK_POWDER_SNOW_ID, VANILLA_BLOCK_SCAFFOLDING_ID,
+        VANILLA_BLOCK_SMALL_DRIPLEAF_ID,
     },
     item_types::{
         ItemTypeCatalogEntry, VanillaBucketFluid, VanillaItemUseOverride, VANILLA_ITEM_BUCKET_ID,
@@ -27,6 +28,9 @@ const BUCKET_FILL_LAVA: &str = "minecraft:item.bucket.fill_lava";
 const BUCKET_FILL_POWDER_SNOW: &str = "minecraft:item.bucket.fill_powder_snow";
 const BUCKET_EMPTY: &str = "minecraft:item.bucket.empty";
 const BUCKET_EMPTY_LAVA: &str = "minecraft:item.bucket.empty_lava";
+const BUCKET_EMPTY_POWDER_SNOW: &str = "minecraft:item.bucket.empty_powder_snow";
+const BLOCK_PLACE_VOLUME: f32 = 1.0;
+const BLOCK_PLACE_PITCH: f32 = 0.8;
 
 #[derive(Debug, Clone, Copy)]
 enum BucketEmptyOutcome {
@@ -76,6 +80,88 @@ enum BucketCanSurviveRule {
 }
 
 impl WorldStore {
+    pub(super) fn predict_local_solid_bucket_item_use_on(
+        &mut self,
+        owner: VanillaItemUseOnOverride,
+        hand: InteractionHand,
+        context: LocalBlockUseContext,
+    ) -> LocalTargetUsePrediction {
+        let unresolved_owner = || LocalTargetUsePrediction::UnsupportedItemUseOn(owner);
+        let Some(stack) = self.local_item_in_hand(hand).cloned() else {
+            return unresolved_owner();
+        };
+        if stack.item_id != Some(VANILLA_ITEM_POWDER_SNOW_BUCKET_ID) || stack.count != 1 {
+            return unresolved_owner();
+        }
+        if !self.is_feature_enabled("minecraft:vanilla") {
+            return LocalTargetUsePrediction::Result(LocalInteractionResult::Fail);
+        }
+
+        let Some(replace_clicked) = self.local_block_is_replaceable_by_different_item(context.pos)
+        else {
+            return unresolved_owner();
+        };
+        let target_pos = if replace_clicked {
+            context.pos
+        } else {
+            relative(context.pos, context.face)
+        };
+        if !replace_clicked {
+            let Some(replace_target) =
+                self.local_block_is_replaceable_by_different_item(target_pos)
+            else {
+                return unresolved_owner();
+            };
+            if !replace_target {
+                return LocalTargetUsePrediction::Result(LocalInteractionResult::Fail);
+            }
+        }
+
+        let Some(block_type) = vanilla_block_type(VANILLA_BLOCK_POWDER_SNOW_ID)
+            .filter(|block_type| block_type.resource_id == "minecraft:powder_snow")
+        else {
+            return unresolved_owner();
+        };
+        let Some(placement_state_id) = self
+            .registries()
+            .block_state_id_by_name_and_properties(block_type.resource_id, &BTreeMap::new())
+        else {
+            return unresolved_owner();
+        };
+        // `Block.getStateForPlacement` returns this property-free default
+        // state, its inherited `canSurvive` returns true, and
+        // `PowderSnowBlock.getCollisionShape` is empty for the placement
+        // context. No entity-obstruction query remains on this exact path.
+        if !self.predict_local_block_state(target_pos, placement_state_id, context.sequence) {
+            return unresolved_owner();
+        }
+
+        let empty_result = if self
+            .local_player()
+            .abilities
+            .is_some_and(|abilities| abilities.instabuild)
+        {
+            stack
+        } else {
+            item_stack(VANILLA_ITEM_BUCKET_ID)
+        };
+        let Some(false) = self.replace_local_item_with_filled_result(
+            hand,
+            VANILLA_ITEM_POWDER_SNOW_BUCKET_ID,
+            empty_result,
+        ) else {
+            return unresolved_owner();
+        };
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+            LocalInteractionSuccess::block_place(
+                target_pos,
+                BUCKET_EMPTY_POWDER_SNOW,
+                BLOCK_PLACE_VOLUME,
+                BLOCK_PLACE_PITCH,
+            ),
+        ))
+    }
+
     pub(super) fn predict_local_bucket_item_use(
         &mut self,
         hand: InteractionHand,

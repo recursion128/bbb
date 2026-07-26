@@ -654,8 +654,8 @@ Commands:
 - Complete the remaining specialized targeted local-use prediction from
   `Minecraft.startUseItem`, `MultiPlayerGameMode.interact`, and `useItemOn`.
   Implement the remaining generated specialized block `useItemOn` / `useWithoutItem`
-  owners and item-side block / solid-bucket placement plus hanging-entity
-  placement so main/offhand iteration can stop or continue on the
+  owners and item-side block placement plus hanging-entity placement so
+  main/offhand iteration can stop or continue on the
   exact `InteractionResult`; complete `ComparatorBlock.refreshOutputState` after
   predicted mode changes, including arbitrary analog block-entity and item-frame
   inputs; then apply each success swing-source and held-item presentation.

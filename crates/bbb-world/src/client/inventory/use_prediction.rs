@@ -965,6 +965,9 @@ impl WorldStore {
             VanillaItemUseOnOverride::PotionItem => {
                 Some(self.predict_local_potion_item_use_on(owner, hand, context))
             }
+            VanillaItemUseOnOverride::SolidBucketItem => {
+                Some(self.predict_local_solid_bucket_item_use_on(owner, hand, context))
+            }
             VanillaItemUseOnOverride::EnderEyeItem => {
                 let block = self.probe_block(context.pos)?;
                 let block_name = block.block_name.as_deref()?;
@@ -2357,9 +2360,9 @@ mod tests {
             VANILLA_ITEM_IRON_SHOVEL_ID, VANILLA_ITEM_LAVA_BUCKET_ID, VANILLA_ITEM_LEAD_ID,
             VANILLA_ITEM_LILY_PAD_ID, VANILLA_ITEM_MINECART_ID, VANILLA_ITEM_NAME_TAG_ID,
             VANILLA_ITEM_OAK_BOAT_ID, VANILLA_ITEM_POPPY_ID, VANILLA_ITEM_POTION_ID,
-            VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_SADDLE_ID, VANILLA_ITEM_SHEARS_ID,
-            VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_STONE_ID, VANILLA_ITEM_TRIDENT_ID,
-            VANILLA_ITEM_TYPES, VANILLA_ITEM_WATER_BUCKET_ID,
+            VANILLA_ITEM_POWDER_SNOW_BUCKET_ID, VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_SADDLE_ID,
+            VANILLA_ITEM_SHEARS_ID, VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_STONE_ID,
+            VANILLA_ITEM_TRIDENT_ID, VANILLA_ITEM_TYPES, VANILLA_ITEM_WATER_BUCKET_ID,
         },
         packets::{
             AddEntity, AdventureModePredicateDataSummary, BlockHitResult, BlockHolderSetSummary,
@@ -3224,6 +3227,206 @@ mod tests {
             LocalItemUsePrediction::Result(LocalInteractionResult::Fail)
         );
         assert!(occupied_fluid.local_block_predictions().is_empty());
+    }
+
+    #[test]
+    fn solid_bucket_generated_owner_places_powder_snow_with_custom_sound_and_empty_bucket() {
+        let owner_ids = VANILLA_ITEM_TYPES
+            .iter()
+            .filter(|item| item.use_on_override == Some(VanillaItemUseOnOverride::SolidBucketItem))
+            .map(|item| item.id)
+            .collect::<Vec<_>>();
+        assert_eq!(owner_ids, vec![VANILLA_ITEM_POWDER_SNOW_BUCKET_ID]);
+
+        let clicked = BlockPos { x: 8, y: 7, z: 8 };
+        let target = BlockPos {
+            y: clicked.y + 1,
+            ..clicked
+        };
+        let stone = block_state_id("minecraft:stone", []);
+        let powder_snow = block_state_id("minecraft:powder_snow", []);
+        let mut world = tool_use_world(block_state_id("minecraft:air", []));
+        set_block(&mut world, clicked, stone);
+        set_main_hand(&mut world, VANILLA_ITEM_POWDER_SNOW_BUCKET_ID);
+
+        assert_eq!(
+            world.predict_local_block_use(
+                clicked,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                true,
+                59,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::block_place(
+                    target,
+                    "minecraft:item.bucket.empty_powder_snow",
+                    1.0,
+                    0.8,
+                )
+            ))
+        );
+        assert_eq!(
+            world.probe_block(target).unwrap().block_state_id,
+            powder_snow
+        );
+        assert_eq!(
+            player_inventory_item(&world, 0).item_id,
+            Some(VANILLA_ITEM_BUCKET_ID)
+        );
+        assert_eq!(world.local_block_predictions().len(), 1);
+        assert_eq!(world.local_block_predictions()[0].sequence, 59);
+        assert_eq!(world.sync_ended_local_block_predictions(59), 1);
+    }
+
+    #[test]
+    fn solid_bucket_uses_block_place_target_and_feature_gates_before_mutation() {
+        let clicked = BlockPos { x: 8, y: 7, z: 8 };
+        let relative = BlockPos {
+            z: clicked.z - 1,
+            ..clicked
+        };
+        let air = block_state_id("minecraft:air", []);
+        let stone = block_state_id("minecraft:stone", []);
+        let one_snow = block_state_id("minecraft:snow", [("layers", "1")]);
+        let two_snow = block_state_id("minecraft:snow", [("layers", "2")]);
+        let powder_snow = block_state_id("minecraft:powder_snow", []);
+        let prepare = |clicked_state, relative_state| {
+            let mut world = tool_use_world(air);
+            set_block(&mut world, clicked, clicked_state);
+            set_block(&mut world, relative, relative_state);
+            set_main_hand(&mut world, VANILLA_ITEM_POWDER_SNOW_BUCKET_ID);
+            world
+        };
+
+        let mut replace_clicked = prepare(one_snow, stone);
+        assert!(matches!(
+            replace_clicked.predict_local_block_use(
+                clicked,
+                ProtocolDirection::North,
+                InteractionHand::MainHand,
+                true,
+                60,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(
+            replace_clicked.probe_block(clicked).unwrap().block_state_id,
+            powder_snow
+        );
+
+        let mut redirect = prepare(two_snow, air);
+        assert!(matches!(
+            redirect.predict_local_block_use(
+                clicked,
+                ProtocolDirection::North,
+                InteractionHand::MainHand,
+                true,
+                61,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(
+            redirect.probe_block(clicked).unwrap().block_state_id,
+            two_snow
+        );
+        assert_eq!(
+            redirect.probe_block(relative).unwrap().block_state_id,
+            powder_snow
+        );
+
+        let mut blocked = prepare(stone, stone);
+        assert_eq!(
+            blocked.predict_local_block_use(
+                clicked,
+                ProtocolDirection::North,
+                InteractionHand::MainHand,
+                true,
+                62,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
+        );
+        assert_eq!(
+            player_inventory_item(&blocked, 0).item_id,
+            Some(VANILLA_ITEM_POWDER_SNOW_BUCKET_ID)
+        );
+        assert!(blocked.local_block_predictions().is_empty());
+
+        let mut disabled = prepare(stone, air);
+        disabled.apply_update_enabled_features(UpdateEnabledFeatures {
+            features: Vec::new(),
+        });
+        assert_eq!(
+            disabled.predict_local_block_use(
+                clicked,
+                ProtocolDirection::North,
+                InteractionHand::MainHand,
+                true,
+                63,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
+        );
+        assert_eq!(
+            player_inventory_item(&disabled, 0).item_id,
+            Some(VANILLA_ITEM_POWDER_SNOW_BUCKET_ID)
+        );
+        assert!(disabled.local_block_predictions().is_empty());
+    }
+
+    #[test]
+    fn solid_bucket_empty_placement_shape_ignores_entities_and_instabuild_keeps_item() {
+        let clicked = BlockPos { x: 8, y: 7, z: 8 };
+        let target = BlockPos {
+            y: clicked.y + 1,
+            ..clicked
+        };
+        let stone = block_state_id("minecraft:stone", []);
+        let powder_snow = block_state_id("minecraft:powder_snow", []);
+        let mut world = tool_use_world(block_state_id("minecraft:air", []));
+        set_block(&mut world, clicked, stone);
+        add_entity_at(
+            &mut world,
+            97,
+            VANILLA_ENTITY_TYPE_ITEM_ID,
+            Vec3d {
+                x: f64::from(target.x) + 0.5,
+                y: f64::from(target.y) + 0.5,
+                z: f64::from(target.z) + 0.5,
+            },
+        );
+        world.apply_player_abilities(bbb_protocol::packets::PlayerAbilities {
+            invulnerable: true,
+            flying: false,
+            can_fly: true,
+            instabuild: true,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        });
+        set_main_hand(&mut world, VANILLA_ITEM_POWDER_SNOW_BUCKET_ID);
+
+        assert!(matches!(
+            world.predict_local_block_use(
+                clicked,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                true,
+                64,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(
+            world.probe_block(target).unwrap().block_state_id,
+            powder_snow
+        );
+        assert_eq!(
+            player_inventory_item(&world, 0).item_id,
+            Some(VANILLA_ITEM_POWDER_SNOW_BUCKET_ID)
+        );
+        assert!(world
+            .inventory()
+            .player_slots
+            .iter()
+            .all(|slot| slot.item.item_id != Some(VANILLA_ITEM_BUCKET_ID)));
     }
 
     #[test]
