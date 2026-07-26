@@ -28,7 +28,8 @@ use crate::{
     audio_runtime::AudioEventSink,
     input::{
         handle_focus_change, handle_key_input_with_item_runtime,
-        handle_mouse_input_at_partial_tick_with_effects, handle_mouse_motion, ClientInputState,
+        handle_mouse_input_at_partial_tick_with_effects_and_presentation, handle_mouse_motion,
+        ClientInputState,
     },
     runtime::LevelEventSoundRandomState,
     NativeItemRuntime,
@@ -73,9 +74,12 @@ pub(crate) fn pump_control_input_requests(
 ) {
     let mut random = LevelEventSoundRandomState::default();
     let mut audio_events = None;
+    let mut first_person_hand_presentation =
+        crate::item_models::FirstPersonHandPresentation::default();
     pump_control_input_requests_with_effects(
         control_requests,
         input,
+        &mut first_person_hand_presentation,
         counters,
         world,
         net_commands,
@@ -92,6 +96,7 @@ pub(crate) fn pump_control_input_requests(
 pub(crate) fn pump_control_input_requests_with_effects(
     control_requests: &SharedControlRequests,
     input: &mut ClientInputState,
+    first_person_hand_presentation: &mut crate::item_models::FirstPersonHandPresentation,
     counters: &mut NetCounters,
     world: &mut WorldStore,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
@@ -155,8 +160,9 @@ pub(crate) fn pump_control_input_requests_with_effects(
                 } else {
                     ElementState::Released
                 };
-                handle_mouse_input_at_partial_tick_with_effects(
+                handle_mouse_input_at_partial_tick_with_effects_and_presentation(
                     input,
+                    first_person_hand_presentation,
                     world,
                     counters,
                     net_commands,

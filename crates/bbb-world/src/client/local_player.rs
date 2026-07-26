@@ -644,6 +644,44 @@ impl WorldStore {
         self.local_player.interaction.attack.item_swap_ticks
     }
 
+    /// Vanilla `Player.getItemSwapScale`: the first-person main-hand
+    /// replacement target uses the item-swap ticker over the current attack
+    /// delay, independently from the attack-strength ticker.
+    pub fn local_player_item_swap_scale(&self, partial_tick: f32) -> f32 {
+        self.local_player_item_swap_scale_for_ticks(
+            self.local_player_item_swap_ticks(),
+            partial_tick,
+        )
+    }
+
+    /// Historical item-swap scale within the current client-tick catch-up
+    /// batch. The entity animation owner has already advanced the canonical
+    /// ticker for every tick when `ItemInHandRenderer.tick` is replayed.
+    pub fn local_player_item_swap_scale_ticks_ago(&self, ticks_ago: u32, partial_tick: f32) -> f32 {
+        self.local_player_item_swap_scale_for_ticks(
+            self.local_player_item_swap_ticks()
+                .saturating_sub(ticks_ago),
+            partial_tick,
+        )
+    }
+
+    fn local_player_item_swap_scale_for_ticks(
+        &self,
+        item_swap_ticks: u32,
+        partial_tick: f32,
+    ) -> f32 {
+        let Some(attack_speed) =
+            self.local_player_attribute_value(VANILLA_ATTRIBUTE_ATTACK_SPEED_ID)
+        else {
+            return 0.0;
+        };
+        if !attack_speed.is_finite() || attack_speed <= 0.0 {
+            return 0.0;
+        }
+        let delay = (1.0 / attack_speed * 20.0) as f32;
+        ((item_swap_ticks as f32 + partial_tick) / delay).clamp(0.0, 1.0)
+    }
+
     pub fn reset_local_player_attack_strength(&mut self) {
         let attack = &mut self.local_player.interaction.attack;
         attack.attack_strength_ticks = 0;
@@ -1628,6 +1666,8 @@ mod tests {
         store.advance_local_player_attack_strength_ticks(3);
         assert_eq!(store.local_player_attack_strength_ticks(), 3);
         assert_eq!(store.local_player_item_swap_ticks(), 3);
+        assert_eq!(store.local_player_item_swap_scale(1.0), 0.8);
+        assert_eq!(store.local_player_item_swap_scale_ticks_ago(2, 1.0), 0.4);
 
         store.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
             slot: 0,

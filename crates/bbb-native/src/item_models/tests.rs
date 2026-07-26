@@ -1507,6 +1507,29 @@ fn first_person_item_models_render_two_handed_filled_map_surface() {
             0.0,
         )
     );
+    let mut lowered_presentation = FirstPersonHandPresentation::fully_raised_for_test(&world);
+    lowered_presentation.item_used(InteractionHand::MainHand);
+    let mut map_texture_cache = MapTextureExtractionCache::default();
+    map_texture_cache.begin_frame();
+    let lowered = first_person_item_models_with_map_cache(
+        &world,
+        &lowered_presentation,
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        &mut map_texture_cache,
+        Some(pose),
+        1.0,
+    );
+    assert_eq!(
+        lowered.map_surfaces[0].submission.transform,
+        first_person_two_handed_map_transform(
+            first_person_camera_world_transform(pose),
+            pose.x_rot,
+            1.0,
+            0.0,
+        ),
+        "first-person item extraction consumes the published inverse hand height",
+    );
     std::fs::remove_dir_all(root).unwrap();
 }
 
@@ -1592,7 +1615,9 @@ fn first_person_player_arms_render_empty_main_hand_with_player_skin_light_and_pa
     let player = EntityModelInstance::player_with_skin(1, [0.0, 64.0, 0.0], 0.0, skin, parts)
         .with_light_coords((5_u32 << 4) | (11_u32 << 20));
 
-    let arms = first_person_player_arms(&world, None, Some(&player), Some(pose), 1.0);
+    let presentation = FirstPersonHandPresentation::fully_raised_for_test(&world);
+    let arms =
+        first_person_player_arms(&world, &presentation, None, Some(&player), Some(pose), 1.0);
 
     assert_eq!(arms.len(), 1);
     assert!(!arms[0].left);
@@ -1608,10 +1633,30 @@ fn first_person_player_arms_render_empty_main_hand_with_player_skin_light_and_pa
         ),
         1.0e-5,
     ));
+    let mut lowered_presentation = presentation.clone();
+    lowered_presentation.item_used(InteractionHand::MainHand);
+    let lowered_arms = first_person_player_arms(
+        &world,
+        &lowered_presentation,
+        None,
+        Some(&player),
+        Some(pose),
+        1.0,
+    );
+    assert!(lowered_arms[0].transform.abs_diff_eq(
+        first_person_render_player_arm_transform(
+            first_person_camera_world_transform(pose),
+            false,
+            1.0,
+            0.0,
+        ),
+        1.0e-5,
+    ));
 
     assert!(
         first_person_player_arms(
             &world,
+            &presentation,
             None,
             Some(&player.with_invisible(true)),
             Some(pose),
@@ -1620,7 +1665,9 @@ fn first_person_player_arms_render_empty_main_hand_with_player_skin_light_and_pa
         .is_empty(),
         "vanilla renderArmWithItem skips empty-hand player arms while invisible",
     );
-    assert!(first_person_player_arms(&world, None, Some(&player), None, 1.0).is_empty());
+    assert!(
+        first_person_player_arms(&world, &presentation, None, Some(&player), None, 1.0).is_empty()
+    );
 }
 
 #[test]
@@ -1648,8 +1695,15 @@ fn first_person_player_arms_render_two_handed_and_one_handed_map_arms() {
         slot: 0,
         item: map.clone(),
     });
-    let main_map_arms =
-        first_person_player_arms(&main_map_world, None, Some(&player), Some(pose), 1.0);
+    let main_presentation = FirstPersonHandPresentation::fully_raised_for_test(&main_map_world);
+    let main_map_arms = first_person_player_arms(
+        &main_map_world,
+        &main_presentation,
+        None,
+        Some(&player),
+        Some(pose),
+        1.0,
+    );
     assert_eq!(main_map_arms.len(), 2);
     assert_eq!(
         main_map_arms.iter().map(|arm| arm.left).collect::<Vec<_>>(),
@@ -1671,8 +1725,16 @@ fn first_person_player_arms_render_two_handed_and_one_handed_map_arms() {
         slot: 40,
         item: map,
     });
-    let offhand_map_arms =
-        first_person_player_arms(&offhand_map_world, None, Some(&player), Some(pose), 1.0);
+    let offhand_presentation =
+        FirstPersonHandPresentation::fully_raised_for_test(&offhand_map_world);
+    let offhand_map_arms = first_person_player_arms(
+        &offhand_map_world,
+        &offhand_presentation,
+        None,
+        Some(&player),
+        Some(pose),
+        1.0,
+    );
     assert_eq!(
         offhand_map_arms
             .iter()
@@ -3297,7 +3359,7 @@ fn first_person_block_use_transform_matches_vanilla_non_shield_block_case() {
 #[test]
 fn first_person_eat_drink_use_transform_matches_vanilla_apply_eat_transform() {
     let transformed =
-        first_person_apply_eat_drink_use_transform(Mat4::IDENTITY, false, 32.0, 12.0, 0.5);
+        first_person_apply_eat_drink_use_transform(Mat4::IDENTITY, false, 0.0, 32.0, 12.0, 0.5);
     let curr_usage_time = 32.0 - 12.0 - 0.5 + 1.0;
     let scaled_usage_time = curr_usage_time / 32.0;
     let extra_height_offset = (curr_usage_time / 4.0 * std::f32::consts::PI).cos().abs() * 0.1;
@@ -3310,7 +3372,8 @@ fn first_person_eat_drink_use_transform_matches_vanilla_apply_eat_transform() {
     let expected = first_person_item_arm_transform_from_camera_world(expected_eat, false, 0.0);
     assert!(transformed.abs_diff_eq(expected, 1.0e-5));
 
-    let left = first_person_apply_eat_drink_use_transform(Mat4::IDENTITY, true, 32.0, 12.0, 0.5);
+    let left =
+        first_person_apply_eat_drink_use_transform(Mat4::IDENTITY, true, 0.0, 32.0, 12.0, 0.5);
     let right_origin = transformed.transform_point3(Vec3::ZERO);
     let left_origin = left.transform_point3(Vec3::ZERO);
     assert!(
@@ -3444,6 +3507,7 @@ fn first_person_spear_use_transform_matches_vanilla_kinetic_use() {
     let transformed = first_person_apply_spear_use_transform(
         Mat4::IDENTITY,
         false,
+        0.0,
         kinetic_weapon,
         VANILLA_KINETIC_WEAPON_USE_DURATION_TICKS,
         20.0,

@@ -656,9 +656,6 @@ Commands:
   any generated item or block owner still routed to generic unsupported
   handling. Interaction override ownership must stay generated from local
   vanilla classes; block and inventory corrections remain server-authoritative.
-- Apply each targeted-use success's exact swing source and first-person held-item
-  presentation, including client-item swap properties, hand-height interpolation,
-  and the damage component's ignore-swap-animation rule.
 - Bottle dragon-breath client prediction is `not-needed`: `AreaEffectCloud.owner`
   is absent from both `ClientboundAddEntityPacket` and synchronized metadata, so
   the remote 26.1 client leaves that branch server-authoritative. Reopen if the

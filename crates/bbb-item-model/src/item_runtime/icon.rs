@@ -145,6 +145,43 @@ pub(super) fn item_stack_is_empty(stack: &ItemStackSummary) -> bool {
     stack.item_id.is_none() || stack.count <= 0
 }
 
+fn effective_component_is_present(
+    patch: &DataComponentPatchSummary,
+    component_id: i32,
+    present_by_default: bool,
+) -> bool {
+    if patch.removed_type_ids.contains(&component_id) {
+        false
+    } else if patch.added_type_ids.contains(&component_id) {
+        true
+    } else {
+        present_by_default
+    }
+}
+
+fn component_patch_without_damage(patch: &DataComponentPatchSummary) -> DataComponentPatchSummary {
+    let mut normalized = patch.clone();
+    let added_damage_entries = normalized
+        .added_type_ids
+        .iter()
+        .filter(|component_id| **component_id == VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID)
+        .count();
+    normalized
+        .added_type_ids
+        .retain(|component_id| *component_id != VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID);
+    normalized
+        .removed_type_ids
+        .retain(|component_id| *component_id != VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID);
+    normalized
+        .codec_backed_nbt
+        .remove(&VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID);
+    normalized.added_type_ids.sort_unstable();
+    normalized.removed_type_ids.sort_unstable();
+    normalized.added = normalized.added.saturating_sub(added_damage_entries);
+    normalized.damage = None;
+    normalized
+}
+
 pub(super) fn item_use_duration_ticks(
     item_id: &str,
     component_patch: &DataComponentPatchSummary,
@@ -904,13 +941,84 @@ impl NativeItemRuntime {
         stack: &ItemStackSummary,
         context: BlockModelDisplayContext,
     ) -> Option<BlockModelDisplayTransform> {
-        let item_id = self.registry.as_ref()?.resource_id(stack.item_id?)?;
-        let item_model_id = item_model_id_for_stack(item_id, Some(&stack.component_patch))?;
+        let item_model_id = self.item_model_id_for_stack(stack)?;
         Some(
             self.item_display_transforms
                 .get(item_model_id)?
                 .get(context),
         )
+    }
+
+    /// Effective client-item model key selected by
+    /// `ItemModelResolver.getClientItem`. The stack's `ITEM_MODEL` patch
+    /// overrides the item prototype; an explicit removal has no client item.
+    pub fn item_model_id_for_stack<'a>(&'a self, stack: &'a ItemStackSummary) -> Option<&'a str> {
+        let item_id = self.registry.as_ref()?.resource_id(stack.item_id?)?;
+        item_model_id_for_stack(item_id, Some(&stack.component_patch))
+    }
+
+    /// Vanilla `ItemModelResolver.shouldPlaySwapAnimation`: missing client-item
+    /// definitions keep the default `true` behavior.
+    pub fn hand_animation_on_swap_for_stack(&self, stack: &ItemStackSummary) -> bool {
+        self.item_model_id_for_stack(stack)
+            .and_then(|item_model_id| self.client_item_properties.get(item_model_id))
+            .map_or(true, |properties| properties.hand_animation_on_swap)
+    }
+
+    /// Vanilla `ItemModelResolver.swapAnimationScale`: missing client-item
+    /// definitions keep the default full-height scale.
+    pub fn swap_animation_scale_for_stack(&self, stack: &ItemStackSummary) -> f32 {
+        self.item_model_id_for_stack(stack)
+            .and_then(|item_model_id| self.client_item_properties.get(item_model_id))
+            .map_or(1.0, |properties| properties.swap_animation_scale)
+    }
+
+    /// Summary-level equivalent of
+    /// `ItemStack.matchesIgnoringComponents(...,
+    /// DataComponentType::ignoreSwapAnimation)`. Vanilla 26.1 marks only
+    /// `DAMAGE` with `ignoreSwapAnimation`; component membership still has to
+    /// match, while differing damage values do not.
+    pub fn stacks_match_ignoring_swap_animation(
+        &self,
+        visible: &ItemStackSummary,
+        expected: &ItemStackSummary,
+    ) -> bool {
+        if visible == expected {
+            return true;
+        }
+        if visible.count != expected.count || visible.item_id != expected.item_id {
+            return false;
+        }
+        if item_stack_is_empty(visible) && item_stack_is_empty(expected) {
+            return true;
+        }
+        let Some(item_id) = visible.item_id else {
+            return false;
+        };
+        let Some(resource_id) = self
+            .registry
+            .as_ref()
+            .and_then(|registry| registry.resource_id(item_id))
+        else {
+            return visible == expected;
+        };
+        let default_damage = self
+            .default_component_type_ids_for_resource_id(resource_id)
+            .is_some_and(|ids| ids.contains(&VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID));
+        if effective_component_is_present(
+            &visible.component_patch,
+            VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+            default_damage,
+        ) != effective_component_is_present(
+            &expected.component_patch,
+            VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+            default_damage,
+        ) {
+            return false;
+        }
+
+        component_patch_without_damage(&visible.component_patch)
+            == component_patch_without_damage(&expected.component_patch)
     }
 
     /// Generated item layers for a non-living stack consumer that still has a

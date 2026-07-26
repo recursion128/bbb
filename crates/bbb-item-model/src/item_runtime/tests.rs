@@ -30,6 +30,100 @@ use std::{
 };
 
 #[test]
+fn client_item_swap_properties_follow_effective_stack_model_and_projection() {
+    let mut runtime = NativeItemRuntime::empty_for_test().with_vanilla_item_registry_for_test();
+    runtime.client_item_properties.insert(
+        "custom:no_swap_animation".to_string(),
+        ClientItemProperties {
+            hand_animation_on_swap: false,
+            oversized_in_gui: false,
+            swap_animation_scale: 0.625,
+        },
+    );
+    let apple_id = runtime.item_protocol_id("minecraft:apple").unwrap();
+    let stack = |component_patch| ItemStackSummary {
+        item_id: Some(apple_id),
+        count: 1,
+        component_patch,
+    };
+
+    let default_stack = stack(DataComponentPatchSummary::default());
+    assert_eq!(
+        runtime.item_model_id_for_stack(&default_stack),
+        Some("minecraft:apple")
+    );
+    assert!(runtime.hand_animation_on_swap_for_stack(&default_stack));
+    assert_eq!(runtime.swap_animation_scale_for_stack(&default_stack), 1.0);
+
+    let override_stack = stack(DataComponentPatchSummary {
+        added: 1,
+        added_type_ids: vec![VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID],
+        item_model: Some("custom:no_swap_animation".to_string()),
+        ..DataComponentPatchSummary::default()
+    });
+    assert_eq!(
+        runtime.item_model_id_for_stack(&override_stack),
+        Some("custom:no_swap_animation")
+    );
+    assert!(!runtime.hand_animation_on_swap_for_stack(&override_stack));
+    assert_eq!(
+        runtime.swap_animation_scale_for_stack(&override_stack),
+        0.625
+    );
+
+    let projection = runtime.independent_simulation_projection();
+    assert!(!projection.hand_animation_on_swap_for_stack(&override_stack));
+    assert_eq!(
+        projection.swap_animation_scale_for_stack(&override_stack),
+        0.625
+    );
+
+    let removed_model = stack(DataComponentPatchSummary {
+        removed_type_ids: vec![VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID],
+        ..DataComponentPatchSummary::default()
+    });
+    assert_eq!(runtime.item_model_id_for_stack(&removed_model), None);
+    assert!(runtime.hand_animation_on_swap_for_stack(&removed_model));
+    assert_eq!(runtime.swap_animation_scale_for_stack(&removed_model), 1.0);
+}
+
+#[test]
+fn client_item_swap_match_ignores_only_damage_values_not_membership_or_count() {
+    let runtime = NativeItemRuntime::empty_for_test().with_vanilla_item_registry_for_test();
+    let sword_id = runtime.item_protocol_id("minecraft:diamond_sword").unwrap();
+    let stack = |count, component_patch| ItemStackSummary {
+        item_id: Some(sword_id),
+        count,
+        component_patch,
+    };
+    let damaged = |damage| {
+        stack(
+            1,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID],
+                damage: Some(damage),
+                ..DataComponentPatchSummary::default()
+            },
+        )
+    };
+
+    assert!(runtime.stacks_match_ignoring_swap_animation(&damaged(2), &damaged(17)));
+    assert!(!runtime
+        .stacks_match_ignoring_swap_animation(&damaged(2), &stack(2, damaged(17).component_patch)));
+    assert!(!runtime.stacks_match_ignoring_swap_animation(
+        &stack(1, DataComponentPatchSummary::default()),
+        &stack(
+            1,
+            DataComponentPatchSummary {
+                removed_type_ids: vec![VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID],
+                ..DataComponentPatchSummary::default()
+            }
+        )
+    ));
+}
+
+#[test]
 fn minimum_attack_charge_projects_vanilla_spear_defaults_by_protocol_id() {
     let runtime = NativeItemRuntime::empty_for_test().with_vanilla_item_registry_for_test();
     let wooden_spear_id = runtime.item_protocol_id("minecraft:wooden_spear").unwrap();
@@ -666,7 +760,7 @@ fn shield_hover_name_uses_base_color_before_item_name() {
 }
 
 #[test]
-fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
+fn native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback() {
     let root = unique_temp_dir("item-runtime");
     let assets = assets_dir(&root);
     write_item_atlases(&assets);
@@ -774,6 +868,8 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
     write_json(
         &assets.join("items").join("test_combo.json"),
         r#"{
+                "hand_animation_on_swap": false,
+                "swap_animation_scale": 0.375,
                 "model": {
                     "type": "minecraft:composite",
                     "models": [
@@ -823,6 +919,16 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
     );
 
     let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+    let test_combo_stack = ItemStackSummary {
+        item_id: runtime.item_protocol_id("minecraft:test_combo"),
+        count: 1,
+        component_patch: DataComponentPatchSummary::default(),
+    };
+    assert!(!runtime.hand_animation_on_swap_for_stack(&test_combo_stack));
+    assert_eq!(
+        runtime.swap_animation_scale_for_stack(&test_combo_stack),
+        0.375
+    );
 
     assert_eq!(runtime.item_definition_count(), 1);
     assert_eq!(runtime.item_registry_count(), 4);

@@ -122,13 +122,14 @@ use crate::{
     game_test_highlights::game_test_highlight_gizmos,
     input::{
         advance_destroying_block_at_partial_tick, advance_local_using_item_ticks_with_effects,
-        advance_player_input_for_client_ticks, advance_using_item_at_partial_tick_with_effects,
+        advance_player_input_for_client_ticks,
+        advance_using_item_at_partial_tick_with_effects_and_presentation,
         death_screen::DeathScreenRuntime,
         game_event_screen::{DemoHelpFocus, DemoLinkConfirmationFocus, GameEventScreenRuntime},
         inventory_screen_layout_for_surface, inventory_screen_selected_hotbar_slot_id,
-        pause_screen_advancements_button_contains, pause_screen_disconnect_button_contains,
-        pause_screen_options_button_contains, pause_screen_options_button_enabled,
-        pause_screen_player_reporting_button_contains,
+        local_player_hands_are_busy, pause_screen_advancements_button_contains,
+        pause_screen_disconnect_button_contains, pause_screen_options_button_contains,
+        pause_screen_options_button_enabled, pause_screen_player_reporting_button_contains,
         pause_screen_player_reporting_button_enabled, pause_screen_report_bugs_button_contains,
         pause_screen_report_bugs_button_enabled, pause_screen_return_to_game_button_contains,
         pause_screen_send_feedback_button_contains, pause_screen_stats_button_contains,
@@ -171,7 +172,7 @@ use crate::{
         world_instrument_tooltip_context, world_jukebox_song_tooltip_context,
         world_painting_variant_tooltip_context, world_trim_material_keys,
         world_trim_material_tooltip_context, world_trim_pattern_keys,
-        world_trim_pattern_tooltip_context,
+        world_trim_pattern_tooltip_context, FirstPersonHandPresentation,
     },
     lectern_book_scene::lectern_book_model_instances_from_world,
     level_load_runtime::LevelLoadRuntime,
@@ -2297,6 +2298,7 @@ pub(crate) fn advance_simulation(
     particle_runtime: &mut Option<NativeParticleRuntime>,
     particle_batches: &mut dyn ParticleBatchSink,
     input: &mut ClientInputState,
+    first_person_hand_presentation: &mut FirstPersonHandPresentation,
     world: &mut WorldStore,
     net_counters: &mut NetCounters,
     client_animation_ticks: &mut ClientAnimationTickState,
@@ -2386,6 +2388,7 @@ pub(crate) fn advance_simulation(
         commands,
         &mut crate::simulation::input_commands::SimulationInputContext {
             input,
+            first_person_hand_presentation,
             world,
             net_counters,
             net_commands,
@@ -2584,8 +2587,9 @@ pub(crate) fn advance_simulation(
         advanced_ticks,
     );
     submit_local_player_action_particles(particle_batches, world, input, particle_runtime.as_mut());
-    advance_using_item_at_partial_tick_with_effects(
+    advance_using_item_at_partial_tick_with_effects_and_presentation(
         input,
+        first_person_hand_presentation,
         world,
         net_counters,
         net_commands,
@@ -2601,6 +2605,12 @@ pub(crate) fn advance_simulation(
         advanced_ticks,
         level_event_sound_random,
         &mut audio_events,
+    );
+    first_person_hand_presentation.advance_for_ticks(
+        world,
+        item_runtime.as_ref(),
+        local_player_hands_are_busy(input, world),
+        advanced_ticks,
     );
     let particle_camera_pose = camera_pose_from_world_at_partial_tick(world, entity_partial_tick);
     let particle_scope_context =
@@ -3464,6 +3474,7 @@ pub(crate) fn update_renderer_from_publication(
     let map_texture_cache = non_entity_render_extraction.begin_map_texture_frame();
     let first_person_item_models = first_person_item_models_with_map_cache(
         world,
+        &publication.first_person_hand_presentation,
         item_runtime,
         terrain_textures,
         map_texture_cache,
@@ -3480,6 +3491,7 @@ pub(crate) fn update_renderer_from_publication(
     });
     let first_person_player_arms = first_person_player_arms(
         world,
+        &publication.first_person_hand_presentation,
         item_runtime,
         local_player_model_instance,
         camera_pose,

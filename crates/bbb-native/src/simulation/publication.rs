@@ -15,6 +15,7 @@ use bbb_world::WorldStore;
 use super::input_commands::SimulationInputPublication;
 use crate::{
     input::{ClientInputState, RenderInputPublication},
+    item_models::FirstPersonHandPresentation,
     runtime::{
         CameraFovTickState, HudDebugNetworkSampler, HudDebugTpsSampler, SimulationFrameState,
     },
@@ -29,6 +30,7 @@ pub(crate) struct SimulationPublication {
     pub(crate) client_tick_index: u64,
     pub(crate) world: Arc<WorldStore>,
     pub(crate) input: Arc<RenderInputPublication>,
+    pub(crate) first_person_hand_presentation: FirstPersonHandPresentation,
     pub(crate) win_screen_resources: Arc<crate::win_screen_resources::WinScreenResources>,
     pub(crate) input_runtime: SimulationInputPublication,
     pub(crate) frame: Option<SimulationFrameState>,
@@ -83,6 +85,7 @@ pub(crate) struct SimulationPublicationInput<'a> {
     pub(crate) effect_sequence: u64,
     pub(crate) world: &'a WorldStore,
     pub(crate) input: &'a ClientInputState,
+    pub(crate) first_person_hand_presentation: FirstPersonHandPresentation,
     pub(crate) win_screen_resources: Arc<crate::win_screen_resources::WinScreenResources>,
     pub(crate) input_runtime: SimulationInputPublication,
     pub(crate) frame: Option<SimulationFrameState>,
@@ -198,6 +201,7 @@ fn build_publication(
         frozen: world.ticking().frozen,
         world,
         input: Arc::new(input.input.render_publication()),
+        first_person_hand_presentation: input.first_person_hand_presentation,
         win_screen_resources: input.win_screen_resources,
         input_runtime: input.input_runtime,
         frame: input.frame,
@@ -279,6 +283,7 @@ mod tests {
             effect_sequence: 0,
             world,
             input: client_input,
+            first_person_hand_presentation: FirstPersonHandPresentation::default(),
             win_screen_resources: Arc::new(
                 crate::win_screen_resources::WinScreenResources::default(),
             ),

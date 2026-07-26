@@ -9,8 +9,8 @@ use std::{
 use anyhow::{Context, Result};
 use bbb_pack::{
     AtlasImage, AtlasLayout, AtlasPacker, AtlasSprite, BlockModelDisplayContext,
-    BlockModelDisplayTransform, BlockModelDisplayTransforms, EquipmentAssetCatalog,
-    EquipmentLayerType, FreezeImmuneWearableCatalog, FurnaceFuelCatalog,
+    BlockModelDisplayTransform, BlockModelDisplayTransforms, ClientItemProperties,
+    EquipmentAssetCatalog, EquipmentLayerType, FreezeImmuneWearableCatalog, FurnaceFuelCatalog,
     ItemAttackRange as PackItemAttackRange, ItemConsumable as PackItemConsumable, ItemCuboidModel,
     ItemCuboidModelCatalog, ItemCuboidModelSet, ItemCuboidTextureImageCatalog,
     ItemDefaultAttributeModifier as PackItemDefaultAttributeModifier,
@@ -23,8 +23,9 @@ use bbb_pack::{
     PackRoots, ResourceLocation, SpriteImage, TagCatalog, TerrainColorMaps, DEFAULT_LANGUAGE_CODE,
 };
 use bbb_protocol::data_component_types::{
-    VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID,
-    VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
+    VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
 };
 use bbb_protocol::item_types;
 use bbb_protocol::packets::{
@@ -231,6 +232,7 @@ pub struct NativeItemRuntime {
     recipe_specific_crafting_remainder_item_ids: BTreeSet<i32>,
     item_icon_models: HashMap<String, ItemIconModel>,
     item_display_transforms: HashMap<String, BlockModelDisplayTransforms>,
+    client_item_properties: HashMap<String, ClientItemProperties>,
     registry: Option<ItemRegistryCatalog>,
     item_tags: Option<TagCatalog>,
     enchantment_tags: Option<TagCatalog>,
@@ -540,6 +542,7 @@ impl NativeItemRuntime {
                 .clone(),
             item_icon_models: self.item_icon_models.clone(),
             item_display_transforms: self.item_display_transforms.clone(),
+            client_item_properties: self.client_item_properties.clone(),
             registry: self.registry.clone(),
             item_tags: self.item_tags.clone(),
             enchantment_tags: self.enchantment_tags.clone(),
@@ -801,11 +804,13 @@ impl NativeItemRuntime {
         let mut texture_ids = BTreeSet::new();
         let mut item_icon_model_refs = HashMap::new();
         let mut item_display_transforms = HashMap::new();
+        let mut client_item_properties = HashMap::new();
         let mut missing_model_ids = BTreeSet::new();
         let mut missing_texture_ids = BTreeSet::new();
         let mut resolved_model_count = 0usize;
 
         for (item_id, definition) in item_models.definitions() {
+            client_item_properties.insert(item_id.clone(), definition.properties);
             let models = cuboid_models.models_for_definition(definition);
             resolved_model_count += models.models.len();
             // Retain the item model's display transforms (the same across its conditional variants,
@@ -872,6 +877,7 @@ impl NativeItemRuntime {
             recipe_specific_crafting_remainder_item_ids,
             item_icon_models,
             item_display_transforms,
+            client_item_properties,
             registry,
             item_tags,
             enchantment_tags,
@@ -921,6 +927,7 @@ impl NativeItemRuntime {
             recipe_specific_crafting_remainder_item_ids: BTreeSet::new(),
             item_icon_models: HashMap::new(),
             item_display_transforms: HashMap::new(),
+            client_item_properties: HashMap::new(),
             registry: None,
             item_tags: None,
             enchantment_tags: None,
@@ -974,6 +981,24 @@ impl NativeItemRuntime {
             ItemRegistryCatalog::vanilla_26_1().expect("checked-in vanilla item registry is valid"),
         );
         self.item_registry_count = self.registry.as_ref().map_or(0, ItemRegistryCatalog::len);
+        self
+    }
+
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn with_client_item_swap_properties_for_test(
+        mut self,
+        item_model_id: impl Into<String>,
+        hand_animation_on_swap: bool,
+        swap_animation_scale: f32,
+    ) -> Self {
+        self.client_item_properties.insert(
+            item_model_id.into(),
+            ClientItemProperties {
+                hand_animation_on_swap,
+                swap_animation_scale,
+                ..ClientItemProperties::default()
+            },
+        );
         self
     }
 

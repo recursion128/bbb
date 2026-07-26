@@ -65,6 +65,7 @@ use bbb_protocol::entity_types::*;
 mod display;
 mod dropped;
 mod first_person;
+mod hand_presentation;
 mod transforms;
 
 #[cfg(test)]
@@ -82,6 +83,7 @@ pub(crate) use dropped::{
 #[cfg(test)]
 pub(crate) use first_person::first_person_item_models;
 pub(crate) use first_person::{first_person_item_models_with_map_cache, first_person_player_arms};
+pub(crate) use hand_presentation::FirstPersonHandPresentation;
 
 /// Item-model registry keys indexed by network holder id. The checked world
 /// registry API owns wire-order identity; these wrappers only materialize the

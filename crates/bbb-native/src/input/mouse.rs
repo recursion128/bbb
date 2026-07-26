@@ -19,6 +19,7 @@ use crate::crosshair::{
     local_item_use_pov_result_from_crosshair_hit, CrosshairBlockHit, CrosshairEntityHit,
     CrosshairTarget,
 };
+use crate::item_models::FirstPersonHandPresentation;
 use crate::particle_runtime::local_destroy_hit_particle_state;
 
 use super::{
@@ -69,8 +70,10 @@ pub(crate) fn handle_mouse_input_at_partial_tick(
 ) {
     let mut random = LevelEventSoundRandomState::default();
     let mut audio_events = None;
-    handle_mouse_input_at_partial_tick_with_effects(
+    let mut first_person_hand_presentation = FirstPersonHandPresentation::default();
+    handle_mouse_input_at_partial_tick_with_effects_and_presentation(
         input,
+        &mut first_person_hand_presentation,
         world,
         counters,
         net_commands,
@@ -83,8 +86,9 @@ pub(crate) fn handle_mouse_input_at_partial_tick(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn handle_mouse_input_at_partial_tick_with_effects(
+pub(crate) fn handle_mouse_input_at_partial_tick_with_effects_and_presentation(
     input: &mut ClientInputState,
+    first_person_hand_presentation: &mut FirstPersonHandPresentation,
     world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
@@ -207,6 +211,7 @@ pub(crate) fn handle_mouse_input_at_partial_tick_with_effects(
             input.use_item_held = true;
             start_use_item_with_effects(
                 input,
+                first_person_hand_presentation,
                 world,
                 counters,
                 net_commands,
@@ -263,8 +268,10 @@ pub(crate) fn advance_using_item_at_partial_tick(
 ) {
     let mut random = LevelEventSoundRandomState::default();
     let mut audio_events = None;
-    advance_using_item_at_partial_tick_with_effects(
+    let mut first_person_hand_presentation = FirstPersonHandPresentation::default();
+    advance_using_item_at_partial_tick_with_effects_and_presentation(
         input,
+        &mut first_person_hand_presentation,
         world,
         counters,
         net_commands,
@@ -276,8 +283,9 @@ pub(crate) fn advance_using_item_at_partial_tick(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn advance_using_item_at_partial_tick_with_effects(
+pub(crate) fn advance_using_item_at_partial_tick_with_effects_and_presentation(
     input: &mut ClientInputState,
+    first_person_hand_presentation: &mut FirstPersonHandPresentation,
     world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
@@ -321,6 +329,7 @@ pub(crate) fn advance_using_item_at_partial_tick_with_effects(
         let player_pose = world.local_player_pose();
         if !start_use_item_with_effects(
             input,
+            first_person_hand_presentation,
             world,
             counters,
             net_commands,
@@ -333,6 +342,34 @@ pub(crate) fn advance_using_item_at_partial_tick_with_effects(
             return;
         }
     }
+}
+
+#[cfg(test)]
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn handle_mouse_input_at_partial_tick_with_effects(
+    input: &mut ClientInputState,
+    world: &mut WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    button: MouseButton,
+    state: ElementState,
+    entity_partial_tick: f32,
+    level_random: &mut LevelEventSoundRandomState,
+    audio_events: &mut Option<&mut dyn AudioEventSink>,
+) {
+    let mut first_person_hand_presentation = FirstPersonHandPresentation::default();
+    handle_mouse_input_at_partial_tick_with_effects_and_presentation(
+        input,
+        &mut first_person_hand_presentation,
+        world,
+        counters,
+        net_commands,
+        button,
+        state,
+        entity_partial_tick,
+        level_random,
+        audio_events,
+    );
 }
 
 pub(crate) fn advance_local_using_item_ticks_with_effects(
@@ -373,8 +410,10 @@ pub(super) fn start_use_item(
 ) -> bool {
     let mut random = LevelEventSoundRandomState::default();
     let mut audio_events = None;
+    let mut first_person_hand_presentation = FirstPersonHandPresentation::default();
     start_use_item_with_effects(
         input,
+        &mut first_person_hand_presentation,
         world,
         counters,
         net_commands,
@@ -388,6 +427,7 @@ pub(super) fn start_use_item(
 #[allow(clippy::too_many_arguments)]
 fn start_use_item_with_effects(
     input: &mut ClientInputState,
+    first_person_hand_presentation: &mut FirstPersonHandPresentation,
     world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
@@ -448,6 +488,7 @@ fn start_use_item_with_effects(
             return true;
         }
 
+        let pre_use_stack = world.local_item_in_hand(hand).cloned();
         let target_prediction = match camera_target {
             Some(CrosshairTarget::Entity(hit)) => {
                 let prediction =
@@ -493,13 +534,22 @@ fn start_use_item_with_effects(
         if let Some(prediction) = target_prediction {
             match prediction {
                 LocalTargetUsePrediction::Result(LocalInteractionResult::Success(success)) => {
+                    let item_used = matches!(camera_target, Some(CrosshairTarget::Block(_)))
+                        && block_success_uses_first_person_item(
+                            pre_use_stack.as_ref(),
+                            world,
+                            hand,
+                            success,
+                        );
                     apply_local_interaction_success(
                         input,
+                        first_person_hand_presentation,
                         world,
                         counters,
                         net_commands,
                         hand,
                         success,
+                        item_used,
                         level_random,
                         audio_events,
                     );
@@ -560,11 +610,13 @@ fn start_use_item_with_effects(
             LocalItemUsePrediction::Result(LocalInteractionResult::Success(success)) => {
                 apply_local_interaction_success(
                     input,
+                    first_person_hand_presentation,
                     world,
                     counters,
                     net_commands,
                     hand,
                     success,
+                    true,
                     level_random,
                     audio_events,
                 );
@@ -589,11 +641,13 @@ fn start_use_item_with_effects(
 
 fn apply_local_interaction_success(
     input: &mut ClientInputState,
+    first_person_hand_presentation: &mut FirstPersonHandPresentation,
     world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     hand: InteractionHand,
     success: LocalInteractionSuccess,
+    item_used: bool,
     level_random: &mut LevelEventSoundRandomState,
     audio_events: &mut Option<&mut dyn AudioEventSink>,
 ) {
@@ -610,6 +664,27 @@ fn apply_local_interaction_success(
     if success.swing_source == LocalInteractionSwingSource::Client {
         queue_swing_command(world, counters, net_commands, hand);
     }
+    if item_used {
+        first_person_hand_presentation.item_used(hand);
+    }
+}
+
+fn block_success_uses_first_person_item(
+    pre_use_stack: Option<&bbb_protocol::packets::ItemStackSummary>,
+    world: &WorldStore,
+    hand: InteractionHand,
+    success: LocalInteractionSuccess,
+) -> bool {
+    if success.swing_source != LocalInteractionSwingSource::Client {
+        return false;
+    }
+    let Some(pre_use_stack) = pre_use_stack.filter(|stack| stack.count > 0) else {
+        return false;
+    };
+    let current_count = world
+        .local_item_in_hand(hand)
+        .map_or(0, |stack| stack.count);
+    current_count != pre_use_stack.count || local_player_instabuild(world)
 }
 
 pub(crate) fn flush_local_interaction_sound_actions(
@@ -934,7 +1009,7 @@ fn local_player_attack_is_blocked(input: &ClientInputState, world: &WorldStore) 
     world.local_player().interaction.using_item || input.attack_miss_time_ticks > 0
 }
 
-fn local_player_hands_are_busy(input: &ClientInputState, world: &WorldStore) -> bool {
+pub(crate) fn local_player_hands_are_busy(input: &ClientInputState, world: &WorldStore) -> bool {
     world
         .local_player_first_passenger_root_boat_vehicle_id()
         .is_some()
@@ -1186,6 +1261,52 @@ mod tests {
             warning_time: 15,
         });
         assert!(!world.world_border().contains_block_pos(CROSSHAIR_BLOCK_POS));
+    }
+
+    #[test]
+    fn block_success_item_used_requires_client_swing_and_nonempty_count_change() {
+        let mut world = WorldStore::new();
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(VANILLA_ITEM_STONE_ID, 1),
+        });
+        let pre_use_stack = item_stack(VANILLA_ITEM_STONE_ID, 2);
+        let success = LocalInteractionSuccess {
+            swing_source: LocalInteractionSwingSource::Client,
+            was_item_interaction: true,
+            starts_using_item: false,
+            extra_swing: None,
+            sound_action: None,
+            particle_action: None,
+        };
+
+        assert!(block_success_uses_first_person_item(
+            Some(&pre_use_stack),
+            &world,
+            InteractionHand::MainHand,
+            success,
+        ));
+        assert!(!block_success_uses_first_person_item(
+            world.local_item_in_hand(InteractionHand::MainHand),
+            &world,
+            InteractionHand::MainHand,
+            success,
+        ));
+        assert!(!block_success_uses_first_person_item(
+            Some(&pre_use_stack),
+            &world,
+            InteractionHand::MainHand,
+            LocalInteractionSuccess {
+                swing_source: LocalInteractionSwingSource::Server,
+                ..success
+            },
+        ));
+        assert!(!block_success_uses_first_person_item(
+            None,
+            &world,
+            InteractionHand::MainHand,
+            success,
+        ));
     }
 
     #[test]
@@ -4001,11 +4122,28 @@ mod tests {
             pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
             block_state_id: lever,
         }));
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(VANILLA_ITEM_STONE_ID, 1),
+        });
+        world.apply_player_abilities(PlayerAbilities {
+            invulnerable: false,
+            flying: false,
+            can_fly: true,
+            instabuild: true,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        });
         let mut counters = NetCounters::default();
+        let mut first_person_hand_presentation =
+            FirstPersonHandPresentation::fully_raised_for_test(&world);
+        let mut random = LevelEventSoundRandomState::default();
+        let mut audio_events = None;
 
         let player_pose = world.local_player_pose();
-        assert!(start_use_item(
+        assert!(start_use_item_with_effects(
             &mut input,
+            &mut first_person_hand_presentation,
             &mut world,
             &mut counters,
             &commands,
@@ -4016,6 +4154,8 @@ mod tests {
                 inside: false,
             })),
             player_pose,
+            &mut random,
+            &mut audio_events,
         ));
 
         assert_eq!(
@@ -4038,6 +4178,15 @@ mod tests {
         assert_eq!(counters.use_item_on_commands_queued, 1);
         assert_eq!(counters.swing_commands_queued, 1);
         assert!(rx.try_recv().is_err());
+        assert_eq!(
+            first_person_hand_presentation.interpolated_inverse_height(
+                InteractionHand::MainHand,
+                None,
+                1.0,
+            ),
+            1.0,
+            "creative block success invokes ItemInHandRenderer.itemUsed",
+        );
     }
 
     #[test]
@@ -4950,14 +5099,22 @@ mod tests {
             item: item_stack(99, 1),
         });
         let mut counters = NetCounters::default();
+        let mut first_person_hand_presentation =
+            FirstPersonHandPresentation::fully_raised_for_test(&world);
+        let mut random = LevelEventSoundRandomState::default();
+        let mut audio_events = None;
 
-        handle_mouse_input(
+        handle_mouse_input_at_partial_tick_with_effects_and_presentation(
             &mut input,
+            &mut first_person_hand_presentation,
             &mut world,
             &mut counters,
             &commands,
             MouseButton::Right,
             ElementState::Pressed,
+            1.0,
+            &mut random,
+            &mut audio_events,
         );
 
         assert_eq!(counters.interact_entity_commands_queued, 1);
@@ -4981,6 +5138,15 @@ mod tests {
         assert_eq!(
             rx.try_recv().unwrap(),
             NetCommand::Swing(InteractionHand::MainHand)
+        );
+        assert_eq!(
+            first_person_hand_presentation.interpolated_inverse_height(
+                InteractionHand::MainHand,
+                None,
+                1.0,
+            ),
+            0.0,
+            "entity success never invokes ItemInHandRenderer.itemUsed",
         );
     }
 
@@ -5217,9 +5383,12 @@ mod tests {
         let expected_seed = expected_seed_world.next_sound_seed();
         let mut audio = RecordingAudioSink::default();
         let mut audio_events = Some(&mut audio as &mut dyn crate::audio_runtime::AudioEventSink);
+        let mut first_person_hand_presentation =
+            FirstPersonHandPresentation::fully_raised_for_test(&world);
 
         assert!(start_use_item_with_effects(
             &mut input,
+            &mut first_person_hand_presentation,
             &mut world,
             &mut counters,
             &commands,
@@ -5259,6 +5428,15 @@ mod tests {
         assert_eq!(sound.pitch, 1.0);
         assert_eq!(sound.seed, expected_seed);
         assert_eq!(sound.position, player_pose.expect("player pose").position);
+        assert_eq!(
+            first_person_hand_presentation.interpolated_inverse_height(
+                InteractionHand::MainHand,
+                None,
+                1.0,
+            ),
+            1.0,
+            "empty-space item success always invokes ItemInHandRenderer.itemUsed",
+        );
     }
 
     #[test]

@@ -77,8 +77,10 @@ pub(crate) fn first_person_item_models(
 ) -> FirstPersonItemModels {
     let mut map_textures = MapTextureExtractionCache::default();
     map_textures.begin_frame();
+    let hand_presentation = FirstPersonHandPresentation::fully_raised_for_test(world);
     first_person_item_models_with_map_cache(
         world,
+        &hand_presentation,
         item_runtime,
         terrain_textures,
         &mut map_textures,
@@ -89,6 +91,7 @@ pub(crate) fn first_person_item_models(
 
 pub(crate) fn first_person_item_models_with_map_cache(
     world: &WorldStore,
+    hand_presentation: &FirstPersonHandPresentation,
     item_runtime: Option<&NativeItemRuntime>,
     terrain_textures: &TerrainTextureState,
     map_texture_cache: &mut MapTextureExtractionCache,
@@ -106,8 +109,20 @@ pub(crate) fn first_person_item_models_with_map_cache(
         return models;
     }
 
-    let main_stack = world.local_item_in_hand(InteractionHand::MainHand);
-    let off_stack = world.local_item_in_hand(InteractionHand::OffHand);
+    let main_stack = hand_presentation.visible_stack(InteractionHand::MainHand);
+    let off_stack = hand_presentation.visible_stack(InteractionHand::OffHand);
+    let current_main_stack = world.local_item_in_hand(InteractionHand::MainHand);
+    let current_off_stack = world.local_item_in_hand(InteractionHand::OffHand);
+    let main_inverse_height = hand_presentation.interpolated_inverse_height(
+        InteractionHand::MainHand,
+        Some(item_runtime),
+        partial_ticks,
+    );
+    let off_inverse_height = hand_presentation.interpolated_inverse_height(
+        InteractionHand::OffHand,
+        Some(item_runtime),
+        partial_ticks,
+    );
     let using_hand = world.local_player().interaction.using_item.then(|| {
         world
             .local_player()
@@ -144,8 +159,12 @@ pub(crate) fn first_person_item_models_with_map_cache(
     let camera_x_rot = camera_pose.x_rot;
     let camera_world = first_person_camera_world_transform(camera_pose);
     let attack_swing = world.local_player_attack_swing(partial_ticks);
-    let only_render_using_hand =
-        first_person_only_render_using_hand(item_runtime, main_stack, off_stack, using_hand);
+    let only_render_using_hand = first_person_only_render_using_hand(
+        item_runtime,
+        current_main_stack,
+        current_off_stack,
+        using_hand,
+    );
 
     for (hand, stack) in [
         (InteractionHand::MainHand, main_stack),
@@ -169,12 +188,26 @@ pub(crate) fn first_person_item_models_with_map_cache(
         let attack = attack_swing
             .filter(|swing| swing.off_hand == (hand == InteractionHand::OffHand))
             .map_or(0.0, |swing| swing.attack_anim);
+        let inverse_height = match hand {
+            InteractionHand::MainHand => main_inverse_height,
+            InteractionHand::OffHand => off_inverse_height,
+        };
         if let Some(map_id) = stack.component_patch.map_id {
             let map = world.map_item(map_id);
             let map_transform = if hand == InteractionHand::MainHand && off_stack.is_none() {
-                first_person_two_handed_map_transform(camera_world, camera_x_rot, 0.0, attack)
+                first_person_two_handed_map_transform(
+                    camera_world,
+                    camera_x_rot,
+                    inverse_height,
+                    attack,
+                )
             } else {
-                first_person_one_handed_map_transform(camera_world, arm_left, 0.0, attack)
+                first_person_one_handed_map_transform(
+                    camera_world,
+                    arm_left,
+                    inverse_height,
+                    attack,
+                )
             };
             let background_kind = if map.is_some() {
                 FirstPersonMapBackgroundKind::Checkerboard
@@ -235,8 +268,11 @@ pub(crate) fn first_person_item_models_with_map_cache(
             }
             continue;
         }
-        let mut attach =
-            first_person_item_arm_transform_from_camera_world(camera_world, arm_left, 0.0);
+        let mut attach = first_person_item_arm_transform_from_camera_world(
+            camera_world,
+            arm_left,
+            inverse_height,
+        );
         let using_this_hand = using_hand == Some(hand);
         if let Some(use_animation) = using_this_hand
             .then(|| first_person_stack_supported_use_animation(world, stack, item_runtime))
@@ -248,6 +284,7 @@ pub(crate) fn first_person_item_models_with_map_cache(
                     attach = first_person_apply_eat_drink_use_transform(
                         camera_world,
                         arm_left,
+                        inverse_height,
                         use_duration_ticks,
                         world.local_player().interaction.using_item_ticks as f32,
                         partial_ticks,
@@ -317,6 +354,7 @@ pub(crate) fn first_person_item_models_with_map_cache(
                     attach = first_person_apply_spear_use_transform(
                         camera_world,
                         arm_left,
+                        inverse_height,
                         kinetic_weapon,
                         use_duration_ticks,
                         world.local_player().interaction.using_item_ticks as f32,
@@ -405,6 +443,7 @@ pub(crate) fn first_person_item_models_with_map_cache(
 
 pub(crate) fn first_person_player_arms(
     world: &WorldStore,
+    hand_presentation: &FirstPersonHandPresentation,
     item_runtime: Option<&NativeItemRuntime>,
     local_player_instance: Option<&EntityModelInstance>,
     camera_pose: Option<CameraPose>,
@@ -427,8 +466,20 @@ pub(crate) fn first_person_player_arms(
         return Vec::new();
     };
 
-    let main_stack = world.local_item_in_hand(InteractionHand::MainHand);
-    let off_stack = world.local_item_in_hand(InteractionHand::OffHand);
+    let main_stack = hand_presentation.visible_stack(InteractionHand::MainHand);
+    let off_stack = hand_presentation.visible_stack(InteractionHand::OffHand);
+    let current_main_stack = world.local_item_in_hand(InteractionHand::MainHand);
+    let current_off_stack = world.local_item_in_hand(InteractionHand::OffHand);
+    let main_inverse_height = hand_presentation.interpolated_inverse_height(
+        InteractionHand::MainHand,
+        item_runtime,
+        partial_ticks,
+    );
+    let off_inverse_height = hand_presentation.interpolated_inverse_height(
+        InteractionHand::OffHand,
+        item_runtime,
+        partial_ticks,
+    );
     let using_hand = world.local_player().interaction.using_item.then(|| {
         world
             .local_player()
@@ -437,7 +488,12 @@ pub(crate) fn first_person_player_arms(
             .unwrap_or(InteractionHand::MainHand)
     });
     let only_render_using_hand = item_runtime.and_then(|item_runtime| {
-        first_person_only_render_using_hand(item_runtime, main_stack, off_stack, using_hand)
+        first_person_only_render_using_hand(
+            item_runtime,
+            current_main_stack,
+            current_off_stack,
+            using_hand,
+        )
     });
     let owner_main_hand_left = world.local_player_main_arm_left().unwrap_or(false);
     let camera_world = first_person_camera_world_transform(camera_pose);
@@ -466,7 +522,7 @@ pub(crate) fn first_person_player_arms(
             transform: first_person_render_player_arm_transform(
                 camera_world,
                 arm_left,
-                0.0,
+                main_inverse_height,
                 attack,
             ),
             light,
@@ -487,6 +543,10 @@ pub(crate) fn first_person_player_arms(
             continue;
         }
         let attack = hand_attack(hand);
+        let inverse_height = match hand {
+            InteractionHand::MainHand => main_inverse_height,
+            InteractionHand::OffHand => off_inverse_height,
+        };
         if hand == InteractionHand::MainHand && off_stack.is_none() {
             for arm_left in [false, true] {
                 arms.push(FirstPersonPlayerArm {
@@ -500,7 +560,7 @@ pub(crate) fn first_person_player_arms(
                     transform: first_person_two_handed_map_arm_transform(
                         camera_world,
                         camera_pose.x_rot,
-                        0.0,
+                        inverse_height,
                         attack,
                         arm_left,
                     ),
@@ -523,7 +583,7 @@ pub(crate) fn first_person_player_arms(
                 transform: first_person_one_handed_map_arm_transform(
                     camera_world,
                     arm_left,
-                    0.0,
+                    inverse_height,
                     attack,
                 ),
                 light,
@@ -1105,6 +1165,7 @@ pub(super) fn first_person_apply_block_use_transform(transform: Mat4, arm_left: 
 pub(super) fn first_person_apply_eat_drink_use_transform(
     camera_world: Mat4,
     arm_left: bool,
+    inverse_arm_height: f32,
     use_duration_ticks: f32,
     using_item_ticks: f32,
     partial_ticks: f32,
@@ -1115,7 +1176,11 @@ pub(super) fn first_person_apply_eat_drink_use_transform(
         using_item_ticks,
         partial_ticks,
     );
-    first_person_item_arm_transform_from_camera_world(camera_world * eat_transform, arm_left, 0.0)
+    first_person_item_arm_transform_from_camera_world(
+        camera_world * eat_transform,
+        arm_left,
+        inverse_arm_height,
+    )
 }
 
 fn first_person_eat_drink_use_transform(
@@ -1328,6 +1393,7 @@ fn first_person_crossbow_use_transform(
 pub(super) fn first_person_apply_spear_use_transform(
     camera_world: Mat4,
     arm_left: bool,
+    inverse_arm_height: f32,
     kinetic_weapon: SpearKineticWeapon,
     use_duration_ticks: f32,
     using_item_ticks: f32,
@@ -1336,7 +1402,11 @@ pub(super) fn first_person_apply_spear_use_transform(
 ) -> Mat4 {
     let invert = if arm_left { -1.0 } else { 1.0 };
     camera_world
-        * Mat4::from_translation(Vec3::new(invert * 0.56, -0.52, -0.72))
+        * Mat4::from_translation(Vec3::new(
+            invert * 0.56,
+            -0.52 + inverse_arm_height * -0.6,
+            -0.72,
+        ))
         * first_person_spear_use_transform(
             arm_left,
             kinetic_weapon,

@@ -34,9 +34,10 @@ use crate::{
         handle_advancements_screen_mouse_input, handle_advancements_screen_mouse_wheel,
         handle_focus_change, handle_inventory_cursor_moved,
         handle_inventory_mouse_input_with_item_runtime, handle_inventory_mouse_wheel,
-        handle_key_input_with_item_runtime, handle_mouse_input_at_partial_tick_with_effects,
-        handle_mouse_motion, handle_mouse_wheel, handle_text_input_with_item_runtime,
-        queue_chat_command, queue_debug_recreate_server_query_request, release_active_input,
+        handle_key_input_with_item_runtime,
+        handle_mouse_input_at_partial_tick_with_effects_and_presentation, handle_mouse_motion,
+        handle_mouse_wheel, handle_text_input_with_item_runtime, queue_chat_command,
+        queue_debug_recreate_server_query_request, release_active_input,
         social::SocialInteractionsPlatformRequest, CommandSuggestionTextMeasurer, DebugClipboard,
         DebugFeatureCountRequest, DebugFrustumRequest, DebugOptionsSearchTextMeasurer,
         DebugProfilingToggleRequest, PauseScreenLinkRequest, TerrainReloadRequestSink,
@@ -1429,8 +1430,9 @@ impl SimulationInputRuntime {
         if !self.cursor_captured {
             return;
         }
-        handle_mouse_input_at_partial_tick_with_effects(
+        handle_mouse_input_at_partial_tick_with_effects_and_presentation(
             context.input,
+            context.first_person_hand_presentation,
             context.world,
             context.net_counters,
             context.net_commands,
@@ -1734,6 +1736,7 @@ impl SimulationInputRuntime {
         pump_control_input_requests_with_effects(
             &requests,
             context.input,
+            context.first_person_hand_presentation,
             context.net_counters,
             context.world,
             context.net_commands,
@@ -1765,6 +1768,8 @@ impl SimulationInputRuntime {
 
 pub(crate) struct SimulationInputContext<'a, 'audio, 'collector> {
     pub(crate) input: &'a mut crate::input::ClientInputState,
+    pub(crate) first_person_hand_presentation:
+        &'a mut crate::item_models::FirstPersonHandPresentation,
     pub(crate) world: &'a mut WorldStore,
     pub(crate) net_counters: &'a mut bbb_control::NetCounters,
     pub(crate) net_commands: &'a Option<mpsc::Sender<NetCommand>>,

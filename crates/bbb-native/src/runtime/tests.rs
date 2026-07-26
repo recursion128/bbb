@@ -1993,7 +1993,7 @@ fn renderer_frame_hud_extracts_after_input_and_use_item_tick() {
         .find("advance_destroying_block_at_partial_tick(")
         .expect("pump should advance destroy input before HUD extraction");
     let use_advance = source
-        .find("advance_using_item_at_partial_tick_with_effects(")
+        .find("advance_using_item_at_partial_tick_with_effects_and_presentation(")
         .expect("pump should advance use-item input before HUD extraction");
     let using_item_tick = source
         .find("advance_local_using_item_ticks_with_effects(")
@@ -6585,7 +6585,7 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
         .find("submit_local_player_action_particles(")
         .expect("pump should submit local player-action particles before particle tick");
     let use_advance = source
-        .find("advance_using_item_at_partial_tick_with_effects(")
+        .find("advance_using_item_at_partial_tick_with_effects_and_presentation(")
         .expect("pump should advance use-item input before particle tick");
     let using_item_tick = source
         .find("advance_local_using_item_ticks_with_effects(")
@@ -21078,7 +21078,9 @@ fn client_tick_end_is_queued_after_native_tick_commands_and_particle_effects() {
         .find("    advance_player_input_for_client_ticks(\n        input,")
         .expect("pump should advance player movement");
     let use_item = source
-        .find("    advance_using_item_at_partial_tick_with_effects(\n        input,")
+        .find(
+            "    advance_using_item_at_partial_tick_with_effects_and_presentation(\n        input,",
+        )
         .expect("pump should advance use-item input");
     let particles = source
         .find("    submit_ominous_item_spawner_particles(")
