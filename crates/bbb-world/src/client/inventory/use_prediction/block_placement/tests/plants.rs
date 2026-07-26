@@ -409,6 +409,84 @@ fn seagrass_placement_requires_full_water_and_an_allowed_sturdy_floor() {
 }
 
 #[test]
+fn pitcher_crop_placement_requires_crop_support_and_raw_brightness_eight() {
+    let clicked = BlockPos { x: 4, y: 8, z: 4 };
+    let target = relative(clicked, ProtocolDirection::Up);
+    let set_raw_light = |world: &mut WorldStore, sky: u8, block: u8| {
+        let light_section_index = target.y.div_euclid(16) - (world.dimension().min_section_y() - 1);
+        let light_section_mask =
+            1_i64 << u32::try_from(light_section_index).expect("light section");
+        let packed_nibbles = |value: u8| value | (value << 4);
+        assert!(world
+            .apply_light_update(LightUpdate {
+                chunk_x: 0,
+                chunk_z: 0,
+                light_data: LightUpdateData {
+                    sky_y_mask: vec![light_section_mask],
+                    block_y_mask: vec![light_section_mask],
+                    empty_sky_y_mask: Vec::new(),
+                    empty_block_y_mask: Vec::new(),
+                    sky_updates: vec![vec![packed_nibbles(sky); 2048]],
+                    block_updates: vec![vec![packed_nibbles(block); 2048]],
+                },
+            })
+            .unwrap());
+    };
+
+    let mut supported = placement_world();
+    set_block_tag(
+        &mut supported,
+        "minecraft:supports_crops",
+        &[VANILLA_BLOCK_STONE_ID],
+    );
+    set_block(&mut supported, clicked, state_id("minecraft:stone", []));
+    set_raw_light(&mut supported, 0, 8);
+    set_held(&mut supported, VANILLA_ITEM_PITCHER_POD_ID, 1);
+    assert!(matches!(
+        use_block_at(&mut supported, clicked, false, 78),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        supported.probe_block(target).unwrap().block_state_id,
+        state_id("minecraft:pitcher_crop", [("age", "0"), ("half", "lower")])
+    );
+    assert_eq!(held(&supported).count, 0);
+
+    let mut dark = placement_world();
+    set_block_tag(
+        &mut dark,
+        "minecraft:supports_crops",
+        &[VANILLA_BLOCK_STONE_ID],
+    );
+    set_block(&mut dark, clicked, state_id("minecraft:stone", []));
+    set_raw_light(&mut dark, 7, 6);
+    set_held(&mut dark, VANILLA_ITEM_PITCHER_POD_ID, 1);
+    assert_eq!(
+        use_block_at(&mut dark, clicked, false, 79),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
+    );
+    assert_eq!(
+        dark.probe_block(target).unwrap().block_state_id,
+        state_id("minecraft:air", [])
+    );
+    assert_eq!(held(&dark).count, 1);
+
+    let mut unsupported = placement_world();
+    set_block_tag(&mut unsupported, "minecraft:supports_crops", &[]);
+    set_block(&mut unsupported, clicked, state_id("minecraft:stone", []));
+    set_held(&mut unsupported, VANILLA_ITEM_PITCHER_POD_ID, 1);
+    assert_eq!(
+        use_block_at(&mut unsupported, clicked, false, 80),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
+    );
+    assert_eq!(
+        unsupported.probe_block(target).unwrap().block_state_id,
+        state_id("minecraft:air", [])
+    );
+    assert_eq!(held(&unsupported).count, 1);
+}
+
+#[test]
 fn bamboo_placement_selects_sapling_or_stalk_from_vertical_neighbours() {
     let support_entries = [
         VANILLA_BLOCK_BAMBOO_ID,

@@ -614,6 +614,9 @@ pub(super) fn block_state_for_placement(
                 None => BlockPlacementState::Unsupported,
             };
         }
+        VanillaGetStateForPlacementOverride::PitcherCropBlock => {
+            return BlockPlacementState::State(default_state_id);
+        }
         VanillaGetStateForPlacementOverride::BannerBlock => {
             let Some(rotation) = rotation_segment(pose.y_rot + 180.0) else {
                 return BlockPlacementState::Unsupported;

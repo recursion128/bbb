@@ -35,6 +35,7 @@ enum BlockCanSurviveRule {
     MangrovePropagule,
     MossyCarpet,
     Multiface,
+    PitcherCrop,
     PointedDripstone,
     RedStoneWire,
     Scaffolding,
@@ -267,6 +268,32 @@ impl WorldStore {
                 }
                 Some(has_face)
             }
+            BlockCanSurviveRule::PitcherCrop => match properties.get("half")?.as_str() {
+                "lower" => {
+                    let light = self.sample_block_light(pos)?;
+                    let sky = if self.level_info()?.has_sky_light() {
+                        light.sky
+                    } else {
+                        0
+                    };
+                    if sky.max(light.block) < 8 {
+                        return Some(false);
+                    }
+                    let below = self.probe_block(relative(pos, Direction::Down))?;
+                    self.placement_block_is_in_tag(&below, "minecraft:supports_crops")
+                }
+                "upper" => {
+                    let below = self.probe_block(relative(pos, Direction::Down))?;
+                    Some(
+                        below.block_name.as_deref() == Some("minecraft:pitcher_crop")
+                            && below
+                                .block_properties
+                                .get("half")
+                                .is_some_and(|half| half == "lower"),
+                    )
+                }
+                _ => None,
+            },
             BlockCanSurviveRule::PointedDripstone => {
                 let tip_direction = direction_property(properties, "vertical_direction")?;
                 let behind = self.probe_block(relative(pos, opposite(tip_direction)))?;
@@ -569,6 +596,7 @@ const fn block_can_survive_rule(owner: VanillaCanSurviveOverride) -> Option<Bloc
         VanillaCanSurviveOverride::MangrovePropaguleBlock => BlockCanSurviveRule::MangrovePropagule,
         VanillaCanSurviveOverride::MossyCarpetBlock => BlockCanSurviveRule::MossyCarpet,
         VanillaCanSurviveOverride::MultifaceBlock => BlockCanSurviveRule::Multiface,
+        VanillaCanSurviveOverride::PitcherCropBlock => BlockCanSurviveRule::PitcherCrop,
         VanillaCanSurviveOverride::PointedDripstoneBlock => BlockCanSurviveRule::PointedDripstone,
         VanillaCanSurviveOverride::RedStoneWireBlock => BlockCanSurviveRule::RedStoneWire,
         VanillaCanSurviveOverride::ScaffoldingBlock => BlockCanSurviveRule::Scaffolding,
