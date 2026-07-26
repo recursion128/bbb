@@ -223,8 +223,8 @@ use bbb_protocol::mob_effect_types::{VANILLA_MOB_EFFECT_SPEED_ID, VANILLA_MOB_EF
 #[cfg(test)]
 use crate::terrain_runtime::TerrainUploadState;
 
-mod advancement_toast;
 mod book_screen;
+mod toast;
 pub(crate) use book_screen::hud_book_component_click_event;
 mod control_requests;
 mod debug_light_sections;
@@ -655,11 +655,13 @@ struct InventoryHudLocalState {
     advanced_item_tooltips: bool,
 }
 
-use advancement_toast::AdvancementToastRuntime;
 pub(crate) use control_requests::{
     pump_control_input_requests_with_effects, pump_control_net_requests,
 };
 pub(crate) use events::LevelEventSoundRandomState;
+#[cfg(test)]
+use toast::ClientToast;
+use toast::ClientToastRuntime;
 
 const HUD_DEBUG_FRAME_TIME_SAMPLE_CAPACITY: usize = 240;
 const HUD_DEBUG_NETWORK_SAMPLE_CAPACITY: usize = 240;
@@ -698,7 +700,7 @@ pub(crate) struct ClientAnimationTickState {
 pub(crate) struct HudRenderRuntime {
     insecure_chat_toast: SystemToastAnimationState,
     low_disk_space_toast: SystemToastAnimationState,
-    advancement_toasts: AdvancementToastRuntime,
+    client_toasts: ClientToastRuntime,
     stats_screen_narration: Option<ScreenNarrationFrame>,
     social_interactions_narration: Option<ScreenNarrationFrame>,
     death_screen_narration: Option<ScreenNarrationFrame>,
@@ -3059,7 +3061,7 @@ pub(crate) fn update_renderer_from_publication(
     {
         audio_events.play_local_sound(sound);
     }
-    let advancement_toast_sounds = hud_render_runtime.advancement_toasts.update(world, now);
+    let advancement_toast_sounds = hud_render_runtime.client_toasts.update(world, now);
     if let Some(audio_events) = audio_events.as_deref_mut() {
         for sound in &advancement_toast_sounds {
             audio_events.play_local_sound(sound);
@@ -3068,7 +3070,18 @@ pub(crate) fn update_renderer_from_publication(
     let hud_advancement_toasts = if input.hide_gui() {
         Vec::new()
     } else {
-        hud_render_runtime.advancement_toasts.project(
+        hud_render_runtime.client_toasts.project_advancements(
+            world,
+            item_runtime,
+            terrain_textures,
+            item_model_keybind_context,
+            entity_partial_tick,
+        )
+    };
+    let hud_recipe_toasts = if input.hide_gui() {
+        Vec::new()
+    } else {
+        hud_render_runtime.client_toasts.project_recipes(
             world,
             item_runtime,
             terrain_textures,
@@ -3740,6 +3753,7 @@ pub(crate) fn update_renderer_from_publication(
             hud_stats_screen,
             hud_system_toast,
             hud_advancement_toasts,
+            hud_recipe_toasts,
             hud_debug_options_screen,
             hud_action_bar_text,
             hud_title_text,

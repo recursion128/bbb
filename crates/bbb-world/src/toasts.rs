@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use bbb_protocol::packets::AdvancementDisplaySummary;
+use bbb_protocol::packets::{AdvancementDisplaySummary, ItemStackSummary};
 use serde::{Deserialize, Serialize};
 
 use crate::WorldStore;
@@ -27,6 +27,11 @@ pub enum ClientToastEventKind {
         advancement_id: String,
         display: AdvancementDisplaySummary,
     },
+    Recipe {
+        recipe_id: i32,
+        category_item: ItemStackSummary,
+        unlocked_item: ItemStackSummary,
+    },
 }
 
 impl ClientToastEvent {
@@ -36,6 +41,18 @@ impl ClientToastEvent {
                 advancement_id,
                 display,
             } => Some((advancement_id, display)),
+            ClientToastEventKind::Recipe { .. } => None,
+        }
+    }
+
+    pub fn recipe(&self) -> Option<(i32, &ItemStackSummary, &ItemStackSummary)> {
+        match &self.kind {
+            ClientToastEventKind::Recipe {
+                recipe_id,
+                category_item,
+                unlocked_item,
+            } => Some((*recipe_id, category_item, unlocked_item)),
+            ClientToastEventKind::Advancement { .. } => None,
         }
     }
 }
@@ -62,6 +79,19 @@ impl WorldStore {
             self.counters.advancement_toast_events.saturating_add(1);
     }
 
+    pub(crate) fn push_recipe_toast_event(
+        &mut self,
+        recipe_id: i32,
+        category_item: ItemStackSummary,
+        unlocked_item: ItemStackSummary,
+    ) {
+        self.push_client_toast_event(ClientToastEventKind::Recipe {
+            recipe_id,
+            category_item,
+            unlocked_item,
+        });
+    }
+
     pub(crate) fn reset_client_toasts_for_new_level(&mut self) {
         self.client_toasts = ClientToastState::default();
     }
@@ -74,14 +104,20 @@ impl WorldStore {
             .checked_add(1)
             .expect("client toast sequence overflow");
         if self.client_toasts.events.len() == MAX_CLIENT_TOAST_EVENTS {
-            if matches!(
-                self.client_toasts.events.front().map(|event| &event.kind),
-                Some(ClientToastEventKind::Advancement { .. })
-            ) {
-                self.counters.advancement_toast_events_dropped = self
-                    .counters
-                    .advancement_toast_events_dropped
-                    .saturating_add(1);
+            match self.client_toasts.events.front().map(|event| &event.kind) {
+                Some(ClientToastEventKind::Advancement { .. }) => {
+                    self.counters.advancement_toast_events_dropped = self
+                        .counters
+                        .advancement_toast_events_dropped
+                        .saturating_add(1);
+                }
+                Some(ClientToastEventKind::Recipe { .. }) => {
+                    self.counters.recipe_book_notification_events_dropped = self
+                        .counters
+                        .recipe_book_notification_events_dropped
+                        .saturating_add(1);
+                }
+                None => {}
             }
             self.client_toasts.events.pop_front();
         }
@@ -124,6 +160,67 @@ mod tests {
             MAX_CLIENT_TOAST_EVENTS + 1
         );
         assert_eq!(store.counters().advancement_toast_events_dropped, 1);
+
+        store.push_recipe_toast_event(7, ItemStackSummary::empty(), ItemStackSummary::empty());
+        for index in 0..MAX_CLIENT_TOAST_EVENTS {
+            store.push_advancement_toast_event(
+                format!("minecraft:test/after_reset_{index}"),
+                display.clone(),
+            );
+        }
+        assert_eq!(store.counters().recipe_book_notification_events_dropped, 1);
+        assert_eq!(store.counters().advancement_toast_events_dropped, 1);
+    }
+
+    #[test]
+    fn advancement_and_recipe_events_share_one_packet_order() {
+        let mut store = WorldStore::new();
+        store.push_advancement_toast_event(
+            "minecraft:test/first".to_string(),
+            advancement_display(),
+        );
+        store.push_recipe_toast_event(
+            7,
+            ItemStackSummary {
+                item_id: Some(1),
+                count: 1,
+                component_patch: Default::default(),
+            },
+            ItemStackSummary {
+                item_id: Some(2),
+                count: 1,
+                component_patch: Default::default(),
+            },
+        );
+        store
+            .push_advancement_toast_event("minecraft:test/last".to_string(), advancement_display());
+
+        assert_eq!(
+            store
+                .client_toast_events()
+                .iter()
+                .map(|event| event.sequence)
+                .collect::<Vec<_>>(),
+            vec![0, 1, 2]
+        );
+        assert_eq!(
+            store.client_toast_events()[0]
+                .advancement()
+                .expect("advancement")
+                .0,
+            "minecraft:test/first"
+        );
+        assert_eq!(
+            store.client_toast_events()[1].recipe().expect("recipe").0,
+            7
+        );
+        assert_eq!(
+            store.client_toast_events()[2]
+                .advancement()
+                .expect("advancement")
+                .0,
+            "minecraft:test/last"
+        );
     }
 
     fn advancement_display() -> AdvancementDisplaySummary {

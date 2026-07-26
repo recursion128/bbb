@@ -10745,7 +10745,7 @@ fn advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing()
     let mut world = WorldStore::new();
     enqueue_runtime_advancement_toasts(&mut world, 6, AdvancementFrameType::Challenge);
     let start = Instant::now();
-    let mut state = AdvancementToastRuntime::default();
+    let mut state = ClientToastRuntime::default();
 
     let admission_sounds = state.update(&world, start);
     assert_eq!(state.visible.len(), 5);
@@ -10760,14 +10760,21 @@ fn advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing()
     );
     assert_eq!(
         state.visible[0]
-            .event
+            .toast
+            .advancement_event()
+            .expect("advancement event")
             .advancement()
             .expect("advancement toast")
             .0,
         "test:toast_0"
     );
     assert_eq!(
-        state.queued[0].advancement().expect("advancement toast").0,
+        state.queued[0]
+            .advancement_event()
+            .expect("advancement event")
+            .advancement()
+            .expect("advancement toast")
+            .0,
         "test:toast_5"
     );
     assert_eq!(
@@ -10813,7 +10820,9 @@ fn advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing()
     assert_eq!(state.visible.len(), 1);
     assert_eq!(
         state.visible[0]
-            .event
+            .toast
+            .advancement_event()
+            .expect("advancement event")
             .advancement()
             .expect("advancement toast")
             .0,
@@ -10835,7 +10844,7 @@ fn advancement_toast_runtime_counts_retained_window_lag_and_consumes_once() {
         AdvancementFrameType::Task,
     );
     let start = Instant::now();
-    let mut state = AdvancementToastRuntime::default();
+    let mut state = ClientToastRuntime::default();
     state.update(&world, start);
     assert_eq!(state.dropped_events, 1);
     assert_eq!(
@@ -10845,7 +10854,7 @@ fn advancement_toast_runtime_counts_retained_window_lag_and_consumes_once() {
     assert_eq!(state.visible.len(), 5);
     assert_eq!(
         state.queued.len(),
-        bbb_world::MAX_CLIENT_TOAST_EVENTS - bbb_renderer::HUD_ADVANCEMENT_TOAST_SLOTS
+        bbb_world::MAX_CLIENT_TOAST_EVENTS - bbb_renderer::HUD_TOAST_SLOTS
     );
 
     state.update(&world, start);
@@ -10853,7 +10862,7 @@ fn advancement_toast_runtime_counts_retained_window_lag_and_consumes_once() {
     assert_eq!(state.visible.len(), 5);
     assert_eq!(
         state.queued.len(),
-        bbb_world::MAX_CLIENT_TOAST_EVENTS - bbb_renderer::HUD_ADVANCEMENT_TOAST_SLOTS
+        bbb_world::MAX_CLIENT_TOAST_EVENTS - bbb_renderer::HUD_TOAST_SLOTS
     );
 }
 
@@ -10861,7 +10870,7 @@ fn advancement_toast_runtime_counts_retained_window_lag_and_consumes_once() {
 fn advancement_toast_runtime_clears_visible_and_queued_state_for_new_level() {
     let mut world = WorldStore::new();
     enqueue_runtime_advancement_toasts(&mut world, 6, AdvancementFrameType::Goal);
-    let mut state = AdvancementToastRuntime::default();
+    let mut state = ClientToastRuntime::default();
     state.update(&world, Instant::now());
     assert_eq!(state.visible.len(), 5);
     assert_eq!(state.queued.len(), 1);
@@ -10871,6 +10880,91 @@ fn advancement_toast_runtime_clears_visible_and_queued_state_for_new_level() {
     assert!(state.visible.is_empty());
     assert!(state.queued.is_empty());
     assert_eq!(state.next_sequence, 0);
+}
+
+#[test]
+fn recipe_toast_runtime_coalesces_resets_lifetime_cycles_and_revives() {
+    let mut world = WorldStore::new();
+    enqueue_runtime_recipe_toast(&mut world, 1, 1, 2);
+    let start = Instant::now();
+    let mut state = ClientToastRuntime::default();
+
+    assert!(state.update(&world, start).is_empty());
+    assert_eq!(state.visible.len(), 1);
+    assert!(matches!(state.visible[0].toast, ClientToast::Recipe(_)));
+    assert_eq!(
+        sound_locations(&state.update(&world, start)),
+        vec!["minecraft:ui.toast.in"]
+    );
+    state.update(&world, start + Duration::from_millis(600));
+    state.update(&world, start + Duration::from_millis(4_600));
+
+    enqueue_runtime_recipe_toast(&mut world, 2, 3, 4);
+    assert!(state
+        .update(&world, start + Duration::from_millis(4_600))
+        .is_empty());
+    let ClientToast::Recipe(recipe) = &state.visible[0].toast else {
+        panic!("recipe toast");
+    };
+    assert_eq!(recipe.items.len(), 2);
+    assert_eq!(recipe.last_changed_ms, 4_000);
+    assert_eq!(
+        recipe
+            .displayed_item(4_000)
+            .and_then(|item| item.unlocked_item.item_id),
+        Some(4)
+    );
+    let projected = state.project_recipes(
+        &world,
+        None,
+        &TerrainTextureState::default(),
+        ItemModelKeybindContext::default(),
+        0.0,
+    );
+    assert_eq!(projected.len(), 1);
+    assert_eq!(projected[0].title, "New Recipe(s) Unlocked!");
+    assert_eq!(projected[0].description, "Check your recipe book");
+    assert_eq!(projected[0].slot, 0);
+    assert!(state
+        .update(&world, start + Duration::from_millis(9_599))
+        .is_empty());
+    assert_eq!(
+        sound_locations(&state.update(&world, start + Duration::from_millis(9_600))),
+        vec!["minecraft:ui.toast.out"]
+    );
+
+    enqueue_runtime_recipe_toast(&mut world, 3, 5, 6);
+    assert_eq!(
+        sound_locations(&state.update(&world, start + Duration::from_millis(9_700))),
+        vec!["minecraft:ui.toast.in"]
+    );
+    assert_eq!(state.visible.len(), 1);
+    let ClientToast::Recipe(recipe) = &state.visible[0].toast else {
+        panic!("recipe toast");
+    };
+    assert_eq!(recipe.items.len(), 3);
+    assert_eq!(recipe.last_changed_ms, 9_100);
+}
+
+#[test]
+fn recipe_toast_runtime_coalesces_while_queued_and_keeps_global_fifo_order() {
+    let mut world = WorldStore::new();
+    enqueue_runtime_advancement_toasts(&mut world, 5, AdvancementFrameType::Task);
+    let mut state = ClientToastRuntime::default();
+    state.update(&world, Instant::now());
+    assert_eq!(state.visible.len(), 5);
+
+    enqueue_runtime_recipe_toast(&mut world, 1, 1, 2);
+    enqueue_runtime_recipe_toast(&mut world, 2, 3, 4);
+    enqueue_runtime_advancement_toasts(&mut world, 1, AdvancementFrameType::Goal);
+    state.update(&world, Instant::now());
+
+    assert_eq!(state.queued.len(), 2);
+    let ClientToast::Recipe(recipe) = &state.queued[0] else {
+        panic!("recipe toast stays first in FIFO");
+    };
+    assert_eq!(recipe.items.len(), 2);
+    assert!(state.queued[1].advancement_event().is_some());
 }
 
 #[test]
@@ -10918,10 +11012,10 @@ fn advancement_toast_and_screen_preserve_rich_title_runs() {
         show_advancements: true,
     });
 
-    let mut runtime = AdvancementToastRuntime::default();
+    let mut runtime = ClientToastRuntime::default();
     runtime.update(&world, Instant::now());
     let item_runtime = recipe_book_ghost_item_runtime();
-    let projected = runtime.project(
+    let projected = runtime.project_advancements(
         &world,
         Some(&item_runtime),
         &TerrainTextureState::default(),
@@ -10995,6 +11089,33 @@ fn enqueue_runtime_advancement_toasts(
         removed: Vec::new(),
         progress,
         show_advancements: true,
+    });
+}
+
+fn enqueue_runtime_recipe_toast(
+    world: &mut WorldStore,
+    recipe_id: i32,
+    category_item_id: i32,
+    result_item_id: i32,
+) {
+    let mut entry = furnace_recipe_book_entry(
+        recipe_id,
+        VANILLA_RECIPE_BOOK_CATEGORY_CRAFTING_MISC_ID,
+        None,
+        result_item_id,
+    );
+    entry
+        .contents
+        .display
+        .furnace
+        .as_mut()
+        .expect("furnace recipe")
+        .crafting_station = stonecutter_item_display(category_item_id);
+    entry.flags = 1;
+    entry.notification = true;
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: false,
+        entries: vec![entry],
     });
 }
 

@@ -59,6 +59,27 @@ impl WorldStore {
             if entry.notification {
                 self.counters.recipe_book_notifications_received += 1;
                 self.recipe_book.notification_ids.push(id);
+                let category_item = entry
+                    .contents
+                    .display
+                    .crafting_station()
+                    .and_then(|display| {
+                        self.resolve_slot_display_first_stack(display)
+                            .ok()
+                            .flatten()
+                    })
+                    .unwrap_or_else(bbb_protocol::packets::ItemStackSummary::empty);
+                let unlocked_item = entry
+                    .contents
+                    .display
+                    .result()
+                    .and_then(|display| {
+                        self.resolve_slot_display_first_stack(display)
+                            .ok()
+                            .flatten()
+                    })
+                    .unwrap_or_else(bbb_protocol::packets::ItemStackSummary::empty);
+                self.push_recipe_toast_event(id, category_item, unlocked_item);
             }
             self.recipe_book.known.insert(id, entry.contents);
         }
@@ -119,10 +140,14 @@ impl WorldStore {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bbb_protocol::codec::Encoder;
     use bbb_protocol::packets::{
-        IngredientSummary, RecipeBookAddEntry, RecipeBookTypeSettings, RecipeDisplayId,
-        RecipeDisplaySummary, RecipeDisplayType,
+        CraftingRecipeDisplaySummary, FurnaceRecipeDisplaySummary, IngredientSummary,
+        RecipeBookAddEntry, RecipeBookTypeSettings, RecipeDisplayId, RecipeDisplaySummary,
+        RecipeDisplayType, SlotDisplaySummary, SmithingRecipeDisplaySummary,
+        StonecutterRecipeDisplaySummary,
     };
+    use bbb_protocol::recipe_wire_types::VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID;
 
     #[test]
     fn recipe_book_add_remove_and_settings_follow_client_semantics() {
@@ -264,6 +289,124 @@ mod tests {
         assert_eq!(store.counters().recipe_book_replace_packets, 1);
     }
 
+    #[test]
+    fn recipe_notifications_snapshot_first_station_and_result_for_every_display_family() {
+        let displays = vec![
+            RecipeDisplaySummary {
+                display_type: RecipeDisplayType::CraftingShapeless,
+                raw_body: Vec::new(),
+                crafting: Some(CraftingRecipeDisplaySummary::Shapeless {
+                    ingredients: Vec::new(),
+                    result: item_display(2),
+                    crafting_station: item_display(1),
+                }),
+                furnace: None,
+                stonecutter: None,
+                smithing: None,
+            },
+            RecipeDisplaySummary {
+                display_type: RecipeDisplayType::CraftingShaped,
+                raw_body: Vec::new(),
+                crafting: Some(CraftingRecipeDisplaySummary::Shaped {
+                    width: 1,
+                    height: 1,
+                    ingredients: vec![item_display(42)],
+                    result: item_display(4),
+                    crafting_station: item_display(3),
+                }),
+                furnace: None,
+                stonecutter: None,
+                smithing: None,
+            },
+            RecipeDisplaySummary {
+                display_type: RecipeDisplayType::Furnace,
+                raw_body: Vec::new(),
+                crafting: None,
+                furnace: Some(FurnaceRecipeDisplaySummary {
+                    ingredient: item_display(42),
+                    fuel: item_display(1),
+                    result: item_display(6),
+                    crafting_station: item_display(5),
+                    duration: 200,
+                    experience_bits: 0,
+                }),
+                stonecutter: None,
+                smithing: None,
+            },
+            RecipeDisplaySummary {
+                display_type: RecipeDisplayType::Stonecutter,
+                raw_body: Vec::new(),
+                crafting: None,
+                furnace: None,
+                stonecutter: Some(StonecutterRecipeDisplaySummary {
+                    input: item_display(42),
+                    result: item_display(8),
+                    crafting_station: item_display(7),
+                }),
+                smithing: None,
+            },
+            RecipeDisplaySummary {
+                display_type: RecipeDisplayType::Smithing,
+                raw_body: Vec::new(),
+                crafting: None,
+                furnace: None,
+                stonecutter: None,
+                smithing: Some(SmithingRecipeDisplaySummary {
+                    template: item_display(42),
+                    base: item_display(1),
+                    addition: item_display(2),
+                    result: item_display(10),
+                    crafting_station: item_display(9),
+                }),
+            },
+        ];
+        let entries = displays
+            .into_iter()
+            .enumerate()
+            .map(|(index, display)| RecipeBookAddEntry {
+                contents: ProtocolRecipeDisplayEntry {
+                    id: RecipeDisplayId {
+                        index: i32::try_from(index).unwrap(),
+                    },
+                    display,
+                    group: None,
+                    category_id: VANILLA_RECIPE_BOOK_CATEGORY_STONECUTTER_ID,
+                    crafting_requirements: Some(vec![IngredientSummary {
+                        tag: None,
+                        item_ids: vec![42],
+                    }]),
+                },
+                flags: 1,
+                notification: true,
+                highlight: false,
+            })
+            .collect();
+        let mut store = WorldStore::new();
+
+        store.apply_recipe_book_add(ProtocolRecipeBookAdd {
+            replace: true,
+            entries,
+        });
+
+        let snapshots = store
+            .client_toast_events()
+            .iter()
+            .map(|event| {
+                let (recipe_id, category, unlocked) = event.recipe().expect("recipe toast");
+                (
+                    recipe_id,
+                    category.item_id.expect("category item"),
+                    unlocked.item_id.expect("unlocked item"),
+                )
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            snapshots,
+            vec![(0, 1, 2), (1, 3, 4), (2, 5, 6), (3, 7, 8), (4, 9, 10)]
+        );
+        assert_eq!(store.counters().recipe_book_notifications_received, 5);
+    }
+
     fn recipe_entry(id: i32, notification: bool, highlight: bool) -> RecipeBookAddEntry {
         RecipeBookAddEntry {
             contents: ProtocolRecipeDisplayEntry {
@@ -286,6 +429,22 @@ mod tests {
             flags: (u8::from(notification)) | (u8::from(highlight) << 1),
             notification,
             highlight,
+        }
+    }
+
+    fn item_display(item_id: i32) -> SlotDisplaySummary {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID);
+        payload.write_var_i32(item_id);
+        SlotDisplaySummary {
+            display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID,
+            raw_payload: payload.into_inner(),
+            item_stack: Some(bbb_protocol::packets::ItemStackSummary {
+                item_id: Some(item_id),
+                count: 1,
+                component_patch: Default::default(),
+            }),
+            tag: None,
         }
     }
 }

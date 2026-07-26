@@ -224,6 +224,24 @@ pub struct SmithingRecipeDisplaySummary {
 }
 
 impl RecipeDisplaySummary {
+    pub fn crafting_station(&self) -> Option<&SlotDisplaySummary> {
+        match self.display_type {
+            RecipeDisplayType::CraftingShapeless | RecipeDisplayType::CraftingShaped => {
+                match self.crafting.as_ref()? {
+                    CraftingRecipeDisplaySummary::Shapeless {
+                        crafting_station, ..
+                    }
+                    | CraftingRecipeDisplaySummary::Shaped {
+                        crafting_station, ..
+                    } => Some(crafting_station),
+                }
+            }
+            RecipeDisplayType::Furnace => Some(&self.furnace.as_ref()?.crafting_station),
+            RecipeDisplayType::Stonecutter => Some(&self.stonecutter.as_ref()?.crafting_station),
+            RecipeDisplayType::Smithing => Some(&self.smithing.as_ref()?.crafting_station),
+        }
+    }
+
     pub fn result(&self) -> Option<&SlotDisplaySummary> {
         match self.display_type {
             RecipeDisplayType::CraftingShapeless | RecipeDisplayType::CraftingShaped => {

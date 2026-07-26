@@ -183,6 +183,12 @@ pub(crate) fn try_load_hud_textures(
         advancement_toast.height,
         &advancement_toast.rgba,
     )?;
+    let recipe_toast = hud_sprite(&sprites, "toast/recipe")?;
+    renderer.upload_hud_recipe_toast_background(
+        recipe_toast.width,
+        recipe_toast.height,
+        &recipe_toast.rgba,
+    )?;
     let generic_container = gui_texture(
         roots,
         "textures/gui/container/generic_54.png",

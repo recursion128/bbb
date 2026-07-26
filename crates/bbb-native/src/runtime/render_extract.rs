@@ -18,8 +18,8 @@ use bbb_renderer::{
     HudDeathQuitConfirmationScreen, HudDeathScreen, HudDebugOptionsScreen, HudDebugOverlay,
     HudFoodEffect, HudGameEventScreen, HudGameRulesScreen, HudHotbarMode, HudInventoryScreen,
     HudJigsawBlockEditorScreen, HudMobEffect, HudPauseScreen, HudPlayerHealth, HudPlayerList,
-    HudPlayerListEntry, HudPlayerListScore, HudScoreboardSidebar, HudScoreboardSidebarEntry,
-    HudSignEditorScreen, HudSleepOverlay, HudSocialInteractionsFocus,
+    HudPlayerListEntry, HudPlayerListScore, HudRecipeToast, HudScoreboardSidebar,
+    HudScoreboardSidebarEntry, HudSignEditorScreen, HudSleepOverlay, HudSocialInteractionsFocus,
     HudSocialInteractionsLinkConfirmationScreen, HudSocialInteractionsMainScreen,
     HudSocialInteractionsPage, HudSocialInteractionsPlayer, HudSocialInteractionsPlayerAction,
     HudSocialInteractionsScreen, HudSpectatorGui, HudSpectatorGuiSlot, HudSpectatorIcon,
@@ -2164,6 +2164,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) hud_stats_screen: Option<HudStatsScreen>,
     pub(crate) hud_system_toast: Option<HudSystemToast>,
     pub(crate) hud_advancement_toasts: Vec<HudAdvancementToast>,
+    pub(crate) hud_recipe_toasts: Vec<HudRecipeToast>,
     pub(crate) hud_debug_options_screen: Option<HudDebugOptionsScreen>,
     pub(crate) hud_action_bar_text: Option<HudActionBarText>,
     pub(crate) hud_title_text: Option<HudTitleText>,
@@ -2432,6 +2433,7 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_hud_stats_screen(frame.hud_stats_screen);
     renderer.set_hud_system_toast(frame.hud_system_toast);
     renderer.set_hud_advancement_toasts(frame.hud_advancement_toasts);
+    renderer.set_hud_recipe_toasts(frame.hud_recipe_toasts);
     renderer.set_hud_debug_options_screen(frame.hud_debug_options_screen);
     renderer.set_hud_action_bar_text(frame.hud_action_bar_text);
     renderer.set_hud_title_text(frame.hud_title_text);

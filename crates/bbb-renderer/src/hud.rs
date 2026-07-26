@@ -675,7 +675,21 @@ pub struct HudAdvancementToast {
     pub fully_visible_ms: u64,
 }
 
-pub const HUD_ADVANCEMENT_TOAST_SLOTS: usize = 5;
+/// One visible Vanilla recipe toast. Native owns singleton coalescing,
+/// item cycling, queue/slot/timing, and item resolution.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HudRecipeToast {
+    pub title: String,
+    pub description: String,
+    pub category_icon: Option<HudItemIcon>,
+    pub category_block_model: Option<HudBlockItemModel>,
+    pub unlocked_icon: Option<HudItemIcon>,
+    pub unlocked_block_model: Option<HudBlockItemModel>,
+    pub slot: u8,
+    pub visible_portion: f32,
+}
+
+pub const HUD_TOAST_SLOTS: usize = 5;
 
 /// Vanilla `DebugOptionsScreen` render-state shell: the searchable option list
 /// in vanilla category/path order, three status buttons per entry, and the
@@ -3461,6 +3475,16 @@ impl Renderer {
         Ok(())
     }
 
+    pub fn upload_hud_recipe_toast_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_recipe_toast_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
     pub fn upload_hud_debug_game_mode_switcher_background(
         &mut self,
         width: u32,
@@ -5170,7 +5194,15 @@ impl Renderer {
         self.hud_advancement_toasts = toasts
             .into_iter()
             .filter_map(sanitize_hud_advancement_toast)
-            .take(HUD_ADVANCEMENT_TOAST_SLOTS)
+            .take(HUD_TOAST_SLOTS)
+            .collect();
+    }
+
+    pub fn set_hud_recipe_toasts(&mut self, toasts: Vec<HudRecipeToast>) {
+        self.hud_recipe_toasts = toasts
+            .into_iter()
+            .filter_map(sanitize_hud_recipe_toast)
+            .take(HUD_TOAST_SLOTS)
             .collect();
     }
 
@@ -5419,6 +5451,28 @@ impl Renderer {
                     append_model(
                         model,
                         gui_item_slot_placement(hud_advancement_toast_icon_rect(
+                            surface_size,
+                            toast,
+                        )),
+                        None,
+                    );
+                }
+            }
+            for toast in &self.hud_recipe_toasts {
+                if let Some(model) = &toast.category_block_model {
+                    append_model(
+                        model,
+                        gui_item_slot_placement(hud_recipe_toast_category_icon_rect(
+                            surface_size,
+                            toast,
+                        )),
+                        None,
+                    );
+                }
+                if let Some(model) = &toast.unlocked_block_model {
+                    append_model(
+                        model,
+                        gui_item_slot_placement(hud_recipe_toast_unlocked_icon_rect(
                             surface_size,
                             toast,
                         )),
@@ -6988,6 +7042,22 @@ impl Renderer {
             self.counters.frame_index,
             surface_size,
             &self.hud_advancement_toasts,
+        );
+        push_hud_recipe_toasts(
+            &mut vertices,
+            &mut commands,
+            &mut post_gui_item_commands,
+            &self.hud_white_pixel,
+            self.hud_item_atlas.as_ref(),
+            self.hud_digit_atlas.as_ref(),
+            &self.hud_digit_glyphs,
+            self.hud_recipe_toast_background.as_ref(),
+            self.hud_font_atlas.as_ref(),
+            &self.hud_font_glyphs,
+            &self.hud_obfuscated_glyph_pool,
+            self.counters.frame_index,
+            surface_size,
+            &self.hud_recipe_toasts,
         );
 
         if let Some(overlay) = &self.hud_code_of_conduct_overlay {
@@ -9996,6 +10066,32 @@ fn hud_advancement_toast_icon_rect(
     absolute_hud_rect(toast_rect.x + 8.0, toast_rect.y + 8.0, 16, 16)
 }
 
+fn hud_recipe_toast_rect(surface_size: PhysicalSize<u32>, toast: &HudRecipeToast) -> HudRect {
+    let x = surface_size.width as f32 - HUD_ADVANCEMENT_TOAST_WIDTH as f32 * toast.visible_portion;
+    absolute_hud_rect(
+        x,
+        f32::from(toast.slot) * HUD_ADVANCEMENT_TOAST_HEIGHT as f32,
+        HUD_ADVANCEMENT_TOAST_WIDTH,
+        HUD_ADVANCEMENT_TOAST_HEIGHT,
+    )
+}
+
+fn hud_recipe_toast_category_icon_rect(
+    surface_size: PhysicalSize<u32>,
+    toast: &HudRecipeToast,
+) -> HudRect {
+    let toast_rect = hud_recipe_toast_rect(surface_size, toast);
+    absolute_hud_rect(toast_rect.x + 2.0, toast_rect.y + 2.0, 10, 10)
+}
+
+fn hud_recipe_toast_unlocked_icon_rect(
+    surface_size: PhysicalSize<u32>,
+    toast: &HudRecipeToast,
+) -> HudRect {
+    let toast_rect = hud_recipe_toast_rect(surface_size, toast);
+    absolute_hud_rect(toast_rect.x + 8.0, toast_rect.y + 8.0, 16, 16)
+}
+
 #[allow(clippy::too_many_arguments)]
 fn push_hud_advancement_toasts<'a>(
     vertices: &mut Vec<HudVertex>,
@@ -10127,6 +10223,107 @@ fn push_hud_advancement_toasts<'a>(
                 );
             }
         }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_recipe_toasts<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    post_gui_item_commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    item_atlas: Option<&'a HudSpriteGpu>,
+    digit_atlas: Option<&'a HudSpriteGpu>,
+    digit_glyphs: &[HudDigitGlyph; 10],
+    background: Option<&'a HudSpriteGpu>,
+    font_atlas: Option<&'a HudSpriteGpu>,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    toasts: &[HudRecipeToast],
+) {
+    let Some(font_atlas) = font_atlas else {
+        return;
+    };
+    for toast in toasts {
+        let rect = hud_recipe_toast_rect(surface_size, toast);
+        push_hud_draw_with_uv_and_tint(
+            vertices,
+            commands,
+            background.unwrap_or(white_pixel),
+            surface_size,
+            rect,
+            HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+            if background.is_some() {
+                HUD_TINT_WHITE
+            } else {
+                [0.15, 0.15, 0.15, 0.95]
+            },
+        );
+
+        if let Some(item_atlas) = item_atlas {
+            if let Some(icon) = &toast.category_icon {
+                push_hud_item_icon(
+                    vertices,
+                    commands,
+                    item_atlas,
+                    white_pixel,
+                    digit_atlas,
+                    digit_glyphs,
+                    surface_size,
+                    hud_recipe_toast_category_icon_rect(surface_size, toast),
+                    icon,
+                    toast.category_block_model.is_none(),
+                    false,
+                );
+            }
+            if let Some(icon) = &toast.unlocked_icon {
+                push_hud_item_icon(
+                    vertices,
+                    commands,
+                    item_atlas,
+                    white_pixel,
+                    digit_atlas,
+                    digit_glyphs,
+                    surface_size,
+                    hud_recipe_toast_unlocked_icon_rect(surface_size, toast),
+                    icon,
+                    toast.unlocked_block_model.is_none(),
+                    false,
+                );
+            }
+        }
+
+        push_hud_advancement_toast_text(
+            vertices,
+            post_gui_item_commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            &[HudStyledTextRun::plain(&toast.title)],
+            (rect.x + 30.0, rect.y + 7.0),
+            hud_argb_to_tint(0xFF50_0050),
+        );
+        push_hud_advancement_toast_text(
+            vertices,
+            post_gui_item_commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            &[HudStyledTextRun::plain(&toast.description)],
+            (rect.x + 30.0, rect.y + 18.0),
+            hud_argb_to_tint(0xFF00_0000),
+        );
     }
 }
 
@@ -18415,8 +18612,7 @@ fn sanitize_hud_system_toast(toast: HudSystemToast) -> Option<HudSystemToast> {
 }
 
 fn sanitize_hud_advancement_toast(toast: HudAdvancementToast) -> Option<HudAdvancementToast> {
-    if !toast.visible_portion.is_finite() || usize::from(toast.slot) >= HUD_ADVANCEMENT_TOAST_SLOTS
-    {
+    if !toast.visible_portion.is_finite() || usize::from(toast.slot) >= HUD_TOAST_SLOTS {
         return None;
     }
     let frame_label = sanitize_hud_text_line(toast.frame_label)?;
@@ -18437,6 +18633,24 @@ fn sanitize_hud_advancement_toast(toast: HudAdvancementToast) -> Option<HudAdvan
         slot: toast.slot,
         visible_portion: toast.visible_portion.clamp(0.0, 1.0),
         fully_visible_ms: toast.fully_visible_ms,
+    })
+}
+
+fn sanitize_hud_recipe_toast(toast: HudRecipeToast) -> Option<HudRecipeToast> {
+    if !toast.visible_portion.is_finite() || usize::from(toast.slot) >= HUD_TOAST_SLOTS {
+        return None;
+    }
+    let title = sanitize_hud_text_line(toast.title)?;
+    let description = sanitize_hud_text_line(toast.description)?;
+    Some(HudRecipeToast {
+        title,
+        description,
+        category_icon: toast.category_icon.and_then(sanitize_hud_item_icon),
+        category_block_model: toast.category_block_model,
+        unlocked_icon: toast.unlocked_icon.and_then(sanitize_hud_item_icon),
+        unlocked_block_model: toast.unlocked_block_model,
+        slot: toast.slot,
+        visible_portion: toast.visible_portion.clamp(0.0, 1.0),
     })
 }
 
@@ -19168,6 +19382,36 @@ mod tests {
     }
 
     #[test]
+    fn recipe_toast_sanitizes_text_and_uses_vanilla_layout() {
+        let toast = sanitize_hud_recipe_toast(HudRecipeToast {
+            title: "New\u{0} Recipe(s) Unlocked!".to_string(),
+            description: "Check your recipe book".to_string(),
+            category_icon: None,
+            category_block_model: None,
+            unlocked_icon: None,
+            unlocked_block_model: None,
+            slot: 2,
+            visible_portion: 0.25,
+        })
+        .unwrap();
+        assert_eq!(toast.title, "New Recipe(s) Unlocked!");
+        assert_eq!(toast.visible_portion, 0.25);
+        assert_eq!(
+            hud_recipe_toast_rect(PhysicalSize::new(320, 240), &toast),
+            absolute_hud_rect(280.0, 64.0, 160, 32)
+        );
+        assert_eq!(
+            hud_recipe_toast_category_icon_rect(PhysicalSize::new(320, 240), &toast),
+            absolute_hud_rect(282.0, 66.0, 10, 10)
+        );
+        assert_eq!(
+            hud_recipe_toast_unlocked_icon_rect(PhysicalSize::new(320, 240), &toast),
+            absolute_hud_rect(288.0, 72.0, 16, 16)
+        );
+        assert!(sanitize_hud_recipe_toast(HudRecipeToast { slot: 5, ..toast }).is_none());
+    }
+
+    #[test]
     fn advancement_toast_block_icon_uses_after_blur_gui_residency() {
         let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
             return;
@@ -19200,20 +19444,30 @@ mod tests {
                 min: [0.0, 0.0],
                 max: [1.0, 1.0],
             }),
-            block_model: Some(model),
+            block_model: Some(model.clone()),
             slot: 2,
             visible_portion: 1.0,
             fully_visible_ms: 0,
+        }]);
+        renderer.set_hud_recipe_toasts(vec![HudRecipeToast {
+            title: "New Recipe(s) Unlocked!".to_string(),
+            description: "Check your recipe book".to_string(),
+            category_icon: None,
+            category_block_model: Some(model.clone()),
+            unlocked_icon: None,
+            unlocked_block_model: Some(model),
+            slot: 3,
+            visible_portion: 1.0,
         }]);
         renderer.set_hud_screen_blur(true);
 
         let mut residency = ItemModelResidencyFrame::default();
         renderer.append_hud_block_item_residency(&mut residency);
-        assert_eq!(residency.instances.len(), 1);
-        assert_eq!(
-            residency.instances[0].target,
-            ItemModelDrawTarget::GuiAfterBlur
-        );
+        assert_eq!(residency.instances.len(), 3);
+        assert!(residency
+            .instances
+            .iter()
+            .all(|instance| instance.target == ItemModelDrawTarget::GuiAfterBlur));
     }
 
     #[test]
