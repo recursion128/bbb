@@ -290,6 +290,13 @@ pub(super) fn block_state_for_placement(
                 [("waterlogged", boolean_name(waterlogged))],
             );
         }
+        VanillaGetStateForPlacementOverride::TestBlock => {
+            // `TestBlock` reads the stack's BLOCK_STATE mode here, and
+            // `BlockItem` applies the same component again after placement.
+            // The shared post-placement component path below owns that final
+            // mode selection; every mode has the same placement shape.
+            return BlockPlacementState::State(default_state_id);
+        }
         VanillaGetStateForPlacementOverride::ObserverBlock => [("facing", direction_name(nearest))],
         VanillaGetStateForPlacementOverride::RotatedPillarBlock
         | VanillaGetStateForPlacementOverride::InfestedRotatedPillarBlock => {

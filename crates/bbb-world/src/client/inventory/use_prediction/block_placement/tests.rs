@@ -31,15 +31,16 @@ use bbb_protocol::{
         VANILLA_ITEM_OXIDIZED_COPPER_CHEST_ID, VANILLA_ITEM_PALE_MOSS_CARPET_ID,
         VANILLA_ITEM_POINTED_DRIPSTONE_ID, VANILLA_ITEM_REDSTONE_ID,
         VANILLA_ITEM_RESPAWN_ANCHOR_ID, VANILLA_ITEM_SMALL_DRIPLEAF_ID, VANILLA_ITEM_STONE_ID,
-        VANILLA_ITEM_SUNFLOWER_ID, VANILLA_ITEM_TUBE_CORAL_FAN_ID,
+        VANILLA_ITEM_SUNFLOWER_ID, VANILLA_ITEM_TEST_BLOCK_ID, VANILLA_ITEM_TUBE_CORAL_FAN_ID,
         VANILLA_ITEM_WAXED_COPPER_CHEST_ID, VANILLA_ITEM_WAXED_OXIDIZED_COPPER_CHEST_ID,
         VANILLA_ITEM_WAXED_WEATHERED_COPPER_CHEST_ID, VANILLA_ITEM_WHITE_BED_ID,
         VANILLA_ITEM_WHITE_CONCRETE_POWDER_ID,
     },
     packets::{
         BlockPos as ProtocolBlockPos, BlockUpdate, CommonPlayerSpawnInfo,
-        DataComponentPatchSummary, ItemStackSummary, PlayLogin, RegistryTags, SetChunkCacheCenter,
-        SetPlayerInventory, TagNetworkPayload, UpdateTags, Vec3d,
+        DataComponentPatchSummary, EntityEvent, ItemStackSummary, PlayLogin, PlayerAbilities,
+        RegistryTags, SetChunkCacheCenter, SetPlayerInventory, TagNetworkPayload, UpdateTags,
+        Vec3d,
     },
 };
 
@@ -597,6 +598,50 @@ fn bed_item_places_its_client_foot_and_gamemaster_item_checks_permission() {
         command.probe_block(TARGET).unwrap().block_state_id,
         state_id("minecraft:air", [])
     );
+}
+
+#[test]
+fn test_block_requires_instabuild_and_gamemaster_permission_and_uses_item_mode() {
+    let grant_gamemaster = |world: &mut WorldStore| {
+        assert!(world.apply_entity_event(EntityEvent {
+            entity_id: 7,
+            event_id: 26,
+        }));
+    };
+
+    let mut permission_only = placement_world();
+    grant_gamemaster(&mut permission_only);
+    set_held(&mut permission_only, VANILLA_ITEM_TEST_BLOCK_ID, 1);
+    assert_eq!(
+        use_block(&mut permission_only, 67),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
+    );
+    assert_eq!(
+        permission_only.probe_block(TARGET).unwrap().block_state_id,
+        state_id("minecraft:air", [])
+    );
+    assert_eq!(held(&permission_only).count, 1);
+
+    let mut allowed = placement_world();
+    grant_gamemaster(&mut allowed);
+    allowed.apply_player_abilities(PlayerAbilities {
+        invulnerable: true,
+        flying: false,
+        can_fly: true,
+        instabuild: true,
+        flying_speed: 0.05,
+        walking_speed: 0.1,
+    });
+    set_held(&mut allowed, VANILLA_ITEM_TEST_BLOCK_ID, 1);
+    assert!(matches!(
+        use_block(&mut allowed, 68),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        allowed.probe_block(TARGET).unwrap().block_state_id,
+        state_id("minecraft:test_block", [("mode", "start")])
+    );
+    assert_eq!(held(&allowed).count, 1);
 }
 
 #[test]

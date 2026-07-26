@@ -64,7 +64,13 @@ impl WorldStore {
             | VanillaBlockItemKind::SignItem
             | VanillaBlockItemKind::StandingAndWallBlockItem => {}
             VanillaBlockItemKind::GameMasterBlockItem => {
-                if !self.local_player_has_gamemaster_permission() {
+                if !self.local_player_has_gamemaster_permission()
+                    || !self
+                        .local_player()
+                        .abilities
+                        .as_ref()
+                        .is_some_and(|abilities| abilities.instabuild)
+                {
                     return block_item_fallback(self, hand, &stack, LocalInteractionResult::Fail);
                 }
             }
