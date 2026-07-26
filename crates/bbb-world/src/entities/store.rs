@@ -2719,6 +2719,29 @@ impl EntityStore {
         query_min: [f64; 3],
         query_max: [f64; 3],
     ) -> Option<Vec<i32>> {
+        self.entity_bounds_intersection_ids(query_min, query_max, false, |entity_type_id| {
+            super::vanilla_entity_type_blocks_building(entity_type_id)
+        })
+    }
+
+    /// Returns every canonical entity AABB intersecting one query, including
+    /// degenerate marker points. Callers retain player-info ownership for
+    /// Vanilla's spectator filter.
+    pub(crate) fn all_entity_bounds_intersection_ids(
+        &self,
+        query_min: [f64; 3],
+        query_max: [f64; 3],
+    ) -> Option<Vec<i32>> {
+        self.entity_bounds_intersection_ids(query_min, query_max, true, |_| true)
+    }
+
+    fn entity_bounds_intersection_ids(
+        &self,
+        query_min: [f64; 3],
+        query_max: [f64; 3],
+        include_marker_points: bool,
+        type_filter: impl Fn(i32) -> bool,
+    ) -> Option<Vec<i32>> {
         if !(0..3).all(|axis| {
             query_min[axis].is_finite()
                 && query_max[axis].is_finite()
@@ -2730,9 +2753,15 @@ impl EntityStore {
         for id in &self.order {
             let entity = self.by_protocol_id.get(id).copied()?;
             let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
-            if !super::vanilla_entity_type_blocks_building(identity.entity_type_id) {
+            if !type_filter(identity.entity_type_id) {
                 continue;
             }
+            let transform = self.ecs.get::<&EntityTransform>(entity).ok()?;
+            let entity_position = [
+                transform.position.x,
+                transform.position.y,
+                transform.position.z,
+            ];
             if identity.entity_type_id == VANILLA_ENTITY_TYPE_ARMOR_STAND_ID {
                 let accessors = vanilla_entity_metadata_armor_stand_accessors_for_entity_type(
                     identity.entity_type_id,
@@ -2743,25 +2772,58 @@ impl EntityStore {
                     accessors.client_flags_default,
                 )?;
                 if flags & accessors.marker_mask != 0 {
+                    if include_marker_points
+                        && (0..3).all(|axis| {
+                            entity_position[axis] < query_max[axis]
+                                && entity_position[axis] > query_min[axis]
+                        })
+                    {
+                        obstructing.push(*id);
+                    }
                     continue;
                 }
             }
-            let transform = self.ecs.get::<&EntityTransform>(entity).ok()?;
             let bounds = self.debug_hitbox_bounds(*id)?;
             let entity_min = [
-                transform.position.x + f64::from(bounds.min[0]),
-                transform.position.y + f64::from(bounds.min[1]),
-                transform.position.z + f64::from(bounds.min[2]),
+                entity_position[0] + f64::from(bounds.min[0]),
+                entity_position[1] + f64::from(bounds.min[1]),
+                entity_position[2] + f64::from(bounds.min[2]),
             ];
             let entity_max = [
-                transform.position.x + f64::from(bounds.max[0]),
-                transform.position.y + f64::from(bounds.max[1]),
-                transform.position.z + f64::from(bounds.max[2]),
+                entity_position[0] + f64::from(bounds.max[0]),
+                entity_position[1] + f64::from(bounds.max[1]),
+                entity_position[2] + f64::from(bounds.max[2]),
             ];
             if (0..3).all(|axis| {
                 entity_min[axis] < query_max[axis] && entity_max[axis] > query_min[axis]
             }) {
                 obstructing.push(*id);
+                continue;
+            }
+            if identity.entity_type_id == VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID {
+                let client_animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
+                let dragon_animation = client_animations.animations.ender_dragon;
+                if ender_dragon_part_pick_targets_at_partial_tick(
+                    identity.id,
+                    *transform,
+                    dragon_animation,
+                    1.0,
+                )
+                .into_iter()
+                .any(|part| {
+                    let part_position = [part.position.x, part.position.y, part.position.z];
+                    let part_min: [f64; 3] = std::array::from_fn(|axis| {
+                        part_position[axis] + f64::from(part.bounds.min[axis])
+                    });
+                    let part_max: [f64; 3] = std::array::from_fn(|axis| {
+                        part_position[axis] + f64::from(part.bounds.max[axis])
+                    });
+                    (0..3).all(|axis| {
+                        part_min[axis] < query_max[axis] && part_max[axis] > query_min[axis]
+                    })
+                }) {
+                    obstructing.push(*id);
+                }
             }
         }
         Some(obstructing)

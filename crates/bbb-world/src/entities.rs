@@ -4032,6 +4032,26 @@ impl WorldStore {
         )
     }
 
+    /// Mirrors the `getEntities(null, box).isEmpty()` half of
+    /// `ArmorStandItem.useOn`, including Vanilla's spectator exclusion.
+    pub(crate) fn local_non_spectator_entity_bounds_are_empty(
+        &self,
+        query_min: [f64; 3],
+        query_max: [f64; 3],
+    ) -> Option<bool> {
+        let intersecting = self
+            .entities
+            .all_entity_bounds_intersection_ids(query_min, query_max)?;
+        if intersecting
+            .into_iter()
+            .any(|entity_id| self.entity_passes_spectator_filter(entity_id))
+        {
+            return Some(false);
+        }
+        self.local_player_bounds_intersect(query_min, query_max)
+            .map(|intersects| !intersects)
+    }
+
     /// Narrow single-entity variant of [`Self::entity_model_sources_at_partial_tick`]. Reuses the
     /// same target list, spectator filter, and per-entity projection helper as the list path, so the
     /// returned state is identical to the list entry for `entity_id` (or `None` when it is filtered

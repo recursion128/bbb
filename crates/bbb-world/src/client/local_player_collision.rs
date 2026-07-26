@@ -352,6 +352,53 @@ fn empty_context_block_collision(world: &WorldStore, bounds: LocalPlayerBounds) 
 }
 
 impl WorldStore {
+    /// Mirrors the block-shape half of
+    /// `CollisionGetter.noCollision(null, bounds)`.
+    ///
+    /// A null source selects `CollisionContext.empty()`, so powder snow is
+    /// empty while scaffolding uses its stable shape. Unloaded collision
+    /// chunks are skipped just like `BlockCollisions`.
+    pub(crate) fn local_empty_context_block_bounds_are_free(
+        &self,
+        min: [f64; 3],
+        max: [f64; 3],
+    ) -> Option<bool> {
+        if !(0..3)
+            .all(|axis| min[axis].is_finite() && max[axis].is_finite() && min[axis] < max[axis])
+        {
+            return None;
+        }
+        Some(!empty_context_block_collision(
+            self,
+            LocalPlayerBounds::from_min_max(min, max),
+        ))
+    }
+
+    /// Tests the separately owned local-player AABB against one entity query.
+    /// `ClientLevel` stores `LocalPlayer` among level entities; bbb keeps its
+    /// authoritative predicted pose outside `EntityStore`.
+    pub(crate) fn local_player_bounds_intersect(
+        &self,
+        min: [f64; 3],
+        max: [f64; 3],
+    ) -> Option<bool> {
+        if !(0..3)
+            .all(|axis| min[axis].is_finite() && max[axis].is_finite() && min[axis] < max[axis])
+        {
+            return None;
+        }
+        if self.local_player_is_spectator() {
+            return Some(false);
+        }
+        let Some(pose) = self.local_player_pose() else {
+            return Some(false);
+        };
+        Some(world_collision_box_intersects_bounds(
+            WorldCollisionBox { min, max },
+            LocalPlayerBounds::for_pose(pose),
+        ))
+    }
+
     pub(crate) fn entity_interpolation_target_is_collision_free(
         &self,
         input: EntityInterpolationCollisionInput,

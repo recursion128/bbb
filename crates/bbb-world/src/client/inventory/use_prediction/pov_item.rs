@@ -184,8 +184,7 @@ impl WorldStore {
         // upward, then `BlockPlaceContext` resolves replace-clicked versus the
         // hit direction's relative position.
         let shifted_pos = above(place_on_water_block_pos(hit.pos));
-        let Some(replace_shifted) =
-            self.local_block_is_replaceable_by_place_on_water_item(shifted_pos)
+        let Some(replace_shifted) = self.local_block_is_replaceable_by_different_item(shifted_pos)
         else {
             return unresolved_override();
         };
@@ -196,7 +195,7 @@ impl WorldStore {
         };
         if !replace_shifted {
             let Some(replace_target) =
-                self.local_block_is_replaceable_by_place_on_water_item(target_pos)
+                self.local_block_is_replaceable_by_different_item(target_pos)
             else {
                 return unresolved_override();
             };
@@ -255,36 +254,6 @@ impl WorldStore {
                 BLOCK_PLACE_PITCH,
             ),
         ))
-    }
-
-    fn local_block_is_replaceable_by_place_on_water_item(&self, pos: BlockPos) -> Option<bool> {
-        let block = self.probe_block(pos)?;
-        let block_type = vanilla_block_type_for_resource_id(block.block_name.as_deref()?)?;
-        Some(match block_type.can_survive_override {
-            // With either place-on-water item in hand, Vanilla's
-            // `SnowLayerBlock.canBeReplaced` permits only one layer.
-            Some(VanillaCanSurviveOverride::SnowLayerBlock) => block
-                .block_properties
-                .get("layers")
-                .is_some_and(|layers| layers == "1"),
-            // `MultifaceBlock` accepts every different held item.
-            Some(VanillaCanSurviveOverride::MultifaceBlock) => true,
-            // A clicked vine is replaceable until all five supported faces
-            // are occupied, independently of its static replaceable property.
-            Some(VanillaCanSurviveOverride::VineBlock) => {
-                ["up", "north", "south", "west", "east"]
-                    .into_iter()
-                    .filter(|property| {
-                        block
-                            .block_properties
-                            .get(*property)
-                            .is_some_and(|value| value == "true")
-                    })
-                    .count()
-                    < 5
-            }
-            _ => block_type.replaceable,
-        })
     }
 
     fn local_place_on_water_block_can_survive(

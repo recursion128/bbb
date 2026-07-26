@@ -20,9 +20,9 @@ use bbb_protocol::{
     attribute_types::VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
     block_types::{
         vanilla_block_type, vanilla_block_type_for_resource_id, BlockTypeCatalogEntry,
-        VanillaBlockUseItemOnOverride, VanillaBlockUseWithoutItemOverride, VANILLA_BLOCK_AIR_ID,
-        VANILLA_BLOCK_BEDROCK_ID, VANILLA_BLOCK_END_PORTAL_FRAME_ID, VANILLA_BLOCK_LODESTONE_ID,
-        VANILLA_BLOCK_OBSIDIAN_ID,
+        VanillaBlockUseItemOnOverride, VanillaBlockUseWithoutItemOverride,
+        VanillaCanSurviveOverride, VANILLA_BLOCK_AIR_ID, VANILLA_BLOCK_BEDROCK_ID,
+        VANILLA_BLOCK_END_PORTAL_FRAME_ID, VANILLA_BLOCK_LODESTONE_ID, VANILLA_BLOCK_OBSIDIAN_ID,
     },
     builtin_enum_component_values::normalize_vanilla_dye_color_id,
     data_component_types::{
@@ -56,6 +56,7 @@ mod bucket;
 mod bundle;
 mod crossbow;
 mod empty_map;
+mod entity_placement;
 mod equippable;
 mod firework_rocket;
 mod fishing_rod;
@@ -1010,6 +1011,9 @@ impl WorldStore {
         let pass = || LocalTargetUsePrediction::Result(LocalInteractionResult::Pass);
         let fail = || LocalTargetUsePrediction::Result(LocalInteractionResult::Fail);
         match owner {
+            VanillaItemUseOnOverride::ArmorStandItem => {
+                Some(self.predict_local_armor_stand_item_use_on(owner, hand, context))
+            }
             // `SpawnEggItem.useOn` returns before all server-only type,
             // spawner, difficulty, spawn, and stack-mutation work.
             VanillaItemUseOnOverride::SpawnEggItem => Some(client_success()),
@@ -1140,6 +1144,36 @@ impl WorldStore {
         let block = self.probe_block(pos)?;
         let block_name = block.block_name.as_deref()?;
         Some(vanilla_block_type_for_resource_id(block_name)?.id == VANILLA_BLOCK_AIR_ID)
+    }
+
+    fn local_block_is_replaceable_by_different_item(&self, pos: BlockPos) -> Option<bool> {
+        let block = self.probe_block(pos)?;
+        let block_type = vanilla_block_type_for_resource_id(block.block_name.as_deref()?)?;
+        Some(match block_type.can_survive_override {
+            // A held item different from the snow-layer block item reaches
+            // Vanilla's one-layer-only replacement branch.
+            Some(VanillaCanSurviveOverride::SnowLayerBlock) => block
+                .block_properties
+                .get("layers")
+                .is_some_and(|layers| layers == "1"),
+            // `MultifaceBlock` accepts every different held item.
+            Some(VanillaCanSurviveOverride::MultifaceBlock) => true,
+            // A clicked vine is replaceable until all five supported faces
+            // are occupied, independently of its static replaceable property.
+            Some(VanillaCanSurviveOverride::VineBlock) => {
+                ["up", "north", "south", "west", "east"]
+                    .into_iter()
+                    .filter(|property| {
+                        block
+                            .block_properties
+                            .get(*property)
+                            .is_some_and(|value| value == "true")
+                    })
+                    .count()
+                    < 5
+            }
+            _ => block_type.replaceable,
+        })
     }
 
     /// Predicts `Player.interactOn` across source-derived behavior paths whose client result is
@@ -2312,8 +2346,8 @@ mod tests {
         game_types::{VANILLA_GAME_TYPE_CREATIVE_ID, VANILLA_GAME_TYPE_SURVIVAL_ID},
         item_types::{
             VanillaItemInteractLivingEntityOverride, VanillaItemUseOnOverride,
-            VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_BONE_MEAL_ID, VANILLA_ITEM_BRUSH_ID,
-            VANILLA_ITEM_BUCKET_ID, VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID,
+            VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_ARMOR_STAND_ID, VANILLA_ITEM_BONE_MEAL_ID,
+            VANILLA_ITEM_BRUSH_ID, VANILLA_ITEM_BUCKET_ID, VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID,
             VANILLA_ITEM_CHORUS_FRUIT_ID, VANILLA_ITEM_COD_BUCKET_ID, VANILLA_ITEM_COMPASS_ID,
             VANILLA_ITEM_DEBUG_STICK_ID, VANILLA_ITEM_ENDER_EYE_ID, VANILLA_ITEM_END_CRYSTAL_ID,
             VANILLA_ITEM_FILLED_MAP_ID, VANILLA_ITEM_FIREWORK_ROCKET_ID,
@@ -2331,11 +2365,12 @@ mod tests {
             AddEntity, AdventureModePredicateDataSummary, BlockHitResult, BlockHolderSetSummary,
             BlockPos as ProtocolBlockPos, BlockPredicateSummary, BlockUpdate,
             CommonPlayerSpawnInfo, Cooldown, DataComponentPatchSummary, EntityDataValue,
-            EntityDataValueKind, EntityEvent, EquipmentSlotUpdate, EquippableSummary,
-            InstrumentSummary, ItemEnchantmentSummary, ItemStackSummary, PlayLogin, PlayerHealth,
-            RegistryData, RegistryDataEntry, RegistryTags, SetChunkCacheCenter, SetEntityData,
-            SetEntityLink, SetEquipment, SetPassengers, SetPlayerInventory, SoundEventSummary,
-            TagNetworkPayload, UpdateEnabledFeatures, UpdateTags, Vec3d,
+            EntityDataValueKind, EntityEvent, EquipmentSlotUpdate, EquippableSummary, GameProfile,
+            GameType, InstrumentSummary, ItemEnchantmentSummary, ItemStackSummary, PlayLogin,
+            PlayerHealth, PlayerInfoAction, PlayerInfoEntry, PlayerInfoUpdate, RegistryData,
+            RegistryDataEntry, RegistryTags, SetChunkCacheCenter, SetEntityData, SetEntityLink,
+            SetEquipment, SetPassengers, SetPlayerInventory, SoundEventSummary, TagNetworkPayload,
+            UpdateEnabledFeatures, UpdateTags, Vec3d,
         },
     };
     use std::collections::{BTreeMap, BTreeSet};
@@ -3189,6 +3224,251 @@ mod tests {
             LocalItemUsePrediction::Result(LocalInteractionResult::Fail)
         );
         assert!(occupied_fluid.local_block_predictions().is_empty());
+    }
+
+    #[test]
+    fn armor_stand_generated_owner_and_down_face_gate_are_exact() {
+        let owner_ids = VANILLA_ITEM_TYPES
+            .iter()
+            .filter(|item| item.use_on_override == Some(VanillaItemUseOnOverride::ArmorStandItem))
+            .map(|item| item.id)
+            .collect::<Vec<_>>();
+        assert_eq!(owner_ids, vec![VANILLA_ITEM_ARMOR_STAND_ID]);
+
+        let clicked = BlockPos { x: 8, y: 7, z: 8 };
+        let stone = block_state_id("minecraft:stone", []);
+        let mut world = tool_use_world(block_state_id("minecraft:air", []));
+        set_block(&mut world, clicked, stone);
+        let mut held = stack(VANILLA_ITEM_ARMOR_STAND_ID);
+        held.count = 2;
+        world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: held,
+        });
+
+        assert_eq!(
+            world.predict_local_block_use(
+                clicked,
+                ProtocolDirection::Down,
+                InteractionHand::MainHand,
+                true,
+                49,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
+        );
+        assert_eq!(player_inventory_item(&world, 0).count, 2);
+        assert_eq!(
+            world.predict_local_block_use(
+                clicked,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                true,
+                50,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                LocalInteractionSuccess::client_item_interaction()
+            ))
+        );
+        assert_eq!(player_inventory_item(&world, 0).count, 1);
+        assert!(world.local_block_predictions().is_empty());
+    }
+
+    #[test]
+    fn armor_stand_uses_replace_clicked_and_empty_context_block_collision() {
+        let clicked = BlockPos { x: 8, y: 7, z: 8 };
+        let relative = BlockPos {
+            z: clicked.z - 1,
+            ..clicked
+        };
+        let air = block_state_id("minecraft:air", []);
+        let stone = block_state_id("minecraft:stone", []);
+        let one_snow = block_state_id("minecraft:snow", [("layers", "1")]);
+        let two_snow = block_state_id("minecraft:snow", [("layers", "2")]);
+        let powder_snow = block_state_id("minecraft:powder_snow", []);
+        let prepare = |clicked_state, relative_state| {
+            let mut world = tool_use_world(air);
+            set_block(&mut world, clicked, clicked_state);
+            set_block(&mut world, relative, relative_state);
+            set_main_hand(&mut world, VANILLA_ITEM_ARMOR_STAND_ID);
+            world
+        };
+
+        let mut replace_clicked = prepare(one_snow, stone);
+        assert!(matches!(
+            replace_clicked.predict_local_block_use(
+                clicked,
+                ProtocolDirection::North,
+                InteractionHand::MainHand,
+                true,
+                51,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+
+        let mut redirect = prepare(two_snow, stone);
+        assert_eq!(
+            redirect.predict_local_block_use(
+                clicked,
+                ProtocolDirection::North,
+                InteractionHand::MainHand,
+                true,
+                52,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
+        );
+        assert_eq!(
+            player_inventory_item(&redirect, 0).item_id,
+            Some(VANILLA_ITEM_ARMOR_STAND_ID)
+        );
+
+        let mut powder = prepare(stone, air);
+        set_block(
+            &mut powder,
+            BlockPos {
+                y: clicked.y + 1,
+                ..clicked
+            },
+            powder_snow,
+        );
+        assert!(matches!(
+            powder.predict_local_block_use(
+                clicked,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                true,
+                53,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+    }
+
+    #[test]
+    fn armor_stand_requires_every_non_spectator_entity_box_to_be_empty() {
+        let clicked = BlockPos { x: 8, y: 7, z: 8 };
+        let target = BlockPos {
+            y: clicked.y + 1,
+            ..clicked
+        };
+        let air = block_state_id("minecraft:air", []);
+        let stone = block_state_id("minecraft:stone", []);
+        let prepare = || {
+            let mut world = tool_use_world(air);
+            set_block(&mut world, clicked, stone);
+            set_main_hand(&mut world, VANILLA_ITEM_ARMOR_STAND_ID);
+            world
+        };
+        let position = Vec3d {
+            x: f64::from(target.x) + 0.5,
+            y: f64::from(target.y) + 0.5,
+            z: f64::from(target.z) + 0.5,
+        };
+
+        let mut dropped_item = prepare();
+        add_entity_at(&mut dropped_item, 94, VANILLA_ENTITY_TYPE_ITEM_ID, position);
+        assert_eq!(
+            dropped_item.predict_local_block_use(
+                clicked,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                true,
+                54,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
+        );
+
+        let mut local_player = prepare();
+        local_player.set_local_player_pose(crate::LocalPlayerPoseState {
+            position,
+            ..crate::LocalPlayerPoseState::default()
+        });
+        assert_eq!(
+            local_player.predict_local_block_use(
+                clicked,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                true,
+                55,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
+        );
+
+        let mut armor_stand = prepare();
+        add_entity_at(
+            &mut armor_stand,
+            95,
+            VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+            position,
+        );
+        assert_eq!(
+            armor_stand.predict_local_block_use(
+                clicked,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                true,
+                56,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
+        );
+        let accessors = vanilla_entity_metadata_armor_stand_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+        )
+        .unwrap();
+        assert!(armor_stand.apply_set_entity_data(SetEntityData {
+            id: 95,
+            values: vec![EntityDataValue {
+                data_id: accessors.client_flags_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                value: EntityDataValueKind::Byte(accessors.marker_mask),
+            }],
+        }));
+        assert_eq!(
+            armor_stand.predict_local_block_use(
+                clicked,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                true,
+                57,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
+        );
+
+        let mut spectator = prepare();
+        add_entity_at(&mut spectator, 96, VANILLA_ENTITY_TYPE_PLAYER_ID, position);
+        let spectator_uuid = Uuid::from_u128(96);
+        assert_eq!(
+            spectator.apply_player_info_update(PlayerInfoUpdate {
+                actions: vec![
+                    PlayerInfoAction::AddPlayer,
+                    PlayerInfoAction::UpdateGameMode,
+                ],
+                entries: vec![PlayerInfoEntry {
+                    profile_id: spectator_uuid,
+                    profile: Some(GameProfile {
+                        uuid: spectator_uuid,
+                        name: "spectator".to_string(),
+                        properties: Vec::new(),
+                    }),
+                    listed: true,
+                    latency: 0,
+                    game_mode: GameType::Spectator,
+                    display_name: None,
+                    show_hat: true,
+                    list_order: 0,
+                    chat_session: None,
+                }],
+            }),
+            1
+        );
+        assert!(matches!(
+            spectator.predict_local_block_use(
+                clicked,
+                ProtocolDirection::Up,
+                InteractionHand::MainHand,
+                true,
+                58,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
     }
 
     #[test]
