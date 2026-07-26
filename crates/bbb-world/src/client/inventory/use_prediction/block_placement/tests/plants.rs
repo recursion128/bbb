@@ -409,6 +409,281 @@ fn seagrass_placement_requires_full_water_and_an_allowed_sturdy_floor() {
 }
 
 #[test]
+fn growing_plant_heads_use_the_shared_level_random_for_age() {
+    let upward_clicked = BlockPos { x: 4, y: 8, z: 4 };
+    let downward_clicked = BlockPos { x: 4, y: 10, z: 4 };
+
+    for (sequence, item_id, block_name, growth_direction) in [
+        (
+            89,
+            VANILLA_ITEM_KELP_ID,
+            "minecraft:kelp",
+            ProtocolDirection::Up,
+        ),
+        (
+            90,
+            VANILLA_ITEM_TWISTING_VINES_ID,
+            "minecraft:twisting_vines",
+            ProtocolDirection::Up,
+        ),
+        (
+            91,
+            VANILLA_ITEM_WEEPING_VINES_ID,
+            "minecraft:weeping_vines",
+            ProtocolDirection::Down,
+        ),
+        (
+            92,
+            VANILLA_ITEM_GLOW_BERRIES_ID,
+            "minecraft:cave_vines",
+            ProtocolDirection::Down,
+        ),
+    ] {
+        let (clicked, cursor) = if growth_direction == ProtocolDirection::Up {
+            (upward_clicked, [0.5, 1.0, 0.5])
+        } else {
+            (downward_clicked, [0.5, 0.0, 0.5])
+        };
+        let target = relative(clicked, growth_direction);
+        let mut world = placement_world();
+        set_block(&mut world, clicked, state_id("minecraft:stone", []));
+        if item_id == VANILLA_ITEM_KELP_ID {
+            set_block_tag(&mut world, "minecraft:cannot_support_kelp", &[]);
+            set_block(
+                &mut world,
+                target,
+                state_id("minecraft:water", [("level", "0")]),
+            );
+        }
+        set_held(&mut world, item_id, 1);
+
+        let mut random = crate::LevelEventSoundRandomState::with_seed(i64::from(sequence));
+        let mut control = random.clone();
+        let age = control.next_int_bound(25).to_string();
+        assert!(matches!(
+            world.predict_local_block_use_with_hit_and_random(
+                clicked,
+                growth_direction,
+                cursor,
+                false,
+                InteractionHand::MainHand,
+                false,
+                sequence,
+                &mut random,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        let expected_state = if block_name == "minecraft:cave_vines" {
+            state_id(block_name, [("age", age.as_str()), ("berries", "false")])
+        } else {
+            state_id(block_name, [("age", age.as_str())])
+        };
+        assert_eq!(
+            world.probe_block(target).unwrap().block_state_id,
+            expected_state
+        );
+        assert_eq!(held(&world).count, 0);
+        assert_eq!(
+            random.next_int_bound(997),
+            control.next_int_bound(997),
+            "{block_name} must consume exactly one age draw"
+        );
+    }
+}
+
+#[test]
+fn growing_plant_body_placement_reuses_the_family_without_consuming_random() {
+    let upward_clicked = BlockPos { x: 4, y: 8, z: 4 };
+    let downward_clicked = BlockPos { x: 4, y: 10, z: 4 };
+
+    for (sequence, item_id, head_name, body_name, growth_direction) in [
+        (
+            93,
+            VANILLA_ITEM_KELP_ID,
+            "minecraft:kelp",
+            "minecraft:kelp_plant",
+            ProtocolDirection::Up,
+        ),
+        (
+            94,
+            VANILLA_ITEM_TWISTING_VINES_ID,
+            "minecraft:twisting_vines",
+            "minecraft:twisting_vines_plant",
+            ProtocolDirection::Up,
+        ),
+        (
+            95,
+            VANILLA_ITEM_WEEPING_VINES_ID,
+            "minecraft:weeping_vines",
+            "minecraft:weeping_vines_plant",
+            ProtocolDirection::Down,
+        ),
+        (
+            96,
+            VANILLA_ITEM_GLOW_BERRIES_ID,
+            "minecraft:cave_vines",
+            "minecraft:cave_vines_plant",
+            ProtocolDirection::Down,
+        ),
+    ] {
+        let (clicked, cursor) = if growth_direction == ProtocolDirection::Up {
+            (upward_clicked, [0.5, 1.0, 0.5])
+        } else {
+            (downward_clicked, [0.5, 0.0, 0.5])
+        };
+        let target = relative(clicked, growth_direction);
+        let growth_neighbour = relative(target, growth_direction);
+        let mut world = placement_world();
+        set_block(&mut world, clicked, state_id("minecraft:stone", []));
+        if item_id == VANILLA_ITEM_KELP_ID {
+            set_block_tag(&mut world, "minecraft:cannot_support_kelp", &[]);
+            set_block(
+                &mut world,
+                target,
+                state_id("minecraft:water", [("level", "0")]),
+            );
+        }
+        let neighbour_state = if head_name == "minecraft:cave_vines" {
+            state_id(head_name, [("age", "6"), ("berries", "false")])
+        } else {
+            state_id(head_name, [("age", "6")])
+        };
+        set_block(&mut world, growth_neighbour, neighbour_state);
+        set_held(&mut world, item_id, 1);
+
+        let mut random = crate::LevelEventSoundRandomState::with_seed(i64::from(sequence));
+        let mut control = random.clone();
+        assert!(matches!(
+            world.predict_local_block_use_with_hit_and_random(
+                clicked,
+                growth_direction,
+                cursor,
+                false,
+                InteractionHand::MainHand,
+                false,
+                sequence,
+                &mut random,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        let expected_state = if body_name == "minecraft:cave_vines_plant" {
+            state_id(body_name, [("berries", "false")])
+        } else {
+            state_id(body_name, [])
+        };
+        assert_eq!(
+            world.probe_block(target).unwrap().block_state_id,
+            expected_state
+        );
+        assert_eq!(held(&world).count, 0);
+        assert_eq!(
+            random.next_int_bound(997),
+            control.next_int_bound(997),
+            "{body_name} must not consume an age draw"
+        );
+    }
+}
+
+#[test]
+fn coral_block_placement_only_advances_level_random_when_dry() {
+    let clicked = BlockPos { x: 4, y: 8, z: 4 };
+    let target = relative(clicked, ProtocolDirection::Up);
+
+    let mut wet = placement_world();
+    set_block(&mut wet, clicked, state_id("minecraft:stone", []));
+    set_block(
+        &mut wet,
+        relative(target, ProtocolDirection::North),
+        state_id("minecraft:water", [("level", "1")]),
+    );
+    set_held(&mut wet, VANILLA_ITEM_TUBE_CORAL_BLOCK_ID, 1);
+    assert!(matches!(
+        use_block_at(&mut wet, clicked, false, 97),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        wet.probe_block(target).unwrap().block_state_id,
+        state_id("minecraft:tube_coral_block", [])
+    );
+
+    for (sequence, item_id, block_name) in [
+        (
+            98,
+            VANILLA_ITEM_TUBE_CORAL_BLOCK_ID,
+            "minecraft:tube_coral_block",
+        ),
+        (
+            99,
+            VANILLA_ITEM_BRAIN_CORAL_BLOCK_ID,
+            "minecraft:brain_coral_block",
+        ),
+        (
+            100,
+            VANILLA_ITEM_BUBBLE_CORAL_BLOCK_ID,
+            "minecraft:bubble_coral_block",
+        ),
+        (
+            101,
+            VANILLA_ITEM_FIRE_CORAL_BLOCK_ID,
+            "minecraft:fire_coral_block",
+        ),
+        (
+            102,
+            VANILLA_ITEM_HORN_CORAL_BLOCK_ID,
+            "minecraft:horn_coral_block",
+        ),
+    ] {
+        let mut world = placement_world();
+        set_block(&mut world, clicked, state_id("minecraft:stone", []));
+        set_held(&mut world, item_id, 1);
+        let mut random = crate::LevelEventSoundRandomState::with_seed(i64::from(sequence));
+        let mut control = random.clone();
+        let _scheduled_tick_delay = 60 + control.next_int_bound(40);
+
+        assert!(matches!(
+            world.predict_local_block_use_with_hit_and_random(
+                clicked,
+                ProtocolDirection::Up,
+                [0.5, 1.0, 0.5],
+                false,
+                InteractionHand::MainHand,
+                false,
+                sequence,
+                &mut random,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+        ));
+        assert_eq!(
+            world.probe_block(target).unwrap().block_state_id,
+            state_id(block_name, [])
+        );
+        assert_eq!(held(&world).count, 0);
+        assert_eq!(
+            random.next_int_bound(997),
+            control.next_int_bound(997),
+            "{block_name} must consume exactly one scheduled-tick draw"
+        );
+    }
+
+    let mut missing_random = placement_world();
+    set_block(
+        &mut missing_random,
+        clicked,
+        state_id("minecraft:stone", []),
+    );
+    set_held(&mut missing_random, VANILLA_ITEM_TUBE_CORAL_BLOCK_ID, 1);
+    assert_eq!(
+        use_block_at(&mut missing_random, clicked, false, 103),
+        LocalTargetUsePrediction::UnsupportedItemUseOn(VanillaItemUseOnOverride::BlockItem)
+    );
+    assert_eq!(
+        missing_random.probe_block(target).unwrap().block_state_id,
+        state_id("minecraft:air", [])
+    );
+    assert_eq!(held(&missing_random).count, 1);
+}
+
+#[test]
 fn pitcher_crop_placement_requires_crop_support_and_raw_brightness_eight() {
     let clicked = BlockPos { x: 4, y: 8, z: 4 };
     let target = relative(clicked, ProtocolDirection::Up);

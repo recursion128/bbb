@@ -63,8 +63,9 @@ pub(super) fn standing_and_wall_state_for_placement(
         return BlockPlacementState::Unsupported;
     };
     let primary_state =
-        block_state_for_placement(world, primary, target_pos, replace_clicked, context);
-    let wall_state = block_state_for_placement(world, wall, target_pos, replace_clicked, context);
+        block_state_for_placement(world, primary, target_pos, replace_clicked, context, None);
+    let wall_state =
+        block_state_for_placement(world, wall, target_pos, replace_clicked, context, None);
     let Some(pose) = world.local_player().pose else {
         return BlockPlacementState::Unsupported;
     };

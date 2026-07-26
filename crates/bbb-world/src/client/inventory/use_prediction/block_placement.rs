@@ -13,6 +13,7 @@ use bbb_protocol::{
 };
 
 use super::*;
+use crate::LevelEventSoundRandomState;
 
 mod attachment;
 mod composite;
@@ -32,6 +33,7 @@ impl WorldStore {
         item_type: &ItemTypeCatalogEntry,
         hand: InteractionHand,
         context: LocalBlockUseContext,
+        random: Option<&mut LevelEventSoundRandomState>,
     ) -> LocalTargetUsePrediction {
         let unsupported = || LocalTargetUsePrediction::UnsupportedItemUseOn(owner);
         let Some(stack) = self.local_item_in_hand(hand).cloned() else {
@@ -123,7 +125,14 @@ impl WorldStore {
                 attachment_direction,
             )
         } else {
-            state::block_state_for_placement(self, block_type, target_pos, replace_clicked, context)
+            state::block_state_for_placement(
+                self,
+                block_type,
+                target_pos,
+                replace_clicked,
+                context,
+                random,
+            )
         };
         let placement_state_id = match placement {
             BlockPlacementState::State(state_id) => state_id,
@@ -155,7 +164,9 @@ impl WorldStore {
             || block_type.get_state_for_placement_override
                 == Some(VanillaGetStateForPlacementOverride::CopperChestBlock)
                 && placed_block_type.get_state_for_placement_override
-                    == Some(VanillaGetStateForPlacementOverride::CopperChestBlock);
+                    == Some(VanillaGetStateForPlacementOverride::CopperChestBlock)
+            || state::growing_plant_body_block_type_id_for_head(block_type.id)
+                == Some(placed_block_type.id);
         if !expected_placement_block {
             return unsupported();
         }

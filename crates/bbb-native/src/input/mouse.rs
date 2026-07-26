@@ -465,7 +465,7 @@ fn start_use_item_with_effects(
             }
             Some(CrosshairTarget::Block(hit)) => {
                 let sequence = world.next_local_prediction_sequence();
-                let prediction = world.predict_local_block_use_with_hit(
+                let prediction = world.predict_local_block_use_with_hit_and_random(
                     hit.pos,
                     hit.face,
                     hit.cursor,
@@ -473,6 +473,7 @@ fn start_use_item_with_effects(
                     hand,
                     input.sneak,
                     sequence,
+                    level_random,
                 );
                 queue_use_item_on_command(
                     counters,

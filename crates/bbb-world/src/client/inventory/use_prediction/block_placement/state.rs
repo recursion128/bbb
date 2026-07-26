@@ -5,7 +5,11 @@ use bbb_protocol::{
     block_types::{
         vanilla_block_type, vanilla_concrete_block_type_id_for_powder, BlockTypeCatalogEntry,
         VanillaCanSurviveOverride, VanillaGetStateForPlacementOverride,
-        VANILLA_BLOCK_BAMBOO_SAPLING_ID, VANILLA_BLOCK_DIRT_ID,
+        VANILLA_BLOCK_BAMBOO_SAPLING_ID, VANILLA_BLOCK_CAVE_VINES_ID,
+        VANILLA_BLOCK_CAVE_VINES_PLANT_ID, VANILLA_BLOCK_DIRT_ID, VANILLA_BLOCK_KELP_ID,
+        VANILLA_BLOCK_KELP_PLANT_ID, VANILLA_BLOCK_TWISTING_VINES_ID,
+        VANILLA_BLOCK_TWISTING_VINES_PLANT_ID, VANILLA_BLOCK_WEEPING_VINES_ID,
+        VANILLA_BLOCK_WEEPING_VINES_PLANT_ID,
     },
     packets::Direction,
 };
@@ -119,6 +123,7 @@ pub(super) fn block_state_for_placement(
     target_pos: BlockPos,
     replace_clicked: bool,
     context: LocalBlockUseContext,
+    random: Option<&mut crate::LevelEventSoundRandomState>,
 ) -> BlockPlacementState {
     let Some(default_state_id) = vanilla_block_default_state_id(block_type.id) else {
         return BlockPlacementState::Unsupported;
@@ -644,6 +649,69 @@ pub(super) fn block_state_for_placement(
                 Some(false) => BlockPlacementState::Fail,
                 None => BlockPlacementState::Unsupported,
             };
+        }
+        VanillaGetStateForPlacementOverride::CoralBlock => {
+            let mut has_water = false;
+            for direction in [
+                Direction::Down,
+                Direction::Up,
+                Direction::North,
+                Direction::South,
+                Direction::West,
+                Direction::East,
+            ] {
+                let Some(neighbour) = world.probe_block(relative(target_pos, direction)) else {
+                    return BlockPlacementState::Unsupported;
+                };
+                if neighbour
+                    .fluid
+                    .is_some_and(|fluid| fluid.kind == TerrainFluidKind::Water)
+                {
+                    has_water = true;
+                    break;
+                }
+            }
+            if !has_water {
+                let Some(random) = random else {
+                    return BlockPlacementState::Unsupported;
+                };
+                let _scheduled_tick_delay = 60 + random.next_int_bound(40);
+            }
+            return BlockPlacementState::State(default_state_id);
+        }
+        VanillaGetStateForPlacementOverride::GrowingPlantBlock
+        | VanillaGetStateForPlacementOverride::KelpBlock => {
+            let Some(family) = growing_plant_family(block_type.id) else {
+                return BlockPlacementState::Unsupported;
+            };
+            if owner == VanillaGetStateForPlacementOverride::KelpBlock {
+                match target_is_full_water(world, target_pos) {
+                    Some(true) => {}
+                    Some(false) => return BlockPlacementState::Fail,
+                    None => return BlockPlacementState::Unsupported,
+                }
+            }
+            let Some(growth_neighbour) =
+                world.probe_block(relative(target_pos, family.growth_direction))
+            else {
+                return BlockPlacementState::Unsupported;
+            };
+            if matches!(
+                growth_neighbour.block_name.as_deref(),
+                Some(name) if name == family.head_name || name == family.body_name
+            ) {
+                return vanilla_block_default_state_id(family.body_block_type_id)
+                    .map_or(BlockPlacementState::Unsupported, BlockPlacementState::State);
+            }
+            let Some(random) = random else {
+                return BlockPlacementState::Unsupported;
+            };
+            return state_with_owned_properties(
+                world,
+                block_type,
+                default_state_id,
+                [("age", random.next_int_bound(25).to_string())],
+            );
         }
         VanillaGetStateForPlacementOverride::SnowyBlock => {
             let Some(above) = world.probe_block(relative(target_pos, Direction::Up)) else {
@@ -1255,6 +1323,48 @@ pub(super) fn block_state_for_placement(
     };
 
     state_with_properties(world, block_type, default_state_id, properties)
+}
+
+#[derive(Debug, Clone, Copy)]
+struct GrowingPlantFamily {
+    growth_direction: Direction,
+    head_name: &'static str,
+    body_name: &'static str,
+    body_block_type_id: i32,
+}
+
+fn growing_plant_family(block_type_id: i32) -> Option<GrowingPlantFamily> {
+    Some(match block_type_id {
+        VANILLA_BLOCK_KELP_ID => GrowingPlantFamily {
+            growth_direction: Direction::Up,
+            head_name: "minecraft:kelp",
+            body_name: "minecraft:kelp_plant",
+            body_block_type_id: VANILLA_BLOCK_KELP_PLANT_ID,
+        },
+        VANILLA_BLOCK_WEEPING_VINES_ID => GrowingPlantFamily {
+            growth_direction: Direction::Down,
+            head_name: "minecraft:weeping_vines",
+            body_name: "minecraft:weeping_vines_plant",
+            body_block_type_id: VANILLA_BLOCK_WEEPING_VINES_PLANT_ID,
+        },
+        VANILLA_BLOCK_TWISTING_VINES_ID => GrowingPlantFamily {
+            growth_direction: Direction::Up,
+            head_name: "minecraft:twisting_vines",
+            body_name: "minecraft:twisting_vines_plant",
+            body_block_type_id: VANILLA_BLOCK_TWISTING_VINES_PLANT_ID,
+        },
+        VANILLA_BLOCK_CAVE_VINES_ID => GrowingPlantFamily {
+            growth_direction: Direction::Down,
+            head_name: "minecraft:cave_vines",
+            body_name: "minecraft:cave_vines_plant",
+            body_block_type_id: VANILLA_BLOCK_CAVE_VINES_PLANT_ID,
+        },
+        _ => return None,
+    })
+}
+
+pub(super) fn growing_plant_body_block_type_id_for_head(block_type_id: i32) -> Option<i32> {
+    growing_plant_family(block_type_id).map(|family| family.body_block_type_id)
 }
 
 pub(super) const fn creaking_heart_state_name(

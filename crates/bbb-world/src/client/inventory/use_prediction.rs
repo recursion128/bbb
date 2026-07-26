@@ -14,7 +14,7 @@ use crate::{
         vanilla_entity_metadata_type_is_leashable, vanilla_entity_metadata_type_is_living,
         vanilla_entity_type_is_minecart, vanilla_pick_bounds_for_type,
     },
-    BlockPos,
+    BlockPos, LevelEventSoundRandomState,
 };
 use bbb_protocol::{
     attribute_types::VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
@@ -683,6 +683,54 @@ impl WorldStore {
         secondary_use_active: bool,
         sequence: i32,
     ) -> LocalTargetUsePrediction {
+        self.predict_local_block_use_with_hit_and_optional_random(
+            pos,
+            face,
+            cursor,
+            inside,
+            hand,
+            secondary_use_active,
+            sequence,
+            None,
+        )
+    }
+
+    /// Predicts targeted use while sharing the native `ClientLevel.random`
+    /// owner required by random-consuming placement states.
+    pub fn predict_local_block_use_with_hit_and_random(
+        &mut self,
+        pos: BlockPos,
+        face: ProtocolDirection,
+        cursor: [f64; 3],
+        inside: bool,
+        hand: InteractionHand,
+        secondary_use_active: bool,
+        sequence: i32,
+        random: &mut LevelEventSoundRandomState,
+    ) -> LocalTargetUsePrediction {
+        self.predict_local_block_use_with_hit_and_optional_random(
+            pos,
+            face,
+            cursor,
+            inside,
+            hand,
+            secondary_use_active,
+            sequence,
+            Some(random),
+        )
+    }
+
+    fn predict_local_block_use_with_hit_and_optional_random(
+        &mut self,
+        pos: BlockPos,
+        face: ProtocolDirection,
+        cursor: [f64; 3],
+        inside: bool,
+        hand: InteractionHand,
+        secondary_use_active: bool,
+        sequence: i32,
+        mut random: Option<&mut LevelEventSoundRandomState>,
+    ) -> LocalTargetUsePrediction {
         if self.local_player_is_spectator() {
             return LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
                 LocalInteractionSuccess::consume_without_item(),
@@ -699,7 +747,7 @@ impl WorldStore {
         let hands_have_item = self.local_item_in_hand(InteractionHand::MainHand).is_some()
             || self.local_item_in_hand(InteractionHand::OffHand).is_some();
         if secondary_use_active && hands_have_item {
-            return self.predict_local_item_use_on(hand, Some(context));
+            return self.predict_local_item_use_on(hand, Some(context), random.as_deref_mut());
         }
         let Some(block) = self.probe_block(pos) else {
             return LocalTargetUsePrediction::UnknownBlockType(None);
@@ -710,7 +758,12 @@ impl WorldStore {
         let Some(block_type) = vanilla_block_type_for_resource_id(block_name) else {
             return LocalTargetUsePrediction::UnknownBlockType(Some(block.block_state_id));
         };
-        self.predict_local_block_use_for_type(block_type, hand, Some(context))
+        self.predict_local_block_use_for_type(
+            block_type,
+            hand,
+            Some(context),
+            random.as_deref_mut(),
+        )
     }
 
     fn predict_local_block_use_for_type(
@@ -718,6 +771,7 @@ impl WorldStore {
         block_type: &BlockTypeCatalogEntry,
         hand: InteractionHand,
         context: Option<LocalBlockUseContext>,
+        random: Option<&mut LevelEventSoundRandomState>,
     ) -> LocalTargetUsePrediction {
         if !self.is_feature_enabled("minecraft:vanilla") {
             return LocalTargetUsePrediction::Result(LocalInteractionResult::Fail);
@@ -756,7 +810,7 @@ impl WorldStore {
                 }
             }
         }
-        self.predict_local_item_use_on(hand, context)
+        self.predict_local_item_use_on(hand, context, random)
     }
 
     fn local_hanging_sign_item_reaches_use_on(
@@ -841,6 +895,7 @@ impl WorldStore {
         &mut self,
         hand: InteractionHand,
         context: Option<LocalBlockUseContext>,
+        mut random: Option<&mut LevelEventSoundRandomState>,
     ) -> LocalTargetUsePrediction {
         let Some(stack) = self.local_item_in_hand(hand) else {
             return LocalTargetUsePrediction::Result(LocalInteractionResult::Pass);
@@ -866,9 +921,13 @@ impl WorldStore {
                 if let Some(result) = self.predict_local_tool_item_use_on(owner, hand, context) {
                     return result;
                 }
-                if let Some(result) =
-                    self.predict_local_client_owned_item_use_on(owner, item_type, hand, context)
-                {
+                if let Some(result) = self.predict_local_client_owned_item_use_on(
+                    owner,
+                    item_type,
+                    hand,
+                    context,
+                    random.as_deref_mut(),
+                ) {
                     return result;
                 }
                 if let Some(result) =
@@ -1029,6 +1088,7 @@ impl WorldStore {
         item_type: &ItemTypeCatalogEntry,
         hand: InteractionHand,
         context: LocalBlockUseContext,
+        random: Option<&mut LevelEventSoundRandomState>,
     ) -> Option<LocalTargetUsePrediction> {
         let client_success = || {
             LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
@@ -1043,7 +1103,7 @@ impl WorldStore {
         let pass = || LocalTargetUsePrediction::Result(LocalInteractionResult::Pass);
         match owner {
             VanillaItemUseOnOverride::BlockItem => {
-                Some(self.predict_local_block_item_use_on(owner, item_type, hand, context))
+                Some(self.predict_local_block_item_use_on(owner, item_type, hand, context, random))
             }
             // `BrushItem.useOn` always consumes the action and its block hit
             // starts the fixed-duration brushing use animation.
@@ -5939,25 +5999,25 @@ mod tests {
         let mut world = WorldStore::new();
         let stone = vanilla_block_type(VANILLA_BLOCK_STONE_ID).unwrap();
         assert_eq!(
-            world.predict_local_block_use_for_type(stone, InteractionHand::MainHand, None),
+            world.predict_local_block_use_for_type(stone, InteractionHand::MainHand, None, None,),
             LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
         );
 
         let chest = vanilla_block_type(VANILLA_BLOCK_CHEST_ID).unwrap();
         assert_eq!(
-            world.predict_local_block_use_for_type(chest, InteractionHand::MainHand, None),
+            world.predict_local_block_use_for_type(chest, InteractionHand::MainHand, None, None,),
             LocalTargetUsePrediction::UnsupportedBlockUseWithoutItem(
                 VanillaBlockUseWithoutItemOverride::ChestBlock
             )
         );
         assert_eq!(
-            world.predict_local_block_use_for_type(chest, InteractionHand::OffHand, None),
+            world.predict_local_block_use_for_type(chest, InteractionHand::OffHand, None, None,),
             LocalTargetUsePrediction::Result(LocalInteractionResult::Pass)
         );
 
         let cake = vanilla_block_type(VANILLA_BLOCK_CAKE_ID).unwrap();
         assert_eq!(
-            world.predict_local_block_use_for_type(cake, InteractionHand::MainHand, None),
+            world.predict_local_block_use_for_type(cake, InteractionHand::MainHand, None, None,),
             LocalTargetUsePrediction::UnsupportedBlockUseItemOn(
                 VanillaBlockUseItemOnOverride::CakeBlock
             )
@@ -5965,7 +6025,7 @@ mod tests {
 
         set_main_hand(&mut world, VANILLA_ITEM_STONE_ID);
         assert_eq!(
-            world.predict_local_block_use_for_type(stone, InteractionHand::MainHand, None),
+            world.predict_local_block_use_for_type(stone, InteractionHand::MainHand, None, None,),
             LocalTargetUsePrediction::UnsupportedItemUseOn(VanillaItemUseOnOverride::BlockItem)
         );
         assert_eq!(

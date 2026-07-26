@@ -31,6 +31,12 @@ enum BlockCanSurviveRule {
     Bamboo,
     ChorusPlant,
     Farmland,
+    GrowingPlant {
+        growth_direction: Direction,
+        head_name: &'static str,
+        body_name: &'static str,
+        cannot_attach_tag: Option<&'static str>,
+    },
     Lantern,
     MangrovePropagule,
     MossyCarpet,
@@ -57,7 +63,9 @@ impl WorldStore {
         owner: VanillaCanSurviveOverride,
     ) -> Option<bool> {
         let state = self.registries().block_state(block_state_id)?;
-        let rule = if owner == VanillaCanSurviveOverride::VegetationBlock
+        let rule = if owner == VanillaCanSurviveOverride::GrowingPlantBlock {
+            growing_plant_rule(&state.name)?
+        } else if owner == VanillaCanSurviveOverride::VegetationBlock
             && state.name == "minecraft:seagrass"
         {
             BlockCanSurviveRule::Seagrass
@@ -195,6 +203,31 @@ impl WorldStore {
                 } else {
                     self.placement_block_is_in_tag(&above, "minecraft:maintains_farmland")
                 }
+            }
+            BlockCanSurviveRule::GrowingPlant {
+                growth_direction,
+                head_name,
+                body_name,
+                cannot_attach_tag,
+            } => {
+                let attached_pos = relative(pos, opposite(growth_direction));
+                let attached = self.probe_block(attached_pos)?;
+                if let Some(tag) = cannot_attach_tag {
+                    if self.placement_block_is_in_tag(&attached, tag)? {
+                        return Some(false);
+                    }
+                }
+                if matches!(
+                    attached.block_name.as_deref(),
+                    Some(name) if name == head_name || name == body_name
+                ) {
+                    return Some(true);
+                }
+                self.placement_face_sturdy(
+                    &attached,
+                    growth_direction,
+                    VanillaBlockSupportType::Full,
+                )
             }
             BlockCanSurviveRule::Lantern => {
                 let hanging = boolean_property(properties, "hanging")?;
@@ -568,7 +601,46 @@ fn probe_is_air(block: &BlockProbe) -> Option<bool> {
 pub(in super::super) const fn block_can_survive_owner_supported(
     owner: VanillaCanSurviveOverride,
 ) -> bool {
-    block_can_survive_rule(owner).is_some()
+    match owner {
+        VanillaCanSurviveOverride::GrowingPlantBlock => true,
+        _ => block_can_survive_rule(owner).is_some(),
+    }
+}
+
+fn growing_plant_rule(block_name: &str) -> Option<BlockCanSurviveRule> {
+    Some(match block_name {
+        "minecraft:kelp" | "minecraft:kelp_plant" => BlockCanSurviveRule::GrowingPlant {
+            growth_direction: Direction::Up,
+            head_name: "minecraft:kelp",
+            body_name: "minecraft:kelp_plant",
+            cannot_attach_tag: Some("minecraft:cannot_support_kelp"),
+        },
+        "minecraft:weeping_vines" | "minecraft:weeping_vines_plant" => {
+            BlockCanSurviveRule::GrowingPlant {
+                growth_direction: Direction::Down,
+                head_name: "minecraft:weeping_vines",
+                body_name: "minecraft:weeping_vines_plant",
+                cannot_attach_tag: None,
+            }
+        }
+        "minecraft:twisting_vines" | "minecraft:twisting_vines_plant" => {
+            BlockCanSurviveRule::GrowingPlant {
+                growth_direction: Direction::Up,
+                head_name: "minecraft:twisting_vines",
+                body_name: "minecraft:twisting_vines_plant",
+                cannot_attach_tag: None,
+            }
+        }
+        "minecraft:cave_vines" | "minecraft:cave_vines_plant" => {
+            BlockCanSurviveRule::GrowingPlant {
+                growth_direction: Direction::Down,
+                head_name: "minecraft:cave_vines",
+                body_name: "minecraft:cave_vines_plant",
+                cannot_attach_tag: None,
+            }
+        }
+        _ => return None,
+    })
 }
 
 const fn block_can_survive_rule(owner: VanillaCanSurviveOverride) -> Option<BlockCanSurviveRule> {
