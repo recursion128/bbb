@@ -569,6 +569,24 @@ pub(super) fn block_state_for_placement(
                 ],
             );
         }
+        VanillaGetStateForPlacementOverride::ShelfBlock => {
+            if placement_neighbor_signal_is_proven_absent(world, &[target_pos]).is_none() {
+                return BlockPlacementState::Unsupported;
+            }
+            let Some(waterlogged) = target_is_source_water(world, target_pos) else {
+                return BlockPlacementState::Unsupported;
+            };
+            return state_with_properties(
+                world,
+                block_type,
+                default_state_id,
+                [
+                    ("facing", direction_name(opposite(horizontal))),
+                    ("powered", "false"),
+                    ("waterlogged", boolean_name(waterlogged)),
+                ],
+            );
+        }
         VanillaGetStateForPlacementOverride::BannerBlock => {
             let Some(rotation) = rotation_segment(pose.y_rot + 180.0) else {
                 return BlockPlacementState::Unsupported;

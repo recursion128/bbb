@@ -27,8 +27,8 @@ use bbb_protocol::{
         VANILLA_ITEM_MANGROVE_PROPAGULE_ID, VANILLA_ITEM_NOTE_BLOCK_ID, VANILLA_ITEM_OAK_DOOR_ID,
         VANILLA_ITEM_OAK_FENCE_GATE_ID, VANILLA_ITEM_OAK_FENCE_ID,
         VANILLA_ITEM_OAK_HANGING_SIGN_ID, VANILLA_ITEM_OAK_LEAVES_ID, VANILLA_ITEM_OAK_LOG_ID,
-        VANILLA_ITEM_OAK_SIGN_ID, VANILLA_ITEM_OAK_SLAB_ID, VANILLA_ITEM_OAK_STAIRS_ID,
-        VANILLA_ITEM_OAK_TRAPDOOR_ID, VANILLA_ITEM_OBSERVER_ID,
+        VANILLA_ITEM_OAK_SHELF_ID, VANILLA_ITEM_OAK_SIGN_ID, VANILLA_ITEM_OAK_SLAB_ID,
+        VANILLA_ITEM_OAK_STAIRS_ID, VANILLA_ITEM_OAK_TRAPDOOR_ID, VANILLA_ITEM_OBSERVER_ID,
         VANILLA_ITEM_OXIDIZED_COPPER_CHEST_ID, VANILLA_ITEM_PALE_MOSS_CARPET_ID,
         VANILLA_ITEM_POINTED_DRIPSTONE_ID, VANILLA_ITEM_REDSTONE_ID,
         VANILLA_ITEM_RESPAWN_ANCHOR_ID, VANILLA_ITEM_SMALL_DRIPLEAF_ID, VANILLA_ITEM_STONE_ID,
@@ -270,6 +270,38 @@ fn crafter_placement_uses_nearest_front_top_orientation_without_signal() {
             ],
         )
     );
+}
+
+#[test]
+fn shelf_placement_uses_horizontal_facing_source_water_and_no_signal() {
+    let clicked = BlockPos { x: 4, y: 8, z: 4 };
+    let target = relative(clicked, ProtocolDirection::Up);
+    let mut world = placement_world();
+    set_block(&mut world, clicked, state_id("minecraft:stone", []));
+    set_block(
+        &mut world,
+        target,
+        state_id("minecraft:water", [("level", "0")]),
+    );
+    set_held(&mut world, VANILLA_ITEM_OAK_SHELF_ID, 1);
+
+    assert!(matches!(
+        use_block_at(&mut world, clicked, false, 72),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        world.probe_block(target).unwrap().block_state_id,
+        state_id(
+            "minecraft:oak_shelf",
+            [
+                ("facing", "north"),
+                ("powered", "false"),
+                ("side_chain", "unconnected"),
+                ("waterlogged", "true")
+            ],
+        )
+    );
+    assert_eq!(held(&world).count, 0);
 }
 
 #[test]
