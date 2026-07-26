@@ -219,6 +219,74 @@ fn copper_chest_placement_uses_least_oxidized_and_matching_wax_state() {
 }
 
 #[test]
+fn mossy_carpet_placement_projects_supported_sides_and_requires_a_non_air_base() {
+    let clicked = BlockPos { x: 4, y: 8, z: 4 };
+    let target = relative(clicked, ProtocolDirection::Up);
+    let north = relative(target, ProtocolDirection::North);
+    let east = relative(target, ProtocolDirection::East);
+    let above = relative(target, ProtocolDirection::Up);
+
+    let mut supported = placement_world();
+    set_block(&mut supported, clicked, state_id("minecraft:stone", []));
+    set_block(&mut supported, north, state_id("minecraft:stone", []));
+    set_block(&mut supported, east, state_id("minecraft:stone", []));
+    set_block(
+        &mut supported,
+        above,
+        state_id(
+            "minecraft:pale_moss_carpet",
+            [
+                ("bottom", "false"),
+                ("east", "none"),
+                ("north", "low"),
+                ("south", "none"),
+                ("west", "none"),
+            ],
+        ),
+    );
+    set_held(&mut supported, VANILLA_ITEM_PALE_MOSS_CARPET_ID, 1);
+    assert!(matches!(
+        use_block_at(&mut supported, clicked, false, 30),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        supported.probe_block(target).unwrap().block_state_id,
+        state_id(
+            "minecraft:pale_moss_carpet",
+            [
+                ("bottom", "true"),
+                ("east", "low"),
+                ("north", "tall"),
+                ("south", "none"),
+                ("west", "none"),
+            ],
+        )
+    );
+    assert_eq!(held(&supported).count, 0);
+
+    let mut unsupported_base = placement_world();
+    set_block(
+        &mut unsupported_base,
+        clicked,
+        state_id("minecraft:short_grass", []),
+    );
+    set_held(&mut unsupported_base, VANILLA_ITEM_PALE_MOSS_CARPET_ID, 1);
+    assert_eq!(
+        use_block_at(&mut unsupported_base, clicked, false, 31),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
+    );
+    assert_eq!(
+        unsupported_base
+            .probe_block(clicked)
+            .unwrap()
+            .block_state_id,
+        state_id("minecraft:short_grass", [])
+    );
+    assert_eq!(held(&unsupported_base).count, 1);
+    assert!(unsupported_base.local_block_predictions().is_empty());
+}
+
+#[test]
 fn wall_placement_projects_side_height_and_center_post_from_the_block_above() {
     let clicked = BlockPos { x: 4, y: 8, z: 4 };
     let target = relative(clicked, ProtocolDirection::Up);

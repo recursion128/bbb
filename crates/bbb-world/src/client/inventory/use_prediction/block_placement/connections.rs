@@ -56,6 +56,14 @@ pub(super) struct WallPlacement {
     pub(super) west: &'static str,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct MossyCarpetPlacement {
+    pub(super) north: &'static str,
+    pub(super) east: &'static str,
+    pub(super) south: &'static str,
+    pub(super) west: &'static str,
+}
+
 pub(super) fn fence_connections(
     world: &WorldStore,
     pos: BlockPos,
@@ -135,6 +143,43 @@ pub(super) fn wall_placement(world: &WorldStore, pos: BlockPos) -> Option<WallPl
         east,
         south,
         west,
+    })
+}
+
+pub(super) fn mossy_carpet_placement(
+    world: &WorldStore,
+    pos: BlockPos,
+) -> Option<MossyCarpetPlacement> {
+    let above = world.probe_block(relative(pos, Direction::Up))?;
+    let above_is_topper = if above.block_name.as_deref() == Some("minecraft:pale_moss_carpet") {
+        match above.block_properties.get("bottom")?.as_str() {
+            "false" => true,
+            "true" => false,
+            _ => return None,
+        }
+    } else {
+        false
+    };
+    let side = |direction, property| {
+        let neighbour = world.probe_block(relative(pos, direction))?;
+        if !world.placement_full_support_or_collision_face(&neighbour, opposite(direction))? {
+            return Some("none");
+        }
+        if above_is_topper {
+            match above.block_properties.get(property)?.as_str() {
+                "low" | "tall" => return Some("tall"),
+                "none" => {}
+                _ => return None,
+            }
+        }
+        Some("low")
+    };
+
+    Some(MossyCarpetPlacement {
+        north: side(Direction::North, "north")?,
+        east: side(Direction::East, "east")?,
+        south: side(Direction::South, "south")?,
+        west: side(Direction::West, "west")?,
     })
 }
 

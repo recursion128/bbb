@@ -15,7 +15,7 @@ use bbb_protocol::{
 
 use super::super::WorldStore;
 use super::context::{opposite, relative};
-use crate::{BlockPos, BlockProbe};
+use crate::{block_name_is_air, BlockPos, BlockProbe};
 
 #[derive(Debug, Clone, Copy)]
 enum BlockCanSurviveRule {
@@ -30,6 +30,7 @@ enum BlockCanSurviveRule {
     AboveFull,
     Lantern,
     MangrovePropagule,
+    MossyCarpet,
     Multiface,
     PointedDripstone,
     Scaffolding,
@@ -176,6 +177,18 @@ impl WorldStore {
                 };
                 let support = self.probe_block(relative(pos, support_direction))?;
                 self.placement_block_is_in_tag(&support, tag)
+            }
+            BlockCanSurviveRule::MossyCarpet => {
+                let below = self.probe_block(relative(pos, Direction::Down))?;
+                let below_name = below.block_name.as_deref()?;
+                if boolean_property(properties, "bottom")? {
+                    Some(!block_name_is_air(below_name))
+                } else {
+                    Some(
+                        below_name == "minecraft:pale_moss_carpet"
+                            && boolean_property(&below.block_properties, "bottom")?,
+                    )
+                }
             }
             BlockCanSurviveRule::Multiface => {
                 let mut has_face = false;
@@ -362,7 +375,7 @@ impl WorldStore {
         })
     }
 
-    fn placement_full_support_or_collision_face(
+    pub(super) fn placement_full_support_or_collision_face(
         &self,
         block: &BlockProbe,
         direction: Direction,
@@ -466,6 +479,7 @@ const fn block_can_survive_rule(owner: VanillaCanSurviveOverride) -> Option<Bloc
         VanillaCanSurviveOverride::HangingRootsBlock => BlockCanSurviveRule::AboveFull,
         VanillaCanSurviveOverride::LanternBlock => BlockCanSurviveRule::Lantern,
         VanillaCanSurviveOverride::MangrovePropaguleBlock => BlockCanSurviveRule::MangrovePropagule,
+        VanillaCanSurviveOverride::MossyCarpetBlock => BlockCanSurviveRule::MossyCarpet,
         VanillaCanSurviveOverride::MultifaceBlock => BlockCanSurviveRule::Multiface,
         VanillaCanSurviveOverride::PointedDripstoneBlock => BlockCanSurviveRule::PointedDripstone,
         VanillaCanSurviveOverride::ScaffoldingBlock => BlockCanSurviveRule::Scaffolding,
