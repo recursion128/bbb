@@ -1626,6 +1626,54 @@ impl InventoryState {
         Some(!added)
     }
 
+    /// Applies the direct `ItemStack.shrink` + `Inventory.add` sequence used
+    /// by `BeehiveBlock` when a glass bottle collects honey.
+    ///
+    /// Unlike `ItemUtils.createFilledResult`, the input shrinks even for an
+    /// instabuild player. A full instabuild inventory silently accepts and
+    /// discards the generated stack, matching `Inventory.add`.
+    pub(crate) fn replace_local_item_with_forced_filled_result(
+        &mut self,
+        ctx: InventoryCtx<'_>,
+        counters: &mut WorldCounters,
+        hand: InteractionHand,
+        expected_item_id: i32,
+        filled: ProtocolItemStackSummary,
+    ) -> Option<bool> {
+        let hand_slot_id = match hand {
+            InteractionHand::MainHand => {
+                let selected_slot = ctx.local_player.selected_hotbar_slot;
+                (selected_slot <= 8).then_some(i32::from(selected_slot))?
+            }
+            InteractionHand::OffHand => VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+        };
+        let mut hand_slot = self.player_inventory_slot(hand_slot_id);
+        if item_stack_is_empty(&hand_slot.item)
+            || hand_slot.item.item_id != Some(expected_item_id)
+            || item_stack_is_empty(&filled)
+        {
+            return None;
+        }
+
+        if hand_slot.item.count == 1 {
+            hand_slot.item = filled;
+            self.set_player_inventory_slot_and_menu_slot(hand_slot);
+            self.update_inventory_slot_count(counters);
+            return Some(false);
+        }
+
+        hand_slot.item.count -= 1;
+        normalize_item_stack(&mut hand_slot.item);
+        self.set_player_inventory_slot_and_menu_slot(hand_slot);
+        let added = self.add_local_item_to_player_inventory(ctx, filled);
+        self.update_inventory_slot_count(counters);
+        let instabuild = ctx
+            .local_player
+            .abilities
+            .is_some_and(|abilities| abilities.instabuild);
+        Some(!added && !instabuild)
+    }
+
     pub(crate) fn replace_local_potion_with_glass_bottle(
         &mut self,
         ctx: InventoryCtx<'_>,
@@ -3250,6 +3298,21 @@ impl WorldStore {
         filled: ProtocolItemStackSummary,
     ) -> Option<bool> {
         self.inventory.replace_local_item_with_filled_result(
+            inventory_ctx!(self),
+            &mut self.counters,
+            hand,
+            expected_item_id,
+            filled,
+        )
+    }
+
+    pub(crate) fn replace_local_item_with_forced_filled_result(
+        &mut self,
+        hand: InteractionHand,
+        expected_item_id: i32,
+        filled: ProtocolItemStackSummary,
+    ) -> Option<bool> {
+        self.inventory.replace_local_item_with_forced_filled_result(
             inventory_ctx!(self),
             &mut self.counters,
             hand,

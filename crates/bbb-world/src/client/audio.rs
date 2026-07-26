@@ -1831,6 +1831,13 @@ impl WorldStore {
                 1.0,
                 SoundSource::Neutral.as_str(),
             ),
+            LocalInteractionSoundAction::BeehiveBottleFill => local_player_sound_state(
+                self.local_player_pose()?.position,
+                "minecraft:item.bottle.fill",
+                1.0,
+                1.0,
+                SoundSource::Blocks.as_str(),
+            ),
             LocalInteractionSoundAction::BucketFill { sound_resource_id } => {
                 local_player_sound_state(
                     self.local_player_pose()?.position,

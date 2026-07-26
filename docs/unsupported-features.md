@@ -653,7 +653,7 @@ Commands:
   command, and sign editing.
 - Complete the remaining specialized targeted local-use prediction from
   `Minecraft.startUseItem`, `MultiPlayerGameMode.interact`, and `useItemOn`.
-  Finish the generated `BeehiveBlock`, `RedStoneOreBlock`, and
+  Finish the generated `RedStoneOreBlock` and
   `WeatheringCopperGolemStatueBlock` `useItemOn` owners so main/offhand iteration
   can stop or continue on the exact `InteractionResult`; complete
   `ComparatorBlock.refreshOutputState` after predicted mode changes, including

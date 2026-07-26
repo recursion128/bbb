@@ -831,12 +831,13 @@ mod tests {
             VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_BONE_MEAL_ID, VANILLA_ITEM_BOOK_ID,
             VANILLA_ITEM_BUCKET_ID, VANILLA_ITEM_CANDLE_ID, VANILLA_ITEM_FIRE_CHARGE_ID,
             VANILLA_ITEM_FLINT_AND_STEEL_ID, VANILLA_ITEM_GLASS_BOTTLE_ID,
-            VANILLA_ITEM_GLOWSTONE_ID, VANILLA_ITEM_IRON_AXE_ID, VANILLA_ITEM_LAVA_BUCKET_ID,
-            VANILLA_ITEM_LEATHER_HELMET_ID, VANILLA_ITEM_MUSIC_DISC_13_ID,
-            VANILLA_ITEM_NOTE_BLOCK_ID, VANILLA_ITEM_OAK_LOG_ID, VANILLA_ITEM_POPPY_ID,
-            VANILLA_ITEM_POTION_ID, VANILLA_ITEM_POWDER_SNOW_BUCKET_ID, VANILLA_ITEM_RED_DYE_ID,
-            VANILLA_ITEM_SHEARS_ID, VANILLA_ITEM_STONE_ID, VANILLA_ITEM_WATER_BUCKET_ID,
-            VANILLA_ITEM_WHITE_BANNER_ID, VANILLA_ITEM_WHITE_SHULKER_BOX_ID,
+            VANILLA_ITEM_GLOWSTONE_ID, VANILLA_ITEM_HONEY_BOTTLE_ID, VANILLA_ITEM_IRON_AXE_ID,
+            VANILLA_ITEM_LAVA_BUCKET_ID, VANILLA_ITEM_LEATHER_HELMET_ID,
+            VANILLA_ITEM_MUSIC_DISC_13_ID, VANILLA_ITEM_NOTE_BLOCK_ID, VANILLA_ITEM_OAK_LOG_ID,
+            VANILLA_ITEM_POPPY_ID, VANILLA_ITEM_POTION_ID, VANILLA_ITEM_POWDER_SNOW_BUCKET_ID,
+            VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_SHEARS_ID, VANILLA_ITEM_STONE_ID,
+            VANILLA_ITEM_WATER_BUCKET_ID, VANILLA_ITEM_WHITE_BANNER_ID,
+            VANILLA_ITEM_WHITE_SHULKER_BOX_ID,
         },
         packets::{
             BannerPatternLayerSummary, BlockPos as ProtocolBlockPos, BlockUpdate,
@@ -1749,6 +1750,147 @@ mod tests {
             ),
             LocalTargetUsePrediction::Result(LocalInteractionResult::TryEmptyHandInteraction)
         );
+    }
+
+    #[test]
+    fn beehive_bottle_use_forces_consumption_resets_honey_and_preserves_drop_edges() {
+        let mut world = block_use_world(
+            "minecraft:beehive",
+            [("facing", "north"), ("honey_level", "4")],
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        set_main_hand(&mut world, VANILLA_ITEM_GLASS_BOTTLE_ID);
+        assert_eq!(
+            use_item_on(
+                &mut world,
+                "minecraft:beehive",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                150,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::TryEmptyHandInteraction)
+        );
+        assert_eq!(block_property(&world, "honey_level").as_deref(), Some("4"));
+
+        set_test_block(
+            &mut world,
+            state_id(
+                "minecraft:beehive",
+                [("facing", "north"), ("honey_level", "5")],
+            ),
+        );
+        set_main_hand(&mut world, VANILLA_ITEM_SHEARS_ID);
+        assert_eq!(
+            use_item_on(
+                &mut world,
+                "minecraft:beehive",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                151,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::TryEmptyHandInteraction),
+            "the shears branch starts only on ServerLevel"
+        );
+
+        set_main_hand(&mut world, VANILLA_ITEM_GLASS_BOTTLE_ID);
+        assert_eq!(
+            use_item_on(
+                &mut world,
+                "minecraft:beehive",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                152,
+            ),
+            success(LocalInteractionSuccess {
+                sound_action: Some(LocalInteractionSoundAction::BeehiveBottleFill),
+                ..LocalInteractionSuccess::client_item_interaction()
+            })
+        );
+        assert_eq!(block_property(&world, "honey_level").as_deref(), Some("0"));
+        assert_eq!(
+            world.local_item_in_hand(InteractionHand::MainHand),
+            Some(&item_stack(VANILLA_ITEM_HONEY_BOTTLE_ID, 1))
+        );
+        assert_eq!(world.local_block_predictions()[0].sequence, 152);
+
+        let fill_inventory = |world: &mut WorldStore, game_item_id| {
+            for slot in 0..36 {
+                assert!(world.apply_set_player_inventory(SetPlayerInventory {
+                    slot,
+                    item: item_stack(game_item_id, 64),
+                }));
+            }
+            assert!(world.apply_set_player_inventory(SetPlayerInventory {
+                slot: 0,
+                item: item_stack(VANILLA_ITEM_GLASS_BOTTLE_ID, 2),
+            }));
+        };
+        let honey_bottle_count = |world: &WorldStore| {
+            world
+                .inventory()
+                .player_slots
+                .iter()
+                .filter(|slot| slot.item.item_id == Some(VANILLA_ITEM_HONEY_BOTTLE_ID))
+                .map(|slot| slot.item.count)
+                .sum::<i32>()
+        };
+
+        let mut full_survival = block_use_world(
+            "minecraft:bee_nest",
+            [("facing", "south"), ("honey_level", "5")],
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        fill_inventory(&mut full_survival, VANILLA_ITEM_STONE_ID);
+        assert_eq!(
+            use_item_on(
+                &mut full_survival,
+                "minecraft:bee_nest",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                153,
+            ),
+            success(LocalInteractionSuccess {
+                extra_swing: Some(InteractionHand::MainHand),
+                sound_action: Some(LocalInteractionSoundAction::BeehiveBottleFill),
+                ..LocalInteractionSuccess::client_item_interaction()
+            })
+        );
+        assert_eq!(
+            full_survival.local_item_in_hand(InteractionHand::MainHand),
+            Some(&item_stack(VANILLA_ITEM_GLASS_BOTTLE_ID, 1))
+        );
+        assert_eq!(honey_bottle_count(&full_survival), 0);
+
+        let mut full_creative = block_use_world(
+            "minecraft:beehive",
+            [("facing", "east"), ("honey_level", "5")],
+            VANILLA_GAME_TYPE_CREATIVE_ID as i8,
+        );
+        fill_inventory(&mut full_creative, VANILLA_ITEM_STONE_ID);
+        assert_eq!(
+            use_item_on(
+                &mut full_creative,
+                "minecraft:beehive",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                154,
+            ),
+            success(LocalInteractionSuccess {
+                sound_action: Some(LocalInteractionSoundAction::BeehiveBottleFill),
+                ..LocalInteractionSuccess::client_item_interaction()
+            }),
+            "ItemStack.shrink bypasses instabuild while Inventory.add accepts overflow"
+        );
+        assert_eq!(
+            full_creative.local_item_in_hand(InteractionHand::MainHand),
+            Some(&item_stack(VANILLA_ITEM_GLASS_BOTTLE_ID, 1))
+        );
+        assert_eq!(honey_bottle_count(&full_creative), 0);
     }
 
     #[test]

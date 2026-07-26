@@ -165,6 +165,7 @@ pub enum LocalInteractionSoundAction {
     SuppressedLodestoneCompassUse,
     SuppressedPotionMudConversion,
     BottleFill,
+    BeehiveBottleFill,
     BucketFill {
         sound_resource_id: &'static str,
     },
@@ -473,6 +474,13 @@ impl LocalInteractionSuccess {
             },
             sound_action: Some(LocalInteractionSoundAction::BottleFill),
             particle_action: None,
+        }
+    }
+
+    const fn beehive_bottle_fill(dropped: bool) -> Self {
+        Self {
+            sound_action: Some(LocalInteractionSoundAction::BeehiveBottleFill),
+            ..Self::bottle_fill(dropped)
         }
     }
 

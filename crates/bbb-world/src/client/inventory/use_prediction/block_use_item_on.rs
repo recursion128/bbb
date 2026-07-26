@@ -20,8 +20,9 @@ use bbb_protocol::{
         vanilla_compost_chance_bits, vanilla_item_type, VanillaCauldronInteraction,
         VanillaCauldronKind, VanillaItemInteractLivingEntityOverride, VanillaItemUseOnOverride,
         VANILLA_ITEM_BONE_MEAL_ID, VANILLA_ITEM_FIRE_CHARGE_ID, VANILLA_ITEM_FLINT_AND_STEEL_ID,
-        VANILLA_ITEM_GLOWSTONE_ID, VANILLA_ITEM_GLOW_INK_SAC_ID, VANILLA_ITEM_HONEYCOMB_ID,
-        VANILLA_ITEM_INK_SAC_ID, VANILLA_ITEM_SHEARS_ID,
+        VANILLA_ITEM_GLASS_BOTTLE_ID, VANILLA_ITEM_GLOWSTONE_ID, VANILLA_ITEM_GLOW_INK_SAC_ID,
+        VANILLA_ITEM_HONEYCOMB_ID, VANILLA_ITEM_HONEY_BOTTLE_ID, VANILLA_ITEM_INK_SAC_ID,
+        VANILLA_ITEM_SHEARS_ID,
     },
     packets::{Direction as ProtocolDirection, InteractionHand, ItemStackSummary},
     potion_types::vanilla_potion,
@@ -276,6 +277,44 @@ impl WorldStore {
                 } else {
                     try_empty_hand()
                 }
+            }
+            VanillaBlockUseItemOnOverride::BeehiveBlock => {
+                let Some(honey_level) =
+                    integer_property(&block.block_properties, "honey_level", 0..=5)
+                else {
+                    return unsupported();
+                };
+                let Some(stack) = self.local_item_in_hand(hand) else {
+                    return try_empty_hand();
+                };
+                if honey_level < 5 || stack.item_id != Some(VANILLA_ITEM_GLASS_BOTTLE_ID) {
+                    return try_empty_hand();
+                }
+                let mut properties = block.block_properties;
+                properties.insert("honey_level".to_string(), "0".to_string());
+                let Some(state_id) = self
+                    .registries
+                    .block_state_id_by_name_and_properties(block_type.resource_id, &properties)
+                else {
+                    return unsupported();
+                };
+                if !self.predict_local_block_state(context.pos, state_id, context.sequence) {
+                    return unsupported();
+                }
+                let Some(dropped) = self.replace_local_item_with_forced_filled_result(
+                    hand,
+                    VANILLA_ITEM_GLASS_BOTTLE_ID,
+                    ItemStackSummary {
+                        item_id: Some(VANILLA_ITEM_HONEY_BOTTLE_ID),
+                        count: 1,
+                        component_patch: Default::default(),
+                    },
+                ) else {
+                    return unsupported();
+                };
+                LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
+                    LocalInteractionSuccess::beehive_bottle_fill(dropped),
+                ))
             }
             VanillaBlockUseItemOnOverride::CopperGolemStatueBlock => {
                 let Some(is_axe) = self.local_item_in_hand_is_in_tag(hand, VANILLA_AXES_ITEM_TAG)
