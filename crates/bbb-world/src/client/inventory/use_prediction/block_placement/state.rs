@@ -607,6 +607,13 @@ pub(super) fn block_state_for_placement(
             }
             return state_with_properties(world, block_type, default_state_id, [("lit", "false")]);
         }
+        VanillaGetStateForPlacementOverride::SeagrassBlock => {
+            return match target_is_full_water(world, target_pos) {
+                Some(true) => BlockPlacementState::State(default_state_id),
+                Some(false) => BlockPlacementState::Fail,
+                None => BlockPlacementState::Unsupported,
+            };
+        }
         VanillaGetStateForPlacementOverride::BannerBlock => {
             let Some(rotation) = rotation_segment(pose.y_rot + 180.0) else {
                 return BlockPlacementState::Unsupported;

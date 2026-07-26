@@ -39,6 +39,7 @@ enum BlockCanSurviveRule {
     RedStoneWire,
     Scaffolding,
     SeaPickle,
+    Seagrass,
     SmallDripleaf,
     BelowLegacySolid,
     FacingLegacySolid,
@@ -55,7 +56,13 @@ impl WorldStore {
         owner: VanillaCanSurviveOverride,
     ) -> Option<bool> {
         let state = self.registries().block_state(block_state_id)?;
-        let rule = block_can_survive_rule(owner)?;
+        let rule = if owner == VanillaCanSurviveOverride::VegetationBlock
+            && state.name == "minecraft:seagrass"
+        {
+            BlockCanSurviveRule::Seagrass
+        } else {
+            block_can_survive_rule(owner)?
+        };
         self.evaluate_block_can_survive(pos, &state.properties, rule)
     }
 
@@ -317,6 +324,18 @@ impl WorldStore {
                 } else {
                     self.placement_face_sturdy(&below, Direction::Up, VanillaBlockSupportType::Full)
                 }
+            }
+            BlockCanSurviveRule::Seagrass => {
+                let below = self.probe_block(relative(pos, Direction::Down))?;
+                if !self.placement_face_sturdy(
+                    &below,
+                    Direction::Up,
+                    VanillaBlockSupportType::Full,
+                )? {
+                    return Some(false);
+                }
+                self.placement_block_is_in_tag(&below, "minecraft:cannot_support_seagrass")
+                    .map(|cannot_support| !cannot_support)
             }
             BlockCanSurviveRule::SmallDripleaf => {
                 match properties.get("half").map(String::as_str) {

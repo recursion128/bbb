@@ -339,6 +339,76 @@ fn hanging_roots_placement_reads_source_water_and_ceiling_support() {
 }
 
 #[test]
+fn seagrass_placement_requires_full_water_and_an_allowed_sturdy_floor() {
+    let clicked = BlockPos { x: 4, y: 8, z: 4 };
+    let target = relative(clicked, ProtocolDirection::Up);
+
+    let mut full_falling = placement_world();
+    set_block_tag(&mut full_falling, "minecraft:cannot_support_seagrass", &[]);
+    set_block(&mut full_falling, clicked, state_id("minecraft:stone", []));
+    set_block(
+        &mut full_falling,
+        target,
+        state_id("minecraft:water", [("level", "8")]),
+    );
+    set_held(&mut full_falling, VANILLA_ITEM_SEAGRASS_ID, 1);
+    assert!(matches!(
+        use_block_at(&mut full_falling, clicked, false, 75),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        full_falling.probe_block(target).unwrap().block_state_id,
+        state_id("minecraft:seagrass", [])
+    );
+
+    let mut partial = placement_world();
+    set_block_tag(&mut partial, "minecraft:cannot_support_seagrass", &[]);
+    set_block(&mut partial, clicked, state_id("minecraft:stone", []));
+    set_block(
+        &mut partial,
+        target,
+        state_id("minecraft:water", [("level", "3")]),
+    );
+    set_held(&mut partial, VANILLA_ITEM_SEAGRASS_ID, 1);
+    assert_eq!(
+        use_block_at(&mut partial, clicked, false, 76),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
+    );
+    assert_eq!(
+        partial.probe_block(target).unwrap().block_state_id,
+        state_id("minecraft:water", [("level", "3")])
+    );
+    assert_eq!(held(&partial).count, 1);
+
+    let mut forbidden_floor = placement_world();
+    set_block_tag(
+        &mut forbidden_floor,
+        "minecraft:cannot_support_seagrass",
+        &[VANILLA_BLOCK_STONE_ID],
+    );
+    set_block(
+        &mut forbidden_floor,
+        clicked,
+        state_id("minecraft:stone", []),
+    );
+    set_block(
+        &mut forbidden_floor,
+        target,
+        state_id("minecraft:water", [("level", "0")]),
+    );
+    set_held(&mut forbidden_floor, VANILLA_ITEM_SEAGRASS_ID, 1);
+    assert_eq!(
+        use_block_at(&mut forbidden_floor, clicked, false, 77),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
+    );
+    assert_eq!(
+        forbidden_floor.probe_block(target).unwrap().block_state_id,
+        state_id("minecraft:water", [("level", "0")])
+    );
+    assert_eq!(held(&forbidden_floor).count, 1);
+}
+
+#[test]
 fn bamboo_placement_selects_sapling_or_stalk_from_vertical_neighbours() {
     let support_entries = [
         VANILLA_BLOCK_BAMBOO_ID,
