@@ -575,7 +575,8 @@ const fn block_can_survive_rule(owner: VanillaCanSurviveOverride) -> Option<Bloc
     Some(match owner {
         VanillaCanSurviveOverride::AmethystClusterBlock
         | VanillaCanSurviveOverride::BaseCoralWallFanBlock
-        | VanillaCanSurviveOverride::LadderBlock => BlockCanSurviveRule::FacingFull,
+        | VanillaCanSurviveOverride::LadderBlock
+        | VanillaCanSurviveOverride::TripWireHookBlock => BlockCanSurviveRule::FacingFull,
         VanillaCanSurviveOverride::BaseCoralPlantTypeBlock
         | VanillaCanSurviveOverride::DoorBlock
         | VanillaCanSurviveOverride::LeafLitterBlock => BlockCanSurviveRule::BelowFull,

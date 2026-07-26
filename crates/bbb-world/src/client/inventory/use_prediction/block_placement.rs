@@ -186,6 +186,21 @@ impl WorldStore {
                 None => return unsupported(),
             };
         let mut predicted_states = vec![(target_pos, final_state_id)];
+        let mut trip_wire_hook_sound = None;
+        if block_type.get_state_for_placement_override
+            == Some(VanillaGetStateForPlacementOverride::TripWireHookBlock)
+        {
+            let Some(placement) =
+                composite::trip_wire_hook_client_placement(self, target_pos, final_state_id)
+            else {
+                return unsupported();
+            };
+            predicted_states = placement.states;
+            trip_wire_hook_sound = Some((
+                placement.suppressed_state_sound_count,
+                placement.suppressed_detach_pitch,
+            ));
+        }
         if behavior.kind == VanillaBlockItemKind::DoubleHighBlockItem {
             let Some(upper_state_id) = composite::double_high_client_upper_state(
                 self,
@@ -206,9 +221,19 @@ impl WorldStore {
             return unsupported();
         }
 
-        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
-            LocalInteractionSuccess::block_place_from_profile(target_pos, placed_block_type.id),
-        ))
+        let success = if let Some((suppressed_state_sound_count, suppressed_detach_pitch)) =
+            trip_wire_hook_sound
+        {
+            LocalInteractionSuccess::trip_wire_hook_block_place(
+                target_pos,
+                placed_block_type.id,
+                suppressed_state_sound_count,
+                suppressed_detach_pitch,
+            )
+        } else {
+            LocalInteractionSuccess::block_place_from_profile(target_pos, placed_block_type.id)
+        };
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(success))
     }
 
     fn block_item_state_after_component(

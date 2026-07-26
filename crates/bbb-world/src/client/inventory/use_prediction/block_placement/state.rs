@@ -569,6 +569,37 @@ pub(super) fn block_state_for_placement(
                 ],
             );
         }
+        VanillaGetStateForPlacementOverride::TripWireHookBlock => {
+            for direction in directions {
+                if direction_axis(direction) == DirectionAxis::Y {
+                    continue;
+                }
+                let facing = opposite(direction);
+                let state = state_with_properties(
+                    world,
+                    block_type,
+                    default_state_id,
+                    [
+                        ("facing", direction_name(facing)),
+                        ("powered", "false"),
+                        ("attached", "false"),
+                    ],
+                );
+                let BlockPlacementState::State(state_id) = state else {
+                    return state;
+                };
+                match world.local_block_state_can_survive(
+                    target_pos,
+                    state_id,
+                    VanillaCanSurviveOverride::TripWireHookBlock,
+                ) {
+                    Some(true) => return BlockPlacementState::State(state_id),
+                    Some(false) => {}
+                    None => return BlockPlacementState::Unsupported,
+                }
+            }
+            return BlockPlacementState::Fail;
+        }
         VanillaGetStateForPlacementOverride::ShelfBlock => {
             if placement_neighbor_signal_is_proven_absent(world, &[target_pos]).is_none() {
                 return BlockPlacementState::Unsupported;

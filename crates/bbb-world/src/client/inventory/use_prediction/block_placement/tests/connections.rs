@@ -690,6 +690,242 @@ fn trip_wire_placement_connects_to_wire_and_inward_facing_hooks() {
 }
 
 #[test]
+fn trip_wire_hook_placement_attaches_and_powers_the_whole_client_line() {
+    let left_support = BlockPos { x: 3, y: 8, z: 4 };
+    let placed_hook = BlockPos { x: 4, y: 8, z: 4 };
+    let receiver = BlockPos { x: 8, y: 8, z: 4 };
+    let right_support = BlockPos { x: 9, y: 8, z: 4 };
+    let hook_state = |facing, attached, powered| {
+        state_id(
+            "minecraft:tripwire_hook",
+            [
+                ("attached", attached),
+                ("facing", facing),
+                ("powered", powered),
+            ],
+        )
+    };
+    let wire_state = |attached, powered| {
+        state_id(
+            "minecraft:tripwire",
+            [
+                ("attached", attached),
+                ("disarmed", "false"),
+                ("east", "true"),
+                ("north", "false"),
+                ("powered", powered),
+                ("south", "false"),
+                ("west", "true"),
+            ],
+        )
+    };
+
+    let mut world = placement_world();
+    world.set_default_block_sound_profiles(BTreeMap::from([(
+        "minecraft:tripwire_hook".to_string(),
+        WorldBlockSoundProfile {
+            break_sound: "minecraft:block.tripwire_hook.break".to_string(),
+            place_sound: "minecraft:block.tripwire_hook.attach".to_string(),
+            hit_sound: "minecraft:block.tripwire_hook.hit".to_string(),
+            volume: 1.0,
+            pitch: 1.0,
+        },
+    )]));
+    set_block(&mut world, left_support, state_id("minecraft:stone", []));
+    set_block(&mut world, right_support, state_id("minecraft:stone", []));
+    set_block(&mut world, receiver, hook_state("west", "false", "false"));
+    for (x, powered) in [(5, "true"), (6, "false"), (7, "false")] {
+        set_block(
+            &mut world,
+            BlockPos { x, y: 8, z: 4 },
+            wire_state("false", powered),
+        );
+    }
+    set_held(&mut world, VANILLA_ITEM_TRIPWIRE_HOOK_ID, 1);
+
+    let result = world.predict_local_block_use_with_hit(
+        left_support,
+        ProtocolDirection::East,
+        [1.0, 0.5, 0.5],
+        false,
+        InteractionHand::MainHand,
+        false,
+        81,
+    );
+    let LocalTargetUsePrediction::Result(LocalInteractionResult::Success(success)) = result else {
+        panic!("supported tripwire hook should place");
+    };
+    assert_eq!(
+        success.sound_action,
+        Some(LocalInteractionSoundAction::TripWireHookBlockPlace {
+            pos: placed_hook,
+            block_type_id: bbb_protocol::block_types::VANILLA_BLOCK_TRIPWIRE_HOOK_ID,
+            suppressed_state_sound_count: 2,
+            suppressed_detach_pitch: false,
+        })
+    );
+    assert_eq!(
+        world.probe_block(placed_hook).unwrap().block_state_id,
+        hook_state("east", "true", "true")
+    );
+    assert_eq!(
+        world.probe_block(receiver).unwrap().block_state_id,
+        hook_state("west", "true", "true")
+    );
+    for x in 5..=7 {
+        assert_eq!(
+            world
+                .probe_block(BlockPos { x, y: 8, z: 4 })
+                .unwrap()
+                .block_state_id,
+            wire_state("true", if x == 5 { "true" } else { "false" })
+        );
+    }
+    assert_eq!(world.local_block_predictions().len(), 5);
+    assert_eq!(held(&world).count, 0);
+
+    let mut seed_control = placement_world();
+    let _first_suppressed_seed = seed_control.next_sound_seed();
+    let _second_suppressed_seed = seed_control.next_sound_seed();
+    let expected_place_seed = seed_control.next_sound_seed();
+    let mut random = crate::LevelEventSoundRandomState::default();
+    let effect = world
+        .apply_local_interaction_sound_action(success.sound_action.unwrap(), &mut random)
+        .expect("hook placement sound");
+    let crate::LocalInteractionSoundEffect::Positioned(sound) = effect else {
+        panic!("hook placement sound should be positioned");
+    };
+    assert_eq!(
+        sound.sound.location.as_deref(),
+        Some("minecraft:block.tripwire_hook.attach")
+    );
+    assert_eq!(sound.seed, expected_place_seed);
+
+    world.apply_block_changed_ack(bbb_protocol::packets::BlockChangedAck { sequence: 81 });
+    assert_eq!(
+        world.probe_block(placed_hook).unwrap().block_state_id,
+        state_id("minecraft:air", [])
+    );
+    assert_eq!(
+        world.probe_block(receiver).unwrap().block_state_id,
+        hook_state("west", "false", "false")
+    );
+    for (x, powered) in [(5, "true"), (6, "false"), (7, "false")] {
+        assert_eq!(
+            world
+                .probe_block(BlockPos { x, y: 8, z: 4 })
+                .unwrap()
+                .block_state_id,
+            wire_state("false", powered)
+        );
+    }
+
+    let mut unsupported = placement_world();
+    let unsupported_clicked = BlockPos { x: 4, y: 8, z: 4 };
+    set_block(
+        &mut unsupported,
+        unsupported_clicked,
+        state_id("minecraft:stone", []),
+    );
+    set_held(&mut unsupported, VANILLA_ITEM_TRIPWIRE_HOOK_ID, 1);
+    assert_eq!(
+        use_block_at(&mut unsupported, unsupported_clicked, false, 82),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
+    );
+    assert_eq!(held(&unsupported).count, 1);
+    assert!(unsupported.local_block_predictions().is_empty());
+}
+
+#[test]
+fn trip_wire_hook_component_detach_advances_suppressed_random_streams() {
+    let support = BlockPos { x: 3, y: 8, z: 4 };
+    let target = BlockPos { x: 4, y: 8, z: 4 };
+    let blocker = BlockPos { x: 5, y: 8, z: 4 };
+    let hook_state = |facing, attached| {
+        state_id(
+            "minecraft:tripwire_hook",
+            [
+                ("attached", attached),
+                ("facing", facing),
+                ("powered", "false"),
+            ],
+        )
+    };
+
+    let mut world = placement_world();
+    world.set_default_block_sound_profiles(BTreeMap::from([(
+        "minecraft:tripwire_hook".to_string(),
+        WorldBlockSoundProfile {
+            break_sound: "minecraft:block.tripwire_hook.break".to_string(),
+            place_sound: "minecraft:block.tripwire_hook.attach".to_string(),
+            hit_sound: "minecraft:block.tripwire_hook.hit".to_string(),
+            volume: 1.0,
+            pitch: 1.0,
+        },
+    )]));
+    set_block(&mut world, support, state_id("minecraft:stone", []));
+    set_block(&mut world, blocker, hook_state("east", "false"));
+    let mut stack = ItemStackSummary {
+        item_id: Some(VANILLA_ITEM_TRIPWIRE_HOOK_ID),
+        count: 1,
+        component_patch: DataComponentPatchSummary::default(),
+    };
+    stack.component_patch.added = 1;
+    stack
+        .component_patch
+        .added_type_ids
+        .push(VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID);
+    stack.component_patch.block_state_properties =
+        BTreeMap::from([("attached".to_string(), "true".to_string())]);
+    world.apply_set_player_inventory(SetPlayerInventory {
+        slot: 0,
+        item: stack,
+    });
+
+    let result = world.predict_local_block_use_with_hit(
+        support,
+        ProtocolDirection::East,
+        [1.0, 0.5, 0.5],
+        false,
+        InteractionHand::MainHand,
+        false,
+        83,
+    );
+    let LocalTargetUsePrediction::Result(LocalInteractionResult::Success(success)) = result else {
+        panic!("component-modified hook should place");
+    };
+    assert_eq!(
+        success.sound_action,
+        Some(LocalInteractionSoundAction::TripWireHookBlockPlace {
+            pos: target,
+            block_type_id: bbb_protocol::block_types::VANILLA_BLOCK_TRIPWIRE_HOOK_ID,
+            suppressed_state_sound_count: 1,
+            suppressed_detach_pitch: true,
+        })
+    );
+    assert_eq!(
+        world.probe_block(target).unwrap().block_state_id,
+        hook_state("east", "false")
+    );
+
+    let mut seed_control = placement_world();
+    let _suppressed_seed = seed_control.next_sound_seed();
+    let expected_place_seed = seed_control.next_sound_seed();
+    let mut random = crate::LevelEventSoundRandomState::with_seed(83);
+    let mut random_control = random.clone();
+    let _detach_pitch_draw = random_control.next_float();
+    let expected_next_float = random_control.next_float();
+    let effect = world
+        .apply_local_interaction_sound_action(success.sound_action.unwrap(), &mut random)
+        .expect("hook placement sound");
+    let crate::LocalInteractionSoundEffect::Positioned(sound) = effect else {
+        panic!("hook placement sound should be positioned");
+    };
+    assert_eq!(sound.seed, expected_place_seed);
+    assert_eq!(random.next_float(), expected_next_float);
+}
+
+#[test]
 fn wall_placement_projects_side_height_and_center_post_from_the_block_above() {
     let clicked = BlockPos { x: 4, y: 8, z: 4 };
     let target = relative(clicked, ProtocolDirection::Up);

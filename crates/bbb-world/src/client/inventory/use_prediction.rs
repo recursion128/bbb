@@ -185,6 +185,12 @@ pub enum LocalInteractionSoundAction {
         pos: BlockPos,
         block_type_id: i32,
     },
+    TripWireHookBlockPlace {
+        pos: BlockPos,
+        block_type_id: i32,
+        suppressed_state_sound_count: u8,
+        suppressed_detach_pitch: bool,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -338,6 +344,27 @@ impl LocalInteractionSuccess {
             sound_action: Some(LocalInteractionSoundAction::BlockPlaceFromProfile {
                 pos,
                 block_type_id,
+            }),
+            particle_action: None,
+        }
+    }
+
+    const fn trip_wire_hook_block_place(
+        pos: BlockPos,
+        block_type_id: i32,
+        suppressed_state_sound_count: u8,
+        suppressed_detach_pitch: bool,
+    ) -> Self {
+        Self {
+            swing_source: LocalInteractionSwingSource::Client,
+            was_item_interaction: true,
+            starts_using_item: false,
+            extra_swing: None,
+            sound_action: Some(LocalInteractionSoundAction::TripWireHookBlockPlace {
+                pos,
+                block_type_id,
+                suppressed_state_sound_count,
+                suppressed_detach_pitch,
             }),
             particle_action: None,
         }

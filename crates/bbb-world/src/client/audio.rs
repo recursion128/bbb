@@ -1704,8 +1704,9 @@ impl WorldStore {
     /// the local player as `except` and stay block-positioned. Bundle
     /// content-drop, fishing rods, bow
     /// release, Riptide release, thrown projectiles, fire charges, lodestone
-    /// compasses, and both potion mud-conversion sounds pass `null`, so their
-    /// local calls only advance the random streams.
+    /// compasses, both potion mud-conversion sounds, and tripwire-hook state
+    /// transitions pass `null`, so their local calls only advance the random
+    /// streams.
     pub fn apply_local_interaction_sound_action(
         &mut self,
         action: LocalInteractionSoundAction,
@@ -1874,6 +1875,29 @@ impl WorldStore {
                 SoundSource::Blocks.as_str(),
             ),
             LocalInteractionSoundAction::BlockPlaceFromProfile { pos, block_type_id } => {
+                let block_name =
+                    bbb_protocol::block_types::vanilla_block_type(block_type_id)?.resource_id;
+                let profile = self.items.default_block_sound_profiles.get(block_name)?;
+                block_sound_state(
+                    pos,
+                    &profile.place_sound,
+                    (profile.volume + 1.0) / 2.0,
+                    profile.pitch * 0.8,
+                    SoundSource::Blocks.as_str(),
+                )
+            }
+            LocalInteractionSoundAction::TripWireHookBlockPlace {
+                pos,
+                block_type_id,
+                suppressed_state_sound_count,
+                suppressed_detach_pitch,
+            } => {
+                for _ in 0..suppressed_state_sound_count {
+                    if suppressed_detach_pitch {
+                        let _discarded_detach_pitch = 1.2 / (random.next_float() * 0.2 + 0.9);
+                    }
+                    let _discarded_state_sound_seed = self.next_sound_seed();
+                }
                 let block_name =
                     bbb_protocol::block_types::vanilla_block_type(block_type_id)?.resource_id;
                 let profile = self.items.default_block_sound_profiles.get(block_name)?;
