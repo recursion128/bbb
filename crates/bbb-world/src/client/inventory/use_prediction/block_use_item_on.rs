@@ -476,6 +476,28 @@ impl WorldStore {
                     try_empty_hand()
                 }
             }
+            VanillaBlockUseItemOnOverride::RedStoneOreBlock => {
+                self.queue_local_interaction_particle_action(
+                    LocalInteractionParticleAction::RedstoneOre { pos: context.pos },
+                );
+                let Some(item_id) = self
+                    .local_item_in_hand(hand)
+                    .and_then(|stack| stack.item_id)
+                else {
+                    return success();
+                };
+                let Some(item_type) = vanilla_item_type(item_id) else {
+                    return unsupported();
+                };
+                if item_type.block_item_behavior.is_none() {
+                    return success();
+                }
+                match self.local_block_item_context_can_place(item_type, context) {
+                    Some(true) => pass(),
+                    Some(false) => success(),
+                    None => unsupported(),
+                }
+            }
             VanillaBlockUseItemOnOverride::ShelfBlock => {
                 if self.block_entity_type_id_at(context.pos)
                     != Some(VANILLA_BLOCK_ENTITY_TYPE_SHELF_ID)

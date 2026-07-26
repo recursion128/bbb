@@ -39,9 +39,13 @@ pub(crate) fn local_destroy_hit_particle_state(
 impl ParticleCommandResolver {
     pub(super) fn local_interaction_particle_batch(
         &mut self,
+        world: &WorldStore,
         action: LocalInteractionParticleAction,
     ) -> ParticleSpawnBatch {
         match action {
+            LocalInteractionParticleAction::RedstoneOre { pos } => {
+                self.redstone_ore_attack_particle_batch(world, pos)
+            }
             LocalInteractionParticleAction::LeverActivation { pos, facing, face } => {
                 self.lever_activation_particle_batch(pos, facing, face)
             }

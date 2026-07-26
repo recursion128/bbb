@@ -29,6 +29,29 @@ pub(super) mod survival;
 use state::BlockPlacementState;
 
 impl WorldStore {
+    /// Mirrors the `BlockPlaceContext.canPlace` query used by block callbacks
+    /// that decide whether to pass to a held `BlockItem`.
+    pub(super) fn local_block_item_context_can_place(
+        &self,
+        item_type: &ItemTypeCatalogEntry,
+        context: LocalBlockUseContext,
+    ) -> Option<bool> {
+        let behavior = item_type.block_item_behavior?;
+        let block_type = vanilla_block_type(behavior.block_type_id)?;
+        let replace_clicked =
+            state::block_item_can_replace(self, context.pos, block_type, context, true)?;
+        if replace_clicked {
+            return Some(true);
+        }
+        state::block_item_can_replace(
+            self,
+            relative(context.pos, context.face),
+            block_type,
+            context,
+            false,
+        )
+    }
+
     pub(super) fn predict_local_block_item_use_on(
         &mut self,
         owner: VanillaItemUseOnOverride,

@@ -487,6 +487,9 @@ fn start_use_item_with_effects(
             }
             None => None,
         };
+        for action in world.take_pending_local_interaction_particle_actions() {
+            input.queue_local_interaction_particle_action(action);
+        }
         if let Some(prediction) = target_prediction {
             match prediction {
                 LocalTargetUsePrediction::Result(LocalInteractionResult::Success(success)) => {

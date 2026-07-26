@@ -653,9 +653,8 @@ Commands:
   command, and sign editing.
 - Complete the remaining specialized targeted local-use prediction from
   `Minecraft.startUseItem`, `MultiPlayerGameMode.interact`, and `useItemOn`.
-  Finish the generated `RedStoneOreBlock` and
-  `WeatheringCopperGolemStatueBlock` `useItemOn` owners so main/offhand iteration
-  can stop or continue on the exact `InteractionResult`; complete
+  Finish the generated `WeatheringCopperGolemStatueBlock` `useItemOn` owner so
+  main/offhand iteration can stop or continue on the exact `InteractionResult`; complete
   `ComparatorBlock.refreshOutputState` after predicted mode changes, including
   arbitrary analog block-entity and item-frame inputs; then apply each success
   swing-source and held-item presentation.

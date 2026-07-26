@@ -432,9 +432,11 @@ impl NativeParticleRuntime {
 
     pub(crate) fn local_interaction_particle_batch(
         &mut self,
+        world: &WorldStore,
         action: LocalInteractionParticleAction,
     ) -> ParticleSpawnBatch {
-        self.resolver.local_interaction_particle_batch(action)
+        self.resolver
+            .local_interaction_particle_batch(world, action)
     }
 
     pub(crate) fn tick_explosion_particles(

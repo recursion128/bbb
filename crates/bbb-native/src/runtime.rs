@@ -3907,7 +3907,7 @@ fn submit_local_player_action_particles(
                 particle_runtime.local_destroy_hit_particle_batch(state)
             }
             LocalPlayerActionParticleState::Interaction(action) => {
-                particle_runtime.local_interaction_particle_batch(action)
+                particle_runtime.local_interaction_particle_batch(world, action)
             }
         };
         batches.submit_particle_batch(batch);

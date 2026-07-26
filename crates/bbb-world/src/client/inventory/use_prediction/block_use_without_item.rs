@@ -815,8 +815,10 @@ mod tests {
     };
     use bbb_protocol::{
         block_types::{
-            vanilla_block_type_for_resource_id, VANILLA_BLOCK_POTTED_POPPY_ID, VANILLA_BLOCK_TYPES,
+            vanilla_block_type_for_resource_id, VANILLA_BLOCK_POTTED_POPPY_ID,
+            VANILLA_BLOCK_STONE_ID, VANILLA_BLOCK_TYPES,
         },
+        builtin_enum_component_values::VANILLA_DYE_COLOR_WHITE_ID,
         data_component_types::{
             VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID,
             VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID,
@@ -1894,6 +1896,79 @@ mod tests {
     }
 
     #[test]
+    fn redstone_ore_spawns_client_particles_before_exact_block_item_pass_result() {
+        let mut placement = block_use_world(
+            "minecraft:redstone_ore",
+            [("lit", "false")],
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        set_main_hand(&mut placement, VANILLA_ITEM_STONE_ID);
+        assert_eq!(
+            use_main_hand(&mut placement, 155),
+            success(LocalInteractionSuccess {
+                sound_action: Some(LocalInteractionSoundAction::BlockPlaceFromProfile {
+                    pos: above(POS),
+                    block_type_id: VANILLA_BLOCK_STONE_ID,
+                }),
+                ..LocalInteractionSuccess::client_item_interaction()
+            }),
+            "the ore PASS continues into the stone BlockItem placement"
+        );
+        assert_eq!(
+            placement
+                .probe_block(above(POS))
+                .and_then(|block| block.block_name),
+            Some("minecraft:stone".to_string())
+        );
+        assert_eq!(block_property(&placement, "lit").as_deref(), Some("false"));
+        assert_eq!(
+            placement.take_pending_local_interaction_particle_actions(),
+            vec![LocalInteractionParticleAction::RedstoneOre { pos: POS }]
+        );
+
+        let mut obstructed = block_use_world(
+            "minecraft:deepslate_redstone_ore",
+            [("lit", "true")],
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        set_block_at(&mut obstructed, above(POS), state_id("minecraft:stone", []));
+        set_main_hand(&mut obstructed, VANILLA_ITEM_STONE_ID);
+        assert_eq!(
+            use_item_on(
+                &mut obstructed,
+                "minecraft:deepslate_redstone_ore",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                156,
+            ),
+            success(LocalInteractionSuccess::client_item_interaction()),
+            "BlockPlaceContext.canPlace is false when the adjacent block is solid"
+        );
+        assert_eq!(
+            obstructed.take_pending_local_interaction_particle_actions(),
+            vec![LocalInteractionParticleAction::RedstoneOre { pos: POS }]
+        );
+
+        set_main_hand(&mut obstructed, VANILLA_ITEM_APPLE_ID);
+        assert_eq!(
+            use_item_on(
+                &mut obstructed,
+                "minecraft:deepslate_redstone_ore",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                157,
+            ),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        assert_eq!(
+            obstructed.take_pending_local_interaction_particle_actions(),
+            vec![LocalInteractionParticleAction::RedstoneOre { pos: POS }]
+        );
+    }
+
+    #[test]
     fn cauldron_generated_item_routes_apply_exact_level_and_potion_predicates() {
         let mut empty =
             block_use_world_first_state("minecraft:cauldron", VANILLA_GAME_TYPE_SURVIVAL_ID as i8);
@@ -2133,7 +2208,7 @@ mod tests {
                         registry_id: Some(0),
                         asset_id: None,
                         translation_key: None,
-                        color_id: 0,
+                        color_id: VANILLA_DYE_COLOR_WHITE_ID,
                     }],
                     ..DataComponentPatchSummary::default()
                 },

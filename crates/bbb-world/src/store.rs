@@ -12,11 +12,11 @@ use crate::{
     ClientDebugGameState, ClientDebugQueryState, ClientEffectsState, ClientFeatureState,
     ClientHudState, ClientRecipesState, ClientStatsState, ClientUiState, ClientWaypointsState,
     CommandSuggestionsState, CommandTreeState, InventoryState, ItemCooldownState,
-    LastMapColorPatchState, LevelEventRecord, LocalBlockPredictionState, LocalPlayerState,
-    MapItemState, PlayerInfoState, PlayerSocialState, ProjectilePowerUpdateState,
-    PublicationShared, RegistrySet, ScoreboardState, ServerPresentationState,
-    WorldApplyDiagnosticsState, WorldBorderState, WorldCounters, WorldDimension,
-    WorldGameplayState, WorldLevelInfo, WorldLevelLoadState,
+    LastMapColorPatchState, LevelEventRecord, LocalBlockPredictionState,
+    LocalInteractionParticleAction, LocalPlayerState, MapItemState, PlayerInfoState,
+    PlayerSocialState, ProjectilePowerUpdateState, PublicationShared, RegistrySet, ScoreboardState,
+    ServerPresentationState, WorldApplyDiagnosticsState, WorldBorderState, WorldCounters,
+    WorldDimension, WorldGameplayState, WorldLevelInfo, WorldLevelLoadState,
 };
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -126,6 +126,10 @@ pub struct WorldStore {
     pub(crate) client_audio: ClientAudioState,
     #[serde(default)]
     pub(crate) client_effects: ClientEffectsState,
+    /// Prediction-time effects that must survive a `PASS` result so the item
+    /// fallback can continue after the client-visible block callback.
+    #[serde(skip)]
+    pub(crate) pending_local_interaction_particle_actions: Vec<LocalInteractionParticleAction>,
     #[serde(default)]
     pub(crate) client_ui: ClientUiState,
     #[serde(default)]

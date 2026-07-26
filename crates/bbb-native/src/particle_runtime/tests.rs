@@ -49,8 +49,10 @@ fn lever_activation_particle_uses_vanilla_attachment_offsets_and_dust_options() 
         ),
     ];
     for (face, facing, expected_position) in cases {
+        let world = WorldStore::new();
         let mut resolver = test_resolver(0);
         let batch = resolver.local_interaction_particle_batch(
+            &world,
             LocalInteractionParticleAction::LeverActivation { pos, facing, face },
         );
         let [command] = batch.commands.as_slice() else {
@@ -72,8 +74,10 @@ fn lever_activation_particle_uses_vanilla_attachment_offsets_and_dust_options() 
 #[test]
 fn bucket_water_evaporation_emits_eight_large_smoke_particles_inside_block() {
     let pos = WorldBlockPos { x: -2, y: 7, z: 4 };
+    let world = WorldStore::new();
     let mut resolver = test_resolver(0);
     let batch = resolver.local_interaction_particle_batch(
+        &world,
         LocalInteractionParticleAction::BucketWaterEvaporate { pos },
     );
 
@@ -101,8 +105,10 @@ fn bucket_water_evaporation_emits_eight_large_smoke_particles_inside_block() {
 #[test]
 fn candle_cake_extinguish_emits_one_upward_smoke_at_the_wick() {
     let pos = WorldBlockPos { x: -2, y: 7, z: 4 };
+    let world = WorldStore::new();
     let mut resolver = test_resolver(0);
     let batch = resolver.local_interaction_particle_batch(
+        &world,
         LocalInteractionParticleAction::CandleCakeExtinguish { pos },
     );
 
@@ -119,8 +125,10 @@ fn candle_cake_extinguish_emits_one_upward_smoke_at_the_wick() {
 #[test]
 fn candle_extinguish_emits_one_upward_smoke_at_each_vanilla_wick() {
     let pos = WorldBlockPos { x: -2, y: 7, z: 4 };
+    let world = WorldStore::new();
     let mut resolver = test_resolver(0);
     let batch = resolver.local_interaction_particle_batch(
+        &world,
         LocalInteractionParticleAction::CandleExtinguish { pos, candles: 4 },
     );
 
@@ -240,6 +248,13 @@ fn redstone_attack_particles_follow_direction_order_random_draws_and_occlusion_s
 
     let batch = resolver
         .local_block_attack_particle_batch(&world, LocalBlockAttackEffect::RedstoneOre { pos });
+    let mut interaction_resolver = test_resolver(0);
+    interaction_resolver.block_can_occlude = resolver.block_can_occlude.clone();
+    let interaction_batch = interaction_resolver.local_interaction_particle_batch(
+        &world,
+        LocalInteractionParticleAction::RedstoneOre { pos },
+    );
+    assert_eq!(interaction_batch, batch);
 
     assert_eq!(
         batch.commands.len(),

@@ -121,6 +121,7 @@ const VANILLA_SNOW_GOLEM_MOB_INTERACT_OWNER: &str =
 const VANILLA_ZOMBIE_HORSE_INTERACT_OWNER: &str =
     "net.minecraft.world.entity.animal.equine.ZombieHorse";
 const VANILLA_ZOMBIE_HORSE_FOOD_TAG: &str = "minecraft:zombie_horse_food";
+const MAX_PENDING_LOCAL_INTERACTION_PARTICLE_ACTIONS: usize = 64;
 
 #[derive(Debug, Clone, Copy)]
 struct LocalBlockUseContext {
@@ -209,6 +210,9 @@ pub enum LocalLeverAttachFace {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LocalInteractionParticleAction {
+    RedstoneOre {
+        pos: BlockPos,
+    },
     LeverActivation {
         pos: BlockPos,
         facing: ProtocolDirection,
@@ -519,6 +523,24 @@ impl LocalInteractionSuccess {
 }
 
 impl WorldStore {
+    pub(crate) fn queue_local_interaction_particle_action(
+        &mut self,
+        action: LocalInteractionParticleAction,
+    ) {
+        if self.pending_local_interaction_particle_actions.len()
+            >= MAX_PENDING_LOCAL_INTERACTION_PARTICLE_ACTIONS
+        {
+            self.pending_local_interaction_particle_actions.remove(0);
+        }
+        self.pending_local_interaction_particle_actions.push(action);
+    }
+
+    pub fn take_pending_local_interaction_particle_actions(
+        &mut self,
+    ) -> Vec<LocalInteractionParticleAction> {
+        std::mem::take(&mut self.pending_local_interaction_particle_actions)
+    }
+
     /// Predicts vanilla `ItemStack.use` for the default implementation and
     /// implemented source-derived specialized owners. Remaining specialized
     /// classes stay explicit instead of being guessed from component shape.
