@@ -700,6 +700,19 @@ impl WorldStore {
             .is_some_and(|shape| shape.has_nonempty_face(block_direction(direction)))
     }
 
+    /// Whether the empty-context collision face covers one exact local
+    /// rectangle. Wall placement uses this for the vanilla post and side
+    /// probes against the block above.
+    pub(crate) fn block_empty_context_collision_face_covers_rectangle(
+        &self,
+        block: &BlockProbe,
+        direction: ProtocolDirection,
+        target: [f64; 4],
+    ) -> bool {
+        block_collision_shape_empty_context(block, block.pos)
+            .is_some_and(|shape| shape.covers_face_rectangle(block_direction(direction), target))
+    }
+
     /// Mirrors `MultifaceBlock.canAttachTo`: either the block-support shape or
     /// the empty-context collision shape may provide the requested full face.
     pub(crate) fn block_has_full_support_or_collision_face(

@@ -1,0 +1,414 @@
+use bbb_protocol::{
+    block_state_types::VanillaBlockSupportType,
+    block_types::{
+        vanilla_block_type_for_resource_id, BlockTypeCatalogEntry,
+        VanillaGetStateForPlacementOverride,
+    },
+    packets::Direction,
+};
+
+use super::{
+    super::{LocalBlockUseContext, WorldStore},
+    context::{clockwise, counterclockwise, direction_axis, opposite, relative, DirectionAxis},
+};
+use crate::{terrain::block_name_is_leaves, BlockPos, BlockProbe};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct CardinalConnections {
+    pub(super) north: bool,
+    pub(super) east: bool,
+    pub(super) south: bool,
+    pub(super) west: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct ChestPlacement {
+    pub(super) facing: Direction,
+    pub(super) chest_type: &'static str,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct WallPlacement {
+    pub(super) up: bool,
+    pub(super) north: &'static str,
+    pub(super) east: &'static str,
+    pub(super) south: &'static str,
+    pub(super) west: &'static str,
+}
+
+pub(super) fn fence_connections(
+    world: &WorldStore,
+    pos: BlockPos,
+    placing_block: &BlockTypeCatalogEntry,
+) -> Option<CardinalConnections> {
+    cardinal_connections(world, pos, |world, neighbour, direction| {
+        fence_connects_to(world, neighbour, placing_block, opposite(direction))
+    })
+}
+
+pub(super) fn iron_bars_connections(
+    world: &WorldStore,
+    pos: BlockPos,
+) -> Option<CardinalConnections> {
+    cardinal_connections(world, pos, |world, neighbour, direction| {
+        iron_bars_connects_to(world, neighbour, opposite(direction))
+    })
+}
+
+pub(super) fn wall_placement(world: &WorldStore, pos: BlockPos) -> Option<WallPlacement> {
+    let connections = cardinal_connections(world, pos, |world, neighbour, direction| {
+        wall_connects_to(world, neighbour, opposite(direction))
+    })?;
+    let above = world.probe_block(relative(pos, Direction::Up))?;
+    let north = wall_side(world, &above, connections.north, [7.0, 9.0, 0.0, 9.0]);
+    let east = wall_side(world, &above, connections.east, [7.0, 16.0, 7.0, 9.0]);
+    let south = wall_side(world, &above, connections.south, [7.0, 9.0, 7.0, 16.0]);
+    let west = wall_side(world, &above, connections.west, [0.0, 9.0, 7.0, 9.0]);
+
+    let top_neighbour_has_post = block_type(&above).is_some_and(|block_type| {
+        block_type.get_state_for_placement_override
+            == Some(VanillaGetStateForPlacementOverride::WallBlock)
+            && above
+                .block_properties
+                .get("up")
+                .is_some_and(|up| up == "true")
+    });
+    let north_none = north == "none";
+    let east_none = east == "none";
+    let south_none = south == "none";
+    let west_none = west == "none";
+    let has_corner = north_none && south_none && west_none && east_none
+        || north_none != south_none
+        || west_none != east_none;
+    let has_high_wall = north == "tall" && south == "tall" || east == "tall" && west == "tall";
+    let up = if top_neighbour_has_post || has_corner {
+        true
+    } else if has_high_wall {
+        false
+    } else {
+        world.placement_block_is_in_tag(&above, "minecraft:wall_post_override")?
+            || above_covers_wall_test(world, &above, [7.0, 9.0, 7.0, 9.0])
+    };
+
+    Some(WallPlacement {
+        up,
+        north,
+        east,
+        south,
+        west,
+    })
+}
+
+pub(super) fn chest_placement(
+    world: &WorldStore,
+    pos: BlockPos,
+    block_type: &BlockTypeCatalogEntry,
+    horizontal: Direction,
+    context: LocalBlockUseContext,
+) -> Option<ChestPlacement> {
+    let mut facing = opposite(horizontal);
+    let mut chest_type = "single";
+    if direction_axis(context.face) != DirectionAxis::Y && context.secondary_use_active {
+        let neighbour_direction = opposite(context.face);
+        if let Some(neighbour_facing) =
+            candidate_chest_partner_facing(world, pos, neighbour_direction, block_type)?
+        {
+            if direction_axis(neighbour_facing) != direction_axis(context.face) {
+                facing = neighbour_facing;
+                chest_type = if counterclockwise(facing)? == neighbour_direction {
+                    "right"
+                } else {
+                    "left"
+                };
+            }
+        }
+    }
+
+    if chest_type == "single" && !context.secondary_use_active {
+        if candidate_chest_partner_facing(world, pos, clockwise(facing)?, block_type)?
+            == Some(facing)
+        {
+            chest_type = "left";
+        } else if candidate_chest_partner_facing(world, pos, counterclockwise(facing)?, block_type)?
+            == Some(facing)
+        {
+            chest_type = "right";
+        }
+    }
+
+    Some(ChestPlacement { facing, chest_type })
+}
+
+pub(super) fn stair_shape(
+    world: &WorldStore,
+    pos: BlockPos,
+    facing: Direction,
+    half: &str,
+) -> Option<&'static str> {
+    let behind = world.probe_block(relative(pos, facing))?;
+    if block_is_stair(&behind)
+        && behind.block_properties.get("half").map(String::as_str) == Some(half)
+    {
+        let behind_facing = direction_property(&behind, "facing")?;
+        if direction_axis(behind_facing) != direction_axis(facing)
+            && stair_can_take_shape(world, pos, facing, half, opposite(behind_facing))?
+        {
+            return Some(if behind_facing == counterclockwise(facing)? {
+                "outer_left"
+            } else {
+                "outer_right"
+            });
+        }
+    }
+
+    let front = world.probe_block(relative(pos, opposite(facing)))?;
+    if block_is_stair(&front)
+        && front.block_properties.get("half").map(String::as_str) == Some(half)
+    {
+        let front_facing = direction_property(&front, "facing")?;
+        if direction_axis(front_facing) != direction_axis(facing)
+            && stair_can_take_shape(world, pos, facing, half, front_facing)?
+        {
+            return Some(if front_facing == counterclockwise(facing)? {
+                "inner_left"
+            } else {
+                "inner_right"
+            });
+        }
+    }
+    Some("straight")
+}
+
+fn cardinal_connections(
+    world: &WorldStore,
+    pos: BlockPos,
+    mut connects: impl FnMut(&WorldStore, &BlockProbe, Direction) -> Option<bool>,
+) -> Option<CardinalConnections> {
+    let north = connects(
+        world,
+        &world.probe_block(relative(pos, Direction::North))?,
+        Direction::North,
+    )?;
+    let east = connects(
+        world,
+        &world.probe_block(relative(pos, Direction::East))?,
+        Direction::East,
+    )?;
+    let south = connects(
+        world,
+        &world.probe_block(relative(pos, Direction::South))?,
+        Direction::South,
+    )?;
+    let west = connects(
+        world,
+        &world.probe_block(relative(pos, Direction::West))?,
+        Direction::West,
+    )?;
+    Some(CardinalConnections {
+        north,
+        east,
+        south,
+        west,
+    })
+}
+
+fn fence_connects_to(
+    world: &WorldStore,
+    neighbour: &BlockProbe,
+    placing_block: &BlockTypeCatalogEntry,
+    direction_to_placing_block: Direction,
+) -> Option<bool> {
+    let face_solid = world.placement_face_sturdy(
+        neighbour,
+        direction_to_placing_block,
+        VanillaBlockSupportType::Full,
+    )?;
+    if !connection_exception(world, neighbour)? && face_solid {
+        return Some(true);
+    }
+    let same_fence = world.placement_block_is_in_tag(neighbour, "minecraft:fences")?
+        && world.placement_block_is_in_tag(neighbour, "minecraft:wooden_fences")?
+            == block_type_is_in_tag(world, placing_block, "minecraft:wooden_fences")?;
+    if same_fence {
+        return Some(true);
+    }
+    fence_gate_connects_to(neighbour, direction_to_placing_block)
+}
+
+fn iron_bars_connects_to(
+    world: &WorldStore,
+    neighbour: &BlockProbe,
+    direction_to_placing_block: Direction,
+) -> Option<bool> {
+    let face_solid = world.placement_face_sturdy(
+        neighbour,
+        direction_to_placing_block,
+        VanillaBlockSupportType::Full,
+    )?;
+    if !connection_exception(world, neighbour)? && face_solid {
+        return Some(true);
+    }
+    let Some(block_type) = block_type(neighbour) else {
+        return None;
+    };
+    if block_type.get_state_for_placement_override
+        == Some(VanillaGetStateForPlacementOverride::IronBarsBlock)
+    {
+        return Some(true);
+    }
+    world
+        .placement_block_is_in_tag(neighbour, "minecraft:walls")
+        .map(|is_wall| is_wall)
+}
+
+fn wall_connects_to(
+    world: &WorldStore,
+    neighbour: &BlockProbe,
+    direction_to_placing_block: Direction,
+) -> Option<bool> {
+    if world.placement_block_is_in_tag(neighbour, "minecraft:walls")? {
+        return Some(true);
+    }
+    let face_solid = world.placement_face_sturdy(
+        neighbour,
+        direction_to_placing_block,
+        VanillaBlockSupportType::Full,
+    )?;
+    if !connection_exception(world, neighbour)? && face_solid {
+        return Some(true);
+    }
+    let Some(block_type) = block_type(neighbour) else {
+        return None;
+    };
+    if block_type.get_state_for_placement_override
+        == Some(VanillaGetStateForPlacementOverride::IronBarsBlock)
+    {
+        return Some(true);
+    }
+    fence_gate_connects_to(neighbour, direction_to_placing_block)
+}
+
+fn wall_side(
+    world: &WorldStore,
+    above: &BlockProbe,
+    connected: bool,
+    test_pixels: [f64; 4],
+) -> &'static str {
+    if !connected {
+        "none"
+    } else if above_covers_wall_test(world, above, test_pixels) {
+        "tall"
+    } else {
+        "low"
+    }
+}
+
+fn above_covers_wall_test(world: &WorldStore, above: &BlockProbe, test_pixels: [f64; 4]) -> bool {
+    world.block_empty_context_collision_face_covers_rectangle(
+        above,
+        Direction::Down,
+        test_pixels.map(|coordinate| coordinate / 16.0),
+    )
+}
+
+fn fence_gate_connects_to(
+    neighbour: &BlockProbe,
+    direction_to_placing_block: Direction,
+) -> Option<bool> {
+    let Some(block_type) = block_type(neighbour) else {
+        return None;
+    };
+    if block_type.get_state_for_placement_override
+        != Some(VanillaGetStateForPlacementOverride::FenceGateBlock)
+    {
+        return Some(false);
+    }
+    let facing = direction_property(neighbour, "facing")?;
+    Some(direction_axis(facing) != direction_axis(direction_to_placing_block))
+}
+
+fn candidate_chest_partner_facing(
+    world: &WorldStore,
+    pos: BlockPos,
+    neighbour_direction: Direction,
+    block_type: &BlockTypeCatalogEntry,
+) -> Option<Option<Direction>> {
+    let neighbour = world.probe_block(relative(pos, neighbour_direction))?;
+    if neighbour.block_name.as_deref() != Some(block_type.resource_id) {
+        return Some(None);
+    }
+    if neighbour.block_properties.get("type").map(String::as_str) != Some("single") {
+        return Some(None);
+    }
+    direction_property(&neighbour, "facing").map(Some)
+}
+
+fn connection_exception(world: &WorldStore, block: &BlockProbe) -> Option<bool> {
+    let name = block.block_name.as_deref()?;
+    if block_name_is_leaves(name)
+        || matches!(
+            name,
+            "minecraft:barrier"
+                | "minecraft:carved_pumpkin"
+                | "minecraft:jack_o_lantern"
+                | "minecraft:melon"
+                | "minecraft:pumpkin"
+        )
+    {
+        return Some(true);
+    }
+    world.placement_block_is_in_tag(block, "minecraft:shulker_boxes")
+}
+
+fn block_type_is_in_tag(
+    world: &WorldStore,
+    block_type: &BlockTypeCatalogEntry,
+    tag: &str,
+) -> Option<bool> {
+    world
+        .registry_holder_ids_for_tag("minecraft:block", tag)
+        .map(|ids| ids.contains(&block_type.id))
+}
+
+fn block_type(block: &BlockProbe) -> Option<&'static BlockTypeCatalogEntry> {
+    block
+        .block_name
+        .as_deref()
+        .and_then(vanilla_block_type_for_resource_id)
+}
+
+fn direction_property(block: &BlockProbe, property: &str) -> Option<Direction> {
+    match block.block_properties.get(property)?.as_str() {
+        "down" => Some(Direction::Down),
+        "up" => Some(Direction::Up),
+        "north" => Some(Direction::North),
+        "south" => Some(Direction::South),
+        "west" => Some(Direction::West),
+        "east" => Some(Direction::East),
+        _ => None,
+    }
+}
+
+fn stair_can_take_shape(
+    world: &WorldStore,
+    pos: BlockPos,
+    facing: Direction,
+    half: &str,
+    neighbour_direction: Direction,
+) -> Option<bool> {
+    let neighbour = world.probe_block(relative(pos, neighbour_direction))?;
+    if !block_is_stair(&neighbour) {
+        return Some(true);
+    }
+    Some(
+        direction_property(&neighbour, "facing")? != facing
+            || neighbour.block_properties.get("half").map(String::as_str) != Some(half),
+    )
+}
+
+fn block_is_stair(block: &BlockProbe) -> bool {
+    block_type(block).is_some_and(|block_type| {
+        block_type.get_state_for_placement_override
+            == Some(VanillaGetStateForPlacementOverride::StairBlock)
+    })
+}

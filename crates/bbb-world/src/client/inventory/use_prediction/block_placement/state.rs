@@ -8,10 +8,13 @@ use bbb_protocol::{
 };
 
 use super::super::{LocalBlockUseContext, WorldStore};
+use super::connections::{
+    chest_placement, fence_connections, iron_bars_connections, stair_shape, wall_placement,
+};
 use super::context::{
-    clockwise, counterclockwise, direction_axis, direction_axis_name, direction_name,
-    front_and_top_name, horizontal_direction, nearest_directions, opposite, placement_directions,
-    relative, rotation_segment, world_click_y, DirectionAxis,
+    clockwise, direction_axis, direction_axis_name, direction_name, front_and_top_name,
+    horizontal_direction, nearest_directions, opposite, placement_directions, relative,
+    rotation_segment, world_click_y, DirectionAxis,
 };
 use crate::{BlockPos, TerrainFluidKind};
 
@@ -329,6 +332,77 @@ pub(super) fn block_state_for_placement(
                 block_type,
                 default_state_id,
                 [("rotation", rotation.to_string())],
+            );
+        }
+        VanillaGetStateForPlacementOverride::ChestBlock => {
+            let Some(waterlogged) = target_is_source_water(world, target_pos) else {
+                return BlockPlacementState::Unsupported;
+            };
+            let Some(placement) =
+                chest_placement(world, target_pos, block_type, horizontal, context)
+            else {
+                return BlockPlacementState::Unsupported;
+            };
+            return state_with_properties(
+                world,
+                block_type,
+                default_state_id,
+                [
+                    ("facing", direction_name(placement.facing)),
+                    ("type", placement.chest_type),
+                    ("waterlogged", boolean_name(waterlogged)),
+                ],
+            );
+        }
+        VanillaGetStateForPlacementOverride::FenceBlock
+        | VanillaGetStateForPlacementOverride::IronBarsBlock => {
+            let Some(waterlogged) = target_is_source_water(world, target_pos) else {
+                return BlockPlacementState::Unsupported;
+            };
+            let connections = match owner {
+                VanillaGetStateForPlacementOverride::FenceBlock => {
+                    fence_connections(world, target_pos, block_type)
+                }
+                VanillaGetStateForPlacementOverride::IronBarsBlock => {
+                    iron_bars_connections(world, target_pos)
+                }
+                _ => unreachable!("matched cardinal connection owner"),
+            };
+            let Some(connections) = connections else {
+                return BlockPlacementState::Unsupported;
+            };
+            return state_with_properties(
+                world,
+                block_type,
+                default_state_id,
+                [
+                    ("north", boolean_name(connections.north)),
+                    ("east", boolean_name(connections.east)),
+                    ("south", boolean_name(connections.south)),
+                    ("west", boolean_name(connections.west)),
+                    ("waterlogged", boolean_name(waterlogged)),
+                ],
+            );
+        }
+        VanillaGetStateForPlacementOverride::WallBlock => {
+            let Some(waterlogged) = target_is_source_water(world, target_pos) else {
+                return BlockPlacementState::Unsupported;
+            };
+            let Some(placement) = wall_placement(world, target_pos) else {
+                return BlockPlacementState::Unsupported;
+            };
+            return state_with_properties(
+                world,
+                block_type,
+                default_state_id,
+                [
+                    ("up", boolean_name(placement.up)),
+                    ("north", placement.north),
+                    ("east", placement.east),
+                    ("south", placement.south),
+                    ("west", placement.west),
+                    ("waterlogged", boolean_name(waterlogged)),
+                ],
             );
         }
         VanillaGetStateForPlacementOverride::DecoratedPotBlock => {
@@ -886,74 +960,6 @@ fn direction_property(properties: &BTreeMap<String, String>, property: &str) -> 
         "east" => Some(Direction::East),
         _ => None,
     }
-}
-
-fn stair_shape(
-    world: &WorldStore,
-    pos: BlockPos,
-    facing: Direction,
-    half: &str,
-) -> Option<&'static str> {
-    let behind = world.probe_block(relative(pos, facing))?;
-    if block_is_stair(&behind)
-        && behind.block_properties.get("half").map(String::as_str) == Some(half)
-    {
-        let behind_facing = direction_property(&behind.block_properties, "facing")?;
-        if direction_axis(behind_facing) != direction_axis(facing)
-            && stair_can_take_shape(world, pos, facing, half, opposite(behind_facing))?
-        {
-            return Some(if behind_facing == counterclockwise(facing)? {
-                "outer_left"
-            } else {
-                "outer_right"
-            });
-        }
-    }
-
-    let front = world.probe_block(relative(pos, opposite(facing)))?;
-    if block_is_stair(&front)
-        && front.block_properties.get("half").map(String::as_str) == Some(half)
-    {
-        let front_facing = direction_property(&front.block_properties, "facing")?;
-        if direction_axis(front_facing) != direction_axis(facing)
-            && stair_can_take_shape(world, pos, facing, half, front_facing)?
-        {
-            return Some(if front_facing == counterclockwise(facing)? {
-                "inner_left"
-            } else {
-                "inner_right"
-            });
-        }
-    }
-    Some("straight")
-}
-
-fn stair_can_take_shape(
-    world: &WorldStore,
-    pos: BlockPos,
-    facing: Direction,
-    half: &str,
-    neighbour_direction: Direction,
-) -> Option<bool> {
-    let neighbour = world.probe_block(relative(pos, neighbour_direction))?;
-    if !block_is_stair(&neighbour) {
-        return Some(true);
-    }
-    Some(
-        direction_property(&neighbour.block_properties, "facing")? != facing
-            || neighbour.block_properties.get("half").map(String::as_str) != Some(half),
-    )
-}
-
-fn block_is_stair(block: &crate::BlockProbe) -> bool {
-    block
-        .block_name
-        .as_deref()
-        .and_then(bbb_protocol::block_types::vanilla_block_type_for_resource_id)
-        .is_some_and(|block_type| {
-            block_type.get_state_for_placement_override
-                == Some(VanillaGetStateForPlacementOverride::StairBlock)
-        })
 }
 
 fn target_is_source_water(world: &WorldStore, target_pos: BlockPos) -> Option<bool> {

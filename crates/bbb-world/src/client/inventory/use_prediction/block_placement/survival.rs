@@ -270,7 +270,7 @@ impl WorldStore {
         }
     }
 
-    fn placement_face_sturdy(
+    pub(super) fn placement_face_sturdy(
         &self,
         block: &BlockProbe,
         direction: Direction,
@@ -319,7 +319,7 @@ impl WorldStore {
         })
     }
 
-    fn placement_block_is_in_tag(&self, block: &BlockProbe, tag: &str) -> Option<bool> {
+    pub(super) fn placement_block_is_in_tag(&self, block: &BlockProbe, tag: &str) -> Option<bool> {
         let block_type_id = block_type_id(block)?;
         self.registry_holder_ids_for_tag("minecraft:block", tag)
             .map(|holder_ids| holder_ids.contains(&block_type_id))
