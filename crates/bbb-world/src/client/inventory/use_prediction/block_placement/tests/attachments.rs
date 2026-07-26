@@ -602,15 +602,3 @@ fn pointed_dripstone_computes_merge_and_middle_thickness() {
         )
     );
 }
-
-fn set_block_tag(world: &mut WorldStore, tag: &str, entries: &[i32]) {
-    world.apply_update_tags(UpdateTags {
-        registries: vec![RegistryTags {
-            registry: "minecraft:block".to_string(),
-            tags: vec![TagNetworkPayload {
-                tag: tag.to_string(),
-                entries: entries.to_vec(),
-            }],
-        }],
-    });
-}

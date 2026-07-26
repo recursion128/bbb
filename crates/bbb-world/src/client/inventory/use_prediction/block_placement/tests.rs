@@ -8,9 +8,9 @@ use bbb_protocol::{
         VANILLA_BLOCK_COBBLESTONE_WALL_ID, VANILLA_BLOCK_COPPER_CHEST_ID,
         VANILLA_BLOCK_EXPOSED_COPPER_CHEST_ID, VANILLA_BLOCK_NETHER_BRICK_FENCE_ID,
         VANILLA_BLOCK_OAK_FENCE_ID, VANILLA_BLOCK_OAK_WALL_HANGING_SIGN_ID,
-        VANILLA_BLOCK_OXIDIZED_COPPER_CHEST_ID, VANILLA_BLOCK_STONE_ID,
-        VANILLA_BLOCK_WAXED_COPPER_CHEST_ID, VANILLA_BLOCK_WAXED_EXPOSED_COPPER_CHEST_ID,
-        VANILLA_BLOCK_WAXED_OXIDIZED_COPPER_CHEST_ID,
+        VANILLA_BLOCK_OXIDIZED_COPPER_CHEST_ID, VANILLA_BLOCK_PALE_OAK_LOG_ID,
+        VANILLA_BLOCK_STONE_ID, VANILLA_BLOCK_WAXED_COPPER_CHEST_ID,
+        VANILLA_BLOCK_WAXED_EXPOSED_COPPER_CHEST_ID, VANILLA_BLOCK_WAXED_OXIDIZED_COPPER_CHEST_ID,
         VANILLA_BLOCK_WAXED_WEATHERED_COPPER_CHEST_ID, VANILLA_BLOCK_WEATHERED_COPPER_CHEST_ID,
     },
     data_component_types::VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID,
@@ -18,9 +18,9 @@ use bbb_protocol::{
     item_types::{
         VANILLA_ITEM_AMETHYST_CLUSTER_ID, VANILLA_ITEM_BELL_ID, VANILLA_ITEM_CANDLE_ID,
         VANILLA_ITEM_CHEST_ID, VANILLA_ITEM_COBBLESTONE_WALL_ID, VANILLA_ITEM_COCOA_BEANS_ID,
-        VANILLA_ITEM_COMMAND_BLOCK_ID, VANILLA_ITEM_FURNACE_ID, VANILLA_ITEM_HEAVY_CORE_ID,
-        VANILLA_ITEM_IRON_BARS_ID, VANILLA_ITEM_LADDER_ID, VANILLA_ITEM_LANTERN_ID,
-        VANILLA_ITEM_MANGROVE_PROPAGULE_ID, VANILLA_ITEM_OAK_DOOR_ID,
+        VANILLA_ITEM_COMMAND_BLOCK_ID, VANILLA_ITEM_CREAKING_HEART_ID, VANILLA_ITEM_FURNACE_ID,
+        VANILLA_ITEM_HEAVY_CORE_ID, VANILLA_ITEM_IRON_BARS_ID, VANILLA_ITEM_LADDER_ID,
+        VANILLA_ITEM_LANTERN_ID, VANILLA_ITEM_MANGROVE_PROPAGULE_ID, VANILLA_ITEM_OAK_DOOR_ID,
         VANILLA_ITEM_OAK_FENCE_GATE_ID, VANILLA_ITEM_OAK_FENCE_ID,
         VANILLA_ITEM_OAK_HANGING_SIGN_ID, VANILLA_ITEM_OAK_LOG_ID, VANILLA_ITEM_OAK_SIGN_ID,
         VANILLA_ITEM_OAK_SLAB_ID, VANILLA_ITEM_OAK_STAIRS_ID, VANILLA_ITEM_OAK_TRAPDOOR_ID,
@@ -206,6 +206,99 @@ fn directional_and_axis_placement_owners_use_exact_player_and_hit_directions() {
         state_id(
             "minecraft:observer",
             [("facing", "south"), ("powered", "false")]
+        )
+    );
+}
+
+#[test]
+fn creaking_heart_placement_uses_hit_axis_logs_and_environment_default() {
+    assert_eq!(state::creaking_heart_state_name(true, true), "awake");
+    assert_eq!(state::creaking_heart_state_name(true, false), "dormant");
+    assert_eq!(state::creaking_heart_state_name(false, true), "uprooted");
+
+    let clicked = BlockPos { x: 4, y: 8, z: 4 };
+    let target = relative(clicked, ProtocolDirection::East);
+    let far_log = relative(target, ProtocolDirection::East);
+
+    let mut surrounded = placement_world();
+    set_block_tag(
+        &mut surrounded,
+        "minecraft:pale_oak_logs",
+        &[VANILLA_BLOCK_PALE_OAK_LOG_ID],
+    );
+    set_block(
+        &mut surrounded,
+        clicked,
+        state_id("minecraft:pale_oak_log", [("axis", "x")]),
+    );
+    set_block(
+        &mut surrounded,
+        far_log,
+        state_id("minecraft:pale_oak_log", [("axis", "x")]),
+    );
+    set_held(&mut surrounded, VANILLA_ITEM_CREAKING_HEART_ID, 1);
+    assert!(matches!(
+        surrounded.predict_local_block_use_with_hit(
+            clicked,
+            ProtocolDirection::East,
+            [1.0, 0.5, 0.5],
+            false,
+            InteractionHand::MainHand,
+            false,
+            6,
+        ),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        surrounded.probe_block(target).unwrap().block_state_id,
+        state_id(
+            "minecraft:creaking_heart",
+            [
+                ("axis", "x"),
+                ("creaking_heart_state", "dormant"),
+                ("natural", "false"),
+            ],
+        )
+    );
+
+    let mut misaligned = placement_world();
+    set_block_tag(
+        &mut misaligned,
+        "minecraft:pale_oak_logs",
+        &[VANILLA_BLOCK_PALE_OAK_LOG_ID],
+    );
+    set_block(
+        &mut misaligned,
+        clicked,
+        state_id("minecraft:pale_oak_log", [("axis", "z")]),
+    );
+    set_block(
+        &mut misaligned,
+        far_log,
+        state_id("minecraft:pale_oak_log", [("axis", "x")]),
+    );
+    set_held(&mut misaligned, VANILLA_ITEM_CREAKING_HEART_ID, 1);
+    assert!(matches!(
+        misaligned.predict_local_block_use_with_hit(
+            clicked,
+            ProtocolDirection::East,
+            [1.0, 0.5, 0.5],
+            false,
+            InteractionHand::MainHand,
+            false,
+            7,
+        ),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        misaligned.probe_block(target).unwrap().block_state_id,
+        state_id(
+            "minecraft:creaking_heart",
+            [
+                ("axis", "x"),
+                ("creaking_heart_state", "uprooted"),
+                ("natural", "false"),
+            ],
         )
     );
 }
@@ -707,12 +800,16 @@ fn set_held(world: &mut WorldStore, item_id: i32, count: i32) {
 }
 
 fn set_support_tag(world: &mut WorldStore, tag: &str) {
+    set_block_tag(world, tag, &[VANILLA_BLOCK_STONE_ID]);
+}
+
+fn set_block_tag(world: &mut WorldStore, tag: &str, entries: &[i32]) {
     world.apply_update_tags(UpdateTags {
         registries: vec![RegistryTags {
             registry: "minecraft:block".to_string(),
             tags: vec![TagNetworkPayload {
                 tag: tag.to_string(),
-                entries: vec![VANILLA_BLOCK_STONE_ID],
+                entries: entries.to_vec(),
             }],
         }],
     });

@@ -21,7 +21,7 @@ use super::context::{
     horizontal_direction, nearest_directions, opposite, placement_directions, relative,
     rotation_segment, world_click_y, DirectionAxis,
 };
-use crate::{BlockPos, TerrainFluidKind};
+use crate::{BlockPos, EnvironmentBiomeSampling, TerrainFluidKind};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum BlockPlacementState {
@@ -479,6 +479,61 @@ pub(super) fn block_state_for_placement(
                 ],
             );
         }
+        VanillaGetStateForPlacementOverride::CreakingHeartBlock => {
+            let axis = direction_axis(context.face);
+            let (axis_name, axial_directions) = match axis {
+                DirectionAxis::X => ("x", [Direction::West, Direction::East]),
+                DirectionAxis::Y => ("y", [Direction::Down, Direction::Up]),
+                DirectionAxis::Z => ("z", [Direction::North, Direction::South]),
+            };
+            let mut has_required_logs = true;
+            for direction in axial_directions {
+                let Some(neighbour) = world.probe_block(relative(target_pos, direction)) else {
+                    return BlockPlacementState::Unsupported;
+                };
+                let Some(is_pale_oak_log) =
+                    world.placement_block_is_in_tag(&neighbour, "minecraft:pale_oak_logs")
+                else {
+                    return BlockPlacementState::Unsupported;
+                };
+                if !is_pale_oak_log {
+                    has_required_logs = false;
+                    break;
+                }
+                let Some(neighbour_axis) =
+                    neighbour.block_properties.get("axis").map(String::as_str)
+                else {
+                    return BlockPlacementState::Unsupported;
+                };
+                if neighbour_axis != axis_name {
+                    has_required_logs = false;
+                    break;
+                }
+            }
+            let creaking_active = if has_required_logs {
+                let position = [
+                    f64::from(target_pos.x) + 0.5,
+                    f64::from(target_pos.y) + 0.5,
+                    f64::from(target_pos.z) + 0.5,
+                ];
+                let Ok(attributes) = world.sampled_client_environment_attributes_at(
+                    position,
+                    EnvironmentBiomeSampling::Direct,
+                ) else {
+                    return BlockPlacementState::Unsupported;
+                };
+                attributes.creaking_active.unwrap_or(false)
+            } else {
+                false
+            };
+            let heart_state = creaking_heart_state_name(has_required_logs, creaking_active);
+            return state_with_properties(
+                world,
+                block_type,
+                default_state_id,
+                [("axis", axis_name), ("creaking_heart_state", heart_state)],
+            );
+        }
         VanillaGetStateForPlacementOverride::FenceBlock
         | VanillaGetStateForPlacementOverride::IronBarsBlock => {
             let Some(waterlogged) = target_is_source_water(world, target_pos) else {
@@ -864,6 +919,19 @@ pub(super) fn block_state_for_placement(
     };
 
     state_with_properties(world, block_type, default_state_id, properties)
+}
+
+pub(super) const fn creaking_heart_state_name(
+    has_required_logs: bool,
+    creaking_active: bool,
+) -> &'static str {
+    if !has_required_logs {
+        "uprooted"
+    } else if creaking_active {
+        "awake"
+    } else {
+        "dormant"
+    }
 }
 
 pub(super) fn state_with_properties<const N: usize>(
