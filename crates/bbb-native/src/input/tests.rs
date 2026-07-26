@@ -19515,6 +19515,10 @@ fn jigsaw_editor_validation_limits_cancel_escape_and_screen_replacement_are_loca
     ));
     assert!(input.jigsaw_block_editor_is_active());
     assert!(matches!(rx.try_recv(), Ok(NetCommand::UseItemOn(_))));
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::Swing(InteractionHand::MainHand)
+    );
     assert!(input.handle_jigsaw_block_editor_key(
         &mut counters,
         &mut world,
