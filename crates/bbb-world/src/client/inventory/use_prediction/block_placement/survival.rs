@@ -30,6 +30,7 @@ enum BlockCanSurviveRule {
     AboveFull,
     Bamboo,
     ChorusPlant,
+    Farmland,
     Lantern,
     MangrovePropagule,
     MossyCarpet,
@@ -177,6 +178,15 @@ impl WorldStore {
                     }
                 }
                 self.placement_block_is_chorus_support(&below)
+            }
+            BlockCanSurviveRule::Farmland => {
+                let above = self.probe_block(relative(pos, Direction::Up))?;
+                let solid = vanilla_block_state_support_facts(above.block_state_id)?.legacy_solid();
+                if !solid {
+                    Some(true)
+                } else {
+                    self.placement_block_is_in_tag(&above, "minecraft:maintains_farmland")
+                }
             }
             BlockCanSurviveRule::Lantern => {
                 let hanging = boolean_property(properties, "hanging")?;
@@ -532,6 +542,7 @@ const fn block_can_survive_rule(owner: VanillaCanSurviveOverride) -> Option<Bloc
         VanillaCanSurviveOverride::CandleBlock => BlockCanSurviveRule::BelowCenter,
         VanillaCanSurviveOverride::CeilingHangingSignBlock => BlockCanSurviveRule::AboveCenter,
         VanillaCanSurviveOverride::ChorusPlantBlock => BlockCanSurviveRule::ChorusPlant,
+        VanillaCanSurviveOverride::FarmlandBlock => BlockCanSurviveRule::Farmland,
         VanillaCanSurviveOverride::HangingRootsBlock => BlockCanSurviveRule::AboveFull,
         VanillaCanSurviveOverride::LanternBlock => BlockCanSurviveRule::Lantern,
         VanillaCanSurviveOverride::MangrovePropaguleBlock => BlockCanSurviveRule::MangrovePropagule,

@@ -4,7 +4,8 @@ use bbb_protocol::{
     block_state_types::vanilla_block_default_state_id,
     block_types::{
         vanilla_block_type, vanilla_concrete_block_type_id_for_powder, BlockTypeCatalogEntry,
-        VanillaGetStateForPlacementOverride, VANILLA_BLOCK_BAMBOO_SAPLING_ID,
+        VanillaCanSurviveOverride, VanillaGetStateForPlacementOverride,
+        VANILLA_BLOCK_BAMBOO_SAPLING_ID, VANILLA_BLOCK_DIRT_ID,
     },
     packets::Direction,
 };
@@ -245,6 +246,19 @@ pub(super) fn block_state_for_placement(
                     ),
                 ],
             );
+        }
+        VanillaGetStateForPlacementOverride::FarmlandBlock => {
+            match world.local_block_state_can_survive(
+                target_pos,
+                default_state_id,
+                VanillaCanSurviveOverride::FarmlandBlock,
+            ) {
+                Some(true) => return BlockPlacementState::State(default_state_id),
+                Some(false) => {}
+                None => return BlockPlacementState::Unsupported,
+            }
+            return vanilla_block_default_state_id(VANILLA_BLOCK_DIRT_ID)
+                .map_or(BlockPlacementState::Unsupported, BlockPlacementState::State);
         }
         VanillaGetStateForPlacementOverride::ObserverBlock => [("facing", direction_name(nearest))],
         VanillaGetStateForPlacementOverride::RotatedPillarBlock

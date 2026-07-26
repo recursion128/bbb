@@ -5,6 +5,7 @@ use bbb_protocol::{
     block_types::{
         vanilla_block_type, vanilla_concrete_block_type_id_for_powder,
         VanillaGetStateForPlacementOverride, VANILLA_BLOCK_BAMBOO_SAPLING_ID,
+        VANILLA_BLOCK_DIRT_ID,
     },
     data_component_types::VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID,
     item_types::{ItemTypeCatalogEntry, VanillaBlockItemKind, VanillaItemUseOnOverride},
@@ -142,6 +143,9 @@ impl WorldStore {
                 && placed_block_type.id == VANILLA_BLOCK_BAMBOO_SAPLING_ID
             || vanilla_concrete_block_type_id_for_powder(block_type.id)
                 == Some(placed_block_type.id)
+            || block_type.get_state_for_placement_override
+                == Some(VanillaGetStateForPlacementOverride::FarmlandBlock)
+                && placed_block_type.id == VANILLA_BLOCK_DIRT_ID
             || block_type.get_state_for_placement_override
                 == Some(VanillaGetStateForPlacementOverride::CopperChestBlock)
                 && placed_block_type.get_state_for_placement_override

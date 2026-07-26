@@ -1,6 +1,81 @@
 use super::*;
 
 #[test]
+fn farmland_placement_uses_above_solidity_and_maintaining_tag() {
+    let clicked = BlockPos { x: 4, y: 8, z: 4 };
+    let target = relative(clicked, ProtocolDirection::Up);
+    let above = relative(target, ProtocolDirection::Up);
+
+    let mut open = placement_world();
+    set_block(&mut open, clicked, state_id("minecraft:stone", []));
+    set_held(&mut open, VANILLA_ITEM_FARMLAND_ID, 1);
+    assert!(matches!(
+        open.predict_local_block_use_with_hit(
+            clicked,
+            ProtocolDirection::Up,
+            [0.5, 1.0, 0.5],
+            false,
+            InteractionHand::MainHand,
+            false,
+            58,
+        ),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        open.probe_block(target).unwrap().block_state_id,
+        state_id("minecraft:farmland", [("moisture", "0")])
+    );
+
+    let mut blocked = placement_world();
+    set_block_tag(&mut blocked, "minecraft:maintains_farmland", &[]);
+    set_block(&mut blocked, clicked, state_id("minecraft:stone", []));
+    set_block(&mut blocked, above, state_id("minecraft:stone", []));
+    set_held(&mut blocked, VANILLA_ITEM_FARMLAND_ID, 1);
+    assert!(matches!(
+        blocked.predict_local_block_use_with_hit(
+            clicked,
+            ProtocolDirection::Up,
+            [0.5, 1.0, 0.5],
+            false,
+            InteractionHand::MainHand,
+            false,
+            59,
+        ),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        blocked.probe_block(target).unwrap().block_state_id,
+        state_id("minecraft:dirt", [])
+    );
+
+    let mut maintained = placement_world();
+    set_block_tag(
+        &mut maintained,
+        "minecraft:maintains_farmland",
+        &[VANILLA_BLOCK_STONE_ID],
+    );
+    set_block(&mut maintained, clicked, state_id("minecraft:stone", []));
+    set_block(&mut maintained, above, state_id("minecraft:stone", []));
+    set_held(&mut maintained, VANILLA_ITEM_FARMLAND_ID, 1);
+    assert!(matches!(
+        maintained.predict_local_block_use_with_hit(
+            clicked,
+            ProtocolDirection::Up,
+            [0.5, 1.0, 0.5],
+            false,
+            InteractionHand::MainHand,
+            false,
+            60,
+        ),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        maintained.probe_block(target).unwrap().block_state_id,
+        state_id("minecraft:farmland", [("moisture", "0")])
+    );
+}
+
+#[test]
 fn leaves_placement_computes_decay_distance_and_waterlogged_persistence() {
     let clicked = BlockPos { x: 4, y: 8, z: 4 };
     let target = relative(clicked, ProtocolDirection::Up);
