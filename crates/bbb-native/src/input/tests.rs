@@ -1209,6 +1209,7 @@ fn insert_sign_text_state(
                 is_waxed: false,
             }),
             command_block: None,
+            comparator_output: None,
             structure_block: None,
             jigsaw_block: None,
             test_block: None,
@@ -1269,6 +1270,7 @@ fn world_with_command_block(pos: BlockPos, command: &str) -> WorldStore {
             command: command.to_string(),
             ..CommandBlockEntityDataState::default()
         }),
+        comparator_output: None,
         structure_block: None,
         jigsaw_block: None,
         test_block: None,
@@ -1376,6 +1378,7 @@ fn world_with_test_block(pos: BlockPos, mode: TestBlockMode, message: &str) -> W
         end_gateway: None,
         spawner: None,
         command_block: None,
+        comparator_output: None,
         structure_block: None,
         jigsaw_block: None,
         test_block: Some(TestBlockEntityDataState {
@@ -1438,6 +1441,7 @@ fn world_with_test_instance_block(pos: BlockPos) -> WorldStore {
         end_gateway: None,
         spawner: None,
         command_block: None,
+        comparator_output: None,
         structure_block: None,
         jigsaw_block: None,
         test_block: None,
@@ -1505,6 +1509,7 @@ fn world_with_structure_block(pos: BlockPos) -> WorldStore {
         end_gateway: None,
         spawner: None,
         command_block: None,
+        comparator_output: None,
         test_block: None,
         structure_block: Some(StructureBlockEntityDataState {
             name: "example:initial".to_string(),
@@ -1581,6 +1586,7 @@ fn world_with_jigsaw_block(pos: BlockPos, orientation: &str) -> WorldStore {
         end_gateway: None,
         spawner: None,
         command_block: None,
+        comparator_output: None,
         structure_block: None,
         jigsaw_block: Some(JigsawBlockEntityDataState {
             name: "example:entry".to_string(),

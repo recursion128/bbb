@@ -1456,6 +1456,7 @@ mod tests {
                 nbt: None,
                 sign_text: Some(SignBlockEntityTextState::default()),
                 command_block: None,
+                comparator_output: None,
                 structure_block: None,
                 jigsaw_block: None,
                 test_block: None,
