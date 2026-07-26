@@ -40,13 +40,13 @@ use bbb_protocol::heightmap_types::VANILLA_HEIGHTMAP_TYPES;
 use bbb_protocol::item_types::{VANILLA_ITEM_BOW_ID, VANILLA_ITEM_SPYGLASS_ID};
 use bbb_protocol::menu_types::{
     VANILLA_MENU_TYPES, VANILLA_MENU_TYPE_ANVIL_ID, VANILLA_MENU_TYPE_BEACON_ID,
-    VANILLA_MENU_TYPE_BREWING_STAND_ID, VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
-    VANILLA_MENU_TYPE_CRAFTER_3X3_ID, VANILLA_MENU_TYPE_CRAFTING_ID,
-    VANILLA_MENU_TYPE_ENCHANTMENT_ID, VANILLA_MENU_TYPE_FURNACE_ID,
+    VANILLA_MENU_TYPE_BLAST_FURNACE_ID, VANILLA_MENU_TYPE_BREWING_STAND_ID,
+    VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID, VANILLA_MENU_TYPE_CRAFTER_3X3_ID,
+    VANILLA_MENU_TYPE_CRAFTING_ID, VANILLA_MENU_TYPE_ENCHANTMENT_ID, VANILLA_MENU_TYPE_FURNACE_ID,
     VANILLA_MENU_TYPE_GENERIC_3X3_ID, VANILLA_MENU_TYPE_GENERIC_9X3_ID,
     VANILLA_MENU_TYPE_GENERIC_9X6_ID, VANILLA_MENU_TYPE_GRINDSTONE_ID, VANILLA_MENU_TYPE_HOPPER_ID,
     VANILLA_MENU_TYPE_LECTERN_ID, VANILLA_MENU_TYPE_LOOM_ID, VANILLA_MENU_TYPE_MERCHANT_ID,
-    VANILLA_MENU_TYPE_SHULKER_BOX_ID, VANILLA_MENU_TYPE_SMITHING_ID,
+    VANILLA_MENU_TYPE_SHULKER_BOX_ID, VANILLA_MENU_TYPE_SMITHING_ID, VANILLA_MENU_TYPE_SMOKER_ID,
     VANILLA_MENU_TYPE_STONECUTTER_ID,
 };
 use bbb_protocol::packets::ClockUpdate as ProtocolClockUpdate;
@@ -14183,13 +14183,8 @@ fn hud_inventory_screen_projects_crafting_table_ghost_recipe_slots() {
                         stonecutter_item_display(1),
                         stonecutter_item_stack_display(2, 3),
                     ],
-                    result: stonecutter_item_stack_display(0, 2),
-                    crafting_station: bbb_protocol::packets::SlotDisplaySummary {
-                        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
-                        raw_payload: Vec::new(),
-                        item_stack: None,
-                        tag: None,
-                    },
+                    result: stonecutter_item_stack_display(4, 2),
+                    crafting_station: slot_display_empty(),
                 },
             ),
             furnace: None,
@@ -14273,13 +14268,8 @@ fn hud_inventory_screen_projects_crafting_table_ghost_recipe_slots() {
             crafting: Some(
                 bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
                     ingredients: vec![stonecutter_item_display(1)],
-                    result: stonecutter_item_display(0),
-                    crafting_station: bbb_protocol::packets::SlotDisplaySummary {
-                        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
-                        raw_payload: Vec::new(),
-                        item_stack: None,
-                        tag: None,
-                    },
+                    result: stonecutter_item_display(4),
+                    crafting_station: slot_display_empty(),
                 },
             ),
             furnace: None,
@@ -14293,6 +14283,21 @@ fn hud_inventory_screen_projects_crafting_table_ghost_recipe_slots() {
     assert_eq!(world.counters().ghost_recipe_packets, 2);
     assert_eq!(world.counters().ghost_recipe_updates_applied, 1);
     assert_eq!(world.counters().ghost_recipe_updates_ignored, 1);
+
+    world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+        container_id: 8,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X3_ID,
+        title: bbb_protocol::RichTextComponent::plain("Chest"),
+    });
+    world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+        container_id: 8,
+        state_id: 1,
+        items: vec![bbb_protocol::packets::ItemStackSummary::empty(); 63],
+        carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+    });
+    let replaced = hud_inventory_screen(&world, Some(&item_runtime), None, 0.0).unwrap();
+    assert!(replaced.fill_layers.is_empty());
+    assert!(replaced.ghost_items.is_empty());
 }
 
 #[test]
@@ -14301,7 +14306,7 @@ fn hud_inventory_screen_projects_furnace_ghost_recipe_slots() {
     let mut world = open_recipe_book_furnace_world();
     world.apply_place_ghost_recipe(bbb_protocol::packets::PlaceGhostRecipe {
         container_id: 7,
-        recipe_display: furnace_recipe_display(2, 1, 0),
+        recipe_display: furnace_recipe_display(2, 1, 4),
     });
 
     let screen = hud_inventory_screen(&world, Some(&item_runtime), None, 0.0).unwrap();
@@ -14337,8 +14342,91 @@ fn hud_inventory_screen_projects_furnace_ghost_recipe_slots() {
             .iter()
             .map(|item| (item.x, item.y, item.draw_decorations))
             .collect::<Vec<_>>(),
+        vec![(265, 35, true), (205, 17, false), (205, 53, false)]
+    );
+
+    world.apply_place_ghost_recipe(bbb_protocol::packets::PlaceGhostRecipe {
+        container_id: 7,
+        recipe_display: furnace_recipe_display(2, 1, 4),
+    });
+    let refreshed = hud_inventory_screen(&world, Some(&item_runtime), None, 0.0).unwrap();
+    assert_eq!(
+        refreshed
+            .ghost_items
+            .iter()
+            .map(|item| (item.x, item.y, item.draw_decorations))
+            .collect::<Vec<_>>(),
         vec![(265, 35, true), (205, 17, false)]
     );
+}
+
+#[test]
+fn hud_inventory_screen_projects_blast_furnace_and_smoker_ghost_recipe_slots() {
+    let item_runtime = recipe_book_ghost_item_runtime();
+    for menu_type_id in [
+        VANILLA_MENU_TYPE_BLAST_FURNACE_ID,
+        VANILLA_MENU_TYPE_SMOKER_ID,
+    ] {
+        let mut world = open_recipe_book_furnace_family_world(menu_type_id);
+        world.apply_place_ghost_recipe(bbb_protocol::packets::PlaceGhostRecipe {
+            container_id: 7,
+            recipe_display: furnace_recipe_display(2, 1, 4),
+        });
+
+        let screen = hud_inventory_screen(&world, Some(&item_runtime), None, 0.0).unwrap();
+        assert_eq!(
+            screen
+                .ghost_items
+                .iter()
+                .map(|item| (item.x, item.y, item.draw_decorations))
+                .collect::<Vec<_>>(),
+            vec![(265, 35, true), (205, 17, false), (205, 53, false)]
+        );
+    }
+}
+
+#[test]
+fn hud_inventory_screen_projects_all_builtin_slot_display_ghost_recipe_candidates() {
+    let root = unique_runtime_temp_dir("ghost-recipe-slot-displays");
+    write_stonecutter_slot_display_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let mut world = stonecutter_world_with_builtin_slot_displays(1);
+    let displays = world
+        .recipes()
+        .stonecutter_recipes
+        .iter()
+        .map(|recipe| recipe.option_display.clone())
+        .collect::<Vec<_>>();
+    assert_eq!(displays.len(), 11);
+    assert!(world.close_local_container(7));
+    assert!(world.open_local_inventory());
+
+    for (index, result) in displays.into_iter().enumerate() {
+        world.apply_place_ghost_recipe(bbb_protocol::packets::PlaceGhostRecipe {
+            container_id: 0,
+            recipe_display: bbb_protocol::packets::RecipeDisplaySummary {
+                display_type: bbb_protocol::packets::RecipeDisplayType::Stonecutter,
+                raw_body: Vec::new(),
+                crafting: None,
+                furnace: None,
+                stonecutter: Some(bbb_protocol::packets::StonecutterRecipeDisplaySummary {
+                    input: slot_display_empty(),
+                    result,
+                    crafting_station: slot_display_empty(),
+                }),
+                smithing: None,
+            },
+        });
+
+        let snapshot = world.last_ghost_recipe().unwrap();
+        assert_eq!(snapshot.slots.len(), usize::from(index != 0));
+        let screen = hud_inventory_screen(&world, Some(&item_runtime), None, 0.0).unwrap();
+        assert_eq!(screen.ghost_items.len(), snapshot.slots.len());
+        assert!(screen.ghost_items.iter().all(|item| item.draw_decorations));
+    }
+
+    std::fs::remove_dir_all(root).unwrap();
 }
 
 #[test]
@@ -14354,13 +14442,8 @@ fn hud_inventory_screen_resolves_tag_ghost_recipe_ingredients() {
             crafting: Some(
                 bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
                     ingredients: vec![slot_display_tag("minecraft:planks")],
-                    result: stonecutter_item_display(0),
-                    crafting_station: bbb_protocol::packets::SlotDisplaySummary {
-                        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
-                        raw_payload: Vec::new(),
-                        item_stack: None,
-                        tag: None,
-                    },
+                    result: stonecutter_item_display(4),
+                    crafting_station: slot_display_empty(),
                 },
             ),
             furnace: None,
@@ -14399,13 +14482,8 @@ fn hud_inventory_screen_cycles_tag_ghost_recipe_ingredients() {
             crafting: Some(
                 bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
                     ingredients: vec![slot_display_tag("minecraft:planks")],
-                    result: stonecutter_item_display(0),
-                    crafting_station: bbb_protocol::packets::SlotDisplaySummary {
-                        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
-                        raw_payload: Vec::new(),
-                        item_stack: None,
-                        tag: None,
-                    },
+                    result: stonecutter_item_display(4),
+                    crafting_station: slot_display_empty(),
                 },
             ),
             furnace: None,
@@ -14438,9 +14516,10 @@ fn hud_inventory_screen_cycles_tag_ghost_recipe_ingredients() {
 }
 
 #[test]
-fn hud_inventory_screen_reads_replaced_and_removed_tag_ghost_members() {
+fn hud_inventory_screen_keeps_resolved_tag_ghost_recipe_snapshot() {
     let item_runtime = recipe_book_ghost_item_runtime();
     let mut world = open_recipe_book_crafting_table_world();
+    apply_item_tags(&mut world, vec![("minecraft:planks", vec![1, 2])]);
     world.apply_place_ghost_recipe(bbb_protocol::packets::PlaceGhostRecipe {
         container_id: 7,
         recipe_display: bbb_protocol::packets::RecipeDisplaySummary {
@@ -14449,13 +14528,8 @@ fn hud_inventory_screen_reads_replaced_and_removed_tag_ghost_members() {
             crafting: Some(
                 bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
                     ingredients: vec![slot_display_tag("minecraft:planks")],
-                    result: stonecutter_item_display(0),
-                    crafting_station: bbb_protocol::packets::SlotDisplaySummary {
-                        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
-                        raw_payload: Vec::new(),
-                        item_stack: None,
-                        tag: None,
-                    },
+                    result: stonecutter_item_display(4),
+                    crafting_station: slot_display_empty(),
                 },
             ),
             furnace: None,
@@ -14473,15 +14547,81 @@ fn hud_inventory_screen_reads_replaced_and_removed_tag_ghost_members() {
             .map(|item| item.icon)
     };
 
-    apply_item_tags(&mut world, vec![("minecraft:planks", vec![1, 2])]);
     let first = ghost_icon(&world).expect("first ordered tag member");
 
     apply_item_tags(&mut world, vec![("minecraft:planks", vec![2, 1])]);
-    let reordered = ghost_icon(&world).expect("replacement tag member");
-    assert_ne!(reordered, first);
+    let reordered = ghost_icon(&world).expect("snapshotted tag member");
+    assert_eq!(reordered, first);
 
     apply_item_tags(&mut world, Vec::new());
-    assert_eq!(ghost_icon(&world), None);
+    assert_eq!(ghost_icon(&world), Some(first));
+}
+
+#[test]
+fn hud_inventory_screen_ghost_recipe_tooltip_wins_only_while_recipe_book_is_visible() {
+    let item_runtime = recipe_book_ghost_item_runtime();
+    let mut world = open_recipe_book_crafting_table_world();
+    world.apply_container_set_slot(bbb_protocol::packets::ContainerSetSlot {
+        container_id: 7,
+        state_id: 13,
+        slot: 1,
+        item: item_stack(2, 1),
+    });
+    world.apply_place_ghost_recipe(bbb_protocol::packets::PlaceGhostRecipe {
+        container_id: 7,
+        recipe_display: bbb_protocol::packets::RecipeDisplaySummary {
+            display_type: bbb_protocol::packets::RecipeDisplayType::CraftingShapeless,
+            raw_body: Vec::new(),
+            crafting: Some(
+                bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
+                    ingredients: vec![stonecutter_item_display(1)],
+                    result: stonecutter_item_display(4),
+                    crafting_station: slot_display_empty(),
+                },
+            ),
+            furnace: None,
+            stonecutter: None,
+            smithing: None,
+        },
+    });
+
+    let visible = hud_inventory_screen(&world, Some(&item_runtime), Some(1), 0.0).unwrap();
+    assert_eq!(
+        visible
+            .tooltip
+            .as_ref()
+            .and_then(|tooltip| tooltip.lines.first())
+            .map(|line| line.text.as_str()),
+        Some("Stick")
+    );
+
+    world.apply_recipe_book_settings(bbb_protocol::packets::RecipeBookSettings {
+        crafting: bbb_protocol::packets::RecipeBookTypeSettings::default(),
+        furnace: bbb_protocol::packets::RecipeBookTypeSettings::default(),
+        blast_furnace: bbb_protocol::packets::RecipeBookTypeSettings::default(),
+        smoker: bbb_protocol::packets::RecipeBookTypeSettings::default(),
+    });
+    let hidden = hud_inventory_screen(&world, Some(&item_runtime), Some(1), 0.0).unwrap();
+    assert_eq!(
+        hidden
+            .tooltip
+            .as_ref()
+            .and_then(|tooltip| tooltip.lines.first())
+            .map(|line| line.text.as_str()),
+        Some("Wooden Boards")
+    );
+    assert_eq!(
+        hidden
+            .ghost_items
+            .iter()
+            .map(|item| (&item.icon, item.draw_decorations))
+            .collect::<Vec<_>>(),
+        visible
+            .ghost_items
+            .iter()
+            .map(|item| (&item.icon, item.draw_decorations))
+            .collect::<Vec<_>>()
+    );
 }
 
 #[test]
@@ -14502,13 +14642,8 @@ fn hud_inventory_screen_cycles_composite_ghost_recipe_ingredients() {
                         ),
                         stonecutter_item_display(2),
                     ])],
-                    result: stonecutter_item_display(0),
-                    crafting_station: bbb_protocol::packets::SlotDisplaySummary {
-                        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
-                        raw_payload: Vec::new(),
-                        item_stack: None,
-                        tag: None,
-                    },
+                    result: stonecutter_item_display(4),
+                    crafting_station: slot_display_empty(),
                 },
             ),
             furnace: None,
@@ -14541,7 +14676,7 @@ fn hud_inventory_screen_cycles_composite_ghost_recipe_ingredients() {
 }
 
 #[test]
-fn hud_inventory_screen_projects_local_inventory_ghost_result_without_big_slot_fill() {
+fn hud_inventory_screen_projects_local_inventory_ghost_recipe_result_without_big_slot_fill() {
     let item_runtime = recipe_book_ghost_item_runtime();
     let mut world = WorldStore::new();
     world.open_local_inventory();
@@ -14553,13 +14688,8 @@ fn hud_inventory_screen_projects_local_inventory_ghost_result_without_big_slot_f
             crafting: Some(
                 bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
                     ingredients: vec![stonecutter_item_display(1)],
-                    result: stonecutter_item_display(0),
-                    crafting_station: bbb_protocol::packets::SlotDisplaySummary {
-                        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
-                        raw_payload: Vec::new(),
-                        item_stack: None,
-                        tag: None,
-                    },
+                    result: stonecutter_item_display(4),
+                    crafting_station: slot_display_empty(),
                 },
             ),
             furnace: None,
@@ -21773,6 +21903,17 @@ fn stonecutter_item_display(item_id: i32) -> bbb_protocol::packets::SlotDisplayS
     }
 }
 
+fn slot_display_empty() -> bbb_protocol::packets::SlotDisplaySummary {
+    let mut raw_payload = bbb_protocol::codec::Encoder::new();
+    raw_payload.write_var_i32(VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID);
+    bbb_protocol::packets::SlotDisplaySummary {
+        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
+        raw_payload: raw_payload.into_inner(),
+        item_stack: None,
+        tag: None,
+    }
+}
+
 fn stonecutter_item_stack_display(
     item_id: i32,
     count: i32,
@@ -21906,11 +22047,21 @@ fn open_recipe_book_crafting_table_world() -> WorldStore {
 }
 
 fn open_recipe_book_furnace_world() -> WorldStore {
+    open_recipe_book_furnace_family_world(VANILLA_MENU_TYPE_FURNACE_ID)
+}
+
+fn open_recipe_book_furnace_family_world(menu_type_id: i32) -> WorldStore {
     let mut world = WorldStore::new();
+    let title = match menu_type_id {
+        VANILLA_MENU_TYPE_FURNACE_ID => "Furnace",
+        VANILLA_MENU_TYPE_BLAST_FURNACE_ID => "Blast Furnace",
+        VANILLA_MENU_TYPE_SMOKER_ID => "Smoker",
+        _ => panic!("unsupported furnace-family menu type {menu_type_id}"),
+    };
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: VANILLA_MENU_TYPE_FURNACE_ID,
-        title: bbb_protocol::RichTextComponent::plain("Furnace"),
+        menu_type_id,
+        title: bbb_protocol::RichTextComponent::plain(title),
     });
     world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
         container_id: 7,
@@ -21918,15 +22069,18 @@ fn open_recipe_book_furnace_world() -> WorldStore {
         items: vec![bbb_protocol::packets::ItemStackSummary::empty(); 39],
         carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
     });
-    world.apply_recipe_book_settings(bbb_protocol::packets::RecipeBookSettings {
-        crafting: bbb_protocol::packets::RecipeBookTypeSettings::default(),
-        furnace: bbb_protocol::packets::RecipeBookTypeSettings {
-            open: true,
-            filtering: false,
-        },
-        blast_furnace: bbb_protocol::packets::RecipeBookTypeSettings::default(),
-        smoker: bbb_protocol::packets::RecipeBookTypeSettings::default(),
-    });
+    let open = bbb_protocol::packets::RecipeBookTypeSettings {
+        open: true,
+        filtering: false,
+    };
+    let mut settings = bbb_protocol::packets::RecipeBookSettings::default();
+    match menu_type_id {
+        VANILLA_MENU_TYPE_FURNACE_ID => settings.furnace = open,
+        VANILLA_MENU_TYPE_BLAST_FURNACE_ID => settings.blast_furnace = open,
+        VANILLA_MENU_TYPE_SMOKER_ID => settings.smoker = open,
+        _ => unreachable!("menu type validated above"),
+    }
+    world.apply_recipe_book_settings(settings);
     world
 }
 

@@ -23898,7 +23898,18 @@ fn recipe_book_uncraftable_recipe_button_retry_is_guarded() {
         recipe_display: bbb_protocol::packets::RecipeDisplaySummary {
             display_type: bbb_protocol::packets::RecipeDisplayType::CraftingShapeless,
             raw_body: Vec::new(),
-            crafting: None,
+            crafting: Some(
+                bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
+                    ingredients: Vec::new(),
+                    result: recipe_book_slot_display_stack(1, 1),
+                    crafting_station: bbb_protocol::packets::SlotDisplaySummary {
+                        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
+                        raw_payload: vec![0],
+                        item_stack: None,
+                        tag: None,
+                    },
+                },
+            ),
             furnace: None,
             stonecutter: None,
             smithing: None,
@@ -26705,9 +26716,12 @@ fn recipe_book_furnace_entry(
 }
 
 fn recipe_book_slot_display_item(item_id: i32) -> bbb_protocol::packets::SlotDisplaySummary {
+    let mut payload = bbb_protocol::codec::Encoder::new();
+    payload.write_var_i32(VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID);
+    payload.write_var_i32(item_id);
     bbb_protocol::packets::SlotDisplaySummary {
         display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID,
-        raw_payload: Vec::new(),
+        raw_payload: payload.into_inner(),
         item_stack: Some(test_item_stack(item_id, 1)),
         tag: None,
     }
@@ -26717,9 +26731,15 @@ fn recipe_book_slot_display_stack(
     item_id: i32,
     count: i32,
 ) -> bbb_protocol::packets::SlotDisplaySummary {
+    let mut payload = bbb_protocol::codec::Encoder::new();
+    payload.write_var_i32(VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID);
+    payload.write_var_i32(item_id);
+    payload.write_var_i32(count);
+    payload.write_var_i32(0);
+    payload.write_var_i32(0);
     bbb_protocol::packets::SlotDisplaySummary {
         display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID,
-        raw_payload: Vec::new(),
+        raw_payload: payload.into_inner(),
         item_stack: Some(test_item_stack(item_id, count)),
         tag: None,
     }

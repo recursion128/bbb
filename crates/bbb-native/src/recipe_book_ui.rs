@@ -4,10 +4,10 @@ use std::collections::{BTreeMap, BTreeSet};
 use bbb_item_model::NativeItemRuntime;
 use bbb_protocol::packets::{
     CraftingRecipeDisplaySummary, DataComponentPatchSummary, IngredientSummary, ItemStackSummary,
-    RecipeDisplayEntry, RecipeDisplaySummary, SlotDisplaySummary, SlotDisplayValue,
+    RecipeDisplayEntry, SlotDisplaySummary, SlotDisplayValue,
 };
 use bbb_protocol::recipe_wire_types::{vanilla_recipe_book_search_category_ids, RecipeBookType};
-use bbb_world::WorldStore;
+use bbb_world::{for_each_shaped_recipe_grid_slot, WorldStore};
 
 pub(crate) const RECIPE_BOOK_ITEMS_PER_PAGE: usize = 20;
 pub(crate) const RECIPE_BOOK_OVERLAY_BUTTON_SIZE: i32 = 25;
@@ -34,9 +34,6 @@ const CRAFTING_TABLE_PLAYER_MAIN_START: i16 = 10;
 const CRAFTING_TABLE_PLAYER_MAIN_END: i16 = 37;
 const CRAFTING_TABLE_HOTBAR_START: i16 = 37;
 const CRAFTING_TABLE_HOTBAR_END: i16 = 46;
-const FURNACE_INGREDIENT_SLOT: i16 = 0;
-const FURNACE_FUEL_SLOT: i16 = 1;
-const FURNACE_RESULT_SLOT: i16 = 2;
 const FURNACE_CRAFT_SLOT_START: i16 = 0;
 const FURNACE_CRAFT_SLOT_END: i16 = 3;
 const FURNACE_PLAYER_MAIN_START: i16 = 3;
@@ -76,13 +73,6 @@ pub(crate) struct RecipeBookOverlayItem<'a> {
     pub(crate) x: i32,
     pub(crate) y: i32,
     pub(crate) stack: Cow<'a, ItemStackSummary>,
-}
-
-#[derive(Debug, Clone)]
-pub(crate) struct RecipeBookGhostSlot<'a> {
-    pub(crate) slot_id: i16,
-    pub(crate) stack: Cow<'a, ItemStackSummary>,
-    pub(crate) is_result: bool,
 }
 
 impl<'a> RecipeBookUiCollection<'a> {
@@ -391,106 +381,6 @@ pub(crate) fn clamped_recipe_book_page(page: usize, collection_count: usize) -> 
     page.min(page_count.saturating_sub(1))
 }
 
-pub(crate) fn crafting_recipe_book_ghost_slots<'a>(
-    display: &'a RecipeDisplaySummary,
-    grid: RecipeBookCraftingGrid,
-    item_tag_entries: Option<&BTreeMap<String, Vec<i32>>>,
-    slot_select_index: usize,
-) -> Vec<RecipeBookGhostSlot<'a>> {
-    let Some(crafting) = display.crafting.as_ref() else {
-        return Vec::new();
-    };
-    let mut slots = Vec::new();
-    match crafting {
-        CraftingRecipeDisplaySummary::Shapeless {
-            ingredients,
-            result,
-            ..
-        } => {
-            push_recipe_book_ghost_result_at_slot(
-                0,
-                result,
-                item_tag_entries,
-                slot_select_index,
-                &mut slots,
-            );
-            let slot_count = ingredients
-                .len()
-                .min((grid.width * grid.height).max(0) as usize);
-            for (index, ingredient) in ingredients.iter().take(slot_count).enumerate() {
-                push_recipe_book_ghost_input(
-                    ingredient,
-                    1 + index as i32,
-                    item_tag_entries,
-                    slot_select_index,
-                    &mut slots,
-                );
-            }
-        }
-        CraftingRecipeDisplaySummary::Shaped {
-            width,
-            height,
-            ingredients,
-            result,
-            ..
-        } => {
-            push_recipe_book_ghost_result_at_slot(
-                0,
-                result,
-                item_tag_entries,
-                slot_select_index,
-                &mut slots,
-            );
-            place_shaped_recipe_ghost_inputs(
-                grid,
-                *width,
-                *height,
-                ingredients,
-                item_tag_entries,
-                slot_select_index,
-                &mut slots,
-            );
-        }
-    }
-    slots
-}
-
-pub(crate) fn furnace_recipe_book_ghost_slots<'a>(
-    display: &'a RecipeDisplaySummary,
-    item_tag_entries: Option<&BTreeMap<String, Vec<i32>>>,
-    slot_select_index: usize,
-    fuel_slot_empty: bool,
-) -> Vec<RecipeBookGhostSlot<'a>> {
-    let Some(furnace) = display.furnace.as_ref() else {
-        return Vec::new();
-    };
-    let mut slots = Vec::new();
-    push_recipe_book_ghost_result_at_slot(
-        FURNACE_RESULT_SLOT,
-        &furnace.result,
-        item_tag_entries,
-        slot_select_index,
-        &mut slots,
-    );
-    push_recipe_book_ghost_input(
-        &furnace.ingredient,
-        i32::from(FURNACE_INGREDIENT_SLOT),
-        item_tag_entries,
-        slot_select_index,
-        &mut slots,
-    );
-    if fuel_slot_empty {
-        push_recipe_book_ghost_input(
-            &furnace.fuel,
-            i32::from(FURNACE_FUEL_SLOT),
-            item_tag_entries,
-            slot_select_index,
-            &mut slots,
-        );
-    }
-    slots
-}
-
 fn recipe_book_overlay_items_for_entry<'a>(
     entry: &'a RecipeDisplayEntry,
     item_tag_entries: Option<&BTreeMap<String, Vec<i32>>>,
@@ -518,10 +408,8 @@ fn recipe_book_overlay_items_for_entry<'a>(
                 ..
             } => {
                 for_each_shaped_recipe_grid_slot(
-                    RecipeBookCraftingGrid {
-                        width: 3,
-                        height: 3,
-                    },
+                    3,
+                    3,
                     *width,
                     *height,
                     ingredients,
@@ -586,121 +474,6 @@ fn recipe_book_result_stack(entry: &RecipeDisplayEntry) -> Option<&ItemStackSumm
 
 fn recipe_book_furnace_result_stack(entry: &RecipeDisplayEntry) -> Option<&ItemStackSummary> {
     entry.display.furnace.as_ref()?.result.item_stack.as_ref()
-}
-
-fn push_recipe_book_ghost_result_at_slot<'a>(
-    slot_id: i16,
-    display: &'a SlotDisplaySummary,
-    item_tag_entries: Option<&BTreeMap<String, Vec<i32>>>,
-    slot_select_index: usize,
-    slots: &mut Vec<RecipeBookGhostSlot<'a>>,
-) {
-    let Some(stack) =
-        slot_display_item_stack_at_index(display, item_tag_entries, slot_select_index)
-    else {
-        return;
-    };
-    slots.push(RecipeBookGhostSlot {
-        slot_id,
-        stack,
-        is_result: true,
-    });
-}
-
-fn push_recipe_book_ghost_input<'a>(
-    display: &'a SlotDisplaySummary,
-    slot_id: i32,
-    item_tag_entries: Option<&BTreeMap<String, Vec<i32>>>,
-    slot_select_index: usize,
-    slots: &mut Vec<RecipeBookGhostSlot<'a>>,
-) {
-    let (Ok(slot_id), Some(stack)) = (
-        i16::try_from(slot_id),
-        slot_display_item_stack_at_index(display, item_tag_entries, slot_select_index),
-    ) else {
-        return;
-    };
-    slots.push(RecipeBookGhostSlot {
-        slot_id,
-        stack,
-        is_result: false,
-    });
-}
-
-fn place_shaped_recipe_ghost_inputs<'a>(
-    grid: RecipeBookCraftingGrid,
-    recipe_width: i32,
-    recipe_height: i32,
-    ingredients: &'a [SlotDisplaySummary],
-    item_tag_entries: Option<&BTreeMap<String, Vec<i32>>>,
-    slot_select_index: usize,
-    slots: &mut Vec<RecipeBookGhostSlot<'a>>,
-) {
-    for_each_shaped_recipe_grid_slot(
-        grid,
-        recipe_width,
-        recipe_height,
-        ingredients,
-        |ingredient, grid_index, _grid_x, _grid_y| {
-            push_recipe_book_ghost_input(
-                ingredient,
-                1 + grid_index,
-                item_tag_entries,
-                slot_select_index,
-                slots,
-            );
-        },
-    );
-}
-
-fn for_each_shaped_recipe_grid_slot<'a>(
-    grid: RecipeBookCraftingGrid,
-    recipe_width: i32,
-    recipe_height: i32,
-    ingredients: &'a [SlotDisplaySummary],
-    mut visit: impl FnMut(&'a SlotDisplaySummary, i32, i32, i32),
-) {
-    if grid.width <= 0 || grid.height <= 0 || recipe_width <= 0 || recipe_height <= 0 {
-        return;
-    }
-    let mut ingredients = ingredients.iter().peekable();
-    let mut grid_index = 0;
-    let mut grid_y = 0;
-    while grid_y < grid.height {
-        let should_center_y = (recipe_height as f32) < (grid.height as f32 / 2.0);
-        let start_y = (grid.height as f32 / 2.0 - recipe_height as f32 / 2.0).floor() as i32;
-        if should_center_y && start_y > grid_y {
-            grid_index += grid.width;
-            grid_y += 1;
-        }
-
-        let mut grid_x = 0;
-        while grid_x < grid.width {
-            if ingredients.peek().is_none() {
-                return;
-            }
-            let should_center_x = (recipe_width as f32) < (grid.width as f32 / 2.0);
-            let start_x = (grid.width as f32 / 2.0 - recipe_width as f32 / 2.0).floor() as i32;
-            let mut total_recipe_width_in_grid = recipe_width;
-            let mut add_ingredient_to_slot = grid_x < recipe_width;
-            if should_center_x {
-                total_recipe_width_in_grid = start_x + recipe_width;
-                add_ingredient_to_slot = start_x <= grid_x && grid_x < start_x + recipe_width;
-            }
-
-            if add_ingredient_to_slot {
-                let ingredient = ingredients.next().expect("ingredient presence checked");
-                visit(ingredient, grid_index, grid_x, grid_y);
-            } else if total_recipe_width_in_grid == grid_x {
-                grid_index += grid.width - grid_x;
-                break;
-            }
-
-            grid_index += 1;
-            grid_x += 1;
-        }
-        grid_y += 1;
-    }
 }
 
 fn slot_display_item_stack_at_index<'a>(

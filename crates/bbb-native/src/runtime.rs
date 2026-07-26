@@ -182,15 +182,13 @@ use crate::{
     particle_runtime::{LocalPlayerActionParticleState, NativeParticleRuntime, ParticleEventSink},
     recipe_book_ui::{
         clamped_recipe_book_page, crafting_recipe_book_collections,
-        crafting_recipe_book_ghost_slots, crafting_recipe_book_tab_has_highlighted_recipe,
-        furnace_recipe_book_collections, furnace_recipe_book_ghost_slots,
+        crafting_recipe_book_tab_has_highlighted_recipe, furnace_recipe_book_collections,
         furnace_recipe_book_tab_has_highlighted_recipe, recipe_book_overlay_entry_position,
         recipe_book_overlay_max_row, recipe_book_overlay_rows, recipe_book_page_count,
         recipe_book_slot_select_index, RecipeBookCraftingGrid, RecipeBookFurnaceFamily,
-        RecipeBookGhostSlot, RecipeBookOverlayEntry, RecipeBookUiCollection,
-        RECIPE_BOOK_ITEMS_PER_PAGE, RECIPE_BOOK_OVERLAY_BACKGROUND_BORDER,
-        RECIPE_BOOK_OVERLAY_BUTTON_DRAW_SIZE, RECIPE_BOOK_OVERLAY_BUTTON_SIZE,
-        RECIPE_BOOK_OVERLAY_ITEM_SCALE,
+        RecipeBookOverlayEntry, RecipeBookUiCollection, RECIPE_BOOK_ITEMS_PER_PAGE,
+        RECIPE_BOOK_OVERLAY_BACKGROUND_BORDER, RECIPE_BOOK_OVERLAY_BUTTON_DRAW_SIZE,
+        RECIPE_BOOK_OVERLAY_BUTTON_SIZE, RECIPE_BOOK_OVERLAY_ITEM_SCALE,
     },
     remote_debug::remote_debug_gizmos,
     resource_pack_runtime::ServerResourcePackRuntime,
@@ -9193,22 +9191,35 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
     } else {
         Vec::new()
     };
-    let inventory_tooltip = hud_inventory_tooltip(
+    let creative = world.gameplay().game_type == GameType::Creative.id();
+    let inventory_tooltip = hud_recipe_book_ghost_tooltip(
         world,
         item_runtime,
+        layout.background,
         hovered_slot_id,
         &layout.slots,
-        container,
         local_state.advanced_item_tooltips,
-        world.gameplay().game_type == GameType::Creative.id(),
-    );
+        creative,
+        partial_tick,
+    )
+    .or_else(|| {
+        hud_inventory_tooltip(
+            world,
+            item_runtime,
+            hovered_slot_id,
+            &layout.slots,
+            container,
+            local_state.advanced_item_tooltips,
+            creative,
+        )
+    });
     let tooltip = match layout.background {
         InventoryScreenBackground::Merchant => hud_merchant_trade_tooltip(
             world,
             item_runtime,
             local_state.cursor_position,
             local_state.advanced_item_tooltips,
-            world.gameplay().game_type == GameType::Creative.id(),
+            creative,
         )
         .or(inventory_tooltip),
         InventoryScreenBackground::Stonecutter => hud_stonecutter_recipe_tooltip(
@@ -9219,7 +9230,7 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
                 .stonecutter_recipe_scroll_row
                 .unwrap_or_default(),
             local_state.advanced_item_tooltips,
-            world.gameplay().game_type == GameType::Creative.id(),
+            creative,
         )
         .or(inventory_tooltip),
         _ => inventory_tooltip,
@@ -9952,23 +9963,19 @@ fn hud_recipe_book_ghost_layers_and_items(
     if world.open_container_id() != Some(ghost_recipe.container_id) {
         return (Vec::new(), Vec::new());
     }
-    let Some(display) = ghost_recipe.recipe_display.as_ref() else {
+    if recipe_book_type_for_background(background).is_none() {
         return (Vec::new(), Vec::new());
-    };
-
-    let item_tag_entries = world
-        .registry_tags("minecraft:item")
-        .map(|registry| &registry.tags);
-    let ghost_slots = hud_recipe_book_ghost_slots_for_background(
-        world,
-        background,
-        display,
-        item_tag_entries,
-        recipe_book_slot_select_index(world, partial_tick),
-    );
+    }
+    let slot_select_index = recipe_book_slot_select_index(world, partial_tick);
     let mut fill_layers = Vec::new();
     let mut ghost_items = Vec::new();
-    for ghost_slot in ghost_slots {
+    for ghost_slot in &ghost_recipe.slots {
+        let Some(stack) = ghost_slot
+            .items
+            .get(slot_select_index % ghost_slot.items.len().max(1))
+        else {
+            continue;
+        };
         let Some(layout_slot) = layout_slots
             .iter()
             .find(|layout_slot| layout_slot.slot_id == ghost_slot.slot_id)
@@ -9978,7 +9985,7 @@ fn hud_recipe_book_ghost_layers_and_items(
         let Some(mut icon) = hud_item_icon_for_stack(
             world,
             Some(item_runtime),
-            &ghost_slot.stack,
+            stack,
             None,
             false,
             false,
@@ -10028,41 +10035,6 @@ fn hud_recipe_book_ghost_layers_and_items(
     }
 
     (fill_layers, ghost_items)
-}
-
-fn hud_recipe_book_ghost_slots_for_background<'a>(
-    world: &WorldStore,
-    background: InventoryScreenBackground,
-    display: &'a bbb_protocol::packets::RecipeDisplaySummary,
-    item_tag_entries: Option<&BTreeMap<String, Vec<i32>>>,
-    slot_select_index: usize,
-) -> Vec<RecipeBookGhostSlot<'a>> {
-    if let Some(grid) = recipe_book_crafting_grid_for_background(background) {
-        return crafting_recipe_book_ghost_slots(
-            display,
-            grid,
-            item_tag_entries,
-            slot_select_index,
-        );
-    }
-    if recipe_book_furnace_family_for_background(background).is_some() {
-        return furnace_recipe_book_ghost_slots(
-            display,
-            item_tag_entries,
-            slot_select_index,
-            furnace_recipe_book_fuel_slot_is_empty(world),
-        );
-    }
-    Vec::new()
-}
-
-fn furnace_recipe_book_fuel_slot_is_empty(world: &WorldStore) -> bool {
-    world
-        .inventory()
-        .open_container
-        .as_ref()
-        .and_then(|container| container.slots.iter().find(|slot| slot.slot == 1))
-        .is_none_or(|slot| item_stack_is_empty(&slot.item))
 }
 
 fn recipe_book_result_slot_fill_is_big(background: InventoryScreenBackground) -> bool {
@@ -12886,6 +12858,46 @@ fn hud_inventory_tooltip(
         .find(|layout| layout.slot_id == slot_id)?;
     let slot = container.slots.iter().find(|slot| slot.slot == slot_id)?;
     let tooltip = hud_item_tooltip(world, item_runtime, &slot.item, advanced, creative)?;
+    Some(HudInventoryTooltip {
+        slot_id: u16::try_from(slot_id).ok()?,
+        x: layout.x,
+        y: layout.y,
+        style: tooltip.style,
+        lines: tooltip.lines,
+    })
+}
+
+fn hud_recipe_book_ghost_tooltip(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    background: InventoryScreenBackground,
+    hovered_slot_id: Option<i16>,
+    layout_slots: &[crate::input::InventorySlotLayout],
+    advanced: bool,
+    creative: bool,
+    partial_tick: f32,
+) -> Option<HudInventoryTooltip> {
+    let book_type = recipe_book_type_for_background(background)?;
+    if !recipe_book_type_settings(world, book_type).open {
+        return None;
+    }
+    let ghost_recipe = world.last_ghost_recipe()?;
+    if world.open_container_id() != Some(ghost_recipe.container_id) {
+        return None;
+    }
+    let slot_id = hovered_slot_id?;
+    let ghost_slot = ghost_recipe
+        .slots
+        .iter()
+        .find(|slot| slot.slot_id == slot_id)?;
+    let slot_select_index = recipe_book_slot_select_index(world, partial_tick);
+    let item = ghost_slot
+        .items
+        .get(slot_select_index % ghost_slot.items.len().max(1))?;
+    let layout = layout_slots
+        .iter()
+        .find(|layout| layout.slot_id == slot_id)?;
+    let tooltip = hud_item_tooltip(world, item_runtime, item, advanced, creative)?;
     Some(HudInventoryTooltip {
         slot_id: u16::try_from(slot_id).ok()?,
         x: layout.x,
