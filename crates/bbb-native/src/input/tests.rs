@@ -902,6 +902,12 @@ fn grant_debug_recreate_nbt_permission(world: &mut WorldStore) {
     assert!(world.local_player_has_gamemaster_permission());
 }
 
+fn grant_gamemaster_block_permission(world: &mut WorldStore) {
+    grant_debug_recreate_nbt_permission(world);
+    set_player_abilities(world, false, true);
+    assert!(world.local_player_can_use_gamemaster_blocks());
+}
+
 fn handle_text_input_without_world(
     input: &mut ClientInputState,
     counters: &mut NetCounters,
@@ -1235,7 +1241,7 @@ fn insert_empty_chunk_for_block(world: &mut WorldStore, pos: BlockPos) {
 
 fn world_with_command_block(pos: BlockPos, command: &str) -> WorldStore {
     let mut world = world_with_debug_player(false);
-    grant_debug_recreate_nbt_permission(&mut world);
+    grant_gamemaster_block_permission(&mut world);
     let block_state_id = bbb_world::vanilla_block_state_id(
         "minecraft:command_block",
         &BTreeMap::from([
@@ -1301,7 +1307,7 @@ fn world_with_command_block(pos: BlockPos, command: &str) -> WorldStore {
 
 fn world_with_command_minecart(entity_id: i32, command: &str, output: &str) -> WorldStore {
     let mut world = world_with_debug_player(false);
-    grant_debug_recreate_nbt_permission(&mut world);
+    grant_gamemaster_block_permission(&mut world);
     world.apply_add_entity(AddEntity {
         id: entity_id,
         uuid: Uuid::from_u128(u128::try_from(entity_id).unwrap()),
@@ -1348,7 +1354,7 @@ fn apply_command_minecart_metadata(
 
 fn world_with_test_block(pos: BlockPos, mode: TestBlockMode, message: &str) -> WorldStore {
     let mut world = world_with_debug_player(false);
-    grant_debug_recreate_nbt_permission(&mut world);
+    grant_gamemaster_block_permission(&mut world);
     let block_state_id = bbb_world::vanilla_block_state_id(
         "minecraft:test_block",
         &BTreeMap::from([("mode".to_string(), mode.serialized_name().to_string())]),
@@ -1412,7 +1418,7 @@ fn world_with_test_block(pos: BlockPos, mode: TestBlockMode, message: &str) -> W
 
 fn world_with_test_instance_block(pos: BlockPos) -> WorldStore {
     let mut world = world_with_debug_player(false);
-    grant_debug_recreate_nbt_permission(&mut world);
+    grant_gamemaster_block_permission(&mut world);
     let block_state_id =
         bbb_world::vanilla_block_state_id("minecraft:test_instance_block", &BTreeMap::new())
             .expect("vanilla test-instance block state");
@@ -1477,7 +1483,7 @@ fn world_with_test_instance_block(pos: BlockPos) -> WorldStore {
 
 fn world_with_structure_block(pos: BlockPos) -> WorldStore {
     let mut world = world_with_debug_player(false);
-    grant_debug_recreate_nbt_permission(&mut world);
+    grant_gamemaster_block_permission(&mut world);
     let block_state_id = bbb_world::vanilla_block_state_id(
         "minecraft:structure_block",
         &BTreeMap::from([("mode".to_string(), "load".to_string())]),
@@ -1553,7 +1559,7 @@ fn world_with_structure_block(pos: BlockPos) -> WorldStore {
 
 fn world_with_jigsaw_block(pos: BlockPos, orientation: &str) -> WorldStore {
     let mut world = world_with_debug_player(false);
-    grant_debug_recreate_nbt_permission(&mut world);
+    grant_gamemaster_block_permission(&mut world);
     let block_state_id = bbb_world::vanilla_block_state_id(
         "minecraft:jigsaw",
         &BTreeMap::from([("orientation".to_string(), orientation.to_string())]),
@@ -18837,6 +18843,10 @@ fn test_block_editor_right_click_cancel_and_escape_never_send_editor_packet() {
     ));
     assert!(input.test_block_editor_is_active());
     assert!(matches!(rx.try_recv(), Ok(NetCommand::UseItemOn(_))));
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::Swing(InteractionHand::MainHand)
+    );
     handle_key_input(
         &mut input,
         &mut counters,
@@ -19179,6 +19189,10 @@ fn test_instance_block_editor_cancel_escape_and_right_click_use_are_exact() {
         ))
     ));
     assert!(matches!(rx.try_recv(), Ok(NetCommand::UseItemOn(_))));
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::Swing(InteractionHand::MainHand)
+    );
 
     handle_key_input(
         &mut input,
@@ -19883,6 +19897,10 @@ fn structure_block_editor_filters_names_cycles_modes_and_cancels_without_packet(
     ));
     assert!(input.structure_block_editor_is_active());
     assert!(matches!(rx.try_recv(), Ok(NetCommand::UseItemOn(_))));
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::Swing(InteractionHand::MainHand)
+    );
     handle_key_input(
         &mut input,
         &mut counters,
