@@ -145,6 +145,7 @@ pub(super) fn block_state_for_placement(
         | VanillaGetStateForPlacementOverride::BeehiveBlock
         | VanillaGetStateForPlacementOverride::CarvedPumpkinBlock
         | VanillaGetStateForPlacementOverride::ChiseledBookShelfBlock
+        | VanillaGetStateForPlacementOverride::DiodeBlock
         | VanillaGetStateForPlacementOverride::EndPortalFrameBlock
         | VanillaGetStateForPlacementOverride::GlazedTerracottaBlock
         | VanillaGetStateForPlacementOverride::LecternBlock

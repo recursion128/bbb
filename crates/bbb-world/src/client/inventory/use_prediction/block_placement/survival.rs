@@ -533,7 +533,9 @@ const fn block_can_survive_rule(owner: VanillaCanSurviveOverride) -> Option<Bloc
         VanillaCanSurviveOverride::BaseCoralPlantTypeBlock
         | VanillaCanSurviveOverride::DoorBlock
         | VanillaCanSurviveOverride::LeafLitterBlock => BlockCanSurviveRule::BelowFull,
-        VanillaCanSurviveOverride::BaseRailBlock => BlockCanSurviveRule::BelowRigid,
+        VanillaCanSurviveOverride::BaseRailBlock | VanillaCanSurviveOverride::DiodeBlock => {
+            BlockCanSurviveRule::BelowRigid
+        }
         VanillaCanSurviveOverride::BigDripleafBlock => BlockCanSurviveRule::BigDripleaf,
         VanillaCanSurviveOverride::BigDripleafStemBlock => BlockCanSurviveRule::BigDripleafStem,
         VanillaCanSurviveOverride::BellBlock => BlockCanSurviveRule::Bell,

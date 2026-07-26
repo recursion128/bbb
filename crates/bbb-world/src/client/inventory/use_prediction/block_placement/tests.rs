@@ -20,11 +20,11 @@ use bbb_protocol::{
         VANILLA_ITEM_AMETHYST_CLUSTER_ID, VANILLA_ITEM_BAMBOO_ID, VANILLA_ITEM_BELL_ID,
         VANILLA_ITEM_BROWN_MUSHROOM_BLOCK_ID, VANILLA_ITEM_CANDLE_ID, VANILLA_ITEM_CHEST_ID,
         VANILLA_ITEM_CHORUS_PLANT_ID, VANILLA_ITEM_COBBLESTONE_WALL_ID,
-        VANILLA_ITEM_COCOA_BEANS_ID, VANILLA_ITEM_COMMAND_BLOCK_ID, VANILLA_ITEM_CREAKING_HEART_ID,
-        VANILLA_ITEM_FARMLAND_ID, VANILLA_ITEM_FURNACE_ID, VANILLA_ITEM_HEAVY_CORE_ID,
-        VANILLA_ITEM_IRON_BARS_ID, VANILLA_ITEM_LADDER_ID, VANILLA_ITEM_LANTERN_ID,
-        VANILLA_ITEM_MANGROVE_PROPAGULE_ID, VANILLA_ITEM_NOTE_BLOCK_ID, VANILLA_ITEM_OAK_DOOR_ID,
-        VANILLA_ITEM_OAK_FENCE_GATE_ID, VANILLA_ITEM_OAK_FENCE_ID,
+        VANILLA_ITEM_COCOA_BEANS_ID, VANILLA_ITEM_COMMAND_BLOCK_ID, VANILLA_ITEM_COMPARATOR_ID,
+        VANILLA_ITEM_CREAKING_HEART_ID, VANILLA_ITEM_FARMLAND_ID, VANILLA_ITEM_FURNACE_ID,
+        VANILLA_ITEM_HEAVY_CORE_ID, VANILLA_ITEM_IRON_BARS_ID, VANILLA_ITEM_LADDER_ID,
+        VANILLA_ITEM_LANTERN_ID, VANILLA_ITEM_MANGROVE_PROPAGULE_ID, VANILLA_ITEM_NOTE_BLOCK_ID,
+        VANILLA_ITEM_OAK_DOOR_ID, VANILLA_ITEM_OAK_FENCE_GATE_ID, VANILLA_ITEM_OAK_FENCE_ID,
         VANILLA_ITEM_OAK_HANGING_SIGN_ID, VANILLA_ITEM_OAK_LEAVES_ID, VANILLA_ITEM_OAK_LOG_ID,
         VANILLA_ITEM_OAK_SIGN_ID, VANILLA_ITEM_OAK_SLAB_ID, VANILLA_ITEM_OAK_STAIRS_ID,
         VANILLA_ITEM_OAK_TRAPDOOR_ID, VANILLA_ITEM_OBSERVER_ID,
@@ -216,6 +216,49 @@ fn directional_and_axis_placement_owners_use_exact_player_and_hit_directions() {
             [("facing", "south"), ("powered", "false")]
         )
     );
+}
+
+#[test]
+fn diode_placement_uses_horizontal_facing_and_rigid_floor_support() {
+    let mut supported = placement_world();
+    set_held(&mut supported, VANILLA_ITEM_COMPARATOR_ID, 1);
+    assert!(matches!(
+        use_block(&mut supported, 62),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        supported.probe_block(TARGET).unwrap().block_state_id,
+        state_id(
+            "minecraft:comparator",
+            [
+                ("facing", "north"),
+                ("mode", "compare"),
+                ("powered", "false")
+            ],
+        )
+    );
+    assert_eq!(held(&supported).count, 0);
+
+    let mut unsupported = placement_world();
+    set_block(
+        &mut unsupported,
+        CLICKED,
+        state_id(
+            "minecraft:oak_slab",
+            [("type", "bottom"), ("waterlogged", "false")],
+        ),
+    );
+    set_held(&mut unsupported, VANILLA_ITEM_COMPARATOR_ID, 1);
+    assert_eq!(
+        use_block(&mut unsupported, 63),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Fail)
+    );
+    assert_eq!(
+        unsupported.probe_block(TARGET).unwrap().block_state_id,
+        state_id("minecraft:air", [])
+    );
+    assert_eq!(held(&unsupported).count, 1);
+    assert!(unsupported.local_block_predictions().is_empty());
 }
 
 #[test]
