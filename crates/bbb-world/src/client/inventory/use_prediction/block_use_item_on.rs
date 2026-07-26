@@ -1,8 +1,8 @@
 use super::{
-    LocalBlockUseContext, LocalInteractionParticleAction, LocalInteractionResult,
+    above, LocalBlockUseContext, LocalInteractionParticleAction, LocalInteractionResult,
     LocalInteractionSoundAction, LocalInteractionSuccess, LocalTargetUsePrediction,
 };
-use crate::WorldStore;
+use crate::{TerrainFluidKind, WorldStore};
 use bbb_protocol::{
     block_entity_types::{
         VANILLA_BLOCK_ENTITY_TYPE_CAMPFIRE_ID, VANILLA_BLOCK_ENTITY_TYPE_CHISELED_BOOKSHELF_ID,
@@ -10,14 +10,21 @@ use bbb_protocol::{
         VANILLA_BLOCK_ENTITY_TYPE_SHELF_ID, VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,
     },
     block_types::{BlockTypeCatalogEntry, VanillaBlockUseItemOnOverride, VANILLA_BLOCK_TYPES},
-    data_component_types::VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+    data_component_types::{
+        VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID, VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID,
+        VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
+    },
     item_types::{
-        vanilla_item_type, VanillaItemInteractLivingEntityOverride, VanillaItemUseOnOverride,
+        vanilla_cauldron_item_interaction, vanilla_cauldron_tag_interactions,
+        vanilla_compost_chance_bits, vanilla_item_type, VanillaCauldronInteraction,
+        VanillaCauldronKind, VanillaItemInteractLivingEntityOverride, VanillaItemUseOnOverride,
         VANILLA_ITEM_BONE_MEAL_ID, VANILLA_ITEM_FIRE_CHARGE_ID, VANILLA_ITEM_FLINT_AND_STEEL_ID,
         VANILLA_ITEM_GLOWSTONE_ID, VANILLA_ITEM_GLOW_INK_SAC_ID, VANILLA_ITEM_HONEYCOMB_ID,
         VANILLA_ITEM_INK_SAC_ID, VANILLA_ITEM_SHEARS_ID,
     },
-    packets::{Direction as ProtocolDirection, InteractionHand},
+    packets::{Direction as ProtocolDirection, InteractionHand, ItemStackSummary},
+    potion_types::vanilla_potion,
 };
 use std::collections::BTreeMap;
 
@@ -25,6 +32,8 @@ const VANILLA_BOOKSHELF_BOOKS_ITEM_TAG: &str = "minecraft:bookshelf_books";
 const VANILLA_LECTERN_BOOKS_ITEM_TAG: &str = "minecraft:lectern_books";
 const VANILLA_NOTEBLOCK_TOP_INSTRUMENTS_ITEM_TAG: &str = "minecraft:noteblock_top_instruments";
 const VANILLA_AXES_ITEM_TAG: &str = "minecraft:axes";
+const VANILLA_WATER_FLUID_TAG: &str = "minecraft:water";
+const VANILLA_WATER_POTION: &str = "minecraft:water";
 
 impl WorldStore {
     pub(super) fn predict_local_block_use_item_on(
@@ -43,6 +52,45 @@ impl WorldStore {
         }
 
         match owner {
+            VanillaBlockUseItemOnOverride::AbstractCauldronBlock => {
+                let Some(cauldron) =
+                    vanilla_cauldron_kind(block_type.resource_id, &block.block_properties)
+                else {
+                    return unsupported();
+                };
+                let Some(stack) = self.local_item_in_hand(hand).cloned() else {
+                    return try_empty_hand();
+                };
+                let Some(item_id) = stack.item_id else {
+                    return try_empty_hand();
+                };
+                for tag_interaction in vanilla_cauldron_tag_interactions(cauldron) {
+                    let Some(in_tag) = self
+                        .local_item_in_hand_is_in_tag(hand, tag_interaction.item_tag_resource_id)
+                    else {
+                        return unsupported();
+                    };
+                    if in_tag {
+                        return self.predict_local_cauldron_interaction(
+                            tag_interaction.interaction,
+                            cauldron,
+                            &block.block_properties,
+                            &stack,
+                            context.pos,
+                        );
+                    }
+                }
+                let Some(interaction) = vanilla_cauldron_item_interaction(cauldron, item_id) else {
+                    return try_empty_hand();
+                };
+                self.predict_local_cauldron_interaction(
+                    interaction,
+                    cauldron,
+                    &block.block_properties,
+                    &stack,
+                    context.pos,
+                )
+            }
             VanillaBlockUseItemOnOverride::ChiseledBookShelfBlock => {
                 if self.block_entity_type_id_at(context.pos)
                     != Some(VANILLA_BLOCK_ENTITY_TYPE_CHISELED_BOOKSHELF_ID)
@@ -213,10 +261,21 @@ impl WorldStore {
                     try_empty_hand()
                 }
             }
-            VanillaBlockUseItemOnOverride::ComposterBlock
-                if self.local_item_in_hand(hand).is_none() =>
-            {
-                try_empty_hand()
+            VanillaBlockUseItemOnOverride::ComposterBlock => {
+                let Some(level) = integer_property(&block.block_properties, "level", 0..=8) else {
+                    return unsupported();
+                };
+                let Some(item_id) = self
+                    .local_item_in_hand(hand)
+                    .and_then(|stack| stack.item_id)
+                else {
+                    return try_empty_hand();
+                };
+                if level < 8 && vanilla_compost_chance_bits(item_id).is_some() {
+                    success()
+                } else {
+                    try_empty_hand()
+                }
             }
             VanillaBlockUseItemOnOverride::CopperGolemStatueBlock => {
                 let Some(is_axe) = self.local_item_in_hand_is_in_tag(hand, VANILLA_AXES_ITEM_TAG)
@@ -484,6 +543,123 @@ impl WorldStore {
         Some(item_ids.contains(&item_id))
     }
 
+    fn predict_local_cauldron_interaction(
+        &self,
+        interaction: VanillaCauldronInteraction,
+        cauldron: VanillaCauldronKind,
+        properties: &BTreeMap<String, String>,
+        stack: &ItemStackSummary,
+        pos: crate::BlockPos,
+    ) -> LocalTargetUsePrediction {
+        let level = match cauldron {
+            VanillaCauldronKind::Water | VanillaCauldronKind::PowderSnow => {
+                let Some(level) = integer_property(properties, "level", 1..=3) else {
+                    return LocalTargetUsePrediction::UnsupportedBlockUseItemOn(
+                        VanillaBlockUseItemOnOverride::AbstractCauldronBlock,
+                    );
+                };
+                Some(level)
+            }
+            VanillaCauldronKind::Empty | VanillaCauldronKind::Lava => None,
+        };
+        match interaction {
+            VanillaCauldronInteraction::CleanBanner => {
+                if self.item_stack_has_effective_component(
+                    stack,
+                    VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID,
+                ) && !stack.component_patch.banner_pattern_layers.is_empty()
+                {
+                    success()
+                } else {
+                    try_empty_hand()
+                }
+            }
+            VanillaCauldronInteraction::CleanDyedItem => {
+                if self.item_stack_has_effective_component(
+                    stack,
+                    VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID,
+                ) {
+                    success()
+                } else {
+                    try_empty_hand()
+                }
+            }
+            VanillaCauldronInteraction::CleanShulkerBox
+            | VanillaCauldronInteraction::PourWaterBucket
+            | VanillaCauldronInteraction::TakeLavaBucket
+            | VanillaCauldronInteraction::TakeWaterBottle => success(),
+            VanillaCauldronInteraction::PourLavaBucket
+            | VanillaCauldronInteraction::PourPowderSnowBucket => {
+                match self.local_block_fluid_is_in_tag(above(pos), VANILLA_WATER_FLUID_TAG) {
+                    Some(true) => consume(),
+                    Some(false) => success(),
+                    None => LocalTargetUsePrediction::UnsupportedBlockUseItemOn(
+                        VanillaBlockUseItemOnOverride::AbstractCauldronBlock,
+                    ),
+                }
+            }
+            VanillaCauldronInteraction::PourWaterPotionIntoEmpty => {
+                match self.item_stack_is_water_potion(stack) {
+                    Some(true) => success(),
+                    Some(false) => try_empty_hand(),
+                    None => LocalTargetUsePrediction::UnsupportedBlockUseItemOn(
+                        VanillaBlockUseItemOnOverride::AbstractCauldronBlock,
+                    ),
+                }
+            }
+            VanillaCauldronInteraction::PourWaterPotionIntoWater => {
+                if level == Some(3) {
+                    return try_empty_hand();
+                }
+                match self.item_stack_is_water_potion(stack) {
+                    Some(true) => success(),
+                    Some(false) => try_empty_hand(),
+                    None => LocalTargetUsePrediction::UnsupportedBlockUseItemOn(
+                        VanillaBlockUseItemOnOverride::AbstractCauldronBlock,
+                    ),
+                }
+            }
+            VanillaCauldronInteraction::TakePowderSnowBucket
+            | VanillaCauldronInteraction::TakeWaterBucket => {
+                if level == Some(3) {
+                    success()
+                } else {
+                    try_empty_hand()
+                }
+            }
+        }
+    }
+
+    fn item_stack_is_water_potion(&self, stack: &ItemStackSummary) -> Option<bool> {
+        if !self.item_stack_has_effective_component(
+            stack,
+            VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
+        ) {
+            return Some(false);
+        }
+        let Some(potion_id) = self.effective_item_stack(stack).component_patch.potion_id else {
+            return Some(false);
+        };
+        Some(vanilla_potion(potion_id)?.resource_id == VANILLA_WATER_POTION)
+    }
+
+    fn local_block_fluid_is_in_tag(&self, pos: crate::BlockPos, tag: &str) -> Option<bool> {
+        let block = self.probe_block(pos)?;
+        let fluid_resource_id = match block.fluid {
+            None => "minecraft:empty",
+            Some(fluid) => match (fluid.kind, fluid.amount == 8 && !fluid.falling) {
+                (TerrainFluidKind::Water, true) => "minecraft:water",
+                (TerrainFluidKind::Water, false) => "minecraft:flowing_water",
+                (TerrainFluidKind::Lava, true) => "minecraft:lava",
+                (TerrainFluidKind::Lava, false) => "minecraft:flowing_lava",
+            },
+        };
+        let holder_id =
+            self.registry_holder_id_by_resource_id("minecraft:fluid", fluid_resource_id)?;
+        self.registry_holder_ids_for_tag("minecraft:fluid", tag)
+            .map(|holder_ids| holder_ids.contains(&holder_id))
+    }
+
     fn predict_local_block_item_replacement(
         &mut self,
         owner: VanillaBlockUseItemOnOverride,
@@ -546,6 +722,19 @@ fn block_type_for_item(item_id: i32) -> Option<&'static BlockTypeCatalogEntry> {
         .block_item_behavior?
         .block_type_id;
     VANILLA_BLOCK_TYPES.get(usize::try_from(block_type_id).ok()?)
+}
+
+fn vanilla_cauldron_kind(
+    block_name: &str,
+    properties: &BTreeMap<String, String>,
+) -> Option<VanillaCauldronKind> {
+    match block_name {
+        "minecraft:cauldron" if properties.is_empty() => Some(VanillaCauldronKind::Empty),
+        "minecraft:water_cauldron" => Some(VanillaCauldronKind::Water),
+        "minecraft:lava_cauldron" if properties.is_empty() => Some(VanillaCauldronKind::Lava),
+        "minecraft:powder_snow_cauldron" => Some(VanillaCauldronKind::PowderSnow),
+        _ => None,
+    }
 }
 
 fn item_stack_is_sign_applicator(item_id: Option<i32>) -> Option<bool> {

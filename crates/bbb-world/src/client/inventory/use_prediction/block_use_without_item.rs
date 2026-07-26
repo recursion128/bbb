@@ -817,23 +817,33 @@ mod tests {
         block_types::{
             vanilla_block_type_for_resource_id, VANILLA_BLOCK_POTTED_POPPY_ID, VANILLA_BLOCK_TYPES,
         },
-        data_component_types::VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+        data_component_types::{
+            VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID,
+            VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID,
+            VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+            VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
+        },
         game_types::{
             VANILLA_GAME_TYPE_ADVENTURE_ID, VANILLA_GAME_TYPE_CREATIVE_ID,
             VANILLA_GAME_TYPE_SURVIVAL_ID,
         },
         item_types::{
-            VANILLA_ITEM_BONE_MEAL_ID, VANILLA_ITEM_BOOK_ID, VANILLA_ITEM_CANDLE_ID,
-            VANILLA_ITEM_FIRE_CHARGE_ID, VANILLA_ITEM_FLINT_AND_STEEL_ID,
-            VANILLA_ITEM_GLOWSTONE_ID, VANILLA_ITEM_IRON_AXE_ID, VANILLA_ITEM_MUSIC_DISC_13_ID,
+            VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_BONE_MEAL_ID, VANILLA_ITEM_BOOK_ID,
+            VANILLA_ITEM_BUCKET_ID, VANILLA_ITEM_CANDLE_ID, VANILLA_ITEM_FIRE_CHARGE_ID,
+            VANILLA_ITEM_FLINT_AND_STEEL_ID, VANILLA_ITEM_GLASS_BOTTLE_ID,
+            VANILLA_ITEM_GLOWSTONE_ID, VANILLA_ITEM_IRON_AXE_ID, VANILLA_ITEM_LAVA_BUCKET_ID,
+            VANILLA_ITEM_LEATHER_HELMET_ID, VANILLA_ITEM_MUSIC_DISC_13_ID,
             VANILLA_ITEM_NOTE_BLOCK_ID, VANILLA_ITEM_OAK_LOG_ID, VANILLA_ITEM_POPPY_ID,
-            VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_SHEARS_ID, VANILLA_ITEM_STONE_ID,
+            VANILLA_ITEM_POTION_ID, VANILLA_ITEM_POWDER_SNOW_BUCKET_ID, VANILLA_ITEM_RED_DYE_ID,
+            VANILLA_ITEM_SHEARS_ID, VANILLA_ITEM_STONE_ID, VANILLA_ITEM_WATER_BUCKET_ID,
+            VANILLA_ITEM_WHITE_BANNER_ID, VANILLA_ITEM_WHITE_SHULKER_BOX_ID,
         },
         packets::{
-            BlockPos as ProtocolBlockPos, BlockUpdate, CommonPlayerSpawnInfo, Direction,
-            EntityEvent, InteractionHand, ItemStackSummary, PlayLogin, PlayerHealth,
-            RecipePropertySetSummary, RegistryTags, SetChunkCacheCenter, SetPlayerInventory,
-            TagNetworkPayload, UpdateRecipes, UpdateTags,
+            BannerPatternLayerSummary, BlockPos as ProtocolBlockPos, BlockUpdate,
+            CommonPlayerSpawnInfo, DataComponentPatchSummary, Direction, EntityEvent,
+            InteractionHand, ItemStackSummary, PlayLogin, PlayerHealth, RecipePropertySetSummary,
+            RegistryTags, SetChunkCacheCenter, SetPlayerInventory, TagNetworkPayload,
+            UpdateRecipes, UpdateTags,
         },
     };
     use std::collections::BTreeSet;
@@ -1683,6 +1693,458 @@ mod tests {
     }
 
     #[test]
+    fn composter_item_on_uses_generated_membership_without_client_mutation() {
+        let mut world = block_use_world(
+            "minecraft:composter",
+            [("level", "7")],
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        set_main_hand(&mut world, VANILLA_ITEM_APPLE_ID);
+        assert_eq!(
+            use_item_on(
+                &mut world,
+                "minecraft:composter",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                147,
+            ),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        assert_eq!(block_property(&world, "level").as_deref(), Some("7"));
+        assert_eq!(
+            world.local_item_in_hand(InteractionHand::MainHand),
+            Some(&item_stack(VANILLA_ITEM_APPLE_ID, 1))
+        );
+        assert!(world.local_block_predictions().is_empty());
+
+        set_test_block(
+            &mut world,
+            state_id_with_property("minecraft:composter", "level", "8"),
+        );
+        assert_eq!(
+            use_item_on(
+                &mut world,
+                "minecraft:composter",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                148,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::TryEmptyHandInteraction)
+        );
+        set_test_block(
+            &mut world,
+            state_id_with_property("minecraft:composter", "level", "6"),
+        );
+        set_main_hand(&mut world, VANILLA_ITEM_STONE_ID);
+        assert_eq!(
+            use_item_on(
+                &mut world,
+                "minecraft:composter",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                149,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::TryEmptyHandInteraction)
+        );
+    }
+
+    #[test]
+    fn cauldron_generated_item_routes_apply_exact_level_and_potion_predicates() {
+        let mut empty =
+            block_use_world_first_state("minecraft:cauldron", VANILLA_GAME_TYPE_SURVIVAL_ID as i8);
+        set_main_hand(&mut empty, VANILLA_ITEM_WATER_BUCKET_ID);
+        assert_eq!(
+            use_item_on(
+                &mut empty,
+                "minecraft:cauldron",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                150,
+            ),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        assert!(empty.local_block_predictions().is_empty());
+
+        let water_potion =
+            bbb_protocol::potion_types::vanilla_potion_for_resource_id("minecraft:water").unwrap();
+        set_main_hand_stack(
+            &mut empty,
+            ItemStackSummary {
+                item_id: Some(VANILLA_ITEM_POTION_ID),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    added: 1,
+                    added_type_ids: vec![VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID],
+                    potion_id: Some(water_potion.id),
+                    ..DataComponentPatchSummary::default()
+                },
+            },
+        );
+        assert_eq!(
+            use_item_on(
+                &mut empty,
+                "minecraft:cauldron",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                151,
+            ),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        let mundane =
+            bbb_protocol::potion_types::vanilla_potion_for_resource_id("minecraft:mundane")
+                .unwrap();
+        set_main_hand_stack(
+            &mut empty,
+            ItemStackSummary {
+                item_id: Some(VANILLA_ITEM_POTION_ID),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    added: 1,
+                    added_type_ids: vec![VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID],
+                    potion_id: Some(mundane.id),
+                    ..DataComponentPatchSummary::default()
+                },
+            },
+        );
+        assert_eq!(
+            use_item_on(
+                &mut empty,
+                "minecraft:cauldron",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                152,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::TryEmptyHandInteraction)
+        );
+
+        let mut water = block_use_world(
+            "minecraft:water_cauldron",
+            [("level", "2")],
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        set_main_hand(&mut water, VANILLA_ITEM_BUCKET_ID);
+        assert_eq!(
+            use_item_on(
+                &mut water,
+                "minecraft:water_cauldron",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                153,
+            ),
+            LocalTargetUsePrediction::UnsupportedBlockUseItemOn(
+                bbb_protocol::block_types::VanillaBlockUseItemOnOverride::AbstractCauldronBlock
+            ),
+            "tag dispatch precedes direct item dispatch"
+        );
+        apply_cauldron_remove_dye_tag(&mut water, Vec::new());
+        set_main_hand_stack(
+            &mut water,
+            ItemStackSummary {
+                item_id: Some(VANILLA_ITEM_POTION_ID),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    added: 1,
+                    added_type_ids: vec![VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID],
+                    potion_id: Some(water_potion.id),
+                    ..DataComponentPatchSummary::default()
+                },
+            },
+        );
+        assert_eq!(
+            use_item_on(
+                &mut water,
+                "minecraft:water_cauldron",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                154,
+            ),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        set_main_hand(&mut water, VANILLA_ITEM_BUCKET_ID);
+        assert_eq!(
+            use_item_on(
+                &mut water,
+                "minecraft:water_cauldron",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                155,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::TryEmptyHandInteraction)
+        );
+        set_test_block(
+            &mut water,
+            state_id_with_property("minecraft:water_cauldron", "level", "3"),
+        );
+        assert_eq!(
+            use_item_on(
+                &mut water,
+                "minecraft:water_cauldron",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                156,
+            ),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        set_main_hand_stack(
+            &mut water,
+            ItemStackSummary {
+                item_id: Some(VANILLA_ITEM_POTION_ID),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    added: 1,
+                    added_type_ids: vec![VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID],
+                    potion_id: Some(water_potion.id),
+                    ..DataComponentPatchSummary::default()
+                },
+            },
+        );
+        assert_eq!(
+            use_item_on(
+                &mut water,
+                "minecraft:water_cauldron",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                157,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::TryEmptyHandInteraction)
+        );
+        set_main_hand(&mut water, VANILLA_ITEM_GLASS_BOTTLE_ID);
+        assert_eq!(
+            use_item_on(
+                &mut water,
+                "minecraft:water_cauldron",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                158,
+            ),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        assert!(water.local_block_predictions().is_empty());
+    }
+
+    #[test]
+    fn cauldron_tag_and_component_handlers_preserve_dispatch_priority() {
+        let mut water = block_use_world(
+            "minecraft:water_cauldron",
+            [("level", "1")],
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        apply_cauldron_remove_dye_tag(&mut water, vec![VANILLA_ITEM_LEATHER_HELMET_ID]);
+        set_main_hand_stack(
+            &mut water,
+            ItemStackSummary {
+                item_id: Some(VANILLA_ITEM_LEATHER_HELMET_ID),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    added: 1,
+                    added_type_ids: vec![VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID],
+                    dyed_color: Some(0x12_34_56),
+                    ..DataComponentPatchSummary::default()
+                },
+            },
+        );
+        assert_eq!(
+            use_item_on(
+                &mut water,
+                "minecraft:water_cauldron",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                157,
+            ),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        set_main_hand(&mut water, VANILLA_ITEM_LEATHER_HELMET_ID);
+        assert_eq!(
+            use_item_on(
+                &mut water,
+                "minecraft:water_cauldron",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                158,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::TryEmptyHandInteraction)
+        );
+
+        set_main_hand_stack(
+            &mut water,
+            ItemStackSummary {
+                item_id: Some(VANILLA_ITEM_WHITE_BANNER_ID),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    added: 1,
+                    added_type_ids: vec![VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID],
+                    banner_pattern_layers: vec![BannerPatternLayerSummary {
+                        registry_id: Some(0),
+                        asset_id: None,
+                        translation_key: None,
+                        color_id: 0,
+                    }],
+                    ..DataComponentPatchSummary::default()
+                },
+            },
+        );
+        assert_eq!(
+            use_item_on(
+                &mut water,
+                "minecraft:water_cauldron",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                159,
+            ),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        set_main_hand(&mut water, VANILLA_ITEM_WHITE_BANNER_ID);
+        assert_eq!(
+            use_item_on(
+                &mut water,
+                "minecraft:water_cauldron",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                160,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::TryEmptyHandInteraction)
+        );
+        set_main_hand(&mut water, VANILLA_ITEM_WHITE_SHULKER_BOX_ID);
+        assert_eq!(
+            use_item_on(
+                &mut water,
+                "minecraft:water_cauldron",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                161,
+            ),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+    }
+
+    #[test]
+    fn cauldron_lava_and_powder_bucket_results_follow_water_above_and_level() {
+        let mut empty =
+            block_use_world_first_state("minecraft:cauldron", VANILLA_GAME_TYPE_SURVIVAL_ID as i8);
+        set_main_hand(&mut empty, VANILLA_ITEM_LAVA_BUCKET_ID);
+        assert_eq!(
+            use_item_on(
+                &mut empty,
+                "minecraft:cauldron",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                162,
+            ),
+            LocalTargetUsePrediction::UnsupportedBlockUseItemOn(
+                bbb_protocol::block_types::VanillaBlockUseItemOnOverride::AbstractCauldronBlock
+            )
+        );
+        let water_holder = empty
+            .registry_holder_id_by_resource_id("minecraft:fluid", "minecraft:water")
+            .unwrap();
+        let flowing_water_holder = empty
+            .registry_holder_id_by_resource_id("minecraft:fluid", "minecraft:flowing_water")
+            .unwrap();
+        empty.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: "minecraft:fluid".to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: "minecraft:water".to_string(),
+                    entries: vec![water_holder, flowing_water_holder],
+                }],
+            }],
+        });
+        assert_eq!(
+            use_item_on(
+                &mut empty,
+                "minecraft:cauldron",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                163,
+            ),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        set_block_at(
+            &mut empty,
+            above(POS),
+            state_id("minecraft:water", [("level", "0")]),
+        );
+        assert_eq!(
+            use_item_on(
+                &mut empty,
+                "minecraft:cauldron",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                164,
+            ),
+            success(LocalInteractionSuccess::consume(false))
+        );
+
+        let mut powder = block_use_world(
+            "minecraft:powder_snow_cauldron",
+            [("level", "2")],
+            VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
+        );
+        set_main_hand(&mut powder, VANILLA_ITEM_BUCKET_ID);
+        assert_eq!(
+            use_item_on(
+                &mut powder,
+                "minecraft:powder_snow_cauldron",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                165,
+            ),
+            LocalTargetUsePrediction::Result(LocalInteractionResult::TryEmptyHandInteraction)
+        );
+        set_test_block(
+            &mut powder,
+            state_id_with_property("minecraft:powder_snow_cauldron", "level", "3"),
+        );
+        assert_eq!(
+            use_item_on(
+                &mut powder,
+                "minecraft:powder_snow_cauldron",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                166,
+            ),
+            success(LocalInteractionSuccess::client_item_interaction())
+        );
+        set_main_hand(&mut powder, VANILLA_ITEM_POWDER_SNOW_BUCKET_ID);
+        assert_eq!(
+            use_item_on(
+                &mut powder,
+                "minecraft:powder_snow_cauldron",
+                InteractionHand::MainHand,
+                Direction::Up,
+                [0.5, 1.0, 0.5],
+                167,
+            ),
+            LocalTargetUsePrediction::UnsupportedBlockUseItemOn(
+                bbb_protocol::block_types::VanillaBlockUseItemOnOverride::AbstractCauldronBlock
+            ),
+            "filled powder bucket still needs synchronized water fluid tag"
+        );
+    }
+
+    #[test]
     fn tag_gated_item_on_owners_use_synchronized_item_tags() {
         let tags = UpdateTags {
             registries: vec![RegistryTags {
@@ -2444,10 +2906,23 @@ mod tests {
     }
 
     fn set_main_hand(world: &mut WorldStore, item_id: i32) {
-        assert!(world.apply_set_player_inventory(SetPlayerInventory {
-            slot: 0,
-            item: item_stack(item_id, 1),
-        }));
+        set_main_hand_stack(world, item_stack(item_id, 1));
+    }
+
+    fn set_main_hand_stack(world: &mut WorldStore, item: ItemStackSummary) {
+        assert!(world.apply_set_player_inventory(SetPlayerInventory { slot: 0, item }));
+    }
+
+    fn apply_cauldron_remove_dye_tag(world: &mut WorldStore, entries: Vec<i32>) {
+        world.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: "minecraft:item".to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: "minecraft:cauldron_can_remove_dye".to_string(),
+                    entries,
+                }],
+            }],
+        });
     }
 
     fn block_property(world: &WorldStore, property: &str) -> Option<String> {
