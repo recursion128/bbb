@@ -32,6 +32,7 @@ use bbb_protocol::{
         VANILLA_ITEM_STONE_ID, VANILLA_ITEM_SUNFLOWER_ID, VANILLA_ITEM_TUBE_CORAL_FAN_ID,
         VANILLA_ITEM_WAXED_COPPER_CHEST_ID, VANILLA_ITEM_WAXED_OXIDIZED_COPPER_CHEST_ID,
         VANILLA_ITEM_WAXED_WEATHERED_COPPER_CHEST_ID, VANILLA_ITEM_WHITE_BED_ID,
+        VANILLA_ITEM_WHITE_CONCRETE_POWDER_ID,
     },
     packets::{
         BlockPos as ProtocolBlockPos, BlockUpdate, CommonPlayerSpawnInfo,
@@ -42,6 +43,7 @@ use bbb_protocol::{
 
 mod attachments;
 mod connections;
+mod fluids;
 mod plants;
 
 const CLICKED: BlockPos = BlockPos { x: 0, y: 8, z: 0 };

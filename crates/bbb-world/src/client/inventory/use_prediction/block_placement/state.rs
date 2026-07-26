@@ -3,8 +3,8 @@ use std::collections::BTreeMap;
 use bbb_protocol::{
     block_state_types::vanilla_block_default_state_id,
     block_types::{
-        vanilla_block_type, BlockTypeCatalogEntry, VanillaGetStateForPlacementOverride,
-        VANILLA_BLOCK_BAMBOO_SAPLING_ID,
+        vanilla_block_type, vanilla_concrete_block_type_id_for_powder, BlockTypeCatalogEntry,
+        VanillaGetStateForPlacementOverride, VANILLA_BLOCK_BAMBOO_SAPLING_ID,
     },
     packets::Direction,
 };
@@ -25,6 +25,7 @@ use super::context::{
     horizontal_direction, nearest_directions, opposite, placement_directions, relative,
     rotation_segment, world_click_y, DirectionAxis,
 };
+use super::fluid_contact::concrete_powder_solidifies;
 use crate::{BlockPos, EnvironmentBiomeSampling, TerrainFluidKind};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -211,6 +212,21 @@ pub(super) fn block_state_for_placement(
         | VanillaGetStateForPlacementOverride::DispenserBlock
         | VanillaGetStateForPlacementOverride::PistonBaseBlock => {
             [("facing", direction_name(opposite(nearest)))]
+        }
+        VanillaGetStateForPlacementOverride::ConcretePowderBlock => {
+            let Some(solidifies) = concrete_powder_solidifies(world, target_pos) else {
+                return BlockPlacementState::Unsupported;
+            };
+            if !solidifies {
+                return BlockPlacementState::State(default_state_id);
+            }
+            let Some(concrete_block_type_id) =
+                vanilla_concrete_block_type_id_for_powder(block_type.id)
+            else {
+                return BlockPlacementState::Unsupported;
+            };
+            return vanilla_block_default_state_id(concrete_block_type_id)
+                .map_or(BlockPlacementState::Unsupported, BlockPlacementState::State);
         }
         VanillaGetStateForPlacementOverride::ObserverBlock => [("facing", direction_name(nearest))],
         VanillaGetStateForPlacementOverride::RotatedPillarBlock

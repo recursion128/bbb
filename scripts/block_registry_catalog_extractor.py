@@ -510,6 +510,58 @@ def extract_block_replaceable_membership(
     }
 
 
+def extract_concrete_powder_targets(
+    declarations: Sequence[dict],
+) -> dict[str, str]:
+    """Extract each ``ConcretePowderBlock`` registration's concrete block."""
+
+    fields = {declaration["field"] for declaration in declarations}
+    targets: dict[str, str] = {}
+    for declaration in declarations:
+        if block_factory_class(declaration) != "ConcretePowderBlock":
+            continue
+        initializer = declaration["initializer"]
+        arguments = initializer.get("arguments", [])
+        if len(arguments) != 3:
+            raise BlockRegistryCatalogExtractionError(
+                f"Blocks.{declaration['field']}: ConcretePowderBlock registration "
+                f"has {len(arguments)} arguments"
+            )
+        creations = [
+            fact
+            for fact in _walk_expression_facts(arguments[1])
+            if fact.get("kind") == "object_creation_expression"
+            and fact.get("name") == "ConcretePowderBlock"
+        ]
+        if len(creations) != 1:
+            raise BlockRegistryCatalogExtractionError(
+                f"Blocks.{declaration['field']}: expected exactly one "
+                f"ConcretePowderBlock constructor, got {len(creations)}"
+            )
+        constructor_arguments = creations[0].get("arguments", [])
+        if len(constructor_arguments) != 2:
+            raise BlockRegistryCatalogExtractionError(
+                f"Blocks.{declaration['field']}: ConcretePowderBlock constructor "
+                f"has {len(constructor_arguments)} arguments"
+            )
+        concrete = constructor_arguments[0]
+        if concrete.get("kind") != "identifier":
+            raise BlockRegistryCatalogExtractionError(
+                f"Blocks.{declaration['field']}: concrete target is not a Blocks field"
+            )
+        target = concrete.get("canonical")
+        if target not in fields:
+            raise BlockRegistryCatalogExtractionError(
+                f"Blocks.{declaration['field']}: unresolved concrete target {target!r}"
+            )
+        targets[declaration["field"]] = target
+    if len(set(targets.values())) != len(targets):
+        raise BlockRegistryCatalogExtractionError(
+            "ConcretePowderBlock registrations do not have unique concrete targets"
+        )
+    return targets
+
+
 def extract_block_subclass_membership(
     declarations: Sequence[dict],
     block_class_sources: Sequence[JavaSource],

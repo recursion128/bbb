@@ -14,6 +14,7 @@ from block_registry_catalog_extractor import (  # noqa: E402
     extract_block_bonemeal_target_override_owners,
     extract_block_bucket_pickup_owners,
     extract_block_can_survive_override_owners,
+    extract_concrete_powder_targets,
     extract_block_get_state_for_placement_override_owners,
     extract_block_liquid_container_owners,
     extract_block_registry_catalog,
@@ -142,6 +143,39 @@ class BlockRegistryCatalogExtractorTests(unittest.TestCase):
                 "WAXED_OXIDIZED_COPPER_CHAIN": False,
             },
         )
+
+    def test_extracts_concrete_powder_constructor_target(self) -> None:
+        blocks = BLOCKS.replace(
+            "  static final Block OAK_STAIRS",
+            """  static final Block WHITE_CONCRETE = register(
+      "white_concrete", BlockBehaviour.Properties.of());
+  static final Block WHITE_CONCRETE_POWDER = register(
+      "white_concrete_powder",
+      p -> new ConcretePowderBlock(WHITE_CONCRETE, p),
+      BlockBehaviour.Properties.of());
+  static final Block OAK_STAIRS""",
+        )
+        extracted = extract(blocks=blocks)
+
+        self.assertEqual(
+            extract_concrete_powder_targets(extracted.declarations),
+            {"WHITE_CONCRETE_POWDER": "WHITE_CONCRETE"},
+        )
+
+    def test_rejects_unresolved_concrete_powder_target(self) -> None:
+        blocks = BLOCKS.replace(
+            "  static final Block OAK_STAIRS",
+            """  static final Block WHITE_CONCRETE_POWDER = register(
+      "white_concrete_powder",
+      p -> new ConcretePowderBlock(MISSING_CONCRETE, p),
+      BlockBehaviour.Properties.of());
+  static final Block OAK_STAIRS""",
+        )
+        with self.assertRaisesRegex(
+            BlockRegistryCatalogExtractionError,
+            "unresolved concrete target 'MISSING_CONCRETE'",
+        ):
+            extract_concrete_powder_targets(extract(blocks=blocks).declarations)
 
     def test_derives_factory_classes_and_nearest_interaction_overrides(self) -> None:
         declarations = extract().declarations
@@ -545,6 +579,12 @@ class WeatheringCopperChainBlock extends ChainBlock {}
         self.assertEqual(
             sum(item["block_entity_type"] is not None for item in extracted.declarations),
             201,
+        )
+        concrete_targets = extract_concrete_powder_targets(extracted.declarations)
+        self.assertEqual(len(concrete_targets), 16)
+        self.assertEqual(
+            concrete_targets["WHITE_CONCRETE_POWDER"],
+            "WHITE_CONCRETE",
         )
         by_name = {item["resource_id"]: item for item in extracted.declarations}
         self.assertEqual(by_name["minecraft:chest"]["block_entity_type"], "CHEST")
