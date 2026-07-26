@@ -1677,8 +1677,7 @@ fn one_prediction_sequence_tracks_each_changed_position() {
         z: -45,
     };
 
-    assert!(store.predict_local_block_state(grass, 0, 7));
-    assert!(store.predict_local_block_state(granite, 1, 7));
+    assert!(store.predict_local_block_states(&[(grass, 0), (granite, 1)], 7));
 
     assert_eq!(store.local_block_predictions().len(), 2);
     assert_eq!(store.counters().local_block_predictions_created, 2);
@@ -1696,6 +1695,31 @@ fn one_prediction_sequence_tracks_each_changed_position() {
     store.apply_block_changed_ack(ProtocolBlockChangedAck { sequence: 7 });
     assert_eq!(store.probe_block(grass).unwrap().block_state_id, 9);
     assert_eq!(store.probe_block(granite).unwrap().block_state_id, 5);
+    assert!(store.local_block_predictions().is_empty());
+}
+
+#[test]
+fn multi_block_prediction_validates_every_write_before_mutating() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+    let loaded = BlockPos {
+        x: 34,
+        y: 1,
+        z: -45,
+    };
+    let unloaded = BlockPos {
+        x: 500,
+        y: 1,
+        z: 500,
+    };
+
+    assert!(!store.predict_local_block_states(&[(loaded, 0), (unloaded, 1)], 7));
+    assert_eq!(store.probe_block(loaded).unwrap().block_state_id, 9);
     assert!(store.local_block_predictions().is_empty());
 }
 

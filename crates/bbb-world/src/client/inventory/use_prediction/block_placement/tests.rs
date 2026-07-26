@@ -6,7 +6,7 @@ use crate::{
 use bbb_protocol::{
     block_types::{
         VANILLA_BLOCK_COBBLESTONE_WALL_ID, VANILLA_BLOCK_NETHER_BRICK_FENCE_ID,
-        VANILLA_BLOCK_OAK_FENCE_ID,
+        VANILLA_BLOCK_OAK_FENCE_ID, VANILLA_BLOCK_STONE_ID,
     },
     data_component_types::VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID,
     game_types::VANILLA_GAME_TYPE_SURVIVAL_ID,
@@ -14,10 +14,11 @@ use bbb_protocol::{
         VANILLA_ITEM_AMETHYST_CLUSTER_ID, VANILLA_ITEM_CANDLE_ID, VANILLA_ITEM_CHEST_ID,
         VANILLA_ITEM_COBBLESTONE_WALL_ID, VANILLA_ITEM_COMMAND_BLOCK_ID, VANILLA_ITEM_FURNACE_ID,
         VANILLA_ITEM_HEAVY_CORE_ID, VANILLA_ITEM_IRON_BARS_ID, VANILLA_ITEM_LADDER_ID,
-        VANILLA_ITEM_LANTERN_ID, VANILLA_ITEM_OAK_FENCE_ID, VANILLA_ITEM_OAK_HANGING_SIGN_ID,
-        VANILLA_ITEM_OAK_LOG_ID, VANILLA_ITEM_OAK_SIGN_ID, VANILLA_ITEM_OAK_SLAB_ID,
-        VANILLA_ITEM_OAK_STAIRS_ID, VANILLA_ITEM_OBSERVER_ID, VANILLA_ITEM_RESPAWN_ANCHOR_ID,
-        VANILLA_ITEM_STONE_ID, VANILLA_ITEM_WHITE_BED_ID,
+        VANILLA_ITEM_LANTERN_ID, VANILLA_ITEM_OAK_DOOR_ID, VANILLA_ITEM_OAK_FENCE_ID,
+        VANILLA_ITEM_OAK_HANGING_SIGN_ID, VANILLA_ITEM_OAK_LOG_ID, VANILLA_ITEM_OAK_SIGN_ID,
+        VANILLA_ITEM_OAK_SLAB_ID, VANILLA_ITEM_OAK_STAIRS_ID, VANILLA_ITEM_OBSERVER_ID,
+        VANILLA_ITEM_RESPAWN_ANCHOR_ID, VANILLA_ITEM_SMALL_DRIPLEAF_ID, VANILLA_ITEM_STONE_ID,
+        VANILLA_ITEM_SUNFLOWER_ID, VANILLA_ITEM_WHITE_BED_ID,
     },
     packets::{
         BlockPos as ProtocolBlockPos, BlockUpdate, CommonPlayerSpawnInfo,
@@ -25,6 +26,8 @@ use bbb_protocol::{
         SetPlayerInventory, TagNetworkPayload, UpdateTags, Vec3d,
     },
 };
+
+mod connections;
 
 const CLICKED: BlockPos = BlockPos { x: 0, y: 8, z: 0 };
 const TARGET: BlockPos = BlockPos { x: 0, y: 9, z: 0 };
@@ -466,256 +469,127 @@ fn standing_and_wall_item_selects_the_exact_attachment_form() {
 }
 
 #[test]
-fn cardinal_connection_and_chest_placement_read_live_neighbours() {
-    let clicked = BlockPos { x: 4, y: 8, z: 4 };
-    let target = relative(clicked, ProtocolDirection::Up);
-    let north = relative(target, ProtocolDirection::North);
-    let east = relative(target, ProtocolDirection::East);
-    let south = relative(target, ProtocolDirection::South);
-    let west = relative(target, ProtocolDirection::West);
-
-    let mut fence = placement_world();
-    set_connection_tags(&mut fence);
-    set_block(&mut fence, clicked, state_id("minecraft:stone", []));
-    set_block(&mut fence, north, state_id("minecraft:stone", []));
-    set_block(
-        &mut fence,
-        east,
-        state_id(
-            "minecraft:oak_fence_gate",
-            [
-                ("facing", "north"),
-                ("in_wall", "false"),
-                ("open", "false"),
-                ("powered", "false"),
-            ],
-        ),
-    );
-    set_block(
-        &mut fence,
-        south,
-        state_id("minecraft:carved_pumpkin", [("facing", "north")]),
-    );
-    set_block(
-        &mut fence,
-        west,
-        state_id(
-            "minecraft:nether_brick_fence",
-            [
-                ("east", "false"),
-                ("north", "false"),
-                ("south", "false"),
-                ("waterlogged", "false"),
-                ("west", "false"),
-            ],
-        ),
-    );
-    set_held(&mut fence, VANILLA_ITEM_OAK_FENCE_ID, 1);
+fn double_high_item_predicts_each_client_side_write_and_rolls_back_together() {
+    let upper = relative(TARGET, ProtocolDirection::Up);
+    let mut flower = placement_world();
+    set_support_tag(&mut flower, "minecraft:supports_vegetation");
+    set_held(&mut flower, VANILLA_ITEM_SUNFLOWER_ID, 1);
     assert!(matches!(
-        use_block_at(&mut fence, clicked, false, 20),
+        use_block(&mut flower, 26),
         LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
     ));
     assert_eq!(
-        fence.probe_block(target).unwrap().block_state_id,
-        state_id(
-            "minecraft:oak_fence",
-            [
-                ("east", "true"),
-                ("north", "true"),
-                ("south", "false"),
-                ("waterlogged", "false"),
-                ("west", "false"),
-            ],
-        )
+        flower.probe_block(TARGET).unwrap().block_state_id,
+        state_id("minecraft:sunflower", [("half", "lower")])
+    );
+    assert_eq!(
+        flower.probe_block(upper).unwrap().block_state_id,
+        state_id("minecraft:sunflower", [("half", "upper")])
+    );
+    assert_eq!(flower.local_block_predictions().len(), 2);
+    assert!(flower
+        .local_block_predictions()
+        .iter()
+        .all(|prediction| prediction.sequence == 26));
+    flower.apply_block_changed_ack(bbb_protocol::packets::BlockChangedAck { sequence: 26 });
+    assert_eq!(
+        flower.probe_block(TARGET).unwrap().block_state_id,
+        state_id("minecraft:air", [])
+    );
+    assert_eq!(
+        flower.probe_block(upper).unwrap().block_state_id,
+        state_id("minecraft:air", [])
     );
 
-    let mut bars = placement_world();
-    set_connection_tags(&mut bars);
-    set_block(&mut bars, clicked, state_id("minecraft:stone", []));
-    set_block(&mut bars, north, state_id("minecraft:stone", []));
-    set_block(
-        &mut bars,
-        east,
-        state_id(
-            "minecraft:cobblestone_wall",
-            [
-                ("east", "none"),
-                ("north", "none"),
-                ("south", "none"),
-                ("up", "true"),
-                ("waterlogged", "false"),
-                ("west", "none"),
-            ],
-        ),
-    );
-    set_block(
-        &mut bars,
-        south,
-        state_id("minecraft:carved_pumpkin", [("facing", "north")]),
-    );
-    set_block(
-        &mut bars,
-        west,
-        state_id(
-            "minecraft:glass_pane",
-            [
-                ("east", "false"),
-                ("north", "false"),
-                ("south", "false"),
-                ("waterlogged", "false"),
-                ("west", "false"),
-            ],
-        ),
-    );
-    set_held(&mut bars, VANILLA_ITEM_IRON_BARS_ID, 1);
+    let mut dripleaf = placement_world();
+    set_support_tag(&mut dripleaf, "minecraft:supports_small_dripleaf");
+    set_block(&mut dripleaf, upper, state_id("minecraft:seagrass", []));
+    set_held(&mut dripleaf, VANILLA_ITEM_SMALL_DRIPLEAF_ID, 1);
     assert!(matches!(
-        use_block_at(&mut bars, clicked, false, 21),
+        use_block(&mut dripleaf, 27),
         LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
     ));
     assert_eq!(
-        bars.probe_block(target).unwrap().block_state_id,
+        dripleaf.probe_block(TARGET).unwrap().block_state_id,
         state_id(
-            "minecraft:iron_bars",
-            [
-                ("east", "true"),
-                ("north", "true"),
-                ("south", "false"),
-                ("waterlogged", "false"),
-                ("west", "true"),
-            ],
-        )
-    );
-
-    let mut chest = placement_world();
-    set_connection_tags(&mut chest);
-    set_block(&mut chest, clicked, state_id("minecraft:stone", []));
-    set_block(
-        &mut chest,
-        east,
-        state_id(
-            "minecraft:chest",
+            "minecraft:small_dripleaf",
             [
                 ("facing", "north"),
-                ("type", "single"),
-                ("waterlogged", "false"),
-            ],
-        ),
-    );
-    set_held(&mut chest, VANILLA_ITEM_CHEST_ID, 1);
-    assert!(matches!(
-        use_block_at(&mut chest, clicked, false, 22),
-        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
-    ));
-    assert_eq!(
-        chest.probe_block(target).unwrap().block_state_id,
-        state_id(
-            "minecraft:chest",
-            [
-                ("facing", "north"),
-                ("type", "left"),
+                ("half", "lower"),
                 ("waterlogged", "false"),
             ],
         )
     );
-
-    let mut sneaking_chest = placement_world();
-    set_connection_tags(&mut sneaking_chest);
-    set_block(
-        &mut sneaking_chest,
-        clicked,
-        state_id("minecraft:stone", []),
-    );
-    set_block(
-        &mut sneaking_chest,
-        east,
-        state_id(
-            "minecraft:chest",
-            [
-                ("facing", "north"),
-                ("type", "single"),
-                ("waterlogged", "false"),
-            ],
-        ),
-    );
-    set_held(&mut sneaking_chest, VANILLA_ITEM_CHEST_ID, 1);
-    assert!(matches!(
-        use_block_at(&mut sneaking_chest, clicked, true, 23),
-        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
-    ));
     assert_eq!(
-        sneaking_chest.probe_block(target).unwrap().block_state_id,
-        state_id(
-            "minecraft:chest",
-            [
-                ("facing", "north"),
-                ("type", "single"),
-                ("waterlogged", "false"),
-            ],
-        )
+        dripleaf.probe_block(upper).unwrap().block_state_id,
+        state_id("minecraft:water", [("level", "0")])
     );
+    assert_eq!(dripleaf.local_block_predictions().len(), 2);
 }
 
 #[test]
-fn wall_placement_projects_side_height_and_center_post_from_the_block_above() {
+fn door_item_predicts_hinge_and_both_halves_atomically() {
     let clicked = BlockPos { x: 4, y: 8, z: 4 };
-    let target = relative(clicked, ProtocolDirection::Up);
-    let north = relative(target, ProtocolDirection::North);
-    let south = relative(target, ProtocolDirection::South);
+    let lower = relative(clicked, ProtocolDirection::Up);
+    let upper = relative(lower, ProtocolDirection::Up);
+    let left = relative(lower, ProtocolDirection::East);
+    let left_upper = relative(upper, ProtocolDirection::East);
+    let mut door = placement_world();
+    set_block(&mut door, clicked, state_id("minecraft:stone", []));
+    set_block(&mut door, left, state_id("minecraft:stone", []));
+    set_block(&mut door, left_upper, state_id("minecraft:stone", []));
+    set_held(&mut door, VANILLA_ITEM_OAK_DOOR_ID, 1);
 
-    let mut uncapped = placement_world();
-    set_connection_tags(&mut uncapped);
-    set_block(&mut uncapped, clicked, state_id("minecraft:stone", []));
-    set_block(&mut uncapped, north, state_id("minecraft:stone", []));
-    set_block(&mut uncapped, south, state_id("minecraft:stone", []));
-    set_held(&mut uncapped, VANILLA_ITEM_COBBLESTONE_WALL_ID, 1);
     assert!(matches!(
-        use_block_at(&mut uncapped, clicked, false, 24),
+        use_block_at(&mut door, clicked, false, 28),
         LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
     ));
     assert_eq!(
-        uncapped.probe_block(target).unwrap().block_state_id,
+        door.probe_block(lower).unwrap().block_state_id,
         state_id(
-            "minecraft:cobblestone_wall",
+            "minecraft:oak_door",
             [
-                ("east", "none"),
-                ("north", "low"),
-                ("south", "low"),
-                ("up", "false"),
-                ("waterlogged", "false"),
-                ("west", "none"),
+                ("facing", "south"),
+                ("half", "lower"),
+                ("hinge", "left"),
+                ("open", "false"),
+                ("powered", "false"),
             ],
         )
     );
+    assert_eq!(
+        door.probe_block(upper).unwrap().block_state_id,
+        state_id(
+            "minecraft:oak_door",
+            [
+                ("facing", "south"),
+                ("half", "upper"),
+                ("hinge", "left"),
+                ("open", "false"),
+                ("powered", "false"),
+            ],
+        )
+    );
+    assert_eq!(door.local_block_predictions().len(), 2);
+    assert!(door
+        .local_block_predictions()
+        .iter()
+        .all(|prediction| prediction.sequence == 28));
 
-    let mut capped = placement_world();
-    set_connection_tags(&mut capped);
-    set_block(&mut capped, clicked, state_id("minecraft:stone", []));
-    set_block(&mut capped, north, state_id("minecraft:stone", []));
-    set_block(&mut capped, south, state_id("minecraft:stone", []));
+    let mut powered = placement_world();
+    set_block(&mut powered, clicked, state_id("minecraft:stone", []));
     set_block(
-        &mut capped,
-        relative(target, ProtocolDirection::Up),
-        state_id("minecraft:stone", []),
+        &mut powered,
+        relative(lower, ProtocolDirection::West),
+        state_id("minecraft:redstone_block", []),
     );
-    set_held(&mut capped, VANILLA_ITEM_COBBLESTONE_WALL_ID, 1);
-    assert!(matches!(
-        use_block_at(&mut capped, clicked, false, 25),
-        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
-    ));
+    set_held(&mut powered, VANILLA_ITEM_OAK_DOOR_ID, 1);
     assert_eq!(
-        capped.probe_block(target).unwrap().block_state_id,
-        state_id(
-            "minecraft:cobblestone_wall",
-            [
-                ("east", "none"),
-                ("north", "tall"),
-                ("south", "tall"),
-                ("up", "false"),
-                ("waterlogged", "false"),
-                ("west", "none"),
-            ],
-        )
+        use_block_at(&mut powered, clicked, false, 29),
+        LocalTargetUsePrediction::UnsupportedItemUseOn(VanillaItemUseOnOverride::BlockItem)
     );
+    assert!(powered.local_block_predictions().is_empty());
+    assert_eq!(held(&powered).count, 1);
 }
 
 #[test]
@@ -843,35 +717,14 @@ fn set_held(world: &mut WorldStore, item_id: i32, count: i32) {
     });
 }
 
-fn set_connection_tags(world: &mut WorldStore) {
+fn set_support_tag(world: &mut WorldStore, tag: &str) {
     world.apply_update_tags(UpdateTags {
         registries: vec![RegistryTags {
             registry: "minecraft:block".to_string(),
-            tags: vec![
-                TagNetworkPayload {
-                    tag: "minecraft:fences".to_string(),
-                    entries: vec![
-                        VANILLA_BLOCK_OAK_FENCE_ID,
-                        VANILLA_BLOCK_NETHER_BRICK_FENCE_ID,
-                    ],
-                },
-                TagNetworkPayload {
-                    tag: "minecraft:wooden_fences".to_string(),
-                    entries: vec![VANILLA_BLOCK_OAK_FENCE_ID],
-                },
-                TagNetworkPayload {
-                    tag: "minecraft:walls".to_string(),
-                    entries: vec![VANILLA_BLOCK_COBBLESTONE_WALL_ID],
-                },
-                TagNetworkPayload {
-                    tag: "minecraft:shulker_boxes".to_string(),
-                    entries: Vec::new(),
-                },
-                TagNetworkPayload {
-                    tag: "minecraft:wall_post_override".to_string(),
-                    entries: Vec::new(),
-                },
-            ],
+            tags: vec![TagNetworkPayload {
+                tag: tag.to_string(),
+                entries: vec![VANILLA_BLOCK_STONE_ID],
+            }],
         }],
     });
 }

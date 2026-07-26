@@ -10,6 +10,8 @@ use bbb_protocol::{
 
 use super::*;
 
+mod attachment;
+mod composite;
 mod connections;
 mod context;
 mod state;
@@ -50,6 +52,7 @@ impl WorldStore {
             VanillaBlockItemKind::BlockItem
             | VanillaBlockItemKind::BedItem
             | VanillaBlockItemKind::BannerItem
+            | VanillaBlockItemKind::DoubleHighBlockItem
             | VanillaBlockItemKind::PlayerHeadItem
             | VanillaBlockItemKind::SignItem
             | VanillaBlockItemKind::StandingAndWallBlockItem => {}
@@ -92,7 +95,7 @@ impl WorldStore {
                 | VanillaBlockItemKind::StandingAndWallBlockItem
         );
         let placement = if standing_and_wall {
-            state::standing_and_wall_state_for_placement(
+            attachment::standing_and_wall_state_for_placement(
                 self,
                 behavior,
                 target_pos,
@@ -151,7 +154,19 @@ impl WorldStore {
                 Some(state_id) => state_id,
                 None => return unsupported(),
             };
-        if !self.predict_local_block_state(target_pos, final_state_id, context.sequence) {
+        let mut predicted_states = vec![(target_pos, final_state_id)];
+        if behavior.kind == VanillaBlockItemKind::DoubleHighBlockItem {
+            let Some(upper_state_id) = composite::double_high_client_upper_state(
+                self,
+                block_type,
+                target_pos,
+                final_state_id,
+            ) else {
+                return unsupported();
+            };
+            predicted_states.push((relative(target_pos, ProtocolDirection::Up), upper_state_id));
+        }
+        if !self.predict_local_block_states(&predicted_states, context.sequence) {
             return unsupported();
         }
         // The cloned non-empty hand stack above freezes the same precondition

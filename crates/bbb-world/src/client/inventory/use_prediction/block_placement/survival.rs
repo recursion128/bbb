@@ -37,6 +37,7 @@ enum BlockCanSurviveRule {
     BelowLegacySolid,
     FacingLegacySolid,
     FaceAttached,
+    BelowTag(&'static str),
 }
 
 impl WorldStore {
@@ -267,6 +268,10 @@ impl WorldStore {
                     VanillaBlockSupportType::Full,
                 )
             }
+            BlockCanSurviveRule::BelowTag(tag) => {
+                let below = self.probe_block(relative(pos, Direction::Down))?;
+                self.placement_block_is_in_tag(&below, tag)
+            }
         }
     }
 
@@ -397,6 +402,7 @@ const fn block_can_survive_rule(owner: VanillaCanSurviveOverride) -> Option<Bloc
         | VanillaCanSurviveOverride::BaseCoralWallFanBlock
         | VanillaCanSurviveOverride::LadderBlock => BlockCanSurviveRule::FacingFull,
         VanillaCanSurviveOverride::BaseCoralPlantTypeBlock
+        | VanillaCanSurviveOverride::DoorBlock
         | VanillaCanSurviveOverride::LeafLitterBlock => BlockCanSurviveRule::BelowFull,
         VanillaCanSurviveOverride::BaseRailBlock => BlockCanSurviveRule::BelowRigid,
         VanillaCanSurviveOverride::BigDripleafBlock => BlockCanSurviveRule::BigDripleaf,
@@ -420,6 +426,9 @@ const fn block_can_survive_rule(owner: VanillaCanSurviveOverride) -> Option<Bloc
         | VanillaCanSurviveOverride::WallTorchBlock => BlockCanSurviveRule::FacingFull,
         VanillaCanSurviveOverride::FaceAttachedHorizontalDirectionalBlock => {
             BlockCanSurviveRule::FaceAttached
+        }
+        VanillaCanSurviveOverride::DoublePlantBlock => {
+            BlockCanSurviveRule::BelowTag("minecraft:supports_vegetation")
         }
         _ => return None,
     })

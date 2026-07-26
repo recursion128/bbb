@@ -2,12 +2,12 @@ use std::collections::BTreeMap;
 
 use bbb_protocol::{
     block_state_types::vanilla_block_default_state_id,
-    block_types::{vanilla_block_type, BlockTypeCatalogEntry, VanillaGetStateForPlacementOverride},
-    item_types::VanillaBlockItemBehavior,
+    block_types::{BlockTypeCatalogEntry, VanillaGetStateForPlacementOverride},
     packets::Direction,
 };
 
 use super::super::{LocalBlockUseContext, WorldStore};
+use super::composite::{door_placement, double_high_above_can_replace};
 use super::connections::{
     chest_placement, fence_connections, iron_bars_connections, stair_shape, wall_placement,
 };
@@ -258,6 +258,65 @@ pub(super) fn block_state_for_placement(
                 block_type,
                 default_state_id,
                 [("facing", direction_name(horizontal))],
+            );
+        }
+        VanillaGetStateForPlacementOverride::DoorBlock => {
+            let Some(above_replaceable) =
+                double_high_above_can_replace(world, target_pos, block_type, context)
+            else {
+                return BlockPlacementState::Unsupported;
+            };
+            if !above_replaceable {
+                return BlockPlacementState::Fail;
+            }
+            let Some(placement) = door_placement(world, target_pos, horizontal, context) else {
+                return BlockPlacementState::Unsupported;
+            };
+            return state_with_properties(
+                world,
+                block_type,
+                default_state_id,
+                [
+                    ("facing", direction_name(horizontal)),
+                    ("half", "lower"),
+                    ("hinge", placement.hinge),
+                    ("open", boolean_name(placement.powered)),
+                    ("powered", boolean_name(placement.powered)),
+                ],
+            );
+        }
+        VanillaGetStateForPlacementOverride::DoublePlantBlock => {
+            let Some(above_replaceable) =
+                double_high_above_can_replace(world, target_pos, block_type, context)
+            else {
+                return BlockPlacementState::Unsupported;
+            };
+            if !above_replaceable {
+                return BlockPlacementState::Fail;
+            }
+            return state_with_properties(world, block_type, default_state_id, [("half", "lower")]);
+        }
+        VanillaGetStateForPlacementOverride::SmallDripleafBlock => {
+            let Some(above_replaceable) =
+                double_high_above_can_replace(world, target_pos, block_type, context)
+            else {
+                return BlockPlacementState::Unsupported;
+            };
+            if !above_replaceable {
+                return BlockPlacementState::Fail;
+            }
+            let Some(waterlogged) = target_is_source_water(world, target_pos) else {
+                return BlockPlacementState::Unsupported;
+            };
+            return state_with_properties(
+                world,
+                block_type,
+                default_state_id,
+                [
+                    ("facing", direction_name(opposite(horizontal))),
+                    ("half", "lower"),
+                    ("waterlogged", boolean_name(waterlogged)),
+                ],
             );
         }
         VanillaGetStateForPlacementOverride::EndRodBlock => {
@@ -828,57 +887,6 @@ pub(super) fn block_state_for_placement(
     };
 
     state_with_properties(world, block_type, default_state_id, properties)
-}
-
-pub(super) fn standing_and_wall_state_for_placement(
-    world: &WorldStore,
-    behavior: VanillaBlockItemBehavior,
-    target_pos: BlockPos,
-    replace_clicked: bool,
-    context: LocalBlockUseContext,
-    attachment_direction: Direction,
-) -> BlockPlacementState {
-    let Some(primary) = vanilla_block_type(behavior.block_type_id) else {
-        return BlockPlacementState::Unsupported;
-    };
-    let Some(wall) = behavior.wall_block_type_id.and_then(vanilla_block_type) else {
-        return BlockPlacementState::Unsupported;
-    };
-    let primary_state =
-        block_state_for_placement(world, primary, target_pos, replace_clicked, context);
-    let wall_state = block_state_for_placement(world, wall, target_pos, replace_clicked, context);
-    let Some(pose) = world.local_player().pose else {
-        return BlockPlacementState::Unsupported;
-    };
-    let Some(directions) = placement_directions(pose.x_rot, pose.y_rot, context, replace_clicked)
-    else {
-        return BlockPlacementState::Unsupported;
-    };
-
-    for direction in directions {
-        if direction == opposite(attachment_direction) {
-            continue;
-        }
-        let (candidate, block_type) = if direction == attachment_direction {
-            (primary_state, primary)
-        } else {
-            (wall_state, wall)
-        };
-        let state_id = match candidate {
-            BlockPlacementState::State(state_id) => state_id,
-            BlockPlacementState::Fail => continue,
-            BlockPlacementState::Unsupported => return BlockPlacementState::Unsupported,
-        };
-        match block_type.can_survive_override {
-            None => return BlockPlacementState::State(state_id),
-            Some(owner) => match world.local_block_state_can_survive(target_pos, state_id, owner) {
-                Some(true) => return BlockPlacementState::State(state_id),
-                Some(false) => {}
-                None => return BlockPlacementState::Unsupported,
-            },
-        }
-    }
-    BlockPlacementState::Fail
 }
 
 fn state_with_properties<const N: usize>(

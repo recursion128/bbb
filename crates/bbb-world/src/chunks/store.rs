@@ -963,25 +963,67 @@ impl WorldStore {
         predicted_block_state_id: i32,
         sequence: i32,
     ) -> bool {
-        let Some(block) = self.probe_block(pos) else {
-            self.counters.local_block_predictions_failed += 1;
-            return false;
-        };
-        let server_block_state_id = block.block_state_id;
-        if server_block_state_id == predicted_block_state_id {
-            return true;
+        self.predict_local_block_states(&[(pos, predicted_block_state_id)], sequence)
+    }
+
+    /// Applies one interaction's prospective block writes as a single local
+    /// prediction transaction. Every position and state is validated before
+    /// mutation, so a multi-block placement cannot leave a partial client
+    /// state or partial prediction ledger.
+    pub fn predict_local_block_states(
+        &mut self,
+        updates: &[(BlockPos, i32)],
+        sequence: i32,
+    ) -> bool {
+        let mut prepared = Vec::with_capacity(updates.len());
+        for (index, &(pos, predicted_block_state_id)) in updates.iter().enumerate() {
+            if updates[..index]
+                .iter()
+                .any(|(previous_pos, _)| *previous_pos == pos)
+                || self
+                    .registries
+                    .block_state(predicted_block_state_id)
+                    .is_none()
+            {
+                self.counters.local_block_predictions_failed += 1;
+                return false;
+            }
+            let Some(block) = self.probe_block(pos) else {
+                self.counters.local_block_predictions_failed += 1;
+                return false;
+            };
+            prepared.push((pos, block.block_state_id, predicted_block_state_id));
         }
-        if !self.set_block_state_id(pos, predicted_block_state_id) {
-            self.counters.local_block_predictions_failed += 1;
-            return false;
+
+        let mut applied = 0;
+        for &(pos, server_block_state_id, predicted_block_state_id) in &prepared {
+            if server_block_state_id == predicted_block_state_id {
+                applied += 1;
+                continue;
+            }
+            if !self.set_block_state_id(pos, predicted_block_state_id) {
+                for &(rollback_pos, rollback_state_id, _) in prepared[..applied].iter().rev() {
+                    let _ = self.set_block_state_id(rollback_pos, rollback_state_id);
+                }
+                self.counters.local_block_predictions_failed += 1;
+                return false;
+            }
+            applied += 1;
         }
-        self.record_local_block_prediction(
-            sequence,
-            pos,
-            server_block_state_id,
-            predicted_block_state_id,
-            self.local_player.pose.map(|pose| pose.position),
-        );
+
+        let player_position = self.local_player.pose.map(|pose| pose.position);
+        for (pos, server_block_state_id, predicted_block_state_id) in prepared {
+            if server_block_state_id == predicted_block_state_id {
+                continue;
+            }
+            self.record_local_block_prediction(
+                sequence,
+                pos,
+                server_block_state_id,
+                predicted_block_state_id,
+                player_position,
+            );
+        }
         true
     }
 
