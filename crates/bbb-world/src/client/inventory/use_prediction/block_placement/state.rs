@@ -2,7 +2,10 @@ use std::collections::BTreeMap;
 
 use bbb_protocol::{
     block_state_types::vanilla_block_default_state_id,
-    block_types::{vanilla_block_type, BlockTypeCatalogEntry, VanillaGetStateForPlacementOverride},
+    block_types::{
+        vanilla_block_type, BlockTypeCatalogEntry, VanillaGetStateForPlacementOverride,
+        VANILLA_BLOCK_BAMBOO_SAPLING_ID,
+    },
     packets::Direction,
 };
 
@@ -153,6 +156,55 @@ pub(super) fn block_state_for_placement(
                 return BlockPlacementState::Unsupported;
             };
             [("facing", direction_name(facing))]
+        }
+        VanillaGetStateForPlacementOverride::BambooStalkBlock => {
+            let Some(target) = world.probe_block(target_pos) else {
+                return BlockPlacementState::Unsupported;
+            };
+            if target.fluid.is_some() {
+                return BlockPlacementState::Fail;
+            }
+            let Some(below) = world.probe_block(relative(target_pos, Direction::Down)) else {
+                return BlockPlacementState::Unsupported;
+            };
+            let Some(supported) =
+                world.placement_block_is_in_tag(&below, "minecraft:supports_bamboo")
+            else {
+                return BlockPlacementState::Unsupported;
+            };
+            if !supported {
+                return BlockPlacementState::Fail;
+            }
+            if below.block_name.as_deref() == Some("minecraft:bamboo_sapling") {
+                return BlockPlacementState::State(default_state_id);
+            }
+            if below.block_name.as_deref() == Some("minecraft:bamboo") {
+                let Some(age) = integer_property(&below.block_properties, "age") else {
+                    return BlockPlacementState::Unsupported;
+                };
+                return state_with_properties(
+                    world,
+                    block_type,
+                    default_state_id,
+                    [("age", if age > 0 { "1" } else { "0" })],
+                );
+            }
+            let Some(above) = world.probe_block(relative(target_pos, Direction::Up)) else {
+                return BlockPlacementState::Unsupported;
+            };
+            if above.block_name.as_deref() == Some("minecraft:bamboo") {
+                let Some(age) = integer_property(&above.block_properties, "age") else {
+                    return BlockPlacementState::Unsupported;
+                };
+                return state_with_properties(
+                    world,
+                    block_type,
+                    default_state_id,
+                    [("age", if age > 0 { "1" } else { "0" })],
+                );
+            }
+            return vanilla_block_default_state_id(VANILLA_BLOCK_BAMBOO_SAPLING_ID)
+                .map_or(BlockPlacementState::Unsupported, BlockPlacementState::State);
         }
         VanillaGetStateForPlacementOverride::BarrelBlock
         | VanillaGetStateForPlacementOverride::CommandBlock

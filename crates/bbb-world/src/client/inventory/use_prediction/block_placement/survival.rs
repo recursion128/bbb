@@ -28,6 +28,7 @@ enum BlockCanSurviveRule {
     BelowCenter,
     AboveCenter,
     AboveFull,
+    Bamboo,
     ChorusPlant,
     Lantern,
     MangrovePropagule,
@@ -146,6 +147,10 @@ impl WorldStore {
             BlockCanSurviveRule::AboveFull => {
                 let above = self.probe_block(relative(pos, Direction::Up))?;
                 self.placement_face_sturdy(&above, Direction::Down, VanillaBlockSupportType::Full)
+            }
+            BlockCanSurviveRule::Bamboo => {
+                let below = self.probe_block(relative(pos, Direction::Down))?;
+                self.placement_block_is_in_tag(&below, "minecraft:supports_bamboo")
             }
             BlockCanSurviveRule::ChorusPlant => {
                 let below = self.probe_block(relative(pos, Direction::Down))?;
@@ -522,6 +527,8 @@ const fn block_can_survive_rule(owner: VanillaCanSurviveOverride) -> Option<Bloc
         VanillaCanSurviveOverride::BigDripleafBlock => BlockCanSurviveRule::BigDripleaf,
         VanillaCanSurviveOverride::BigDripleafStemBlock => BlockCanSurviveRule::BigDripleafStem,
         VanillaCanSurviveOverride::BellBlock => BlockCanSurviveRule::Bell,
+        VanillaCanSurviveOverride::BambooSaplingBlock
+        | VanillaCanSurviveOverride::BambooStalkBlock => BlockCanSurviveRule::Bamboo,
         VanillaCanSurviveOverride::CandleBlock => BlockCanSurviveRule::BelowCenter,
         VanillaCanSurviveOverride::CeilingHangingSignBlock => BlockCanSurviveRule::AboveCenter,
         VanillaCanSurviveOverride::ChorusPlantBlock => BlockCanSurviveRule::ChorusPlant,

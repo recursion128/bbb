@@ -2,7 +2,9 @@ use std::collections::BTreeMap;
 
 use bbb_protocol::{
     block_state_types::vanilla_item_default_block_state_properties,
-    block_types::{vanilla_block_type, VanillaGetStateForPlacementOverride},
+    block_types::{
+        vanilla_block_type, VanillaGetStateForPlacementOverride, VANILLA_BLOCK_BAMBOO_SAPLING_ID,
+    },
     data_component_types::VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID,
     item_types::{ItemTypeCatalogEntry, VanillaBlockItemKind, VanillaItemUseOnOverride},
     packets::{Direction as ProtocolDirection, ItemStackSummary as ProtocolItemStackSummary},
@@ -133,6 +135,9 @@ impl WorldStore {
             || behavior
                 .wall_block_type_id
                 .is_some_and(|wall_block_type_id| wall_block_type_id == placed_block_type.id)
+            || block_type.get_state_for_placement_override
+                == Some(VanillaGetStateForPlacementOverride::BambooStalkBlock)
+                && placed_block_type.id == VANILLA_BLOCK_BAMBOO_SAPLING_ID
             || block_type.get_state_for_placement_override
                 == Some(VanillaGetStateForPlacementOverride::CopperChestBlock)
                 && placed_block_type.get_state_for_placement_override
