@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use bbb_protocol::{
     block_state_types::vanilla_block_default_state_id,
-    block_types::{BlockTypeCatalogEntry, VanillaGetStateForPlacementOverride},
+    block_types::{vanilla_block_type, BlockTypeCatalogEntry, VanillaGetStateForPlacementOverride},
     packets::Direction,
 };
 
@@ -13,8 +13,8 @@ use super::attachment::{
 };
 use super::composite::{door_placement, double_high_above_can_replace};
 use super::connections::{
-    chest_placement, fence_connections, fence_gate_placement, iron_bars_connections, stair_shape,
-    wall_placement,
+    chest_placement, copper_chest_placement, fence_connections, fence_gate_placement,
+    iron_bars_connections, stair_shape, wall_placement,
 };
 use super::context::{
     clockwise, direction_axis, direction_axis_name, direction_name, front_and_top_name,
@@ -444,6 +444,34 @@ pub(super) fn block_state_for_placement(
                 world,
                 block_type,
                 default_state_id,
+                [
+                    ("facing", direction_name(placement.facing)),
+                    ("type", placement.chest_type),
+                    ("waterlogged", boolean_name(waterlogged)),
+                ],
+            );
+        }
+        VanillaGetStateForPlacementOverride::CopperChestBlock => {
+            let Some(waterlogged) = target_is_source_water(world, target_pos) else {
+                return BlockPlacementState::Unsupported;
+            };
+            let Some(placement) =
+                copper_chest_placement(world, target_pos, block_type, horizontal, context)
+            else {
+                return BlockPlacementState::Unsupported;
+            };
+            let Some(placed_block_type) = vanilla_block_type(placement.block_type_id) else {
+                return BlockPlacementState::Unsupported;
+            };
+            let Some(placed_default_state_id) =
+                vanilla_block_default_state_id(placed_block_type.id)
+            else {
+                return BlockPlacementState::Unsupported;
+            };
+            return state_with_properties(
+                world,
+                placed_block_type,
+                placed_default_state_id,
                 [
                     ("facing", direction_name(placement.facing)),
                     ("type", placement.chest_type),

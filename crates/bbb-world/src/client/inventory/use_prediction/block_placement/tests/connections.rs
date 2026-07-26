@@ -191,6 +191,34 @@ fn cardinal_connection_and_chest_placement_read_live_neighbours() {
 }
 
 #[test]
+fn copper_chest_placement_uses_least_oxidized_and_matching_wax_state() {
+    assert_copper_chest_placement(
+        VANILLA_ITEM_OXIDIZED_COPPER_CHEST_ID,
+        "minecraft:exposed_copper_chest",
+        "minecraft:exposed_copper_chest",
+        26,
+    );
+    assert_copper_chest_placement(
+        VANILLA_ITEM_WAXED_OXIDIZED_COPPER_CHEST_ID,
+        "minecraft:exposed_copper_chest",
+        "minecraft:exposed_copper_chest",
+        27,
+    );
+    assert_copper_chest_placement(
+        VANILLA_ITEM_WAXED_WEATHERED_COPPER_CHEST_ID,
+        "minecraft:waxed_copper_chest",
+        "minecraft:waxed_copper_chest",
+        28,
+    );
+    assert_copper_chest_placement(
+        VANILLA_ITEM_WAXED_COPPER_CHEST_ID,
+        "minecraft:oxidized_copper_chest",
+        "minecraft:copper_chest",
+        29,
+    );
+}
+
+#[test]
 fn wall_placement_projects_side_height_and_center_post_from_the_block_above() {
     let clicked = BlockPos { x: 4, y: 8, z: 4 };
     let target = relative(clicked, ProtocolDirection::Up);
@@ -253,6 +281,49 @@ fn wall_placement_projects_side_height_and_center_post_from_the_block_above() {
     );
 }
 
+fn assert_copper_chest_placement(
+    item_id: i32,
+    neighbour_name: &str,
+    expected_name: &str,
+    sequence: i32,
+) {
+    let clicked = BlockPos { x: 4, y: 8, z: 4 };
+    let target = relative(clicked, ProtocolDirection::Up);
+    let east = relative(target, ProtocolDirection::East);
+    let mut world = placement_world();
+    set_connection_tags(&mut world);
+    set_block(&mut world, clicked, state_id("minecraft:stone", []));
+    set_block(
+        &mut world,
+        east,
+        state_id(
+            neighbour_name,
+            [
+                ("facing", "north"),
+                ("type", "single"),
+                ("waterlogged", "false"),
+            ],
+        ),
+    );
+    set_held(&mut world, item_id, 1);
+    assert!(matches!(
+        use_block_at(&mut world, clicked, false, sequence),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        world.probe_block(target).unwrap().block_state_id,
+        state_id(
+            expected_name,
+            [
+                ("facing", "north"),
+                ("type", "left"),
+                ("waterlogged", "false"),
+            ],
+        )
+    );
+    assert_eq!(held(&world).count, 0);
+}
+
 fn set_connection_tags(world: &mut WorldStore) {
     world.apply_update_tags(UpdateTags {
         registries: vec![RegistryTags {
@@ -280,6 +351,19 @@ fn set_connection_tags(world: &mut WorldStore) {
                 TagNetworkPayload {
                     tag: "minecraft:wall_post_override".to_string(),
                     entries: Vec::new(),
+                },
+                TagNetworkPayload {
+                    tag: "minecraft:copper_chests".to_string(),
+                    entries: vec![
+                        VANILLA_BLOCK_COPPER_CHEST_ID,
+                        VANILLA_BLOCK_EXPOSED_COPPER_CHEST_ID,
+                        VANILLA_BLOCK_WEATHERED_COPPER_CHEST_ID,
+                        VANILLA_BLOCK_OXIDIZED_COPPER_CHEST_ID,
+                        VANILLA_BLOCK_WAXED_COPPER_CHEST_ID,
+                        VANILLA_BLOCK_WAXED_EXPOSED_COPPER_CHEST_ID,
+                        VANILLA_BLOCK_WAXED_WEATHERED_COPPER_CHEST_ID,
+                        VANILLA_BLOCK_WAXED_OXIDIZED_COPPER_CHEST_ID,
+                    ],
                 },
             ],
         }],

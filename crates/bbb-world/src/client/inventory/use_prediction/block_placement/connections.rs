@@ -4,11 +4,12 @@ use bbb_protocol::{
         vanilla_block_type_for_resource_id, BlockTypeCatalogEntry,
         VanillaGetStateForPlacementOverride,
     },
+    item_types::{VANILLA_AXE_SCRAPEABLES, VANILLA_AXE_WAX_OFF},
     packets::Direction,
 };
 
 use super::{
-    super::{LocalBlockUseContext, WorldStore},
+    super::{find_block_transform, LocalBlockUseContext, WorldStore},
     context::{clockwise, counterclockwise, direction_axis, opposite, relative, DirectionAxis},
     signal::placement_neighbor_signal_is_proven_absent,
 };
@@ -26,6 +27,19 @@ pub(super) struct CardinalConnections {
 pub(super) struct ChestPlacement {
     pub(super) facing: Direction,
     pub(super) chest_type: &'static str,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct CopperChestPlacement {
+    pub(super) block_type_id: i32,
+    pub(super) facing: Direction,
+    pub(super) chest_type: &'static str,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ChestConnectionKind {
+    SameBlock,
+    CopperTag,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -90,7 +104,7 @@ pub(super) fn wall_placement(world: &WorldStore, pos: BlockPos) -> Option<WallPl
     let south = wall_side(world, &above, connections.south, [7.0, 9.0, 7.0, 16.0]);
     let west = wall_side(world, &above, connections.west, [0.0, 9.0, 7.0, 9.0]);
 
-    let top_neighbour_has_post = block_type(&above).is_some_and(|block_type| {
+    let top_neighbour_has_post = catalog_block_type(&above).is_some_and(|block_type| {
         block_type.get_state_for_placement_override
             == Some(VanillaGetStateForPlacementOverride::WallBlock)
             && above
@@ -131,13 +145,75 @@ pub(super) fn chest_placement(
     horizontal: Direction,
     context: LocalBlockUseContext,
 ) -> Option<ChestPlacement> {
+    chest_placement_with_connection(
+        world,
+        pos,
+        block_type,
+        horizontal,
+        context,
+        ChestConnectionKind::SameBlock,
+    )
+}
+
+pub(super) fn copper_chest_placement(
+    world: &WorldStore,
+    pos: BlockPos,
+    block_type: &BlockTypeCatalogEntry,
+    horizontal: Direction,
+    context: LocalBlockUseContext,
+) -> Option<CopperChestPlacement> {
+    let placement = chest_placement_with_connection(
+        world,
+        pos,
+        block_type,
+        horizontal,
+        context,
+        ChestConnectionKind::CopperTag,
+    )?;
+    let result_block_type_id = if placement.chest_type == "single" {
+        block_type.id
+    } else {
+        let connected_direction = match placement.chest_type {
+            "left" => clockwise(placement.facing)?,
+            "right" => counterclockwise(placement.facing)?,
+            _ => return None,
+        };
+        let connected = world.probe_block(relative(pos, connected_direction))?;
+        let connected_block_type = catalog_block_type(&connected)?;
+        if connected_block_type.get_state_for_placement_override
+            == Some(VanillaGetStateForPlacementOverride::CopperChestBlock)
+        {
+            least_oxidized_copper_chest(block_type, connected_block_type)?
+        } else {
+            block_type.id
+        }
+    };
+    Some(CopperChestPlacement {
+        block_type_id: result_block_type_id,
+        facing: placement.facing,
+        chest_type: placement.chest_type,
+    })
+}
+
+fn chest_placement_with_connection(
+    world: &WorldStore,
+    pos: BlockPos,
+    block_type: &BlockTypeCatalogEntry,
+    horizontal: Direction,
+    context: LocalBlockUseContext,
+    connection_kind: ChestConnectionKind,
+) -> Option<ChestPlacement> {
     let mut facing = opposite(horizontal);
     let mut chest_type = "single";
     if direction_axis(context.face) != DirectionAxis::Y && context.secondary_use_active {
         let neighbour_direction = opposite(context.face);
-        if let Some(neighbour_facing) =
-            candidate_chest_partner_facing(world, pos, neighbour_direction, block_type)?
-        {
+        if let Some(neighbour_facing) = candidate_chest_partner_facing(
+            world,
+            pos,
+            neighbour_direction,
+            block_type,
+            connection_kind,
+        )? {
             if direction_axis(neighbour_facing) != direction_axis(context.face) {
                 facing = neighbour_facing;
                 chest_type = if counterclockwise(facing)? == neighbour_direction {
@@ -150,12 +226,22 @@ pub(super) fn chest_placement(
     }
 
     if chest_type == "single" && !context.secondary_use_active {
-        if candidate_chest_partner_facing(world, pos, clockwise(facing)?, block_type)?
-            == Some(facing)
+        if candidate_chest_partner_facing(
+            world,
+            pos,
+            clockwise(facing)?,
+            block_type,
+            connection_kind,
+        )? == Some(facing)
         {
             chest_type = "left";
-        } else if candidate_chest_partner_facing(world, pos, counterclockwise(facing)?, block_type)?
-            == Some(facing)
+        } else if candidate_chest_partner_facing(
+            world,
+            pos,
+            counterclockwise(facing)?,
+            block_type,
+            connection_kind,
+        )? == Some(facing)
         {
             chest_type = "right";
         }
@@ -273,7 +359,7 @@ fn iron_bars_connects_to(
     if !connection_exception(world, neighbour)? && face_solid {
         return Some(true);
     }
-    let Some(block_type) = block_type(neighbour) else {
+    let Some(block_type) = catalog_block_type(neighbour) else {
         return None;
     };
     if block_type.get_state_for_placement_override
@@ -302,7 +388,7 @@ fn wall_connects_to(
     if !connection_exception(world, neighbour)? && face_solid {
         return Some(true);
     }
-    let Some(block_type) = block_type(neighbour) else {
+    let Some(block_type) = catalog_block_type(neighbour) else {
         return None;
     };
     if block_type.get_state_for_placement_override
@@ -340,7 +426,7 @@ fn fence_gate_connects_to(
     neighbour: &BlockProbe,
     direction_to_placing_block: Direction,
 ) -> Option<bool> {
-    let Some(block_type) = block_type(neighbour) else {
+    let Some(block_type) = catalog_block_type(neighbour) else {
         return None;
     };
     if block_type.get_state_for_placement_override
@@ -357,15 +443,65 @@ fn candidate_chest_partner_facing(
     pos: BlockPos,
     neighbour_direction: Direction,
     block_type: &BlockTypeCatalogEntry,
+    connection_kind: ChestConnectionKind,
 ) -> Option<Option<Direction>> {
     let neighbour = world.probe_block(relative(pos, neighbour_direction))?;
-    if neighbour.block_name.as_deref() != Some(block_type.resource_id) {
+    let can_connect = match connection_kind {
+        ChestConnectionKind::SameBlock => {
+            neighbour.block_name.as_deref() == Some(block_type.resource_id)
+        }
+        ChestConnectionKind::CopperTag => {
+            world.placement_block_is_in_tag(&neighbour, "minecraft:copper_chests")?
+        }
+    };
+    if !can_connect {
         return Some(None);
     }
     if neighbour.block_properties.get("type").map(String::as_str) != Some("single") {
         return Some(None);
     }
     direction_property(&neighbour, "facing").map(Some)
+}
+
+fn least_oxidized_copper_chest(
+    placing: &BlockTypeCatalogEntry,
+    connected: &BlockTypeCatalogEntry,
+) -> Option<i32> {
+    let (placing_unwaxed, placing_waxed) = unwaxed_block_type(placing)?;
+    let (connected_unwaxed, connected_waxed) = unwaxed_block_type(connected)?;
+    let wax_mismatch = placing_waxed != connected_waxed;
+    let placing_rank = copper_weathering_rank(placing_unwaxed)?;
+    let connected_rank = copper_weathering_rank(connected_unwaxed)?;
+    if placing_rank <= connected_rank {
+        Some(if wax_mismatch {
+            placing_unwaxed
+        } else {
+            placing.id
+        })
+    } else {
+        Some(if wax_mismatch {
+            connected_unwaxed
+        } else {
+            connected.id
+        })
+    }
+}
+
+fn unwaxed_block_type(block_type: &BlockTypeCatalogEntry) -> Option<(i32, bool)> {
+    match find_block_transform(VANILLA_AXE_WAX_OFF, block_type.id) {
+        Some(transform) => Some((transform.target_block_type_id, true)),
+        None => Some((block_type.id, false)),
+    }
+}
+
+fn copper_weathering_rank(mut block_type_id: i32) -> Option<usize> {
+    for rank in 0..=VANILLA_AXE_SCRAPEABLES.len() {
+        let Some(transform) = find_block_transform(VANILLA_AXE_SCRAPEABLES, block_type_id) else {
+            return Some(rank);
+        };
+        block_type_id = transform.target_block_type_id;
+    }
+    None
 }
 
 fn connection_exception(world: &WorldStore, block: &BlockProbe) -> Option<bool> {
@@ -395,7 +531,7 @@ fn block_type_is_in_tag(
         .map(|ids| ids.contains(&block_type.id))
 }
 
-fn block_type(block: &BlockProbe) -> Option<&'static BlockTypeCatalogEntry> {
+fn catalog_block_type(block: &BlockProbe) -> Option<&'static BlockTypeCatalogEntry> {
     block
         .block_name
         .as_deref()
@@ -432,7 +568,7 @@ fn stair_can_take_shape(
 }
 
 fn block_is_stair(block: &BlockProbe) -> bool {
-    block_type(block).is_some_and(|block_type| {
+    catalog_block_type(block).is_some_and(|block_type| {
         block_type.get_state_for_placement_override
             == Some(VanillaGetStateForPlacementOverride::StairBlock)
     })
