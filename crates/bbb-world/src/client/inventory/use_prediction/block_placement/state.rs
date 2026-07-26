@@ -17,8 +17,8 @@ use super::attachment::{
 use super::composite::{door_placement, double_high_above_can_replace};
 use super::connections::{
     chest_placement, chorus_plant_placement, copper_chest_placement, fence_connections,
-    fence_gate_placement, iron_bars_connections, mossy_carpet_placement, stair_shape,
-    wall_placement,
+    fence_gate_placement, iron_bars_connections, leaves_placement, mossy_carpet_placement,
+    stair_shape, wall_placement,
 };
 use super::context::{
     clockwise, direction_axis, direction_axis_name, direction_name, front_and_top_name,
@@ -227,6 +227,24 @@ pub(super) fn block_state_for_placement(
             };
             return vanilla_block_default_state_id(concrete_block_type_id)
                 .map_or(BlockPlacementState::Unsupported, BlockPlacementState::State);
+        }
+        VanillaGetStateForPlacementOverride::LeavesBlock => {
+            let Some(placement) = leaves_placement(world, target_pos) else {
+                return BlockPlacementState::Unsupported;
+            };
+            return state_with_owned_properties(
+                world,
+                block_type,
+                default_state_id,
+                [
+                    ("distance", placement.distance.to_string()),
+                    ("persistent", "true".to_string()),
+                    (
+                        "waterlogged",
+                        boolean_name(placement.waterlogged).to_string(),
+                    ),
+                ],
+            );
         }
         VanillaGetStateForPlacementOverride::ObserverBlock => [("facing", direction_name(nearest))],
         VanillaGetStateForPlacementOverride::RotatedPillarBlock

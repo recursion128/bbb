@@ -1,6 +1,107 @@
 use super::*;
 
 #[test]
+fn leaves_placement_computes_decay_distance_and_waterlogged_persistence() {
+    let clicked = BlockPos { x: 4, y: 8, z: 4 };
+    let target = relative(clicked, ProtocolDirection::Up);
+    let mut neighbouring_leaf = placement_world();
+    set_block_tag(
+        &mut neighbouring_leaf,
+        "minecraft:prevents_nearby_leaf_decay",
+        &[VANILLA_BLOCK_OAK_LOG_ID],
+    );
+    set_block(
+        &mut neighbouring_leaf,
+        clicked,
+        state_id("minecraft:stone", []),
+    );
+    set_block(
+        &mut neighbouring_leaf,
+        relative(target, ProtocolDirection::North),
+        state_id(
+            "minecraft:oak_leaves",
+            [
+                ("distance", "3"),
+                ("persistent", "false"),
+                ("waterlogged", "false"),
+            ],
+        ),
+    );
+    set_held(&mut neighbouring_leaf, VANILLA_ITEM_OAK_LEAVES_ID, 1);
+    assert!(matches!(
+        neighbouring_leaf.predict_local_block_use_with_hit(
+            clicked,
+            ProtocolDirection::Up,
+            [0.5, 1.0, 0.5],
+            false,
+            InteractionHand::MainHand,
+            false,
+            56,
+        ),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        neighbouring_leaf
+            .probe_block(target)
+            .unwrap()
+            .block_state_id,
+        state_id(
+            "minecraft:oak_leaves",
+            [
+                ("distance", "4"),
+                ("persistent", "true"),
+                ("waterlogged", "false"),
+            ],
+        )
+    );
+
+    let water_target = BlockPos { x: 6, y: 8, z: 6 };
+    let mut waterlogged = placement_world();
+    set_block_tag(
+        &mut waterlogged,
+        "minecraft:prevents_nearby_leaf_decay",
+        &[VANILLA_BLOCK_OAK_LOG_ID],
+    );
+    set_block(
+        &mut waterlogged,
+        water_target,
+        state_id("minecraft:water", [("level", "1")]),
+    );
+    set_block(
+        &mut waterlogged,
+        relative(water_target, ProtocolDirection::Down),
+        state_id("minecraft:oak_log", [("axis", "y")]),
+    );
+    set_held(&mut waterlogged, VANILLA_ITEM_OAK_LEAVES_ID, 1);
+    assert!(matches!(
+        waterlogged.predict_local_block_use_with_hit(
+            water_target,
+            ProtocolDirection::Up,
+            [0.5, 0.5, 0.5],
+            false,
+            InteractionHand::MainHand,
+            false,
+            57,
+        ),
+        LocalTargetUsePrediction::Result(LocalInteractionResult::Success(_))
+    ));
+    assert_eq!(
+        waterlogged
+            .probe_block(water_target)
+            .unwrap()
+            .block_state_id,
+        state_id(
+            "minecraft:oak_leaves",
+            [
+                ("distance", "1"),
+                ("persistent", "true"),
+                ("waterlogged", "true"),
+            ],
+        )
+    );
+}
+
+#[test]
 fn coral_fan_item_selects_floor_or_wall_form_with_full_water_state() {
     let mut floor = placement_world();
     set_held(&mut floor, VANILLA_ITEM_TUBE_CORAL_FAN_ID, 1);

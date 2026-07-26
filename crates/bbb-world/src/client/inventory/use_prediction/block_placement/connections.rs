@@ -13,7 +13,7 @@ use super::{
     context::{clockwise, counterclockwise, direction_axis, opposite, relative, DirectionAxis},
     signal::placement_neighbor_signal_is_proven_absent,
 };
-use crate::{terrain::block_name_is_leaves, BlockPos, BlockProbe};
+use crate::{terrain::block_name_is_leaves, BlockPos, BlockProbe, TerrainFluidKind};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct CardinalConnections {
@@ -44,6 +44,12 @@ pub(super) struct ChorusPlantPlacement {
     pub(super) east: bool,
     pub(super) south: bool,
     pub(super) west: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct LeavesPlacement {
+    pub(super) distance: i32,
+    pub(super) waterlogged: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -273,6 +279,44 @@ pub(super) fn chorus_plant_placement(
         east: chorus_connects(&east, block_type),
         south: chorus_connects(&south, block_type),
         west: chorus_connects(&west, block_type),
+    })
+}
+
+pub(super) fn leaves_placement(world: &WorldStore, pos: BlockPos) -> Option<LeavesPlacement> {
+    let target = world.probe_block(pos)?;
+    let mut distance = 7;
+    for direction in [
+        Direction::Down,
+        Direction::Up,
+        Direction::North,
+        Direction::South,
+        Direction::West,
+        Direction::East,
+    ] {
+        let neighbour = world.probe_block(relative(pos, direction))?;
+        let neighbour_distance = if world
+            .placement_block_is_in_tag(&neighbour, "minecraft:prevents_nearby_leaf_decay")?
+        {
+            0
+        } else if let Some(value) = neighbour.block_properties.get("distance") {
+            let value = value.parse::<i32>().ok()?;
+            if !(1..=7).contains(&value) {
+                return None;
+            }
+            value
+        } else {
+            7
+        };
+        distance = distance.min(neighbour_distance + 1);
+        if distance == 1 {
+            break;
+        }
+    }
+    Some(LeavesPlacement {
+        distance,
+        waterlogged: target
+            .fluid
+            .is_some_and(|fluid| fluid.kind == TerrainFluidKind::Water),
     })
 }
 
