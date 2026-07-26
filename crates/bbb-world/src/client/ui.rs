@@ -2445,8 +2445,7 @@ mod tests {
         container_store.apply_open_screen(ProtocolOpenScreen {
             container_id: 7,
             menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X1_ID,
-            title: "Container".to_string(),
-            title_styled: Vec::new(),
+            title: bbb_protocol::RichTextComponent::plain("Container"),
         });
         assert_eq!(container_store.current_dialog(), None);
         container_store.apply_clear_dialog();

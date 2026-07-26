@@ -845,8 +845,7 @@ mod tests {
         world.apply_open_screen(OpenScreen {
             container_id: 2,
             menu_type_id: bbb_protocol::menu_types::VANILLA_MENU_TYPE_ANVIL_ID,
-            title: "Anvil".to_string(),
-            title_styled: Vec::new(),
+            title: bbb_protocol::RichTextComponent::plain("Anvil"),
         });
         assert_eq!(
             runtime.select(&world, 1, 10, locator_bar(), None, None),
@@ -866,8 +865,7 @@ mod tests {
         world.apply_open_screen(OpenScreen {
             container_id: 2,
             menu_type_id: bbb_protocol::menu_types::VANILLA_MENU_TYPE_ENCHANTMENT_ID,
-            title: "Enchant".to_string(),
-            title_styled: Vec::new(),
+            title: bbb_protocol::RichTextComponent::plain("Enchant"),
         });
         assert_eq!(
             runtime.select(&world, 1, 112, locator_bar(), None, None),

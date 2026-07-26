@@ -43,8 +43,7 @@ fn open_test_container(store: &mut WorldStore, container_id: i32) {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id,
         menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X3_ID,
-        title: "Chest".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Chest"),
     });
 }
 
@@ -179,8 +178,7 @@ fn tracks_player_inventory_and_container_state() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X3_ID,
-        title: "Chest".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Chest"),
     });
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
@@ -211,7 +209,13 @@ fn tracks_player_inventory_and_container_state() {
         container.menu_type_id,
         Some(VANILLA_MENU_TYPE_GENERIC_9X3_ID)
     );
-    assert_eq!(container.title.as_deref(), Some("Chest"));
+    assert_eq!(
+        container
+            .title
+            .as_ref()
+            .map(bbb_protocol::RichTextComponent::text),
+        Some("Chest")
+    );
     assert_eq!(container.state_id, 13);
     assert_eq!(
         container.slots,
@@ -262,8 +266,7 @@ fn container_player_section_updates_mirror_into_the_backpack() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X3_ID,
-        title: "Chest".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Chest"),
     });
     // A 9x3 chest menu has 27 container slots, then main 27..54 mapping to
     // backpack 9-35 and hotbar 54..63 mapping to backpack 0-8. Vanilla's
@@ -382,8 +385,7 @@ fn container_set_data_only_updates_the_matching_active_menu() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X3_ID,
-        title: "Chest".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Chest"),
     });
     assert!(!store.apply_container_set_data(ProtocolContainerSetData {
         container_id: 8,
@@ -412,8 +414,7 @@ fn container_content_only_updates_the_matching_active_menu() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X3_ID,
-        title: "Chest".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Chest"),
     });
 
     assert!(
@@ -2052,8 +2053,7 @@ fn local_container_close_does_not_count_clientbound_close_packet() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X3_ID,
-        title: "Chest".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Chest"),
     });
 
     assert!(store.close_local_container(7));
@@ -2076,8 +2076,7 @@ fn merchant_offers_apply_only_to_matching_open_container() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_LOOM_ID,
-        title: "Merchant".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Merchant"),
     });
     assert!(!store.apply_merchant_offers(merchant_offers(7, 1)));
     assert!(store
@@ -2090,8 +2089,7 @@ fn merchant_offers_apply_only_to_matching_open_container() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
-        title: "Merchant".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Merchant"),
     });
     assert!(!store.apply_merchant_offers(merchant_offers(99, 1)));
     assert!(store.apply_merchant_offers(merchant_offers(7, 2)));
@@ -2147,8 +2145,7 @@ fn merchant_offer_scroll_offset_clamps_to_visible_window() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
-        title: "Merchant".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Merchant"),
     });
     assert!(store.apply_merchant_offers(merchant_offers(7, 8)));
 
@@ -2190,8 +2187,7 @@ fn merchant_offer_replacement_retains_exact_cost_components_and_resets_local_vie
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
-        title: "Merchant".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Merchant"),
     });
     assert!(store.apply_merchant_offers(merchant_offers(7, 8)));
     assert!(store.set_local_merchant_selected_offer(4));
@@ -2237,8 +2233,7 @@ fn build_container_click_slot_uses_open_container_state_and_cursor_item() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X3_ID,
-        title: "Chest".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Chest"),
     });
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
@@ -2424,8 +2419,7 @@ fn apply_local_beacon_pickup_enforces_payment_tag_and_single_item_limit() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_BEACON_ID,
-        title: "Beacon".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Beacon"),
     });
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
@@ -2478,8 +2472,7 @@ fn apply_local_enchantment_pickup_enforces_input_and_lapis_slot_rules() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_ENCHANTMENT_ID,
-        title: "Enchanting Table".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Enchanting Table"),
     });
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
@@ -3307,8 +3300,7 @@ fn apply_local_container_pickup_all_excludes_crafting_result_slot() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
-        title: "Crafting".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Crafting"),
     });
     let mut items =
         vec![ProtocolItemStackSummary::empty(); CRAFTING_MENU_TOTAL_SLOT_COUNT as usize];
@@ -3447,8 +3439,7 @@ fn apply_local_container_pickup_all_predicts_generic_menu() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X2_ID,
-        title: "Chest".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Chest"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 54];
     items[1] = item_stack(42, 3);
@@ -3486,8 +3477,7 @@ fn apply_local_brewing_stand_pickup_all_collects_matching_menu_and_player_stacks
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_BREWING_STAND_ID,
-        title: "Brewing Stand".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Brewing Stand"),
     });
     let mut items =
         vec![ProtocolItemStackSummary::empty(); BREWING_STAND_TOTAL_SLOT_COUNT as usize];
@@ -3524,8 +3514,7 @@ fn apply_local_merchant_pickup_all_honors_menu_wide_exclusion() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
-        title: "Merchant".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Merchant"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); MERCHANT_TOTAL_SLOT_COUNT as usize];
     items[MERCHANT_PAYMENT_SLOT_1 as usize] = item_stack(42, 2);
@@ -3796,8 +3785,7 @@ fn apply_local_container_quick_craft_predicts_generic_menu() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X2_ID,
-        title: "Chest".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Chest"),
     });
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
@@ -3855,8 +3843,7 @@ fn apply_local_brewing_stand_quick_craft_only_selects_matching_bottle_slots() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_BREWING_STAND_ID,
-        title: "Brewing Stand".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Brewing Stand"),
     });
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
@@ -3924,8 +3911,7 @@ fn apply_local_crafter_quick_craft_skips_disabled_grid_slots() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CRAFTER_3X3_ID,
-        title: "Crafter".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Crafter"),
     });
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
@@ -4775,8 +4761,7 @@ fn apply_local_generic_container_quick_move_moves_chest_to_player_reverse() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X6_ID,
-        title: "Large Chest".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Large Chest"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 90];
     items[0] = item_stack(42, 3);
@@ -4818,8 +4803,7 @@ fn apply_local_generic_container_quick_move_merges_player_to_chest_forward() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X2_ID,
-        title: "Chest".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Chest"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 54];
     items[0] = item_stack(42, 15);
@@ -4862,8 +4846,7 @@ fn apply_local_generic_3x3_quick_move_moves_dispenser_to_player_reverse() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GENERIC_3X3_ID,
-        title: "Dispenser".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Dispenser"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 45];
     items[0] = item_stack(42, 3);
@@ -4902,8 +4885,7 @@ fn apply_local_generic_3x3_quick_move_moves_player_to_dispenser_forward() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GENERIC_3X3_ID,
-        title: "Dispenser".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Dispenser"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 45];
     items[9] = item_stack(42, 3);
@@ -4942,8 +4924,7 @@ fn apply_local_crafting_menu_quick_move_moves_grid_to_player_forward() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
-        title: "Crafting".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Crafting"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 46];
     items[1] = item_stack(42, 3);
@@ -4982,8 +4963,7 @@ fn apply_local_crafting_menu_quick_move_moves_player_to_grid_then_between_player
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
-        title: "Crafting".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Crafting"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 46];
     items[10] = item_stack(42, 3);
@@ -5040,8 +5020,7 @@ fn apply_local_crafting_menu_result_quick_move_consumes_single_inputs() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
-        title: "Crafting".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Crafting"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 46];
     items[0] = item_stack(90, 1);
@@ -5083,8 +5062,7 @@ fn apply_local_crafting_menu_result_quick_move_repeats_until_inputs_empty() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
-        title: "Crafting".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Crafting"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 46];
     items[0] = item_stack(90, 1);
@@ -5128,8 +5106,7 @@ fn apply_local_crafting_menu_result_pickup_leaves_result_when_inputs_remain() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
-        title: "Crafting".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Crafting"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 46];
     items[0] = item_stack(90, 1);
@@ -5169,8 +5146,7 @@ fn apply_local_crafting_menu_result_pickup_consumes_single_inputs_to_cursor() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
-        title: "Crafting".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Crafting"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 46];
     items[0] = item_stack(90, 1);
@@ -5214,8 +5190,7 @@ fn apply_local_crafting_menu_result_places_default_remainder_in_crafting_slot() 
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
-        title: "Crafting".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Crafting"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 46];
     items[0] = item_stack(90, 1);
@@ -5257,8 +5232,7 @@ fn apply_local_crafting_menu_result_needing_remainder_inventory_insert_stays_ser
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
-        title: "Crafting".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Crafting"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 46];
     items[0] = item_stack(90, 1);
@@ -5297,8 +5271,7 @@ fn apply_local_crafting_menu_result_keeps_recipe_specific_remainders_server_auth
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
-        title: "Crafting".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Crafting"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 46];
     items[0] = item_stack(90, 1);
@@ -5333,8 +5306,7 @@ fn apply_local_crafter_quick_move_moves_grid_to_player_backwards() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CRAFTER_3X3_ID,
-        title: "Crafter".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Crafter"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 46];
     items[2] = item_stack(42, 3);
@@ -5373,8 +5345,7 @@ fn apply_local_crafter_quick_move_skips_disabled_grid_slots() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CRAFTER_3X3_ID,
-        title: "Crafter".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Crafter"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 46];
     items[9] = item_stack(42, 3);
@@ -5422,8 +5393,7 @@ fn apply_local_crafter_result_slot_requires_server_authority() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CRAFTER_3X3_ID,
-        title: "Crafter".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Crafter"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 46];
     items[CRAFTER_RESULT_SLOT as usize] = item_stack(90, 1);
@@ -5470,8 +5440,7 @@ fn apply_local_anvil_input_quick_move_moves_input_slots_to_player_forward() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_ANVIL_ID,
-        title: "Anvil".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Anvil"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 39];
     items[ANVIL_INPUT_SLOT as usize] = item_stack(42, 1);
@@ -5603,8 +5572,7 @@ fn apply_local_anvil_result_quick_move_consumes_single_input_when_cost_allows() 
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_ANVIL_ID,
-        title: "Anvil".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Anvil"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); ANVIL_TOTAL_SLOT_COUNT as usize];
     items[ANVIL_INPUT_SLOT as usize] = item_stack(42, 1);
@@ -5666,8 +5634,7 @@ fn apply_local_anvil_result_pickup_consumes_single_input_to_cursor_when_cost_all
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_ANVIL_ID,
-        title: "Anvil".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Anvil"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); ANVIL_TOTAL_SLOT_COUNT as usize];
     items[ANVIL_INPUT_SLOT as usize] = item_stack(42, 1);
@@ -5725,8 +5692,7 @@ fn apply_local_anvil_result_quick_move_keeps_low_experience_server_authoritative
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_ANVIL_ID,
-        title: "Anvil".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Anvil"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); ANVIL_TOTAL_SLOT_COUNT as usize];
     items[ANVIL_INPUT_SLOT as usize] = item_stack(42, 1);
@@ -5777,8 +5743,7 @@ fn apply_local_anvil_result_pickup_keeps_low_experience_server_authoritative() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_ANVIL_ID,
-        title: "Anvil".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Anvil"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); ANVIL_TOTAL_SLOT_COUNT as usize];
     items[ANVIL_INPUT_SLOT as usize] = item_stack(42, 1);
@@ -5830,8 +5795,7 @@ fn apply_local_anvil_result_quick_move_keeps_material_input_server_authoritative
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_ANVIL_ID,
-        title: "Anvil".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Anvil"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); ANVIL_TOTAL_SLOT_COUNT as usize];
     items[ANVIL_INPUT_SLOT as usize] = item_stack(42, 1);
@@ -5887,8 +5851,7 @@ fn apply_local_beacon_quick_move_moves_payment_slot_to_player_reverse() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_BEACON_ID,
-        title: "Beacon".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Beacon"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); BEACON_TOTAL_SLOT_COUNT as usize];
     items[BEACON_PAYMENT_SLOT as usize] = item_stack(42, 1);
@@ -5931,8 +5894,7 @@ fn apply_local_beacon_quick_move_routes_single_payment_item_to_payment_slot() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_BEACON_ID,
-        title: "Beacon".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Beacon"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); BEACON_TOTAL_SLOT_COUNT as usize];
     items[BEACON_PLAYER_MAIN_START as usize] = item_stack(42, 1);
@@ -6013,8 +5975,7 @@ fn apply_local_beacon_confirm_consumes_payment_and_updates_effect_data() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_BEACON_ID,
-        title: "Beacon".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Beacon"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); BEACON_TOTAL_SLOT_COUNT as usize];
     items[BEACON_PAYMENT_SLOT as usize] = item_stack(42, 1);
@@ -6047,8 +6008,7 @@ fn apply_local_beacon_confirm_clears_missing_secondary_effect_data() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_BEACON_ID,
-        title: "Beacon".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Beacon"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); BEACON_TOTAL_SLOT_COUNT as usize];
     items[BEACON_PAYMENT_SLOT as usize] = item_stack(42, 1);
@@ -6082,8 +6042,7 @@ fn apply_local_beacon_confirm_requires_beacon_payment() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_BEACON_ID,
-        title: "Beacon".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Beacon"),
     });
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
@@ -6110,8 +6069,7 @@ fn apply_local_beacon_confirm_requires_beacon_payment() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 8,
         menu_type_id: VANILLA_MENU_TYPE_ANVIL_ID,
-        title: "Anvil".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Anvil"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); ANVIL_TOTAL_SLOT_COUNT as usize];
     items[BEACON_PAYMENT_SLOT as usize] = item_stack(42, 1);
@@ -6233,8 +6191,7 @@ fn local_container_button_click_reproduces_loom_result_and_ui_sound() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_LOOM_ID,
-        title: "Loom".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Loom"),
     });
     let mut banner = item_stack(42, 3);
     banner.component_patch.added = 1;
@@ -6323,8 +6280,7 @@ fn local_container_button_click_rejects_loom_screen_at_six_pattern_limit() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_LOOM_ID,
-        title: "Loom".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Loom"),
     });
     let mut banner = item_stack(42, 1);
     banner.component_patch.added = 1;
@@ -6366,8 +6322,7 @@ fn local_container_button_click_matches_stonecutter_client_recipe_projection() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 8,
         menu_type_id: VANILLA_MENU_TYPE_STONECUTTER_ID,
-        title: "Stonecutter".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Stonecutter"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); STONECUTTER_TOTAL_SLOT_COUNT as usize];
     items[STONECUTTER_INPUT_SLOT as usize] = item_stack(42, 4);
@@ -6413,8 +6368,7 @@ fn local_container_button_click_enforces_enchantment_client_eligibility_only() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 9,
         menu_type_id: VANILLA_MENU_TYPE_ENCHANTMENT_ID,
-        title: "Enchant".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Enchant"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); ENCHANTMENT_TOTAL_SLOT_COUNT as usize];
     items[ENCHANTMENT_INPUT_SLOT as usize] = item_stack(42, 1);
@@ -6463,8 +6417,7 @@ fn local_container_button_click_keeps_lectern_state_server_owned() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 10,
         menu_type_id: VANILLA_MENU_TYPE_LECTERN_ID,
-        title: "Lectern".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Lectern"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 1];
     items[0] = item_stack(42, 1);
@@ -6496,8 +6449,7 @@ fn apply_local_loom_result_quick_move_consumes_single_banner_and_dye() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_LOOM_ID,
-        title: "Loom".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Loom"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); LOOM_TOTAL_SLOT_COUNT as usize];
     items[LOOM_BANNER_SLOT as usize] = item_stack(42, 1);
@@ -6551,8 +6503,7 @@ fn apply_local_loom_result_pickup_consumes_single_banner_and_dye_to_cursor() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_LOOM_ID,
-        title: "Loom".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Loom"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); LOOM_TOTAL_SLOT_COUNT as usize];
     items[LOOM_BANNER_SLOT as usize] = item_stack(42, 1);
@@ -6603,8 +6554,7 @@ fn apply_local_loom_result_quick_move_keeps_stacked_inputs_server_authoritative(
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_LOOM_ID,
-        title: "Loom".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Loom"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); LOOM_TOTAL_SLOT_COUNT as usize];
     items[LOOM_BANNER_SLOT as usize] = item_stack(42, 2);
@@ -6661,8 +6611,7 @@ fn apply_local_loom_result_pickup_keeps_pattern_item_result_server_authoritative
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_LOOM_ID,
-        title: "Loom".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Loom"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); LOOM_TOTAL_SLOT_COUNT as usize];
     items[0] = item_stack(42, 1);
@@ -6711,8 +6660,7 @@ fn apply_local_loom_quick_move_moves_input_slots_to_player_forward() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_LOOM_ID,
-        title: "Loom".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Loom"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); LOOM_TOTAL_SLOT_COUNT as usize];
     items[LOOM_BANNER_SLOT as usize] = item_stack(42, 3);
@@ -6809,8 +6757,7 @@ fn apply_local_loom_quick_move_routes_tagged_items_to_input_slots() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_LOOM_ID,
-        title: "Loom".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Loom"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); LOOM_TOTAL_SLOT_COUNT as usize];
     items[LOOM_PLAYER_MAIN_START as usize] = item_stack(42, 1);
@@ -6911,8 +6858,7 @@ fn apply_local_merchant_quick_move_moves_non_result_slots() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
-        title: "Merchant".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Merchant"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); MERCHANT_TOTAL_SLOT_COUNT as usize];
     items[MERCHANT_PAYMENT_SLOT_1 as usize] = item_stack(42, 3);
@@ -7059,8 +7005,7 @@ fn apply_local_merchant_result_quick_move_consumes_exact_selected_offer_payments
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
-        title: "Merchant".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Merchant"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); MERCHANT_TOTAL_SLOT_COUNT as usize];
     items[MERCHANT_PAYMENT_SLOT_1 as usize] = item_stack(42, 7);
@@ -7141,8 +7086,7 @@ fn apply_local_merchant_result_pickup_places_result_on_cursor_and_keeps_payable_
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
-        title: "Merchant".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Merchant"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); MERCHANT_TOTAL_SLOT_COUNT as usize];
     items[MERCHANT_PAYMENT_SLOT_1 as usize] = item_stack(42, 7);
@@ -7209,8 +7153,7 @@ fn apply_local_merchant_result_secondary_pickup_requires_server_authority() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
-        title: "Merchant".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Merchant"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); MERCHANT_TOTAL_SLOT_COUNT as usize];
     items[MERCHANT_PAYMENT_SLOT_1 as usize] = item_stack(42, 3);
@@ -7259,8 +7202,7 @@ fn apply_local_merchant_result_quick_move_consumes_overfilled_payment_remainder(
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
-        title: "Merchant".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Merchant"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); MERCHANT_TOTAL_SLOT_COUNT as usize];
     items[MERCHANT_PAYMENT_SLOT_1 as usize] = item_stack(42, 4);
@@ -7323,8 +7265,7 @@ fn apply_local_merchant_result_quick_move_repopulates_result_when_remainder_stil
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
-        title: "Merchant".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Merchant"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); MERCHANT_TOTAL_SLOT_COUNT as usize];
     items[MERCHANT_PAYMENT_SLOT_1 as usize] = item_stack(42, 7);
@@ -7392,8 +7333,7 @@ fn apply_local_merchant_result_quick_move_consumes_swapped_payment_slots() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
-        title: "Merchant".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Merchant"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); MERCHANT_TOTAL_SLOT_COUNT as usize];
     items[MERCHANT_PAYMENT_SLOT_1 as usize] = item_stack(43, 2);
@@ -7461,8 +7401,7 @@ fn apply_local_merchant_result_quick_move_clears_result_when_offer_runs_out_of_s
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
-        title: "Merchant".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Merchant"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); MERCHANT_TOTAL_SLOT_COUNT as usize];
     items[MERCHANT_PAYMENT_SLOT_1 as usize] = item_stack(42, 7);
@@ -7532,8 +7471,7 @@ fn apply_local_merchant_result_quick_move_rejects_component_predicate_cost() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
-        title: "Merchant".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Merchant"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); MERCHANT_TOTAL_SLOT_COUNT as usize];
     items[MERCHANT_PAYMENT_SLOT_1 as usize] = item_stack(42, 3);
@@ -7593,8 +7531,7 @@ fn set_local_merchant_selected_offer_autofills_payment_slots_from_offer_costs() 
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
-        title: "Merchant".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Merchant"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); MERCHANT_TOTAL_SLOT_COUNT as usize];
     items[MERCHANT_PAYMENT_SLOT_1 as usize] = item_stack(99, 2);
@@ -7668,8 +7605,7 @@ fn set_local_merchant_selected_offer_keeps_component_predicate_cost_server_autho
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
-        title: "Merchant".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Merchant"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); MERCHANT_TOTAL_SLOT_COUNT as usize];
     items[MERCHANT_PLAYER_MAIN_START as usize] = item_stack(42, 5);
@@ -7724,8 +7660,7 @@ fn apply_local_enchantment_quick_move_moves_menu_slots_to_player_reverse() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_ENCHANTMENT_ID,
-        title: "Enchanting Table".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Enchanting Table"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); ENCHANTMENT_TOTAL_SLOT_COUNT];
     items[0] = item_stack(42, 1);
@@ -7814,8 +7749,7 @@ fn apply_local_enchantment_quick_move_routes_player_items_to_lapis_and_input_slo
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_ENCHANTMENT_ID,
-        title: "Enchanting Table".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Enchanting Table"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); ENCHANTMENT_TOTAL_SLOT_COUNT as usize];
     items[ENCHANTMENT_HOTBAR_START as usize] = item_stack(43, 3);
@@ -7888,8 +7822,7 @@ fn apply_local_smithing_input_quick_move_moves_input_slots_to_player_forward() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_SMITHING_ID,
-        title: "Smithing".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Smithing"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); SMITHING_TOTAL_SLOT_COUNT as usize];
     items[SMITHING_TEMPLATE_SLOT as usize] = item_stack(42, 1);
@@ -8015,8 +7948,7 @@ fn apply_local_smithing_result_quick_move_consumes_single_inputs() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_SMITHING_ID,
-        title: "Smithing".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Smithing"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); SMITHING_TOTAL_SLOT_COUNT as usize];
     items[SMITHING_TEMPLATE_SLOT as usize] = item_stack(42, 1);
@@ -8076,8 +8008,7 @@ fn apply_local_smithing_result_pickup_consumes_single_inputs_to_cursor() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_SMITHING_ID,
-        title: "Smithing".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Smithing"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); SMITHING_TOTAL_SLOT_COUNT as usize];
     items[SMITHING_TEMPLATE_SLOT as usize] = item_stack(42, 1);
@@ -8133,8 +8064,7 @@ fn apply_local_smithing_result_quick_move_keeps_stacked_inputs_server_authoritat
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_SMITHING_ID,
-        title: "Smithing".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Smithing"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); SMITHING_TOTAL_SLOT_COUNT as usize];
     items[SMITHING_TEMPLATE_SLOT as usize] = item_stack(42, 2);
@@ -8185,8 +8115,7 @@ fn apply_local_smithing_result_pickup_keeps_stacked_inputs_server_authoritative(
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_SMITHING_ID,
-        title: "Smithing".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Smithing"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); SMITHING_TOTAL_SLOT_COUNT as usize];
     items[SMITHING_TEMPLATE_SLOT as usize] = item_stack(42, 2);
@@ -8235,8 +8164,7 @@ fn apply_local_smithing_quick_move_routes_property_set_items_to_inputs_and_playe
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_SMITHING_ID,
-        title: "Smithing".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Smithing"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); SMITHING_TOTAL_SLOT_COUNT as usize];
     items[SMITHING_PLAYER_MAIN_START as usize] = item_stack(50, 2);
@@ -8333,8 +8261,7 @@ fn apply_local_cartography_table_result_pickup_consumes_single_inputs_to_cursor(
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
-        title: "Cartography Table".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Cartography Table"),
     });
     let mut items =
         vec![ProtocolItemStackSummary::empty(); CARTOGRAPHY_TABLE_TOTAL_SLOT_COUNT as usize];
@@ -8388,8 +8315,7 @@ fn apply_local_cartography_table_result_quick_move_predicts_single_input_consump
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
-        title: "Cartography Table".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Cartography Table"),
     });
     let mut items =
         vec![ProtocolItemStackSummary::empty(); CARTOGRAPHY_TABLE_TOTAL_SLOT_COUNT as usize];
@@ -8468,8 +8394,7 @@ fn apply_local_cartography_table_result_quick_move_keeps_stacked_inputs_server_a
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
-        title: "Cartography Table".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Cartography Table"),
     });
     let mut items =
         vec![ProtocolItemStackSummary::empty(); CARTOGRAPHY_TABLE_TOTAL_SLOT_COUNT as usize];
@@ -8526,8 +8451,7 @@ fn apply_local_cartography_table_quick_move_moves_input_slots_to_player_forward(
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
-        title: "Cartography Table".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Cartography Table"),
     });
     let mut items =
         vec![ProtocolItemStackSummary::empty(); CARTOGRAPHY_TABLE_TOTAL_SLOT_COUNT as usize];
@@ -8607,8 +8531,7 @@ fn apply_local_cartography_table_quick_move_routes_additional_and_player_ranges(
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
-        title: "Cartography Table".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Cartography Table"),
     });
     let mut items =
         vec![ProtocolItemStackSummary::empty(); CARTOGRAPHY_TABLE_TOTAL_SLOT_COUNT as usize];
@@ -8697,8 +8620,7 @@ fn apply_local_cartography_table_player_map_id_quick_move_routes_to_map_slot() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
-        title: "Cartography Table".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Cartography Table"),
     });
     let mut items =
         vec![ProtocolItemStackSummary::empty(); CARTOGRAPHY_TABLE_TOTAL_SLOT_COUNT as usize];
@@ -8748,8 +8670,7 @@ fn apply_local_cartography_table_map_id_with_removed_component_quick_move_routes
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
-        title: "Cartography Table".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Cartography Table"),
     });
     let mut items =
         vec![ProtocolItemStackSummary::empty(); CARTOGRAPHY_TABLE_TOTAL_SLOT_COUNT as usize];
@@ -8809,8 +8730,7 @@ fn cartography_table_map_id_with_use_effects_component_predicts() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
-        title: "Cartography Table".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Cartography Table"),
     });
     let mut items =
         vec![ProtocolItemStackSummary::empty(); CARTOGRAPHY_TABLE_TOTAL_SLOT_COUNT as usize];
@@ -8883,8 +8803,7 @@ fn apply_local_stonecutter_quick_move_moves_input_slot_to_player_forward() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_STONECUTTER_ID,
-        title: "Stonecutter".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Stonecutter"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); STONECUTTER_TOTAL_SLOT_COUNT as usize];
     items[STONECUTTER_INPUT_SLOT as usize] = item_stack(42, 3);
@@ -8926,8 +8845,7 @@ fn apply_local_stonecutter_quick_move_moves_player_main_and_hotbar_ranges() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_STONECUTTER_ID,
-        title: "Stonecutter".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Stonecutter"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); STONECUTTER_TOTAL_SLOT_COUNT as usize];
     items[STONECUTTER_PLAYER_MAIN_START as usize] = item_stack(42, 3);
@@ -8992,8 +8910,7 @@ fn apply_local_stonecutter_quick_move_routes_valid_recipe_input_to_input_slot() 
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_STONECUTTER_ID,
-        title: "Stonecutter".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Stonecutter"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); STONECUTTER_TOTAL_SLOT_COUNT as usize];
     items[STONECUTTER_PLAYER_MAIN_START as usize] = item_stack(42, 3);
@@ -9035,8 +8952,7 @@ fn apply_local_stonecutter_result_pickup_consumes_single_input_to_cursor() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_STONECUTTER_ID,
-        title: "Stonecutter".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Stonecutter"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); STONECUTTER_TOTAL_SLOT_COUNT as usize];
     items[STONECUTTER_INPUT_SLOT as usize] = item_stack(42, 1);
@@ -9081,8 +8997,7 @@ fn apply_local_stonecutter_result_quick_move_predicts_single_input_consumption()
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_STONECUTTER_ID,
-        title: "Stonecutter".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Stonecutter"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); STONECUTTER_TOTAL_SLOT_COUNT as usize];
     items[STONECUTTER_INPUT_SLOT as usize] = item_stack(42, 1);
@@ -9130,8 +9045,7 @@ fn apply_local_stonecutter_result_pickup_keeps_remaining_input_server_authoritat
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_STONECUTTER_ID,
-        title: "Stonecutter".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Stonecutter"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); STONECUTTER_TOTAL_SLOT_COUNT as usize];
     items[STONECUTTER_INPUT_SLOT as usize] = item_stack(42, 2);
@@ -9173,8 +9087,7 @@ fn apply_local_stonecutter_result_quick_move_keeps_blocked_transfer_server_autho
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_STONECUTTER_ID,
-        title: "Stonecutter".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Stonecutter"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); STONECUTTER_TOTAL_SLOT_COUNT as usize];
     items[STONECUTTER_INPUT_SLOT as usize] = item_stack(42, 1);
@@ -9214,8 +9127,7 @@ fn apply_local_brewing_stand_quick_move_moves_brewing_slots_to_player_reverse() 
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_BREWING_STAND_ID,
-        title: "Brewing Stand".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Brewing Stand"),
     });
     let mut items =
         vec![ProtocolItemStackSummary::empty(); BREWING_STAND_TOTAL_SLOT_COUNT as usize];
@@ -9285,8 +9197,7 @@ fn apply_local_brewing_stand_quick_move_routes_player_items_to_brewing_slots() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_BREWING_STAND_ID,
-        title: "Brewing Stand".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Brewing Stand"),
     });
     let mut items =
         vec![ProtocolItemStackSummary::empty(); BREWING_STAND_TOTAL_SLOT_COUNT as usize];
@@ -9397,8 +9308,7 @@ fn apply_local_grindstone_input_quick_move_moves_inputs_to_player_forward() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GRINDSTONE_ID,
-        title: "Grindstone".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Grindstone"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); GRINDSTONE_TOTAL_SLOT_COUNT as usize];
     items[GRINDSTONE_INPUT_SLOT as usize] = item_stack(42, 1);
@@ -9463,8 +9373,7 @@ fn apply_local_grindstone_player_to_input_quick_move_requires_server_authority()
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GRINDSTONE_ID,
-        title: "Grindstone".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Grindstone"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); GRINDSTONE_TOTAL_SLOT_COUNT as usize];
     items[GRINDSTONE_PLAYER_MAIN_START as usize] = item_stack(42, 3);
@@ -9507,8 +9416,7 @@ fn apply_local_grindstone_quick_move_routes_default_damageable_items_to_inputs()
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GRINDSTONE_ID,
-        title: "Grindstone".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Grindstone"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); GRINDSTONE_TOTAL_SLOT_COUNT as usize];
     items[GRINDSTONE_PLAYER_MAIN_START as usize] = item_stack(42, 1);
@@ -9573,8 +9481,7 @@ fn apply_local_grindstone_quick_move_moves_player_ranges_when_inputs_full() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GRINDSTONE_ID,
-        title: "Grindstone".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Grindstone"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); GRINDSTONE_TOTAL_SLOT_COUNT as usize];
     items[GRINDSTONE_INPUT_SLOT as usize] = item_stack(10, 1);
@@ -9637,8 +9544,7 @@ fn apply_local_grindstone_result_pickup_consumes_inputs_to_cursor() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GRINDSTONE_ID,
-        title: "Grindstone".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Grindstone"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); GRINDSTONE_TOTAL_SLOT_COUNT as usize];
     items[GRINDSTONE_INPUT_SLOT as usize] = item_stack(42, 1);
@@ -9689,8 +9595,7 @@ fn apply_local_grindstone_result_secondary_pickup_requires_server_authority() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GRINDSTONE_ID,
-        title: "Grindstone".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Grindstone"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); GRINDSTONE_TOTAL_SLOT_COUNT as usize];
     items[GRINDSTONE_INPUT_SLOT as usize] = item_stack(42, 1);
@@ -9728,8 +9633,7 @@ fn apply_local_grindstone_result_quick_move_predicts() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GRINDSTONE_ID,
-        title: "Grindstone".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Grindstone"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); GRINDSTONE_TOTAL_SLOT_COUNT as usize];
     items[GRINDSTONE_INPUT_SLOT as usize] = item_stack(42, 1);
@@ -9776,8 +9680,7 @@ fn apply_local_grindstone_result_quick_move_keeps_blocked_transfer_server_author
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GRINDSTONE_ID,
-        title: "Grindstone".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Grindstone"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); GRINDSTONE_TOTAL_SLOT_COUNT as usize];
     items[GRINDSTONE_INPUT_SLOT as usize] = item_stack(42, 1);
@@ -9817,8 +9720,7 @@ fn apply_local_hopper_quick_move_moves_hopper_to_player_reverse() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_HOPPER_ID,
-        title: "Hopper".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Hopper"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 41];
     items[0] = item_stack(42, 3);
@@ -9857,8 +9759,7 @@ fn apply_local_hopper_quick_move_moves_player_to_hopper_forward() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_HOPPER_ID,
-        title: "Hopper".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Hopper"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 41];
     items[5] = item_stack(42, 3);
@@ -9897,8 +9798,7 @@ fn apply_local_shulker_box_quick_move_moves_shulker_to_player_reverse() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_SHULKER_BOX_ID,
-        title: "Shulker Box".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Shulker Box"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 63];
     items[0] = item_stack(42, 3);
@@ -9937,8 +9837,7 @@ fn apply_local_shulker_box_quick_move_moves_player_to_shulker_forward() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_SHULKER_BOX_ID,
-        title: "Shulker Box".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Shulker Box"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 63];
     items[27] = item_stack(42, 3);
@@ -9977,8 +9876,7 @@ fn apply_local_furnace_quick_move_moves_result_to_player_reverse() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_FURNACE_ID,
-        title: "Furnace".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Furnace"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 39];
     items[2] = item_stack(42, 3);
@@ -10022,8 +9920,7 @@ fn apply_local_furnace_quick_move_routes_input_and_fuel_to_furnace_slots() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_FURNACE_ID,
-        title: "Furnace".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Furnace"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 39];
     items[3] = item_stack(42, 3);
@@ -10083,8 +9980,7 @@ fn apply_local_furnace_quick_move_uses_menu_specific_input_property_set() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_BLAST_FURNACE_ID,
-        title: "Blast Furnace".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Blast Furnace"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 39];
     items[3] = item_stack(42, 3);
@@ -10157,8 +10053,7 @@ fn apply_local_furnace_quick_move_prioritizes_input_over_fuel() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_SMOKER_ID,
-        title: "Smoker".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Smoker"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 39];
     items[30] = item_stack(42, 3);
@@ -10197,8 +10092,7 @@ fn apply_local_furnace_quick_move_moves_input_and_fuel_slots_to_player_forward()
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_FURNACE_ID,
-        title: "Furnace".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Furnace"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 39];
     items[0] = item_stack(42, 3);
@@ -10249,8 +10143,7 @@ fn apply_local_container_quick_move_rejects_non_inventory_menu() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: i32::try_from(VANILLA_MENU_TYPES.len()).unwrap(),
-        title: "Unsupported".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Unsupported"),
     });
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
@@ -10368,8 +10261,7 @@ fn apply_local_container_throw_predicts_generic_menu() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X2_ID,
-        title: "Chest".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Chest"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 54];
     items[0] = item_stack(42, 3);
@@ -10402,8 +10294,7 @@ fn apply_local_anvil_throw_predicts_inputs_and_keeps_result_actions_authoritativ
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_ANVIL_ID,
-        title: "Anvil".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Anvil"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); ANVIL_TOTAL_SLOT_COUNT as usize];
     items[ANVIL_INPUT_SLOT as usize] = item_stack(42, 3);
@@ -10598,8 +10489,7 @@ fn apply_local_container_swap_requires_empty_cursor_and_predicts_generic_menu() 
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X2_ID,
-        title: "Chest".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Chest"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 54];
     items[0] = item_stack(42, 3);
@@ -10641,8 +10531,7 @@ fn apply_local_open_container_swap_uses_external_offhand_without_hashing_it() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X2_ID,
-        title: "Chest".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Chest"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 54];
     items[0] = item_stack(42, 3);
@@ -10687,8 +10576,7 @@ fn apply_local_open_container_offhand_swap_returns_displaced_overflow_to_invento
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_BEACON_ID,
-        title: "Beacon".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Beacon"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); BEACON_TOTAL_SLOT_COUNT as usize];
     items[BEACON_PAYMENT_SLOT as usize] = item_stack(42, 1);
@@ -10735,8 +10623,7 @@ fn apply_local_beacon_swap_enforces_payment_tag_and_single_item_limit() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_BEACON_ID,
-        title: "Beacon".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Beacon"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); BEACON_TOTAL_SLOT_COUNT as usize];
     let hotbar_slot = BEACON_HOTBAR_START;
@@ -10796,8 +10683,7 @@ fn apply_local_container_clone_copies_slot_stack_to_cursor_at_max_count() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X2_ID,
-        title: "Chest".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Chest"),
     });
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
@@ -10831,8 +10717,7 @@ fn apply_local_container_clone_does_not_apply_without_instabuild() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X2_ID,
-        title: "Chest".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Chest"),
     });
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
@@ -10866,8 +10751,7 @@ fn apply_local_container_clone_does_not_apply_with_non_empty_cursor() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X2_ID,
-        title: "Chest".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Chest"),
     });
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
@@ -10992,8 +10876,7 @@ fn open_loom_with_pattern_stack(store: &mut WorldStore, pattern_stack: ProtocolI
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_LOOM_ID,
-        title: "Loom".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Loom"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); LOOM_TOTAL_SLOT_COUNT as usize];
     items[LOOM_BANNER_SLOT as usize] = item_stack(42, 1);
@@ -11441,8 +11324,7 @@ fn inventory_state_serde_shape_survives_world_store_json_round_trip() {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 5,
         menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X1_ID,
-        title: "Chest".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Chest"),
     });
 
     let value = serde_json::to_value(&store).unwrap();
@@ -11479,7 +11361,6 @@ fn inventory_state_serde_shape_survives_world_store_json_round_trip() {
             "slots",
             "state_id",
             "title",
-            "title_styled",
         ]
     );
 
@@ -11488,33 +11369,63 @@ fn inventory_state_serde_shape_survives_world_store_json_round_trip() {
 }
 
 #[test]
-fn open_screen_styled_title_is_stored_and_survives_set_content() {
-    let styled_title = vec![bbb_protocol::StyledTextRun {
-        text: "Chest".to_string(),
-        style: bbb_protocol::ComponentStyle {
-            bold: Some(true),
-            color: Some(0xFF_55_55),
-            ..Default::default()
-        },
-    }];
+fn open_screen_exact_title_is_stored_and_survives_set_content() {
+    let title = bbb_protocol::RichTextComponent::try_from_component_nbt(
+        bbb_protocol::NbtSummaryValue::Compound(vec![
+            bbb_protocol::NbtSummaryEntry {
+                name: "text".to_string(),
+                value: bbb_protocol::NbtSummaryValue::String("Chest".to_string()),
+            },
+            bbb_protocol::NbtSummaryEntry {
+                name: "bold".to_string(),
+                value: bbb_protocol::NbtSummaryValue::Byte(1),
+            },
+            bbb_protocol::NbtSummaryEntry {
+                name: "color".to_string(),
+                value: bbb_protocol::NbtSummaryValue::String("#ff5555".to_string()),
+            },
+            bbb_protocol::NbtSummaryEntry {
+                name: "click_event".to_string(),
+                value: bbb_protocol::NbtSummaryValue::Compound(vec![
+                    bbb_protocol::NbtSummaryEntry {
+                        name: "action".to_string(),
+                        value: bbb_protocol::NbtSummaryValue::String("run_command".to_string()),
+                    },
+                    bbb_protocol::NbtSummaryEntry {
+                        name: "command".to_string(),
+                        value: bbb_protocol::NbtSummaryValue::String("/menu".to_string()),
+                    },
+                ]),
+            },
+        ]),
+    )
+    .unwrap();
+    let exact = title.component().clone();
+    let styled = title.styled().to_vec();
     let mut store = WorldStore::new();
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 5,
         menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X1_ID,
-        title: "Chest".to_string(),
-        title_styled: styled_title.clone(),
+        title,
     });
+    let stored = store
+        .inventory()
+        .open_container
+        .as_ref()
+        .unwrap()
+        .title
+        .as_ref()
+        .unwrap();
+    assert_eq!(stored.component(), &exact);
+    assert_eq!(stored.styled(), styled);
     assert_eq!(
-        store
-            .inventory()
-            .open_container
-            .as_ref()
-            .unwrap()
-            .title_styled,
-        styled_title
+        stored.styled()[0].style.click_event,
+        Some(bbb_protocol::ComponentClickEvent::RunCommand {
+            command: "/menu".to_string(),
+        })
     );
 
-    // Content refresh keeps the styled title alongside the plain one.
+    // Content refresh keeps the exact trusted component and its projections.
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 5,
         state_id: 1,
@@ -11522,6 +11433,8 @@ fn open_screen_styled_title_is_stored_and_survives_set_content() {
         carried_item: ProtocolItemStackSummary::empty(),
     });
     let container = store.inventory().open_container.as_ref().unwrap();
-    assert_eq!(container.title.as_deref(), Some("Chest"));
-    assert_eq!(container.title_styled, styled_title);
+    let stored = container.title.as_ref().unwrap();
+    assert_eq!(stored.text(), "Chest");
+    assert_eq!(stored.component(), &exact);
+    assert_eq!(stored.styled(), styled);
 }

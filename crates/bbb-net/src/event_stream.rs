@@ -2652,8 +2652,7 @@ mod tests {
         let open_screen = packets::OpenScreen {
             container_id: 7,
             menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
-            title: "Merchant".to_string(),
-            title_styled: Vec::new(),
+            title: bbb_protocol::RichTextComponent::plain("Merchant"),
         };
         stream
             .handle_play_packet(PlayClientbound::OpenScreen(open_screen.clone()))

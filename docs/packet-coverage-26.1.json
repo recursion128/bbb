@@ -10304,7 +10304,7 @@
             "crates/bbb-protocol/src/packets/inventory.rs#open_screen_rejects_unknown_menu_type_and_trailing_bytes",
             "crates/bbb-net/src/event_stream.rs#play_inventory_packets_emit_matching_events_without_responses",
             "crates/bbb-net/src/probe/play.rs#probe_applies_inventory_container_packets_to_world",
-            "crates/bbb-world/src/client/inventory/tests.rs#open_screen_styled_title_is_stored_and_survives_set_content",
+            "crates/bbb-world/src/client/inventory/tests.rs#open_screen_exact_title_is_stored_and_survives_set_content",
             "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#inventory_events_update_world_and_world_counters"
           ],
           "gap": null,

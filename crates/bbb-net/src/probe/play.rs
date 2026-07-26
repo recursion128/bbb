@@ -1810,8 +1810,7 @@ mod tests {
             .handle_play_packet(PlayClientbound::OpenScreen(OpenScreen {
                 container_id: 7,
                 menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
-                title: "Merchant".to_string(),
-                title_styled: Vec::new(),
+                title: bbb_protocol::RichTextComponent::plain("Merchant"),
             }))
             .await
             .unwrap();
@@ -1861,7 +1860,13 @@ mod tests {
         let container = inventory.open_container.as_ref().unwrap();
         assert_eq!(container.container_id, 7);
         assert_eq!(container.menu_type_id, Some(VANILLA_MENU_TYPE_MERCHANT_ID));
-        assert_eq!(container.title.as_deref(), Some("Merchant"));
+        assert_eq!(
+            container
+                .title
+                .as_ref()
+                .map(bbb_protocol::RichTextComponent::text),
+            Some("Merchant")
+        );
         assert_eq!(container.state_id, 13);
         assert_eq!(container.slots.len(), 2);
         assert_eq!(container.slots[0].item, ItemStackSummary::empty());

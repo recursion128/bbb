@@ -1356,8 +1356,7 @@ fn inventory_events_update_world_and_world_counters() {
     tx.try_send(NetEvent::Play(PlayClientbound::OpenScreen(OpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_LOOM_ID,
-        title: "Inventory".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Inventory"),
     })))
     .unwrap();
     tx.try_send(NetEvent::Play(PlayClientbound::ContainerSetContent(

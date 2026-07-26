@@ -1516,8 +1516,7 @@ mod tests {
         store.apply_open_screen(ProtocolOpenScreen {
             container_id: 7,
             menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X3_ID,
-            title: "Chest".to_string(),
-            title_styled: Vec::new(),
+            title: bbb_protocol::RichTextComponent::plain("Chest"),
         });
         store.client_debug_game.last_debug_block_value = Some(crate::DebugBlockValueState {
             pos: BlockPos { x: 1, y: 2, z: 3 },

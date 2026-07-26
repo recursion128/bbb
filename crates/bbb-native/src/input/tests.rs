@@ -23600,8 +23600,7 @@ fn escape_key_closes_open_container_and_queues_command() {
     world.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X3_ID,
-        title: "Chest".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Chest"),
     });
 
     handle_key_input(
@@ -23669,8 +23668,7 @@ fn inventory_key_closes_open_container_before_open_inventory_command() {
     world.apply_open_screen(ProtocolOpenScreen {
         container_id: 8,
         menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X3_ID,
-        title: "Chest".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Chest"),
     });
 
     handle_key_input(
@@ -23702,8 +23700,7 @@ fn inventory_key_is_consumed_by_focused_recipe_book_search() {
     world.apply_open_screen(ProtocolOpenScreen {
         container_id: 8,
         menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
-        title: "Crafting".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Crafting"),
     });
     world.apply_recipe_book_settings(bbb_protocol::packets::RecipeBookSettings {
         crafting: bbb_protocol::packets::RecipeBookTypeSettings {
@@ -24287,8 +24284,7 @@ fn gameplay_keys_are_consumed_while_unsupported_container_is_open() {
     world.apply_open_screen(ProtocolOpenScreen {
         container_id: 9,
         menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
-        title: "Merchant".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Merchant"),
     });
 
     for code in [KeyCode::Digit5, KeyCode::KeyQ] {
@@ -24441,8 +24437,7 @@ fn advancements_key_is_consumed_while_container_is_open() {
     world.apply_open_screen(ProtocolOpenScreen {
         container_id: 9,
         menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
-        title: "Merchant".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Merchant"),
     });
 
     handle_key_input(
@@ -26548,8 +26543,7 @@ fn generic_9x1_container_world(
     world.apply_open_screen(ProtocolOpenScreen {
         container_id,
         menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X1_ID,
-        title: "Chest".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Chest"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 45];
     if let Some((slot, stack)) = item {
@@ -26569,8 +26563,7 @@ fn open_recipe_book_crafting_table_world() -> WorldStore {
     world.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
-        title: "Crafting".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Crafting"),
     });
     world.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
@@ -26595,8 +26588,7 @@ fn open_recipe_book_furnace_world() -> WorldStore {
     world.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_FURNACE_ID,
-        title: "Furnace".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Furnace"),
     });
     world.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
@@ -26757,8 +26749,7 @@ fn anvil_container_world(
     world.apply_open_screen(ProtocolOpenScreen {
         container_id,
         menu_type_id: VANILLA_MENU_TYPE_ANVIL_ID,
-        title: "Anvil".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Anvil"),
     });
     let mut items = vec![ProtocolItemStackSummary::empty(); 39];
     if let Some(stack) = input_item {

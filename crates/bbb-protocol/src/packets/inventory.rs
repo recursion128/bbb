@@ -2,9 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     codec::{Decoder, ProtocolError, Result},
-    component::{
-        decode_styled_component_summary_from_decoder, styled_runs_summary_text, StyledTextRun,
-    },
+    component::decode_rich_text_component_from_decoder,
     data_component_types::{
         VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
@@ -12,6 +10,7 @@ use crate::{
     item_types::{vanilla_item_type, VANILLA_ITEM_AIR_ID},
     menu_types::vanilla_menu_type,
     packets::data_components,
+    RichTextComponent,
 };
 
 pub use crate::item_component_value_types::{
@@ -115,11 +114,8 @@ pub struct ContainerSetSlot {
 pub struct OpenScreen {
     pub container_id: i32,
     pub menu_type_id: i32,
-    pub title: String,
-    /// Styled-run projection of `title` (same component decode, style kept);
-    /// `title` is its plain-text concatenation.
-    #[serde(default)]
-    pub title_styled: Vec<StyledTextRun>,
+    /// Exact validated value decoded by Vanilla's trusted Component codec.
+    pub title: RichTextComponent,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -213,12 +209,10 @@ pub(super) fn decode_open_screen(decoder: &mut Decoder<'_>) -> Result<OpenScreen
             "invalid vanilla menu type id {menu_type_id}"
         )));
     }
-    let title_styled = decode_styled_component_summary_from_decoder(decoder)?;
     let packet = OpenScreen {
         container_id,
         menu_type_id,
-        title: styled_runs_summary_text(&title_styled),
-        title_styled,
+        title: decode_rich_text_component_from_decoder(decoder)?,
     };
     if !decoder.is_empty() {
         return Err(ProtocolError::InvalidData(
@@ -655,11 +649,7 @@ mod tests {
             PlayClientbound::OpenScreen(OpenScreen {
                 container_id: 7,
                 menu_type_id: 2,
-                title: "Chest".to_string(),
-                title_styled: vec![StyledTextRun {
-                    text: "Chest".to_string(),
-                    style: Default::default(),
-                }],
+                title: RichTextComponent::plain("Chest"),
             })
         );
 
@@ -777,6 +767,56 @@ mod tests {
     }
 
     #[test]
+    fn open_screen_preserves_exact_trusted_title_component() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(7);
+        payload.write_var_i32(2);
+        payload.write_bytes(&rich_title_component_root());
+
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_OPEN_SCREEN, &payload.into_inner())
+                .unwrap();
+        let PlayClientbound::OpenScreen(packet) = packet else {
+            panic!("expected open screen packet");
+        };
+        assert_eq!(packet.title.text(), "Chest");
+        assert_eq!(packet.title.styled().len(), 1);
+        assert_eq!(packet.title.styled()[0].style.color, Some(0xFF_55_55));
+        assert_eq!(
+            packet.title.styled()[0].style.click_event,
+            Some(crate::ComponentClickEvent::RunCommand {
+                command: "/menu".to_string(),
+            })
+        );
+        assert_eq!(
+            packet.title.component(),
+            &NbtSummaryValue::Compound(vec![
+                NbtSummaryEntry {
+                    name: "text".to_string(),
+                    value: NbtSummaryValue::String("Chest".to_string()),
+                },
+                NbtSummaryEntry {
+                    name: "color".to_string(),
+                    value: NbtSummaryValue::String("red".to_string()),
+                },
+                NbtSummaryEntry {
+                    name: "click_event".to_string(),
+                    value: NbtSummaryValue::Compound(vec![
+                        NbtSummaryEntry {
+                            name: "action".to_string(),
+                            value: NbtSummaryValue::String("run_command".to_string()),
+                        },
+                        NbtSummaryEntry {
+                            name: "command".to_string(),
+                            value: NbtSummaryValue::String("/menu".to_string()),
+                        },
+                    ]),
+                },
+            ])
+        );
+    }
+
+    #[test]
     fn open_screen_rejects_unknown_menu_type_and_trailing_bytes() {
         let mut trailing = Encoder::new();
         trailing.write_var_i32(7);
@@ -806,5 +846,37 @@ mod tests {
         payload.extend_from_slice(&(text.len() as u16).to_be_bytes());
         payload.extend_from_slice(text.as_bytes());
         payload
+    }
+
+    fn rich_title_component_root() -> Vec<u8> {
+        let mut payload = vec![10];
+        write_named_nbt_string(&mut payload, "text", "Chest");
+        write_named_nbt_string(&mut payload, "color", "red");
+        write_named_nbt_compound(&mut payload, "click_event", |payload| {
+            write_named_nbt_string(payload, "action", "run_command");
+            write_named_nbt_string(payload, "command", "/menu");
+        });
+        payload.push(0);
+        payload
+    }
+
+    fn write_named_nbt_compound(
+        payload: &mut Vec<u8>,
+        name: &str,
+        write_body: impl FnOnce(&mut Vec<u8>),
+    ) {
+        payload.push(10);
+        payload.extend_from_slice(&(name.len() as u16).to_be_bytes());
+        payload.extend_from_slice(name.as_bytes());
+        write_body(payload);
+        payload.push(0);
+    }
+
+    fn write_named_nbt_string(payload: &mut Vec<u8>, name: &str, value: &str) {
+        payload.push(8);
+        payload.extend_from_slice(&(name.len() as u16).to_be_bytes());
+        payload.extend_from_slice(name.as_bytes());
+        payload.extend_from_slice(&(value.len() as u16).to_be_bytes());
+        payload.extend_from_slice(value.as_bytes());
     }
 }

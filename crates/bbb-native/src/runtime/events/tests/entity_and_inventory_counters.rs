@@ -257,8 +257,7 @@ fn merchant_offers_event_updates_world_inventory_state_and_world_counters() {
     tx.try_send(NetEvent::Play(PlayClientbound::OpenScreen(OpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
-        title: "Merchant".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Merchant"),
     })))
     .unwrap();
     tx.try_send(NetEvent::Play(PlayClientbound::MerchantOffers(

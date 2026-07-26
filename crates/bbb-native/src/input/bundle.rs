@@ -337,8 +337,7 @@ mod tests {
         world.apply_open_screen(OpenScreen {
             container_id: 7,
             menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X3_ID,
-            title: "Chest".to_string(),
-            title_styled: Vec::new(),
+            title: bbb_protocol::RichTextComponent::plain("Chest"),
         });
         world.apply_container_set_content(ContainerSetContent {
             container_id: 7,

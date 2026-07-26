@@ -2332,8 +2332,7 @@ fn client_inventory_reads_canonical_world_state() {
         store.apply_open_screen(OpenScreen {
             container_id: 7,
             menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X3_ID,
-            title: "Chest".to_string(),
-            title_styled: Vec::new(),
+            title: bbb_protocol::RichTextComponent::plain("Chest"),
         });
         store.apply_container_set_content(ContainerSetContent {
             container_id: 7,
@@ -2376,7 +2375,19 @@ fn client_inventory_reads_canonical_world_state() {
     assert_eq!(inventory["cursor_item"]["count"], 0);
     assert_eq!(inventory["open_container"]["container_id"], 7);
     assert_eq!(inventory["open_container"]["menu_type_id"], 2);
-    assert_eq!(inventory["open_container"]["title"], "Chest");
+    assert_eq!(inventory["open_container"]["title"]["text"], "Chest");
+    assert_eq!(
+        inventory["open_container"]["title"]["styled"][0]["text"],
+        "Chest"
+    );
+    assert_eq!(
+        inventory["open_container"]["title"]["component"]["type"],
+        "String"
+    );
+    assert_eq!(
+        inventory["open_container"]["title"]["component"]["value"],
+        "Chest"
+    );
     assert_eq!(inventory["open_container"]["state_id"], 13);
     assert_eq!(
         inventory["open_container"]["slots"][0]["item"]["item_id"],
@@ -2400,8 +2411,7 @@ fn client_inventory_reads_merchant_offers_and_close_from_canonical_world_state()
         store.apply_open_screen(OpenScreen {
             container_id: 7,
             menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
-            title: "Merchant".to_string(),
-            title_styled: Vec::new(),
+            title: bbb_protocol::RichTextComponent::plain("Merchant"),
         });
         let mut sell_with_additional_cost = item_stack(99, 1);
         sell_with_additional_cost.component_patch.added = 1;

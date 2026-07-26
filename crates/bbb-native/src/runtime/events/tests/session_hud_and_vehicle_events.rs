@@ -1111,8 +1111,7 @@ fn respawn_event_resets_local_player_runtime_state() {
     world.apply_open_screen(OpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X3_ID,
-        title: "Chest".to_string(),
-        title_styled: Vec::new(),
+        title: bbb_protocol::RichTextComponent::plain("Chest"),
     });
     world.apply_player_health(bbb_protocol::packets::PlayerHealth {
         health: 4.0,
