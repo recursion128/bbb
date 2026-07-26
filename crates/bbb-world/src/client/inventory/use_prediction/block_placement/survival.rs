@@ -24,6 +24,7 @@ enum BlockCanSurviveRule {
     BelowRigid,
     BigDripleaf,
     BigDripleafStem,
+    Bell,
     BelowCenter,
     AboveCenter,
     AboveFull,
@@ -36,6 +37,7 @@ enum BlockCanSurviveRule {
     SmallDripleaf,
     BelowLegacySolid,
     FacingLegacySolid,
+    FacingTag(&'static str),
     FaceAttached,
     BelowTag(&'static str),
 }
@@ -100,6 +102,35 @@ impl WorldStore {
                     block_type_id(&above)?,
                     VANILLA_BLOCK_BIG_DRIPLEAF_ID | VANILLA_BLOCK_BIG_DRIPLEAF_STEM_ID
                 ))
+            }
+            BlockCanSurviveRule::Bell => {
+                let attachment = properties.get("attachment")?.as_str();
+                let facing = direction_property(properties, "facing")?;
+                let support_direction = match attachment {
+                    "floor" => Direction::Down,
+                    "ceiling" => Direction::Up,
+                    "single_wall" | "double_wall" => facing,
+                    _ => return None,
+                };
+                let support = self.probe_block(relative(pos, support_direction))?;
+                if attachment == "ceiling" {
+                    if self
+                        .placement_block_is_in_tag(&support, "minecraft:unstable_bottom_center")?
+                    {
+                        return Some(false);
+                    }
+                    self.placement_face_sturdy(
+                        &support,
+                        Direction::Down,
+                        VanillaBlockSupportType::Center,
+                    )
+                } else {
+                    self.placement_face_sturdy(
+                        &support,
+                        opposite(support_direction),
+                        VanillaBlockSupportType::Full,
+                    )
+                }
             }
             BlockCanSurviveRule::BelowCenter => {
                 let below = self.probe_block(relative(pos, Direction::Down))?;
@@ -252,6 +283,11 @@ impl WorldStore {
                 let support = self.probe_block(relative(pos, opposite(facing)))?;
                 vanilla_block_state_support_facts(support.block_state_id)
                     .map(|facts| facts.legacy_solid())
+            }
+            BlockCanSurviveRule::FacingTag(tag) => {
+                let facing = direction_property(properties, "facing")?;
+                let support = self.probe_block(relative(pos, facing))?;
+                self.placement_block_is_in_tag(&support, tag)
             }
             BlockCanSurviveRule::FaceAttached => {
                 let face = properties.get("face")?.as_str();
@@ -407,6 +443,7 @@ const fn block_can_survive_rule(owner: VanillaCanSurviveOverride) -> Option<Bloc
         VanillaCanSurviveOverride::BaseRailBlock => BlockCanSurviveRule::BelowRigid,
         VanillaCanSurviveOverride::BigDripleafBlock => BlockCanSurviveRule::BigDripleaf,
         VanillaCanSurviveOverride::BigDripleafStemBlock => BlockCanSurviveRule::BigDripleafStem,
+        VanillaCanSurviveOverride::BellBlock => BlockCanSurviveRule::Bell,
         VanillaCanSurviveOverride::CandleBlock => BlockCanSurviveRule::BelowCenter,
         VanillaCanSurviveOverride::CeilingHangingSignBlock => BlockCanSurviveRule::AboveCenter,
         VanillaCanSurviveOverride::HangingRootsBlock => BlockCanSurviveRule::AboveFull,
@@ -421,6 +458,9 @@ const fn block_can_survive_rule(owner: VanillaCanSurviveOverride) -> Option<Bloc
         VanillaCanSurviveOverride::BannerBlock => BlockCanSurviveRule::BelowLegacySolid,
         VanillaCanSurviveOverride::WallBannerBlock | VanillaCanSurviveOverride::WallSignBlock => {
             BlockCanSurviveRule::FacingLegacySolid
+        }
+        VanillaCanSurviveOverride::CocoaBlock => {
+            BlockCanSurviveRule::FacingTag("minecraft:supports_cocoa")
         }
         VanillaCanSurviveOverride::RedstoneWallTorchBlock
         | VanillaCanSurviveOverride::WallTorchBlock => BlockCanSurviveRule::FacingFull,

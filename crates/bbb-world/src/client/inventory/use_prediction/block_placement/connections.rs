@@ -10,6 +10,7 @@ use bbb_protocol::{
 use super::{
     super::{LocalBlockUseContext, WorldStore},
     context::{clockwise, counterclockwise, direction_axis, opposite, relative, DirectionAxis},
+    signal::placement_neighbor_signal_is_proven_absent,
 };
 use crate::{terrain::block_name_is_leaves, BlockPos, BlockProbe};
 
@@ -25,6 +26,11 @@ pub(super) struct CardinalConnections {
 pub(super) struct ChestPlacement {
     pub(super) facing: Direction,
     pub(super) chest_type: &'static str,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct FenceGatePlacement {
+    pub(super) in_wall: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -44,6 +50,25 @@ pub(super) fn fence_connections(
     cardinal_connections(world, pos, |world, neighbour, direction| {
         fence_connects_to(world, neighbour, placing_block, opposite(direction))
     })
+}
+
+pub(super) fn fence_gate_placement(
+    world: &WorldStore,
+    pos: BlockPos,
+    facing: Direction,
+) -> Option<FenceGatePlacement> {
+    placement_neighbor_signal_is_proven_absent(world, &[pos])?;
+    let wall_directions = match direction_axis(facing) {
+        DirectionAxis::Z => [Direction::West, Direction::East],
+        DirectionAxis::X => [Direction::North, Direction::South],
+        DirectionAxis::Y => return None,
+    };
+    let mut in_wall = false;
+    for direction in wall_directions {
+        let neighbour = world.probe_block(relative(pos, direction))?;
+        in_wall |= world.placement_block_is_in_tag(&neighbour, "minecraft:walls")?;
+    }
+    Some(FenceGatePlacement { in_wall })
 }
 
 pub(super) fn iron_bars_connections(

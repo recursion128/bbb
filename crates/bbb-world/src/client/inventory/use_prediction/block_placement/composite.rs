@@ -10,6 +10,7 @@ use bbb_protocol::{
 use super::{
     super::{LocalBlockUseContext, WorldStore},
     context::{clockwise, counterclockwise, direction_axis, relative, DirectionAxis},
+    signal::placement_neighbor_signal_is_proven_absent,
     state::block_item_can_replace,
 };
 use crate::{client::block_collision_shape_is_full_block, BlockPos, BlockProbe, TerrainFluidKind};
@@ -107,11 +108,9 @@ pub(super) fn door_placement(
     if direction_axis(horizontal) == DirectionAxis::Y {
         return None;
     }
-    if !door_has_no_possible_nearby_signal_source(world, target_pos)? {
-        return None;
-    }
-    let powered = false;
     let above_pos = relative(target_pos, Direction::Up);
+    placement_neighbor_signal_is_proven_absent(world, &[target_pos, above_pos])?;
+    let powered = false;
     let left_direction = counterclockwise(horizontal)?;
     let right_direction = clockwise(horizontal)?;
     let left_pos = relative(target_pos, left_direction);
@@ -155,69 +154,6 @@ pub(super) fn door_placement(
         "right"
     };
     Some(DoorPlacement { hinge, powered })
-}
-
-fn door_has_no_possible_nearby_signal_source(
-    world: &WorldStore,
-    target_pos: BlockPos,
-) -> Option<bool> {
-    // Vanilla 26.1 `SignalGetter.getSignal` can also relay a direct source
-    // through a conductor. The radius-two audit below covers both door halves,
-    // their six queried neighbours, and every direct-source neighbour. Any
-    // source owner found in the 26.1 getSignal/getDirectSignal override audit
-    // keeps this branch server-authoritative until shared signal evaluation
-    // can resolve its direction and strength.
-    let upper_pos = relative(target_pos, Direction::Up);
-    for x in target_pos.x.saturating_sub(2)..=target_pos.x.saturating_add(2) {
-        for y in target_pos.y.saturating_sub(2)..=upper_pos.y.saturating_add(2) {
-            for z in target_pos.z.saturating_sub(2)..=target_pos.z.saturating_add(2) {
-                let pos = BlockPos { x, y, z };
-                let distance_to_lower =
-                    x.abs_diff(target_pos.x) + y.abs_diff(target_pos.y) + z.abs_diff(target_pos.z);
-                let distance_to_upper =
-                    x.abs_diff(upper_pos.x) + y.abs_diff(upper_pos.y) + z.abs_diff(upper_pos.z);
-                if distance_to_lower > 2 && distance_to_upper > 2 {
-                    continue;
-                }
-                let block = world.probe_block(pos)?;
-                if block
-                    .block_name
-                    .as_deref()
-                    .is_some_and(possible_redstone_signal_source)
-                {
-                    return None;
-                }
-            }
-        }
-    }
-    Some(true)
-}
-
-fn possible_redstone_signal_source(name: &str) -> bool {
-    name.ends_with("_button")
-        || name.ends_with("_pressure_plate")
-        || matches!(
-            name,
-            "minecraft:redstone_wire"
-                | "minecraft:lightning_rod"
-                | "minecraft:lever"
-                | "minecraft:redstone_torch"
-                | "minecraft:redstone_wall_torch"
-                | "minecraft:repeater"
-                | "minecraft:comparator"
-                | "minecraft:redstone_block"
-                | "minecraft:jukebox"
-                | "minecraft:daylight_detector"
-                | "minecraft:sculk_sensor"
-                | "minecraft:calibrated_sculk_sensor"
-                | "minecraft:detector_rail"
-                | "minecraft:trapped_chest"
-                | "minecraft:tripwire_hook"
-                | "minecraft:target"
-                | "minecraft:lectern"
-                | "minecraft:observer"
-                | "minecraft:test_block"
-        )
 }
 
 fn is_lower_door(block: &BlockProbe) -> bool {

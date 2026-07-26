@@ -14,6 +14,7 @@ mod attachment;
 mod composite;
 mod connections;
 mod context;
+mod signal;
 mod state;
 pub(super) mod survival;
 

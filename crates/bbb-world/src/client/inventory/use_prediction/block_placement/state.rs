@@ -7,9 +7,14 @@ use bbb_protocol::{
 };
 
 use super::super::{LocalBlockUseContext, WorldStore};
+use super::attachment::{
+    attached_block_state_for_placement, bell_placement, cocoa_facing, pointed_dripstone_placement,
+    trapdoor_placement,
+};
 use super::composite::{door_placement, double_high_above_can_replace};
 use super::connections::{
-    chest_placement, fence_connections, iron_bars_connections, stair_shape, wall_placement,
+    chest_placement, fence_connections, fence_gate_placement, iron_bars_connections, stair_shape,
+    wall_placement,
 };
 use super::context::{
     clockwise, direction_axis, direction_axis_name, direction_name, front_and_top_name,
@@ -243,6 +248,25 @@ pub(super) fn block_state_for_placement(
                 ],
             );
         }
+        VanillaGetStateForPlacementOverride::BellBlock => {
+            let Some(placement) = bell_placement(world, target_pos, horizontal, context.face)
+            else {
+                return BlockPlacementState::Unsupported;
+            };
+            let Some(placement) = placement else {
+                return BlockPlacementState::Fail;
+            };
+            return state_with_properties(
+                world,
+                block_type,
+                default_state_id,
+                [
+                    ("facing", direction_name(placement.facing)),
+                    ("attachment", placement.attachment),
+                    ("powered", "false"),
+                ],
+            );
+        }
         VanillaGetStateForPlacementOverride::BedBlock => {
             let head_pos = relative(target_pos, horizontal);
             let Some(replaceable) =
@@ -317,6 +341,20 @@ pub(super) fn block_state_for_placement(
                     ("half", "lower"),
                     ("waterlogged", boolean_name(waterlogged)),
                 ],
+            );
+        }
+        VanillaGetStateForPlacementOverride::CocoaBlock => {
+            let Some(facing) = cocoa_facing(world, target_pos, directions) else {
+                return BlockPlacementState::Unsupported;
+            };
+            let Some(facing) = facing else {
+                return BlockPlacementState::Fail;
+            };
+            return state_with_properties(
+                world,
+                block_type,
+                default_state_id,
+                [("facing", direction_name(facing)), ("age", "0")],
             );
         }
         VanillaGetStateForPlacementOverride::EndRodBlock => {
@@ -443,6 +481,22 @@ pub(super) fn block_state_for_placement(
                 ],
             );
         }
+        VanillaGetStateForPlacementOverride::FenceGateBlock => {
+            let Some(placement) = fence_gate_placement(world, target_pos, horizontal) else {
+                return BlockPlacementState::Unsupported;
+            };
+            return state_with_properties(
+                world,
+                block_type,
+                default_state_id,
+                [
+                    ("facing", direction_name(horizontal)),
+                    ("open", "false"),
+                    ("powered", "false"),
+                    ("in_wall", boolean_name(placement.in_wall)),
+                ],
+            );
+        }
         VanillaGetStateForPlacementOverride::WallBlock => {
             let Some(waterlogged) = target_is_source_water(world, target_pos) else {
                 return BlockPlacementState::Unsupported;
@@ -552,6 +606,50 @@ pub(super) fn block_state_for_placement(
                 default_state_id,
                 [
                     ("facing", direction_name(context.face)),
+                    ("waterlogged", boolean_name(waterlogged)),
+                ],
+            );
+        }
+        VanillaGetStateForPlacementOverride::MangrovePropaguleBlock => {
+            let Some(waterlogged) = target_is_source_water(world, target_pos) else {
+                return BlockPlacementState::Unsupported;
+            };
+            return state_with_properties(
+                world,
+                block_type,
+                default_state_id,
+                [
+                    ("age", "4"),
+                    ("hanging", "false"),
+                    ("waterlogged", boolean_name(waterlogged)),
+                ],
+            );
+        }
+        VanillaGetStateForPlacementOverride::PointedDripstoneBlock => {
+            let Some(placement) = pointed_dripstone_placement(
+                world,
+                target_pos,
+                pose.x_rot,
+                context.secondary_use_active,
+            ) else {
+                return BlockPlacementState::Unsupported;
+            };
+            let Some(placement) = placement else {
+                return BlockPlacementState::Fail;
+            };
+            let Some(waterlogged) = target_is_source_water(world, target_pos) else {
+                return BlockPlacementState::Unsupported;
+            };
+            return state_with_properties(
+                world,
+                block_type,
+                default_state_id,
+                [
+                    (
+                        "vertical_direction",
+                        direction_name(placement.tip_direction),
+                    ),
+                    ("thickness", placement.thickness),
                     ("waterlogged", boolean_name(waterlogged)),
                 ],
             );
@@ -693,195 +791,44 @@ pub(super) fn block_state_for_placement(
                 ],
             );
         }
-        VanillaGetStateForPlacementOverride::FaceAttachedHorizontalDirectionalBlock => {
-            for direction in directions {
-                let (face, facing) = if direction_axis(direction) == DirectionAxis::Y {
-                    (
-                        if direction == Direction::Up {
-                            "ceiling"
-                        } else {
-                            "floor"
-                        },
-                        horizontal,
-                    )
-                } else {
-                    ("wall", opposite(direction))
-                };
-                let candidate = state_with_properties(
-                    world,
-                    block_type,
-                    default_state_id,
-                    [("face", face), ("facing", direction_name(facing))],
-                );
-                let BlockPlacementState::State(state_id) = candidate else {
-                    return candidate;
-                };
-                match world.local_block_state_can_survive(
-                    target_pos,
-                    state_id,
-                    bbb_protocol::block_types::VanillaCanSurviveOverride::FaceAttachedHorizontalDirectionalBlock,
-                ) {
-                    Some(true) => return BlockPlacementState::State(state_id),
-                    Some(false) => {}
-                    None => return BlockPlacementState::Unsupported,
-                }
-            }
-            return BlockPlacementState::Fail;
-        }
-        VanillaGetStateForPlacementOverride::LadderBlock => {
-            if !replace_clicked {
-                let Some(behind) = world.probe_block(relative(target_pos, opposite(context.face)))
-                else {
-                    return BlockPlacementState::Unsupported;
-                };
-                if behind.block_name.as_deref() == Some(block_type.resource_id)
-                    && direction_property(&behind.block_properties, "facing") == Some(context.face)
-                {
-                    return BlockPlacementState::Fail;
-                }
-            }
-            let Some(waterlogged) = target_is_source_water(world, target_pos) else {
+        VanillaGetStateForPlacementOverride::TrapDoorBlock => {
+            let Some(placement) =
+                trapdoor_placement(world, target_pos, replace_clicked, horizontal, context)
+            else {
                 return BlockPlacementState::Unsupported;
             };
-            for direction in directions {
-                if direction_axis(direction) != DirectionAxis::Y {
-                    let candidate = state_with_properties(
-                        world,
-                        block_type,
-                        default_state_id,
-                        [
-                            ("facing", direction_name(opposite(direction))),
-                            ("waterlogged", boolean_name(waterlogged)),
-                        ],
-                    );
-                    let BlockPlacementState::State(state_id) = candidate else {
-                        return candidate;
-                    };
-                    match world.local_block_state_can_survive(
-                        target_pos,
-                        state_id,
-                        bbb_protocol::block_types::VanillaCanSurviveOverride::LadderBlock,
-                    ) {
-                        Some(true) => return BlockPlacementState::State(state_id),
-                        Some(false) => {}
-                        None => return BlockPlacementState::Unsupported,
-                    }
-                }
-            }
-            return BlockPlacementState::Fail;
+            return state_with_properties(
+                world,
+                block_type,
+                default_state_id,
+                [
+                    ("facing", direction_name(placement.facing)),
+                    ("half", placement.half),
+                    ("open", "false"),
+                    ("powered", "false"),
+                    ("waterlogged", boolean_name(placement.waterlogged)),
+                ],
+            );
         }
-        VanillaGetStateForPlacementOverride::LanternBlock => {
-            let Some(waterlogged) = target_is_source_water(world, target_pos) else {
-                return BlockPlacementState::Unsupported;
-            };
-            for direction in directions {
-                if direction_axis(direction) == DirectionAxis::Y {
-                    let candidate = state_with_properties(
-                        world,
-                        block_type,
-                        default_state_id,
-                        [
-                            ("hanging", boolean_name(direction == Direction::Up)),
-                            ("waterlogged", boolean_name(waterlogged)),
-                        ],
-                    );
-                    let BlockPlacementState::State(state_id) = candidate else {
-                        return candidate;
-                    };
-                    match world.local_block_state_can_survive(
-                        target_pos,
-                        state_id,
-                        bbb_protocol::block_types::VanillaCanSurviveOverride::LanternBlock,
-                    ) {
-                        Some(true) => return BlockPlacementState::State(state_id),
-                        Some(false) => {}
-                        None => return BlockPlacementState::Unsupported,
-                    }
-                }
-            }
-            return BlockPlacementState::Fail;
-        }
-        VanillaGetStateForPlacementOverride::WallBannerBlock
+        owner @ (VanillaGetStateForPlacementOverride::FaceAttachedHorizontalDirectionalBlock
+        | VanillaGetStateForPlacementOverride::LadderBlock
+        | VanillaGetStateForPlacementOverride::LanternBlock
+        | VanillaGetStateForPlacementOverride::WallBannerBlock
         | VanillaGetStateForPlacementOverride::WallSignBlock
         | VanillaGetStateForPlacementOverride::WallTorchBlock
-        | VanillaGetStateForPlacementOverride::RedstoneWallTorchBlock => {
-            let waterlogged = if owner == VanillaGetStateForPlacementOverride::WallSignBlock {
-                let Some(waterlogged) = target_is_source_water(world, target_pos) else {
-                    return BlockPlacementState::Unsupported;
-                };
-                Some(waterlogged)
-            } else {
-                None
-            };
-            let survival_owner = match owner {
-                VanillaGetStateForPlacementOverride::WallBannerBlock => {
-                    bbb_protocol::block_types::VanillaCanSurviveOverride::WallBannerBlock
-                }
-                VanillaGetStateForPlacementOverride::WallSignBlock => {
-                    bbb_protocol::block_types::VanillaCanSurviveOverride::WallSignBlock
-                }
-                VanillaGetStateForPlacementOverride::WallTorchBlock => {
-                    bbb_protocol::block_types::VanillaCanSurviveOverride::WallTorchBlock
-                }
-                VanillaGetStateForPlacementOverride::RedstoneWallTorchBlock => {
-                    bbb_protocol::block_types::VanillaCanSurviveOverride::RedstoneWallTorchBlock
-                }
-                _ => unreachable!("matched wall support owner"),
-            };
-            for direction in directions {
-                if direction_axis(direction) != DirectionAxis::Y {
-                    let facing = direction_name(opposite(direction)).to_string();
-                    let candidate = if let Some(waterlogged) = waterlogged {
-                        state_with_owned_properties(
-                            world,
-                            block_type,
-                            default_state_id,
-                            [
-                                ("facing", facing),
-                                ("waterlogged", boolean_name(waterlogged).to_string()),
-                            ],
-                        )
-                    } else {
-                        state_with_owned_properties(
-                            world,
-                            block_type,
-                            default_state_id,
-                            [("facing", facing)],
-                        )
-                    };
-                    let BlockPlacementState::State(state_id) = candidate else {
-                        return candidate;
-                    };
-                    match world.local_block_state_can_survive(target_pos, state_id, survival_owner)
-                    {
-                        Some(true) => return BlockPlacementState::State(state_id),
-                        Some(false) => {}
-                        None => return BlockPlacementState::Unsupported,
-                    }
-                }
-            }
-            return BlockPlacementState::Fail;
-        }
-        VanillaGetStateForPlacementOverride::WallSkullBlock => {
-            for direction in directions {
-                if direction_axis(direction) != DirectionAxis::Y {
-                    let support_pos = relative(target_pos, direction);
-                    let Some(replaceable) =
-                        world.local_block_is_replaceable_by_different_item(support_pos)
-                    else {
-                        return BlockPlacementState::Unsupported;
-                    };
-                    if !replaceable {
-                        return state_with_properties(
-                            world,
-                            block_type,
-                            default_state_id,
-                            [("facing", direction_name(opposite(direction)))],
-                        );
-                    }
-                }
-            }
-            return BlockPlacementState::Fail;
+        | VanillaGetStateForPlacementOverride::RedstoneWallTorchBlock
+        | VanillaGetStateForPlacementOverride::WallSkullBlock) => {
+            return attached_block_state_for_placement(
+                world,
+                block_type,
+                owner,
+                target_pos,
+                replace_clicked,
+                context,
+                horizontal,
+                directions,
+                default_state_id,
+            );
         }
         _ => return BlockPlacementState::Unsupported,
     };
@@ -889,7 +836,7 @@ pub(super) fn block_state_for_placement(
     state_with_properties(world, block_type, default_state_id, properties)
 }
 
-fn state_with_properties<const N: usize>(
+pub(super) fn state_with_properties<const N: usize>(
     world: &WorldStore,
     block_type: &BlockTypeCatalogEntry,
     default_state_id: i32,
@@ -911,7 +858,7 @@ fn state_with_properties<const N: usize>(
     resolve_state(world, block_type.resource_id, properties)
 }
 
-fn state_with_owned_properties<const N: usize>(
+pub(super) fn state_with_owned_properties<const N: usize>(
     world: &WorldStore,
     block_type: &BlockTypeCatalogEntry,
     default_state_id: i32,
