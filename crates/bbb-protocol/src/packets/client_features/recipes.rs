@@ -471,6 +471,12 @@ fn decode_recipe_display_summary(decoder: &mut Decoder<'_>) -> Result<RecipeDisp
             let width = decoder.read_var_i32()?;
             let height = decoder.read_var_i32()?;
             let ingredients = decode_slot_display_list(decoder)?;
+            if i32::try_from(ingredients.len()).ok() != Some(width.wrapping_mul(height)) {
+                return Err(ProtocolError::InvalidData(format!(
+                    "shaped recipe display has {} ingredients for {width}x{height}",
+                    ingredients.len()
+                )));
+            }
             let result = decode_slot_display_summary(decoder)?;
             let crafting_station = decode_slot_display_summary(decoder)?;
             (

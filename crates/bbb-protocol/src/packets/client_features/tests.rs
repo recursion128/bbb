@@ -140,6 +140,30 @@ fn rejects_unknown_recipe_display_type() {
 }
 
 #[test]
+fn rejects_shaped_recipe_display_with_mismatched_dimensions() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(9);
+    payload.write_var_i32(RecipeDisplayType::CraftingShaped.id());
+    payload.write_var_i32(2);
+    payload.write_var_i32(2);
+    payload.write_var_i32(3);
+    for _ in 0..3 {
+        payload.write_var_i32(VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID);
+    }
+    payload.write_var_i32(VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID);
+    payload.write_var_i32(VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID);
+
+    let err = decode_play_clientbound(
+        ids::play::CLIENTBOUND_PLACE_GHOST_RECIPE,
+        &payload.into_inner(),
+    )
+    .unwrap_err();
+    assert!(err
+        .to_string()
+        .contains("shaped recipe display has 3 ingredients for 2x2"));
+}
+
+#[test]
 fn decodes_recipe_book_add_packet_wire_order() {
     let mut payload = Encoder::new();
     payload.write_var_i32(1);
