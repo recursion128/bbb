@@ -5190,7 +5190,13 @@ mod tests {
                 .expect("late debug text pass ends before transparency blit");
         let pass_body = &source[pass_start..pass_end];
         assert!(pass_body.contains("camera_pose,\n            true,"));
-        assert!(pass_body.contains("view: &self.transparency_final_target.view"));
+        assert!(
+            pass_body.contains("if self.post_effect_graphs.is_some()")
+                && pass_body.contains("&self.main_target.view")
+                && pass_body.contains("&self.transparency_final_target.view")
+                && pass_body.contains("view: color_view"),
+            "late debug text must target the selected graph main owner or the embedded final fallback"
+        );
         assert!(pass_body.contains("view: &self.depth.view"));
         assert!(pass_body.contains("load: wgpu::LoadOp::Clear(1.0)"));
         assert!(
