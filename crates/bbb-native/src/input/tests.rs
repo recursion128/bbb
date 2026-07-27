@@ -13133,7 +13133,7 @@ fn piglin_and_spider_dispatch_use_the_world_generated_catalog() {
     ));
     assert!(include_str!("../input.rs")
         .contains("bbb_world::vanilla_entity_type_is_spider(entity.entity_type_id)"));
-    assert!(include_str!("../runtime.rs")
+    assert!(include_str!("../camera_pose.rs")
         .contains("bbb_world::vanilla_entity_camera_post_effect_id(entity_type_id)"));
 }
 
@@ -25831,6 +25831,7 @@ fn camera_post_effect_selection_and_f4_edges_preserve_vanilla_active_lifecycle()
     let mut counters = NetCounters::default();
     input.synchronize_camera_post_effect(7, 1, Some("minecraft:creeper"));
     assert!(input.camera_post_effect_active());
+    assert_eq!(input.camera_post_effect_id(), Some("minecraft:creeper"));
 
     handle_key_input_without_world(
         &mut input,
@@ -25857,6 +25858,10 @@ fn camera_post_effect_selection_and_f4_edges_preserve_vanilla_active_lifecycle()
         "same-selection extraction must preserve the disabled state"
     );
     assert!(!input.render_publication().camera_post_effect_active());
+    assert_eq!(
+        input.render_publication().camera_post_effect_id(),
+        Some("minecraft:creeper")
+    );
 
     handle_key_input_without_world(
         &mut input,
@@ -25875,6 +25880,7 @@ fn camera_post_effect_selection_and_f4_edges_preserve_vanilla_active_lifecycle()
         !input.camera_post_effect_active(),
         "clearing the selected effect clears active state"
     );
+    assert_eq!(input.camera_post_effect_id(), None);
 
     handle_key_input_without_world(
         &mut input,
@@ -25892,6 +25898,79 @@ fn camera_post_effect_selection_and_f4_edges_preserve_vanilla_active_lifecycle()
         !input.camera_post_effect_active(),
         "a new level selection token clears an absent effect"
     );
+}
+
+#[test]
+fn camera_perspective_cycles_and_applies_only_first_person_post_effect_boundaries() {
+    let mut input = ClientInputState::new(true);
+    input.synchronize_camera_post_effect(7, 1, Some("minecraft:spider"));
+    assert_eq!(input.camera_type(), CameraType::FirstPerson);
+
+    input.cycle_camera_type(Some("minecraft:spider"));
+    assert_eq!(input.camera_type(), CameraType::ThirdPersonBack);
+    assert_eq!(input.camera_post_effect_id(), None);
+    assert!(!input.camera_post_effect_active());
+
+    input.cycle_camera_type(Some("minecraft:spider"));
+    assert_eq!(input.camera_type(), CameraType::ThirdPersonFront);
+    assert_eq!(input.camera_post_effect_id(), None);
+
+    input.synchronize_camera_post_effect(7, 2, Some("minecraft:creeper"));
+    assert_eq!(input.camera_post_effect_id(), Some("minecraft:creeper"));
+    assert!(
+        input.camera_post_effect_active(),
+        "SetCamera must refresh an effect even while detached"
+    );
+
+    input.cycle_camera_type(Some("minecraft:invert"));
+    assert_eq!(input.camera_type(), CameraType::FirstPerson);
+    assert_eq!(input.camera_post_effect_id(), Some("minecraft:invert"));
+    assert!(input.camera_post_effect_active());
+
+    let publication = input.render_publication();
+    assert_eq!(publication.camera_type(), CameraType::FirstPerson);
+    assert_eq!(
+        publication.camera_post_effect_id(),
+        Some("minecraft:invert")
+    );
+}
+
+#[test]
+fn camera_perspective_f5_consumes_one_cycle_per_press_edge() {
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    let net_commands = None;
+
+    for state in [ElementState::Pressed, ElementState::Pressed] {
+        handle_key_input(
+            &mut input,
+            &mut counters,
+            &mut world,
+            &net_commands,
+            PhysicalKey::Code(KeyCode::F5),
+            state,
+        );
+    }
+    assert_eq!(input.camera_type(), CameraType::ThirdPersonBack);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &net_commands,
+        PhysicalKey::Code(KeyCode::F5),
+        ElementState::Released,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &net_commands,
+        PhysicalKey::Code(KeyCode::F5),
+        ElementState::Pressed,
+    );
+    assert_eq!(input.camera_type(), CameraType::ThirdPersonFront);
 }
 
 #[test]

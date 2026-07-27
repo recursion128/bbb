@@ -1,6 +1,34 @@
 use bbb_renderer::{CameraHurtEffect, CameraPose};
 use bbb_world::{LocalPlayerPoseState, WorldStore};
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) enum CameraType {
+    #[default]
+    FirstPerson,
+    ThirdPersonBack,
+    ThirdPersonFront,
+}
+
+impl CameraType {
+    pub(crate) fn cycle(self) -> Self {
+        match self {
+            Self::FirstPerson => Self::ThirdPersonBack,
+            Self::ThirdPersonBack => Self::ThirdPersonFront,
+            Self::ThirdPersonFront => Self::FirstPerson,
+        }
+    }
+
+    pub(crate) fn is_first_person(self) -> bool {
+        matches!(self, Self::FirstPerson)
+    }
+}
+
+pub(crate) fn current_post_effect_id_from_world(world: &WorldStore) -> Option<&'static str> {
+    let camera_entity_id = world.local_player().camera.entity_id?;
+    let entity_type_id = world.entity_type_id(camera_entity_id)?;
+    bbb_world::vanilla_entity_camera_post_effect_id(entity_type_id)
+}
+
 pub(crate) fn camera_pose_from_world(world: &WorldStore) -> Option<CameraPose> {
     camera_pose_from_world_at_partial_tick(world, 1.0)
 }

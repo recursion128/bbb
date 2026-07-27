@@ -96,7 +96,7 @@ use crate::{
     camera_fov::{camera_eye_in_water, CameraFovTickState},
     camera_pose::{
         camera_hurt_effect_from_world, camera_pose_from_world,
-        camera_pose_from_world_at_partial_tick,
+        camera_pose_from_world_at_partial_tick, current_post_effect_id_from_world,
     },
     chest_scene::chest_model_instances_from_world_at_partial_tick,
     code_of_conduct::CodeOfConductAcceptance,
@@ -2607,8 +2607,12 @@ pub(crate) fn advance_simulation(
         advanced_ticks,
     );
     let particle_camera_pose = camera_pose_from_world_at_partial_tick(world, entity_partial_tick);
-    let particle_scope_context =
-        particle_local_player_scope_context(world, item_runtime.as_ref(), particle_camera_pose);
+    let particle_scope_context = particle_local_player_scope_context(
+        world,
+        item_runtime.as_ref(),
+        particle_camera_pose,
+        input.camera_type().is_first_person(),
+    );
     let particle_sound_camera_position =
         particle_camera_pose.map(|camera| camera_eye_position(camera).map(f64::from));
     let particle_player_motion_contexts = particle_player_motion_contexts(world);
@@ -3282,10 +3286,10 @@ pub(crate) fn update_renderer_from_publication(
         hud_jump_bar,
         hud_experience_progress,
     );
-    // Vanilla `GameRenderer.checkEntityPostEffect` stores this independently from the
-    // post-chain active toggle. bbb is currently first-person-only, so the current camera
-    // entity is the complete input to the same-frame renderer mirror.
-    let current_post_effect_id = current_post_effect_id_from_world(world);
+    // Selection and active state are one immutable simulation publication:
+    // F5 may clear/reselect independently of the canonical camera entity, while
+    // a later SetCamera refresh may select again even in third person.
+    let current_post_effect_id = input.camera_post_effect_id();
     let renderer_counters = renderer.counters();
     let hud_audio_counters = audio_events
         .as_deref()
@@ -7313,7 +7317,7 @@ fn hud_debug_overlay(
         tps_sampler,
         net_counters,
         &audio_counters,
-        current_post_effect_id_from_world(world),
+        input.camera_post_effect_id(),
     )
 }
 
@@ -8801,12 +8805,6 @@ fn hud_debug_sound_mood_line(counters: &AudioCounters) -> String {
 
 fn hud_debug_post_effect_line(current_post_effect_id: Option<&str>) -> Option<String> {
     Some(format!("Post: {}", current_post_effect_id?))
-}
-
-fn current_post_effect_id_from_world(world: &WorldStore) -> Option<&'static str> {
-    let camera_entity_id = world.local_player().camera.entity_id?;
-    let entity_type_id = world.entity_type_id(camera_entity_id)?;
-    bbb_world::vanilla_entity_camera_post_effect_id(entity_type_id)
 }
 
 fn hud_debug_sound_cache_bytes_to_mebibytes(bytes: u64) -> u64 {
@@ -17373,6 +17371,7 @@ fn particle_local_player_scope_context(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     camera_pose: Option<CameraPose>,
+    first_person: bool,
 ) -> Option<ParticleLocalPlayerScopeContext> {
     let item_id = world.local_using_item_item_id()?;
     let scoping = item_runtime.and_then(|items| items.item_resource_id(item_id))
@@ -17384,7 +17383,7 @@ fn particle_local_player_scope_context(
     let eye_position = camera_eye_position(camera).map(f64::from);
     Some(ParticleLocalPlayerScopeContext {
         eye_position,
-        first_person: world.local_player().camera.follows_player,
+        first_person,
         scoping,
     })
 }

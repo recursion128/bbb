@@ -888,9 +888,13 @@ fn particle_scope_context_tracks_local_spyglass_use() {
     });
     world.set_local_using_item(true);
 
-    let context =
-        particle_local_player_scope_context(&world, Some(&runtime), camera_pose_from_world(&world))
-            .unwrap();
+    let context = particle_local_player_scope_context(
+        &world,
+        Some(&runtime),
+        camera_pose_from_world(&world),
+        true,
+    )
+    .unwrap();
     assert_eq!(
         context.eye_position,
         camera_eye_position(camera_pose_from_world(&world).unwrap()).map(f64::from)
@@ -903,11 +907,16 @@ fn particle_scope_context_tracks_local_spyglass_use() {
         item: item_stack(1, 1),
     });
     assert_eq!(
-        particle_local_player_scope_context(&world, Some(&runtime), camera_pose_from_world(&world)),
+        particle_local_player_scope_context(
+            &world,
+            Some(&runtime),
+            camera_pose_from_world(&world),
+            true,
+        ),
         None
     );
     assert_eq!(
-        particle_local_player_scope_context(&world, None, camera_pose_from_world(&world)),
+        particle_local_player_scope_context(&world, None, camera_pose_from_world(&world), true),
         None
     );
 }
@@ -6527,8 +6536,8 @@ fn camera_post_effect_frame_commits_the_same_selection_and_active_state_used_by_
         .find("input_runtime.apply_commands(")
         .expect("ordered input command application");
     let extraction = runtime_source
-        .find("let current_post_effect_id = current_post_effect_id_from_world(world);")
-        .expect("pump should extract the current post effect once per frame");
+        .find("let current_post_effect_id = input.camera_post_effect_id();")
+        .expect("pump should extract the published current post effect once per frame");
     let hud_projection = runtime_source
         .find("            current_post_effect_id,\n")
         .expect("HUD should consume the same-frame current post effect");

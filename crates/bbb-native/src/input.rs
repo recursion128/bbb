@@ -190,7 +190,7 @@ mod test_block;
 mod test_instance_block;
 pub(crate) mod text_edit;
 
-use crate::camera_pose::camera_pose_from_world;
+use crate::camera_pose::{camera_pose_from_world, current_post_effect_id_from_world, CameraType};
 use crate::crosshair::protocol_block_pos_from_world;
 use crate::crosshair::{crosshair_target_from_camera_at_partial_tick, CrosshairTarget};
 use crate::terrain_runtime::TerrainUploadState;
@@ -672,7 +672,9 @@ pub(crate) struct ClientInputState {
     debug_wireframe_enabled: bool,
     /// Vanilla `Options.hideGui`, toggled by the default `key.toggleGui` (F1).
     hide_gui: bool,
+    camera_type: CameraType,
     camera_post_effect_selection: Option<CameraPostEffectSelection>,
+    camera_post_effect_id: Option<&'static str>,
     camera_post_effect_active: bool,
     debug_frustum_requests: Vec<DebugFrustumRequest>,
     debug_feature_count_requests: Vec<DebugFeatureCountRequest>,
@@ -1280,6 +1282,8 @@ impl ClientInputState {
             debug_fog_enabled: self.debug_fog_enabled,
             debug_smart_cull_enabled: self.debug_smart_cull_enabled,
             debug_wireframe_enabled: self.debug_wireframe_enabled,
+            camera_type: self.camera_type,
+            camera_post_effect_id: self.camera_post_effect_id,
             camera_post_effect_active: self.camera_post_effect_active,
             debug_pause_on_lost_focus: self.debug_pause_on_lost_focus,
             debug_profiling_recording: self.debug_profiling_recording,
@@ -1554,11 +1558,34 @@ impl ClientInputState {
             return;
         }
         self.camera_post_effect_selection = Some(selection);
+        self.camera_post_effect_id = effect_id;
         self.camera_post_effect_active = effect_id.is_some();
+    }
+
+    pub(crate) fn camera_type(&self) -> CameraType {
+        self.camera_type
+    }
+
+    pub(crate) fn camera_post_effect_id(&self) -> Option<&'static str> {
+        self.camera_post_effect_id
     }
 
     pub(crate) fn camera_post_effect_active(&self) -> bool {
         self.camera_post_effect_active
+    }
+
+    fn cycle_camera_type(&mut self, current_camera_effect_id: Option<&'static str>) {
+        let previous = self.camera_type;
+        self.camera_type = self.camera_type.cycle();
+        if previous.is_first_person() == self.camera_type.is_first_person() {
+            return;
+        }
+        self.camera_post_effect_id = if self.camera_type.is_first_person() {
+            current_camera_effect_id
+        } else {
+            None
+        };
+        self.camera_post_effect_active = self.camera_post_effect_id.is_some();
     }
 
     fn toggle_camera_post_effect(&mut self) {
@@ -10990,6 +11017,10 @@ pub(crate) fn handle_key_input_with_item_runtime(
         }
         if just_pressed && code == KeyCode::F4 {
             input.toggle_camera_post_effect();
+            return;
+        }
+        if just_pressed && code == KeyCode::F5 {
+            input.cycle_camera_type(current_post_effect_id_from_world(world));
             return;
         }
         if let Some(slot) = hotbar_slot_for_key(code) {
