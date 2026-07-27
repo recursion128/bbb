@@ -50,6 +50,11 @@ pub use crate::metadata::{LanguageInfo, PackMetadataCatalog};
 pub use crate::mipmap::{generate_sprite_mip_levels, SpriteMipLevel};
 pub use crate::particle_definitions::{ParticleDefinition, ParticleDefinitionCatalog};
 pub use crate::particle_sprites::ParticleSpriteCatalog;
+pub use crate::post_effects::{
+    PostEffectCatalog, PostEffectGraph, PostEffectInput, PostEffectInternalTarget, PostEffectPass,
+    PostEffectShaderImport, PostEffectShaderKey, PostEffectShaderSource, PostEffectShaderStage,
+    PostEffectTextureImage, PostEffectUniform, PostEffectUniformValue,
+};
 pub use crate::resource_budget::{
     ResourceDataMemoryObservation, MAX_RESOURCE_DATA_GENERATION_LOGICAL_BYTES,
     MAX_RESOURCE_DATA_PROCESS_LOGICAL_BYTES,
