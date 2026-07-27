@@ -1,6 +1,6 @@
 # Player-list presentation closure
 
-Status: active engineering contract.
+Status: completed on 2026-07-26.
 
 Pre-start fully gated baseline: `9870f9a5ac537c489135e15fceb28ca833466738`.
 

@@ -616,3 +616,6 @@
 - **2026-07-26（望远镜遮罩工程闭环）**：本地 `isScoping`、GUI 帧级
   `scopeScale` 插值、selected-pack scope 纹理、四边黑色遮罩与 crosshair 前提交
   已按 Vanilla 对齐；合同见 `docs/archive/spyglass-scope-overlay-design.md`。
+- **2026-07-26（玩家列表呈现工程闭环）**：会话加密状态、打开时系统旁白、玩家
+  头像/帽层/倒置规则及 6 档 Vanilla 延迟图标已贯通 net、world、native 与
+  renderer；合同见 `docs/archive/player-list-presentation-closure-design.md`。
