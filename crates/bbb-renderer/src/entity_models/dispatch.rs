@@ -17,10 +17,11 @@ use glam::{Mat4, Vec3};
 use super::catalog::{
     BannerPatternTexture, BoatModelFamily, CamelModelFamily, DonkeyModelFamily,
     EntityCustomHeadSkull, EntityDyeColor, EntityDynamicPlayerSkinAtlasLayout,
-    EntityDynamicPlayerTextureAtlasLayout, EntityModelKind, EntityModelTextureAtlasLayout,
-    EntityPlayerSkin, HorseColorVariant, HorseMarkings, IllagerModelFamily, LlamaModelFamily,
-    LlamaVariant, PiglinModelFamily, PlayerModelPartVisibility, SkeletonModelFamily,
-    UndeadHorseModelFamily, ZombieVariantModelFamily,
+    EntityDynamicPlayerTextureAtlasLayout, EntityModelKind, EntityModelOwnedTextureAtlasEntry,
+    EntityModelTextureAtlasLayout, EntityPlayerSkin, HorseColorVariant, HorseMarkings,
+    IllagerModelFamily, LlamaModelFamily, LlamaVariant, PiglinModelFamily,
+    PlayerModelPartVisibility, SkeletonModelFamily, UndeadHorseModelFamily,
+    ZombieVariantModelFamily,
 };
 use super::colored::{
     arrow_model_root_transform, banner_model_root_transform, bed_model_root_transform,
@@ -47,6 +48,7 @@ use super::colored::{
     wither_skull_model_root_transform, zombie_variant_color, zombie_variant_root_transform,
     GIANT_SCALE,
 };
+use super::equipment::ResolvedEntityEquipmentAssetCatalog;
 use super::geometry::{
     emit_model_cube, emit_model_part, part_pose_transform, EntityModelMesh, PartPose,
 };
@@ -613,6 +615,8 @@ impl EntityModelSink for ColoredSink<'_> {
 pub(in crate::entity_models) struct TexturedSink<'a> {
     pub(in crate::entity_models) meshes: &'a mut EntityModelTexturedMeshes,
     pub(in crate::entity_models) atlas: &'a EntityModelTextureAtlasLayout,
+    pub(in crate::entity_models) owned_entries: &'a [EntityModelOwnedTextureAtlasEntry],
+    pub(in crate::entity_models) equipment_assets: &'a ResolvedEntityEquipmentAssetCatalog,
     pub(in crate::entity_models) dynamic_player_skin_atlas:
         Option<&'a EntityDynamicPlayerSkinAtlasLayout>,
     pub(in crate::entity_models) dynamic_player_texture_atlas:
@@ -1008,6 +1012,8 @@ impl EntityModelSink for TexturedSink<'_> {
             self.meshes,
             *instance,
             self.atlas,
+            self.owned_entries,
+            self.equipment_assets,
             self.dynamic_player_texture_atlas,
         );
     }
@@ -1060,6 +1066,8 @@ impl EntityModelSink for TexturedSink<'_> {
             self.meshes,
             *instance,
             self.atlas,
+            self.owned_entries,
+            self.equipment_assets,
             self.dynamic_player_texture_atlas,
         );
     }

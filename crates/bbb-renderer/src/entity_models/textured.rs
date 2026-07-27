@@ -9,6 +9,10 @@ use super::dispatch::{
     dispatch_invisible_living_ungated_layers, dispatch_uniform_entity_model,
     dispatch_vanilla_entity_layers, TexturedSink,
 };
+use super::equipment::{
+    equipment_layer_tint, EntityEquipmentLayerType, ResolvedEntityEquipmentAssetCatalog,
+    ResolvedEntityEquipmentAssetLayer, ResolvedEntityEquipmentAssetLayerTexture,
+};
 use super::held_item::{custom_head_skull_transform, custom_head_skull_transform_with_root};
 use super::model::{EntityModel, ModelPart};
 #[cfg(test)]
@@ -20,12 +24,12 @@ use super::{
         EntityCustomHeadSkull, EntityDynamicPlayerSkin, EntityDynamicPlayerSkinAtlasEntry,
         EntityDynamicPlayerSkinAtlasLayout, EntityDynamicPlayerSkinStatus,
         EntityDynamicPlayerTexture, EntityDynamicPlayerTextureAtlasLayout, EntityDynamicTexture,
-        EntityEquipmentLayerTexture, EntityModelKind, EntityModelTextureAtlasEntry,
-        EntityModelTextureAtlasLayout, EntityModelTextureRef, EntityModelUvRect, EntityPlayerSkin,
-        FirstPersonPlayerArm, HorseColorVariant, HorseMarkings, LeashRopeRenderState,
-        LlamaModelFamily, ParrotModelVariant, PiglinModelFamily, PlayerModelPartVisibility,
-        SkeletonModelFamily, UndeadHorseModelFamily, VillagerModelData, ZombieVariantModelFamily,
-        PLAYER_MODEL_PARTS_ALL_VISIBLE,
+        EntityEquipmentLayerTexture, EntityModelKind, EntityModelOwnedTextureAtlasEntry,
+        EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout, EntityModelTextureRef,
+        EntityModelUvRect, EntityPlayerSkin, FirstPersonPlayerArm, HorseColorVariant,
+        HorseMarkings, LeashRopeRenderState, LlamaModelFamily, ParrotModelVariant,
+        PiglinModelFamily, PlayerModelPartVisibility, SkeletonModelFamily, UndeadHorseModelFamily,
+        VillagerModelData, ZombieVariantModelFamily, PLAYER_MODEL_PARTS_ALL_VISIBLE,
     },
     entity_model_root_transform,
     geometry::{
@@ -179,6 +183,9 @@ pub(super) use layers::{
 pub(super) struct EntityModelRenderSubmission {
     pub(super) render_type: EntityModelLayerRenderType,
     pub(super) texture: EntityModelTextureRef,
+    /// Index into the selected shared entity atlas's owned-texture table.
+    /// `None` means `texture` is a static catalog reference.
+    pub(super) owned_texture: Option<u32>,
     pub(super) dissolve_texture: Option<EntityModelTextureRef>,
     pub(super) dynamic_player_skin: Option<EntityDynamicPlayerSkin>,
     pub(super) dynamic_player_texture: Option<EntityDynamicPlayerTexture>,
@@ -1016,6 +1023,7 @@ fn compare_submit_sort_key(
 struct EntityModelSubmissionEmit {
     render_type: EntityModelLayerRenderType,
     texture: EntityModelTextureRef,
+    owned_texture: Option<u32>,
     dissolve_texture: Option<EntityModelTextureRef>,
     dynamic_player_skin: Option<EntityDynamicPlayerSkin>,
     dynamic_player_texture: Option<EntityDynamicPlayerTexture>,
@@ -1042,6 +1050,7 @@ impl EntityModelSubmissionEmit {
         Self {
             render_type,
             texture,
+            owned_texture: None,
             dissolve_texture: None,
             dynamic_player_skin: None,
             dynamic_player_texture: None,
@@ -1059,6 +1068,11 @@ impl EntityModelSubmissionEmit {
 
     fn with_dynamic_player_skin(mut self, skin: EntityDynamicPlayerSkin) -> Self {
         self.dynamic_player_skin = Some(skin);
+        self
+    }
+
+    fn with_owned_texture(mut self, index: u32) -> Self {
+        self.owned_texture = Some(index);
         self
     }
 
@@ -1099,6 +1113,7 @@ impl From<EntityModelSubmissionEmit> for EntityModelRenderSubmission {
         Self {
             render_type: submit.render_type,
             texture: submit.texture,
+            owned_texture: submit.owned_texture,
             dissolve_texture: submit.dissolve_texture,
             dynamic_player_skin: submit.dynamic_player_skin,
             dynamic_player_texture: submit.dynamic_player_texture,
@@ -1154,9 +1169,33 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
     )
 }
 
+#[cfg(test)]
 pub(super) fn entity_model_textured_meshes_with_dynamic_textures_for_camera(
     instances: &[EntityModelInstance],
     atlas: &EntityModelTextureAtlasLayout,
+    dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
+    dynamic_player_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
+    sort_camera_position: Option<[f32; 3]>,
+    camera_pose: Option<crate::CameraPose>,
+) -> EntityModelTexturedMeshes {
+    let equipment_assets = ResolvedEntityEquipmentAssetCatalog::default();
+    entity_model_textured_meshes_with_equipment_for_camera(
+        instances,
+        atlas,
+        &[],
+        &equipment_assets,
+        dynamic_player_skin_atlas,
+        dynamic_player_texture_atlas,
+        sort_camera_position,
+        camera_pose,
+    )
+}
+
+pub(super) fn entity_model_textured_meshes_with_equipment_for_camera(
+    instances: &[EntityModelInstance],
+    atlas: &EntityModelTextureAtlasLayout,
+    owned_entries: &[EntityModelOwnedTextureAtlasEntry],
+    equipment_assets: &ResolvedEntityEquipmentAssetCatalog,
     dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
     dynamic_player_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
     sort_camera_position: Option<[f32; 3]>,
@@ -1179,6 +1218,8 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures_for_camera(
             let mut sink = TexturedSink {
                 meshes: &mut meshes,
                 atlas,
+                owned_entries,
+                equipment_assets,
                 dynamic_player_skin_atlas,
                 dynamic_player_texture_atlas,
             };
@@ -1190,6 +1231,8 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures_for_camera(
             let mut sink = TexturedSink {
                 meshes: &mut meshes,
                 atlas,
+                owned_entries,
+                equipment_assets,
                 dynamic_player_skin_atlas,
                 dynamic_player_texture_atlas,
             };
@@ -1201,6 +1244,8 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures_for_camera(
             let mut sink = TexturedSink {
                 meshes: &mut meshes,
                 atlas,
+                owned_entries,
+                equipment_assets,
                 dynamic_player_skin_atlas,
                 dynamic_player_texture_atlas,
             };
@@ -1214,6 +1259,8 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures_for_camera(
             let mut sink = TexturedSink {
                 meshes: &mut meshes,
                 atlas,
+                owned_entries,
+                equipment_assets,
                 dynamic_player_skin_atlas,
                 dynamic_player_texture_atlas,
             };
@@ -2321,6 +2368,16 @@ fn render_textured_submission(
     atlas: &EntityModelTextureAtlasLayout,
     emit: impl FnOnce(&mut EntityModelTexturedMesh, EntityModelTextureAtlasEntry),
 ) {
+    render_textured_submission_with_owned(meshes, submit, atlas, &[], emit);
+}
+
+fn render_textured_submission_with_owned(
+    meshes: &mut EntityModelTexturedMeshes,
+    submit: EntityModelSubmissionEmit,
+    atlas: &EntityModelTextureAtlasLayout,
+    owned_entries: &[EntityModelOwnedTextureAtlasEntry],
+    emit: impl FnOnce(&mut EntityModelTexturedMesh, EntityModelTextureAtlasEntry),
+) {
     let (submission, insertion_index) = meshes.record_submission_with_index(submit);
     let current_crumbling = meshes.current_block_entity_crumbling;
     if submit
@@ -2329,7 +2386,17 @@ fn render_textured_submission(
     {
         return;
     }
-    if let Some(entry) = entity_model_texture_atlas_entry(atlas, submit.texture) {
+    let entry = if let Some(index) = submit.owned_texture {
+        owned_entries
+            .get(index as usize)
+            .map(|entry| EntityModelTextureAtlasEntry {
+                texture: submit.texture,
+                uv: entry.uv,
+            })
+    } else {
+        entity_model_texture_atlas_entry(atlas, submit.texture)
+    };
+    if let Some(entry) = entry {
         if submission.render_type.mesh_bucket() == EntityModelLayerRenderBucket::GlintOnly {
             let mut scratch = EntityModelTexturedMesh::new();
             emit(&mut scratch, entry);
@@ -4206,6 +4273,155 @@ fn emit_crystal_beam_submission(
     );
 }
 
+const OWNED_EQUIPMENT_TEXTURE_PROXY_PATH: &str = "bbb:owned_equipment_texture";
+
+fn resolved_equipment_layer_texture(
+    layer: ResolvedEntityEquipmentAssetLayer,
+) -> (EntityModelTextureRef, Option<u32>) {
+    match layer.texture {
+        ResolvedEntityEquipmentAssetLayerTexture::Static(texture) => (texture, None),
+        ResolvedEntityEquipmentAssetLayerTexture::Owned {
+            index,
+            logical_size,
+        } => (
+            EntityModelTextureRef {
+                path: OWNED_EQUIPMENT_TEXTURE_PROXY_PATH,
+                size: logical_size,
+            },
+            Some(index),
+        ),
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn emit_equipment_asset_layers(
+    meshes: &mut EntityModelTexturedMeshes,
+    layers: &[ResolvedEntityEquipmentAssetLayer],
+    kind: EntityModelLayerKind,
+    model_layer: &'static str,
+    transform: Mat4,
+    dye: Option<u32>,
+    foil: bool,
+    trim: Option<EntityArmorTrim>,
+    trim_visible: bool,
+    starting_order: i32,
+    submit_sequence: u32,
+    atlas: &EntityModelTextureAtlasLayout,
+    owned_entries: &[EntityModelOwnedTextureAtlasEntry],
+    dynamic_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
+    player_texture_override: Option<EntityDynamicPlayerTexture>,
+    mut emit: impl FnMut(
+        &mut EntityModelTexturedMesh,
+        EntityModelTextureRef,
+        EntityModelUvRect,
+        [f32; 4],
+    ),
+) {
+    if layers.is_empty() {
+        return;
+    }
+    let mut next_order = starting_order;
+    let mut foil_pending = foil;
+    let mut trim_base_texture = resolved_equipment_layer_texture(layers[0]).0;
+    for layer in layers.iter().copied() {
+        let Some(tint) = equipment_layer_tint(layer.dyeable, dye) else {
+            continue;
+        };
+        let (equipment_texture, owned_texture) = resolved_equipment_layer_texture(layer);
+        let profile_texture = layer
+            .use_player_texture
+            .then_some(player_texture_override)
+            .flatten();
+        let pass_texture = profile_texture
+            .map(player_profile_wings_texture_ref)
+            .unwrap_or(equipment_texture);
+        trim_base_texture = pass_texture;
+        let pass = equipment_layer_pass(
+            kind,
+            EntityModelLayerRenderType::ArmorCutoutNoCull,
+            model_layer,
+            pass_texture,
+            tint,
+            next_order,
+            submit_sequence,
+        );
+        let mut submit = textured_layer_submission(meshes, pass, transform);
+        if let Some(profile_texture) = profile_texture {
+            submit = submit.with_dynamic_player_texture(profile_texture);
+            if let Some(entry) =
+                dynamic_player_texture_atlas_entry(dynamic_texture_atlas, profile_texture)
+            {
+                render_textured_dynamic_player_texture_submission(
+                    meshes,
+                    submit,
+                    entry,
+                    |mesh, entry| emit(mesh, submit.texture, entry.uv, submit.tint),
+                );
+            } else {
+                // Preserve vanilla-shaped submission metadata even while the
+                // selected dynamic player texture is pending atlas residency.
+                meshes.record_submission(submit);
+            }
+        } else {
+            if let Some(owned_texture) = owned_texture {
+                submit = submit.with_owned_texture(owned_texture);
+            }
+            render_textured_submission_with_owned(
+                meshes,
+                submit,
+                atlas,
+                owned_entries,
+                |mesh, entry| emit(mesh, submit.texture, entry.uv, submit.tint),
+            );
+        }
+        next_order += 1;
+
+        if foil_pending {
+            let pass = equipment_layer_pass(
+                kind,
+                EntityModelLayerRenderType::ArmorEntityGlint,
+                model_layer,
+                ENCHANTED_GLINT_ARMOR_TEXTURE_REF,
+                tint,
+                next_order,
+                submit_sequence,
+            );
+            let submit = no_overlay_layer_submission(pass, transform);
+            render_textured_submission(meshes, submit, atlas, |mesh, entry| {
+                emit(mesh, submit.texture, entry.uv, submit.tint);
+            });
+            next_order += 1;
+            foil_pending = false;
+        }
+    }
+
+    let Some(trim) = trim.filter(|_| trim_visible) else {
+        return;
+    };
+    let render_type = if trim.decal {
+        EntityModelLayerRenderType::ArmorTrimDecalCutoutNoCull
+    } else {
+        EntityModelLayerRenderType::ArmorTrimCutoutNoCull
+    };
+    let pass = equipment_layer_pass(
+        kind,
+        render_type,
+        model_layer,
+        trim_base_texture,
+        [1.0; 4],
+        next_order,
+        submit_sequence,
+    );
+    let submit = no_overlay_layer_submission(pass, transform).with_dynamic_texture(trim.texture);
+    if let Some(entry) = dynamic_texture_atlas_entry(dynamic_texture_atlas, trim.texture) {
+        render_textured_dynamic_player_texture_submission(meshes, submit, entry, |mesh, entry| {
+            emit(mesh, submit.texture, entry.uv, submit.tint);
+        });
+    } else {
+        meshes.record_submission(submit);
+    }
+}
+
 /// The `HumanoidArmorLayer` worn-armor overlay (vanilla `HumanoidArmorLayer.submit`): for each filled
 /// equipment slot the inflated `HumanoidArmorModel` piece (helmet / chestplate / leggings / boots) is
 /// draped on the host humanoid's posed limbs ([`ModelPart::copy_child_poses_from`] = vanilla
@@ -4224,6 +4440,8 @@ fn emit_humanoid_armor(
     baby_kind: Option<HumanoidBabyArmorKind>,
     armor_model_layers: HumanoidArmorModelLayerSet,
     atlas: &EntityModelTextureAtlasLayout,
+    owned_entries: &[EntityModelOwnedTextureAtlasEntry],
+    equipment_assets: &ResolvedEntityEquipmentAssetCatalog,
     dynamic_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
 ) {
     let render_state = &instance.render_state;
@@ -4234,9 +4452,10 @@ fn emit_humanoid_armor(
         | EntityModelKind::Piglin { baby, .. } => !baby,
         _ => true,
     };
-    for (slot, material, dye, foil, trim) in [
+    for (slot, asset_id, material, dye, foil, trim) in [
         (
             HumanoidArmorSlot::Chest,
+            render_state.chest_equipment_asset,
             render_state.chest_armor,
             render_state.chest_armor_dye,
             render_state.chest_armor_foil,
@@ -4244,6 +4463,7 @@ fn emit_humanoid_armor(
         ),
         (
             HumanoidArmorSlot::Legs,
+            render_state.legs_equipment_asset,
             render_state.legs_armor,
             render_state.legs_armor_dye,
             render_state.legs_armor_foil,
@@ -4251,6 +4471,7 @@ fn emit_humanoid_armor(
         ),
         (
             HumanoidArmorSlot::Feet,
+            render_state.feet_equipment_asset,
             render_state.feet_armor,
             render_state.feet_armor_dye,
             render_state.feet_armor_foil,
@@ -4258,19 +4479,13 @@ fn emit_humanoid_armor(
         ),
         (
             HumanoidArmorSlot::Head,
+            render_state.head_equipment_asset,
             render_state.head_armor,
             render_state.head_armor_dye,
             render_state.head_armor_foil,
             render_state.head_armor_trim,
         ),
     ] {
-        let Some(material) = material else {
-            continue;
-        };
-        let Some(texture) = armor_slot_texture_for_layer(material, slot, baby_kind.is_some())
-        else {
-            continue;
-        };
         let submit_sequence = match slot {
             HumanoidArmorSlot::Chest => 1,
             HumanoidArmorSlot::Legs => 2,
@@ -4287,6 +4502,49 @@ fn emit_humanoid_armor(
         } else {
             tree.copy_child_poses_from(host_root, slot.part_names());
         }
+        if !equipment_assets.is_empty() {
+            let layer_type = if baby_kind.is_some() {
+                EntityEquipmentLayerType::HumanoidBaby
+            } else if slot == HumanoidArmorSlot::Legs {
+                EntityEquipmentLayerType::HumanoidLeggings
+            } else {
+                EntityEquipmentLayerType::Humanoid
+            };
+            let Some(layers) = asset_id
+                .and_then(|asset_id| equipment_assets.asset(asset_id))
+                .map(|asset| asset.layers(layer_type))
+            else {
+                continue;
+            };
+            emit_equipment_asset_layers(
+                meshes,
+                layers,
+                EntityModelLayerKind::HumanoidArmor,
+                armor_model_layers.model_layer(slot),
+                transform,
+                dye,
+                foil,
+                trim,
+                trim_visible,
+                1,
+                submit_sequence,
+                atlas,
+                owned_entries,
+                dynamic_texture_atlas,
+                None,
+                |mesh, texture, uv, tint| {
+                    tree.render_textured(mesh, transform, texture, uv, tint);
+                },
+            );
+            continue;
+        }
+        let Some(material) = material else {
+            continue;
+        };
+        let Some(texture) = armor_slot_texture_for_layer(material, slot, baby_kind.is_some())
+        else {
+            continue;
+        };
         let pass = humanoid_armor_layer_pass(
             armor_model_layers,
             slot,
@@ -4391,6 +4649,8 @@ fn emit_worn_armor_stand_armor(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
+    owned_entries: &[EntityModelOwnedTextureAtlasEntry],
+    equipment_assets: &ResolvedEntityEquipmentAssetCatalog,
     dynamic_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
 ) {
     let EntityModelKind::ArmorStand {
@@ -4404,10 +4664,16 @@ fn emit_worn_armor_stand_armor(
         return;
     };
     let render_state = &instance.render_state;
-    if render_state.head_armor.is_none()
+    let no_asset = render_state.head_equipment_asset.is_none()
+        && render_state.chest_equipment_asset.is_none()
+        && render_state.legs_equipment_asset.is_none()
+        && render_state.feet_equipment_asset.is_none();
+    let no_legacy_armor = render_state.head_armor.is_none()
         && render_state.chest_armor.is_none()
         && render_state.legs_armor.is_none()
-        && render_state.feet_armor.is_none()
+        && render_state.feet_armor.is_none();
+    if (!equipment_assets.is_empty() && no_asset)
+        || (equipment_assets.is_empty() && no_legacy_armor)
     {
         return;
     }
@@ -4419,9 +4685,10 @@ fn emit_worn_armor_stand_armor(
     } else {
         HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND
     };
-    for (slot, material, dye, foil, trim) in [
+    for (slot, asset_id, material, dye, foil, trim) in [
         (
             HumanoidArmorSlot::Chest,
+            render_state.chest_equipment_asset,
             render_state.chest_armor,
             render_state.chest_armor_dye,
             render_state.chest_armor_foil,
@@ -4429,6 +4696,7 @@ fn emit_worn_armor_stand_armor(
         ),
         (
             HumanoidArmorSlot::Legs,
+            render_state.legs_equipment_asset,
             render_state.legs_armor,
             render_state.legs_armor_dye,
             render_state.legs_armor_foil,
@@ -4436,6 +4704,7 @@ fn emit_worn_armor_stand_armor(
         ),
         (
             HumanoidArmorSlot::Feet,
+            render_state.feet_equipment_asset,
             render_state.feet_armor,
             render_state.feet_armor_dye,
             render_state.feet_armor_foil,
@@ -4443,18 +4712,13 @@ fn emit_worn_armor_stand_armor(
         ),
         (
             HumanoidArmorSlot::Head,
+            render_state.head_equipment_asset,
             render_state.head_armor,
             render_state.head_armor_dye,
             render_state.head_armor_foil,
             render_state.head_armor_trim,
         ),
     ] {
-        let Some(material) = material else {
-            continue;
-        };
-        let Some(texture) = armor_slot_texture_for_layer(material, slot, false) else {
-            continue;
-        };
         let submit_sequence = match slot {
             HumanoidArmorSlot::Chest => 1,
             HumanoidArmorSlot::Legs => 2,
@@ -4463,6 +4727,46 @@ fn emit_worn_armor_stand_armor(
         };
         let mut tree = slot.build_armor_stand_tree(small, STANDARD_OUTER_ARMOR_DEFORMATION);
         tree.copy_child_poses_from(host.root(), slot.part_names());
+        if !equipment_assets.is_empty() {
+            let layer_type = if slot == HumanoidArmorSlot::Legs {
+                EntityEquipmentLayerType::HumanoidLeggings
+            } else {
+                EntityEquipmentLayerType::Humanoid
+            };
+            let Some(layers) = asset_id
+                .and_then(|asset_id| equipment_assets.asset(asset_id))
+                .map(|asset| asset.layers(layer_type))
+            else {
+                continue;
+            };
+            emit_equipment_asset_layers(
+                meshes,
+                layers,
+                EntityModelLayerKind::HumanoidArmor,
+                armor_model_layers.model_layer(slot),
+                transform,
+                dye,
+                foil,
+                trim,
+                true,
+                1,
+                submit_sequence,
+                atlas,
+                owned_entries,
+                dynamic_texture_atlas,
+                None,
+                |mesh, texture, uv, tint| {
+                    tree.render_textured(mesh, transform, texture, uv, tint);
+                },
+            );
+            continue;
+        }
+        let Some(material) = material else {
+            continue;
+        };
+        let Some(texture) = armor_slot_texture_for_layer(material, slot, false) else {
+            continue;
+        };
         let pass = humanoid_armor_layer_pass(
             armor_model_layers,
             slot,
@@ -4533,19 +4837,34 @@ pub(in crate::entity_models) fn render_worn_humanoid_armor(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
+    owned_entries: &[EntityModelOwnedTextureAtlasEntry],
+    equipment_assets: &ResolvedEntityEquipmentAssetCatalog,
     dynamic_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
 ) {
     let render_state = &instance.render_state;
-    if render_state.head_armor.is_none()
+    let no_asset = render_state.head_equipment_asset.is_none()
+        && render_state.chest_equipment_asset.is_none()
+        && render_state.legs_equipment_asset.is_none()
+        && render_state.feet_equipment_asset.is_none();
+    let no_legacy_armor = render_state.head_armor.is_none()
         && render_state.chest_armor.is_none()
         && render_state.legs_armor.is_none()
-        && render_state.feet_armor.is_none()
+        && render_state.feet_armor.is_none();
+    if (!equipment_assets.is_empty() && no_asset)
+        || (equipment_assets.is_empty() && no_legacy_armor)
     {
         return;
     }
     match instance.kind {
         EntityModelKind::ArmorStand { .. } => {
-            emit_worn_armor_stand_armor(meshes, instance, atlas, dynamic_texture_atlas);
+            emit_worn_armor_stand_armor(
+                meshes,
+                instance,
+                atlas,
+                owned_entries,
+                equipment_assets,
+                dynamic_texture_atlas,
+            );
         }
         EntityModelKind::Zombie { baby: false } => {
             let mut host = ZombieModel::new(false);
@@ -4560,6 +4879,8 @@ pub(in crate::entity_models) fn render_worn_humanoid_armor(
                 None,
                 HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE,
                 atlas,
+                owned_entries,
+                equipment_assets,
                 dynamic_texture_atlas,
             );
         }
@@ -4576,6 +4897,8 @@ pub(in crate::entity_models) fn render_worn_humanoid_armor(
                 Some(HumanoidBabyArmorKind::Standard),
                 HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_BABY,
                 atlas,
+                owned_entries,
+                equipment_assets,
                 dynamic_texture_atlas,
             );
         }
@@ -4592,6 +4915,8 @@ pub(in crate::entity_models) fn render_worn_humanoid_armor(
                 None,
                 HUMANOID_ARMOR_MODEL_LAYERS_GIANT,
                 atlas,
+                owned_entries,
+                equipment_assets,
                 dynamic_texture_atlas,
             );
         }
@@ -4625,6 +4950,8 @@ pub(in crate::entity_models) fn render_worn_humanoid_armor(
                 None,
                 armor_model_layers,
                 atlas,
+                owned_entries,
+                equipment_assets,
                 dynamic_texture_atlas,
             );
         }
@@ -4653,6 +4980,8 @@ pub(in crate::entity_models) fn render_worn_humanoid_armor(
                 Some(HumanoidBabyArmorKind::Standard),
                 armor_model_layers,
                 atlas,
+                owned_entries,
+                equipment_assets,
                 dynamic_texture_atlas,
             );
         }
@@ -4672,6 +5001,8 @@ pub(in crate::entity_models) fn render_worn_humanoid_armor(
                 Some(HumanoidBabyArmorKind::Standard),
                 HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_VILLAGER_BABY,
                 atlas,
+                owned_entries,
+                equipment_assets,
                 dynamic_texture_atlas,
             );
         }
@@ -4688,6 +5019,8 @@ pub(in crate::entity_models) fn render_worn_humanoid_armor(
                 None,
                 HUMANOID_ARMOR_MODEL_LAYERS_SKELETON,
                 atlas,
+                owned_entries,
+                equipment_assets,
                 dynamic_texture_atlas,
             );
         }
@@ -4714,6 +5047,8 @@ pub(in crate::entity_models) fn render_worn_humanoid_armor(
                 None,
                 armor_model_layers,
                 atlas,
+                owned_entries,
+                equipment_assets,
                 dynamic_texture_atlas,
             );
         }
@@ -4735,6 +5070,8 @@ pub(in crate::entity_models) fn render_worn_humanoid_armor(
                     HUMANOID_ARMOR_MODEL_LAYERS_PLAYER
                 },
                 atlas,
+                owned_entries,
+                equipment_assets,
                 dynamic_texture_atlas,
             );
         }
@@ -4763,6 +5100,8 @@ pub(in crate::entity_models) fn render_worn_humanoid_armor(
                 None,
                 armor_model_layers,
                 atlas,
+                owned_entries,
+                equipment_assets,
                 dynamic_texture_atlas,
             );
         }
@@ -4788,6 +5127,8 @@ pub(in crate::entity_models) fn render_worn_humanoid_armor(
                 Some(HumanoidBabyArmorKind::Piglin),
                 armor_model_layers,
                 atlas,
+                owned_entries,
+                equipment_assets,
                 dynamic_texture_atlas,
             );
         }
@@ -4807,6 +5148,8 @@ pub(in crate::entity_models) fn render_worn_humanoid_armor(
                 None,
                 HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN_BRUTE,
                 atlas,
+                owned_entries,
+                equipment_assets,
                 dynamic_texture_atlas,
             );
         }
@@ -6634,8 +6977,55 @@ pub(in crate::entity_models) fn render_wings_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
+    owned_entries: &[EntityModelOwnedTextureAtlasEntry],
+    equipment_assets: &ResolvedEntityEquipmentAssetCatalog,
     dynamic_player_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
 ) {
+    if !equipment_assets.is_empty() {
+        let Some(layers) = instance
+            .render_state
+            .chest_wings_equipment_asset
+            .and_then(|asset_id| equipment_assets.asset(asset_id))
+            .map(|asset| asset.layers(EntityEquipmentLayerType::Wings))
+        else {
+            return;
+        };
+        let Some((transform, baby)) = wings_layer_transform_and_baby(instance) else {
+            return;
+        };
+        let submit_sequence = wings_layer_submit_sequence(instance);
+        let model_layer = if baby {
+            MODEL_LAYER_ELYTRA_BABY
+        } else {
+            MODEL_LAYER_ELYTRA
+        };
+        let mut model = ElytraModel::new(baby);
+        model.prepare(&instance);
+        emit_equipment_asset_layers(
+            meshes,
+            layers,
+            EntityModelLayerKind::Wings,
+            model_layer,
+            transform,
+            instance.render_state.chest_armor_dye,
+            instance.render_state.chest_wings_foil,
+            instance.render_state.chest_wings_trim,
+            true,
+            0,
+            submit_sequence,
+            atlas,
+            owned_entries,
+            dynamic_player_texture_atlas,
+            player_wings_profile_texture_override(&instance),
+            |mesh, texture, uv, tint| {
+                model
+                    .root()
+                    .render_textured(mesh, transform, texture, uv, tint);
+            },
+        );
+        return;
+    }
+
     let Some(layer) = instance.render_state.chest_wings_layer else {
         return;
     };
@@ -6899,6 +7289,12 @@ fn player_wings_profile_texture(
     if !layer.use_player_texture {
         return None;
     }
+    player_wings_profile_texture_override(instance)
+}
+
+fn player_wings_profile_texture_override(
+    instance: &EntityModelInstance,
+) -> Option<EntityDynamicPlayerTexture> {
     let EntityModelKind::Player { parts, .. } = instance.kind else {
         return None;
     };

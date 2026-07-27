@@ -27,10 +27,12 @@ use crate::Renderer;
 
 use super::catalog::{
     EntityDynamicPlayerSkinAtlasLayout, EntityDynamicPlayerTextureAtlasLayout, EntityModelKind,
-    EntityModelTextureAtlasLayout, SignModelAttachment, SignModelWood,
+    EntityModelOwnedTextureAtlasEntry, EntityModelTextureAtlasLayout, SignModelAttachment,
+    SignModelWood,
 };
 use super::colored::{entity_model_colored_runtime_mesh, SIGN_RENDER_SCALE};
 use super::dispatch::{EntityModelSink, TexturedSink};
+use super::equipment::ResolvedEntityEquipmentAssetCatalog;
 use super::geometry::{
     EntityModelMesh, EntityModelScrollMesh, EntityModelScrollVertex, EntityModelTexturedMesh,
     EntityModelTexturedVertex, EntityModelVertex,
@@ -38,7 +40,7 @@ use super::geometry::{
 use super::instances::EntityModelInstance;
 use super::model_layers::SignModel;
 use super::textured::{
-    entity_model_textured_meshes_with_dynamic_textures_for_camera, sign_textured_layer_passes,
+    entity_model_textured_meshes_with_equipment_for_camera, sign_textured_layer_passes,
     EntityModelTexturedDrawAtlas, EntityModelTexturedMeshes,
 };
 
@@ -196,6 +198,8 @@ impl HudEntityPreviewPipGeometry {
 pub(crate) fn bake_hud_preview_pip_geometry(
     preview: &HudEntityPreview,
     atlas: &EntityModelTextureAtlasLayout,
+    owned_entries: &[EntityModelOwnedTextureAtlasEntry],
+    equipment_assets: &ResolvedEntityEquipmentAssetCatalog,
     dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
     dynamic_player_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
 ) -> HudEntityPreviewPipGeometry {
@@ -209,23 +213,47 @@ pub(crate) fn bake_hud_preview_pip_geometry(
             );
         }
     }
-    bake_hud_entity_preview_pip_geometry(
+    bake_hud_entity_preview_pip_geometry_with_equipment(
         &preview.entity,
         atlas,
+        owned_entries,
+        equipment_assets,
         dynamic_player_skin_atlas,
         dynamic_player_texture_atlas,
     )
 }
 
+#[cfg(test)]
 pub(crate) fn bake_hud_entity_preview_pip_geometry(
     instance: &EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
     dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
     dynamic_player_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
 ) -> HudEntityPreviewPipGeometry {
-    let meshes = entity_model_textured_meshes_with_dynamic_textures_for_camera(
+    let equipment_assets = ResolvedEntityEquipmentAssetCatalog::default();
+    bake_hud_entity_preview_pip_geometry_with_equipment(
+        instance,
+        atlas,
+        &[],
+        &equipment_assets,
+        dynamic_player_skin_atlas,
+        dynamic_player_texture_atlas,
+    )
+}
+
+fn bake_hud_entity_preview_pip_geometry_with_equipment(
+    instance: &EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+    owned_entries: &[EntityModelOwnedTextureAtlasEntry],
+    equipment_assets: &ResolvedEntityEquipmentAssetCatalog,
+    dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
+    dynamic_player_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
+) -> HudEntityPreviewPipGeometry {
+    let meshes = entity_model_textured_meshes_with_equipment_for_camera(
         std::slice::from_ref(instance),
         atlas,
+        owned_entries,
+        equipment_assets,
         dynamic_player_skin_atlas,
         dynamic_player_texture_atlas,
         None,
@@ -334,9 +362,12 @@ fn bake_hud_gui_sign_preview_pip_geometry(
     };
     let transform = Mat4::from_scale(Vec3::new(scale, -scale, -scale));
     let passes = sign_textured_layer_passes(wood, attachment);
+    let equipment_assets = ResolvedEntityEquipmentAssetCatalog::default();
     let mut sink = TexturedSink {
         meshes: &mut meshes,
         atlas,
+        owned_entries: &[],
+        equipment_assets: &equipment_assets,
         dynamic_player_skin_atlas: None,
         dynamic_player_texture_atlas: None,
     };
@@ -542,6 +573,8 @@ impl Renderer {
             bake_hud_preview_pip_geometry(
                 preview,
                 &atlas.layout,
+                &atlas.owned_entries,
+                &atlas.equipment_assets,
                 self.entity_dynamic_player_skin_atlas
                     .as_ref()
                     .map(|atlas| &atlas.layout),

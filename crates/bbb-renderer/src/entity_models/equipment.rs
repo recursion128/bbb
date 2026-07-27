@@ -202,9 +202,6 @@ pub(crate) struct ResolvedEntityEquipmentAsset {
     layers: BTreeMap<EntityEquipmentLayerType, Vec<ResolvedEntityEquipmentAssetLayer>>,
 }
 
-// Stage 1 resolves these values atomically with the atlas. The following
-// renderer migration calls the lookups from geometry submission.
-#[allow(dead_code)]
 impl ResolvedEntityEquipmentAsset {
     pub(crate) fn layers(
         &self,
@@ -220,7 +217,6 @@ pub(crate) struct ResolvedEntityEquipmentAssetCatalog {
     assets: Vec<ResolvedEntityEquipmentAsset>,
 }
 
-#[allow(dead_code)]
 impl ResolvedEntityEquipmentAssetCatalog {
     pub(crate) fn asset(
         &self,
@@ -230,6 +226,34 @@ impl ResolvedEntityEquipmentAssetCatalog {
             .then_some(id.index)
             .and_then(|index| self.assets.get(index as usize))
     }
+
+    pub(crate) fn is_empty(&self) -> bool {
+        self.assets.is_empty()
+    }
+}
+
+/// Vanilla `EquipmentLayerRenderer.getColorForLayer`: non-dyeable layers are
+/// white; dyeable layers use the stack dye, then their opaque undyed default,
+/// and are skipped when neither exists.
+pub(crate) fn equipment_layer_tint(
+    dyeable: Option<EntityEquipmentDyeable>,
+    dye: Option<u32>,
+) -> Option<[f32; 4]> {
+    match dyeable {
+        None => Some([1.0; 4]),
+        Some(dyeable) => dye
+            .or_else(|| dyeable.color_when_undyed.map(|color| color as u32))
+            .map(opaque_rgb_to_tint),
+    }
+}
+
+fn opaque_rgb_to_tint(rgb: u32) -> [f32; 4] {
+    [
+        ((rgb >> 16) & 0xFF) as f32 / 255.0,
+        ((rgb >> 8) & 0xFF) as f32 / 255.0,
+        (rgb & 0xFF) as f32 / 255.0,
+        1.0,
+    ]
 }
 
 #[cfg(test)]
@@ -288,6 +312,48 @@ mod tests {
             Some(EntityEquipmentDyeable {
                 color_when_undyed: None
             })
+        );
+    }
+
+    #[test]
+    fn equipment_layer_tint_matches_vanilla_dye_skip_and_opaque_rules() {
+        assert_eq!(equipment_layer_tint(None, Some(0x12_34_56)), Some([1.0; 4]));
+        assert_eq!(
+            equipment_layer_tint(
+                Some(EntityEquipmentDyeable {
+                    color_when_undyed: Some(0x80_11_22_33_u32 as i32),
+                }),
+                None,
+            ),
+            Some([
+                0x11 as f32 / 255.0,
+                0x22 as f32 / 255.0,
+                0x33 as f32 / 255.0,
+                1.0,
+            ])
+        );
+        assert_eq!(
+            equipment_layer_tint(
+                Some(EntityEquipmentDyeable {
+                    color_when_undyed: Some(0x11_22_33),
+                }),
+                Some(0x44_55_66),
+            ),
+            Some([
+                0x44 as f32 / 255.0,
+                0x55 as f32 / 255.0,
+                0x66 as f32 / 255.0,
+                1.0,
+            ])
+        );
+        assert_eq!(
+            equipment_layer_tint(
+                Some(EntityEquipmentDyeable {
+                    color_when_undyed: None,
+                }),
+                None,
+            ),
+            None
         );
     }
 }

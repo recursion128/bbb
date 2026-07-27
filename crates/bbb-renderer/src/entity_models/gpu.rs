@@ -21,8 +21,8 @@ use super::{
         EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout, EntityModelTextureImage,
         EntityModelUvRect, FirstPersonPlayerArm,
     },
-    entity_model_colored_runtime_mesh,
-    entity_model_textured_meshes_with_dynamic_textures_for_camera, entity_model_water_mask_mesh,
+    entity_model_colored_runtime_mesh, entity_model_textured_meshes_with_equipment_for_camera,
+    entity_model_water_mask_mesh,
     equipment::{EntityEquipmentAssetCatalog, ResolvedEntityEquipmentAssetCatalog},
     first_person_player_arm_textured_meshes,
     geometry::{
@@ -2774,9 +2774,11 @@ impl Renderer {
                 .entity_dynamic_player_texture_atlas
                 .as_ref()
                 .map(|atlas| &atlas.layout);
-            let meshes = entity_model_textured_meshes_with_dynamic_textures_for_camera(
+            let meshes = entity_model_textured_meshes_with_equipment_for_camera(
                 &self.entity_model_instances,
                 &atlas.layout,
+                &atlas.owned_entries,
+                &atlas.equipment_assets,
                 dynamic_player_skin_atlas,
                 dynamic_player_texture_atlas,
                 self.camera_sort_position(),

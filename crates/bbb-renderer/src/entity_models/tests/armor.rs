@@ -1,6 +1,7 @@
 use super::*;
 use crate::entity_models::colored::GIANT_SCALE;
 use crate::DynamicEntityTextureImage;
+use std::collections::BTreeMap;
 
 // Build an atlas covering the zombie base texture plus the iron equipment-asset textures and armor
 // glint texture, enough to render an iron-clad zombie.
@@ -31,6 +32,17 @@ fn build_atlas_for_refs(refs: &[EntityModelTextureRef]) -> EntityModelTextureAtl
         })
         .collect();
     build_entity_model_texture_atlas(&images).unwrap().0
+}
+
+fn owned_equipment_entry(
+    texture: EntityModelOwnedTextureRef,
+    min: [f32; 2],
+    max: [f32; 2],
+) -> EntityModelOwnedTextureAtlasEntry {
+    EntityModelOwnedTextureAtlasEntry {
+        texture,
+        uv: EntityModelUvRect { min, max },
+    }
 }
 
 #[test]
@@ -1782,4 +1794,236 @@ fn baby_zombie_villager_armor_uses_zombie_villager_baby_armor_set() {
         "VillagerProfessionLayer submits the baby type overlay with vanilla order(1) after armor"
     );
     assert_eq!(type_submit.transform, expected_transform);
+}
+
+#[test]
+fn equipment_asset_humanoid_layers_preserve_dye_foil_trim_and_declared_order() {
+    let generation = 7;
+    let skipped_texture =
+        EntityModelOwnedTextureRef::new("example:equipment/skipped.png", [64, 32]);
+    let tinted_texture = EntityModelOwnedTextureRef::new("example:equipment/tinted.png", [64, 32]);
+    let plain_texture = EntityModelOwnedTextureRef::new("example:equipment/plain.png", [64, 32]);
+    let owned_entries = vec![
+        owned_equipment_entry(skipped_texture.clone(), [0.0, 0.0], [0.25, 1.0]),
+        owned_equipment_entry(tinted_texture.clone(), [0.25, 0.0], [0.5, 1.0]),
+        owned_equipment_entry(plain_texture.clone(), [0.5, 0.0], [0.75, 1.0]),
+    ];
+    let catalog = EntityEquipmentAssetCatalog::new(
+        generation,
+        vec![EntityEquipmentAsset {
+            layers: BTreeMap::from([(
+                EntityEquipmentLayerType::Humanoid,
+                vec![
+                    EntityEquipmentAssetLayer {
+                        texture: EntityEquipmentAssetLayerTexture::Owned(skipped_texture),
+                        dyeable: Some(EntityEquipmentDyeable {
+                            color_when_undyed: None,
+                        }),
+                        use_player_texture: false,
+                    },
+                    EntityEquipmentAssetLayer {
+                        texture: EntityEquipmentAssetLayerTexture::Owned(tinted_texture),
+                        dyeable: Some(EntityEquipmentDyeable {
+                            color_when_undyed: Some(0x12_34_56),
+                        }),
+                        use_player_texture: false,
+                    },
+                    EntityEquipmentAssetLayer {
+                        texture: EntityEquipmentAssetLayerTexture::Owned(plain_texture),
+                        dyeable: None,
+                        use_player_texture: false,
+                    },
+                ],
+            )]),
+        }],
+    );
+    let resolved = catalog.resolve(&owned_entries).unwrap();
+
+    let mut atlas_refs = zombie_entity_texture_refs().to_vec();
+    atlas_refs.push(ENCHANTED_GLINT_ARMOR_TEXTURE_REF);
+    let atlas = build_atlas_for_refs(&atlas_refs);
+    let trim_texture = EntityDynamicTexture { handle: 92_001 };
+    let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
+        handle: trim_texture.handle,
+        size: [64, 32],
+        rgba: vec![0x77; 64 * 32 * 4],
+    }])
+    .unwrap()
+    .0;
+    let instance = EntityModelInstance::zombie(920, [0.0, 64.0, 0.0], 0.0, false)
+        .with_chest_equipment_asset(Some(EntityEquipmentAssetId::new(generation, 0)))
+        .with_chest_armor_foil(true)
+        .with_chest_armor_trim(Some(EntityArmorTrim {
+            texture: trim_texture,
+            decal: false,
+        }));
+    let meshes = entity_model_textured_meshes_with_equipment_for_camera(
+        &[instance],
+        &atlas,
+        &owned_entries,
+        &resolved,
+        None,
+        Some(&dynamic_atlas),
+        None,
+        None,
+    );
+
+    assert_eq!(
+        meshes.submissions.len(),
+        5,
+        "body + two renderable declared layers + first-layer foil + trim"
+    );
+    let tinted = meshes.submissions[1];
+    assert_eq!(tinted.owned_texture, Some(1));
+    assert_eq!(
+        tinted.render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(
+        tinted.tint,
+        [
+            0x12 as f32 / 255.0,
+            0x34 as f32 / 255.0,
+            0x56 as f32 / 255.0,
+            1.0,
+        ]
+    );
+    assert_eq!((tinted.order, tinted.submit_sequence), (1, 1));
+
+    let foil = meshes.submissions[2];
+    assert_eq!(
+        foil.render_type,
+        EntityModelLayerRenderType::ArmorEntityGlint
+    );
+    assert_eq!(foil.tint, tinted.tint);
+    assert_eq!((foil.order, foil.submit_sequence), (2, 1));
+
+    let plain = meshes.submissions[3];
+    assert_eq!(plain.owned_texture, Some(2));
+    assert_eq!(plain.tint, [1.0; 4]);
+    assert_eq!((plain.order, plain.submit_sequence), (3, 1));
+
+    let trim = meshes.submissions[4];
+    assert_eq!(trim.dynamic_texture, Some(trim_texture));
+    assert_eq!(
+        trim.render_type,
+        EntityModelLayerRenderType::ArmorTrimCutoutNoCull
+    );
+    assert_eq!((trim.order, trim.submit_sequence), (4, 1));
+    assert_eq!(meshes.armor_cutout.vertices.len(), 144);
+    assert_eq!(meshes.armor_entity_glint.vertices.len(), 72);
+    assert_eq!(meshes.dynamic_player_texture_armor_trim.vertices.len(), 72);
+}
+
+#[test]
+fn equipment_asset_selects_leggings_and_baby_layers_and_suppresses_baby_trim() {
+    let generation = 8;
+    let humanoid = EntityModelOwnedTextureRef::new("example:equipment/humanoid.png", [64, 32]);
+    let leggings = EntityModelOwnedTextureRef::new("example:equipment/leggings.png", [64, 32]);
+    let baby = EntityModelOwnedTextureRef::new("example:equipment/baby.png", [64, 64]);
+    let owned_entries = vec![
+        owned_equipment_entry(humanoid.clone(), [0.0, 0.0], [0.25, 1.0]),
+        owned_equipment_entry(leggings.clone(), [0.25, 0.0], [0.5, 1.0]),
+        owned_equipment_entry(baby.clone(), [0.5, 0.0], [1.0, 1.0]),
+    ];
+    let layer = |texture| {
+        vec![EntityEquipmentAssetLayer {
+            texture: EntityEquipmentAssetLayerTexture::Owned(texture),
+            dyeable: None,
+            use_player_texture: false,
+        }]
+    };
+    let catalog = EntityEquipmentAssetCatalog::new(
+        generation,
+        vec![EntityEquipmentAsset {
+            layers: BTreeMap::from([
+                (EntityEquipmentLayerType::Humanoid, layer(humanoid)),
+                (EntityEquipmentLayerType::HumanoidLeggings, layer(leggings)),
+                (EntityEquipmentLayerType::HumanoidBaby, layer(baby)),
+            ]),
+        }],
+    );
+    let resolved = catalog.resolve(&owned_entries).unwrap();
+    let mut atlas_refs = zombie_entity_texture_refs().to_vec();
+    atlas_refs.extend_from_slice(armor_stand_entity_texture_refs());
+    let atlas = build_atlas_for_refs(&atlas_refs);
+    let trim_texture = EntityDynamicTexture { handle: 92_002 };
+    let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
+        handle: trim_texture.handle,
+        size: [64, 64],
+        rgba: vec![0x55; 64 * 64 * 4],
+    }])
+    .unwrap()
+    .0;
+    let asset_id = Some(EntityEquipmentAssetId::new(generation, 0));
+    let render = |instance| {
+        entity_model_textured_meshes_with_equipment_for_camera(
+            &[instance],
+            &atlas,
+            &owned_entries,
+            &resolved,
+            None,
+            Some(&dynamic_atlas),
+            None,
+            None,
+        )
+    };
+
+    let chest = render(
+        EntityModelInstance::zombie(921, [0.0, 64.0, 0.0], 0.0, false)
+            .with_chest_equipment_asset(asset_id),
+    );
+    assert_eq!(chest.submissions[1].owned_texture, Some(0));
+
+    let legs = render(
+        EntityModelInstance::zombie(922, [0.0, 64.0, 0.0], 0.0, false)
+            .with_legs_equipment_asset(asset_id),
+    );
+    assert_eq!(legs.submissions[1].owned_texture, Some(1));
+
+    let baby = render(
+        EntityModelInstance::zombie(923, [0.0, 64.0, 0.0], 0.0, true)
+            .with_chest_equipment_asset(asset_id)
+            .with_chest_armor_trim(Some(EntityArmorTrim {
+                texture: trim_texture,
+                decal: true,
+            })),
+    );
+    assert_eq!(baby.submissions[1].owned_texture, Some(2));
+    assert!(
+        baby.submissions
+            .iter()
+            .all(|submit| submit.dynamic_texture != Some(trim_texture)),
+        "HUMANOID_BABY suppresses trims after selecting the baby asset layer"
+    );
+    assert!(baby
+        .dynamic_player_texture_armor_trim_decal
+        .vertices
+        .is_empty());
+
+    let small_armor_stand = render(
+        EntityModelInstance::armor_stand(
+            924,
+            [0.0, 64.0, 0.0],
+            0.0,
+            true,
+            true,
+            true,
+            DEFAULT_ARMOR_STAND_MODEL_POSE,
+        )
+        .with_chest_equipment_asset(asset_id)
+        .with_chest_armor_trim(Some(EntityArmorTrim {
+            texture: trim_texture,
+            decal: true,
+        })),
+    );
+    assert_eq!(
+        small_armor_stand.submissions[1].owned_texture,
+        Some(0),
+        "small armor stands retain the adult HUMANOID equipment layer"
+    );
+    assert!(small_armor_stand
+        .submissions
+        .iter()
+        .any(|submit| submit.dynamic_texture == Some(trim_texture)));
 }

@@ -1,6 +1,7 @@
 use super::*;
 
 use crate::DynamicPlayerTextureImage;
+use std::collections::BTreeMap;
 
 fn atlas_for(textures: &[EntityModelTextureRef]) -> EntityModelTextureAtlasLayout {
     let images: Vec<_> = textures
@@ -12,6 +13,17 @@ fn atlas_for(textures: &[EntityModelTextureRef]) -> EntityModelTextureAtlasLayou
         })
         .collect();
     build_entity_model_texture_atlas(&images).unwrap().0
+}
+
+fn owned_wings_entry(
+    texture: EntityModelOwnedTextureRef,
+    min: [f32; 2],
+    max: [f32; 2],
+) -> EntityModelOwnedTextureAtlasEntry {
+    EntityModelOwnedTextureAtlasEntry {
+        texture,
+        uv: EntityModelUvRect { min, max },
+    }
 }
 
 fn elytra_vertex_positions(
@@ -850,5 +862,153 @@ fn baby_wings_trim_uses_baby_model_and_survives_missing_base_texture() {
     assert!(
         (y_extent(&adult_positions) * 0.5 - y_extent(&baby_positions)).abs() < 1.0e-5,
         "WINGS trims are retained on the half-scale baby elytra model"
+    );
+}
+
+#[test]
+fn equipment_asset_wings_use_per_layer_player_override_and_submission_first_owned_lookup() {
+    let generation = 9;
+    let override_fallback =
+        EntityModelOwnedTextureRef::new("example:equipment/wings_profile_fallback.png", [64, 32]);
+    let second_layer =
+        EntityModelOwnedTextureRef::new("example:equipment/wings_overlay.png", [64, 32]);
+    let owned_entries = vec![
+        owned_wings_entry(override_fallback.clone(), [0.0, 0.0], [0.5, 1.0]),
+        owned_wings_entry(second_layer.clone(), [0.5, 0.0], [1.0, 1.0]),
+    ];
+    let catalog = EntityEquipmentAssetCatalog::new(
+        generation,
+        vec![EntityEquipmentAsset {
+            layers: BTreeMap::from([(
+                EntityEquipmentLayerType::Wings,
+                vec![
+                    EntityEquipmentAssetLayer {
+                        texture: EntityEquipmentAssetLayerTexture::Owned(override_fallback),
+                        dyeable: None,
+                        use_player_texture: true,
+                    },
+                    EntityEquipmentAssetLayer {
+                        texture: EntityEquipmentAssetLayerTexture::Owned(second_layer),
+                        dyeable: None,
+                        use_player_texture: false,
+                    },
+                ],
+            )]),
+        }],
+    );
+    let resolved = catalog.resolve(&owned_entries).unwrap();
+    let atlas = atlas_for(&[
+        PLAYER_WIDE_STEVE_TEXTURE_REF,
+        ENCHANTED_GLINT_ARMOR_TEXTURE_REF,
+    ]);
+    let profile_elytra = EntityDynamicPlayerTexture {
+        handle: 93_001,
+        kind: EntityDynamicPlayerTextureKind::Elytra,
+    };
+    let profile_cape = EntityDynamicPlayerTexture {
+        handle: 93_002,
+        kind: EntityDynamicPlayerTextureKind::Cape,
+    };
+    let trim_texture = EntityDynamicTexture { handle: 93_003 };
+    let dynamic_atlas = build_dynamic_player_texture_atlas(&[
+        DynamicPlayerTextureImage {
+            handle: profile_elytra.handle,
+            size: [64, 32],
+            rgba: vec![0x11; 64 * 32 * 4],
+        },
+        DynamicPlayerTextureImage {
+            handle: profile_cape.handle,
+            size: [64, 32],
+            rgba: vec![0x22; 64 * 32 * 4],
+        },
+        DynamicPlayerTextureImage {
+            handle: trim_texture.handle,
+            size: [64, 32],
+            rgba: vec![0x33; 64 * 32 * 4],
+        },
+    ])
+    .unwrap()
+    .0;
+    let instance = EntityModelInstance::player_with_skin(
+        930,
+        [0.0, 64.0, 0.0],
+        0.0,
+        EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
+        PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    )
+    .with_chest_wings_equipment_asset(Some(EntityEquipmentAssetId::new(generation, 0)))
+    .with_chest_equipment_has_wings(true)
+    .with_chest_wings_foil(true)
+    .with_chest_wings_trim(Some(EntityArmorTrim {
+        texture: trim_texture,
+        decal: false,
+    }))
+    .with_player_cape_texture(Some(profile_cape))
+    .with_player_elytra_texture(Some(profile_elytra));
+    let render = |entries: &[EntityModelOwnedTextureAtlasEntry]| {
+        entity_model_textured_meshes_with_equipment_for_camera(
+            &[instance],
+            &atlas,
+            entries,
+            &resolved,
+            None,
+            Some(&dynamic_atlas),
+            None,
+            None,
+        )
+    };
+
+    let meshes = render(&owned_entries);
+    assert_eq!(meshes.submissions.len(), 5);
+    let profile = meshes.submissions[1];
+    assert_eq!(profile.dynamic_player_texture, Some(profile_elytra));
+    assert_eq!(profile.texture, PLAYER_PROFILE_ELYTRA_TEXTURE_REF);
+    assert_eq!(profile.owned_texture, None);
+    assert_eq!((profile.order, profile.submit_sequence), (0, 5));
+    assert!(meshes
+        .submissions
+        .iter()
+        .all(|submit| submit.dynamic_player_texture != Some(profile_cape)));
+
+    let foil = meshes.submissions[2];
+    assert_eq!(
+        foil.render_type,
+        EntityModelLayerRenderType::ArmorEntityGlint
+    );
+    assert_eq!((foil.order, foil.submit_sequence), (1, 5));
+
+    let overlay = meshes.submissions[3];
+    assert_eq!(
+        overlay.render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(overlay.dynamic_player_texture, None);
+    assert_eq!(overlay.owned_texture, Some(1));
+    assert_eq!((overlay.order, overlay.submit_sequence), (2, 5));
+
+    let trim = meshes.submissions[4];
+    assert_eq!(trim.dynamic_texture, Some(trim_texture));
+    assert_eq!((trim.order, trim.submit_sequence), (3, 5));
+    assert_eq!(
+        meshes.dynamic_player_texture_armor_cutout.vertices.len(),
+        48
+    );
+    assert_eq!(meshes.armor_cutout.vertices.len(), 48);
+    assert_eq!(meshes.armor_entity_glint.vertices.len(), 48);
+    assert_eq!(meshes.dynamic_player_texture_armor_trim.vertices.len(), 48);
+
+    let missing_overlay = render(&owned_entries[..1]);
+    assert_eq!(
+        missing_overlay.submissions[3].owned_texture,
+        Some(1),
+        "the declared layer submission survives while its owned atlas entry is unavailable"
+    );
+    assert!(missing_overlay.armor_cutout.vertices.is_empty());
+    assert_eq!(
+        missing_overlay
+            .dynamic_player_texture_armor_cutout
+            .vertices
+            .len(),
+        48
     );
 }
