@@ -2375,6 +2375,63 @@ fn camera_fov_frame_samples_water_at_eye_and_lava_on_base_fov_near_plane() {
 }
 
 #[test]
+fn camera_fov_frame_wiring_routes_one_snapshot_to_each_projection_owner() {
+    let runtime = include_str!("../runtime.rs");
+    let camera_pose = runtime
+        .find("let camera_pose = camera_pose_from_world_at_partial_tick(")
+        .expect("interpolated camera pose");
+    let hurt = runtime
+        .find("let camera_hurt_effect =")
+        .expect("camera living-state projection");
+    let fov_owner = "let camera_fov = camera_fov_ticks.frame_for_world(";
+    let fov = runtime.find(fov_owner).expect("single camera FOV frame");
+    assert_eq!(
+        runtime.matches(fov_owner).count(),
+        1,
+        "runtime extraction must not fork camera FOV calculations"
+    );
+    let locator = runtime
+        .find("camera_fov.world_degrees,\n        entity_partial_tick,")
+        .expect("locator consumes world FOV");
+    let culling = runtime
+        .find("camera_fov_degrees: camera_fov.culling_degrees,")
+        .expect("entity visibility consumes culling FOV");
+    let world = runtime
+        .find("camera_fov_degrees: camera_fov.world_degrees,")
+        .expect("renderer frame consumes world FOV");
+    let hud = runtime
+        .find("camera_hud_fov_degrees: camera_fov.hud_degrees,")
+        .expect("renderer frame consumes HUD FOV");
+    assert!(
+        camera_pose < hurt
+            && hurt < fov
+            && fov < locator
+            && locator < culling
+            && culling < world
+            && world < hud,
+        "one post-pose FOV snapshot must feed locator, culling, and both GPU projections"
+    );
+
+    let frame_source = include_str!("render_extract.rs");
+    let world_field = frame_source
+        .find("pub(crate) camera_fov_degrees: f32")
+        .expect("renderer frame carries world FOV");
+    let hud_field = frame_source
+        .find("pub(crate) camera_hud_fov_degrees: f32")
+        .expect("renderer frame carries HUD FOV");
+    let setter = frame_source
+        .find("renderer.set_camera_fov_degrees(")
+        .expect("frame applies both FOV projections atomically");
+    let pose = frame_source
+        .find("renderer.set_camera_pose(frame.camera_pose);")
+        .expect("frame applies the camera pose");
+    assert!(
+        world_field < hud_field && hud_field < setter && setter < pose,
+        "world/HUD FOV must be applied together before the pose refreshes both uniforms"
+    );
+}
+
+#[test]
 fn camera_spinning_effect_ticks_and_interpolates_nausea_like_vanilla() {
     let mut world = world_with_dimension(0, "minecraft:overworld");
     attach_lightmap_local_player(&mut world, 42);

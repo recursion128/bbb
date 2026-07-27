@@ -640,10 +640,6 @@ Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
 Owner: `bbb-native` + `bbb-net` + `bbb-protocol` + `bbb-world`
 
 Movement:
-- Complete the remaining camera-FOV inputs beyond synchronized player abilities:
-  configurable base FOV/effect scale and death/fluid modifiers. Vanilla keeps
-  `walkingSpeed` as the FOV ratio denominator; it does not replace the separately
-  synchronized movement-speed attribute base.
 - Cover the remaining vanilla survival physics beyond the synchronized local
   movement cadence.
 - Cover the remaining vanilla voxel collision shapes.
