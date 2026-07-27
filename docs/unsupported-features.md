@@ -721,12 +721,6 @@ Environment:
   the synchronized particle type but does not project block/item/color/vibration
   option state into the provider; item options also still need exact nested
   `DataComponentPatch.CODEC` value validation.
-- Implement F5 first-person / third-person-back / third-person-front camera switching and apply
-  `Minecraft.handleKeybinds`'s `CameraType.isFirstPerson` transition: leaving
-  first person clears the spectator post-effect selection, while returning
-  reselects the current camera entity through
-  `GameRenderer.checkEntityPostEffect`.
-
 ## HUD overlay and screen render surfaces
 
 Owner: `bbb-renderer` + `bbb-native` + `bbb-world`

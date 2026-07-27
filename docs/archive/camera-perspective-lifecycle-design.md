@@ -1,6 +1,6 @@
 # Camera Perspective Lifecycle
 
-Status: active from 2026-07-26.
+Status: completed on 2026-07-26.
 
 ## Goal and completion standard
 
