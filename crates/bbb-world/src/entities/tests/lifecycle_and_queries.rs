@@ -1,7 +1,7 @@
 use super::*;
 use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPE_AXOLOTL_ID, VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_PAINTING_ID,
-    VANILLA_ENTITY_TYPE_VILLAGER_ID,
+    VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
 };
 
 #[test]
@@ -448,6 +448,66 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
     assert_eq!(store.counters().entities_removed, 1);
     assert_eq!(store.counters().entity_removes_ignored, 1);
     assert_eq!(store.counters().entities_tracked, 0);
+}
+
+#[test]
+fn camera_visual_distance_uses_living_attributes_mount_maximum_and_nonliving_default() {
+    let mut store = WorldStore::new();
+    store.local_player_id = Some(123);
+    store.apply_add_entity(protocol_add_entity_with_type(
+        123,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    assert_eq!(store.camera_entity_third_person_distance(), Some(4.0));
+
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 123,
+        attributes: vec![
+            ProtocolAttributeSnapshot {
+                attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+                base: 2.0,
+                modifiers: Vec::new(),
+            },
+            ProtocolAttributeSnapshot {
+                attribute_id: bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_CAMERA_DISTANCE_ID,
+                base: 3.0,
+                modifiers: Vec::new(),
+            },
+        ],
+    }));
+    assert_eq!(store.camera_entity_third_person_distance(), Some(6.0));
+
+    store.apply_add_entity(protocol_add_entity_with_type(
+        124,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 124,
+        attributes: vec![
+            ProtocolAttributeSnapshot {
+                attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+                base: 3.0,
+                modifiers: Vec::new(),
+            },
+            ProtocolAttributeSnapshot {
+                attribute_id: bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_CAMERA_DISTANCE_ID,
+                base: 4.0,
+                modifiers: Vec::new(),
+            },
+        ],
+    }));
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 124,
+        passenger_ids: vec![123],
+    }));
+    assert_eq!(store.camera_entity_third_person_distance(), Some(12.0));
+
+    store.apply_add_entity(protocol_add_entity_with_type(
+        125,
+        VANILLA_ENTITY_TYPE_PAINTING_ID,
+    ));
+    assert!(store.apply_set_camera(ProtocolSetCamera { camera_id: 125 }));
+    assert_eq!(store.camera_entity_third_person_distance(), Some(4.0));
 }
 
 #[test]

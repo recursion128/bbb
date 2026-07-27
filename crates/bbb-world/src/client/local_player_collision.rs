@@ -1004,6 +1004,21 @@ impl WorldStore {
         self.debug_camera_block_collision_boxes_for_query(camera, radius)
     }
 
+    /// Nearest Vanilla `ClipContext.Block.VISUAL` block hit on a camera ray.
+    ///
+    /// Fluids and entities are intentionally absent. The collision context is
+    /// derived from the current camera entity, matching `Camera.getMaxZoom`.
+    pub fn camera_visual_block_hit(&self, from: [f64; 3], to: [f64; 3]) -> Option<[f64; 3]> {
+        if !from.iter().chain(&to).all(|value| value.is_finite()) || from == to {
+            return None;
+        }
+        let context = self.debug_camera_collision_query()?.block_context;
+        let scale = block_hit_scale(self, from, to, context, BlockClipShape::Visual)?;
+        Some(std::array::from_fn(|axis| {
+            from[axis] + (to[axis] - from[axis]) * scale
+        }))
+    }
+
     fn debug_camera_block_collision_boxes_for_query(
         &self,
         camera: EntityCollisionQuery,
@@ -1812,7 +1827,8 @@ impl WorldStore {
             entity_type_id == VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
         )
         .with_can_stand_on_lava(entity_type_id == VANILLA_ENTITY_TYPE_STRIDER_ID);
-        let block_scale = projectile_block_hit_scale(self, position, to, context).unwrap_or(1.0);
+        let block_scale =
+            block_hit_scale(self, position, to, context, BlockClipShape::Collision).unwrap_or(1.0);
         let block_hit: [f64; 3] =
             std::array::from_fn(|axis| position[axis] + movement[axis] * block_scale);
         let border = self.world_border();
@@ -2073,11 +2089,18 @@ fn step_candidate_heights<'a>(
     candidates
 }
 
-fn projectile_block_hit_scale(
+#[derive(Debug, Clone, Copy)]
+enum BlockClipShape {
+    Collision,
+    Visual,
+}
+
+fn block_hit_scale(
     world: &WorldStore,
     from: [f64; 3],
     to: [f64; 3],
     context: LocalPlayerCollisionContext,
+    clip_shape: BlockClipShape,
 ) -> Option<f64> {
     // `BlockGetter.traverseBlocks` extrapolates both endpoints by -1e-7 away
     // from the opposite endpoint before selecting the first cell.
@@ -2090,7 +2113,7 @@ fn projectile_block_hit_scale(
         block_floor(nudged_from[1]),
         block_floor(nudged_from[2]),
     ];
-    if let Some(scale) = projectile_block_shape_hit_scale(world, current, from, to, context) {
+    if let Some(scale) = block_shape_hit_scale(world, current, from, to, context, clip_shape) {
         return Some(scale);
     }
     let delta = std::array::from_fn::<_, 3, _>(|axis| nudged_to[axis] - nudged_from[axis]);
@@ -2132,19 +2155,20 @@ fn projectile_block_hit_scale(
         };
         current[axis] = current[axis].saturating_add(step[axis]);
         t[axis] += t_delta[axis];
-        if let Some(scale) = projectile_block_shape_hit_scale(world, current, from, to, context) {
+        if let Some(scale) = block_shape_hit_scale(world, current, from, to, context, clip_shape) {
             return Some(scale);
         }
     }
     None
 }
 
-fn projectile_block_shape_hit_scale(
+fn block_shape_hit_scale(
     world: &WorldStore,
     cell: [i32; 3],
     from: [f64; 3],
     to: [f64; 3],
     context: LocalPlayerCollisionContext,
+    clip_shape: BlockClipShape,
 ) -> Option<f64> {
     let pos = BlockPos {
         x: cell[0],
@@ -2152,7 +2176,12 @@ fn projectile_block_shape_hit_scale(
         z: cell[2],
     };
     let block = world.probe_block(pos)?;
-    let shape = block_collision_shape_with_context(world, &block, pos, context)?;
+    let shape = match clip_shape {
+        BlockClipShape::Collision => {
+            block_collision_shape_with_context(world, &block, pos, context)
+        }
+        BlockClipShape::Visual => block_visual_shape_with_context(world, &block, pos, context),
+    }?;
     let delta = std::array::from_fn::<_, 3, _>(|axis| to[axis] - from[axis]);
     let test_point = std::array::from_fn::<_, 3, _>(|axis| from[axis] + delta[axis] * 0.001);
     shape
@@ -2812,6 +2841,43 @@ pub(crate) fn block_state_propagates_skylight_down(
     })
 }
 
+/// Vanilla `BlockState.getVisualShape` catalog used by camera zoom.
+///
+/// `BlockBehaviour` defaults to the collision shape. These branches are the
+/// complete 26.1 override-owner set found under `world/level/block`.
+fn block_visual_shape_with_context(
+    world: &WorldStore,
+    block: &BlockProbe,
+    pos: BlockPos,
+    context: LocalPlayerCollisionContext,
+) -> Option<BlockCollisionShape> {
+    let name = block.block_name.as_deref()?;
+    if matches!(name, "minecraft:soul_sand" | "minecraft:mud") {
+        return Some(BlockCollisionShape::single(BlockCollisionBox::FULL));
+    }
+    if block_name_has_empty_camera_visual_shape(name) {
+        return None;
+    }
+    if name == "minecraft:snow" {
+        return snow_layer_visual_shape(&block.block_properties);
+    }
+    if block_name_is_fence(name) {
+        return fence_visual_shape(&block.block_properties);
+    }
+    block_collision_shape_with_context(world, block, pos, context)
+}
+
+fn block_name_has_empty_camera_visual_shape(name: &str) -> bool {
+    matches!(
+        name,
+        "minecraft:glass" | "minecraft:tinted_glass" | "minecraft:powder_snow"
+    ) || name
+        .strip_prefix("minecraft:")
+        .is_some_and(|path| path.ends_with("_stained_glass"))
+        || block_name_is_copper_grate(name)
+        || block_name_is_bars_or_pane(name)
+}
+
 fn block_collision_shape(block: &BlockProbe, pos: BlockPos) -> Option<BlockCollisionShape> {
     if is_slab_block(block) {
         return match block.block_properties.get("type").map(String::as_str) {
@@ -3305,6 +3371,20 @@ fn snow_layer_collision_shape(
     )))
 }
 
+fn snow_layer_visual_shape(properties: &BTreeMap<String, String>) -> Option<BlockCollisionShape> {
+    let layers = properties.get("layers")?.parse::<u8>().ok()?;
+    if !(1..=8).contains(&layers) {
+        return None;
+    }
+    Some(BlockCollisionShape::single(BlockCollisionBox::column(
+        0.0,
+        0.0,
+        1.0,
+        f64::from(layers) / 8.0,
+        1.0,
+    )))
+}
+
 fn piston_base_collision_shape(
     properties: &BTreeMap<String, String>,
 ) -> Option<BlockCollisionShape> {
@@ -3764,6 +3844,14 @@ fn fence_collision_shape(properties: &BTreeMap<String, String>) -> Option<BlockC
         BlockCollisionBox::FENCE_SOUTH_ARM,
         BlockCollisionBox::FENCE_WEST_ARM,
     )
+}
+
+fn fence_visual_shape(properties: &BTreeMap<String, String>) -> Option<BlockCollisionShape> {
+    let mut shape = fence_collision_shape(properties)?;
+    for shape_box in shape.boxes.iter_mut().flatten() {
+        shape_box.max_y = 1.0;
+    }
+    Some(shape)
 }
 
 fn fence_gate_collision_shape(
@@ -5954,6 +6042,88 @@ mod tests {
         assert_f64_near(clipped.movement[1], 0.0);
         assert_f64_near(clipped.movement[2], 0.0);
         assert!(!clipped.world_border_hit);
+    }
+
+    #[test]
+    fn camera_visual_block_clip_stops_at_the_nearest_visual_surface() {
+        let mut world = empty_world();
+        world.set_local_player_pose(LocalPlayerPoseState::default());
+        let stone = vanilla_block_state_id("minecraft:stone", []);
+        set_block(&mut world, BlockPos { x: 1, y: 1, z: 0 }, stone);
+
+        let hit = world
+            .camera_visual_block_hit([0.5, 1.5, 0.5], [2.5, 1.5, 0.5])
+            .expect("stone visual hit");
+
+        assert_f64_near(hit[0], 1.0);
+        assert_f64_near(hit[1], 1.5);
+        assert_f64_near(hit[2], 0.5);
+    }
+
+    #[test]
+    fn camera_visual_shape_overrides_match_vanilla_catalog() {
+        let world = empty_world();
+        let context = LocalPlayerCollisionContext::for_bounds(LocalPlayerBounds::from_min_max(
+            [0.2, 1.0, 0.2],
+            [0.8, 2.8, 0.8],
+        ));
+        let shape_for = |name: &str, properties: BTreeMap<String, String>| {
+            let block = BlockProbe {
+                pos: BlockPos { x: 0, y: 0, z: 0 },
+                chunk: ChunkPos { x: 0, z: 0 },
+                local_x: 0,
+                local_y: 0,
+                local_z: 0,
+                section_y: 0,
+                section_index: 0,
+                block_state_id: 0,
+                block_name: Some(name.to_owned()),
+                block_properties: properties,
+                material: TerrainMaterialClass::Opaque,
+                fluid: None,
+                block_palette_kind: PaletteKind::SingleValue,
+                block_palette_index: Some(0),
+                biome_id: Some(0),
+                biome_palette_kind: PaletteKind::SingleValue,
+            };
+            block_visual_shape_with_context(&world, &block, block.pos, context)
+        };
+
+        for empty in [
+            "minecraft:glass",
+            "minecraft:red_stained_glass",
+            "minecraft:tinted_glass",
+            "minecraft:copper_grate",
+            "minecraft:iron_bars",
+            "minecraft:blue_stained_glass_pane",
+            "minecraft:powder_snow",
+        ] {
+            assert!(shape_for(empty, BTreeMap::new()).is_none(), "{empty}");
+        }
+
+        for full in ["minecraft:soul_sand", "minecraft:mud"] {
+            assert!(
+                shape_for(full, BTreeMap::new()).is_some_and(BlockCollisionShape::is_full_block),
+                "{full}"
+            );
+        }
+
+        let snow = shape_for("minecraft:snow", string_props([("layers", "4")]))
+            .expect("four-layer visual snow");
+        assert_f64_near(snow.boxes().next().expect("snow box").max_y, 0.5);
+
+        let fence = shape_for(
+            "minecraft:oak_fence",
+            string_props([
+                ("east", "false"),
+                ("north", "true"),
+                ("south", "false"),
+                ("waterlogged", "false"),
+                ("west", "false"),
+            ]),
+        )
+        .expect("fence visual shape");
+        assert!(fence.boxes().all(|shape_box| shape_box.max_y == 1.0));
     }
 
     #[test]

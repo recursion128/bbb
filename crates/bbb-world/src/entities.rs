@@ -1,6 +1,8 @@
 use std::collections::BTreeMap;
 
-use bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MAX_HEALTH_ID;
+use bbb_protocol::attribute_types::{
+    VANILLA_ATTRIBUTE_CAMERA_DISTANCE_ID, VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
+};
 use bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_SLEEPING_ID;
 use bbb_protocol::packets::{
     AttributeSnapshot as ProtocolAttributeSnapshot, EntityDataValue as ProtocolEntityDataValue,
@@ -65,12 +67,12 @@ pub(crate) use components::{
     EntityMobEffects, EntityMount, EntityPlayerSleep, EntityProjectileLifecycle,
     EntitySupportingBlock, EntityTransform, EntityTransientEvents, LivingDeathWakeTransition,
 };
-pub(crate) use dimensions::vanilla_bounds_for_type;
 pub use dimensions::EntityPickBoundsState;
 pub(crate) use dimensions::{
     hanging_facing, prospective_item_frame_geometry, prospective_painting_geometry,
     vanilla_animal_entity_type, vanilla_living_entity_type, vanilla_pick_bounds_for_type,
 };
+pub(crate) use dimensions::{vanilla_bounds_for_type, vanilla_render_scale};
 pub use display::{
     DisplayBillboardConstraints, DisplayEntityCullingState, DisplayEntityRenderContent,
     DisplayEntityRenderSourceState, DisplayItemContext, DisplayTransformation,
@@ -3283,6 +3285,42 @@ impl WorldStore {
 
     pub fn probe_entity(&self, id: i32) -> Option<EntityState> {
         self.entities.get(id)
+    }
+
+    /// Vanilla `Camera.setup` detached-camera distance before block clipping.
+    ///
+    /// A living camera entity contributes `getScale() * CAMERA_DISTANCE`; a
+    /// living vehicle contributes the same product and the larger value wins.
+    /// Non-living entities retain Camera's scale-1, distance-4 defaults.
+    pub fn camera_entity_third_person_distance(&self) -> Option<f32> {
+        let camera = self.local_player().camera;
+        let camera_id = if camera.follows_player {
+            self.local_player_id()?
+        } else {
+            camera.entity_id?
+        };
+        let camera_distance = self.living_entity_camera_distance(camera_id).unwrap_or(4.0);
+        let mount_distance = self
+            .entities
+            .mount(camera_id)
+            .and_then(|mount| mount.vehicle_id)
+            .and_then(|vehicle_id| self.living_entity_camera_distance(vehicle_id))
+            .unwrap_or(camera_distance);
+        Some(camera_distance.max(mount_distance))
+    }
+
+    fn living_entity_camera_distance(&self, entity_id: i32) -> Option<f32> {
+        let entity_type_id = self.entities.entity_type_id(entity_id)?;
+        if !vanilla_living_entity_type(entity_type_id) {
+            return None;
+        }
+        let attributes = self.entities.attributes(entity_id)?;
+        let scale = vanilla_render_scale(entity_type_id, &attributes.attributes);
+        let distance = self
+            .entities
+            .attribute_value(entity_id, VANILLA_ATTRIBUTE_CAMERA_DISTANCE_ID)?
+            as f32;
+        Some(scale * distance)
     }
 
     pub fn entity_type_id(&self, id: i32) -> Option<i32> {
