@@ -868,14 +868,6 @@ Loader invariants (not todos): keep the local vanilla coverage tests
 add parser support only when an official asset or a focused resource-pack
 fixture fails them; keep precedence/filter tests next to the loaders.
 
-- Load selected-pack `post_effect/*.json` graphs and their referenced
-  `shaders/core` / `shaders/post` overrides into executable renderer graphs,
-  following `ShaderManager.prepare`, `PostChainConfig.CODEC`, and
-  `PostChain.load` target, input, uniform, and bilinear semantics. Resource
-  reload must publish a whole compiled graph generation atomically and route
-  malformed or uncompilable overrides through the existing pack failure
-  policy.
-
 ## Playable live coverage beyond the session-lifecycle closure
 
 Owner: `scripts/playable-gate.sh` + `scripts/playable_gate.py` + affected runtime

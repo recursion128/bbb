@@ -626,3 +626,7 @@
   F3+L 十秒/手动记录、真实 CPU/内存/区块/GPU 指标、deviation 与异步 ZIP 输出已
   贯通 simulation/native/renderer；合同见
   `docs/archive/native-profiler-metrics-closure-design.md`。
+- **2026-07-27（selected-pack 后处理图工程闭环）**：资源包图、GLSL/include/
+  texture、七类 uniform 与 wgpu 图执行现原子接管 blur、三类相机效果、描边和
+  transparency 深度合成；合同见
+  `docs/archive/selected-pack-post-effect-graph-design.md`。

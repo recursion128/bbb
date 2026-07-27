@@ -1,6 +1,6 @@
 # Selected-pack post-effect graph closure
 
-Status: active engineering contract.
+Status: completed on 2026-07-27.
 
 Pre-start fully gated baseline:
 `979459ff42b21aaadb20c6a9392cc67d639de307`.
