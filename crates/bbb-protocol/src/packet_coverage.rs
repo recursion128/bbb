@@ -3250,7 +3250,7 @@ mod tests {
     }
 
     #[test]
-    fn play_serverbound_container_slot_state_keeps_crafter_swap_and_local_state_open() {
+    fn play_serverbound_container_slot_state_closes_with_local_prediction_and_server_correction() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -3262,17 +3262,13 @@ mod tests {
             .expect("play serverbound container slot state coverage row");
 
         assert_eq!(
-            entry.coverage["encoder"].status,
-            PacketCoverageStatus::Complete
-        );
-        assert_eq!(
             entry.coverage["ack_response"].status,
             PacketCoverageStatus::NotApplicable
         );
-        for dimension in ["command_surface", "state_guard", "tests"] {
+        for dimension in ["command_surface", "encoder", "state_guard", "tests"] {
             assert_eq!(
                 entry.coverage[dimension].status,
-                PacketCoverageStatus::Partial,
+                PacketCoverageStatus::Complete,
                 "{dimension}"
             );
         }
