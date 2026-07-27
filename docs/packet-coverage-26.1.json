@@ -11193,7 +11193,8 @@
         },
         "runtime_side_effect": {
           "evidence": [
-            "crates/bbb-native/src/runtime.rs#recipe_book_tab_animation_scale_y",
+            "crates/bbb-native/src/input/inventory/recipe_book_lifecycle.rs#sync_recipe_book_presentation",
+            "crates/bbb-native/src/runtime.rs#recipe_book_animation_scale",
             "crates/bbb-native/src/runtime.rs#hud_recipe_book_recipe_button_layers",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleRecipeBookAdd",
             "vanilla:net/minecraft/client/gui/components/toasts/RecipeToast.java#addOrUpdate"
