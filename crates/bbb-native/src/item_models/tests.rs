@@ -1516,6 +1516,7 @@ fn first_person_item_models_render_two_handed_filled_map_surface() {
         &lowered_presentation,
         Some(&item_runtime),
         &TerrainTextureState::default(),
+        None,
         &mut map_texture_cache,
         Some(pose),
         1.0,
@@ -3599,6 +3600,7 @@ fn held_generated_item_main_hand_select_uses_owner_main_arm_context() {
             GENERATED_THIRD_PERSON_FALLBACK,
             &item_runtime,
             &terrain_textures,
+            None,
             &mut block_meshes,
             &mut block_translucent_meshes,
             &mut block_glint_meshes,
@@ -3677,6 +3679,7 @@ fn held_generated_item_context_entity_type_select_uses_owner_kind() {
             GENERATED_THIRD_PERSON_FALLBACK,
             &item_runtime,
             &terrain_textures,
+            None,
             &mut block_meshes,
             &mut block_translucent_meshes,
             &mut block_glint_meshes,
@@ -4270,6 +4273,204 @@ fn ominous_item_spawner_models_emit_item_cluster_meshes() {
 }
 
 #[test]
+fn dropped_item_models_submit_selected_special_geometry() {
+    let root = unique_item_model_temp_dir("dropped-special-item");
+    write_special_item_runtime_fixture(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let item_id = item_runtime
+        .item_protocol_id("minecraft:special_trident")
+        .expect("fixture item registered");
+    let mut world = WorldStore::new();
+    world.apply_add_entity(protocol_add_entity(802, VANILLA_ENTITY_TYPE_ITEM_ID));
+    let item_data_id = vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_ITEM_ID,
+    )
+    .expect("generated ItemEntity item accessor");
+    assert!(world.apply_set_entity_data(SetEntityData {
+        id: 802,
+        values: vec![EntityDataValue {
+            data_id: item_data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+            value: EntityDataValueKind::ItemStack(ItemStackSummary {
+                item_id: Some(item_id),
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            }),
+        }],
+    }));
+
+    let models = dropped_item_models(
+        &world,
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        None,
+        None,
+        0.0,
+        None,
+        None,
+        None,
+        None,
+        None,
+    );
+
+    assert!(models.residency.assets.is_empty());
+    assert!(models.residency.instances.is_empty());
+    assert!(matches!(
+        models.residency.special_items.as_slice(),
+        [bbb_renderer::SpecialItemInstanceRequest {
+            model: bbb_renderer::SpecialItemModel::Trident { .. },
+            ..
+        }]
+    ));
+    assert!(models.handled_entity_ids.contains(&802));
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn dropped_composite_item_preserves_ordinary_special_leaf_order() {
+    let root = unique_item_model_temp_dir("dropped-composite-special-item");
+    write_composite_special_item_runtime_fixture(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let item_id = item_runtime
+        .item_protocol_id("minecraft:composite_special")
+        .expect("fixture item registered");
+    let mut world = WorldStore::new();
+    world.apply_add_entity(protocol_add_entity(803, VANILLA_ENTITY_TYPE_ITEM_ID));
+    let item_data_id = vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_ITEM_ID,
+    )
+    .expect("generated ItemEntity item accessor");
+    assert!(world.apply_set_entity_data(SetEntityData {
+        id: 803,
+        values: vec![EntityDataValue {
+            data_id: item_data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+            value: EntityDataValueKind::ItemStack(ItemStackSummary {
+                item_id: Some(item_id),
+                count: 2,
+                component_patch: DataComponentPatchSummary::default(),
+            }),
+        }],
+    }));
+
+    let models = dropped_item_models(
+        &world,
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        None,
+        None,
+        0.0,
+        None,
+        None,
+        None,
+        None,
+        None,
+    );
+
+    assert_eq!(
+        models
+            .residency
+            .instances
+            .iter()
+            .map(|instance| instance.submit_order)
+            .collect::<Vec<_>>(),
+        vec![0, 2, 3, 5]
+    );
+    assert_eq!(
+        models
+            .residency
+            .special_items
+            .iter()
+            .map(|instance| instance.submit_order)
+            .collect::<Vec<_>>(),
+        vec![1, 4]
+    );
+    assert!(models.handled_entity_ids.contains(&803));
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn shared_hand_item_bake_submits_selected_special_geometry() {
+    let root = unique_item_model_temp_dir("hand-special-item");
+    write_special_item_runtime_fixture(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let stack = ItemStackSummary {
+        item_id: item_runtime.item_protocol_id("minecraft:special_trident"),
+        count: 1,
+        component_patch: DataComponentPatchSummary::default(),
+    };
+    let mut residency = ItemModelResidencyFrame::default();
+    let mut block = Vec::new();
+    let mut block_translucent = Vec::new();
+    let mut block_glint = Vec::new();
+    let mut block_glint_translucent = Vec::new();
+    let mut flat = Vec::new();
+    let mut flat_translucent = Vec::new();
+    let mut flat_glint = Vec::new();
+    let mut flat_glint_translucent = Vec::new();
+
+    bake_item_stack_at_transform(
+        &stack,
+        &WorldStore::new(),
+        Mat4::IDENTITY,
+        BlockModelDisplayContext::ThirdPersonRightHand,
+        false,
+        Some(false),
+        Some("minecraft:player"),
+        false,
+        0.0,
+        None,
+        None,
+        None,
+        None,
+        None,
+        BLOCK_THIRD_PERSON_FALLBACK,
+        GENERATED_THIRD_PERSON_FALLBACK,
+        &item_runtime,
+        &TerrainTextureState::default(),
+        None,
+        &mut block,
+        &mut block_translucent,
+        &mut block_glint,
+        &mut block_glint_translucent,
+        &mut flat,
+        &mut flat_translucent,
+        &mut flat_glint,
+        &mut flat_glint_translucent,
+        &mut residency,
+    );
+
+    assert!(residency.assets.is_empty());
+    assert!(residency.instances.is_empty());
+    let [request] = residency.special_items.as_slice() else {
+        panic!("selected special leaf should submit one trident request");
+    };
+    assert!(matches!(
+        &request.model,
+        bbb_renderer::SpecialItemModel::Trident { .. }
+    ));
+    assert_eq!(request.target, ItemModelDrawTarget::World);
+    assert_eq!(
+        request.transform,
+        display_matrix(
+            &BlockModelDisplayTransform {
+                rotation: [0.0; 3],
+                translation: [4.0 / 16.0, 0.0, 0.0],
+                scale: [1.0; 3],
+            },
+            false,
+        )
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn item_pickup_particle_item_models_emit_ordinary_stack_meshes() {
     let root = unique_item_model_temp_dir("item-pickup-particle");
     write_flat_item_runtime_fixture(&root, &["picked_up"]);
@@ -4363,6 +4564,8 @@ fn item_pickup_particle_component_rich_bake_matches_dropped_item_bake() {
         &world,
         Some(&item_runtime),
         &TerrainTextureState::default(),
+        None,
+        None,
         AGE_TICKS,
         None,
         None,
@@ -4641,6 +4844,67 @@ fn write_flat_item_runtime_fixture(root: &Path, item_ids: &[&str]) {
             &[(64 + index * 40) as u8, 80, 120, 255],
         );
     }
+}
+
+fn write_special_item_runtime_fixture(root: &Path) {
+    let assets = item_model_assets_dir(root);
+    write_item_atlases(&assets);
+    write_item_registry_source(root, &["special_trident"]);
+    write_json(
+        &assets.join("items").join("special_trident.json"),
+        r#"{
+            "model": {
+                "type": "minecraft:special",
+                "base": "minecraft:item/special_trident_base",
+                "model": { "type": "minecraft:trident" }
+            }
+        }"#,
+    );
+    write_flat_item_model_and_texture(&assets, "special_trident_base", &[64, 80, 120, 255]);
+    write_json(
+        &assets
+            .join("models")
+            .join("item")
+            .join("special_trident_base.json"),
+        r#"{
+            "display": {
+                "thirdperson_righthand": { "translation": [4, 0, 0] }
+            },
+            "textures": { "layer0": "minecraft:item/special_trident_base" }
+        }"#,
+    );
+}
+
+fn write_composite_special_item_runtime_fixture(root: &Path) {
+    let assets = item_model_assets_dir(root);
+    write_item_atlases(&assets);
+    write_item_registry_source(root, &["composite_special"]);
+    write_json(
+        &assets.join("items").join("composite_special.json"),
+        r#"{
+            "model": {
+                "type": "minecraft:composite",
+                "models": [
+                    {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/composite_before"
+                    },
+                    {
+                        "type": "minecraft:special",
+                        "base": "minecraft:item/composite_special_base",
+                        "model": { "type": "minecraft:trident" }
+                    },
+                    {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/composite_after"
+                    }
+                ]
+            }
+        }"#,
+    );
+    write_flat_item_model_and_texture(&assets, "composite_before", &[64, 80, 120, 255]);
+    write_flat_item_model_and_texture(&assets, "composite_special_base", &[80, 120, 64, 255]);
+    write_flat_item_model_and_texture(&assets, "composite_after", &[120, 64, 80, 255]);
 }
 
 fn world_with_item_runtime_defaults(item_runtime: &NativeItemRuntime) -> WorldStore {

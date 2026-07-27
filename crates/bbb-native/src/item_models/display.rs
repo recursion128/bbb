@@ -40,6 +40,7 @@ pub(crate) fn display_entity_item_models(
     enchantment_keys: Option<&[String]>,
     damage_type_keys: Option<&[String]>,
     attribute_keys: Option<&[String]>,
+    variant_textures: Option<&crate::entity_variant_textures::NativeEntityVariantTextureRuntime>,
 ) -> DisplayEntityItemModels {
     let mut models = DisplayEntityItemModels::default();
     for (submit_sequence, source) in sources.iter().enumerate() {
@@ -72,6 +73,7 @@ pub(crate) fn display_entity_item_models(
                     enchantment_keys,
                     damage_type_keys,
                     attribute_keys,
+                    variant_textures,
                     &mut models.residency,
                 );
             }
@@ -207,6 +209,7 @@ fn bake_item_display(
     enchantment_keys: Option<&[String]>,
     damage_type_keys: Option<&[String]>,
     attribute_keys: Option<&[String]>,
+    variant_textures: Option<&crate::entity_variant_textures::NativeEntityVariantTextureRuntime>,
     residency: &mut ItemModelResidencyFrame,
 ) {
     let context = item_display_context(context);
@@ -243,6 +246,7 @@ fn bake_item_display(
         BlockModelDisplayTransform::default(),
         item_runtime,
         terrain_textures,
+        variant_textures,
         &mut unused_block,
         &mut unused_block_translucent,
         &mut unused_block_glint,
@@ -477,6 +481,7 @@ mod tests {
             &TerrainTextureState::default(),
             None,
             0,
+            None,
             None,
             None,
             None,

@@ -70,6 +70,7 @@ pub enum SpecialItemCopperGolemPose {
 pub enum SpecialItemHeadKind {
     Skeleton,
     WitherSkeleton,
+    Player,
     Zombie,
     Creeper,
     Dragon,

@@ -10,10 +10,11 @@ use crate::entity_models::{
     EntityModelInstance, SignModelAttachment, SignModelWood, ENTITY_FULL_BRIGHT_LIGHT_COORDS,
 };
 use crate::item_models::{
-    GuiItemLightingEntry, HudBlockItemModel, ItemModelAssetRequest, ItemModelAssetSource,
-    ItemModelAtlasKind, ItemModelDrawPhase, ItemModelDrawTarget, ItemModelFoil,
-    ItemModelGeometryClass, ItemModelInstanceRequest, ItemModelMesh, ItemModelMeshSet,
-    ItemModelResidencyFrame, ItemModelVertex, ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
+    GuiItemLightingEntry, HudBlockItemModel, HudResidentItemLayer, ItemModelAssetRequest,
+    ItemModelAssetSource, ItemModelAtlasKind, ItemModelDrawPhase, ItemModelDrawTarget,
+    ItemModelFoil, ItemModelGeometryClass, ItemModelInstanceRequest, ItemModelMesh,
+    ItemModelMeshSet, ItemModelResidencyFrame, ItemModelVertex, SpecialItemInstanceRequest,
+    ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
 };
 use crate::Renderer;
 
@@ -5519,7 +5520,10 @@ impl Renderer {
         target: ItemModelDrawTarget,
     ) {
         self.visit_hud_block_item_models_for_stratum(stratum, |model, placement, scissor| {
-            if scissor.is_none() {
+            // Resident special/composite geometry has no legacy CPU mesh to
+            // clip. Keep it visible during the few scaled/scissored GUI
+            // animations; ordinary block geometry retains exact CPU clipping.
+            if scissor.is_none() || !model.resident_layers.is_empty() {
                 append_hud_block_item_model_residency(frame, model, placement, target);
             }
         });
@@ -7635,6 +7639,9 @@ fn append_hud_block_item_model_mesh(
     model: &HudBlockItemModel,
     placement: glam::Mat4,
 ) {
+    if !model.resident_layers.is_empty() {
+        return;
+    }
     let transform = placement * model.gui_display;
     meshes.append_quads_with_light_and_overlay_and_foil(
         &model.quads,
@@ -7654,6 +7661,78 @@ fn append_hud_block_item_model_residency(
     debug_assert_eq!(model.lighting, GuiItemLightingEntry::Items3d);
     let transform = placement * model.gui_display;
     let foil = ItemModelFoil::from_has_foil(model.foil);
+    if !model.resident_layers.is_empty() {
+        for layer in model.resident_layers.iter() {
+            let submit_order = u32::try_from(frame.instances.len() + frame.special_items.len())
+                .expect("resident GUI item instance order overflow");
+            match layer {
+                HudResidentItemLayer::Generated {
+                    identity,
+                    geometry_class,
+                    source,
+                    transform: layer_transform,
+                    tint,
+                } => {
+                    frame.assets.push(ItemModelAssetRequest {
+                        identity: identity.clone(),
+                        atlas: ItemModelAtlasKind::Items,
+                        geometry_class: *geometry_class,
+                        source: source.clone(),
+                    });
+                    let base_phase = match geometry_class {
+                        ItemModelGeometryClass::Solid => ItemModelDrawPhase::Solid,
+                        ItemModelGeometryClass::Translucent => ItemModelDrawPhase::Translucent,
+                    };
+                    frame.instances.push(ItemModelInstanceRequest {
+                        identity: identity.clone(),
+                        atlas: ItemModelAtlasKind::Items,
+                        geometry_class: *geometry_class,
+                        transform: transform * *layer_transform,
+                        tint: *tint,
+                        light: ITEM_MODEL_FULL_BRIGHT_LIGHT,
+                        overlay: ITEM_MODEL_NO_OVERLAY,
+                        foil,
+                        target,
+                        phase: base_phase,
+                        submit_order,
+                    });
+                    if foil != ItemModelFoil::None {
+                        frame.instances.push(ItemModelInstanceRequest {
+                            identity: identity.clone(),
+                            atlas: ItemModelAtlasKind::Items,
+                            geometry_class: *geometry_class,
+                            transform: transform * *layer_transform,
+                            tint: *tint,
+                            light: ITEM_MODEL_FULL_BRIGHT_LIGHT,
+                            overlay: ITEM_MODEL_NO_OVERLAY,
+                            foil,
+                            target,
+                            phase: match geometry_class {
+                                ItemModelGeometryClass::Solid => ItemModelDrawPhase::Glint,
+                                ItemModelGeometryClass::Translucent => {
+                                    ItemModelDrawPhase::GlintTranslucent
+                                }
+                            },
+                            submit_order: submit_order.saturating_add(1),
+                        });
+                    }
+                }
+                HudResidentItemLayer::Special {
+                    model: special_model,
+                    transform: layer_transform,
+                } => frame.special_items.push(SpecialItemInstanceRequest {
+                    model: special_model.clone(),
+                    transform: transform * *layer_transform,
+                    light: ITEM_MODEL_FULL_BRIGHT_LIGHT,
+                    overlay: ITEM_MODEL_NO_OVERLAY,
+                    foil,
+                    target,
+                    submit_order,
+                }),
+            }
+        }
+        return;
+    }
     for (geometry_class, base_phase, glint_phase) in [
         (
             ItemModelGeometryClass::Solid,
@@ -7712,7 +7791,8 @@ fn push_hud_block_item_instance(
     target: ItemModelDrawTarget,
     phase: ItemModelDrawPhase,
 ) {
-    let submit_order = u32::try_from(frame.instances.len()).expect("item instance order overflow");
+    let submit_order = u32::try_from(frame.instances.len() + frame.special_items.len())
+        .expect("item instance order overflow");
     frame.instances.push(ItemModelInstanceRequest {
         identity: model.identity.clone(),
         atlas: ItemModelAtlasKind::Blocks,
@@ -18328,7 +18408,8 @@ fn sanitize_hud_inventory_ghost_item(item: HudInventoryGhostItem) -> Option<HudI
 
 /// A 3D block-item icon is only worth carrying when it has geometry to draw.
 fn hud_block_item_model_is_renderable(model: &HudBlockItemModel) -> bool {
-    model.lighting == GuiItemLightingEntry::Items3d && !model.quads.is_empty()
+    model.lighting == GuiItemLightingEntry::Items3d
+        && (!model.resident_layers.is_empty() || !model.quads.is_empty())
 }
 
 fn sign_model_wood_index(wood: SignModelWood) -> usize {
@@ -19549,6 +19630,7 @@ mod tests {
             return;
         };
         let model = HudBlockItemModel {
+            resident_layers: Arc::from([]),
             identity: test_hud_block_item_identity(),
             quads: vec![crate::item_models::ItemModelQuad {
                 corners: [
@@ -19720,6 +19802,7 @@ mod tests {
         let mut translucent = solid.clone();
         translucent.translucent = true;
         let model = HudBlockItemModel {
+            resident_layers: Arc::from([]),
             identity: test_hud_block_item_identity(),
             quads: vec![solid, translucent].into(),
             gui_display: glam::Mat4::IDENTITY,
@@ -19745,6 +19828,48 @@ mod tests {
     }
 
     #[test]
+    fn hud_resident_special_item_submits_gui_geometry_with_leaf_transform() {
+        let texture = crate::entity_model_texture_refs()
+            .iter()
+            .copied()
+            .find(|texture| texture.path == "textures/entity/bell/bell_body.png")
+            .expect("bell texture is part of the static entity catalog");
+        let leaf_transform = glam::Mat4::from_translation(glam::Vec3::new(0.25, 0.5, 0.75));
+        let gui_display = glam::Mat4::from_scale(glam::Vec3::splat(2.0));
+        let placement = glam::Mat4::from_translation(glam::Vec3::new(4.0, 5.0, 6.0));
+        let model = HudBlockItemModel {
+            resident_layers: Arc::from([HudResidentItemLayer::Special {
+                model: crate::item_models::SpecialItemModel::Bell {
+                    texture: crate::item_models::SpecialItemTexture::Static(texture),
+                },
+                transform: leaf_transform,
+            }]),
+            identity: test_hud_block_item_identity(),
+            quads: Arc::from([]),
+            gui_display,
+            lighting: GuiItemLightingEntry::Items3d,
+            foil: true,
+        };
+        let mut frame = ItemModelResidencyFrame::default();
+
+        append_hud_block_item_model_residency(
+            &mut frame,
+            &model,
+            placement,
+            ItemModelDrawTarget::Gui,
+        );
+
+        assert!(frame.assets.is_empty());
+        assert!(frame.instances.is_empty());
+        assert_eq!(frame.special_items.len(), 1);
+        let special = &frame.special_items[0];
+        assert_eq!(special.target, ItemModelDrawTarget::Gui);
+        assert_eq!(special.foil, ItemModelFoil::Standard);
+        assert_eq!(special.transform, placement * gui_display * leaf_transform);
+        assert!(hud_block_item_model_is_renderable(&model));
+    }
+
+    #[test]
     fn hud_block_item_mesh_clips_triangles_to_scissor_rect() {
         let quad = crate::item_models::ItemModelQuad {
             corners: [
@@ -19760,6 +19885,7 @@ mod tests {
             translucent: false,
         };
         let model = HudBlockItemModel {
+            resident_layers: Arc::from([]),
             identity: test_hud_block_item_identity(),
             quads: vec![quad].into(),
             gui_display: glam::Mat4::IDENTITY,
@@ -19844,6 +19970,7 @@ mod tests {
         };
         let mut models: Vec<Option<HudBlockItemModel>> = vec![None; HUD_HOTBAR_SLOTS];
         models[slot] = Some(HudBlockItemModel {
+            resident_layers: Arc::from([]),
             identity: test_hud_block_item_identity(),
             quads: vec![quad].into(),
             gui_display,
@@ -20579,6 +20706,7 @@ mod tests {
             ..valid_icon.clone()
         };
         let empty_block_model = HudBlockItemModel {
+            resident_layers: Arc::from([]),
             identity: test_hud_block_item_identity(),
             quads: Arc::from([]),
             gui_display: glam::Mat4::IDENTITY,
@@ -21332,6 +21460,7 @@ mod tests {
             translucent: false,
         };
         let model = HudBlockItemModel {
+            resident_layers: Arc::from([]),
             identity: test_hud_block_item_identity(),
             quads: vec![quad].into(),
             gui_display: glam::Mat4::IDENTITY,
@@ -21382,6 +21511,7 @@ mod tests {
             return;
         };
         let model = HudBlockItemModel {
+            resident_layers: Arc::from([]),
             identity: test_hud_block_item_identity(),
             quads: vec![crate::item_models::ItemModelQuad {
                 corners: [
@@ -24875,6 +25005,7 @@ mod tests {
             return;
         };
         let model = HudBlockItemModel {
+            resident_layers: Arc::from([]),
             identity: test_hud_block_item_identity(),
             quads: vec![crate::item_models::ItemModelQuad {
                 corners: [
@@ -26053,6 +26184,7 @@ mod tests {
             translucent: false,
         };
         let model = |quads: Vec<crate::item_models::ItemModelQuad>| HudBlockItemModel {
+            resident_layers: Arc::from([]),
             identity: test_hud_block_item_identity(),
             quads: quads.into(),
             gui_display: glam::Mat4::IDENTITY,
@@ -26085,6 +26217,7 @@ mod tests {
             y: 0,
             icon: None,
             block_model: Some(HudBlockItemModel {
+                resident_layers: Arc::from([]),
                 identity: test_hud_block_item_identity(),
                 quads: vec![quad].into(),
                 gui_display: glam::Mat4::IDENTITY,

@@ -9,6 +9,7 @@ use bbb_audio::{AudioListenerState, EntitySoundPosition, TickEntitySoundPosition
 use bbb_control::{AudioCounters, NetCounters, RendererCounters};
 use bbb_item_model::{
     ItemModelKeybindContext, NativeItemMapTooltipData, NativeItemRuntime, NativeItemTooltipOptions,
+    ResolvedItemModelLayer,
 };
 use bbb_net::{NetCommand, NetEvent};
 use bbb_protocol::{
@@ -55,14 +56,15 @@ use bbb_renderer::{
     HudInventoryTextInputDecoration, HudInventoryTextLabel, HudInventoryTooltip,
     HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
     HudJigsawBlockEditorScreen, HudJigsawBlockEditorTextField, HudJumpBar, HudMobEffect,
-    HudPauseScreen, HudPlayerHealth, HudSignEditorKind, HudSignEditorPreedit, HudSignEditorScreen,
-    HudSocialInteractionsFocus, HudSocialInteractionsPage, HudSocialInteractionsPlayerAction,
-    HudSocialInteractionsScreen, HudStatsItemRow, HudStatsRow, HudStatsScreen,
-    HudStructureBlockEditorScreen, HudStructureBlockEditorTextField, HudStructureBlockMode,
-    HudStyledTextRun, HudSystemToast, HudTestBlockEditorScreen, HudTestBlockEditorTextField,
-    HudTestInstanceBlockEditorScreen, HudTestInstanceBlockEditorTextField, HudTextStyle, HudUvRect,
-    HudVehicleHealth, HudWinScreen, HudWinScreenLine, ItemModelAssetIdentity, LevelLighting,
-    LightmapEnvironment, LightningBoltRenderState, ParticleBlockFluidSurfaceSample,
+    HudPauseScreen, HudPlayerHealth, HudResidentItemLayer, HudSignEditorKind, HudSignEditorPreedit,
+    HudSignEditorScreen, HudSocialInteractionsFocus, HudSocialInteractionsPage,
+    HudSocialInteractionsPlayerAction, HudSocialInteractionsScreen, HudStatsItemRow, HudStatsRow,
+    HudStatsScreen, HudStructureBlockEditorScreen, HudStructureBlockEditorTextField,
+    HudStructureBlockMode, HudStyledTextRun, HudSystemToast, HudTestBlockEditorScreen,
+    HudTestBlockEditorTextField, HudTestInstanceBlockEditorScreen,
+    HudTestInstanceBlockEditorTextField, HudTextStyle, HudUvRect, HudVehicleHealth, HudWinScreen,
+    HudWinScreenLine, ItemModelAssetIdentity, ItemModelAssetSource, ItemModelGeometryClass,
+    LevelLighting, LightmapEnvironment, LightningBoltRenderState, ParticleBlockFluidSurfaceSample,
     ParticleEntityTargetContext, ParticleFluidKind, ParticleLocalPlayerScopeContext,
     ParticlePlayerMotionContext, ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand,
     Renderer, SelectionColoredBox, SelectionLine, SelectionOutline, SignModelAttachment,
@@ -168,12 +170,12 @@ use crate::{
     item_frames::item_frame_models_with_map_cache,
     item_models::{
         display_entity_item_models, dropped_item_models, entity_block_models,
-        first_person_item_models_with_map_cache, first_person_player_arms, held_item_models,
-        item_pickup_particle_item_models, ominous_item_spawner_models, world_attribute_keys,
-        world_banner_pattern_tooltip_context, world_damage_type_keys, world_enchantment_keys,
-        world_instrument_tooltip_context, world_jukebox_song_tooltip_context,
-        world_painting_variant_tooltip_context, world_trim_material_keys,
-        world_trim_material_tooltip_context, world_trim_pattern_keys,
+        first_person_item_models_with_map_cache, first_person_player_arms,
+        held_item_models_with_variant_textures, item_pickup_particle_item_models,
+        ominous_item_spawner_models, world_attribute_keys, world_banner_pattern_tooltip_context,
+        world_damage_type_keys, world_enchantment_keys, world_instrument_tooltip_context,
+        world_jukebox_song_tooltip_context, world_painting_variant_tooltip_context,
+        world_trim_material_keys, world_trim_material_tooltip_context, world_trim_pattern_keys,
         world_trim_pattern_tooltip_context, FirstPersonHandPresentation,
     },
     lectern_book_scene::lectern_book_model_instances_from_world,
@@ -3348,6 +3350,8 @@ pub(crate) fn update_renderer_from_publication(
         world,
         item_runtime,
         terrain_textures,
+        Some(renderer),
+        Some(entity_variant_textures),
         item_model_age_ticks,
         trim_material_keys.as_deref(),
         trim_pattern_keys.as_deref(),
@@ -3443,11 +3447,17 @@ pub(crate) fn update_renderer_from_publication(
         enchantment_keys.as_deref(),
         damage_type_keys.as_deref(),
         attribute_keys.as_deref(),
+        Some(entity_variant_textures),
     );
     let display_text_surfaces = display_entity_item_models.text_surfaces;
     let item_mid_started_at = Instant::now();
-    let held_item_models =
-        held_item_models(&entity_instances, world, item_runtime, terrain_textures);
+    let held_item_models = held_item_models_with_variant_textures(
+        &entity_instances,
+        world,
+        item_runtime,
+        terrain_textures,
+        Some(entity_variant_textures),
+    );
     let item_mid_duration = item_mid_started_at.elapsed();
     let block_entity_started_at = Instant::now();
     let block_destroy_stages = block_destroy_stages_from_world(world);
@@ -3530,6 +3540,7 @@ pub(crate) fn update_renderer_from_publication(
         &publication.first_person_hand_presentation,
         item_runtime,
         terrain_textures,
+        Some(entity_variant_textures),
         map_texture_cache,
         camera_pose,
         entity_partial_tick,
@@ -3561,6 +3572,7 @@ pub(crate) fn update_renderer_from_publication(
         enchantment_keys.as_deref(),
         damage_type_keys.as_deref(),
         attribute_keys.as_deref(),
+        Some(entity_variant_textures),
     );
     let entity_block_models = entity_block_models(
         &entity_instances,
@@ -3570,52 +3582,13 @@ pub(crate) fn update_renderer_from_publication(
         entity_partial_tick,
     );
     let mut item_model_residency = dropped_item_models.residency;
-    item_model_residency
-        .assets
-        .extend(display_entity_item_models.residency.assets);
-    item_model_residency
-        .instances
-        .extend(display_entity_item_models.residency.instances);
-    item_model_residency
-        .assets
-        .extend(ominous_item_spawner_models.residency.assets);
-    item_model_residency
-        .instances
-        .extend(ominous_item_spawner_models.residency.instances);
-    item_model_residency
-        .assets
-        .extend(item_pickup_particle_models.residency.assets);
-    item_model_residency
-        .instances
-        .extend(item_pickup_particle_models.residency.instances);
-    item_model_residency
-        .assets
-        .extend(held_item_models.residency.assets);
-    item_model_residency
-        .instances
-        .extend(held_item_models.residency.instances);
-    item_model_residency
-        .assets
-        .extend(first_person_item_models.residency.assets);
-    item_model_residency
-        .instances
-        .extend(first_person_item_models.residency.instances);
-    item_model_residency
-        .assets
-        .extend(item_frame_models.residency.assets);
-    item_model_residency
-        .instances
-        .extend(item_frame_models.residency.instances);
-    item_model_residency
-        .assets
-        .extend(entity_block_models.assets);
-    item_model_residency
-        .instances
-        .extend(entity_block_models.instances);
-    for (submit_order, instance) in item_model_residency.instances.iter_mut().enumerate() {
-        instance.submit_order =
-            u32::try_from(submit_order).expect("resident item-model submit order overflow");
-    }
+    item_model_residency.append(display_entity_item_models.residency);
+    item_model_residency.append(ominous_item_spawner_models.residency);
+    item_model_residency.append(item_pickup_particle_models.residency);
+    item_model_residency.append(held_item_models.residency);
+    item_model_residency.append(first_person_item_models.residency);
+    item_model_residency.append(item_frame_models.residency);
+    item_model_residency.append(entity_block_models);
     let mut block_item_meshes = dropped_item_models.block_meshes;
     block_item_meshes.extend(ominous_item_spawner_models.block_meshes);
     block_item_meshes.extend(held_item_models.block_meshes);
@@ -4383,6 +4356,94 @@ fn block_item_3d_model(
 ) -> Option<HudBlockItemModel> {
     let item_runtime = item_runtime?;
     let item_id = item.item_id?;
+    let resolved = item_runtime.resolved_item_model_for_stack(item);
+    if resolved.as_ref().is_some_and(|resolved| {
+        resolved
+            .layers
+            .iter()
+            .any(|layer| matches!(layer, ResolvedItemModelLayer::Special { .. }))
+    }) {
+        let gui_fallback = item_runtime
+            .item_display_transform_for_stack(item, bbb_pack::BlockModelDisplayContext::Gui)
+            .unwrap_or_default();
+        let mut resident_layers = Vec::new();
+        for layer in resolved.into_iter().flat_map(|resolved| resolved.layers) {
+            match layer {
+                ResolvedItemModelLayer::Ordinary {
+                    icon,
+                    transformation,
+                    display_transform,
+                } => {
+                    let transform =
+                        crate::item_models::display_matrix(
+                            &display_transform.unwrap_or(gui_fallback),
+                            false,
+                        ) * crate::item_models::special_item_leaf_matrix(transformation);
+                    resident_layers.extend(
+                        item_runtime
+                            .generated_item_layers_for_icon(icon)
+                            .into_iter()
+                            .map(|layer| HudResidentItemLayer::Generated {
+                                identity: ItemModelAssetIdentity::new(
+                                    layer.asset_id,
+                                    Arc::<str>::from("generated"),
+                                    0,
+                                ),
+                                geometry_class: if layer.translucent {
+                                    ItemModelGeometryClass::Translucent
+                                } else {
+                                    ItemModelGeometryClass::Solid
+                                },
+                                source: ItemModelAssetSource::Generated {
+                                    mask: layer.mask,
+                                    rect: layer.rect,
+                                    translucent: layer.translucent,
+                                },
+                                transform,
+                                tint: layer.tint,
+                            }),
+                    );
+                }
+                ResolvedItemModelLayer::Special {
+                    model,
+                    transformation,
+                    display_transform,
+                } => {
+                    if let Some(model) = crate::item_models::project_special_item_model(
+                        &model,
+                        item,
+                        item_runtime,
+                        None,
+                        None,
+                    ) {
+                        resident_layers.push(HudResidentItemLayer::Special {
+                            model,
+                            transform: crate::item_models::display_matrix(
+                                &display_transform.unwrap_or(gui_fallback),
+                                false,
+                            ) * crate::item_models::special_item_leaf_matrix(
+                                transformation,
+                            ),
+                        });
+                    }
+                }
+            }
+        }
+        if !resident_layers.is_empty() {
+            return Some(HudBlockItemModel {
+                resident_layers: resident_layers.into(),
+                identity: ItemModelAssetIdentity::new(
+                    Arc::<str>::from("minecraft:special"),
+                    Arc::<str>::from("gui"),
+                    0,
+                ),
+                quads: Arc::from([]),
+                gui_display: glam::Mat4::IDENTITY,
+                lighting: GuiItemLightingEntry::Items3d,
+                foil: item.has_foil(),
+            });
+        }
+    }
     let resource_id = item_runtime.item_resource_id(item_id)?;
     let quads = terrain_textures.block_item_quads(resource_id, &BTreeMap::new())?;
     if quads.is_empty() {
@@ -4392,6 +4453,7 @@ fn block_item_3d_model(
         .item_display_transform_for_stack(item, bbb_pack::BlockModelDisplayContext::Gui)
         .unwrap_or_default();
     Some(HudBlockItemModel {
+        resident_layers: Arc::from([]),
         identity: ItemModelAssetIdentity::new(
             Arc::<str>::from(resource_id),
             Arc::<str>::from("default"),

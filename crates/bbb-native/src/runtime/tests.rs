@@ -11942,6 +11942,35 @@ fn hud_item_foil_for_stack_projects_special_clock_and_compass_glint() {
 }
 
 #[test]
+fn gui_item_model_projects_special_leaf_into_resident_geometry() {
+    let root = unique_runtime_temp_dir("hud-special-item");
+    write_runtime_special_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let stack = item_stack(
+        item_runtime
+            .item_protocol_id("minecraft:special_trident")
+            .unwrap(),
+        1,
+    );
+
+    let model = block_item_3d_model(&stack, Some(&item_runtime), &TerrainTextureState::default())
+        .expect("special leaf should use GUI resident geometry");
+
+    assert!(model.quads.is_empty());
+    assert_eq!(model.lighting, GuiItemLightingEntry::Items3d);
+    assert!(matches!(
+        model.resident_layers.as_ref(),
+        [HudResidentItemLayer::Special {
+            model: bbb_renderer::SpecialItemModel::Trident { .. },
+            ..
+        }]
+    ));
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn hud_inventory_screen_projects_cursor_item_as_carried_floating_item() {
     let root = unique_runtime_temp_dir("hud-cursor-carried-condition");
     write_runtime_carried_condition_item_assets(&root);
@@ -13321,6 +13350,8 @@ fn dropped_item_models_use_world_trim_material_select_context() {
         &world,
         Some(&item_runtime),
         &terrain_textures,
+        None,
+        None,
         0.0,
         None,
         None,
@@ -13333,6 +13364,8 @@ fn dropped_item_models_use_world_trim_material_select_context() {
         &world,
         Some(&item_runtime),
         &terrain_textures,
+        None,
+        None,
         0.0,
         Some(&trim_material_keys),
         None,
@@ -24077,6 +24110,42 @@ fn write_runtime_special_foil_item_assets(root: &Path) {
     crate::item_registry_test_fixture::write_item_registry_fixture(
         root.as_ref(),
         &["clock", "compass", "spyglass"],
+    );
+}
+
+fn write_runtime_special_item_assets(root: &Path) {
+    let assets = runtime_assets_dir(root);
+    write_runtime_json(
+        &assets.join("atlases").join("items.json"),
+        r#"{
+            "sources": [
+                {
+                    "type": "minecraft:directory",
+                    "prefix": "item/",
+                    "source": "item"
+                }
+            ]
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("atlases").join("blocks.json"),
+        r#"{"sources": []}"#,
+    );
+    write_runtime_json(
+        &assets.join("items").join("special_trident.json"),
+        r#"{
+            "model": {
+                "type": "minecraft:special",
+                "base": "minecraft:item/special_trident_base",
+                "model": { "type": "minecraft:trident" }
+            }
+        }"#,
+    );
+    write_flat_runtime_item_model_and_texture(&assets, "special_trident_base", &[40, 80, 120, 255]);
+    write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
+    crate::item_registry_test_fixture::write_item_registry_fixture(
+        root.as_ref(),
+        &["special_trident"],
     );
 }
 

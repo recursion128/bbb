@@ -55,6 +55,8 @@ pub(crate) struct NativeEntityVariantTextureRuntime {
     armor_trim_atlas_synchronized: bool,
     banner_pattern_atlas_synchronized: bool,
     banner_pattern_atlas_ready: bool,
+    shield_pattern_atlas_synchronized: bool,
+    shield_pattern_atlas_ready: bool,
     painting_atlas_synchronized: bool,
     painting_atlas_ready: bool,
 }
@@ -74,6 +76,8 @@ impl NativeEntityVariantTextureRuntime {
             armor_trim_atlas_synchronized: false,
             banner_pattern_atlas_synchronized: false,
             banner_pattern_atlas_ready: false,
+            shield_pattern_atlas_synchronized: false,
+            shield_pattern_atlas_ready: false,
             painting_atlas_synchronized: false,
             painting_atlas_ready: false,
         }
@@ -94,6 +98,8 @@ impl NativeEntityVariantTextureRuntime {
         self.armor_trim_atlas_synchronized = false;
         self.banner_pattern_atlas_synchronized = false;
         self.banner_pattern_atlas_ready = false;
+        self.shield_pattern_atlas_synchronized = false;
+        self.shield_pattern_atlas_ready = false;
         self.painting_atlas_synchronized = false;
         self.painting_atlas_ready = false;
         true
@@ -127,6 +133,19 @@ impl NativeEntityVariantTextureRuntime {
             .or_else(|| self.ready_texture("minecraft:missingno"))
     }
 
+    /// Resolves one `Sheets.SHIELD_MAPPER` sprite from the startup
+    /// shield-pattern atlas with the same missing-sprite behavior as banners.
+    pub(crate) fn ready_shield_pattern_texture(
+        &self,
+        sprite_id: &str,
+    ) -> Option<EntityDynamicTexture> {
+        if !self.shield_pattern_atlas_ready {
+            return None;
+        }
+        self.ready_texture(sprite_id)
+            .or_else(|| self.ready_texture("minecraft:missingno"))
+    }
+
     /// Resolves one `PaintingRenderer` sprite from the startup `paintings` atlas. Once the atlas is
     /// ready, an undeclared synchronized asset follows `TextureAtlas.getSprite` to `missingno`.
     pub(crate) fn ready_painting_texture(&self, sprite_id: &str) -> Option<EntityDynamicTexture> {
@@ -147,6 +166,7 @@ impl NativeEntityVariantTextureRuntime {
         }
         self.synchronize_armor_trim_atlas(uploader);
         self.synchronize_banner_pattern_atlas(uploader);
+        self.synchronize_shield_pattern_atlas(uploader);
         self.synchronize_painting_atlas(uploader);
         for (_, registry) in vanilla_data_component_animal_texture_variant_registries() {
             let Some(entry_count) = world
@@ -236,6 +256,18 @@ impl NativeEntityVariantTextureRuntime {
         self.banner_pattern_atlas_synchronized = true;
         self.banner_pattern_atlas_ready =
             self.synchronize_texture_atlas("banner_patterns", "banner-pattern", uploader);
+    }
+
+    fn synchronize_shield_pattern_atlas(
+        &mut self,
+        uploader: &mut impl DynamicEntityTextureUploader,
+    ) {
+        if self.shield_pattern_atlas_synchronized {
+            return;
+        }
+        self.shield_pattern_atlas_synchronized = true;
+        self.shield_pattern_atlas_ready =
+            self.synchronize_texture_atlas("shield_patterns", "shield-pattern", uploader);
     }
 
     fn synchronize_painting_atlas(&mut self, uploader: &mut impl DynamicEntityTextureUploader) {
@@ -713,6 +745,53 @@ mod tests {
         assert_eq!(uploader.images[1].size, [64, 64]);
         let missing = runtime
             .ready_banner_pattern_texture("example:entity/banner/undeclared")
+            .expect("an undeclared sprite resolves through the atlas missingno entry");
+        assert_eq!(uploader.images[0].handle, missing.handle);
+
+        runtime.synchronize_with_uploader(&world, &mut uploader);
+        assert_eq!(uploader.batch_calls, 1);
+        assert_eq!(uploader.images.len(), 2);
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn shield_pattern_atlas_uploads_custom_sprites_and_uses_missingno() {
+        let root = unique_temp_dir("shield-pattern-texture-runtime");
+        let sources = root.join("sources/26.1");
+        let atlas_path = sources.join("assets/minecraft/atlases/shield_patterns.json");
+        std::fs::create_dir_all(atlas_path.parent().unwrap()).unwrap();
+        std::fs::write(
+            &atlas_path,
+            r#"{"sources":[{"type":"minecraft:single","resource":"example:entity/shield/custom"}]}"#,
+        )
+        .unwrap();
+        write_png(
+            &sources.join("assets/example/textures/entity/shield/custom.png"),
+            64,
+            64,
+        );
+        let roots = PackRoots::from_paths(
+            root.clone(),
+            sources.clone(),
+            sources.join("assets/minecraft"),
+            None,
+        );
+        let mut runtime = NativeEntityVariantTextureRuntime::new(Some(roots));
+        let mut uploader = TestUploader::default();
+        let world = WorldStore::new();
+
+        runtime.synchronize_with_uploader(&world, &mut uploader);
+
+        assert_eq!(uploader.batch_calls, 1);
+        assert_eq!(uploader.images.len(), 2, "missingno plus the custom sprite");
+        let custom = runtime
+            .ready_shield_pattern_texture("example:entity/shield/custom")
+            .expect("successful batch publishes the custom shield sprite");
+        assert_eq!(uploader.images[1].handle, custom.handle);
+        assert_eq!(uploader.images[1].size, [64, 64]);
+        let missing = runtime
+            .ready_shield_pattern_texture("example:entity/shield/undeclared")
             .expect("an undeclared sprite resolves through the atlas missingno entry");
         assert_eq!(uploader.images[0].handle, missing.handle);
 

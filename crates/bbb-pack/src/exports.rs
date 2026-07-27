@@ -31,11 +31,11 @@ pub use crate::item_cuboid_models::{
     ItemCuboidTextureImageCatalog, ItemCuboidTextureImageSet, ITEM_CUBOID_TEXTURE_ATLASES,
 };
 pub use crate::item_models::{
-    ClientItemDefinition, ClientItemProperties, ItemModelCatalog, ItemModelDefinition,
-    ItemModelProperty, ItemModelPropertyKind, ItemModelTransformation, ItemSpecialBedPart,
-    ItemSpecialChestType, ItemSpecialEndCubeEffect, ItemSpecialHangingAttachment, ItemSpecialModel,
-    ItemSpecialSkullKind, ItemSpecialStandingAttachment, ItemTintSource, RangeDispatchEntry,
-    SelectCase,
+    ClientItemDefinition, ClientItemProperties, CopperGolemStatuePose, ItemModelCatalog,
+    ItemModelDefinition, ItemModelProperty, ItemModelPropertyKind, ItemModelTransformation,
+    ItemSpecialBedPart, ItemSpecialChestType, ItemSpecialEndCubeEffect,
+    ItemSpecialHangingAttachment, ItemSpecialModel, ItemSpecialSkullKind,
+    ItemSpecialStandingAttachment, ItemTintSource, RangeDispatchEntry, SelectCase,
 };
 pub use crate::item_registry::{
     ItemAttackRange, ItemConsumable, ItemDefaultAttributeModifier, ItemEquipmentSlot,

@@ -85,6 +85,17 @@ impl ItemModelCatalog {
         Some(references.into_iter().collect())
     }
 
+    /// Every parsed `minecraft:special` payload in deterministic item/model
+    /// tree order. Resource owners use this to admit the exact pack textures
+    /// that a selected leaf can request without re-parsing client-item JSON.
+    pub fn special_models(&self) -> Vec<&ItemSpecialModel> {
+        let mut models = Vec::new();
+        for definition in self.definitions.values() {
+            definition.model.collect_special_models(&mut models);
+        }
+        models
+    }
+
     pub fn root_type_counts(&self) -> BTreeMap<String, usize> {
         let mut counts = BTreeMap::new();
         for definition in self.definitions.values() {
@@ -773,6 +784,46 @@ impl ItemModelDefinition {
             Self::Composite { models, .. } => {
                 for model in models {
                     model.collect_special_texture_references(references);
+                }
+            }
+        }
+    }
+
+    fn collect_special_models<'a>(&'a self, models: &mut Vec<&'a ItemSpecialModel>) {
+        match self {
+            Self::Empty | Self::BundleSelectedItem | Self::Model { .. } => {}
+            Self::Special { special, .. } => models.push(special),
+            Self::Condition {
+                on_true, on_false, ..
+            } => {
+                on_true.collect_special_models(models);
+                on_false.collect_special_models(models);
+            }
+            Self::RangeDispatch {
+                entries, fallback, ..
+            } => {
+                for entry in entries {
+                    entry.model.collect_special_models(models);
+                }
+                if let Some(fallback) = fallback {
+                    fallback.collect_special_models(models);
+                }
+            }
+            Self::Select {
+                cases, fallback, ..
+            } => {
+                for case in cases {
+                    case.model.collect_special_models(models);
+                }
+                if let Some(fallback) = fallback {
+                    fallback.collect_special_models(models);
+                }
+            }
+            Self::Composite {
+                models: children, ..
+            } => {
+                for model in children {
+                    model.collect_special_models(models);
                 }
             }
         }
@@ -3169,6 +3220,11 @@ mod tests {
             catalog.special_model_type_counts(),
             BTreeMap::from([("minecraft:copper_golem_statue".to_string(), 4)])
         );
+        assert_eq!(catalog.special_models().len(), 4);
+        assert!(catalog
+            .special_models()
+            .iter()
+            .all(|model| matches!(model, ItemSpecialModel::CopperGolemStatue { .. })));
 
         std::fs::remove_dir_all(root).unwrap();
     }

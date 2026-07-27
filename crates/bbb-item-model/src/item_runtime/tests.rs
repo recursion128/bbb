@@ -9943,11 +9943,18 @@ fn native_item_runtime_preserves_selected_special_leaves_and_composed_transforma
     let ResolvedItemModelLayer::Ordinary {
         icon,
         transformation,
+        display_transform,
     } = &resolved.layers[0]
     else {
         panic!("first composite leaf should stay ordinary");
     };
     assert_eq!(icon.layers[0].uv, uv("special_ordinary"));
+    assert_eq!(
+        display_transform
+            .expect("ordinary base model supplies GUI properties")
+            .translation,
+        [1.0 / 16.0, 0.0, 0.0]
+    );
     assert_eq!(
         transformation.columns,
         [
@@ -9960,11 +9967,18 @@ fn native_item_runtime_preserves_selected_special_leaves_and_composed_transforma
     let ResolvedItemModelLayer::Special {
         model,
         transformation,
+        display_transform,
     } = &resolved.layers[1]
     else {
         panic!("selected condition leaf should stay special");
     };
     assert!(matches!(model, ItemSpecialModel::DecoratedPot));
+    assert_eq!(
+        display_transform
+            .expect("special wrapper base model supplies GUI properties")
+            .translation,
+        [5.0 / 16.0, 0.0, 0.0]
+    );
     assert_eq!(
         transformation.columns,
         [
@@ -9988,7 +10002,11 @@ fn native_item_runtime_preserves_selected_special_leaves_and_composed_transforma
         .unwrap();
     assert!(matches!(
         &fallback.layers[1],
-        ResolvedItemModelLayer::Ordinary { icon, transformation }
+        ResolvedItemModelLayer::Ordinary {
+            icon,
+            transformation,
+            ..
+        }
             if icon.layers[0].uv == uv("special_fallback")
                 && transformation.columns[3] == [7.0, 3.0, 4.0, 1.0]
     ));
@@ -10021,6 +10039,7 @@ fn native_item_runtime_preserves_selected_special_leaves_and_composed_transforma
                     [0.0, 0.0, 0.0, 1.0],
                 ],
             },
+            display_transform: Some(BlockModelDisplayTransform::default()),
         }]
     );
     assert_eq!(
@@ -16341,6 +16360,27 @@ fn write_special_item_model_leaf_fixture(root: &Path) {
     write_flat_item_model_and_texture(&assets, "special_ordinary", &[40, 120, 180, 255]);
     write_flat_item_model_and_texture(&assets, "special_base", &[180, 80, 40, 255]);
     write_flat_item_model_and_texture(&assets, "special_fallback", &[80, 180, 40, 255]);
+    write_json(
+        &assets
+            .join("models")
+            .join("item")
+            .join("special_ordinary.json"),
+        r#"{
+            "display": {
+                "gui": { "translation": [1, 0, 0] }
+            },
+            "textures": { "layer0": "minecraft:item/special_ordinary" }
+        }"#,
+    );
+    write_json(
+        &assets.join("models").join("item").join("special_base.json"),
+        r#"{
+            "display": {
+                "gui": { "translation": [5, 0, 0] }
+            },
+            "textures": { "layer0": "minecraft:item/special_base" }
+        }"#,
+    );
     write_json(
         &assets.join("items").join("bundle.json"),
         r#"{

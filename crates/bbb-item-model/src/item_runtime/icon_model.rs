@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use bbb_pack::{
+    BlockModelDisplayContext, BlockModelDisplayTransform, BlockModelDisplayTransforms,
     ItemCuboidModelCatalog, ItemModelDefinition, ItemModelProperty, ItemModelPropertyKind,
     ItemModelTransformation, ItemSpecialModel, ItemTintSource, JukeboxSongRegistry, SelectCase,
     TagCatalog, TerrainColorMaps,
@@ -43,7 +44,10 @@ use bbb_protocol::potion_types::vanilla_potion;
 #[derive(Debug, Clone, PartialEq)]
 pub(super) enum ItemIconModelRef {
     Empty,
-    Layers(Vec<ItemIconTextureRef>),
+    Layers {
+        layers: Vec<ItemIconTextureRef>,
+        display_transforms: BlockModelDisplayTransforms,
+    },
     Special {
         base: Box<ItemIconModelRef>,
         model: ItemSpecialModel,
@@ -1302,7 +1306,7 @@ impl ItemIconModelRef {
     pub(super) fn is_empty(&self) -> bool {
         match self {
             Self::Empty => true,
-            Self::Layers(layers) => layers.is_empty(),
+            Self::Layers { layers, .. } => layers.is_empty(),
             Self::Special { .. } => false,
             Self::Transformed { model, .. } => model.is_empty(),
             Self::BundleSelectedItem => false,
@@ -1323,8 +1327,11 @@ impl ItemIconModelRef {
         match self {
             Self::Empty => ItemIconModel::Empty,
             Self::BundleSelectedItem => ItemIconModel::BundleSelectedItem,
-            Self::Layers(layers) => ItemIconModel::Layers(
-                layers
+            Self::Layers {
+                layers,
+                display_transforms,
+            } => ItemIconModel::Layers {
+                layers: layers
                     .into_iter()
                     .map(|layer| {
                         let texture_index = textures.texture_index(&layer.texture_id);
@@ -1336,7 +1343,8 @@ impl ItemIconModelRef {
                         }
                     })
                     .collect(),
-            ),
+                display_transforms,
+            },
             Self::Special { base, model } => ItemIconModel::Special {
                 base: Box::new(base.into_indexed(textures)),
                 model,
@@ -1396,7 +1404,10 @@ impl ItemIconModelRef {
 #[derive(Debug, Clone, PartialEq)]
 pub(super) enum ItemIconModel {
     Empty,
-    Layers(Vec<ItemIconTextureLayer>),
+    Layers {
+        layers: Vec<ItemIconTextureLayer>,
+        display_transforms: BlockModelDisplayTransforms,
+    },
     Special {
         base: Box<ItemIconModel>,
         model: ItemSpecialModel,
@@ -1430,11 +1441,13 @@ pub(super) enum ResolvedItemIconModelLayer {
     Ordinary {
         layers: Vec<ItemIconTextureLayer>,
         transformation: ItemModelLeafTransformation,
+        display_transform: Option<BlockModelDisplayTransform>,
     },
     Special {
         base_layers: Vec<ItemIconTextureLayer>,
         model: ItemSpecialModel,
         transformation: ItemModelLeafTransformation,
+        display_transform: Option<BlockModelDisplayTransform>,
     },
 }
 
@@ -1479,6 +1492,7 @@ pub(super) struct IconResolveContext<'a> {
     pub cooldown_progress: f32,
     pub crossbow_charge: CrossbowChargeType,
     pub display_context: &'a str,
+    pub display_context_kind: BlockModelDisplayContext,
     /// Vanilla `ItemModelResolver` seed forwarded to item-model properties.
     pub item_model_seed: i32,
     pub default_item_model_id: &'a str,
@@ -2433,6 +2447,19 @@ fn lodestone_target_for_patch(
 }
 
 impl ItemIconModel {
+    fn display_transform(
+        &self,
+        context: BlockModelDisplayContext,
+    ) -> Option<BlockModelDisplayTransform> {
+        match self {
+            Self::Layers {
+                display_transforms, ..
+            } => Some(display_transforms.get(context)),
+            Self::Transformed { model, .. } => model.display_transform(context),
+            _ => None,
+        }
+    }
+
     fn selected_branch(&self, ctx: IconResolveContext<'_>) -> Option<&ItemIconModel> {
         match self {
             Self::Condition {
@@ -2545,7 +2572,7 @@ impl ItemIconModel {
         match self {
             Self::Empty => Vec::new(),
             Self::BundleSelectedItem => resolve_bundle_selected_item(),
-            Self::Layers(layers) => layers.clone(),
+            Self::Layers { layers, .. } => layers.clone(),
             Self::Special { base, .. } => {
                 base.icon_layers_with_bundle_resolver(ctx, resolve_bundle_selected_item)
             }
@@ -2574,11 +2601,15 @@ impl ItemIconModel {
         match self {
             Self::Empty => Vec::new(),
             Self::BundleSelectedItem => resolve_bundle_selected_item(),
-            Self::Layers(layers) => vec![ResolvedItemIconModelLayer::Ordinary {
+            Self::Layers {
+                layers,
+                display_transforms,
+            } => vec![ResolvedItemIconModelLayer::Ordinary {
                 layers: layers.clone(),
                 transformation: ItemModelLeafTransformation {
                     columns: inherited.to_cols_array_2d(),
                 },
+                display_transform: Some(display_transforms.get(ctx.display_context_kind)),
             }],
             Self::Special { base, model } => {
                 let mut no_bundle_resolver = Vec::new;
@@ -2589,6 +2620,7 @@ impl ItemIconModel {
                     transformation: ItemModelLeafTransformation {
                         columns: inherited.to_cols_array_2d(),
                     },
+                    display_transform: base.display_transform(ctx.display_context_kind),
                 }]
             }
             Self::Transformed {
@@ -2964,11 +2996,12 @@ fn item_icon_model_ref_for_model_id(
     let Some(model) = cuboid_models.model(model_id) else {
         return ItemIconModelRef::Empty;
     };
-    ItemIconModelRef::Layers(
-        generated_layer_texture_refs(&model, model_tints, colormaps)
+    ItemIconModelRef::Layers {
+        layers: generated_layer_texture_refs(&model, model_tints, colormaps)
             .or_else(|| first_texture_ref(&model).map(|texture| vec![texture]))
             .unwrap_or_default(),
-    )
+        display_transforms: model.display_transforms.clone(),
+    }
 }
 
 fn item_stack_has_selected_bundle_item(

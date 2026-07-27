@@ -253,6 +253,20 @@ pub(crate) fn bake_special_item_geometry(
                         &mut resolve,
                     )?;
                 }
+                SpecialItemHeadKind::Player => {
+                    let model = CustomHeadSkullModel::new(true);
+                    push_model_part_with_phase(
+                        &mut parts,
+                        "player_head_override",
+                        texture,
+                        model.root(),
+                        None,
+                        [1.0; 4],
+                        false,
+                        ItemModelDrawPhase::CutoutZOffset,
+                        &mut resolve,
+                    )?;
+                }
             }
         }
         SpecialItemModel::PlayerHead {

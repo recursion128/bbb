@@ -673,6 +673,7 @@ impl NativeItemRuntime {
             cooldown_progress: 0.0,
             crossbow_charge: CrossbowChargeType::None,
             display_context: item_display_context_name(display_context),
+            display_context_kind: display_context,
             item_model_seed: 0,
             default_item_model_id: item_id,
             default_item_name_translation_key: &default_item_name_translation_key,
@@ -771,6 +772,7 @@ impl NativeItemRuntime {
             cooldown_progress: 0.0,
             crossbow_charge: self.crossbow_charge_for(Some(&stack.component_patch)),
             display_context: item_display_context_name(display_context),
+            display_context_kind: display_context,
             item_model_seed: 0,
             default_item_model_id: item_id,
             default_item_name_translation_key: &default_item_name_translation_key,
@@ -1108,6 +1110,47 @@ impl NativeItemRuntime {
         )
     }
 
+    /// Selected client-item tree for a level-backed, non-living consumer.
+    ///
+    /// Unlike the generated compatibility API, this retains
+    /// `minecraft:special` leaves and their composed local transformations.
+    pub fn resolved_item_model_for_stack_with_registry_context(
+        &self,
+        stack: &ItemStackSummary,
+        display_context: BlockModelDisplayContext,
+        trim_material_keys: Option<&[String]>,
+        trim_pattern_keys: Option<&[String]>,
+        enchantment_keys: Option<&[String]>,
+        damage_type_keys: Option<&[String]>,
+        attribute_keys: Option<&[String]>,
+    ) -> Option<ResolvedItemModel> {
+        self.resolved_item_model_for_stack_with_model_registry_context(
+            stack,
+            None,
+            false,
+            ItemModelUseContext::inactive(),
+            display_context,
+            0.0,
+            trim_material_keys,
+            trim_pattern_keys,
+            enchantment_keys,
+            damage_type_keys,
+            attribute_keys,
+            None,
+            None,
+            None,
+            None,
+            None,
+            false,
+            false,
+            false,
+            false,
+            ItemModelKeybindContext::default(),
+            false,
+            0,
+        )
+    }
+
     /// Generated item layers for an entity-owned stack. Vanilla `MainHand.get`
     /// returns null without a living owner; held-item paths pass the owner's
     /// main arm so `minecraft:main_hand` select cases can resolve. Vanilla
@@ -1177,6 +1220,50 @@ impl NativeItemRuntime {
         )
     }
 
+    /// Selected client-item tree for a living-owner consumer.
+    #[allow(clippy::too_many_arguments)]
+    pub fn resolved_item_model_for_stack_with_owner_registry_context(
+        &self,
+        stack: &ItemStackSummary,
+        display_context: BlockModelDisplayContext,
+        owner_main_hand_left: Option<bool>,
+        context_entity_type: Option<&str>,
+        context_dimension: Option<&str>,
+        trim_material_keys: Option<&[String]>,
+        trim_pattern_keys: Option<&[String]>,
+        enchantment_keys: Option<&[String]>,
+        damage_type_keys: Option<&[String]>,
+        attribute_keys: Option<&[String]>,
+        using_item: bool,
+        use_context: ItemModelUseContext,
+    ) -> Option<ResolvedItemModel> {
+        self.resolved_item_model_for_stack_with_model_registry_context(
+            stack,
+            None,
+            using_item,
+            use_context,
+            display_context,
+            0.0,
+            trim_material_keys,
+            trim_pattern_keys,
+            enchantment_keys,
+            damage_type_keys,
+            attribute_keys,
+            owner_main_hand_left,
+            context_entity_type,
+            context_dimension,
+            None,
+            None,
+            false,
+            false,
+            false,
+            false,
+            ItemModelKeybindContext::default(),
+            false,
+            0,
+        )
+    }
+
     pub(super) fn generated_item_layers_for_stack_with_context(
         &self,
         stack: &ItemStackSummary,
@@ -1218,6 +1305,12 @@ impl NativeItemRuntime {
         ) else {
             return Vec::new();
         };
+        self.generated_item_layers_for_icon(icon)
+    }
+
+    /// Converts an already-selected ordinary leaf icon into the existing
+    /// generated geometry payload without running the item selector again.
+    pub fn generated_item_layers_for_icon(&self, icon: ItemAtlasIcon) -> Vec<GeneratedItemLayer> {
         icon.layers
             .into_iter()
             .filter_map(|layer| {
@@ -1702,6 +1795,116 @@ impl NativeItemRuntime {
         fishing_rod_cast: bool,
         item_model_seed: i32,
     ) -> Option<ItemAtlasIcon> {
+        self.resolve_item_model_selection_for_stack_with_model_registry_context(
+            stack,
+            bundle_selected_item_index,
+            using_item,
+            use_context,
+            display_context,
+            cooldown_progress,
+            trim_material_keys,
+            trim_pattern_keys,
+            enchantment_keys,
+            damage_type_keys,
+            attribute_keys,
+            owner_main_hand_left,
+            context_entity_type,
+            context_dimension,
+            time_context,
+            compass_context,
+            selected_item,
+            carried_item,
+            view_entity,
+            shift_down,
+            keybind_context,
+            fishing_rod_cast,
+            item_model_seed,
+        )
+        .and_then(|selection| selection.compatibility_icon)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn resolved_item_model_for_stack_with_model_registry_context(
+        &self,
+        stack: &ItemStackSummary,
+        bundle_selected_item_index: Option<i32>,
+        using_item: bool,
+        use_context: ItemModelUseContext,
+        display_context: BlockModelDisplayContext,
+        cooldown_progress: f32,
+        trim_material_keys: Option<&[String]>,
+        trim_pattern_keys: Option<&[String]>,
+        enchantment_keys: Option<&[String]>,
+        damage_type_keys: Option<&[String]>,
+        attribute_keys: Option<&[String]>,
+        owner_main_hand_left: Option<bool>,
+        context_entity_type: Option<&str>,
+        context_dimension: Option<&str>,
+        time_context: Option<ItemModelTimeContext>,
+        compass_context: Option<ItemModelCompassContext<'_>>,
+        selected_item: bool,
+        carried_item: bool,
+        view_entity: bool,
+        shift_down: bool,
+        keybind_context: ItemModelKeybindContext,
+        fishing_rod_cast: bool,
+        item_model_seed: i32,
+    ) -> Option<ResolvedItemModel> {
+        self.resolve_item_model_selection_for_stack_with_model_registry_context(
+            stack,
+            bundle_selected_item_index,
+            using_item,
+            use_context,
+            display_context,
+            cooldown_progress,
+            trim_material_keys,
+            trim_pattern_keys,
+            enchantment_keys,
+            damage_type_keys,
+            attribute_keys,
+            owner_main_hand_left,
+            context_entity_type,
+            context_dimension,
+            time_context,
+            compass_context,
+            selected_item,
+            carried_item,
+            view_entity,
+            shift_down,
+            keybind_context,
+            fishing_rod_cast,
+            item_model_seed,
+        )
+        .map(|selection| selection.model)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn resolve_item_model_selection_for_stack_with_model_registry_context(
+        &self,
+        stack: &ItemStackSummary,
+        bundle_selected_item_index: Option<i32>,
+        using_item: bool,
+        use_context: ItemModelUseContext,
+        display_context: BlockModelDisplayContext,
+        cooldown_progress: f32,
+        trim_material_keys: Option<&[String]>,
+        trim_pattern_keys: Option<&[String]>,
+        enchantment_keys: Option<&[String]>,
+        damage_type_keys: Option<&[String]>,
+        attribute_keys: Option<&[String]>,
+        owner_main_hand_left: Option<bool>,
+        context_entity_type: Option<&str>,
+        context_dimension: Option<&str>,
+        time_context: Option<ItemModelTimeContext>,
+        compass_context: Option<ItemModelCompassContext<'_>>,
+        selected_item: bool,
+        carried_item: bool,
+        view_entity: bool,
+        shift_down: bool,
+        keybind_context: ItemModelKeybindContext,
+        fishing_rod_cast: bool,
+        item_model_seed: i32,
+    ) -> Option<ResolvedItemModelSelection> {
         let item_id = self.registry.as_ref()?.resource_id(stack.item_id?)?;
         let item_model_id = item_model_id_for_stack(item_id, Some(&stack.component_patch))?;
         self.resolve_item_model_for_resource_id(
@@ -1732,7 +1935,6 @@ impl NativeItemRuntime {
             fishing_rod_cast,
             item_model_seed,
         )
-        .and_then(|selection| selection.compatibility_icon)
     }
 
     #[cfg(test)]
@@ -1860,6 +2062,7 @@ impl NativeItemRuntime {
             cooldown_progress,
             crossbow_charge: self.crossbow_charge_for(component_patch),
             display_context: item_display_context_name(display_context),
+            display_context_kind: display_context,
             item_model_seed,
             default_item_model_id: item_id,
             default_item_name_translation_key: &default_item_name_translation_key,
@@ -1908,6 +2111,7 @@ impl NativeItemRuntime {
                 vec![ResolvedItemIconModelLayer::Ordinary {
                     layers: self.fallback_icon_texture_layers(),
                     transformation: ItemModelLeafTransformation::IDENTITY,
+                    display_transform: None,
                 }]
             });
         let mut model_layers = Vec::with_capacity(resolved_layers.len());
@@ -1917,6 +2121,7 @@ impl NativeItemRuntime {
                 ResolvedItemIconModelLayer::Ordinary {
                     layers,
                     transformation,
+                    display_transform,
                 } => {
                     let Some(icon) = self.item_atlas_icon_for_layers(layers, component_patch)
                     else {
@@ -1926,12 +2131,14 @@ impl NativeItemRuntime {
                     model_layers.push(ResolvedItemModelLayer::Ordinary {
                         icon,
                         transformation,
+                        display_transform,
                     });
                 }
                 ResolvedItemIconModelLayer::Special {
                     base_layers,
                     model,
                     transformation,
+                    display_transform,
                 } => {
                     if let Some(icon) =
                         self.item_atlas_icon_for_layers(base_layers, component_patch)
@@ -1941,6 +2148,7 @@ impl NativeItemRuntime {
                     model_layers.push(ResolvedItemModelLayer::Special {
                         model,
                         transformation,
+                        display_transform,
                     });
                 }
             }
@@ -2266,6 +2474,7 @@ impl NativeItemRuntime {
             cooldown_progress: 0.0,
             crossbow_charge: self.crossbow_charge_for(Some(&template.component_patch)),
             display_context: parent_context.display_context,
+            display_context_kind: parent_context.display_context_kind,
             item_model_seed: parent_context.item_model_seed,
             default_item_model_id: item_id,
             default_item_name_translation_key: &default_item_name_translation_key,
@@ -2312,6 +2521,7 @@ impl NativeItemRuntime {
                 vec![ResolvedItemIconModelLayer::Ordinary {
                     layers: self.fallback_icon_texture_layers(),
                     transformation: ItemModelLeafTransformation::IDENTITY,
+                    display_transform: None,
                 }]
             });
         layers
@@ -2320,17 +2530,20 @@ impl NativeItemRuntime {
                 ResolvedItemIconModelLayer::Ordinary {
                     layers,
                     transformation,
+                    display_transform,
                 } => ResolvedItemIconModelLayer::Ordinary {
                     layers: resolve_item_icon_texture_layer_tints(
                         layers,
                         Some(&template.component_patch),
                     ),
                     transformation,
+                    display_transform,
                 },
                 ResolvedItemIconModelLayer::Special {
                     base_layers,
                     model,
                     transformation,
+                    display_transform,
                 } => ResolvedItemIconModelLayer::Special {
                     base_layers: resolve_item_icon_texture_layer_tints(
                         base_layers,
@@ -2338,6 +2551,7 @@ impl NativeItemRuntime {
                     ),
                     model,
                     transformation,
+                    display_transform,
                 },
             })
             .collect()

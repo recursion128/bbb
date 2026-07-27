@@ -329,10 +329,16 @@ pub enum ResolvedItemModelLayer {
     Ordinary {
         icon: ItemAtlasIcon,
         transformation: ItemModelLeafTransformation,
+        /// Display transform selected from this leaf's resolved cuboid model.
+        /// `None` denotes the missing-model compatibility fallback.
+        display_transform: Option<BlockModelDisplayTransform>,
     },
     Special {
         model: ItemSpecialModel,
         transformation: ItemModelLeafTransformation,
+        /// `ModelRenderProperties` transform supplied by the special wrapper's
+        /// `base` model for the caller's display context.
+        display_transform: Option<BlockModelDisplayTransform>,
     },
 }
 
@@ -847,9 +853,10 @@ impl NativeItemRuntime {
             client_item_properties.insert(item_id.clone(), definition.properties);
             let models = cuboid_models.models_for_definition(definition);
             resolved_model_count += models.models.len();
-            // Retain the item model's display transforms (the same across its conditional variants,
-            // which share a parent like `item/handheld` / `item/generated` / `block/block`) so held
-            // items, frames, and the GUI can place the 3D model the way vanilla `ItemTransform` does.
+            // Retain one compatibility transform for legacy block-only paths.
+            // Selected resident leaves carry their own resolved base-model
+            // transforms because resource-pack composites may intentionally
+            // mix different `ModelRenderProperties`.
             if let Some(model) = models.models.first() {
                 item_display_transforms.insert(item_id.clone(), model.display_transforms.clone());
             }

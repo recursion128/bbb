@@ -287,6 +287,30 @@ pub struct ItemModelResidencyFrame {
     pub special_items: Vec<super::SpecialItemInstanceRequest>,
 }
 
+impl ItemModelResidencyFrame {
+    /// Appends one independently extracted source while preserving the source's
+    /// ordinary/special interleave encoded by `submit_order`.
+    pub fn append(&mut self, mut source: Self) {
+        let submit_offset = u32::try_from(self.instances.len() + self.special_items.len())
+            .expect("resident item-model submit order overflow");
+        for instance in &mut source.instances {
+            instance.submit_order = instance
+                .submit_order
+                .checked_add(submit_offset)
+                .expect("resident item-model submit order overflow");
+        }
+        for instance in &mut source.special_items {
+            instance.submit_order = instance
+                .submit_order
+                .checked_add(submit_offset)
+                .expect("resident special item-model submit order overflow");
+        }
+        self.assets.extend(source.assets);
+        self.instances.extend(source.instances);
+        self.special_items.extend(source.special_items);
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ItemModelResidencyOutcome {
     Reused,
@@ -1809,6 +1833,17 @@ impl Renderer {
                     .iter()
                     .find(|entry| entry.texture == *texture)
                     .map(|entry| entry.uv)
+                    // The same physical pack image may be referenced by
+                    // different special model kinds with different logical
+                    // UV dimensions. Reuse the uploaded image by path while
+                    // retaining this request's logical size.
+                    .or_else(|| {
+                        atlas
+                            .owned_entries
+                            .iter()
+                            .find(|entry| entry.texture.path == texture.path)
+                            .map(|entry| entry.uv)
+                    })
                     // A direct pack texture may already be present through a
                     // static entity layer. Reuse that physical atlas entry
                     // while retaining the special layer's logical UV size.
@@ -2045,6 +2080,37 @@ mod tests {
     }
 
     #[test]
+    fn residency_frame_append_preserves_ordinary_special_submit_order() {
+        let mut target = block_frame(Mat4::IDENTITY);
+        let mut source = block_frame(Mat4::from_translation(glam::Vec3::X));
+        source
+            .special_items
+            .push(super::super::SpecialItemInstanceRequest {
+                model: SpecialItemModel::Trident {
+                    texture: SpecialItemTexture::Static(SPECIAL_TRIDENT_TEXTURE),
+                },
+                transform: Mat4::IDENTITY,
+                light: [1.0; 2],
+                overlay: [0.0, 10.0],
+                foil: ItemModelFoil::None,
+                target: ItemModelDrawTarget::World,
+                submit_order: 1,
+            });
+
+        target.append(source);
+
+        assert_eq!(
+            target
+                .instances
+                .iter()
+                .map(|instance| instance.submit_order)
+                .collect::<Vec<_>>(),
+            vec![0, 1]
+        );
+        assert_eq!(target.special_items[0].submit_order, 2);
+    }
+
+    #[test]
     fn special_item_texture_sources_resolve_all_entity_atlas_owners() {
         let Some(mut renderer) = Renderer::new_offscreen(16, 16) else {
             return;
@@ -2088,10 +2154,17 @@ mod tests {
         assert_eq!(static_texture.logical_size, [64, 64]);
 
         let pack_texture = renderer
-            .resolve_special_item_texture(&SpecialItemTexture::Pack(owned_texture))
+            .resolve_special_item_texture(&SpecialItemTexture::Pack(owned_texture.clone()))
             .unwrap();
         assert_eq!(pack_texture.atlas, ItemModelAtlasKind::Entity);
         assert_eq!(pack_texture.logical_size, [64, 32]);
+        let shared_pack_texture = renderer
+            .resolve_special_item_texture(&SpecialItemTexture::Pack(
+                crate::EntityModelOwnedTextureRef::new(owned_texture.path, [256, 256]),
+            ))
+            .unwrap();
+        assert_eq!(shared_pack_texture.atlas, ItemModelAtlasKind::Entity);
+        assert_eq!(shared_pack_texture.logical_size, [256, 256]);
 
         let dynamic_texture = renderer
             .resolve_special_item_texture(&SpecialItemTexture::Dynamic {

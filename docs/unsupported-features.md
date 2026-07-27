@@ -889,10 +889,9 @@ Owner: `bbb-pack` + `bbb-item-model` + `bbb-native` + `bbb-renderer`
   static sprite use.
 - Apply full item tint parity for dynamic sources across every item rendering
   path.
-- Project parsed `minecraft:special` models through native extraction into the
-  renderer's resident special submissions for GUI, hand, dropped-item, and
-  item-frame paths. Follow `SpecialModelWrapper` / `SpecialModelRenderer`;
-  `DecoratedPotSpecialRenderer` must consume `POT_DECORATIONS` face data.
+- Reuse the exact context-rich HUD selector when resident special GUI items
+  depend on bundle selection or live context, and add per-item clipping for
+  their scaled/scissored GUI animations.
 - Load equipment asset layers for armor/equipment rendering.
 
 Loader invariants (not todos): keep the local vanilla coverage tests

@@ -1,4 +1,5 @@
 use super::*;
+use crate::entity_variant_textures::NativeEntityVariantTextureRuntime;
 
 /// Vanilla `FLAT_ITEM_DEPTH_THRESHOLD` / `ITEM_MIN_HOVER_HEIGHT`: a rendered model thinner than this in Z
 /// is stacked back-to-front; a thicker one is scattered in 3D.
@@ -481,6 +482,8 @@ pub(crate) fn dropped_item_models(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     terrain_textures: &TerrainTextureState,
+    renderer: Option<&bbb_renderer::Renderer>,
+    variant_textures: Option<&NativeEntityVariantTextureRuntime>,
     age_ticks: f32,
     trim_material_keys: Option<&[String]>,
     trim_pattern_keys: Option<&[String]>,
@@ -536,6 +539,166 @@ pub(crate) fn dropped_item_models(
         };
         let foil =
             item_stack_foil_mode(&state.stack, item_runtime, BlockModelDisplayContext::Ground);
+
+        let resolved = item_runtime.resolved_item_model_for_stack_with_registry_context(
+            &state.stack,
+            BlockModelDisplayContext::Ground,
+            trim_material_keys,
+            trim_pattern_keys,
+            enchantment_keys,
+            damage_type_keys,
+            attribute_keys,
+        );
+        if resolved.as_ref().is_some_and(|resolved| {
+            resolved
+                .layers
+                .iter()
+                .any(|layer| matches!(layer, ResolvedItemModelLayer::Special { .. }))
+        }) {
+            let ground_fallback = ground(GENERATED_GROUND_FALLBACK);
+            let mut projected = Vec::new();
+            for layer in resolved.into_iter().flat_map(|resolved| resolved.layers) {
+                match layer {
+                    ResolvedItemModelLayer::Ordinary {
+                        icon,
+                        transformation,
+                        display_transform,
+                    } => projected.push(ProjectedSpecialClusterLayer::Ordinary {
+                        icon,
+                        transformation,
+                        display_transform,
+                    }),
+                    ResolvedItemModelLayer::Special {
+                        model,
+                        transformation,
+                        display_transform,
+                    } => {
+                        if let Some(model) = special::project_special_item_model(
+                            &model,
+                            &state.stack,
+                            item_runtime,
+                            Some(world),
+                            variant_textures,
+                        ) {
+                            projected.push(ProjectedSpecialClusterLayer::Special {
+                                model,
+                                transformation,
+                                display_transform,
+                            });
+                        }
+                    }
+                }
+            }
+            let (min_y, depth) = special_cluster_bounds(renderer, &projected, ground_fallback);
+            let base = base_transform(position, age_ticks, state.bob_offset, -min_y + 1.0 / 16.0);
+            let prepared = projected
+                .into_iter()
+                .map(|layer| match layer {
+                    ProjectedSpecialClusterLayer::Ordinary {
+                        icon,
+                        transformation,
+                        display_transform,
+                    } => {
+                        let leaf = special_cluster_leaf_matrix(
+                            display_transform,
+                            transformation,
+                            ground_fallback,
+                        );
+                        let transforms = cluster_transforms(base, leaf, count, seed, depth);
+                        let layers = item_runtime
+                            .generated_item_layers_for_icon(icon)
+                            .into_iter()
+                            .map(|layer| PreparedGeneratedClusterLayer {
+                                identity: ItemModelAssetIdentity::new(
+                                    layer.asset_id,
+                                    Arc::<str>::from("generated"),
+                                    0,
+                                ),
+                                geometry_class: if layer.translucent {
+                                    ItemModelGeometryClass::Translucent
+                                } else {
+                                    ItemModelGeometryClass::Solid
+                                },
+                                source: ItemModelAssetSource::Generated {
+                                    mask: layer.mask,
+                                    rect: layer.rect,
+                                    translucent: layer.translucent,
+                                },
+                                tint: layer.tint,
+                            })
+                            .collect();
+                        PreparedSpecialClusterLayer::Ordinary { layers, transforms }
+                    }
+                    ProjectedSpecialClusterLayer::Special {
+                        model,
+                        transformation,
+                        display_transform,
+                    } => {
+                        let leaf = special_cluster_leaf_matrix(
+                            display_transform,
+                            transformation,
+                            ground_fallback,
+                        );
+                        PreparedSpecialClusterLayer::Special {
+                            model,
+                            transforms: cluster_transforms(base, leaf, count, seed, depth),
+                        }
+                    }
+                })
+                .collect::<Vec<_>>();
+            for layer in &prepared {
+                if let PreparedSpecialClusterLayer::Ordinary { layers, .. } = layer {
+                    residency
+                        .assets
+                        .extend(layers.iter().map(|layer| ItemModelAssetRequest {
+                            identity: layer.identity.clone(),
+                            atlas: ItemModelAtlasKind::Items,
+                            geometry_class: layer.geometry_class,
+                            source: layer.source.clone(),
+                        }));
+                }
+            }
+            // Vanilla submits the complete item state once per cluster copy,
+            // so composite leaf order repeats inside each copy.
+            for copy_index in 0..count {
+                for layer in &prepared {
+                    match layer {
+                        PreparedSpecialClusterLayer::Ordinary { layers, transforms } => {
+                            for layer in layers {
+                                push_resident_item_instances_for_asset(
+                                    &mut residency,
+                                    layer.identity.clone(),
+                                    ItemModelAtlasKind::Items,
+                                    layer.geometry_class,
+                                    std::slice::from_ref(&transforms[copy_index]),
+                                    layer.tint,
+                                    shader_light(state.light),
+                                    ITEM_MODEL_NO_OVERLAY,
+                                    foil,
+                                    ItemModelDrawTarget::World,
+                                );
+                            }
+                        }
+                        PreparedSpecialClusterLayer::Special { model, transforms } => {
+                            residency.special_items.push(SpecialItemInstanceRequest {
+                                model: model.clone(),
+                                transform: transforms[copy_index],
+                                light: shader_light(state.light),
+                                overlay: ITEM_MODEL_NO_OVERLAY,
+                                foil,
+                                target: ItemModelDrawTarget::World,
+                                submit_order: u32::try_from(
+                                    residency.instances.len() + residency.special_items.len(),
+                                )
+                                .expect("special item submit order overflow"),
+                            });
+                        }
+                    }
+                }
+            }
+            handled_entity_ids.insert(state.entity_id);
+            continue;
+        }
 
         // Block path: the item is a block with 3D item geometry.
         if let Some(resource_id) = item_runtime.item_resource_id(item_id) {
@@ -647,6 +810,126 @@ pub(crate) fn dropped_item_models(
         flat_glint_translucent_meshes,
         residency,
         handled_entity_ids,
+    }
+}
+
+enum ProjectedSpecialClusterLayer {
+    Ordinary {
+        icon: bbb_item_model::ItemAtlasIcon,
+        transformation: bbb_item_model::ItemModelLeafTransformation,
+        display_transform: Option<BlockModelDisplayTransform>,
+    },
+    Special {
+        model: bbb_renderer::SpecialItemModel,
+        transformation: bbb_item_model::ItemModelLeafTransformation,
+        display_transform: Option<BlockModelDisplayTransform>,
+    },
+}
+
+struct PreparedGeneratedClusterLayer {
+    identity: ItemModelAssetIdentity,
+    geometry_class: ItemModelGeometryClass,
+    source: ItemModelAssetSource,
+    tint: [f32; 4],
+}
+
+enum PreparedSpecialClusterLayer {
+    Ordinary {
+        layers: Vec<PreparedGeneratedClusterLayer>,
+        transforms: Vec<Mat4>,
+    },
+    Special {
+        model: bbb_renderer::SpecialItemModel,
+        transforms: Vec<Mat4>,
+    },
+}
+
+fn special_cluster_bounds(
+    renderer: Option<&bbb_renderer::Renderer>,
+    layers: &[ProjectedSpecialClusterLayer],
+    ground_fallback: BlockModelDisplayTransform,
+) -> (f32, f32) {
+    let mut min_y = f32::INFINITY;
+    let mut min_z = f32::INFINITY;
+    let mut max_z = f32::NEG_INFINITY;
+    for layer in layers {
+        match layer {
+            ProjectedSpecialClusterLayer::Ordinary {
+                transformation,
+                display_transform,
+                ..
+            } => {
+                let transform = special_cluster_leaf_matrix(
+                    *display_transform,
+                    *transformation,
+                    ground_fallback,
+                );
+                extend_transformed_bounds(
+                    &mut min_y,
+                    &mut min_z,
+                    &mut max_z,
+                    transform,
+                    [0.0, 0.0, 7.5 / 16.0],
+                    [1.0, 1.0, 8.5 / 16.0],
+                );
+            }
+            ProjectedSpecialClusterLayer::Special {
+                model,
+                transformation,
+                display_transform,
+            } => {
+                let Some(bounds) =
+                    renderer.and_then(|renderer| renderer.special_item_model_bounds(model).ok())
+                else {
+                    continue;
+                };
+                extend_transformed_bounds(
+                    &mut min_y,
+                    &mut min_z,
+                    &mut max_z,
+                    special_cluster_leaf_matrix(
+                        *display_transform,
+                        *transformation,
+                        ground_fallback,
+                    ),
+                    bounds.min,
+                    bounds.max,
+                );
+            }
+        }
+    }
+    if !min_y.is_finite() {
+        return generated_ground_model_bounds(display_matrix(&ground_fallback, false));
+    }
+    (min_y, max_z - min_z)
+}
+
+fn special_cluster_leaf_matrix(
+    display_transform: Option<BlockModelDisplayTransform>,
+    transformation: bbb_item_model::ItemModelLeafTransformation,
+    fallback: BlockModelDisplayTransform,
+) -> Mat4 {
+    display_matrix(&display_transform.unwrap_or(fallback), false)
+        * special::special_item_leaf_matrix(transformation)
+}
+
+fn extend_transformed_bounds(
+    min_y: &mut f32,
+    min_z: &mut f32,
+    max_z: &mut f32,
+    transform: Mat4,
+    min: [f32; 3],
+    max: [f32; 3],
+) {
+    for x in [min[0], max[0]] {
+        for y in [min[1], max[1]] {
+            for z in [min[2], max[2]] {
+                let point = transform.transform_point3(Vec3::new(x, y, z));
+                *min_y = (*min_y).min(point.y);
+                *min_z = (*min_z).min(point.z);
+                *max_z = (*max_z).max(point.z);
+            }
+        }
     }
 }
 
@@ -1126,11 +1409,22 @@ pub(super) fn resident_item_test_meshes(frame: &ItemModelResidencyFrame) -> Resi
 /// `ItemInHandLayer`) plus non-humanoid `ArmedModel` users such as allays and copper golems. The hand
 /// attach transform comes from the renderer's posed model; native resolves the item to quads (block or
 /// flat) and applies the item's third-person display transform.
+#[cfg(test)]
 pub(crate) fn held_item_models(
     instances: &[EntityModelInstance],
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     terrain_textures: &TerrainTextureState,
+) -> HeldItemModels {
+    held_item_models_with_variant_textures(instances, world, item_runtime, terrain_textures, None)
+}
+
+pub(crate) fn held_item_models_with_variant_textures(
+    instances: &[EntityModelInstance],
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
+    variant_textures: Option<&NativeEntityVariantTextureRuntime>,
 ) -> HeldItemModels {
     let mut block_meshes = Vec::new();
     let mut block_translucent_meshes = Vec::new();
@@ -1170,6 +1464,7 @@ pub(crate) fn held_item_models(
             world,
             item_runtime,
             terrain_textures,
+            variant_textures,
             enchantment_keys.as_deref(),
             damage_type_keys.as_deref(),
             trim_material_keys.as_deref(),
@@ -1191,6 +1486,7 @@ pub(crate) fn held_item_models(
             world,
             item_runtime,
             terrain_textures,
+            variant_textures,
             enchantment_keys.as_deref(),
             damage_type_keys.as_deref(),
             trim_material_keys.as_deref(),
@@ -1211,6 +1507,7 @@ pub(crate) fn held_item_models(
             world,
             item_runtime,
             terrain_textures,
+            variant_textures,
             enchantment_keys.as_deref(),
             damage_type_keys.as_deref(),
             trim_material_keys.as_deref(),
@@ -1231,6 +1528,7 @@ pub(crate) fn held_item_models(
             world,
             item_runtime,
             terrain_textures,
+            variant_textures,
             enchantment_keys.as_deref(),
             damage_type_keys.as_deref(),
             trim_material_keys.as_deref(),
@@ -1251,6 +1549,7 @@ pub(crate) fn held_item_models(
             world,
             item_runtime,
             terrain_textures,
+            variant_textures,
             enchantment_keys.as_deref(),
             damage_type_keys.as_deref(),
             trim_material_keys.as_deref(),
@@ -1271,6 +1570,7 @@ pub(crate) fn held_item_models(
             world,
             item_runtime,
             terrain_textures,
+            variant_textures,
             enchantment_keys.as_deref(),
             damage_type_keys.as_deref(),
             trim_material_keys.as_deref(),
@@ -1291,6 +1591,7 @@ pub(crate) fn held_item_models(
             world,
             item_runtime,
             terrain_textures,
+            variant_textures,
             enchantment_keys.as_deref(),
             damage_type_keys.as_deref(),
             trim_material_keys.as_deref(),
@@ -1311,6 +1612,7 @@ pub(crate) fn held_item_models(
             world,
             item_runtime,
             terrain_textures,
+            variant_textures,
             enchantment_keys.as_deref(),
             damage_type_keys.as_deref(),
             trim_material_keys.as_deref(),
@@ -1331,6 +1633,7 @@ pub(crate) fn held_item_models(
             world,
             item_runtime,
             terrain_textures,
+            variant_textures,
             enchantment_keys.as_deref(),
             damage_type_keys.as_deref(),
             trim_material_keys.as_deref(),
@@ -1351,6 +1654,7 @@ pub(crate) fn held_item_models(
             world,
             item_runtime,
             terrain_textures,
+            variant_textures,
             enchantment_keys.as_deref(),
             damage_type_keys.as_deref(),
             trim_material_keys.as_deref(),
@@ -1404,6 +1708,7 @@ fn bake_held_hand(
     world: &WorldStore,
     item_runtime: &NativeItemRuntime,
     terrain_textures: &TerrainTextureState,
+    variant_textures: Option<&NativeEntityVariantTextureRuntime>,
     enchantment_keys: Option<&[String]>,
     damage_type_keys: Option<&[String]>,
     trim_material_keys: Option<&[String]>,
@@ -1456,6 +1761,7 @@ fn bake_held_hand(
             GENERATED_THIRD_PERSON_FALLBACK,
             item_runtime,
             terrain_textures,
+            variant_textures,
             block_meshes,
             block_translucent_meshes,
             block_glint_meshes,
@@ -1488,6 +1794,7 @@ fn bake_fox_held_item(
     world: &WorldStore,
     item_runtime: &NativeItemRuntime,
     terrain_textures: &TerrainTextureState,
+    variant_textures: Option<&NativeEntityVariantTextureRuntime>,
     enchantment_keys: Option<&[String]>,
     damage_type_keys: Option<&[String]>,
     trim_material_keys: Option<&[String]>,
@@ -1529,6 +1836,7 @@ fn bake_fox_held_item(
         GENERATED_GROUND_FALLBACK,
         item_runtime,
         terrain_textures,
+        variant_textures,
         block_meshes,
         block_translucent_meshes,
         block_glint_meshes,
@@ -1550,6 +1858,7 @@ fn bake_dolphin_carried_item(
     world: &WorldStore,
     item_runtime: &NativeItemRuntime,
     terrain_textures: &TerrainTextureState,
+    variant_textures: Option<&NativeEntityVariantTextureRuntime>,
     enchantment_keys: Option<&[String]>,
     damage_type_keys: Option<&[String]>,
     trim_material_keys: Option<&[String]>,
@@ -1591,6 +1900,7 @@ fn bake_dolphin_carried_item(
         GENERATED_GROUND_FALLBACK,
         item_runtime,
         terrain_textures,
+        variant_textures,
         block_meshes,
         block_translucent_meshes,
         block_glint_meshes,
@@ -1612,6 +1922,7 @@ fn bake_witch_held_item(
     world: &WorldStore,
     item_runtime: &NativeItemRuntime,
     terrain_textures: &TerrainTextureState,
+    variant_textures: Option<&NativeEntityVariantTextureRuntime>,
     enchantment_keys: Option<&[String]>,
     damage_type_keys: Option<&[String]>,
     trim_material_keys: Option<&[String]>,
@@ -1653,6 +1964,7 @@ fn bake_witch_held_item(
         GENERATED_GROUND_FALLBACK,
         item_runtime,
         terrain_textures,
+        variant_textures,
         block_meshes,
         block_translucent_meshes,
         block_glint_meshes,
@@ -1673,6 +1985,7 @@ fn bake_copper_golem_held_items(
     world: &WorldStore,
     item_runtime: &NativeItemRuntime,
     terrain_textures: &TerrainTextureState,
+    variant_textures: Option<&NativeEntityVariantTextureRuntime>,
     enchantment_keys: Option<&[String]>,
     damage_type_keys: Option<&[String]>,
     trim_material_keys: Option<&[String]>,
@@ -1720,6 +2033,7 @@ fn bake_copper_golem_held_items(
             GENERATED_THIRD_PERSON_FALLBACK,
             item_runtime,
             terrain_textures,
+            variant_textures,
             block_meshes,
             block_translucent_meshes,
             block_glint_meshes,
@@ -1743,6 +2057,7 @@ fn bake_allay_held_items(
     world: &WorldStore,
     item_runtime: &NativeItemRuntime,
     terrain_textures: &TerrainTextureState,
+    variant_textures: Option<&NativeEntityVariantTextureRuntime>,
     enchantment_keys: Option<&[String]>,
     damage_type_keys: Option<&[String]>,
     trim_material_keys: Option<&[String]>,
@@ -1790,6 +2105,7 @@ fn bake_allay_held_items(
             GENERATED_THIRD_PERSON_FALLBACK,
             item_runtime,
             terrain_textures,
+            variant_textures,
             block_meshes,
             block_translucent_meshes,
             block_glint_meshes,
@@ -1811,6 +2127,7 @@ fn bake_villager_crossed_arms_item(
     world: &WorldStore,
     item_runtime: &NativeItemRuntime,
     terrain_textures: &TerrainTextureState,
+    variant_textures: Option<&NativeEntityVariantTextureRuntime>,
     enchantment_keys: Option<&[String]>,
     damage_type_keys: Option<&[String]>,
     trim_material_keys: Option<&[String]>,
@@ -1852,6 +2169,7 @@ fn bake_villager_crossed_arms_item(
         GENERATED_GROUND_FALLBACK,
         item_runtime,
         terrain_textures,
+        variant_textures,
         block_meshes,
         block_translucent_meshes,
         block_glint_meshes,
@@ -1873,6 +2191,7 @@ fn bake_panda_held_item(
     world: &WorldStore,
     item_runtime: &NativeItemRuntime,
     terrain_textures: &TerrainTextureState,
+    variant_textures: Option<&NativeEntityVariantTextureRuntime>,
     enchantment_keys: Option<&[String]>,
     damage_type_keys: Option<&[String]>,
     trim_material_keys: Option<&[String]>,
@@ -1914,6 +2233,7 @@ fn bake_panda_held_item(
         GENERATED_GROUND_FALLBACK,
         item_runtime,
         terrain_textures,
+        variant_textures,
         block_meshes,
         block_translucent_meshes,
         block_glint_meshes,
@@ -1935,6 +2255,7 @@ fn bake_custom_head_item(
     world: &WorldStore,
     item_runtime: &NativeItemRuntime,
     terrain_textures: &TerrainTextureState,
+    variant_textures: Option<&NativeEntityVariantTextureRuntime>,
     enchantment_keys: Option<&[String]>,
     damage_type_keys: Option<&[String]>,
     trim_material_keys: Option<&[String]>,
@@ -1985,6 +2306,7 @@ fn bake_custom_head_item(
             GENERATED_HEAD_FALLBACK,
             item_runtime,
             terrain_textures,
+            variant_textures,
             block_meshes,
             block_translucent_meshes,
             block_glint_meshes,
@@ -2091,6 +2413,7 @@ pub(super) fn bake_item_stack_at_transform(
     generated_fallback: BlockModelDisplayTransform,
     item_runtime: &NativeItemRuntime,
     terrain_textures: &TerrainTextureState,
+    variant_textures: Option<&NativeEntityVariantTextureRuntime>,
     _block_meshes: &mut Vec<ItemModelMesh>,
     _block_translucent_meshes: &mut Vec<ItemModelMesh>,
     _block_glint_meshes: &mut Vec<ItemModelMesh>,
@@ -2120,6 +2443,7 @@ pub(super) fn bake_item_stack_at_transform(
         generated_fallback,
         item_runtime,
         terrain_textures,
+        variant_textures,
         _block_meshes,
         _block_translucent_meshes,
         _block_glint_meshes,
@@ -2157,6 +2481,7 @@ pub(super) fn bake_item_stack_at_transform_with_light_and_overlay(
     generated_fallback: BlockModelDisplayTransform,
     item_runtime: &NativeItemRuntime,
     terrain_textures: &TerrainTextureState,
+    variant_textures: Option<&NativeEntityVariantTextureRuntime>,
     _block_meshes: &mut Vec<ItemModelMesh>,
     _block_translucent_meshes: &mut Vec<ItemModelMesh>,
     _block_glint_meshes: &mut Vec<ItemModelMesh>,
@@ -2183,6 +2508,110 @@ pub(super) fn bake_item_stack_at_transform_with_light_and_overlay(
     } else {
         ItemModelDrawTarget::World
     };
+
+    let use_context = if using_item {
+        item_runtime.item_model_use_context_for_stack_with_crossbow_charge_duration(
+            stack,
+            item_model_elapsed_ticks(using_item_ticks),
+            Some(world.crossbow_charge_duration_ticks(&stack.component_patch.enchantments)),
+        )
+    } else {
+        ItemModelUseContext::inactive()
+    };
+    let trim_pattern_keys = world_trim_pattern_keys(world);
+    let resolved = item_runtime.resolved_item_model_for_stack_with_owner_registry_context(
+        stack,
+        context,
+        owner_main_hand_left,
+        context_entity_type,
+        context_dimension,
+        trim_material_keys,
+        trim_pattern_keys.as_deref(),
+        enchantment_keys,
+        damage_type_keys,
+        attribute_keys,
+        using_item,
+        use_context,
+    );
+    if resolved.as_ref().is_some_and(|resolved| {
+        resolved
+            .layers
+            .iter()
+            .any(|layer| matches!(layer, ResolvedItemModelLayer::Special { .. }))
+    }) {
+        for layer in resolved.into_iter().flat_map(|resolved| resolved.layers) {
+            match layer {
+                ResolvedItemModelLayer::Ordinary {
+                    icon,
+                    transformation,
+                    display_transform,
+                } => {
+                    let display = display_transform.or(retained).unwrap_or(generated_fallback);
+                    let transform = attach
+                        * display_matrix(&display, left_hand)
+                        * special::special_item_leaf_matrix(transformation);
+                    for layer in item_runtime.generated_item_layers_for_icon(icon) {
+                        push_resident_item_instances(
+                            residency,
+                            ItemModelAssetIdentity::new(
+                                layer.asset_id,
+                                Arc::<str>::from("generated"),
+                                0,
+                            ),
+                            ItemModelAtlasKind::Items,
+                            if layer.translucent {
+                                ItemModelGeometryClass::Translucent
+                            } else {
+                                ItemModelGeometryClass::Solid
+                            },
+                            ItemModelAssetSource::Generated {
+                                mask: layer.mask,
+                                rect: layer.rect,
+                                translucent: layer.translucent,
+                            },
+                            &[transform],
+                            layer.tint,
+                            light,
+                            overlay,
+                            foil,
+                            target,
+                        );
+                    }
+                }
+                ResolvedItemModelLayer::Special {
+                    model,
+                    transformation,
+                    display_transform,
+                } => {
+                    let Some(model) = special::project_special_item_model(
+                        &model,
+                        stack,
+                        item_runtime,
+                        Some(world),
+                        variant_textures,
+                    ) else {
+                        continue;
+                    };
+                    let display = display_transform.or(retained).unwrap_or(generated_fallback);
+                    residency.special_items.push(SpecialItemInstanceRequest {
+                        model,
+                        transform: attach
+                            * display_matrix(&display, left_hand)
+                            * special::special_item_leaf_matrix(transformation),
+                        light,
+                        overlay,
+                        foil,
+                        target,
+                        submit_order: u32::try_from(
+                            residency.instances.len() + residency.special_items.len(),
+                        )
+                        .expect("special item submit order overflow"),
+                    });
+                }
+            }
+        }
+        return;
+    }
 
     // Block path.
     if let Some(resource_id) = item_runtime.item_resource_id(item_id) {
@@ -2232,16 +2661,6 @@ pub(super) fn bake_item_stack_at_transform_with_light_and_overlay(
     }
 
     // Flat path.
-    let use_context = if using_item {
-        item_runtime.item_model_use_context_for_stack_with_crossbow_charge_duration(
-            stack,
-            item_model_elapsed_ticks(using_item_ticks),
-            Some(world.crossbow_charge_duration_ticks(&stack.component_patch.enchantments)),
-        )
-    } else {
-        ItemModelUseContext::inactive()
-    };
-    let trim_pattern_keys = world_trim_pattern_keys(world);
     let layers = item_runtime.generated_item_layers_for_stack_with_owner_registry_context(
         stack,
         context,
@@ -2459,6 +2878,33 @@ pub(crate) fn push_resident_item_instances(
         geometry_class,
         source,
     });
+    push_resident_item_instances_for_asset(
+        frame,
+        identity,
+        atlas,
+        geometry_class,
+        transforms,
+        tint,
+        light,
+        overlay,
+        foil,
+        target,
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_resident_item_instances_for_asset(
+    frame: &mut ItemModelResidencyFrame,
+    identity: ItemModelAssetIdentity,
+    atlas: ItemModelAtlasKind,
+    geometry_class: ItemModelGeometryClass,
+    transforms: &[Mat4],
+    tint: [f32; 4],
+    light: [f32; 2],
+    overlay: [f32; 2],
+    foil: ItemModelFoil,
+    target: ItemModelDrawTarget,
+) {
     let base_phase = match geometry_class {
         ItemModelGeometryClass::Solid => ItemModelDrawPhase::Solid,
         ItemModelGeometryClass::Translucent => ItemModelDrawPhase::Translucent,
@@ -2515,7 +2961,8 @@ fn push_resident_item_instance(
     target: ItemModelDrawTarget,
     phase: ItemModelDrawPhase,
 ) {
-    let submit_order = u32::try_from(frame.instances.len()).expect("item instance order overflow");
+    let submit_order = u32::try_from(frame.instances.len() + frame.special_items.len())
+        .expect("item instance order overflow");
     frame.instances.push(ItemModelInstanceRequest {
         identity,
         atlas,

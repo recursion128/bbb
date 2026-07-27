@@ -581,3 +581,6 @@
   Vanilla tab 目录、动态物品、原生屏幕/交互、原子发包与服务端校正全链闭合，
   三条 packet coverage 行全部 complete，合同见
   `docs/archive/creative-inventory-set-slot-closure-design.md`。
+- **2026-07-26（Special item resident 投影工程闭环）**：十六类
+  `minecraft:special` 叶与局部变换现贯通 GUI、手持、掉落物、展示实体和物品框，
+  Banner/Shield/Profile/Pot 组件及显式资源包纹理进入原生动态/owned residency。

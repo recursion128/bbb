@@ -21,9 +21,11 @@ use bbb_world::{ItemFrameFacing, TerrainLight, WorldStore};
 use glam::{Mat4, Vec3};
 
 use crate::item_models::{display_matrix, item_stack_foil_mode, push_resident_item_instances};
+use crate::item_models::{project_special_item_model, special_item_leaf_matrix};
 use crate::map_textures::{MapTextureExtractionCache, MAP_SIZE};
 use crate::terrain_runtime::TerrainTextureState;
 use bbb_item_model::NativeItemRuntime;
+use bbb_item_model::ResolvedItemModelLayer;
 #[cfg(test)]
 use bbb_protocol::entity_types::*;
 
@@ -86,6 +88,7 @@ pub(crate) fn item_frame_models(
         enchantment_keys,
         damage_type_keys,
         attribute_keys,
+        None,
     )
 }
 
@@ -99,6 +102,7 @@ pub(crate) fn item_frame_models_with_map_cache(
     enchantment_keys: Option<&[String]>,
     damage_type_keys: Option<&[String]>,
     attribute_keys: Option<&[String]>,
+    variant_textures: Option<&crate::entity_variant_textures::NativeEntityVariantTextureRuntime>,
 ) -> ItemFrameModels {
     let block_meshes = Vec::new();
     let block_z_offset_forward_meshes = Vec::new();
@@ -159,8 +163,10 @@ pub(crate) fn item_frame_models_with_map_cache(
                 foil: ItemModelFoil::None,
                 target: ItemModelDrawTarget::World,
                 phase: ItemModelDrawPhase::SolidZOffsetForward,
-                submit_order: u32::try_from(residency.instances.len())
-                    .expect("item-frame submit order overflow"),
+                submit_order: u32::try_from(
+                    residency.instances.len() + residency.special_items.len(),
+                )
+                .expect("item-frame submit order overflow"),
             });
         }
 
@@ -231,19 +237,107 @@ pub(crate) fn item_frame_models_with_map_cache(
             .item_display_transform_for_stack(stack, BlockModelDisplayContext::Fixed)
             .unwrap_or_default();
         let item_depth = item_frame_item_depth(state.invisible);
-        let item_transform = base
+        let item_attach = base
             * Mat4::from_translation(Vec3::new(0.0, 0.0, item_depth))
             * Mat4::from_rotation_z((state.rotation as f32 * 360.0 / 8.0).to_radians())
-            * Mat4::from_scale(Vec3::splat(0.5))
-            * display_matrix(&fixed, false);
+            * Mat4::from_scale(Vec3::splat(0.5));
+        let item_transform = item_attach * display_matrix(&fixed, false);
         let item_light = item_frame_contents_light(state.glow, state.light);
+        let foil = item_stack_foil_mode(stack, item_runtime, BlockModelDisplayContext::Fixed);
+
+        let resolved = item_runtime.resolved_item_model_for_stack_with_registry_context(
+            stack,
+            BlockModelDisplayContext::Fixed,
+            trim_material_keys,
+            trim_pattern_keys,
+            enchantment_keys,
+            damage_type_keys,
+            attribute_keys,
+        );
+        if resolved.as_ref().is_some_and(|resolved| {
+            resolved
+                .layers
+                .iter()
+                .any(|layer| matches!(layer, ResolvedItemModelLayer::Special { .. }))
+        }) {
+            for layer in resolved.into_iter().flat_map(|resolved| resolved.layers) {
+                match layer {
+                    ResolvedItemModelLayer::Ordinary {
+                        icon,
+                        transformation,
+                        display_transform,
+                    } => {
+                        let transform = item_attach
+                            * display_matrix(&display_transform.unwrap_or(fixed), false)
+                            * special_item_leaf_matrix(transformation);
+                        for layer in item_runtime.generated_item_layers_for_icon(icon) {
+                            push_resident_item_instances(
+                                &mut residency,
+                                ItemModelAssetIdentity::new(
+                                    layer.asset_id,
+                                    Arc::<str>::from("generated"),
+                                    0,
+                                ),
+                                ItemModelAtlasKind::Items,
+                                if layer.translucent {
+                                    ItemModelGeometryClass::Translucent
+                                } else {
+                                    ItemModelGeometryClass::Solid
+                                },
+                                ItemModelAssetSource::Generated {
+                                    mask: layer.mask,
+                                    rect: layer.rect,
+                                    translucent: layer.translucent,
+                                },
+                                &[transform],
+                                layer.tint,
+                                item_light,
+                                ITEM_MODEL_NO_OVERLAY,
+                                foil,
+                                ItemModelDrawTarget::World,
+                            );
+                        }
+                    }
+                    ResolvedItemModelLayer::Special {
+                        model,
+                        transformation,
+                        display_transform,
+                    } => {
+                        let Some(model) = project_special_item_model(
+                            &model,
+                            stack,
+                            item_runtime,
+                            Some(world),
+                            variant_textures,
+                        ) else {
+                            continue;
+                        };
+                        residency
+                            .special_items
+                            .push(bbb_renderer::SpecialItemInstanceRequest {
+                                model,
+                                transform: item_attach
+                                    * display_matrix(&display_transform.unwrap_or(fixed), false)
+                                    * special_item_leaf_matrix(transformation),
+                                light: item_light,
+                                overlay: ITEM_MODEL_NO_OVERLAY,
+                                foil,
+                                target: ItemModelDrawTarget::World,
+                                submit_order: u32::try_from(
+                                    residency.instances.len() + residency.special_items.len(),
+                                )
+                                .expect("item-frame special submit order overflow"),
+                            });
+                    }
+                }
+            }
+            continue;
+        }
 
         // Block path.
         if let Some(resource_id) = item_runtime.item_resource_id(item_id) {
             if let Some(quads) = terrain_textures.block_item_quads(resource_id, &BTreeMap::new()) {
                 if !quads.is_empty() {
-                    let foil =
-                        item_stack_foil_mode(stack, item_runtime, BlockModelDisplayContext::Fixed);
                     let identity = ItemModelAssetIdentity::new(
                         Arc::<str>::from(resource_id),
                         Arc::<str>::from("default"),
@@ -298,7 +392,6 @@ pub(crate) fn item_frame_models_with_map_cache(
         if layers.is_empty() {
             continue;
         }
-        let foil = item_stack_foil_mode(stack, item_runtime, BlockModelDisplayContext::Fixed);
         for layer in layers {
             push_resident_item_instances(
                 &mut residency,

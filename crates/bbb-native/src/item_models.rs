@@ -44,7 +44,7 @@ use bbb_renderer::{
     ItemModelAtlasKind, ItemModelDrawPhase, ItemModelDrawTarget, ItemModelFoil,
     ItemModelGeometryClass, ItemModelInstanceRequest, ItemModelMesh, ItemModelQuad,
     ItemModelResidencyFrame, ItemPickupParticleRenderState, MooshroomVariant, PiglinModelFamily,
-    SkeletonModelFamily, SpearKineticWeapon, ZombieVariantModelFamily,
+    SkeletonModelFamily, SpearKineticWeapon, SpecialItemInstanceRequest, ZombieVariantModelFamily,
     ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
 };
 #[cfg(test)]
@@ -58,7 +58,7 @@ use glam::{Mat4, Vec3};
 use crate::entity_scene::default_spear_kinetic_weapon_for_resource_id;
 use crate::map_textures::MapTextureExtractionCache;
 use crate::terrain_runtime::{terrain_cardinal_lighting, BlockRenderPosition, TerrainTextureState};
-use bbb_item_model::{ItemModelUseContext, NativeItemRuntime};
+use bbb_item_model::{ItemModelUseContext, NativeItemRuntime, ResolvedItemModelLayer};
 #[cfg(test)]
 use bbb_protocol::entity_types::*;
 
@@ -66,6 +66,7 @@ mod display;
 mod dropped;
 mod first_person;
 mod hand_presentation;
+mod special;
 mod transforms;
 
 #[cfg(test)]
@@ -75,15 +76,20 @@ use first_person::*;
 use transforms::*;
 
 pub(crate) use display::display_entity_item_models;
+#[cfg(test)]
+pub(crate) use dropped::held_item_models;
 pub(crate) use dropped::{
-    display_matrix, dropped_item_models, entity_block_models, held_item_models,
-    item_pickup_particle_item_models, item_stack_foil_mode, ominous_item_spawner_models,
-    push_resident_item_instances,
+    display_matrix, dropped_item_models, entity_block_models,
+    held_item_models_with_variant_textures, item_pickup_particle_item_models, item_stack_foil_mode,
+    ominous_item_spawner_models, push_resident_item_instances,
 };
 #[cfg(test)]
 pub(crate) use first_person::first_person_item_models;
 pub(crate) use first_person::{first_person_item_models_with_map_cache, first_person_player_arms};
 pub(crate) use hand_presentation::FirstPersonHandPresentation;
+pub(crate) use special::{
+    project_special_item_model, special_item_leaf_matrix, special_item_pack_texture_descriptors,
+};
 
 /// Item-model registry keys indexed by network holder id. The checked world
 /// registry API owns wire-order identity; these wrappers only materialize the

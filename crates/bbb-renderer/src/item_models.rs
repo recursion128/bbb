@@ -135,11 +135,16 @@ pub enum GuiItemLightingEntry {
     EntityInUi,
 }
 
-/// A GUI slot's 3D block item: exact resource-model identity, immutable model-space quads, its resolved
-/// `gui` display transform, and the vanilla GUI lighting entry. The renderer seats a narrow instance in
-/// the slot and reuses the resource-generation GPU owner across frames.
+/// A GUI slot's resident 3D item: a block-model asset or special entity-backed
+/// geometry, its resolved `gui` display transform, and the vanilla GUI lighting
+/// entry. Block geometry reuses the resource-generation GPU owner across frames;
+/// special geometry reuses the renderer's resident special-item owner.
 #[derive(Debug, Clone, PartialEq)]
 pub struct HudBlockItemModel {
+    /// Selected generated and `minecraft:special` leaves. When non-empty,
+    /// `identity` and `quads` are intentionally empty compatibility fields and
+    /// are not submitted.
+    pub resident_layers: Arc<[HudResidentItemLayer]>,
     pub identity: ItemModelAssetIdentity,
     pub quads: Arc<[ItemModelQuad]>,
     pub gui_display: Mat4,
@@ -148,6 +153,24 @@ pub struct HudBlockItemModel {
     /// slot. When true, solid and translucent quads also submit through the matching vanilla item
     /// glint render type.
     pub foil: bool,
+}
+
+/// One selected layer in a GUI resident special/composite item. Its transform
+/// combines that leaf's base-model GUI display properties with its parsed
+/// local transform; the HUD placement remains outside this value.
+#[derive(Debug, Clone, PartialEq)]
+pub enum HudResidentItemLayer {
+    Generated {
+        identity: ItemModelAssetIdentity,
+        geometry_class: ItemModelGeometryClass,
+        source: ItemModelAssetSource,
+        transform: Mat4,
+        tint: [f32; 4],
+    },
+    Special {
+        model: SpecialItemModel,
+        transform: Mat4,
+    },
 }
 
 /// Vanilla `ItemStackRenderState.FoilType` projected into the renderer's item-model bake.
