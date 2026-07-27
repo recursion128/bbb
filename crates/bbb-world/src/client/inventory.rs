@@ -123,6 +123,7 @@ const GENERIC_CONTAINER_SLOT_COUNT_PER_ROW: i16 = 9;
 const GENERIC_3X3_CONTAINER_SLOT_COUNT: i16 = 9;
 const CRAFTER_GRID_SLOT_COUNT: i16 = 9;
 const CRAFTER_PLAYER_MAIN_START: i16 = 9;
+const CRAFTER_HOTBAR_START: i16 = 36;
 const CRAFTER_HOTBAR_END: i16 = 45;
 const CRAFTER_RESULT_SLOT: i16 = 45;
 const CRAFTER_TOTAL_SLOT_COUNT: i16 = 46;
@@ -376,6 +377,13 @@ impl HotbarItemState {
 pub struct ContainerDataValue {
     pub id: i16,
     pub value: i16,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LocalCrafterSlotStateChange {
+    pub container_id: i32,
+    pub slot_id: i16,
+    pub enabled: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -724,7 +732,11 @@ impl InventoryState {
         }
 
         let total_slots = slots.len() as i16;
-        self.write_back_container_player_section(counters, total_slots, &slots);
+        let menu_type_id = self
+            .open_container
+            .as_ref()
+            .and_then(|container| container.menu_type_id);
+        self.write_back_container_player_section(counters, menu_type_id, total_slots, &slots);
         let existing = self
             .open_container
             .take()
@@ -826,6 +838,7 @@ impl InventoryState {
             .map(|slot| slot.slot + 1)
             .max()
             .unwrap_or(0);
+        let menu_type_id = container.menu_type_id;
         if is_inventory_menu {
             if let Some(inventory_slot) = inventory_menu_slot_to_inventory_slot(row.slot) {
                 set_inventory_slot(
@@ -839,7 +852,7 @@ impl InventoryState {
                 self.update_inventory_slot_count(counters);
             }
         } else {
-            self.write_back_container_player_section(counters, total_slots, &[row]);
+            self.write_back_container_player_section(counters, menu_type_id, total_slots, &[row]);
         }
         self.update_merchant_offer_count(counters);
         true
@@ -2577,14 +2590,19 @@ impl InventoryState {
                         || mount_rules.is_some())
                         && swap_button_container_slot(
                             container_id,
+                            menu_type_id,
                             &slots_after,
                             request.button_num,
                         )
                         .is_some() =>
                 {
-                    let source_slot_num =
-                        swap_button_container_slot(container_id, &slots_after, request.button_num)
-                            .expect("guarded swap source slot");
+                    let source_slot_num = swap_button_container_slot(
+                        container_id,
+                        menu_type_id,
+                        &slots_after,
+                        request.button_num,
+                    )
+                    .expect("guarded swap source slot");
                     let source_item = container_slot_item(&slots_after, source_slot_num)
                         .cloned()
                         .unwrap_or_else(ProtocolItemStackSummary::empty);
@@ -2605,6 +2623,7 @@ impl InventoryState {
                     };
                     apply_swap_click_to_slots(
                         container_id,
+                        menu_type_id,
                         &mut slots_after,
                         &cursor_after,
                         request.slot_num,
@@ -2741,7 +2760,12 @@ impl InventoryState {
                 .map(|slot| slot.slot + 1)
                 .max()
                 .unwrap_or(0);
-            self.write_back_container_player_section(counters, total_slots, &write_back_rows);
+            self.write_back_container_player_section(
+                counters,
+                menu_type_id,
+                total_slots,
+                &write_back_rows,
+            );
         }
         if external_offhand_after != external_offhand_before {
             self.set_player_inventory_slot_and_menu_slot(InventorySlot {
@@ -2880,22 +2904,32 @@ impl InventoryState {
     }
 
     /// Vanilla container menus share the player `Inventory` object, so their
-    /// trailing 27 main + 9 hotbar slots ARE the backpack. Mirror those rows
-    /// back into the player-inventory layer and the survival-menu projection,
-    /// which are separate snapshots here.
+    /// 27 main + 9 hotbar slots ARE the backpack. Most menus place those rows
+    /// last; Crafter places its result slot after them. Mirror the applicable
+    /// rows back into the separate player-inventory and survival-menu
+    /// projections.
     fn write_back_container_player_section(
         &mut self,
         counters: &mut WorldCounters,
+        menu_type_id: Option<i32>,
         total_slots: i16,
         container_slots: &[ContainerSlot],
     ) {
-        if total_slots < 36 {
-            return;
-        }
-        let player_start = total_slots - 36;
-        let hotbar_start = total_slots - 9;
+        let (player_start, hotbar_start, player_end) =
+            if menu_type_id == Some(VANILLA_MENU_TYPE_CRAFTER_3X3_ID) {
+                (
+                    CRAFTER_PLAYER_MAIN_START,
+                    CRAFTER_HOTBAR_START,
+                    CRAFTER_HOTBAR_END,
+                )
+            } else {
+                if total_slots < GENERIC_CONTAINER_PLAYER_SLOT_COUNT {
+                    return;
+                }
+                (total_slots - 36, total_slots - 9, total_slots)
+            };
         for slot in container_slots {
-            if slot.slot < player_start || slot.slot >= total_slots {
+            if slot.slot < player_start || slot.slot >= player_end {
                 continue;
             }
             let inventory_slot = if slot.slot >= hotbar_start {
@@ -3124,6 +3158,122 @@ impl WorldStore {
 
     pub fn open_container_data_value(&self, id: i16) -> Option<i16> {
         self.inventory.open_container_data_value(id)
+    }
+
+    /// Plans `CrafterScreen.updateSlotState` before the ordinary container
+    /// click. Empty grid slots toggle on pickup; a disabled slot also enables
+    /// before a hotbar/offhand swap when that player slot is nonempty.
+    ///
+    /// The returned change supplies the payload for
+    /// `ServerboundContainerSlotStateChangedPacket`. A later matching
+    /// `ContainerSetData` remains authoritative and overwrites this local
+    /// projection.
+    pub fn plan_local_crafter_slot_state_change(
+        &self,
+        slot_id: i16,
+        input: ProtocolContainerInput,
+        button_num: i8,
+    ) -> Option<LocalCrafterSlotStateChange> {
+        if self.local_player_is_spectator() || !(0..CRAFTER_GRID_SLOT_COUNT).contains(&slot_id) {
+            return None;
+        }
+        let (container_id, disabled) = {
+            let container = self.inventory.open_container.as_ref()?;
+            if container.menu_type_id != Some(VANILLA_MENU_TYPE_CRAFTER_3X3_ID) {
+                return None;
+            }
+            let slot = container.slots.iter().find(|slot| slot.slot == slot_id)?;
+            if !item_stack_is_empty(&slot.item) {
+                return None;
+            }
+            (
+                container.container_id,
+                container
+                    .data_values
+                    .iter()
+                    .find_map(|value| (value.id == slot_id).then_some(value.value))
+                    .unwrap_or_default()
+                    == 1,
+            )
+        };
+
+        let enabled = match input {
+            ProtocolContainerInput::Pickup if disabled => true,
+            ProtocolContainerInput::Pickup if item_stack_is_empty(&self.inventory.cursor_item) => {
+                false
+            }
+            ProtocolContainerInput::Swap if disabled => {
+                let player_slot = i32::from(button_num);
+                if !((0..PLAYER_HOTBAR_SIZE as i32).contains(&player_slot)
+                    || player_slot == VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT)
+                    || self
+                        .inventory
+                        .local_player_inventory_item(player_slot)
+                        .is_none_or(item_stack_is_empty)
+                {
+                    return None;
+                }
+                true
+            }
+            _ => return None,
+        };
+
+        Some(LocalCrafterSlotStateChange {
+            container_id,
+            slot_id,
+            enabled,
+        })
+    }
+
+    /// Commits a still-current Crafter slot-state plan and queues its
+    /// client-local button sound. Menu replacement, correction, or a newly
+    /// occupied slot invalidates the plan without mutating state.
+    pub fn apply_local_crafter_slot_state_change(
+        &mut self,
+        change: LocalCrafterSlotStateChange,
+    ) -> bool {
+        if self.local_player_is_spectator()
+            || !(0..CRAFTER_GRID_SLOT_COUNT).contains(&change.slot_id)
+        {
+            return false;
+        }
+        let container = self.inventory.open_container.as_mut().filter(|container| {
+            container.container_id == change.container_id
+                && container.menu_type_id == Some(VANILLA_MENU_TYPE_CRAFTER_3X3_ID)
+        });
+        let Some(container) = container else {
+            return false;
+        };
+        let Some(slot) = container
+            .slots
+            .iter()
+            .find(|slot| slot.slot == change.slot_id)
+        else {
+            return false;
+        };
+        if !item_stack_is_empty(&slot.item) {
+            return false;
+        }
+        let disabled = container
+            .data_values
+            .iter()
+            .find_map(|value| (value.id == change.slot_id).then_some(value.value))
+            .unwrap_or_default()
+            == 1;
+        if change.enabled != disabled {
+            return false;
+        }
+        set_container_data_value(
+            &mut container.data_values,
+            change.slot_id,
+            if change.enabled { 0 } else { 1 },
+        );
+        self.queue_local_interaction_sound_action(
+            LocalInteractionSoundAction::CrafterSlotStateChanged {
+                enabled: change.enabled,
+            },
+        );
+        true
     }
 
     /// Vanilla `LoomMenu.getSelectablePatterns`: banner and dye inputs gate the

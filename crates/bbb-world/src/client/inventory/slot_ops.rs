@@ -1485,6 +1485,7 @@ pub(super) fn apply_pickup_all_to_slots(
 
 pub(super) fn apply_swap_click_to_slots(
     container_id: i32,
+    menu_type_id: Option<i32>,
     slots: &mut [ContainerSlot],
     cursor: &ProtocolItemStackSummary,
     slot_num: i16,
@@ -1495,7 +1496,9 @@ pub(super) fn apply_swap_click_to_slots(
     if !item_stack_is_empty(cursor) || slot_num < 0 {
         return;
     }
-    let Some(source_slot_num) = swap_button_container_slot(container_id, slots, button_num) else {
+    let Some(source_slot_num) =
+        swap_button_container_slot(container_id, menu_type_id, slots, button_num)
+    else {
         return;
     };
     if source_slot_num == slot_num {
@@ -1736,6 +1739,7 @@ pub(super) fn swap_button_inventory_menu_slot(button_num: i8) -> Option<i16> {
 
 pub(super) fn swap_button_container_slot(
     container_id: i32,
+    menu_type_id: Option<i32>,
     slots: &[ContainerSlot],
     button_num: i8,
 ) -> Option<i16> {
@@ -1747,6 +1751,9 @@ pub(super) fn swap_button_container_slot(
         return None;
     }
     let total_slots = slots.iter().map(|slot| slot.slot + 1).max()?;
+    if menu_type_id == Some(VANILLA_MENU_TYPE_CRAFTER_3X3_ID) {
+        return Some(CRAFTER_HOTBAR_START + hotbar_index);
+    }
     let hotbar_start = total_slots.checked_sub(PLAYER_HOTBAR_SIZE as i16)?;
     let player_main_start = total_slots.checked_sub(GENERIC_CONTAINER_PLAYER_SLOT_COUNT)?;
     (player_main_start >= 0).then_some(hotbar_start + hotbar_index)

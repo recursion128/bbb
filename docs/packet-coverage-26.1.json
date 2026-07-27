@@ -3760,13 +3760,13 @@
         },
         "command_surface": {
           "evidence": [
-            "crates/bbb-native/src/input/inventory.rs#maybe_queue_crafter_slot_state_changed",
-            "crates/bbb-native/src/input/commands.rs#queue_container_slot_state_changed_command",
+            "crates/bbb-native/src/input/inventory.rs#maybe_apply_and_queue_crafter_slot_state_changed",
+            "crates/bbb-native/src/input/commands.rs#queue_container_slot_state_click_commands_atomically",
             "crates/bbb-net/src/driver/commands.rs#send_container_slot_state_changed",
             "vanilla:net/minecraft/client/gui/screens/inventory/CrafterScreen.java#slotClicked"
           ],
-          "gap": "docs/unsupported-features.md#container-menu-presentation-parity",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
           "evidence": [
@@ -3778,23 +3778,32 @@
         },
         "state_guard": {
           "evidence": [
-            "crates/bbb-native/src/input/inventory.rs#maybe_queue_crafter_slot_state_changed",
+            "crates/bbb-world/src/client/inventory.rs#plan_local_crafter_slot_state_change",
+            "crates/bbb-world/src/client/inventory.rs#apply_local_crafter_slot_state_change",
             "crates/bbb-world/src/client/inventory.rs#apply_container_set_data",
+            "crates/bbb-world/src/client/inventory.rs#write_back_container_player_section",
+            "crates/bbb-world/src/client/audio.rs#LocalInteractionSoundAction::CrafterSlotStateChanged",
+            "crates/bbb-native/src/input/inventory.rs#maybe_apply_and_queue_crafter_slot_state_changed",
             "vanilla:net/minecraft/client/gui/screens/inventory/CrafterScreen.java#updateSlotState",
             "vanilla:net/minecraft/world/inventory/CrafterMenu.java#setSlotState"
           ],
-          "gap": "docs/unsupported-features.md#container-menu-presentation-parity",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/tests.rs#encodes_container_inventory_packets",
             "crates/bbb-net/src/driver/commands/tests.rs#send_container_inventory_commands_encode_packets",
+            "crates/bbb-world/src/client/inventory/tests.rs#local_crafter_slot_state_change_mutates_data_plays_sound_and_accepts_correction",
             "crates/bbb-native/src/input/inventory/tests.rs#crafter_empty_grid_click_queues_slot_state_change_and_pickup",
-            "crates/bbb-native/src/input/commands.rs#queues_container_slot_state_changed_command"
+            "crates/bbb-native/src/input/inventory/tests.rs#crafter_hotbar_swap_enables_disabled_empty_slot_before_click",
+            "crates/bbb-native/src/input/inventory/tests.rs#crafter_hotbar_swap_keeps_disabled_slot_when_source_is_empty",
+            "crates/bbb-native/src/input/inventory/tests.rs#crafter_hotbar_swap_does_not_apply_partial_batch_under_backpressure",
+            "crates/bbb-native/src/input/commands.rs#queues_container_slot_state_changed_command",
+            "crates/bbb-native/src/input/commands.rs#queues_container_slot_state_and_click_atomically"
           ],
-          "gap": "docs/unsupported-features.md#container-menu-presentation-parity",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",

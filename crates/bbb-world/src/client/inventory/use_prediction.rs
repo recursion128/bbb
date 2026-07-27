@@ -219,6 +219,9 @@ pub enum LocalInteractionSoundAction {
     },
     LoomSelectPattern,
     StonecutterSelectRecipe,
+    CrafterSlotStateChanged {
+        enabled: bool,
+    },
     BundleRemoveOne,
     SuppressedBundleDropContents,
     SuppressedFishingRodUse {

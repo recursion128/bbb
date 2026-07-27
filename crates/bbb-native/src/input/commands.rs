@@ -730,6 +730,40 @@ pub(crate) fn queue_container_slot_state_changed_command(
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum QueueContainerSlotStateClickError {
+    Unavailable,
+    Full,
+    Closed,
+    BuildRejected,
+}
+
+pub(crate) fn queue_container_slot_state_click_commands_atomically(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    build: impl FnOnce() -> Option<(ContainerSlotStateChanged, ContainerClick)>,
+) -> Result<(), QueueContainerSlotStateClickError> {
+    let tx = net_commands
+        .as_ref()
+        .ok_or(QueueContainerSlotStateClickError::Unavailable)?;
+    let mut permits = tx.try_reserve_many(2).map_err(|error| match error {
+        mpsc::error::TrySendError::Full(()) => QueueContainerSlotStateClickError::Full,
+        mpsc::error::TrySendError::Closed(()) => QueueContainerSlotStateClickError::Closed,
+    })?;
+    let (state, click) = build().ok_or(QueueContainerSlotStateClickError::BuildRejected)?;
+    permits
+        .next()
+        .expect("two command permits were reserved")
+        .send(NetCommand::ContainerSlotStateChanged(state));
+    permits
+        .next()
+        .expect("two command permits were reserved")
+        .send(NetCommand::ContainerClick(click));
+    counters.container_slot_state_changed_commands_queued += 1;
+    counters.container_click_commands_queued += 1;
+    Ok(())
+}
+
 pub(super) fn queue_attack_entity_command(
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
@@ -1580,6 +1614,62 @@ mod tests {
                 new_state: true,
             })
         );
+    }
+
+    #[test]
+    fn queues_container_slot_state_and_click_atomically() {
+        let state = ContainerSlotStateChanged {
+            slot_id: 0,
+            container_id: 7,
+            new_state: true,
+        };
+        let click = ContainerClick {
+            container_id: 7,
+            state_id: 12,
+            slot_num: 0,
+            button_num: 0,
+            input: ContainerInput::Swap,
+            changed_slots: BTreeMap::new(),
+            carried_item: HashedStack::Empty,
+        };
+
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+        assert_eq!(
+            queue_container_slot_state_click_commands_atomically(
+                &mut counters,
+                &commands,
+                || Some((state.clone(), click.clone())),
+            ),
+            Ok(())
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerSlotStateChanged(state.clone())
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(click.clone())
+        );
+        assert_eq!(counters.container_slot_state_changed_commands_queued, 1);
+        assert_eq!(counters.container_click_commands_queued, 1);
+
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+        let mut build_called = false;
+        assert_eq!(
+            queue_container_slot_state_click_commands_atomically(&mut counters, &commands, || {
+                build_called = true;
+                Some((state, click))
+            },),
+            Err(QueueContainerSlotStateClickError::Full)
+        );
+        assert!(!build_called);
+        assert!(rx.try_recv().is_err());
+        assert_eq!(counters.container_slot_state_changed_commands_queued, 0);
+        assert_eq!(counters.container_click_commands_queued, 0);
     }
 
     #[test]

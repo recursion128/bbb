@@ -987,9 +987,6 @@ back into a todo. Do not delete these.
   the remaining specialized result-slot semantics until their local rules are
   complete; ordinary ContainerSetContent/Slot/Data updates remain the correction path
   rather than a synthetic acknowledgement.
-- Crafter slot-state requests cover the empty-grid pickup toggle, but still need
-  vanilla's hotbar `SWAP` enable path plus immediate local menu data/audio mutation.
-  The server's CrafterBlockEntity remains authoritative and has no dedicated ack.
 - Keep clientbound container lifecycle audits aligned with vanilla even when a
   packet field is redundant: ContainerClose carries an id but the 26.1 client
   closes its current menu unconditionally; matching-id behavior is not an

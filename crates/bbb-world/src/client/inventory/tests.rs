@@ -3959,6 +3959,110 @@ fn apply_local_crafter_quick_craft_skips_disabled_grid_slots() {
 }
 
 #[test]
+fn local_crafter_slot_state_change_mutates_data_plays_sound_and_accepts_correction() {
+    let mut store = WorldStore::new();
+    store.set_local_player_pose(crate::LocalPlayerPoseState::default());
+    store.apply_open_screen(ProtocolOpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_CRAFTER_3X3_ID,
+        title: bbb_protocol::RichTextComponent::plain("Crafter"),
+    });
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: 7,
+        state_id: 12,
+        items: vec![ProtocolItemStackSummary::empty(); CRAFTER_TOTAL_SLOT_COUNT as usize],
+        carried_item: ProtocolItemStackSummary::empty(),
+    });
+
+    let disable = store
+        .plan_local_crafter_slot_state_change(0, ProtocolContainerInput::Pickup, 0)
+        .unwrap();
+    assert_eq!(
+        disable,
+        LocalCrafterSlotStateChange {
+            container_id: 7,
+            slot_id: 0,
+            enabled: false,
+        }
+    );
+    assert!(store.apply_local_crafter_slot_state_change(disable));
+    assert_eq!(store.open_container_data_value(0), Some(1));
+    assert_eq!(
+        store.take_pending_local_interaction_sound_actions(),
+        vec![LocalInteractionSoundAction::CrafterSlotStateChanged { enabled: false }]
+    );
+    let disabled_sound = store
+        .apply_local_interaction_sound_action(
+            LocalInteractionSoundAction::CrafterSlotStateChanged { enabled: false },
+            &mut LevelEventSoundRandomState::default(),
+        )
+        .unwrap();
+    let LocalInteractionSoundEffect::Positioned(disabled_sound) = disabled_sound else {
+        panic!("crafter slot toggle must be a local-player sound");
+    };
+    assert_eq!(
+        disabled_sound.sound.location.as_deref(),
+        Some("minecraft:ui.button.click")
+    );
+    assert_eq!(disabled_sound.source, "player");
+    assert_eq!(disabled_sound.volume, 0.4);
+    assert_eq!(disabled_sound.pitch, 0.75);
+
+    assert!(store.apply_container_set_data(ProtocolContainerSetData {
+        container_id: 7,
+        id: 0,
+        value: 0,
+    }));
+    assert_eq!(store.open_container_data_value(0), Some(0));
+    assert!(store.apply_container_set_data(ProtocolContainerSetData {
+        container_id: 7,
+        id: 0,
+        value: 1,
+    }));
+    let enable = store
+        .plan_local_crafter_slot_state_change(0, ProtocolContainerInput::Pickup, 0)
+        .unwrap();
+    assert_eq!(
+        enable,
+        LocalCrafterSlotStateChange {
+            container_id: 7,
+            slot_id: 0,
+            enabled: true,
+        }
+    );
+    assert!(store.apply_local_crafter_slot_state_change(enable));
+    assert_eq!(store.open_container_data_value(0), Some(0));
+    let enabled_action = store
+        .take_pending_local_interaction_sound_actions()
+        .pop()
+        .unwrap();
+    let enabled_sound = store
+        .apply_local_interaction_sound_action(
+            enabled_action,
+            &mut LevelEventSoundRandomState::default(),
+        )
+        .unwrap();
+    let LocalInteractionSoundEffect::Positioned(enabled_sound) = enabled_sound else {
+        panic!("crafter slot enable must be a local-player sound");
+    };
+    assert_eq!(enabled_sound.pitch, 1.0);
+
+    assert!(store.apply_container_set_slot(ProtocolContainerSetSlot {
+        container_id: 7,
+        state_id: 13,
+        slot: 0,
+        item: item_stack(42, 1),
+    }));
+    assert_eq!(
+        store.plan_local_crafter_slot_state_change(0, ProtocolContainerInput::Pickup, 0),
+        None
+    );
+    assert!(store
+        .take_pending_local_interaction_sound_actions()
+        .is_empty());
+}
+
+#[test]
 fn apply_local_container_quick_move_moves_hotbar_to_inventory() {
     let mut store = WorldStore::new();
     store.apply_set_player_inventory(ProtocolSetPlayerInventory {

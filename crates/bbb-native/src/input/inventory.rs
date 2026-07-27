@@ -19,8 +19,8 @@ use bbb_protocol::menu_types::{
 };
 use bbb_protocol::mob_effect_types::VANILLA_BEACON_EFFECT_TIERS;
 use bbb_protocol::packets::{
-    ContainerInput, ItemStackSummary, PlaceRecipeCommand, RecipeBookChangeSettingsCommand,
-    RecipeBookType, RenameItem, SelectTradeCommand, SetBeacon,
+    ContainerInput, ContainerSlotStateChanged, ItemStackSummary, PlaceRecipeCommand,
+    RecipeBookChangeSettingsCommand, RecipeBookType, RenameItem, SelectTradeCommand, SetBeacon,
 };
 #[cfg(test)]
 use bbb_world::ItemEquipmentSlot;
@@ -41,7 +41,7 @@ use super::{
     },
     commands::{
         hotbar_slot_for_key, queue_container_button_click_command, queue_container_click_command,
-        queue_container_close_command, queue_container_slot_state_changed_command,
+        queue_container_close_command, queue_container_slot_state_click_commands_atomically,
         queue_place_recipe_command, queue_recipe_book_change_settings_command,
         queue_recipe_book_seen_recipe_command, queue_rename_item_command,
         queue_select_trade_command, queue_set_beacon_command,
@@ -746,14 +746,9 @@ pub(crate) fn handle_inventory_mouse_input_with_item_runtime(
         button_num,
         input: click_input,
     };
-    maybe_queue_crafter_slot_state_changed(
-        world,
-        counters,
-        net_commands,
-        request.slot_num,
-        request.input,
-    );
-    local_inventory_apply_and_queue_click(world, counters, net_commands, request);
+    if !maybe_apply_and_queue_crafter_slot_state_changed(world, counters, net_commands, request) {
+        local_inventory_apply_and_queue_click(world, counters, net_commands, request);
+    }
     true
 }
 
@@ -1357,47 +1352,37 @@ fn local_inventory_quick_craft_mask(header: i8, quick_craft_type: i8) -> i8 {
     (header & 3) | ((quick_craft_type & 3) << 2)
 }
 
-fn maybe_queue_crafter_slot_state_changed(
-    world: &WorldStore,
+fn maybe_apply_and_queue_crafter_slot_state_changed(
+    world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
-    slot_num: i16,
-    click_input: ContainerInput,
-) {
-    if click_input != ContainerInput::Pickup || !(0..CRAFTER_GRID_SLOT_COUNT).contains(&slot_num) {
-        return;
-    }
-    let Some(container) = world.inventory().open_container.as_ref() else {
-        return;
+    request: ContainerClickSlotRequest,
+) -> bool {
+    let Some(change) = world.plan_local_crafter_slot_state_change(
+        request.slot_num,
+        request.input,
+        request.button_num,
+    ) else {
+        return false;
     };
-    if container.menu_type_id != Some(VANILLA_MENU_TYPE_CRAFTER_3X3_ID) {
-        return;
-    }
-    let Some(slot) = container.slots.iter().find(|slot| slot.slot == slot_num) else {
-        return;
+    let Ok(fallback_click) = world.build_container_click_slot(request) else {
+        return true;
     };
-    if !item_stack_is_empty(&slot.item) {
-        return;
-    }
-
-    let disabled = world
-        .open_container_data_value(slot_num)
-        .unwrap_or_default()
-        == 1;
-    let new_state = if disabled {
-        true
-    } else if inventory_cursor_is_empty(world) {
-        false
-    } else {
-        return;
+    let state = ContainerSlotStateChanged {
+        slot_id: i32::from(change.slot_id),
+        container_id: change.container_id,
+        new_state: change.enabled,
     };
-    queue_container_slot_state_changed_command(
-        counters,
-        net_commands,
-        i32::from(slot_num),
-        container.container_id,
-        new_state,
-    );
+    let _ = queue_container_slot_state_click_commands_atomically(counters, net_commands, || {
+        if !world.apply_local_crafter_slot_state_change(change) {
+            return None;
+        }
+        let click = world
+            .apply_local_container_click_slot(request)
+            .unwrap_or(fallback_click);
+        Some((state, click))
+    });
+    true
 }
 
 fn local_inventory_apply_and_queue_click(
@@ -2291,6 +2276,9 @@ fn handle_inventory_swap_key(
         button_num,
         input: ContainerInput::Swap,
     };
+    if maybe_apply_and_queue_crafter_slot_state_changed(world, counters, net_commands, request) {
+        return;
+    }
     if world.local_inventory_is_open() {
         let Ok(click) = world.apply_local_container_click_slot(request) else {
             return;

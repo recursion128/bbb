@@ -2870,7 +2870,191 @@ fn crafter_empty_grid_click_queues_slot_state_change_and_pickup() {
             carried_item: HashedStack::Empty,
         })
     );
-    assert_eq!(world.open_container_data_value(0), None);
+    assert_eq!(world.open_container_data_value(0), Some(1));
+    assert_eq!(
+        world.take_pending_local_interaction_sound_actions(),
+        vec![bbb_world::LocalInteractionSoundAction::CrafterSlotStateChanged { enabled: false }]
+    );
+}
+
+#[test]
+fn crafter_hotbar_swap_enables_disabled_empty_slot_before_click() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_open_screen(OpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_CRAFTER_3X3_ID,
+        title: bbb_protocol::RichTextComponent::plain("Crafter"),
+    });
+    let mut items = vec![ItemStackSummary::empty(); 46];
+    items[36] = item_stack(42, 3);
+    world.apply_container_set_content(ContainerSetContent {
+        container_id: 7,
+        state_id: 12,
+        items,
+        carried_item: ItemStackSummary::empty(),
+    });
+    world.apply_container_set_data(ContainerSetData {
+        container_id: 7,
+        id: 0,
+        value: 1,
+    });
+    input.inventory_hovered_slot = Some(0);
+
+    assert!(handle_inventory_key_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        None,
+        KeyCode::Digit1,
+    ));
+
+    assert_eq!(counters.container_slot_state_changed_commands_queued, 1);
+    assert_eq!(counters.container_click_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::ContainerSlotStateChanged(ContainerSlotStateChanged {
+            slot_id: 0,
+            container_id: 7,
+            new_state: true,
+        })
+    );
+    let NetCommand::ContainerClick(click) = rx.try_recv().unwrap() else {
+        panic!("expected the ordinary swap click after the slot-state packet");
+    };
+    assert_eq!(click.container_id, 7);
+    assert_eq!(click.state_id, 12);
+    assert_eq!(click.slot_num, 0);
+    assert_eq!(click.button_num, 0);
+    assert_eq!(click.input, ContainerInput::Swap);
+    assert_eq!(
+        click.changed_slots.keys().copied().collect::<Vec<_>>(),
+        vec![0, 36]
+    );
+    assert_eq!(click.carried_item, HashedStack::Empty);
+    assert_eq!(world.open_container_data_value(0), Some(0));
+    assert_eq!(
+        world
+            .inventory()
+            .open_container
+            .as_ref()
+            .unwrap()
+            .slots
+            .iter()
+            .find(|slot| slot.slot == 0)
+            .unwrap()
+            .item,
+        item_stack(42, 3)
+    );
+    assert_eq!(
+        world.take_pending_local_interaction_sound_actions(),
+        vec![bbb_world::LocalInteractionSoundAction::CrafterSlotStateChanged { enabled: true }]
+    );
+}
+
+#[test]
+fn crafter_hotbar_swap_keeps_disabled_slot_when_source_is_empty() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_open_screen(OpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_CRAFTER_3X3_ID,
+        title: bbb_protocol::RichTextComponent::plain("Crafter"),
+    });
+    world.apply_container_set_content(ContainerSetContent {
+        container_id: 7,
+        state_id: 12,
+        items: vec![ItemStackSummary::empty(); 46],
+        carried_item: ItemStackSummary::empty(),
+    });
+    world.apply_container_set_data(ContainerSetData {
+        container_id: 7,
+        id: 0,
+        value: 1,
+    });
+    input.inventory_hovered_slot = Some(0);
+
+    assert!(handle_inventory_key_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        None,
+        KeyCode::Digit1,
+    ));
+
+    assert_eq!(counters.container_slot_state_changed_commands_queued, 0);
+    assert_eq!(counters.container_click_commands_queued, 1);
+    let NetCommand::ContainerClick(click) = rx.try_recv().unwrap() else {
+        panic!("empty hotbar swaps still send the ordinary container click");
+    };
+    assert_eq!(click.input, ContainerInput::Swap);
+    assert!(click.changed_slots.is_empty());
+    assert_eq!(world.open_container_data_value(0), Some(1));
+    assert!(world
+        .take_pending_local_interaction_sound_actions()
+        .is_empty());
+}
+
+#[test]
+fn crafter_hotbar_swap_does_not_apply_partial_batch_under_backpressure() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_open_screen(OpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_CRAFTER_3X3_ID,
+        title: bbb_protocol::RichTextComponent::plain("Crafter"),
+    });
+    let mut items = vec![ItemStackSummary::empty(); 46];
+    items[36] = item_stack(42, 3);
+    world.apply_container_set_content(ContainerSetContent {
+        container_id: 7,
+        state_id: 12,
+        items,
+        carried_item: ItemStackSummary::empty(),
+    });
+    world.apply_container_set_data(ContainerSetData {
+        container_id: 7,
+        id: 0,
+        value: 1,
+    });
+    input.inventory_hovered_slot = Some(0);
+
+    assert!(handle_inventory_key_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        None,
+        KeyCode::Digit1,
+    ));
+
+    assert_eq!(counters.container_slot_state_changed_commands_queued, 0);
+    assert_eq!(counters.container_click_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
+    assert_eq!(world.open_container_data_value(0), Some(1));
+    assert!(world
+        .inventory()
+        .open_container
+        .as_ref()
+        .unwrap()
+        .slots
+        .iter()
+        .find(|slot| slot.slot == 0)
+        .is_some_and(|slot| item_stack_is_empty(&slot.item)));
+    assert!(world
+        .take_pending_local_interaction_sound_actions()
+        .is_empty());
 }
 
 #[test]

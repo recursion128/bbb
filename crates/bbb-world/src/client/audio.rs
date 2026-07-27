@@ -1759,6 +1759,20 @@ impl WorldStore {
                     ui_sound_state("minecraft:ui.stonecutter.select_recipe", 0.25, 1.0),
                 )));
             }
+            LocalInteractionSoundAction::CrafterSlotStateChanged { enabled } => {
+                let position = self.local_player_pose()?.position;
+                let mut state = local_player_sound_state(
+                    position,
+                    "minecraft:ui.button.click",
+                    0.4,
+                    if enabled { 1.0 } else { 0.75 },
+                    SoundSource::Players.as_str(),
+                );
+                state.seed = self.next_sound_seed();
+                return Some(LocalInteractionSoundEffect::Positioned(
+                    self.record_positioned_sound(state),
+                ));
+            }
             LocalInteractionSoundAction::BundleRemoveOne => {
                 let position = self.local_player_pose()?.position;
                 let mut state = local_player_sound_state(
