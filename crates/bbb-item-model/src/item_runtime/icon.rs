@@ -1823,6 +1823,67 @@ impl NativeItemRuntime {
         .and_then(|selection| selection.compatibility_icon)
     }
 
+    /// Resolves the retained client-item tree with the same complete
+    /// GUI/HUD context accepted by
+    /// [`Self::icon_for_stack_with_context_and_use_context_time_state_and_fishing_rod_cast_with_registry_context`].
+    ///
+    /// This is the renderer-facing half of one selector: callers that need
+    /// `minecraft:special` leaves must not fall back to the context-poor
+    /// convenience entry point after resolving the flat compatibility icon.
+    #[allow(clippy::too_many_arguments)]
+    pub fn resolved_item_model_for_stack_with_context_and_use_context_time_state_and_fishing_rod_cast_with_registry_context(
+        &self,
+        stack: &ItemStackSummary,
+        bundle_selected_item_index: Option<i32>,
+        using_item: bool,
+        use_context: ItemModelUseContext,
+        display_context: BlockModelDisplayContext,
+        cooldown_progress: f32,
+        trim_material_keys: Option<&[String]>,
+        trim_pattern_keys: Option<&[String]>,
+        enchantment_keys: Option<&[String]>,
+        damage_type_keys: Option<&[String]>,
+        attribute_keys: Option<&[String]>,
+        owner_main_hand_left: Option<bool>,
+        context_entity_type: Option<&str>,
+        context_dimension: Option<&str>,
+        time_context: Option<ItemModelTimeContext>,
+        compass_context: Option<ItemModelCompassContext<'_>>,
+        selected_item: bool,
+        carried_item: bool,
+        view_entity: bool,
+        shift_down: bool,
+        keybind_context: ItemModelKeybindContext,
+        fishing_rod_cast: bool,
+        item_model_seed: i32,
+    ) -> Option<ResolvedItemModel> {
+        self.resolved_item_model_for_stack_with_model_registry_context(
+            stack,
+            bundle_selected_item_index,
+            using_item,
+            use_context,
+            display_context,
+            cooldown_progress,
+            trim_material_keys,
+            trim_pattern_keys,
+            enchantment_keys,
+            damage_type_keys,
+            attribute_keys,
+            owner_main_hand_left,
+            context_entity_type,
+            context_dimension,
+            time_context,
+            compass_context,
+            selected_item,
+            carried_item,
+            view_entity,
+            shift_down,
+            keybind_context,
+            fishing_rod_cast,
+            item_model_seed,
+        )
+    }
+
     #[allow(clippy::too_many_arguments)]
     fn resolved_item_model_for_stack_with_model_registry_context(
         &self,

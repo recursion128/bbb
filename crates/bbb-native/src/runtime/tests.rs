@@ -11954,8 +11954,21 @@ fn gui_item_model_projects_special_leaf_into_resident_geometry() {
         1,
     );
 
-    let model = block_item_3d_model(&stack, Some(&item_runtime), &TerrainTextureState::default())
-        .expect("special leaf should use GUI resident geometry");
+    let model = block_item_3d_model(
+        &WorldStore::new(),
+        &stack,
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        None,
+        false,
+        false,
+        false,
+        false,
+        false,
+        ItemModelKeybindContext::default(),
+        0,
+    )
+    .expect("special leaf should use GUI resident geometry");
 
     assert!(model.quads.is_empty());
     assert_eq!(model.lighting, GuiItemLightingEntry::Items3d);
@@ -11963,6 +11976,130 @@ fn gui_item_model_projects_special_leaf_into_resident_geometry() {
         model.resident_layers.as_ref(),
         [HudResidentItemLayer::Special {
             model: bbb_renderer::SpecialItemModel::Trident { .. },
+            ..
+        }]
+    ));
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn gui_item_model_reuses_bundle_selected_context_for_special_leaf() {
+    let root = unique_runtime_temp_dir("hud-bundle-selected-special-item");
+    write_runtime_special_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let stack = ItemStackSummary {
+        item_id: item_runtime.item_protocol_id("minecraft:bundle"),
+        count: 1,
+        component_patch: DataComponentPatchSummary {
+            bundle_contents_items: vec![bbb_protocol::packets::ItemStackTemplateSummary {
+                item_id: item_runtime
+                    .item_protocol_id("minecraft:special_trident")
+                    .unwrap(),
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            }],
+            bundle_contents_item_count: Some(1),
+            ..DataComponentPatchSummary::default()
+        },
+    };
+    let world = WorldStore::new();
+    let terrain = TerrainTextureState::default();
+
+    assert!(
+        block_item_3d_model(
+            &world,
+            &stack,
+            Some(&item_runtime),
+            &terrain,
+            None,
+            false,
+            false,
+            false,
+            false,
+            false,
+            ItemModelKeybindContext::default(),
+            0,
+        )
+        .is_none(),
+        "closed bundle stays on its generated compatibility icon"
+    );
+    let model = block_item_3d_model(
+        &world,
+        &stack,
+        Some(&item_runtime),
+        &terrain,
+        Some(0),
+        false,
+        false,
+        false,
+        false,
+        false,
+        ItemModelKeybindContext::default(),
+        0,
+    )
+    .expect("selected bundle child should retain its special leaf");
+    assert!(model
+        .resident_layers
+        .iter()
+        .any(|layer| matches!(layer, HudResidentItemLayer::Special { .. })));
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn gui_item_model_reuses_live_carried_context_for_special_leaf() {
+    let root = unique_runtime_temp_dir("hud-carried-special-item");
+    write_runtime_special_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let stack = item_stack(
+        item_runtime
+            .item_protocol_id("minecraft:carried_special")
+            .unwrap(),
+        1,
+    );
+    let world = WorldStore::new();
+    let terrain = TerrainTextureState::default();
+
+    assert!(
+        block_item_3d_model(
+            &world,
+            &stack,
+            Some(&item_runtime),
+            &terrain,
+            None,
+            false,
+            false,
+            false,
+            false,
+            false,
+            ItemModelKeybindContext::default(),
+            0,
+        )
+        .is_none(),
+        "ordinary slot resolves the generated false branch"
+    );
+    let model = block_item_3d_model(
+        &world,
+        &stack,
+        Some(&item_runtime),
+        &terrain,
+        None,
+        false,
+        false,
+        true,
+        false,
+        false,
+        ItemModelKeybindContext::default(),
+        0,
+    )
+    .expect("cursor item should resolve the carried special branch");
+    assert!(matches!(
+        model.resident_layers.as_ref(),
+        [HudResidentItemLayer::Special {
+            model: bbb_renderer::SpecialItemModel::Bell { .. },
             ..
         }]
     ));
@@ -24141,11 +24278,56 @@ fn write_runtime_special_item_assets(root: &Path) {
             }
         }"#,
     );
+    write_runtime_json(
+        &assets.join("items").join("bundle.json"),
+        r#"{
+            "model": {
+                "type": "minecraft:condition",
+                "property": "minecraft:bundle/has_selected_item",
+                "on_true": {
+                    "type": "minecraft:composite",
+                    "models": [
+                        { "type": "minecraft:model", "model": "minecraft:item/bundle_open_back" },
+                        { "type": "minecraft:bundle/selected_item" },
+                        { "type": "minecraft:model", "model": "minecraft:item/bundle_open_front" }
+                    ]
+                },
+                "on_false": { "type": "minecraft:model", "model": "minecraft:item/bundle" }
+            }
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("items").join("carried_special.json"),
+        r#"{
+            "model": {
+                "type": "minecraft:condition",
+                "property": "minecraft:carried",
+                "on_true": {
+                    "type": "minecraft:special",
+                    "base": "minecraft:item/carried_special_base",
+                    "model": { "type": "minecraft:bell" }
+                },
+                "on_false": {
+                    "type": "minecraft:model",
+                    "model": "minecraft:item/carried_special"
+                }
+            }
+        }"#,
+    );
     write_flat_runtime_item_model_and_texture(&assets, "special_trident_base", &[40, 80, 120, 255]);
+    write_flat_runtime_item_model_and_texture(&assets, "bundle", &[40, 80, 120, 255]);
+    write_flat_runtime_item_model_and_texture(&assets, "bundle_open_back", &[50, 90, 130, 255]);
+    write_flat_runtime_item_model_and_texture(&assets, "bundle_open_front", &[60, 100, 140, 255]);
+    write_flat_runtime_item_model_and_texture(&assets, "carried_special", &[70, 110, 150, 255]);
+    write_flat_runtime_item_model_and_texture(
+        &assets,
+        "carried_special_base",
+        &[80, 120, 160, 255],
+    );
     write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
     crate::item_registry_test_fixture::write_item_registry_fixture(
         root.as_ref(),
-        &["special_trident"],
+        &["bundle", "special_trident", "carried_special"],
     );
 }
 

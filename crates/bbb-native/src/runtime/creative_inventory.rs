@@ -309,8 +309,22 @@ fn creative_inventory_slots(
                     partial_tick,
                 )
             }),
-            block_model: item
-                .and_then(|item| block_item_3d_model(item, item_runtime, terrain_textures)),
+            block_model: item.and_then(|item| {
+                block_item_3d_model(
+                    world,
+                    item,
+                    item_runtime,
+                    terrain_textures,
+                    None,
+                    false,
+                    selected_item,
+                    false,
+                    false,
+                    shift_down,
+                    keybind_context,
+                    0,
+                )
+            }),
         }
     })
     .collect()
@@ -386,7 +400,20 @@ fn creative_inventory_tab_icons(
                 icon,
                 scissor: None,
                 draw_decorations: false,
-                block_model: block_item_3d_model(&tab.icon, item_runtime, terrain_textures),
+                block_model: block_item_3d_model(
+                    world,
+                    &tab.icon,
+                    item_runtime,
+                    terrain_textures,
+                    None,
+                    false,
+                    false,
+                    false,
+                    false,
+                    shift_down,
+                    keybind_context,
+                    0,
+                ),
             })
         })
         .collect()

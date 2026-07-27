@@ -9,7 +9,7 @@ use bbb_audio::{AudioListenerState, EntitySoundPosition, TickEntitySoundPosition
 use bbb_control::{AudioCounters, NetCounters, RendererCounters};
 use bbb_item_model::{
     ItemModelKeybindContext, NativeItemMapTooltipData, NativeItemRuntime, NativeItemTooltipOptions,
-    ResolvedItemModelLayer,
+    ResolvedItemModel, ResolvedItemModelLayer,
 };
 use bbb_net::{NetCommand, NetEvent};
 use bbb_protocol::{
@@ -2964,13 +2964,13 @@ pub(crate) fn update_renderer_from_publication(
     };
     let hud_hotbar_block_item_models = if !ordinary_hotbar {
         RendererFrameUpdate::Replace(Vec::new())
-    } else if stable_world_unchanged {
-        RendererFrameUpdate::Unchanged
     } else {
         RendererFrameUpdate::Replace(hotbar_block_item_models(
             world,
             item_runtime,
             terrain_textures,
+            input.shift_down(),
+            item_model_keybind_context,
         ))
     };
     let advancement_scroll_delta =
@@ -4349,14 +4349,36 @@ fn hotbar_item_icons_with_input_context(
 /// rendering): its block model quads (atlas-absolute over the blocks atlas) plus its `gui` display
 /// transform. `None` for an empty stack or a flat / generated item (which keeps its 2D sprite). Shared
 /// by every GUI consumer (hotbar + inventory-screen slots + floating items).
+#[allow(clippy::too_many_arguments)]
 fn block_item_3d_model(
+    world: &WorldStore,
     item: &bbb_protocol::packets::ItemStackSummary,
     item_runtime: Option<&NativeItemRuntime>,
     terrain_textures: &TerrainTextureState,
+    local_selected_bundle_item_index: Option<i32>,
+    using_item: bool,
+    selected_item: bool,
+    carried_item: bool,
+    fishing_rod_cast: bool,
+    shift_down: bool,
+    keybind_context: ItemModelKeybindContext,
+    item_model_seed: i32,
 ) -> Option<HudBlockItemModel> {
     let item_runtime = item_runtime?;
     let item_id = item.item_id?;
-    let resolved = item_runtime.resolved_item_model_for_stack(item);
+    let resolved = hud_resolved_item_model_for_stack(
+        world,
+        item_runtime,
+        item,
+        local_selected_bundle_item_index,
+        using_item,
+        selected_item,
+        carried_item,
+        fishing_rod_cast,
+        shift_down,
+        keybind_context,
+        item_model_seed,
+    );
     if resolved.as_ref().is_some_and(|resolved| {
         resolved
             .layers
@@ -4473,13 +4495,33 @@ fn hotbar_block_item_models(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     terrain_textures: &TerrainTextureState,
+    shift_down: bool,
+    keybind_context: ItemModelKeybindContext,
 ) -> Vec<Option<HudBlockItemModel>> {
     let mut models: Vec<Option<HudBlockItemModel>> = (0..HUD_HOTBAR_SLOTS).map(|_| None).collect();
+    let selected_slot = usize::from(world.local_player().selected_hotbar_slot.min(8));
+    let using_selected_item = world.local_player().interaction.using_item;
     for (slot, item) in world.inventory().hotbar_item_states().iter().enumerate() {
         if slot >= HUD_HOTBAR_SLOTS {
             break;
         }
-        models[slot] = block_item_3d_model(&item.item, item_runtime, terrain_textures);
+        let selected_item = slot == selected_slot;
+        let fishing_rod_cast =
+            local_player_fishing_rod_casts_item(world, item_runtime, &item.item, selected_item);
+        models[slot] = block_item_3d_model(
+            world,
+            &item.item,
+            item_runtime,
+            terrain_textures,
+            item.local_selected_bundle_item_index(),
+            using_selected_item && selected_item,
+            selected_item,
+            false,
+            fishing_rod_cast,
+            shift_down,
+            keybind_context,
+            i32::try_from(slot + 1).unwrap_or(0),
+        );
     }
     models
 }
@@ -6110,7 +6152,20 @@ fn stats_item_rows(
                 0,
                 partial_tick,
             );
-            let block_model = block_item_3d_model(&stack, item_runtime, terrain_textures);
+            let block_model = block_item_3d_model(
+                world,
+                &stack,
+                item_runtime,
+                terrain_textures,
+                None,
+                false,
+                false,
+                false,
+                false,
+                false,
+                keybind_context,
+                0,
+            );
             let label = item_runtime
                 .map(|runtime| runtime.localized_item_name(&resource_id))
                 .unwrap_or_else(|| resource_id.clone());
@@ -7542,8 +7597,22 @@ fn hud_debug_game_mode_switcher(
                     partial_tick,
                 )
             });
-            let block_model =
-                stack.and_then(|stack| block_item_3d_model(&stack, item_runtime, terrain_textures));
+            let block_model = stack.and_then(|stack| {
+                block_item_3d_model(
+                    world,
+                    &stack,
+                    item_runtime,
+                    terrain_textures,
+                    None,
+                    false,
+                    false,
+                    false,
+                    false,
+                    shift_down,
+                    keybind_context,
+                    i32::try_from(index + 1).unwrap_or(0),
+                )
+            });
             HudDebugGameModeSwitcherSlot {
                 mode: *mode,
                 x: slot_start_x
@@ -9133,7 +9202,21 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
                     )
                 }),
                 block_model: inventory_slot.and_then(|slot| {
-                    block_item_3d_model(&slot.item, item_runtime, terrain_textures)
+                    block_item_3d_model(
+                        world,
+                        &slot.item,
+                        item_runtime,
+                        terrain_textures,
+                        (slot.local_selected_bundle_item_index >= 0)
+                            .then_some(slot.local_selected_bundle_item_index),
+                        false,
+                        selected_hotbar_slot_id == Some(layout.slot_id),
+                        false,
+                        false,
+                        local_state.shift_down,
+                        local_state.keybind_context,
+                        0,
+                    )
                 }),
             }
         })
@@ -9718,7 +9801,20 @@ fn push_recipe_book_tab_icon_item(
         icon,
         scissor: None,
         draw_decorations: true,
-        block_model: block_item_3d_model(&stack, Some(item_runtime), terrain_textures),
+        block_model: block_item_3d_model(
+            world,
+            &stack,
+            Some(item_runtime),
+            terrain_textures,
+            None,
+            false,
+            false,
+            false,
+            false,
+            false,
+            keybind_context,
+            0,
+        ),
     });
 }
 
@@ -9876,7 +9972,20 @@ fn hud_recipe_book_recipe_button_icon_items(
                 .unwrap_or_default(),
             partial_tick,
         );
-        let block_model = block_item_3d_model(stack, Some(item_runtime), terrain_textures);
+        let block_model = block_item_3d_model(
+            world,
+            stack,
+            Some(item_runtime),
+            terrain_textures,
+            None,
+            false,
+            false,
+            false,
+            false,
+            false,
+            keybind_context,
+            0,
+        );
         if collection.has_multiple_recipes() && collection.all_result_stacks_same() {
             let (x, y) = scaled_recipe_book_button_child_position(
                 button_x,
@@ -10094,9 +10203,18 @@ fn hud_recipe_book_overlay_icon_items(
                 scissor: None,
                 draw_decorations: false,
                 block_model: block_item_3d_model(
+                    world,
                     &overlay_item.stack,
                     Some(item_runtime),
                     terrain_textures,
+                    None,
+                    false,
+                    false,
+                    false,
+                    false,
+                    false,
+                    keybind_context,
+                    0,
                 ),
             });
         }
@@ -11628,7 +11746,20 @@ fn advancements_tab_icon_items(
             icon,
             scissor: None,
             draw_decorations: false,
-            block_model: block_item_3d_model(&stack, Some(item_runtime), terrain_textures),
+            block_model: block_item_3d_model(
+                world,
+                &stack,
+                Some(item_runtime),
+                terrain_textures,
+                None,
+                false,
+                false,
+                false,
+                false,
+                false,
+                keybind_context,
+                0,
+            ),
         });
     }
     items
@@ -11761,7 +11892,20 @@ fn advancements_widget_icon_items(
             icon,
             scissor: Some(advancement_widget_content_scissor(window_x, window_y)),
             draw_decorations: false,
-            block_model: block_item_3d_model(&stack, Some(item_runtime), terrain_textures),
+            block_model: block_item_3d_model(
+                world,
+                &stack,
+                Some(item_runtime),
+                terrain_textures,
+                None,
+                false,
+                false,
+                false,
+                false,
+                false,
+                keybind_context,
+                0,
+            ),
         });
     }
     items
@@ -12413,7 +12557,20 @@ fn advancement_hover_icon_item(
         icon,
         scissor: None,
         draw_decorations: false,
-        block_model: block_item_3d_model(&stack, Some(item_runtime), terrain_textures),
+        block_model: block_item_3d_model(
+            world,
+            &stack,
+            Some(item_runtime),
+            terrain_textures,
+            None,
+            false,
+            false,
+            false,
+            false,
+            false,
+            keybind_context,
+            0,
+        ),
     })
 }
 
@@ -13797,7 +13954,20 @@ fn push_hud_inventory_cursor_item(
     if let Some(count_label) = count_label_override {
         icon.count_label = Some(count_label);
     }
-    let block_model = block_item_3d_model(&item, item_runtime, terrain_textures);
+    let block_model = block_item_3d_model(
+        world,
+        &item,
+        item_runtime,
+        terrain_textures,
+        None,
+        false,
+        false,
+        true,
+        false,
+        shift_down,
+        keybind_context,
+        0,
+    );
     items.push(HudInventoryItem {
         x: cursor_x - 8,
         y: cursor_y - 8,
@@ -14473,7 +14643,20 @@ fn push_merchant_trade_item(
         0,
         partial_tick,
     ) {
-        let block_model = block_item_3d_model(&item, item_runtime, terrain_textures);
+        let block_model = block_item_3d_model(
+            world,
+            &item,
+            item_runtime,
+            terrain_textures,
+            None,
+            false,
+            false,
+            false,
+            false,
+            shift_down,
+            keybind_context,
+            0,
+        );
         items.push(HudInventoryItem {
             x,
             y,
@@ -14607,7 +14790,20 @@ fn hud_stonecutter_recipe_items(
             0,
             partial_tick,
         ) {
-            let block_model = block_item_3d_model(&option.stack, item_runtime, terrain_textures);
+            let block_model = block_item_3d_model(
+                world,
+                &option.stack,
+                item_runtime,
+                terrain_textures,
+                None,
+                false,
+                false,
+                false,
+                false,
+                shift_down,
+                keybind_context,
+                0,
+            );
             items.push(HudInventoryItem {
                 x: option.x,
                 y: option.y,
@@ -15858,28 +16054,25 @@ fn local_player_fishing_rod_casts_item(
         })
 }
 
-fn hud_item_icon_for_stack(
-    world: &WorldStore,
-    item_runtime: Option<&NativeItemRuntime>,
-    item: &bbb_protocol::packets::ItemStackSummary,
-    local_selected_bundle_item_index: Option<i32>,
-    using_item: bool,
-    selected_item: bool,
-    carried_item: bool,
-    fishing_rod_cast: bool,
-    shift_down: bool,
-    keybind_context: ItemModelKeybindContext,
-    item_model_seed: i32,
-    partial_tick: f32,
-) -> Option<HudItemIcon> {
-    let item_runtime = item_runtime?;
+struct HudItemWorldModelContext<'a> {
+    trim_material_keys: Option<Vec<String>>,
+    trim_pattern_keys: Option<Vec<String>>,
+    enchantment_keys: Option<Vec<String>>,
+    damage_type_keys: Option<Vec<String>>,
+    attribute_keys: Option<Vec<String>>,
+    owner_main_hand_left: Option<bool>,
+    context_dimension: Option<&'a str>,
+    time_context: Option<bbb_item_model::ItemModelTimeContext>,
+    compass_context: Option<bbb_item_model::ItemModelCompassContext<'a>>,
+}
+
+fn hud_item_world_model_context(world: &WorldStore) -> HudItemWorldModelContext<'_> {
     let trim_material_keys = world_trim_material_keys(world);
     let trim_pattern_keys = world_trim_pattern_keys(world);
     let enchantment_keys = world_enchantment_keys(world);
     let damage_type_keys = world_damage_type_keys(world);
     let attribute_keys = world_attribute_keys(world);
     let owner_main_hand_left = world.local_player_main_arm_left();
-    let context_entity_type = Some("minecraft:player");
     let context_dimension = world.level_info().map(|level| level.dimension.as_str());
     let environment_attributes = world
         .local_player_pose()
@@ -15938,12 +16131,26 @@ fn hud_item_icon_for_stack(
                 recovery: compass_recovery,
             })
     });
-    // Vanilla `Cooldown.get` uses `getCooldownPercent(itemStack, 0.0F)` for
-    // item-model range dispatch. The HUD overlay below still uses render
-    // partial tick.
-    let item_model_cooldown_progress =
-        item_cooldown_percent_for_stack(world, Some(item_runtime), item, 0.0).unwrap_or(0.0);
-    let use_context = if using_item {
+    HudItemWorldModelContext {
+        trim_material_keys,
+        trim_pattern_keys,
+        enchantment_keys,
+        damage_type_keys,
+        attribute_keys,
+        owner_main_hand_left,
+        context_dimension,
+        time_context,
+        compass_context,
+    }
+}
+
+fn hud_item_model_use_context(
+    world: &WorldStore,
+    item_runtime: &NativeItemRuntime,
+    item: &bbb_protocol::packets::ItemStackSummary,
+    using_item: bool,
+) -> bbb_item_model::ItemModelUseContext {
+    if using_item {
         item_runtime.item_model_use_context_for_stack_with_crossbow_charge_duration(
             item,
             world.local_player().interaction.using_item_ticks,
@@ -15951,7 +16158,77 @@ fn hud_item_icon_for_stack(
         )
     } else {
         bbb_item_model::ItemModelUseContext::inactive()
-    };
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn hud_resolved_item_model_for_stack(
+    world: &WorldStore,
+    item_runtime: &NativeItemRuntime,
+    item: &bbb_protocol::packets::ItemStackSummary,
+    local_selected_bundle_item_index: Option<i32>,
+    using_item: bool,
+    selected_item: bool,
+    carried_item: bool,
+    fishing_rod_cast: bool,
+    shift_down: bool,
+    keybind_context: ItemModelKeybindContext,
+    item_model_seed: i32,
+) -> Option<ResolvedItemModel> {
+    let context = hud_item_world_model_context(world);
+    let cooldown_progress =
+        item_cooldown_percent_for_stack(world, Some(item_runtime), item, 0.0).unwrap_or(0.0);
+    let use_context = hud_item_model_use_context(world, item_runtime, item, using_item);
+    item_runtime
+        .resolved_item_model_for_stack_with_context_and_use_context_time_state_and_fishing_rod_cast_with_registry_context(
+            item,
+            local_selected_bundle_item_index,
+            using_item,
+            use_context,
+            bbb_pack::BlockModelDisplayContext::Gui,
+            cooldown_progress,
+            context.trim_material_keys.as_deref(),
+            context.trim_pattern_keys.as_deref(),
+            context.enchantment_keys.as_deref(),
+            context.damage_type_keys.as_deref(),
+            context.attribute_keys.as_deref(),
+            context.owner_main_hand_left,
+            Some("minecraft:player"),
+            context.context_dimension,
+            context.time_context,
+            context.compass_context,
+            selected_item,
+            carried_item,
+            true,
+            shift_down,
+            keybind_context,
+            fishing_rod_cast,
+            item_model_seed,
+        )
+}
+
+fn hud_item_icon_for_stack(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    item: &bbb_protocol::packets::ItemStackSummary,
+    local_selected_bundle_item_index: Option<i32>,
+    using_item: bool,
+    selected_item: bool,
+    carried_item: bool,
+    fishing_rod_cast: bool,
+    shift_down: bool,
+    keybind_context: ItemModelKeybindContext,
+    item_model_seed: i32,
+    partial_tick: f32,
+) -> Option<HudItemIcon> {
+    let item_runtime = item_runtime?;
+    let context = hud_item_world_model_context(world);
+    // Vanilla `Cooldown.get` uses `getCooldownPercent(itemStack, 0.0F)` for
+    // item-model range dispatch. The HUD overlay below still uses render
+    // partial tick.
+    let item_model_cooldown_progress =
+        item_cooldown_percent_for_stack(world, Some(item_runtime), item, 0.0).unwrap_or(0.0);
+    let use_context = hud_item_model_use_context(world, item_runtime, item, using_item);
     let icon = item_runtime
         .icon_for_stack_with_context_and_use_context_time_state_and_fishing_rod_cast_with_registry_context(
             item,
@@ -15960,16 +16237,16 @@ fn hud_item_icon_for_stack(
             use_context,
             bbb_pack::BlockModelDisplayContext::Gui,
             item_model_cooldown_progress,
-            trim_material_keys.as_deref(),
-            trim_pattern_keys.as_deref(),
-            enchantment_keys.as_deref(),
-            damage_type_keys.as_deref(),
-            attribute_keys.as_deref(),
-            owner_main_hand_left,
-            context_entity_type,
-            context_dimension,
-            time_context,
-            compass_context,
+            context.trim_material_keys.as_deref(),
+            context.trim_pattern_keys.as_deref(),
+            context.enchantment_keys.as_deref(),
+            context.damage_type_keys.as_deref(),
+            context.attribute_keys.as_deref(),
+            context.owner_main_hand_left,
+            Some("minecraft:player"),
+            context.context_dimension,
+            context.time_context,
+            context.compass_context,
             selected_item,
             carried_item,
             true,
