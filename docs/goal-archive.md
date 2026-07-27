@@ -595,3 +595,7 @@
   Vanilla `PotionContents` 可见效果加权与活体 scoreboard 队伍色；普通 GUI、
   fakeItem、手持/头戴、首人称、嵌套 bundle 及非活体路径均保留精确 owner
   语义，合同见 `docs/archive/item-tint-parity-design.md`。
+- **2026-07-26（Item atlas 动画工程闭环）**：资源包 item sprite 动画现按
+  Vanilla 帧时长/插值逐 client tick 原地更新 HUD 与模型/实体/粒子共用 atlas；
+  generated-item 侧面轮廓合并全部唯一帧，合同见
+  `docs/archive/item-atlas-animation-design.md`。

@@ -1,12 +1,12 @@
 # Item Atlas Animation Parity
 
-Status: active from 2026-07-26.
+Status: completed on 2026-07-26.
 
 This document freezes the engineering contract for closing the remaining
 resource-pack atlas-animation gap. It refines the pack-backed consumer boundary
-in [`native-client-architecture.md`](native-client-architecture.md) and the
+in [`native-client-architecture.md`](../native-client-architecture.md) and the
 accepted-generation/reload contract in
-[`resource-pack-lifecycle-design.md`](resource-pack-lifecycle-design.md).
+[`resource-pack-lifecycle-design.md`](../resource-pack-lifecycle-design.md).
 
 ## Goal and Completion
 

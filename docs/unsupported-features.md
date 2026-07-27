@@ -885,9 +885,6 @@ Owner: `bbb-audio` + `bbb-native` + `bbb-pack` + `bbb-world`
 
 Owner: `bbb-pack` + `bbb-item-model` + `bbb-native` + `bbb-renderer`
 
-- Consume atlas mip animation metadata in the renderer, beyond the current
-  static sprite use.
-
 Loader invariants (not todos): keep the local vanilla coverage tests
 (`loads_all_local_vanilla_atlases`, `loads_local_vanilla_item_model_catalog`,
 `loads_local_vanilla_item_registry`,
