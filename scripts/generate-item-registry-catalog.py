@@ -22,6 +22,7 @@ from item_registry_catalog_extractor import (
     extract_item_use_on_override_owners,
     extract_item_use_override_owners,
     item_factory_class,
+    item_resource_ids_for_declaration,
 )
 from sound_event_catalog_extractor import direct_sound_event_entries
 from targeted_block_use_catalog_extractor import (
@@ -94,58 +95,6 @@ def _field_access(fact: dict, owner: str) -> str | None:
     if object_fact and object_fact.get("canonical") == owner:
         return fact["name"]
     return None
-
-
-def _string(fact: dict) -> str | None:
-    if fact.get("kind") != "string_literal":
-        return None
-    value = json.loads(fact["canonical"])
-    return value if isinstance(value, str) else None
-
-
-def _resource_ids(declaration: dict, constants: dict[str, str]) -> list[str]:
-    initializer = declaration["initializer"]
-    name = initializer.get("name")
-    arguments = initializer.get("arguments", [])
-    field = declaration["field"]
-    if declaration["field_type"] == "WeatheringCopperItems":
-        if name != "create" or not arguments:
-            raise ValueError(f"Items.{field}: unsupported weathering registration")
-        block = _field_access(arguments[0], "Blocks")
-        if block is None:
-            raise ValueError(f"Items.{field}: weathering registration lacks Blocks constant")
-        base = block.lower()
-        return [
-            base,
-            f"exposed_{base}",
-            f"weathered_{base}",
-            f"oxidized_{base}",
-            f"waxed_{base}",
-            f"waxed_exposed_{base}",
-            f"waxed_weathered_{base}",
-            f"waxed_oxidized_{base}",
-        ]
-    if name == "registerBlock" and arguments:
-        block = _field_access(arguments[0], "Blocks")
-        if block is not None:
-            return [block.lower()]
-    if name == "registerSpawnEgg" and arguments:
-        entity = _field_access(arguments[0], "EntityType")
-        if entity is not None:
-            return [entity.lower() + "_spawn_egg"]
-    if name == "registerItem" and arguments:
-        literal = _string(arguments[0])
-        if literal is not None:
-            return [literal]
-        constant = _field_access(arguments[0], "ItemIds")
-        if constant is not None:
-            resource_id = constants.get(constant)
-            if resource_id is None:
-                raise ValueError(
-                    f"Items.{field}: unresolved ItemIds.{constant} registration key"
-                )
-            return [resource_id]
-    raise ValueError(f"Items.{field}: unsupported root registration {name!r}")
 
 
 def _walk_facts(expression: dict):
@@ -416,7 +365,9 @@ def _default_break_sounds(
         sound = sounds[sound_constant]
         if sound == common_sound:
             continue
-        for resource_id in _resource_ids(declaration, item_id_constants):
+        for resource_id in item_resource_ids_for_declaration(
+            declaration, item_id_constants
+        ):
             overrides["minecraft:" + resource_id] = sound
     return common_sound, overrides
 
@@ -1148,7 +1099,7 @@ def generate(source_root: Path) -> tuple[str, str]:
         for entry in direct_sound_event_entries(sound_events)
     }
     for declaration in value["declarations"]:
-        declaration_resources = _resource_ids(
+        declaration_resources = item_resource_ids_for_declaration(
             declaration, value["item_id_constants"]
         )
         first_item_type_id = len(resource_paths)

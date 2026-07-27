@@ -28,11 +28,11 @@ and the full plus playable gates pass at the milestone head.
 - `scripts/creative_mode_tab_catalog_extractor.py`,
   `scripts/generate-creative-mode-tab-catalog.py`, and their focused Python
   tests own the Tree-sitter extraction and deterministic Rust generation. The
-  extractor consumes `CreativeModeTabs.java`, `CreativeModeTab.java`, and
-  `Items.java`; it emits tab metadata, ordered static item references,
-  visibility, and typed dynamic-family markers. It must reject unknown builder
-  shapes, duplicate tab keys, missing accepted-item calls, and source drift
-  rather than silently omit content.
+  extractor consumes `CreativeModeTabs.java`, `CreativeModeTab.java`,
+  `Items.java`, and `ItemIds.java`; it emits tab metadata, ordered static item
+  references, visibility, and typed dynamic-family markers. It must reject
+  unknown builder shapes, duplicate tab keys, missing accepted-item calls, and
+  source drift rather than silently omit content.
 - `bbb-world::creative_inventory` owns generated catalog facts, materialized
   item stacks, canonical creative-screen mode, inventory-menu remote slots,
   carried-stack suppression, hotbar pop time, and guarded local mutations. Its

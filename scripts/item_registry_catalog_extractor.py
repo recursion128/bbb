@@ -105,6 +105,72 @@ def _qualified_field(expression: dict, owner: str) -> str | None:
     return name if isinstance(name, str) and name else None
 
 
+def item_resource_ids_for_declaration(
+    declaration: dict, item_id_constants: dict[str, str]
+) -> tuple[str, ...]:
+    """Resolve one extracted ``Items`` declaration to registered resource paths.
+
+    This is the shared registration vocabulary for downstream generators. It
+    returns all eight members of ``WeatheringCopperItems`` in accessor order.
+    """
+
+    initializer = declaration["initializer"]
+    name = initializer.get("name")
+    arguments = initializer.get("arguments", [])
+    field = declaration["field"]
+    if declaration["field_type"] == "WeatheringCopperItems":
+        if name != "create" or not arguments:
+            raise ItemRegistryCatalogExtractionError(
+                f"Items.{field}: unsupported weathering registration"
+            )
+        block = _qualified_field(arguments[0], "Blocks")
+        if block is None:
+            raise ItemRegistryCatalogExtractionError(
+                f"Items.{field}: weathering registration lacks Blocks constant"
+            )
+        base = block.lower()
+        return (
+            base,
+            f"exposed_{base}",
+            f"weathered_{base}",
+            f"oxidized_{base}",
+            f"waxed_{base}",
+            f"waxed_exposed_{base}",
+            f"waxed_weathered_{base}",
+            f"waxed_oxidized_{base}",
+        )
+    if name == "registerBlock" and arguments:
+        block = _qualified_field(arguments[0], "Blocks")
+        if block is not None:
+            return (block.lower(),)
+    if name == "registerSpawnEgg" and arguments:
+        entity = _qualified_field(arguments[0], "EntityType")
+        if entity is not None:
+            return (entity.lower() + "_spawn_egg",)
+    if name == "registerItem" and arguments:
+        first = arguments[0]
+        if first.get("kind") == "string_literal":
+            try:
+                literal = json.loads(first["canonical"])
+            except (json.JSONDecodeError, KeyError, TypeError) as error:
+                raise ItemRegistryCatalogExtractionError(
+                    f"Items.{field}: invalid string registration key: {error}"
+                ) from error
+            if isinstance(literal, str) and literal:
+                return (literal,)
+        constant = _qualified_field(first, "ItemIds")
+        if constant is not None:
+            resource_id = item_id_constants.get(constant)
+            if resource_id is None:
+                raise ItemRegistryCatalogExtractionError(
+                    f"Items.{field}: unresolved ItemIds.{constant} registration key"
+                )
+            return (resource_id,)
+    raise ItemRegistryCatalogExtractionError(
+        f"Items.{field}: unsupported root registration {name!r}"
+    )
+
+
 def extract_bucket_item_behaviors(
     declarations: Sequence[dict],
 ) -> dict[str, dict[str, str | None] | None]:
@@ -871,12 +937,7 @@ class ExtractedItemRegistryCatalog:
         }
 
 
-def extract_item_registry_catalog(
-    items_source: JavaSource,
-    item_ids_source: JavaSource,
-    item_source: JavaSource,
-    foods_source: JavaSource,
-) -> ExtractedItemRegistryCatalog:
+def extract_item_id_constants(item_ids_source: JavaSource) -> dict[str, str]:
     constants: dict[str, str] = {}
     for field in item_ids_source.fields_for(ITEM_IDS_OWNER):
         initializer = field.initializer
@@ -889,6 +950,52 @@ def extract_item_registry_catalog(
         if name is None or item_ids_source.text(name) != "createKey" or len(arguments) != 1:
             _fail(item_ids_source, initializer, "expected createKey(string) initializer")
         constants[field.name] = _string(item_ids_source, arguments[0])
+    if not constants:
+        raise ItemRegistryCatalogExtractionError(
+            f"{item_ids_source.relative_path}: no ItemIds constants found"
+        )
+    return constants
+
+
+def extract_item_declarations(items_source: JavaSource) -> tuple[dict[str, Any], ...]:
+    declarations: list[dict[str, Any]] = []
+    fields = [
+        field
+        for field in items_source.fields_for(ITEMS_OWNER)
+        if field.type_spelling in ITEM_FIELD_TYPES
+    ]
+    for field in fields:
+        if field.initializer is None:
+            raise ItemRegistryCatalogExtractionError(
+                f"{items_source.relative_path}: Items.{field.name} lacks initializer"
+            )
+        if field.initializer.node.type != "method_invocation":
+            _fail(items_source, field.initializer, "item initializer must be a method invocation")
+        declarations.append(
+            {
+                "field": field.name,
+                "field_type": field.type_spelling,
+                "declaration_order": field.declaration_order,
+                "source_path": items_source.relative_path,
+                "start_byte": field.initializer.span.start_byte,
+                "end_byte": field.initializer.span.end_byte,
+                "initializer": expression_fact(items_source, field.initializer),
+            }
+        )
+    if len(declarations) != len(fields) or not declarations:
+        raise ItemRegistryCatalogExtractionError(
+            f"{items_source.relative_path}: failed to close all item declarations"
+        )
+    return tuple(declarations)
+
+
+def extract_item_registry_catalog(
+    items_source: JavaSource,
+    item_ids_source: JavaSource,
+    item_source: JavaSource,
+    foods_source: JavaSource,
+) -> ExtractedItemRegistryCatalog:
+    constants = extract_item_id_constants(item_ids_source)
 
     item_constant_names = {"DEFAULT_MAX_STACK_SIZE", "ABSOLUTE_MAX_STACK_SIZE"}
     item_constants = {}
@@ -914,38 +1021,10 @@ def extract_item_registry_catalog(
             f"{item_source.relative_path}: invalid item max stack size constants"
         )
 
-    declarations: list[dict[str, Any]] = []
-    fields = [
-        field
-        for field in items_source.fields_for(ITEMS_OWNER)
-        if field.type_spelling in ITEM_FIELD_TYPES
-    ]
-    for field in fields:
-        if field.initializer is None:
-            raise ItemRegistryCatalogExtractionError(
-                f"{items_source.relative_path}: Items.{field.name} lacks initializer"
-            )
-        if field.initializer.node.type != "method_invocation":
-            _fail(items_source, field.initializer, "item initializer must be a method invocation")
-        declarations.append(
-            {
-                "field": field.name,
-                "field_type": field.type_spelling,
-                "declaration_order": field.declaration_order,
-                "source_path": items_source.relative_path,
-                "start_byte": field.initializer.span.start_byte,
-                "end_byte": field.initializer.span.end_byte,
-                "initializer": expression_fact(items_source, field.initializer),
-            }
-        )
-
-    if len(declarations) != len(fields) or not declarations:
-        raise ItemRegistryCatalogExtractionError(
-            f"{items_source.relative_path}: failed to close all item declarations"
-        )
+    declarations = extract_item_declarations(items_source)
     return ExtractedItemRegistryCatalog(
         constants,
         item_constants,
         _food_properties(foods_source),
-        tuple(declarations),
+        declarations,
     )

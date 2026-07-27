@@ -12,6 +12,7 @@ mod commands;
 mod comparator_blocks;
 mod conduit_blocks;
 mod counters;
+mod creative_inventory;
 mod decorated_pot_blocks;
 mod diagnostics;
 mod enchanting_table_books;
@@ -50,6 +51,7 @@ mod test_instance_blocks;
 mod toasts;
 mod world_state;
 
+pub use creative_inventory::*;
 pub use exports::*;
 pub(crate) use internal::*;
 pub(crate) use publication_snapshot::PublicationShared;
