@@ -4,8 +4,8 @@ use uuid::Uuid;
 pub use crate::resource_pack_response_actions::ResourcePackResponseAction;
 use crate::{
     codec::{Decoder, Encoder, ProtocolError, Result},
-    component::decode_component_summary_from_decoder,
-    ids,
+    component::{decode_component_summary_from_decoder, decode_rich_text_component_from_decoder},
+    ids, RichTextComponent,
 };
 
 use super::{
@@ -15,8 +15,8 @@ use super::{
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TabList {
-    pub header: Option<String>,
-    pub footer: Option<String>,
+    pub header: RichTextComponent,
+    pub footer: RichTextComponent,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -109,8 +109,8 @@ pub(super) fn decode_server_data(decoder: &mut Decoder<'_>) -> Result<ServerData
 
 pub(super) fn decode_tab_list(decoder: &mut Decoder<'_>) -> Result<TabList> {
     let update = TabList {
-        header: decode_tab_list_component(decoder)?,
-        footer: decode_tab_list_component(decoder)?,
+        header: decode_rich_text_component_from_decoder(decoder)?,
+        footer: decode_rich_text_component_from_decoder(decoder)?,
     };
     if !decoder.is_empty() {
         return Err(ProtocolError::InvalidData(
@@ -118,23 +118,6 @@ pub(super) fn decode_tab_list(decoder: &mut Decoder<'_>) -> Result<TabList> {
         ));
     }
     Ok(update)
-}
-
-fn decode_tab_list_component(decoder: &mut Decoder<'_>) -> Result<Option<String>> {
-    let before = decoder.remaining();
-    let summary = decode_component_summary_from_decoder(decoder)?;
-    let consumed_len = before.len().saturating_sub(decoder.remaining_len());
-    let consumed = &before[..consumed_len];
-
-    if is_empty_string_component_nbt(consumed) {
-        Ok(None)
-    } else {
-        Ok(Some(summary))
-    }
-}
-
-fn is_empty_string_component_nbt(payload: &[u8]) -> bool {
-    payload == [8, 0, 0]
 }
 
 #[cfg(test)]
@@ -157,8 +140,8 @@ mod tests {
         assert_eq!(
             packet,
             PlayClientbound::TabList(TabList {
-                header: Some("Online players".to_string()),
-                footer: None,
+                header: RichTextComponent::plain("Online players"),
+                footer: RichTextComponent::plain(""),
             })
         );
 
@@ -171,10 +154,29 @@ mod tests {
         assert_eq!(
             packet,
             PlayClientbound::TabList(TabList {
-                header: None,
-                footer: Some("Welcome".to_string()),
+                header: RichTextComponent::plain(""),
+                footer: RichTextComponent::plain("Welcome"),
             })
         );
+
+        let mut payload = Encoder::new();
+        payload.write_bytes(&nbt_styled_text_root("Styled", "red"));
+        payload.write_bytes(&nbt_string_root(""));
+        let PlayClientbound::TabList(packet) =
+            decode_play_clientbound(ids::play::CLIENTBOUND_TAB_LIST, &payload.into_inner())
+                .unwrap()
+        else {
+            panic!("expected tab-list packet");
+        };
+        assert_eq!(packet.header.text(), "Styled");
+        assert_eq!(packet.header.styled().len(), 1);
+        assert_eq!(packet.header.styled()[0].style.bold, Some(true));
+        assert_eq!(packet.header.styled()[0].style.color, Some(0xFF_55_55));
+        assert!(matches!(
+            packet.header.component(),
+            crate::NbtSummaryValue::Compound(_)
+        ));
+        assert!(packet.footer.is_empty());
 
         let mut trailing = Encoder::new();
         trailing.write_bytes(&nbt_string_root("Online players"));
@@ -337,6 +339,25 @@ mod tests {
         payload.extend_from_slice(&(text.len() as u16).to_be_bytes());
         payload.extend_from_slice(text.as_bytes());
         payload
+    }
+
+    fn nbt_styled_text_root(text: &str, color: &str) -> Vec<u8> {
+        let mut payload = vec![10, 8];
+        write_nbt_string(&mut payload, "text");
+        write_nbt_string(&mut payload, text);
+        payload.push(1);
+        write_nbt_string(&mut payload, "bold");
+        payload.push(1);
+        payload.push(8);
+        write_nbt_string(&mut payload, "color");
+        write_nbt_string(&mut payload, color);
+        payload.push(0);
+        payload
+    }
+
+    fn write_nbt_string(payload: &mut Vec<u8>, value: &str) {
+        payload.extend_from_slice(&(value.len() as u16).to_be_bytes());
+        payload.extend_from_slice(value.as_bytes());
     }
 
     fn assert_resource_pack_response_payload(

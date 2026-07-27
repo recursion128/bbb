@@ -4,7 +4,7 @@ use winit::dpi::PhysicalSize;
 
 use super::layout::absolute_hud_rect;
 use super::{
-    hud_font_runs_width, hud_plain_text_width, hud_wrap_plain_text, push_hud_debug_tinted_rect,
+    hud_font_runs_width, hud_plain_text_width, hud_wrap_chat_runs, push_hud_debug_tinted_rect,
     push_hud_draw, push_hud_screen_text_draw, HudDrawCommand, HudFontGlyphMap,
     HudObfuscatedGlyphPool, HudScreenTextDraw, HudSpriteGpu, HudStyledTextRun, HudVertex,
     HUD_TINT_WHITE,
@@ -15,8 +15,8 @@ use super::{
 /// and the cross-frame heart blink/display state.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct HudPlayerList {
-    pub header: Option<String>,
-    pub footer: Option<String>,
+    pub header: Option<Vec<HudStyledTextRun>>,
+    pub footer: Option<Vec<HudStyledTextRun>>,
     pub entries: Vec<HudPlayerListEntry>,
     /// Vanilla `Gui.getGuiTicks()` at extraction time.
     pub tick_count: u64,
@@ -196,20 +196,12 @@ pub(super) fn push_hud_player_list<'a>(
     let table_width = slot_width
         .saturating_mul(columns as u32)
         .saturating_add(5 * columns.saturating_sub(1) as u32);
-    let header_lines = list
-        .header
-        .as_deref()
-        .map(|text| hud_wrap_plain_text(text, available, glyphs))
-        .unwrap_or_default();
-    let footer_lines = list
-        .footer
-        .as_deref()
-        .map(|text| hud_wrap_plain_text(text, available, glyphs))
-        .unwrap_or_default();
+    let header_lines = hud_player_list_component_lines(list.header.as_deref(), available, glyphs);
+    let footer_lines = hud_player_list_component_lines(list.footer.as_deref(), available, glyphs);
     let max_line_width = header_lines
         .iter()
         .chain(&footer_lines)
-        .map(|line| hud_plain_text_width(line, glyphs))
+        .map(|line| hud_font_runs_width(line, glyphs).unwrap_or(0))
         .fold(table_width, u32::max);
     let left = screen_width / 2 - max_line_width as i32 / 2;
     let mut y = 10i32;
@@ -250,12 +242,11 @@ pub(super) fn push_hud_player_list<'a>(
             [0.0, 0.0, 0.0, 0.5],
         );
         for line in &header_lines {
-            let runs = [HudStyledTextRun::plain(line.clone())];
-            let width = hud_plain_text_width(line, glyphs) as i32;
+            let width = hud_font_runs_width(line, glyphs).unwrap_or(0) as i32;
             draw_text(
                 vertices,
                 commands,
-                &runs,
+                line,
                 screen_width / 2 - width / 2,
                 y,
                 HUD_TINT_WHITE,
@@ -385,12 +376,11 @@ pub(super) fn push_hud_player_list<'a>(
             [0.0, 0.0, 0.0, 0.5],
         );
         for line in &footer_lines {
-            let runs = [HudStyledTextRun::plain(line.clone())];
-            let width = hud_plain_text_width(line, glyphs) as i32;
+            let width = hud_font_runs_width(line, glyphs).unwrap_or(0) as i32;
             draw_text(
                 vertices,
                 commands,
-                &runs,
+                line,
                 screen_width / 2 - width / 2,
                 y,
                 HUD_TINT_WHITE,
@@ -398,6 +388,15 @@ pub(super) fn push_hud_player_list<'a>(
             y += 9;
         }
     }
+}
+
+fn hud_player_list_component_lines(
+    runs: Option<&[HudStyledTextRun]>,
+    available: u32,
+    glyphs: &HudFontGlyphMap,
+) -> Vec<Vec<HudStyledTextRun>> {
+    runs.map(|runs| hud_wrap_chat_runs(runs, available, glyphs))
+        .unwrap_or_default()
 }
 
 fn hud_player_list_score_width(entries: &[HudPlayerListEntry], glyphs: &HudFontGlyphMap) -> u32 {
@@ -705,6 +704,37 @@ mod tests {
             compact_text: "10.0".to_string(),
         });
         assert_eq!(hud_player_list_score_width(&[entry], &glyphs), 90);
+    }
+
+    #[test]
+    fn header_footer_wrapping_preserves_style_across_vanilla_width_breaks() {
+        let glyphs = test_glyphs();
+        let runs = vec![
+            HudStyledTextRun {
+                text: "bold ".to_string(),
+                style: HudTextStyle {
+                    bold: true,
+                    ..HudTextStyle::default()
+                },
+                color: Some(0xFF_55_55),
+            },
+            HudStyledTextRun {
+                text: "plain".to_string(),
+                style: HudTextStyle::default(),
+                color: Some(0x55_FF_55),
+            },
+        ];
+
+        let lines = hud_player_list_component_lines(Some(&runs), 36, &glyphs);
+
+        assert_eq!(lines.len(), 2);
+        assert_eq!(lines[0][0].text, "bold");
+        assert!(lines[0][0].style.bold);
+        assert_eq!(lines[0][0].color, Some(0xFF_55_55));
+        assert_eq!(lines[1][0].text, "plain");
+        assert!(!lines[1][0].style.bold);
+        assert_eq!(lines[1][0].color, Some(0x55_FF_55));
+        assert!(hud_player_list_component_lines(None, 36, &glyphs).is_empty());
     }
 
     #[test]

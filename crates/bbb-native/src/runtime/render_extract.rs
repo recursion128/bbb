@@ -1928,14 +1928,32 @@ pub(crate) fn hud_player_list_from_world(
             }
         })
         .collect::<Vec<_>>();
-    let header = world.tab_list().header.clone();
-    let footer = world.tab_list().footer.clone();
+    let header = world
+        .tab_list()
+        .header
+        .as_ref()
+        .map(|component| hud_tab_list_component_runs(component, item_runtime));
+    let footer = world
+        .tab_list()
+        .footer
+        .as_ref()
+        .map(|component| hud_tab_list_component_runs(component, item_runtime));
     Some(HudPlayerList {
         header,
         footer,
         entries,
         tick_count,
     })
+}
+
+fn hud_tab_list_component_runs(
+    component: &bbb_protocol::RichTextComponent,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Vec<HudStyledTextRun> {
+    hud_component_text_runs(component, item_runtime)
+        .into_iter()
+        .map(|run| run.visual)
+        .collect()
 }
 
 pub(crate) fn hud_scoreboard_sidebar_from_world(

@@ -3607,8 +3607,8 @@ mod tests {
             .unwrap();
         probe
             .handle_play_packet(PlayClientbound::TabList(TabList {
-                header: Some("Welcome".to_string()),
-                footer: None,
+                header: bbb_protocol::RichTextComponent::plain("Welcome"),
+                footer: bbb_protocol::RichTextComponent::plain(""),
             }))
             .await
             .unwrap();
@@ -3629,7 +3629,15 @@ mod tests {
         assert_eq!(boss.overlay, "progress");
         assert!(boss.darken_screen);
         assert!(boss.create_world_fog);
-        assert_eq!(report.world.tab_list().header.as_deref(), Some("Welcome"));
+        assert_eq!(
+            report
+                .world
+                .tab_list()
+                .header
+                .as_ref()
+                .map(bbb_protocol::RichTextComponent::text),
+            Some("Welcome")
+        );
         assert_eq!(report.world.tab_list().footer, None);
         assert_eq!(report.world.difficulty().difficulty, "hard");
         assert!(report.world.difficulty().difficulty_locked);

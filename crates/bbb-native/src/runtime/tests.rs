@@ -1061,8 +1061,8 @@ fn hud_player_list_projection_uses_scores_rich_names_and_vanilla_visibility() {
             .collect(),
     });
     world.apply_tab_list(bbb_protocol::packets::TabList {
-        header: Some("Welcome".to_string()),
-        footer: Some("Online".to_string()),
+        header: *styled_boss_component("Welcome"),
+        footer: bbb_protocol::RichTextComponent::plain("Online"),
     });
     assert!(world.apply_set_player_team(SetPlayerTeam {
         name: "aqua".to_string(),
@@ -1110,8 +1110,15 @@ fn hud_player_list_projection_uses_scores_rich_names_and_vanilla_visibility() {
     );
 
     let list = hud_player_list_from_world(&input, &world, None, 42).expect("Tab list");
-    assert_eq!(list.header.as_deref(), Some("Welcome"));
-    assert_eq!(list.footer.as_deref(), Some("Online"));
+    let header = list.header.as_deref().expect("styled header");
+    assert_eq!(header.len(), 1);
+    assert_eq!(header[0].text, "Welcome");
+    assert!(header[0].style.bold);
+    assert_eq!(header[0].color, Some(0xFF_55_55));
+    assert_eq!(
+        list.footer.as_deref(),
+        Some([HudStyledTextRun::plain("Online")].as_slice())
+    );
     assert_eq!(
         list.entries
             .iter()

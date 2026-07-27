@@ -732,9 +732,8 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   `Gui.scopeScale` interpolation. The interpolation needs a deterministic
   GUI-frame `getGameTimeDeltaTicks` owner rather than a simulation-tick
   approximation.
-- Preserve full trusted Components in the TabList header/footer and complete
-  remaining player-list presentation parity: encrypted-session player heads,
-  narrator visibility announcements, and vanilla ping sprites.
+- Complete remaining player-list presentation parity: encrypted-session player
+  heads, narrator visibility announcements, and vanilla ping sprites.
 - `chunk_section_paths`, `chunk_section_octree`, and
   `chunk_section_visibility` are `deferred`: stable per-section CPU/GPU
   residency now exists, but a repo-native `SectionOcclusionGraph`/octree and

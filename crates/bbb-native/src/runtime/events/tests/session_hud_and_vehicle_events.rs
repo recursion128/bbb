@@ -523,8 +523,8 @@ fn hud_session_events_update_world_and_world_counters() {
     .unwrap();
     tx.try_send(NetEvent::Play(PlayClientbound::TabList(
         bbb_protocol::packets::TabList {
-            header: Some("Welcome".to_string()),
-            footer: None,
+            header: bbb_protocol::RichTextComponent::plain("Welcome"),
+            footer: bbb_protocol::RichTextComponent::plain(""),
         },
     )))
     .unwrap();
@@ -551,7 +551,14 @@ fn hud_session_events_update_world_and_world_counters() {
     assert_eq!(boss.overlay, "progress");
     assert!(boss.darken_screen);
     assert!(boss.create_world_fog);
-    assert_eq!(world.tab_list().header.as_deref(), Some("Welcome"));
+    assert_eq!(
+        world
+            .tab_list()
+            .header
+            .as_ref()
+            .map(bbb_protocol::RichTextComponent::text),
+        Some("Welcome")
+    );
     assert_eq!(world.tab_list().footer, None);
     assert_eq!(world.difficulty().difficulty, "hard");
     assert!(world.difficulty().difficulty_locked);

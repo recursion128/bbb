@@ -188,6 +188,16 @@ impl RichTextComponent {
         &self.styled
     }
 
+    /// Mirrors `Component.getString().isEmpty()` for packet consumers that
+    /// turn an empty component into an absent presentation value.
+    ///
+    /// The legacy text summary intentionally substitutes `"component nbt"`
+    /// when no display run exists, so emptiness must come from the canonical
+    /// styled projection instead of [`Self::text`].
+    pub fn is_empty(&self) -> bool {
+        self.styled.is_empty()
+    }
+
     pub fn component(&self) -> &NbtSummaryValue {
         &self.component
     }

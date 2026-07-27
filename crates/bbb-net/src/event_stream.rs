@@ -1525,8 +1525,8 @@ mod tests {
         );
 
         let tab_list = packets::TabList {
-            header: Some("Welcome".to_string()),
-            footer: None,
+            header: bbb_protocol::RichTextComponent::plain("Welcome"),
+            footer: bbb_protocol::RichTextComponent::plain(""),
         };
         assert_matching_event!(
             PlayClientbound::TabList(tab_list.clone()),

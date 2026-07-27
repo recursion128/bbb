@@ -1241,21 +1241,26 @@ mod tests {
     }
 
     #[test]
-    fn play_tab_list_keeps_only_rich_component_canonical_state_open() {
+    fn play_tab_list_closes_rich_component_canonical_state_and_presentation() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
             .iter()
             .find(|entry| entry.state == "play" && entry.constant_name == "CLIENTBOUND_TAB_LIST")
             .expect("tab list coverage row");
-        let partial: BTreeSet<_> = entry
-            .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(partial, BTreeSet::from(["canonical_apply"]));
+        for dimension in [
+            "canonical_apply",
+            "decode",
+            "ownership",
+            "runtime_side_effect",
+            "tests",
+        ] {
+            assert_eq!(
+                entry.coverage[dimension].status,
+                PacketCoverageStatus::Complete,
+                "{dimension}"
+            );
+        }
     }
 
     #[test]

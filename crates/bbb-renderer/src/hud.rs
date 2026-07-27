@@ -17487,7 +17487,6 @@ fn hud_wrap_chat_messages(
     lines
 }
 
-#[cfg(test)]
 fn hud_wrap_chat_runs(
     runs: &[HudStyledTextRun],
     max_width: u32,

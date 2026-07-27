@@ -4273,11 +4273,12 @@
     "play/clientbound/CLIENTBOUND_TAB_LIST": {
       "canonical_apply": {
         "evidence": [
+          "crates/bbb-protocol/src/packets/server_presentation.rs#decodes_tab_list_header_footer",
           "crates/bbb-world/src/client/hud.rs#apply_tab_list",
+          "crates/bbb-world/src/client/hud.rs#tab_list_preserves_components_and_empty_text_clears_each_field",
           "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleTabListCustomisation"
         ],
-        "gap": "docs/unsupported-features.md#hud-overlay-and-screen-render-surfaces",
-        "status": "partial"
+        "status": "complete"
       },
       "decode": {
         "evidence": [
@@ -4295,18 +4296,18 @@
       "runtime_side_effect": {
         "evidence": [
           "crates/bbb-native/src/runtime/render_extract.rs#hud_player_list_from_world",
-          "crates/bbb-renderer/src/hud.rs#push_hud_player_list"
+          "crates/bbb-renderer/src/hud/player_list.rs#push_hud_player_list"
         ],
         "status": "complete"
       },
       "tests": {
         "evidence": [
           "crates/bbb-protocol/src/packets/server_presentation.rs#decodes_tab_list_header_footer",
-          "crates/bbb-world/src/client/hud.rs#tab_list_empty_components_clear_header_and_footer",
+          "crates/bbb-world/src/client/hud.rs#tab_list_preserves_components_and_empty_text_clears_each_field",
           "crates/bbb-net/src/probe/play.rs#probe_applies_hud_session_packets_to_world",
           "crates/bbb-native/src/runtime/tests.rs#hud_player_list_projection_uses_scores_rich_names_and_vanilla_visibility",
           "crates/bbb-renderer/src/hud/player_list.rs#grid_and_ping_thresholds_match_vanilla",
-          "crates/bbb-renderer/src/hud.rs#player_list_plain_wrapping_matches_projection_contract"
+          "crates/bbb-renderer/src/hud/player_list.rs#header_footer_wrapping_preserves_style_across_vanilla_width_breaks"
         ],
         "status": "complete"
       }

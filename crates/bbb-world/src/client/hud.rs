@@ -64,8 +64,8 @@ pub struct BossBarState {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TabListState {
-    pub header: Option<String>,
-    pub footer: Option<String>,
+    pub header: Option<RichTextComponent>,
+    pub footer: Option<RichTextComponent>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -242,8 +242,8 @@ impl WorldStore {
 
     pub fn apply_tab_list(&mut self, packet: ProtocolTabList) {
         self.counters.tab_list_packets += 1;
-        self.client_hud.tab_list.header = non_empty_component_string(packet.header);
-        self.client_hud.tab_list.footer = non_empty_component_string(packet.footer);
+        self.client_hud.tab_list.header = non_empty_tab_list_component(packet.header);
+        self.client_hud.tab_list.footer = non_empty_tab_list_component(packet.footer);
     }
 
     pub fn apply_change_difficulty(&mut self, packet: ProtocolChangeDifficulty) {
@@ -449,8 +449,8 @@ fn title_total_ticks(title: &HudTitleState) -> i32 {
         .saturating_add(title.fade_out)
 }
 
-fn non_empty_component_string(component: Option<String>) -> Option<String> {
-    component.filter(|value| !value.is_empty())
+fn non_empty_tab_list_component(component: RichTextComponent) -> Option<RichTextComponent> {
+    (!component.is_empty()).then_some(component)
 }
 
 fn boss_bar_color_name(color: ProtocolBossBarColor) -> &'static str {
@@ -773,28 +773,58 @@ mod tests {
     }
 
     #[test]
-    fn tab_list_empty_components_clear_header_and_footer() {
+    fn tab_list_preserves_components_and_empty_text_clears_each_field() {
         let mut store = WorldStore::new();
 
+        let styled_header = *styled_component("Welcome");
+        let styled_header_nbt = styled_header.component().clone();
         store.apply_tab_list(ProtocolTabList {
-            header: Some("Welcome".to_string()),
-            footer: Some("Online".to_string()),
+            header: styled_header,
+            footer: RichTextComponent::plain("Online"),
         });
-        assert_eq!(store.tab_list().header.as_deref(), Some("Welcome"));
-        assert_eq!(store.tab_list().footer.as_deref(), Some("Online"));
+        let header = store.tab_list().header.as_ref().unwrap();
+        assert_eq!(header.text(), "Welcome");
+        assert_eq!(header.styled()[0].style.bold, Some(true));
+        assert_eq!(header.styled()[0].style.color, Some(0xFF_55_55));
+        assert_eq!(header.component(), &styled_header_nbt);
+        assert_eq!(
+            store
+                .tab_list()
+                .footer
+                .as_ref()
+                .map(RichTextComponent::text),
+            Some("Online")
+        );
+        let restored: WorldStore =
+            serde_json::from_value(serde_json::to_value(&store).unwrap()).unwrap();
+        assert_eq!(restored.tab_list(), store.tab_list());
 
         store.apply_tab_list(ProtocolTabList {
-            header: None,
-            footer: Some("Still online".to_string()),
+            header: RichTextComponent::plain(""),
+            footer: RichTextComponent::plain("Still online"),
         });
         assert_eq!(store.tab_list().header, None);
-        assert_eq!(store.tab_list().footer.as_deref(), Some("Still online"));
+        assert_eq!(
+            store
+                .tab_list()
+                .footer
+                .as_ref()
+                .map(RichTextComponent::text),
+            Some("Still online")
+        );
 
         store.apply_tab_list(ProtocolTabList {
-            header: Some("Players".to_string()),
-            footer: None,
+            header: RichTextComponent::plain("Players"),
+            footer: RichTextComponent::plain(""),
         });
-        assert_eq!(store.tab_list().header.as_deref(), Some("Players"));
+        assert_eq!(
+            store
+                .tab_list()
+                .header
+                .as_ref()
+                .map(RichTextComponent::text),
+            Some("Players")
+        );
         assert_eq!(store.tab_list().footer, None);
         assert_eq!(store.counters().tab_list_packets, 3);
     }
