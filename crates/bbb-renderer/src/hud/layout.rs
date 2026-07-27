@@ -121,6 +121,48 @@ pub(super) fn absolute_hud_rect(x: f32, y: f32, width: u32, height: u32) -> HudR
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(super) struct HudSpyglassScopeLayout {
+    pub(super) texture: HudRect,
+    /// Vanilla submission order: bottom, top, left, right.
+    pub(super) masks: [HudRect; 4],
+}
+
+pub(super) fn hud_spyglass_scope_layout(
+    surface_size: PhysicalSize<u32>,
+    scale: f32,
+) -> HudSpyglassScopeLayout {
+    let gui_width = surface_size.width.max(1);
+    let gui_height = surface_size.height.max(1);
+    let source_size = gui_width.min(gui_height);
+    let scaled_size = ((f64::from(source_size) * f64::from(scale))
+        .floor()
+        .clamp(0.0, f64::from(u32::MAX))) as u32;
+    let left = (i64::from(gui_width) - i64::from(scaled_size)) / 2;
+    let top = (i64::from(gui_height) - i64::from(scaled_size)) / 2;
+    let right = left + i64::from(scaled_size);
+    let bottom = top + i64::from(scaled_size);
+
+    HudSpyglassScopeLayout {
+        texture: absolute_hud_rect(left as f32, top as f32, scaled_size, scaled_size),
+        masks: [
+            vanilla_fill_hud_rect(0, bottom, i64::from(gui_width), i64::from(gui_height)),
+            vanilla_fill_hud_rect(0, 0, i64::from(gui_width), top),
+            vanilla_fill_hud_rect(0, top, left, bottom),
+            vanilla_fill_hud_rect(right, top, i64::from(gui_width), bottom),
+        ],
+    }
+}
+
+fn vanilla_fill_hud_rect(x0: i64, y0: i64, x1: i64, y1: i64) -> HudRect {
+    absolute_hud_rect(
+        x0.min(x1) as f32,
+        y0.min(y1) as f32,
+        u32::try_from(x0.abs_diff(x1)).unwrap_or(u32::MAX),
+        u32::try_from(y0.abs_diff(y1)).unwrap_or(u32::MAX),
+    )
+}
+
 pub(super) fn hud_rect_bounds(rect: HudRect) -> (f32, f32, f32, f32) {
     (
         rect.x,
@@ -1435,6 +1477,104 @@ mod tests {
         assert_f32_near(vertices[2].position[1], -0.011111111);
         assert_eq!(vertices[0].uv, [0.0, 0.0]);
         assert_eq!(vertices[2].uv, [1.0, 1.0]);
+    }
+
+    #[test]
+    fn spyglass_scope_layout_centers_square_and_preserves_vanilla_mask_order() {
+        let layout = hud_spyglass_scope_layout(PhysicalSize::new(1920, 1080), 0.5);
+        assert_eq!(
+            layout.texture,
+            HudRect {
+                x: 690.0,
+                y: 270.0,
+                width: 540,
+                height: 540,
+            }
+        );
+        assert_eq!(
+            layout.masks,
+            [
+                HudRect {
+                    x: 0.0,
+                    y: 810.0,
+                    width: 1920,
+                    height: 270,
+                },
+                HudRect {
+                    x: 0.0,
+                    y: 0.0,
+                    width: 1920,
+                    height: 270,
+                },
+                HudRect {
+                    x: 0.0,
+                    y: 270.0,
+                    width: 690,
+                    height: 540,
+                },
+                HudRect {
+                    x: 1230.0,
+                    y: 270.0,
+                    width: 690,
+                    height: 540,
+                },
+            ]
+        );
+
+        let oversized = hud_spyglass_scope_layout(PhysicalSize::new(1920, 1080), 1.125);
+        assert_eq!(
+            oversized.texture,
+            HudRect {
+                x: 352.0,
+                y: -67.0,
+                width: 1215,
+                height: 1215,
+            }
+        );
+        assert_eq!(
+            oversized.masks,
+            [
+                HudRect {
+                    x: 0.0,
+                    y: 1080.0,
+                    width: 1920,
+                    height: 68,
+                },
+                HudRect {
+                    x: 0.0,
+                    y: -67.0,
+                    width: 1920,
+                    height: 67,
+                },
+                HudRect {
+                    x: 0.0,
+                    y: -67.0,
+                    width: 352,
+                    height: 1215,
+                },
+                HudRect {
+                    x: 1567.0,
+                    y: -67.0,
+                    width: 353,
+                    height: 1215,
+                },
+            ]
+        );
+
+        let tall = hud_spyglass_scope_layout(PhysicalSize::new(800, 1200), 0.5);
+        assert_eq!(
+            tall.texture,
+            HudRect {
+                x: 200.0,
+                y: 400.0,
+                width: 400,
+                height: 400,
+            }
+        );
+        assert_eq!(tall.masks[0].height, 400);
+        assert_eq!(tall.masks[1].height, 400);
+        assert_eq!(tall.masks[2].width, 200);
+        assert_eq!(tall.masks[3].width, 200);
     }
 
     #[test]

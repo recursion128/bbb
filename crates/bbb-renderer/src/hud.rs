@@ -81,13 +81,14 @@ use self::layout::{
     hud_item_cooldown_rect, hud_item_count_digit_hud_rect, hud_item_durability_bar_rect,
     hud_locator_arrow_rect, hud_locator_marker_rect, hud_overlay_message_text_origin,
     hud_player_heart_instances, hud_quad_vertices, hud_rect_bounds, hud_rect_intersection_uv_span,
-    hud_styled_quad_vertices, hud_subtitle_text_origin, hud_title_text_origin,
-    hud_vehicle_heart_fill, hud_vehicle_max_hearts, inventory_background_hud_rect,
-    inventory_slot_highlight_hud_rect, inventory_slot_item_hud_rect, nine_slice_segments,
-    tiled_sprite_segments, vehicle_heart_hud_rect, HudAirBubbleIcon, HudIconFill, HudRect,
-    HudTooltipSpriteLayer, HUD_AIR_BUBBLES_PER_ROW, HUD_ARMOR_ICONS_PER_ROW, HUD_BOSS_BAR_WIDTH,
-    HUD_FOOD_ICONS_PER_ROW, HUD_INVENTORY_ITEM_SIZE, HUD_SINGLE_HEALTH_ROW_HEIGHT,
-    HUD_SUBTITLE_TEXT_SCALE, HUD_TITLE_TEXT_SCALE, HUD_VEHICLE_HEARTS_PER_ROW,
+    hud_spyglass_scope_layout, hud_styled_quad_vertices, hud_subtitle_text_origin,
+    hud_title_text_origin, hud_vehicle_heart_fill, hud_vehicle_max_hearts,
+    inventory_background_hud_rect, inventory_slot_highlight_hud_rect, inventory_slot_item_hud_rect,
+    nine_slice_segments, tiled_sprite_segments, vehicle_heart_hud_rect, HudAirBubbleIcon,
+    HudIconFill, HudRect, HudTooltipSpriteLayer, HUD_AIR_BUBBLES_PER_ROW, HUD_ARMOR_ICONS_PER_ROW,
+    HUD_BOSS_BAR_WIDTH, HUD_FOOD_ICONS_PER_ROW, HUD_INVENTORY_ITEM_SIZE,
+    HUD_SINGLE_HEALTH_ROW_HEIGHT, HUD_SUBTITLE_TEXT_SCALE, HUD_TITLE_TEXT_SCALE,
+    HUD_VEHICLE_HEARTS_PER_ROW,
 };
 pub use self::player_list::{HudPlayerList, HudPlayerListEntry, HudPlayerListScore};
 pub(crate) use self::player_list::{HudPlayerListHeartSprites, HudPlayerListRuntime};
@@ -2799,6 +2800,16 @@ impl Renderer {
         self.counters.hud_crosshair_width = width;
         self.counters.hud_crosshair_height = height;
         self.hud_crosshair = Some(crosshair);
+        Ok(())
+    }
+
+    pub fn upload_hud_spyglass_scope(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_spyglass_scope_texture = Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
@@ -5742,6 +5753,22 @@ impl Renderer {
             })
             .flatten();
 
+        if !self.hide_gui {
+            if let (Some(scope), Some(texture)) = (
+                self.hud_spyglass_scope,
+                self.hud_spyglass_scope_texture.as_ref(),
+            ) {
+                push_hud_spyglass_scope(
+                    &mut vertices,
+                    &mut commands,
+                    texture,
+                    &self.hud_white_pixel,
+                    surface_size,
+                    scope,
+                );
+            }
+        }
+
         if let Some(debug_crosshair) = debug_crosshair {
             push_hud_debug_crosshair(
                 &mut vertices,
@@ -8442,6 +8469,32 @@ fn push_hud_draw_with_uv_and_tint<'a>(
     vertices.extend_from_slice(&hud_quad_vertices(surface_size, rect, uv, tint));
     let end = vertices.len() as u32;
     commands.push(HudDrawCommand::Sprite { sprite, start, end });
+}
+
+fn push_hud_spyglass_scope<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    texture: &'a HudSpriteGpu,
+    white_pixel: &'a HudSpriteGpu,
+    surface_size: PhysicalSize<u32>,
+    scope: HudSpyglassScope,
+) {
+    let layout = hud_spyglass_scope_layout(surface_size, scope.scale);
+    push_hud_draw(vertices, commands, texture, surface_size, layout.texture);
+    for mask in layout.masks {
+        push_hud_draw_with_uv_and_tint(
+            vertices,
+            commands,
+            white_pixel,
+            surface_size,
+            mask,
+            HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+            [0.0, 0.0, 0.0, 1.0],
+        );
+    }
 }
 
 fn push_hud_sleep_overlay<'a>(
@@ -19506,6 +19559,60 @@ mod tests {
             renderer.collect_hud_draws().commands.len() > toast_commands,
             "unchanged crosshair state returns immediately when F1 is disabled"
         );
+    }
+
+    #[test]
+    fn spyglass_scope_draws_texture_and_masks_before_crosshair_and_obeys_hide_gui() {
+        let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+            return;
+        };
+        renderer
+            .upload_hud_spyglass_scope(2, 2, &[0, 255, 0, 255].repeat(4))
+            .expect("scope");
+        renderer
+            .upload_hud_crosshair(2, 2, &[255, 0, 0, 255].repeat(4))
+            .expect("crosshair");
+        renderer.set_hud_spyglass_scope(Some(HudSpyglassScope { scale: 0.5 }));
+
+        let draws = renderer.collect_hud_draws();
+        assert_eq!(draws.commands.len(), 6);
+        assert_eq!(draws.vertices.len(), 36);
+        let HudDrawCommand::Sprite {
+            sprite: scope_sprite,
+            ..
+        } = &draws.commands[0]
+        else {
+            panic!("scope texture command");
+        };
+        assert!(std::ptr::eq(
+            *scope_sprite,
+            renderer.hud_spyglass_scope_texture.as_ref().unwrap()
+        ));
+        for command in &draws.commands[1..=4] {
+            let HudDrawCommand::Sprite { sprite, .. } = command else {
+                panic!("scope mask command");
+            };
+            assert!(std::ptr::eq(*sprite, &renderer.hud_white_pixel));
+        }
+        let HudDrawCommand::Sprite {
+            sprite: crosshair_sprite,
+            ..
+        } = &draws.commands[5]
+        else {
+            panic!("crosshair command");
+        };
+        assert!(std::ptr::eq(
+            *crosshair_sprite,
+            renderer.hud_crosshair.as_ref().unwrap()
+        ));
+        drop(draws);
+
+        renderer.set_hide_gui(true);
+        assert!(renderer.collect_hud_draws().commands.is_empty());
+        assert!(renderer.hud_spyglass_scope.is_some());
+        renderer.set_hide_gui(false);
+        renderer.set_hud_spyglass_scope(Some(HudSpyglassScope { scale: f32::NAN }));
+        assert!(renderer.hud_spyglass_scope.is_none());
     }
 
     #[test]

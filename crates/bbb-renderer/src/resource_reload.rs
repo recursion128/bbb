@@ -205,6 +205,7 @@ macro_rules! take_hud_resource_owners {
         $take_owner!(hud_win_edition);
         $take_owner!(hud_win_credits_vignette);
         $take_owner!(hud_demo_popup_background);
+        $take_owner!(hud_spyglass_scope_texture);
         $take_owner!(hud_crosshair);
         $take_owner!(hud_hotbar);
         $take_owner!(hud_hotbar_selection);
@@ -582,6 +583,35 @@ mod tests {
             .expect("frame after rollback")
             .pixel(2, 2);
         assert_eq!(after, before);
+    }
+
+    #[test]
+    fn failed_spyglass_scope_reload_restores_the_previous_pixel_owner() {
+        let Some(mut renderer) = Renderer::new_offscreen(16, 16) else {
+            return;
+        };
+        renderer.set_hud_spyglass_scope(Some(crate::HudSpyglassScope { scale: 1.0 }));
+        renderer
+            .upload_hud_spyglass_scope(1, 1, &[255, 0, 0, 255])
+            .expect("old scope");
+        let before = renderer
+            .render_offscreen_frame()
+            .expect("frame before reload")
+            .pixel(8, 8);
+
+        renderer
+            .transactional_resource_reload(|renderer| -> Result<()> {
+                renderer.upload_hud_spyglass_scope(1, 1, &[0, 0, 255, 255])?;
+                Err(anyhow!("injected scope failure"))
+            })
+            .expect_err("injected reload failure");
+
+        let after = renderer
+            .render_offscreen_frame()
+            .expect("frame after rollback")
+            .pixel(8, 8);
+        assert_eq!(after, before);
+        assert!(after[0] > 128 && after[2] < 128);
     }
 
     #[test]

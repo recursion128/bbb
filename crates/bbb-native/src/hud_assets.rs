@@ -17,6 +17,8 @@ use bbb_item_model::font::{
 
 use crate::sign_scene::sign_model_wood;
 
+const SPYGLASS_SCOPE_TEXTURE_PATH: &str = "textures/misc/spyglass_scope.png";
+
 pub(crate) fn load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: Option<&PackRoots>) {
     let Some(roots) = roots else {
         tracing::warn!("continuing without vanilla HUD sprites because pack roots are unavailable");
@@ -39,6 +41,12 @@ pub(crate) fn try_load_hud_textures(
         &vignette.rgba,
         vignette.texture_metadata.blur,
         vignette.texture_metadata.clamp,
+    )?;
+    let spyglass_scope = load_spyglass_scope_image(roots)?;
+    renderer.upload_hud_spyglass_scope(
+        spyglass_scope.width,
+        spyglass_scope.height,
+        &spyglass_scope.rgba,
     )?;
     let win_logo = gui_texture(
         roots,
@@ -1688,6 +1696,14 @@ fn load_vignette_image(roots: &PackRoots) -> Result<SpriteImage> {
     )
 }
 
+fn load_spyglass_scope_image(roots: &PackRoots) -> Result<SpriteImage> {
+    gui_texture(
+        roots,
+        SPYGLASS_SCOPE_TEXTURE_PATH,
+        "minecraft:textures/misc/spyglass_scope",
+    )
+}
+
 fn hud_sprite<'a>(
     sprites: &'a HashMap<String, SpriteImage>,
     path: &str,
@@ -2120,6 +2136,28 @@ mod tests {
         assert_eq!(image.rgba.len(), 8 * 4 * 4);
         assert!(image.texture_metadata.blur);
         assert!(!image.texture_metadata.clamp);
+        std::fs::remove_dir_all(temp).unwrap();
+    }
+
+    #[test]
+    fn spyglass_scope_texture_loads_from_the_selected_resource_stack() {
+        let temp = unique_temp_dir("bbb-spyglass-scope-texture");
+        let sources = temp.join("sources").join("26.1");
+        let texture_path = sources
+            .join("assets")
+            .join("minecraft")
+            .join(SPYGLASS_SCOPE_TEXTURE_PATH);
+        std::fs::create_dir_all(texture_path.parent().unwrap()).unwrap();
+        image::RgbaImage::from_pixel(16, 8, image::Rgba([17, 19, 23, 255]))
+            .save(&texture_path)
+            .unwrap();
+        let roots = PackRoots::from_paths(temp.clone(), sources, temp.join("unused-assets"), None);
+
+        let image = load_spyglass_scope_image(&roots).unwrap();
+
+        assert_eq!(image.id, "minecraft:textures/misc/spyglass_scope");
+        assert_eq!((image.width, image.height), (16, 8));
+        assert_eq!(&image.rgba[..4], &[17, 19, 23, 255]);
         std::fs::remove_dir_all(temp).unwrap();
     }
 
