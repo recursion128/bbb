@@ -5,11 +5,11 @@ use bbb_renderer::{
     hud_creative_inventory_slot_layouts, hud_creative_inventory_tab_x,
     HudCreativeInventoryBackground, HudCreativeInventoryChrome,
     HudCreativeInventorySlot as CreativeInventorySlot, HudCreativeInventorySlotLayoutKind,
-    HudCreativeInventoryTab, HudCreativeInventoryTabRow, HudInventoryItem, HudInventoryScreen,
-    HudInventorySlot, HudInventoryTextInputDecoration, HudInventoryTextLabel, HudInventoryTooltip,
-    HudInventoryTooltipLine, HUD_CREATIVE_INVENTORY_HEIGHT, HUD_CREATIVE_INVENTORY_WIDTH,
-    HUD_CREATIVE_PICKER_COLUMNS, HUD_CREATIVE_SEARCH_WIDTH, HUD_CREATIVE_SEARCH_X,
-    HUD_CREATIVE_SEARCH_Y,
+    HudCreativeInventoryTab, HudCreativeInventoryTabRow, HudEntityPreview, HudInventoryItem,
+    HudInventoryScreen, HudInventorySlot, HudInventoryTextInputDecoration, HudInventoryTextLabel,
+    HudInventoryTooltip, HudInventoryTooltipLine, HUD_CREATIVE_INVENTORY_HEIGHT,
+    HUD_CREATIVE_INVENTORY_WIDTH, HUD_CREATIVE_PICKER_COLUMNS, HUD_CREATIVE_SEARCH_WIDTH,
+    HUD_CREATIVE_SEARCH_X, HUD_CREATIVE_SEARCH_Y,
 };
 use bbb_world::{
     CreativeInventoryBackground, CreativeInventorySnapshot, CreativeInventoryTabRow,
@@ -26,9 +26,9 @@ use crate::{
 };
 
 use super::{
-    block_item_3d_model, hud_item_icon_for_stack, hud_item_tooltip, localized_gui_text,
-    localized_gui_text_with_args, push_hud_inventory_cursor_item, wall_clock_millis,
-    HudItemTooltipContent,
+    block_item_3d_model, hud_entity_in_inventory_follows_mouse_preview, hud_item_icon_for_stack,
+    hud_item_tooltip, localized_gui_text, localized_gui_text_with_args,
+    push_hud_inventory_cursor_item, wall_clock_millis, HudItemTooltipContent,
 };
 
 const CREATIVE_SEARCH_TEXT_COLOR: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
@@ -113,6 +113,15 @@ pub(super) fn hud_creative_inventory_screen(
         &state,
         advanced_item_tooltips,
     );
+    let entity_previews = hud_creative_inventory_player_preview(
+        world,
+        item_runtime,
+        selected.tab_type,
+        &state,
+        partial_tick,
+    )
+    .into_iter()
+    .collect();
 
     Some(HudInventoryScreen {
         width: HUD_CREATIVE_INVENTORY_WIDTH,
@@ -124,13 +133,43 @@ pub(super) fn hud_creative_inventory_screen(
         floating_items,
         foreground_items: Vec::new(),
         ghost_items: Vec::new(),
-        entity_previews: Vec::new(),
+        entity_previews,
         text_labels,
         scroll_area: None,
         preedit_overlay: None,
         hovered_slot_id: hovered_slot.map(CreativeInventorySlot::hud_id),
         tooltip,
     })
+}
+
+pub(super) fn hud_creative_inventory_player_preview(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    selected_tab_type: CreativeInventoryTabType,
+    state: &CreativeInventoryHudState,
+    partial_tick: f32,
+) -> Option<HudEntityPreview> {
+    const X0: i32 = 73;
+    const Y0: i32 = 6;
+    const X1: i32 = 105;
+    const Y1: i32 = 49;
+    const SCALE: f32 = 20.0;
+    const OFFSET_Y: f32 = 0.0625;
+
+    if selected_tab_type != CreativeInventoryTabType::Inventory {
+        return None;
+    }
+    let local_player_id = world.local_player_id()?;
+    hud_entity_in_inventory_follows_mouse_preview(
+        world,
+        item_runtime,
+        local_player_id,
+        state.cursor_position,
+        partial_tick,
+        [X0, Y0, X1, Y1],
+        SCALE,
+        OFFSET_Y,
+    )
 }
 
 pub(super) fn creative_inventory_narration_frame(

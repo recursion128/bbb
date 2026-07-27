@@ -79,9 +79,10 @@ use bbb_protocol::stat_types::{
 };
 use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 use bbb_world::{
-    BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState, HeightmapData, LightData,
-    LocalPlayerPoseState, PaletteDomain, PaletteKind, PalettedContainerData, RegistryPacketEntry,
-    WorldBlockDestroyProfile, WorldDimension, TRIM_MATERIAL_REGISTRY, TRIM_PATTERN_REGISTRY,
+    BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState, CreativeInventoryTabType,
+    HeightmapData, LightData, LocalPlayerPoseState, PaletteDomain, PaletteKind,
+    PalettedContainerData, RegistryPacketEntry, WorldBlockDestroyProfile, WorldDimension,
+    TRIM_MATERIAL_REGISTRY, TRIM_PATTERN_REGISTRY,
 };
 
 #[test]
@@ -11998,6 +11999,83 @@ fn hud_inventory_screen_projects_local_player_entity_preview() {
     );
     assert_eq!(preview.entity.render_state.outline_color, 0);
     assert!(!preview.entity.render_state.appears_glowing);
+}
+
+#[test]
+fn hud_creative_inventory_tab_projects_local_player_entity_preview_only_on_inventory_tab() {
+    let mut world = world_with_dimension_height(0, "minecraft:overworld", 384);
+    world.apply_add_entity(test_add_entity(42, VANILLA_ENTITY_TYPE_PLAYER_ID));
+    let state = CreativeInventoryHudState {
+        selected_tab: "minecraft:inventory".to_string(),
+        search_text: String::new(),
+        search_cursor: 0,
+        search_selection: 0,
+        search_focused: false,
+        scroll_row: 0,
+        hovered: None,
+        cursor_position: Some((60, 80)),
+    };
+
+    assert!(creative_inventory::hud_creative_inventory_player_preview(
+        &world,
+        None,
+        CreativeInventoryTabType::Category,
+        &state,
+        0.0,
+    )
+    .is_none());
+
+    let preview = creative_inventory::hud_creative_inventory_player_preview(
+        &world,
+        None,
+        CreativeInventoryTabType::Inventory,
+        &state,
+        0.0,
+    )
+    .expect("creative inventory player preview");
+    assert_eq!(preview.entity.entity_id, 42);
+    assert_eq!(preview.lighting, GuiItemLightingEntry::EntityInUi);
+    assert_eq!(
+        preview.rect,
+        HudEntityPreviewRect {
+            x: 73,
+            y: 6,
+            width: 32,
+            height: 43,
+        }
+    );
+    assert_eq!(preview.scissor, None);
+    assert_eq!(preview.scale, 20.0);
+    assert!(preview.depth_isolated);
+    assert_close3(preview.translation, [0.0, 0.9625, 0.0]);
+
+    let x_angle = ((89.0_f32 - 60.0) / 40.0).atan();
+    let y_angle = ((27.5_f32 - 80.0) / 40.0).atan();
+    let expected_yaw = x_angle * 20.0;
+    let expected_pitch = y_angle * 20.0;
+    let expected_camera = quaternion_x(expected_pitch.to_radians());
+    assert!(
+        (preview.entity.render_state.body_rot - (180.0 + expected_yaw)).abs() < 2.0e-5,
+        "body rotation {:?}, expected {:?}",
+        preview.entity.render_state.body_rot,
+        180.0 + expected_yaw
+    );
+    assert!(
+        (preview.entity.render_state.head_yaw - expected_yaw).abs() < 2.0e-5,
+        "head yaw {:?}, expected {expected_yaw:?}",
+        preview.entity.render_state.head_yaw
+    );
+    assert!(
+        (preview.entity.render_state.head_pitch + expected_pitch).abs() < 2.0e-5,
+        "head pitch {:?}, expected {:?}",
+        preview.entity.render_state.head_pitch,
+        -expected_pitch
+    );
+    assert_close4(
+        preview.rotation,
+        quaternion_mul([0.0, 0.0, 1.0, 0.0], expected_camera),
+    );
+    assert_eq!(preview.override_camera_rotation, Some(expected_camera));
 }
 
 #[test]

@@ -725,8 +725,6 @@ Environment:
 
 Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 
-- Render the creative inventory-tab player preview through the existing
-  entity-in-UI surface.
 - `chunk_section_paths`, `chunk_section_octree`, and
   `chunk_section_visibility` are `deferred`: stable per-section CPU/GPU
   residency now exists, but a repo-native `SectionOcclusionGraph`/octree and

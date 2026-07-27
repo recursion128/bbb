@@ -11048,7 +11048,7 @@ fn hud_local_inventory_entity_preview(
         world,
         item_runtime,
         local_player_id,
-        local_state,
+        local_state.cursor_position,
         partial_tick,
         [X0, Y0, X1, Y1],
         SCALE,
@@ -11074,7 +11074,7 @@ fn hud_mount_inventory_entity_preview(
         world,
         item_runtime,
         mount_entity_id,
-        local_state,
+        local_state.cursor_position,
         partial_tick,
         [X0, Y0, X1, Y1],
         SCALE,
@@ -11086,7 +11086,7 @@ fn hud_entity_in_inventory_follows_mouse_preview(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     entity_id: i32,
-    local_state: &InventoryHudLocalState,
+    cursor_position: Option<(i32, i32)>,
     partial_tick: f32,
     rect: [i32; 4],
     scale: f32,
@@ -11106,8 +11106,7 @@ fn hud_entity_in_inventory_follows_mouse_preview(
     let height = bounds.max[1] - bounds.min[1];
     let center_x = (x0 + x1) as f32 / 2.0;
     let center_y = (y0 + y1) as f32 / 2.0;
-    let (mouse_x, mouse_y) = local_state
-        .cursor_position
+    let (mouse_x, mouse_y) = cursor_position
         .map(|(x, y)| (x as f32, y as f32))
         .unwrap_or((center_x, center_y));
     let x_angle = ((center_x - mouse_x) / MOUSE_FOLLOW_DIVISOR).atan();
