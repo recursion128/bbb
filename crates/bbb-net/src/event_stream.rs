@@ -1396,7 +1396,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn play_session_security_precedes_login_and_player_info_events_without_responses() {
+    async fn play_session_and_player_info_packets_emit_matching_events_without_responses() {
         let (client, mut server) = raw_connection_pair().await;
         let (events_tx, mut events_rx) = mpsc::channel(6);
         let (_commands_tx, commands_rx) = mpsc::channel(1);
