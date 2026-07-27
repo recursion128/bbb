@@ -186,6 +186,57 @@ impl ItemModelDrawTarget {
     }
 }
 
+/// Physical-pixel GUI clip carried by one resident item submission.
+///
+/// This is frame-varying placement state, never part of resident asset
+/// identity. Construction rejects empty rectangles; the render pass clamps the
+/// right/bottom edge to its current attachment before issuing a draw.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ItemModelScissorRect {
+    x: u32,
+    y: u32,
+    width: u32,
+    height: u32,
+}
+
+impl ItemModelScissorRect {
+    pub fn new(x: u32, y: u32, width: u32, height: u32) -> Option<Self> {
+        (width > 0 && height > 0).then_some(Self {
+            x,
+            y,
+            width,
+            height,
+        })
+    }
+
+    pub fn x(self) -> u32 {
+        self.x
+    }
+
+    pub fn y(self) -> u32 {
+        self.y
+    }
+
+    pub fn width(self) -> u32 {
+        self.width
+    }
+
+    pub fn height(self) -> u32 {
+        self.height
+    }
+
+    pub(crate) fn clipped_to(self, width: u32, height: u32) -> Option<Self> {
+        let right = self.x.saturating_add(self.width).min(width);
+        let bottom = self.y.saturating_add(self.height).min(height);
+        (self.x < right && self.y < bottom).then_some(Self {
+            x: self.x,
+            y: self.y,
+            width: right - self.x,
+            height: bottom - self.y,
+        })
+    }
+}
+
 /// Narrow per-frame item submission. Transform, tint, light, overlay, foil and
 /// order may change every frame without changing the resident asset key.
 #[derive(Debug, Clone, PartialEq)]
@@ -199,6 +250,7 @@ pub struct ItemModelInstanceRecord {
     pub target: ItemModelDrawTarget,
     pub phase: ItemModelDrawPhase,
     pub submit_order: u32,
+    pub scissor: Option<ItemModelScissorRect>,
 }
 
 impl ItemModelInstanceRecord {
@@ -224,7 +276,13 @@ impl ItemModelInstanceRecord {
             target,
             phase,
             submit_order,
+            scissor: None,
         }
+    }
+
+    pub fn with_scissor(mut self, scissor: Option<ItemModelScissorRect>) -> Self {
+        self.scissor = scissor;
+        self
     }
 }
 
@@ -277,6 +335,7 @@ pub struct ItemModelInstanceRequest {
     pub target: ItemModelDrawTarget,
     pub phase: ItemModelDrawPhase,
     pub submit_order: u32,
+    pub scissor: Option<ItemModelScissorRect>,
 }
 
 /// Atomic resident-item portion of a renderer frame.
@@ -398,6 +457,7 @@ pub(crate) struct ResidentItemModelDraw {
     pub(crate) phase: ItemModelDrawPhase,
     pub(crate) first_instance: u32,
     pub(crate) instance_count: u32,
+    pub(crate) scissor: Option<ItemModelScissorRect>,
 }
 
 pub(crate) struct ItemModelResidency {
@@ -683,6 +743,7 @@ impl ItemModelResidency {
                 if previous.asset == instance.asset
                     && previous.target == instance.target
                     && previous.phase == instance.phase
+                    && previous.scissor == instance.scissor
                     && previous
                         .first_instance
                         .saturating_add(previous.instance_count)
@@ -698,6 +759,7 @@ impl ItemModelResidency {
                 phase: instance.phase,
                 first_instance: index,
                 instance_count: 1,
+                scissor: instance.scissor,
             });
         }
         let previous_capacity = self.instance_buffer.capacity();
@@ -1655,6 +1717,13 @@ impl Renderer {
     ) -> Result<()> {
         self.append_hud_block_item_residency(&mut frame);
         self.append_special_item_residency(&mut frame)?;
+        if frame
+            .instances
+            .iter()
+            .any(|request| request.scissor.is_some() && !request.target.is_gui())
+        {
+            bail!("resident item scissor is only valid for GUI draw targets");
+        }
         self.begin_item_model_frame();
         let mut requested_keys = BTreeSet::new();
         for request in frame.assets {
@@ -1695,6 +1764,7 @@ impl Renderer {
                     request.phase,
                     request.submit_order,
                 )
+                .with_scissor(request.scissor)
             })
             .collect::<Vec<_>>();
         // Composite leaves publish a single monotonically increasing order.
@@ -1768,6 +1838,7 @@ impl Renderer {
                     target: request.target,
                     phase: part.phase,
                     submit_order: request.submit_order,
+                    scissor: request.scissor,
                 });
                 if part.accepts_foil && request.foil.has_foil() {
                     frame.instances.push(ItemModelInstanceRequest {
@@ -1782,6 +1853,7 @@ impl Renderer {
                         target: request.target,
                         phase: ItemModelDrawPhase::Glint,
                         submit_order: request.submit_order,
+                        scissor: request.scissor,
                     });
                 }
             }
@@ -2074,6 +2146,7 @@ mod tests {
                 target: ItemModelDrawTarget::FirstPerson,
                 phase: ItemModelDrawPhase::Solid,
                 submit_order: 0,
+                scissor: None,
             }],
             special_items: Vec::new(),
         }
@@ -2095,6 +2168,7 @@ mod tests {
                 foil: ItemModelFoil::None,
                 target: ItemModelDrawTarget::World,
                 submit_order: 1,
+                scissor: None,
             });
 
         target.append(source);
@@ -2366,6 +2440,58 @@ mod tests {
     }
 
     #[test]
+    fn resident_draw_batching_splits_equal_assets_at_scissor_boundaries() {
+        let Some(mut renderer) = Renderer::new_offscreen(32, 16) else {
+            return;
+        };
+        let mut frame = block_frame(Mat4::IDENTITY);
+        frame.instances[0].target = ItemModelDrawTarget::Gui;
+        frame.instances[0].scissor = ItemModelScissorRect::new(0, 0, 8, 16);
+        let mut second = frame.instances[0].clone();
+        second.transform = Mat4::from_translation(glam::Vec3::X);
+        second.submit_order = 1;
+        second.scissor = None;
+        frame.instances.push(second);
+        renderer.set_item_model_residency_frame(frame).unwrap();
+
+        assert_eq!(renderer.item_model_residency.draws().len(), 2);
+        assert_eq!(
+            renderer.item_model_residency.draws()[0].scissor,
+            ItemModelScissorRect::new(0, 0, 8, 16)
+        );
+        assert_eq!(renderer.item_model_residency.draws()[1].scissor, None);
+    }
+
+    #[test]
+    fn resident_scissor_rejects_empty_and_clips_to_attachment_bounds() {
+        assert_eq!(ItemModelScissorRect::new(0, 0, 0, 1), None);
+        assert_eq!(ItemModelScissorRect::new(0, 0, 1, 0), None);
+        assert_eq!(
+            ItemModelScissorRect::new(6, 7, 8, 9).and_then(|rect| rect.clipped_to(10, 12)),
+            ItemModelScissorRect::new(6, 7, 4, 5)
+        );
+        assert_eq!(
+            ItemModelScissorRect::new(10, 0, 1, 1).and_then(|rect| rect.clipped_to(10, 12)),
+            None
+        );
+    }
+
+    #[test]
+    fn resident_scissor_rejects_non_gui_targets() {
+        let Some(mut renderer) = Renderer::new_offscreen(16, 16) else {
+            return;
+        };
+        let mut frame = block_frame(Mat4::IDENTITY);
+        frame.instances[0].scissor = ItemModelScissorRect::new(0, 0, 8, 8);
+        let error = renderer
+            .set_item_model_residency_frame(frame)
+            .expect_err("world/first-person scissor must fail closed");
+        assert!(error
+            .to_string()
+            .contains("scissor is only valid for GUI draw targets"));
+    }
+
+    #[test]
     fn reload_rejects_old_key_without_evaluating_builder() {
         let Some(mut renderer) = Renderer::new_offscreen(16, 16) else {
             return;
@@ -2521,6 +2647,7 @@ mod tests {
                     foil: ItemModelFoil::Standard,
                     target: ItemModelDrawTarget::World,
                     submit_order: 7,
+                    scissor: None,
                 },
                 super::super::SpecialItemInstanceRequest {
                     model: SpecialItemModel::EndCube {
@@ -2534,6 +2661,7 @@ mod tests {
                     foil: ItemModelFoil::Standard,
                     target: ItemModelDrawTarget::World,
                     submit_order: 8,
+                    scissor: None,
                 },
                 super::super::SpecialItemInstanceRequest {
                     model: SpecialItemModel::Trident {
@@ -2545,6 +2673,7 @@ mod tests {
                     foil: ItemModelFoil::None,
                     target: ItemModelDrawTarget::Gui,
                     submit_order: 9,
+                    scissor: ItemModelScissorRect::new(1, 2, 3, 4),
                 },
                 super::super::SpecialItemInstanceRequest {
                     model: SpecialItemModel::Banner {
@@ -2563,6 +2692,7 @@ mod tests {
                     foil: ItemModelFoil::None,
                     target: ItemModelDrawTarget::Gui,
                     submit_order: 10,
+                    scissor: None,
                 },
                 super::super::SpecialItemInstanceRequest {
                     model: SpecialItemModel::CopperGolemStatue {
@@ -2575,6 +2705,7 @@ mod tests {
                     foil: ItemModelFoil::None,
                     target: ItemModelDrawTarget::Gui,
                     submit_order: 11,
+                    scissor: None,
                 },
                 super::super::SpecialItemInstanceRequest {
                     model: SpecialItemModel::Head {
@@ -2588,6 +2719,7 @@ mod tests {
                     foil: ItemModelFoil::None,
                     target: ItemModelDrawTarget::Gui,
                     submit_order: 12,
+                    scissor: None,
                 },
                 super::super::SpecialItemInstanceRequest {
                     model: SpecialItemModel::PlayerHead {
@@ -2605,6 +2737,7 @@ mod tests {
                     foil: ItemModelFoil::None,
                     target: ItemModelDrawTarget::Gui,
                     submit_order: 13,
+                    scissor: None,
                 },
             ],
             ..ItemModelResidencyFrame::default()
@@ -2625,6 +2758,11 @@ mod tests {
             .draws()
             .iter()
             .any(|draw| draw.phase == ItemModelDrawPhase::Pattern));
+        assert!(renderer
+            .item_model_residency
+            .draws()
+            .iter()
+            .any(|draw| draw.scissor == ItemModelScissorRect::new(1, 2, 3, 4)));
         for phase in [
             ItemModelDrawPhase::CutoutNoCull,
             ItemModelDrawPhase::CutoutZOffset,

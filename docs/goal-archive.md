@@ -584,3 +584,7 @@
 - **2026-07-26（Special item resident 投影工程闭环）**：十六类
   `minecraft:special` 叶与局部变换现贯通 GUI、手持、掉落物、展示实体和物品框，
   Banner/Shield/Profile/Pot 组件及显式资源包纹理进入原生动态/owned residency。
+- **2026-07-26（Special GUI context 与裁剪工程闭环）**：GUI resident special/
+  composite 叶现与 flat icon 共用 bundle、live state、registry、time/compass 和 seed
+  selector；浮动物品与 stats 行的逐 item 物理像素 scissor 贯通 residency batching
+  与 GPU draw，并在下一无裁剪 draw 前恢复完整 attachment。

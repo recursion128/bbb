@@ -5519,12 +5519,27 @@ impl Renderer {
         stratum: HudScreenStratum,
         target: ItemModelDrawTarget,
     ) {
+        let surface_size = self.surface_size();
         self.visit_hud_block_item_models_for_stratum(stratum, |model, placement, scissor| {
-            // Resident special/composite geometry has no legacy CPU mesh to
-            // clip. Keep it visible during the few scaled/scissored GUI
-            // animations; ordinary block geometry retains exact CPU clipping.
-            if scissor.is_none() || !model.resident_layers.is_empty() {
-                append_hud_block_item_model_residency(frame, model, placement, target);
+            match scissor {
+                None => {
+                    append_hud_block_item_model_residency(frame, model, placement, target, None);
+                }
+                Some(scissor) if !model.resident_layers.is_empty() => {
+                    if let Some(scissor) = hud_item_model_scissor_rect(surface_size, scissor) {
+                        append_hud_block_item_model_residency(
+                            frame,
+                            model,
+                            placement,
+                            target,
+                            Some(scissor),
+                        );
+                    }
+                }
+                Some(_) => {
+                    // Ordinary block geometry retains the exact CPU
+                    // triangle-clipping fallback.
+                }
             }
         });
     }
@@ -7657,6 +7672,7 @@ fn append_hud_block_item_model_residency(
     model: &HudBlockItemModel,
     placement: glam::Mat4,
     target: ItemModelDrawTarget,
+    scissor: Option<crate::item_models::ItemModelScissorRect>,
 ) {
     debug_assert_eq!(model.lighting, GuiItemLightingEntry::Items3d);
     let transform = placement * model.gui_display;
@@ -7695,6 +7711,7 @@ fn append_hud_block_item_model_residency(
                         target,
                         phase: base_phase,
                         submit_order,
+                        scissor,
                     });
                     if foil != ItemModelFoil::None {
                         frame.instances.push(ItemModelInstanceRequest {
@@ -7714,6 +7731,7 @@ fn append_hud_block_item_model_residency(
                                 }
                             },
                             submit_order: submit_order.saturating_add(1),
+                            scissor,
                         });
                     }
                 }
@@ -7728,6 +7746,7 @@ fn append_hud_block_item_model_residency(
                     foil,
                     target,
                     submit_order,
+                    scissor,
                 }),
             }
         }
@@ -7767,6 +7786,7 @@ fn append_hud_block_item_model_residency(
             foil,
             target,
             base_phase,
+            scissor,
         );
         if foil != ItemModelFoil::None {
             push_hud_block_item_instance(
@@ -7777,6 +7797,7 @@ fn append_hud_block_item_model_residency(
                 foil,
                 target,
                 glint_phase,
+                scissor,
             );
         }
     }
@@ -7790,6 +7811,7 @@ fn push_hud_block_item_instance(
     foil: ItemModelFoil,
     target: ItemModelDrawTarget,
     phase: ItemModelDrawPhase,
+    scissor: Option<crate::item_models::ItemModelScissorRect>,
 ) {
     let submit_order = u32::try_from(frame.instances.len() + frame.special_items.len())
         .expect("item instance order overflow");
@@ -7805,6 +7827,7 @@ fn push_hud_block_item_instance(
         target,
         phase,
         submit_order,
+        scissor,
     });
 }
 
@@ -8794,6 +8817,22 @@ fn push_hud_rect_scissor(
     surface_size: PhysicalSize<u32>,
     rect: HudRect,
 ) -> bool {
+    let Some(scissor) = hud_item_model_scissor_rect(surface_size, rect) else {
+        return false;
+    };
+    commands.push(HudDrawCommand::Scissor {
+        x: scissor.x(),
+        y: scissor.y(),
+        width: scissor.width(),
+        height: scissor.height(),
+    });
+    true
+}
+
+fn hud_item_model_scissor_rect(
+    surface_size: PhysicalSize<u32>,
+    rect: HudRect,
+) -> Option<crate::item_models::ItemModelScissorRect> {
     let left = rect.x.floor().max(0.0).min(surface_size.width as f32) as u32;
     let top = rect.y.floor().max(0.0).min(surface_size.height as f32) as u32;
     let right = (rect.x + rect.width as f32)
@@ -8804,16 +8843,12 @@ fn push_hud_rect_scissor(
         .ceil()
         .max(0.0)
         .min(surface_size.height as f32) as u32;
-    if right <= left || bottom <= top {
-        return false;
-    }
-    commands.push(HudDrawCommand::Scissor {
-        x: left,
-        y: top,
-        width: right - left,
-        height: bottom - top,
-    });
-    true
+    crate::item_models::ItemModelScissorRect::new(
+        left,
+        top,
+        right.saturating_sub(left),
+        bottom.saturating_sub(top),
+    )
 }
 
 fn push_hud_inventory_scissor(
@@ -19851,12 +19886,14 @@ mod tests {
             foil: true,
         };
         let mut frame = ItemModelResidencyFrame::default();
+        let scissor = crate::item_models::ItemModelScissorRect::new(4, 5, 6, 7);
 
         append_hud_block_item_model_residency(
             &mut frame,
             &model,
             placement,
             ItemModelDrawTarget::Gui,
+            scissor,
         );
 
         assert!(frame.assets.is_empty());
@@ -19865,6 +19902,7 @@ mod tests {
         let special = &frame.special_items[0];
         assert_eq!(special.target, ItemModelDrawTarget::Gui);
         assert_eq!(special.foil, ItemModelFoil::Standard);
+        assert_eq!(special.scissor, scissor);
         assert_eq!(special.transform, placement * gui_display * leaf_transform);
         assert!(hud_block_item_model_is_renderable(&model));
     }
@@ -20019,6 +20057,147 @@ mod tests {
         assert_eq!(renderer.counters().item_model_vertex_upload_bytes, 0);
         assert_eq!(renderer.counters().item_model_index_upload_bytes, 0);
         assert!(renderer.counters().item_instance_upload_bytes > 0);
+    }
+
+    #[test]
+    fn hud_resident_item_gpu_scissor_clips_one_draw_and_resets_for_the_next() {
+        use crate::camera::ClearColor;
+        use crate::item_models::{
+            ItemModelAssetIdentity, ItemModelAssetRequest, ItemModelAssetSource,
+            ItemModelAtlasKind, ItemModelDrawPhase, ItemModelDrawTarget, ItemModelFoil,
+            ItemModelGeometryClass, ItemModelInstanceRequest, ItemModelQuad,
+            ItemModelResidencyFrame, ItemModelScissorRect,
+        };
+        use glam::{Mat4, Vec3};
+
+        const WIDTH: u32 = 40;
+        const HEIGHT: u32 = 20;
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            return;
+        };
+        renderer
+            .update_terrain_texture_atlas(&[255, 0, 0, 255])
+            .expect("1x1 red atlas");
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer.update_camera();
+
+        let identity = ItemModelAssetIdentity::new(
+            Arc::<str>::from("minecraft:test/scissored_gui_item"),
+            Arc::<str>::from("plain"),
+            0,
+        );
+        let quad = ItemModelQuad {
+            corners: [
+                [0.0, 0.0, 8.0],
+                [16.0, 0.0, 8.0],
+                [16.0, 16.0, 8.0],
+                [0.0, 16.0, 8.0],
+            ],
+            uvs: [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
+            tint: [1.0; 4],
+            normal: [0.0, 0.0, 1.0],
+            shade: 1.0,
+            translucent: false,
+        };
+        let item_transform = |x| {
+            gui_item_slot_placement(absolute_hud_rect(x, 0.0, 16, 16))
+                * Mat4::from_translation(Vec3::splat(-0.5))
+        };
+        let instance = |transform, submit_order, scissor| ItemModelInstanceRequest {
+            identity: identity.clone(),
+            atlas: ItemModelAtlasKind::Blocks,
+            geometry_class: ItemModelGeometryClass::Solid,
+            transform,
+            tint: [1.0; 4],
+            light: ITEM_MODEL_FULL_BRIGHT_LIGHT,
+            overlay: ITEM_MODEL_NO_OVERLAY,
+            foil: ItemModelFoil::None,
+            target: ItemModelDrawTarget::Gui,
+            phase: ItemModelDrawPhase::Solid,
+            submit_order,
+            scissor,
+        };
+        let mut legacy_quad = quad.clone();
+        legacy_quad.translucent = true;
+        renderer.set_hud_inventory_screen(Some(HudInventoryScreen {
+            width: WIDTH,
+            height: HEIGHT,
+            background_layers: Vec::new(),
+            foreground_layers: Vec::new(),
+            fill_layers: Vec::new(),
+            slots: Vec::new(),
+            floating_items: vec![HudInventoryItem {
+                x: 16,
+                y: 0,
+                scale: 1.0,
+                scale_y: 1.0,
+                icon: HudItemIcon::single(HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                }),
+                scissor: Some(HudInventoryItemScissor {
+                    x: 16,
+                    y: 0,
+                    width: 16,
+                    height: 16,
+                }),
+                draw_decorations: false,
+                block_model: Some(HudBlockItemModel {
+                    resident_layers: Arc::from([]),
+                    identity: test_hud_block_item_identity(),
+                    quads: Arc::from([legacy_quad]),
+                    gui_display: Mat4::from_translation(Vec3::splat(-0.5)),
+                    lighting: GuiItemLightingEntry::Items3d,
+                    foil: false,
+                }),
+            }],
+            foreground_items: Vec::new(),
+            ghost_items: Vec::new(),
+            entity_previews: Vec::new(),
+            text_labels: Vec::new(),
+            scroll_area: None,
+            preedit_overlay: None,
+            hovered_slot_id: None,
+            tooltip: None,
+        }));
+        renderer
+            .set_item_model_residency_frame(ItemModelResidencyFrame {
+                assets: vec![ItemModelAssetRequest {
+                    identity: identity.clone(),
+                    atlas: ItemModelAtlasKind::Blocks,
+                    geometry_class: ItemModelGeometryClass::Solid,
+                    source: ItemModelAssetSource::Quads(Arc::from([quad])),
+                }],
+                instances: vec![instance(
+                    item_transform(0.0),
+                    0,
+                    ItemModelScissorRect::new(0, 0, 8, 16),
+                )],
+                special_items: Vec::new(),
+            })
+            .unwrap();
+
+        let pixels = renderer.render_offscreen_frame().expect("offscreen frame");
+        let clipped_inside = pixels.pixel(4, 8);
+        let clipped_outside = pixels.pixel(12, 8);
+        let reset_inside = pixels.pixel(24, 8);
+        assert!(
+            clipped_inside[0] > 128 && clipped_inside[2] < 128,
+            "inside clipped item should be red, got {clipped_inside:?}"
+        );
+        assert!(
+            clipped_outside[2] > 128 && clipped_outside[0] < 128,
+            "outside scissor should stay blue, got {clipped_outside:?}"
+        );
+        assert!(
+            reset_inside[0] > 128 && reset_inside[2] < 128,
+            "later legacy translucent item should see the restored full surface, got {reset_inside:?}"
+        );
     }
 
     #[test]

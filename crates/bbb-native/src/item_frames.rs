@@ -167,6 +167,7 @@ pub(crate) fn item_frame_models_with_map_cache(
                     residency.instances.len() + residency.special_items.len(),
                 )
                 .expect("item-frame submit order overflow"),
+                scissor: None,
             });
         }
 
@@ -327,6 +328,7 @@ pub(crate) fn item_frame_models_with_map_cache(
                                     residency.instances.len() + residency.special_items.len(),
                                 )
                                 .expect("item-frame special submit order overflow"),
+                                scissor: None,
                             });
                     }
                 }

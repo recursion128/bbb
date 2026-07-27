@@ -691,6 +691,7 @@ pub(crate) fn dropped_item_models(
                                     residency.instances.len() + residency.special_items.len(),
                                 )
                                 .expect("special item submit order overflow"),
+                                scissor: None,
                             });
                         }
                     }
@@ -2606,6 +2607,7 @@ pub(super) fn bake_item_stack_at_transform_with_light_and_overlay(
                             residency.instances.len() + residency.special_items.len(),
                         )
                         .expect("special item submit order overflow"),
+                        scissor: None,
                     });
                 }
             }
@@ -2975,6 +2977,7 @@ fn push_resident_item_instance(
         target,
         phase,
         submit_order,
+        scissor: None,
     });
 }
 

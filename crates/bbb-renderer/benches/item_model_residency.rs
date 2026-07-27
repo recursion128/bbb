@@ -229,6 +229,7 @@ fn resident_instance_frame(
                 target: ItemModelDrawTarget::World,
                 phase,
                 submit_order: frame.instances.len() as u32,
+                scissor: None,
             });
         }
     }

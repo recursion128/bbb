@@ -79,6 +79,7 @@ pub use residency::{
     ItemModelAtlasGeneration, ItemModelAtlasKind, ItemModelDrawPhase, ItemModelDrawTarget,
     ItemModelGeometryClass, ItemModelInstanceRecord, ItemModelInstanceRequest,
     ItemModelResidencyFrame, ItemModelResidencyOutcome, ItemModelResourceGeneration,
+    ItemModelScissorRect,
 };
 pub use sign_text::{
     bake_sign_text_surface, sign_line_runs_width, sign_max_text_line_width, sign_text_base_color,

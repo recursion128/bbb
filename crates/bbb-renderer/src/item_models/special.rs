@@ -14,7 +14,7 @@ use crate::{
     EntityDynamicTexture, EntityModelOwnedTextureRef, EntityModelTextureRef, SignModelAttachment,
 };
 
-use super::{ItemModelDrawTarget, ItemModelFoil};
+use super::{ItemModelDrawTarget, ItemModelFoil, ItemModelScissorRect};
 
 /// Texture source sampled by one special-model geometry part.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -216,4 +216,5 @@ pub struct SpecialItemInstanceRequest {
     pub foil: ItemModelFoil,
     pub target: ItemModelDrawTarget,
     pub submit_order: u32,
+    pub scissor: Option<ItemModelScissorRect>,
 }

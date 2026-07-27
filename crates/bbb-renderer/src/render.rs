@@ -3632,6 +3632,14 @@ impl Renderer {
             return;
         };
         let mut active_phase = None;
+        let mut active_scissor = None;
+        let full_scissor = crate::item_models::ItemModelScissorRect::new(
+            0,
+            0,
+            self.config.width.max(1),
+            self.config.height.max(1),
+        )
+        .expect("renderer attachment has a non-empty physical extent");
         for draw in self.item_model_residency.draws() {
             if draw.target != target
                 || !phases.contains(&draw.phase)
@@ -3641,6 +3649,17 @@ impl Renderer {
             }
             let Some(owner) = self.item_model_residency.owner(&draw.asset) else {
                 continue;
+            };
+            let scissor = match draw.scissor {
+                Some(scissor) => {
+                    let Some(scissor) =
+                        scissor.clipped_to(self.config.width.max(1), self.config.height.max(1))
+                    else {
+                        continue;
+                    };
+                    scissor
+                }
+                None => full_scissor,
             };
             let pipeline = match draw.phase {
                 crate::item_models::ItemModelDrawPhase::Solid => &self.resident_item_model_pipeline,
@@ -3750,6 +3769,10 @@ impl Renderer {
                     pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                 }
             }
+            if active_scissor != Some(scissor) {
+                pass.set_scissor_rect(scissor.x(), scissor.y(), scissor.width(), scissor.height());
+                active_scissor = Some(scissor);
+            }
             pass.set_vertex_buffer(0, owner.vertex_buffer.slice(..));
             pass.set_vertex_buffer(1, instance_buffer.slice(..));
             pass.set_index_buffer(owner.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
@@ -3757,6 +3780,14 @@ impl Renderer {
                 draw.first_instance..draw.first_instance.saturating_add(draw.instance_count);
             pass.draw_indexed(0..owner.index_count, 0, instances);
             stats.item_model_draw_calls = stats.item_model_draw_calls.saturating_add(1);
+        }
+        if active_scissor.is_some_and(|scissor| scissor != full_scissor) {
+            pass.set_scissor_rect(
+                full_scissor.x(),
+                full_scissor.y(),
+                full_scissor.width(),
+                full_scissor.height(),
+            );
         }
     }
 
