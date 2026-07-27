@@ -1,6 +1,7 @@
 use anyhow::Result;
+use bbb_pack::PostEffectCatalog;
 
-use crate::Renderer;
+use crate::{post_effect_graph::PostEffectGraphRuntime, Renderer};
 
 pub(crate) type ResourceOwnerRestore = Box<dyn FnOnce(&mut Renderer) + Send>;
 
@@ -17,6 +18,30 @@ pub(crate) struct RendererResourceReloadCheckpoint {
 }
 
 impl Renderer {
+    pub fn reload_post_effect_graphs(&mut self, catalog: &PostEffectCatalog) -> Result<()> {
+        let next = PostEffectGraphRuntime::new(
+            &self.device,
+            &self.queue,
+            self.config.format,
+            self.config.width,
+            self.config.height,
+            catalog,
+        )?;
+        let previous = self.post_effect_graphs.replace(next);
+        if self.resource_reload_in_progress() {
+            self.register_resource_owner_restore(Box::new(move |renderer| {
+                renderer.post_effect_graphs = previous;
+            }));
+        }
+        Ok(())
+    }
+
+    pub fn post_effect_graph_generation(&self) -> Option<u64> {
+        self.post_effect_graphs
+            .as_ref()
+            .map(PostEffectGraphRuntime::generation)
+    }
+
     /// Runs all renderer resource uploads as one all-or-nothing render-thread
     /// transaction. The closure is synchronous: no frame can observe the empty
     /// staging slots or a partially installed generation.

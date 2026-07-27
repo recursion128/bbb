@@ -625,6 +625,19 @@ fn main() -> Result<()> {
     ))?;
     renderer.set_lightmap_brightness_factor(args.client_gamma);
     renderer.set_menu_background_blurriness(args.menu_background_blurriness);
+    if let Some(roots) = pack_roots.as_ref() {
+        match bbb_pack::PostEffectCatalog::load(roots)
+            .and_then(|catalog| renderer.reload_post_effect_graphs(&catalog))
+        {
+            Ok(()) => {}
+            Err(error) => {
+                tracing::warn!(
+                    %error,
+                    "continuing with embedded post-effect fallback after startup load failure"
+                );
+            }
+        }
+    }
     let mut terrain_textures = load_terrain_textures(&mut renderer, pack_roots.as_ref());
     if let Some(particles) = particle_runtime.as_mut() {
         particles.set_terrain_particle_sprite_ids(&terrain_textures);
@@ -930,7 +943,11 @@ fn main() -> Result<()> {
         match event {
             Event::WindowEvent { event, window_id } if window_id == window.id() => match event {
                 WindowEvent::Resized(size) => {
-                    renderer.resize(size);
+                    if let Err(error) = renderer.resize(size) {
+                        tracing::error!(%error, "failed to resize renderer resources");
+                        target.exit();
+                        return;
+                    }
                     simulation_mailbox.enqueue(SimulationCommand::SurfaceResized(size));
                 }
                 event

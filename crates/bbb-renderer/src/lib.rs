@@ -22,9 +22,6 @@ mod outline;
 mod particles;
 mod pipeline_builder;
 mod player_skin;
-// Stage 2 builds and GPU-validates the selected graph generation before stage 3
-// replaces the live fixed post-chain owners. Remove this allowance with that wiring.
-#[allow(dead_code)]
 mod post_effect_graph;
 mod render;
 mod renderer;

@@ -113,7 +113,8 @@ fn adapt_stage_source(
             .collect::<Vec<_>>(),
     )?;
     let source = if vertex_stage {
-        replace_identifier(&source, "gl_VertexID", "gl_VertexIndex")?
+        let source = replace_identifier(&source, "gl_VertexID", "gl_VertexIndex")?;
+        wrap_vertex_main_for_webgpu(&source)?
     } else {
         source
     };
@@ -587,6 +588,33 @@ fn replace_identifier(source: &str, from: &str, to: &str) -> Result<String> {
         .into_owned())
 }
 
+fn wrap_vertex_main_for_webgpu(source: &str) -> Result<String> {
+    const ORIGINAL_MAIN: &str = "bbb_post_original_main";
+    if Regex::new(&format!(r"\b{ORIGINAL_MAIN}\b"))
+        .context("compile post-effect vertex wrapper collision regex")?
+        .is_match(&strip_glsl_comments(source))
+    {
+        bail!("vertex shader uses reserved adapter identifier {ORIGINAL_MAIN:?}");
+    }
+    let stripped = strip_glsl_comments(source);
+    let mut declarations = vertex_main_pattern().captures_iter(&stripped);
+    let declaration = declarations
+        .next()
+        .context("vertex shader has no supported void main() entry point")?;
+    if declarations.next().is_some() {
+        bail!("vertex shader declares main more than once");
+    }
+    let name = declaration.name("name").expect("vertex main name capture");
+    let mut output = String::with_capacity(source.len() + 112);
+    output.push_str(&source[..name.start()]);
+    output.push_str(ORIGINAL_MAIN);
+    output.push_str(&source[name.end()..]);
+    output.push_str(
+        "\nvoid main() {\n    bbb_post_original_main();\n    gl_Position.y = -gl_Position.y;\n}\n",
+    );
+    Ok(output)
+}
+
 fn is_glsl_identifier(value: &str) -> bool {
     let mut bytes = value.bytes();
     bytes
@@ -706,6 +734,14 @@ fn version_pattern() -> &'static Regex {
     })
 }
 
+fn vertex_main_pattern() -> &'static Regex {
+    static PATTERN: OnceLock<Regex> = OnceLock::new();
+    PATTERN.get_or_init(|| {
+        Regex::new(r"\bvoid[ \t\r\n]+(?P<name>main)[ \t\r\n]*\([ \t\r\n]*(?:void[ \t\r\n]*)?\)")
+            .expect("vertex main regex is valid")
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use bbb_pack::{PostEffectInput, PostEffectPass, PostEffectUniform, PostEffectUniformValue};
@@ -756,6 +792,8 @@ mod tests {
         assert!(adapted
             .vertex
             .contains("layout(location = 0) out vec2 texCoord;"));
+        assert!(adapted.vertex.contains("void bbb_post_original_main()"));
+        assert!(adapted.vertex.contains("gl_Position.y = -gl_Position.y;"));
         assert!(adapted
             .fragment
             .contains("layout(location = 0) in vec2 texCoord;"));

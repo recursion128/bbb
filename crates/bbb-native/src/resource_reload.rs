@@ -9,7 +9,7 @@ use bbb_item_model::NativeItemRuntime;
 use bbb_pack::{
     BlockDestroyProfile as PackBlockDestroyProfile, BlockDestroyProfileCatalog,
     BlockSoundProfile as PackBlockSoundProfile, BlockSoundProfileCatalog, FurnaceFuelCatalog,
-    FurnaceFuelSourceRule, PackRoots, RegistryDependentItemComponentInitializer,
+    FurnaceFuelSourceRule, PackRoots, PostEffectCatalog, RegistryDependentItemComponentInitializer,
     SelectedClientPack, MAX_RESOURCE_DATA_GENERATION_LOGICAL_BYTES,
     MAX_RESOURCE_DATA_PROCESS_LOGICAL_BYTES, MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES,
     MAX_RESOURCE_IMAGE_PROCESS_RGBA_BYTES,
@@ -47,6 +47,7 @@ struct PreparedNativeResourceReload {
     audio: PreparedAudioReload,
     particles: NativeParticleResources,
     items: NativeItemRuntime,
+    post_effects: PostEffectCatalog,
     block_destroy_profiles: BTreeMap<String, WorldBlockDestroyProfile>,
     block_sound_profiles: BTreeMap<String, WorldBlockSoundProfile>,
 }
@@ -191,7 +192,12 @@ fn apply_native_resource_reload(
 
     let (next_terrain_textures, win_screen_resources) = renderer
         .transactional_resource_reload(|renderer| {
-            upload_reload_atlases(renderer, &prepared.particles.render, &prepared.items)
+            renderer
+                .reload_post_effect_graphs(&prepared.post_effects)
+                .context("compile post-effect graphs during resource reload")
+                .and_then(|()| {
+                    upload_reload_atlases(renderer, &prepared.particles.render, &prepared.items)
+                })
                 .and_then(|()| {
                     try_load_terrain_textures(renderer, &prepared.roots)
                         .context("upload terrain resources during resource reload")
@@ -371,6 +377,8 @@ fn prepare_native_resource_reload(
         .context("prepare particle resources for reload")?;
     let items = NativeItemRuntime::load_with_locale(&roots, client_locale)
         .context("prepare item, model, texture, and language resources for reload")?;
+    let post_effects =
+        PostEffectCatalog::load(&roots).context("prepare post-effect graphs for reload")?;
     let block_destroy_profiles = block_destroy_profiles_for_world(
         &roots
             .load_block_destroy_profile_catalog()
@@ -386,6 +394,7 @@ fn prepare_native_resource_reload(
         audio,
         particles,
         items,
+        post_effects,
         block_destroy_profiles,
         block_sound_profiles,
     })
@@ -1015,11 +1024,17 @@ mod tests {
     }
 
     #[test]
-    fn item_residency_generation_advances_only_after_reload_uploads_succeed() {
+    fn renderer_resource_owners_commit_inside_one_reload_barrier() {
         let source = include_str!("resource_reload.rs");
         let transaction = source
             .find(".transactional_resource_reload(|renderer|")
             .expect("reload should retain accepted renderer owners");
+        let post_effect_commit = source
+            .find(".reload_post_effect_graphs(&prepared.post_effects)")
+            .expect("reload should compile and install the prepared post-effect generation");
+        let atlas_commit = source
+            .find("upload_reload_atlases(renderer, &prepared.particles.render, &prepared.items)")
+            .expect("reload should install generation-matched atlases");
         let residency_barrier = source
             .find("                renderer.invalidate_item_model_resources();\n")
             .expect("successful reload should advance the item residency generation");
@@ -1030,9 +1045,18 @@ mod tests {
             .find("    prepared\n        .particles\n        .simulation")
             .expect("reload should commit the matching simulation resources");
 
-        assert!(transaction < audio_commit);
+        assert!(transaction < post_effect_commit);
+        assert!(post_effect_commit < atlas_commit);
+        assert!(atlas_commit < audio_commit);
         assert!(audio_commit < residency_barrier);
         assert!(residency_barrier < simulation_commit);
+        let post_effect_prepare = source
+            .find("PostEffectCatalog::load(&roots)")
+            .expect("post-effect catalog should be prepared on the CPU boundary");
+        let prepared_generation = source
+            .find("        post_effects,\n")
+            .expect("prepared reload should retain the post-effect catalog");
+        assert!(post_effect_prepare < prepared_generation);
         let legacy_recovery = ["recover", "reload", "resources"].join("_");
         assert!(!source.contains(&legacy_recovery));
     }

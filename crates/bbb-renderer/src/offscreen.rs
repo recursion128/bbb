@@ -320,7 +320,9 @@ mod tests {
             a: 1.0,
         });
         renderer.set_camera_post_effect(Some("minecraft:invert"), true);
-        renderer.resize(PhysicalSize::new(24, 20));
+        renderer
+            .resize(PhysicalSize::new(24, 20))
+            .expect("resize offscreen renderer");
 
         let pixels = renderer
             .render_offscreen_frame()

@@ -24,6 +24,7 @@ use crate::{
         ParticleAtlasDrawRange, ParticlePipelineVertexBatch, ParticleTextureAtlasKind,
         ParticleVertexBatches,
     },
+    post_effect_graph::{PostEffectGlobals, PostEffectTransparencyTargets},
     selection::{debug_line_vertex_batches, selection_lines_vertices},
     vignette::VignetteUniform,
     weather::{build_lightning_mesh, build_weather_mesh},
@@ -82,6 +83,7 @@ const HUD_DEPTH_CLEAR_PASS_LABEL: &str = "bbb-native-hud-depth-clear-pass";
 const HUD_BLUR_DEPTH_CLEAR_PASS_LABEL: &str = "bbb-native-hud-blur-depth-clear-pass";
 const SCREEN_BLUR_HORIZONTAL_PASS_LABEL: &str = "bbb-native-screen-blur-horizontal-pass";
 const SCREEN_BLUR_VERTICAL_PASS_LABEL: &str = "bbb-native-screen-blur-vertical-pass";
+const POST_EFFECT_PRESENTATION_PASS_LABEL: &str = "bbb-native-post-effect-presentation-pass";
 
 struct ItemModelFrameBuffers {
     vertex_buffer: wgpu::Buffer,
@@ -116,6 +118,8 @@ struct FrameDrawStats {
     hud_draw_calls: u64,
     screen_blur_draw_calls: u64,
     post_effect_draw_calls: u64,
+    post_effect_presentation_draw_calls: u64,
+    post_effect_depth_copy_draw_calls: u64,
     lightmap_draw_calls: u64,
     pipeline_switches: u64,
 }
@@ -169,18 +173,18 @@ impl Renderer {
         self.translucent_target_pass(&mut encoder, &mut stats);
         self.item_entity_line_target_pass(&mut encoder, &mut stats);
         self.particle_target_pass(&mut encoder, &mut stats, particle_vertex_batches);
-        self.entity_outline_post_chain(&mut encoder, &mut stats);
+        self.entity_outline_post_chain(&mut encoder, &mut stats)?;
         self.clouds_pass(&mut encoder, &mut stats);
         self.weather_target_pass(&mut encoder, &mut stats);
-        self.transparency_combine_pass(&mut encoder, &mut stats);
+        self.transparency_combine_pass(&mut encoder, &mut stats)?;
         self.debug_always_on_top_text_pass(&mut encoder, &mut stats);
         self.transparency_blit_pass(&frame, &mut encoder, &mut stats);
         self.first_person_item_pass(&frame, &mut encoder, &mut stats);
-        self.camera_post_effect_pass(&frame, &mut encoder, &mut stats);
+        self.camera_post_effect_pass(&frame, &mut encoder, &mut stats)?;
         self.entity_preview_pip_passes(&mut encoder, &mut stats);
         self.vignette_pass(&frame, &mut encoder, &mut stats);
         self.win_screen_portal_pass(&frame, &mut encoder, &mut stats);
-        self.hud_passes(&frame, &mut encoder, &mut stats);
+        self.hud_passes(&frame, &mut encoder, &mut stats)?;
         self.win_screen_vignette_pass(&frame, &mut encoder, &mut stats);
         if let (Some(timing), Some(token)) = (self.gpu_timing.as_mut(), gpu_frame) {
             timing.finish_encoding(&mut encoder, token);
@@ -2055,12 +2059,27 @@ impl Renderer {
         &self,
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
-    ) {
-        let main_view = &self.main_target.view;
+    ) -> Result<()> {
         let has_entity_outline_meshes = self.entity_model_texture_atlas.is_some()
             && (self.entity_model_outline_mesh.is_some()
                 || self.entity_model_outline_cull_mesh.is_some());
         if has_entity_outline_meshes {
+            if let Some(post_effect_graphs) = &self.post_effect_graphs {
+                let draw_calls = post_effect_graphs.execute_color_graph(
+                    &self.device,
+                    &self.queue,
+                    encoder,
+                    "minecraft:entity_outline",
+                    "minecraft:entity_outline",
+                    &self.entity_outline_target.view,
+                    [self.config.width, self.config.height],
+                    self.post_effect_globals(),
+                )?;
+                stats.outline_composite_draw_calls += draw_calls;
+                stats.pipeline_switches += draw_calls;
+                self.entity_outline_composite_pass(encoder, stats);
+                return Ok(());
+            }
             {
                 let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some(ENTITY_OUTLINE_SOBEL_PASS_LABEL),
@@ -2149,26 +2168,35 @@ impl Renderer {
                 stats.outline_composite_draw_calls += 1;
             }
 
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some(ENTITY_OUTLINE_COMPOSITE_PASS_LABEL),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: main_view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                occlusion_query_set: None,
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&self.entity_outline_composite_pipeline);
-            stats.pipeline_switches += 1;
-            pass.set_bind_group(0, &self.entity_outline_target.bind_group, &[]);
-            pass.draw(0..3, 0..1);
-            stats.outline_composite_draw_calls += 1;
+            self.entity_outline_composite_pass(encoder, stats);
         }
+        Ok(())
+    }
+
+    fn entity_outline_composite_pass(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        stats: &mut FrameDrawStats,
+    ) {
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some(ENTITY_OUTLINE_COMPOSITE_PASS_LABEL),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &self.main_target.view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+        pass.set_pipeline(&self.entity_outline_composite_pipeline);
+        stats.pipeline_switches += 1;
+        pass.set_bind_group(0, &self.entity_outline_target.bind_group, &[]);
+        pass.draw(0..3, 0..1);
+        stats.outline_composite_draw_calls += 1;
     }
 
     fn clouds_pass(&self, encoder: &mut wgpu::CommandEncoder, stats: &mut FrameDrawStats) {
@@ -2365,7 +2393,34 @@ impl Renderer {
         &self,
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
-    ) {
+    ) -> Result<()> {
+        if let Some(post_effect_graphs) = &self.post_effect_graphs {
+            let (graph_passes, depth_copy_passes) = post_effect_graphs.execute_transparency(
+                &self.device,
+                &self.queue,
+                encoder,
+                PostEffectTransparencyTargets {
+                    main_color: &self.main_target.view,
+                    main_depth: &self.depth.view,
+                    translucent_color: &self.translucent_target.view,
+                    translucent_depth: &self.translucent_target.depth.view,
+                    item_entity_color: &self.item_entity_target.view,
+                    item_entity_depth: &self.item_entity_target.depth.view,
+                    particles_color: &self.particle_target.view,
+                    particles_depth: &self.particle_target.depth.view,
+                    clouds_color: &self.cloud_target.view,
+                    clouds_depth: &self.cloud_target.depth.view,
+                    weather_color: &self.weather_target.view,
+                    weather_depth: &self.weather_target.depth.view,
+                    size: [self.config.width, self.config.height],
+                },
+                self.post_effect_globals(),
+            )?;
+            stats.transparency_combine_draw_calls += graph_passes;
+            stats.post_effect_depth_copy_draw_calls += depth_copy_passes;
+            stats.pipeline_switches += graph_passes + depth_copy_passes;
+            return Ok(());
+        }
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some(TRANSPARENCY_COMBINE_PASS_LABEL),
@@ -2387,6 +2442,7 @@ impl Renderer {
             pass.draw(0..3, 0..1);
             stats.transparency_combine_draw_calls += 1;
         }
+        Ok(())
     }
 
     fn debug_always_on_top_text_pass(
@@ -2432,10 +2488,15 @@ impl Renderer {
             .frame_debug_always_on_top_text_indices
             .buffer()
             .expect("always-on-top debug text indices uploaded");
+        let color_view = if self.post_effect_graphs.is_some() {
+            &self.main_target.view
+        } else {
+            &self.transparency_final_target.view
+        };
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some(DEBUG_ALWAYS_ON_TOP_TEXT_PASS_LABEL),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &self.transparency_final_target.view,
+                view: color_view,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Load,
@@ -2472,6 +2533,13 @@ impl Renderer {
         let surface_view = frame
             .texture()
             .create_view(&wgpu::TextureViewDescriptor::default());
+        let selected_bind_group = self
+            .post_effect_graphs
+            .as_ref()
+            .map(|_| self.create_post_effect_blit_bind_group(&self.main_target.view));
+        let bind_group = selected_bind_group
+            .as_ref()
+            .unwrap_or(&self.transparency_final_target.bind_group);
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some(TRANSPARENCY_BLIT_PASS_LABEL),
@@ -2489,7 +2557,7 @@ impl Renderer {
             });
             pass.set_pipeline(&self.transparency_blit_pipeline);
             stats.pipeline_switches += 1;
-            pass.set_bind_group(0, &self.transparency_final_target.bind_group, &[]);
+            pass.set_bind_group(0, bind_group, &[]);
             pass.draw(0..3, 0..1);
             stats.transparency_blit_draw_calls += 1;
         }
@@ -2739,10 +2807,35 @@ impl Renderer {
         frame: &FrameTarget,
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
-    ) {
+    ) -> Result<()> {
         let frame_view = frame
             .texture()
             .create_view(&wgpu::TextureViewDescriptor::default());
+        if let Some(post_effect_graphs) = &self.post_effect_graphs {
+            let Some(graph_id) = self
+                .camera_post_effect_active
+                .then_some(self.current_post_effect_id.as_deref())
+                .flatten()
+                .filter(|graph_id| post_effect_graphs.contains_camera_graph(graph_id))
+            else {
+                return Ok(());
+            };
+            self.copy_surface_to_post_effect_main(frame.texture(), encoder);
+            let draw_calls = post_effect_graphs.execute_color_graph(
+                &self.device,
+                &self.queue,
+                encoder,
+                graph_id,
+                "minecraft:main",
+                &self.main_target.view,
+                [self.config.width, self.config.height],
+                self.post_effect_globals(),
+            )?;
+            stats.post_effect_draw_calls += draw_calls;
+            stats.pipeline_switches += draw_calls;
+            self.post_effect_presentation_pass(&frame_view, encoder, stats);
+            return Ok(());
+        }
         let draw_calls = self.camera_post_effect.render(
             self.current_post_effect_id.as_deref(),
             self.camera_post_effect_active,
@@ -2754,6 +2847,7 @@ impl Renderer {
         );
         stats.post_effect_draw_calls += draw_calls;
         stats.pipeline_switches += draw_calls;
+        Ok(())
     }
 
     /// GUI entity picture-in-picture targets (vanilla `GuiRenderer.preparePictureInPicture` →
@@ -2891,7 +2985,7 @@ impl Renderer {
         frame: &FrameTarget,
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
-    ) {
+    ) -> Result<()> {
         let surface_view = frame
             .texture()
             .create_view(&wgpu::TextureViewDescriptor::default());
@@ -2946,7 +3040,13 @@ impl Renderer {
             }
 
             self.clear_hud_depth(encoder, HUD_BLUR_DEPTH_CLEAR_PASS_LABEL);
-            self.screen_blur_passes(frame, &surface_view, encoder, screen_blur.radius, stats);
+            if let Err(error) =
+                self.screen_blur_passes(frame, &surface_view, encoder, screen_blur.radius, stats)
+            {
+                drop(hud_draws);
+                self.frame_hud_vertices = frame_hud_vertices;
+                return Err(error);
+            }
 
             if has_hud_vertices {
                 let hud_vertex_buffer = frame_hud_vertices.buffer().expect("uploaded");
@@ -3018,6 +3118,7 @@ impl Renderer {
         }
         drop(hud_draws);
         self.frame_hud_vertices = frame_hud_vertices;
+        Ok(())
     }
 
     fn win_screen_vignette_pass(
@@ -3243,7 +3344,27 @@ impl Renderer {
         encoder: &mut wgpu::CommandEncoder,
         radius: f32,
         stats: &mut FrameDrawStats,
-    ) {
+    ) -> Result<()> {
+        if let Some(post_effect_graphs) = &self.post_effect_graphs {
+            self.copy_surface_to_post_effect_main(frame.texture(), encoder);
+            let draw_calls = post_effect_graphs.execute_color_graph(
+                &self.device,
+                &self.queue,
+                encoder,
+                "minecraft:blur",
+                "minecraft:main",
+                &self.main_target.view,
+                [self.config.width, self.config.height],
+                PostEffectGlobals {
+                    menu_blur_radius: radius.round() as i32,
+                    ..self.post_effect_globals()
+                },
+            )?;
+            stats.screen_blur_draw_calls += draw_calls;
+            stats.pipeline_switches += draw_calls;
+            self.post_effect_presentation_pass(surface_view, encoder, stats);
+            return Ok(());
+        }
         write_screen_blur_radius(&self.queue, &self.screen_blur_target, radius);
         encoder.copy_texture_to_texture(
             frame.texture().as_image_copy(),
@@ -3303,6 +3424,101 @@ impl Renderer {
                 stats.screen_blur_draw_calls += 1;
             }
         }
+        Ok(())
+    }
+
+    fn post_effect_globals(&self) -> PostEffectGlobals {
+        let split_coordinate = |value: f32| {
+            if value.is_finite() {
+                let block = value.floor() as i32;
+                (block, value - block as f32)
+            } else {
+                (0, 0.0)
+            }
+        };
+        let position = self
+            .camera_pose
+            .map(|pose| pose.position)
+            .unwrap_or([0.0; 3]);
+        let (block_x, offset_x) = split_coordinate(position[0]);
+        let (block_y, offset_y) = split_coordinate(position[1]);
+        let (block_z, offset_z) = split_coordinate(position[2]);
+        let game_time = if self.shader_game_time_ticks.is_finite() {
+            (self.shader_game_time_ticks.max(0.0) % 24_000.0) as f32 / 24_000.0
+        } else {
+            0.0
+        };
+        PostEffectGlobals {
+            camera_block_pos: [block_x, block_y, block_z],
+            camera_offset: [offset_x, offset_y, offset_z],
+            glint_alpha: 1.0,
+            game_time,
+            menu_blur_radius: self.menu_background_blurriness.round() as i32,
+            use_rgss: false,
+        }
+    }
+
+    fn copy_surface_to_post_effect_main(
+        &self,
+        surface: &wgpu::Texture,
+        encoder: &mut wgpu::CommandEncoder,
+    ) {
+        encoder.copy_texture_to_texture(
+            surface.as_image_copy(),
+            self.main_target.texture.as_image_copy(),
+            wgpu::Extent3d {
+                width: self.config.width,
+                height: self.config.height,
+                depth_or_array_layers: 1,
+            },
+        );
+    }
+
+    fn create_post_effect_blit_bind_group(&self, source: &wgpu::TextureView) -> wgpu::BindGroup {
+        self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("bbb-post-effect-presentation-bind-group"),
+            layout: &self.transparency_blit_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(source),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(
+                        &self.transparency_final_target._sampler,
+                    ),
+                },
+            ],
+        })
+    }
+
+    fn post_effect_presentation_pass(
+        &self,
+        destination: &wgpu::TextureView,
+        encoder: &mut wgpu::CommandEncoder,
+        stats: &mut FrameDrawStats,
+    ) {
+        let bind_group = self.create_post_effect_blit_bind_group(&self.main_target.view);
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some(POST_EFFECT_PRESENTATION_PASS_LABEL),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: destination,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+        pass.set_pipeline(&self.transparency_blit_pipeline);
+        pass.set_bind_group(0, &bind_group, &[]);
+        pass.draw(0..3, 0..1);
+        stats.pipeline_switches += 1;
+        stats.post_effect_presentation_draw_calls += 1;
     }
 
     fn finish_frame(
@@ -3399,6 +3615,8 @@ impl Renderer {
             + stats.hud_draw_calls
             + stats.screen_blur_draw_calls
             + stats.post_effect_draw_calls
+            + stats.post_effect_presentation_draw_calls
+            + stats.post_effect_depth_copy_draw_calls
             + stats.lightmap_draw_calls;
         self.counters.pipeline_switches = stats.pipeline_switches;
         Ok(())
@@ -5052,7 +5270,7 @@ mod tests {
             .find("self.first_person_item_pass(&frame, &mut encoder, &mut stats);")
             .expect("first-person item pass is scheduled");
         let hud = source
-            .find("self.hud_passes(&frame, &mut encoder, &mut stats);")
+            .find("self.hud_passes(&frame, &mut encoder, &mut stats)")
             .expect("HUD passes are scheduled");
         let vignette = source
             .find("self.vignette_pass(&frame, &mut encoder, &mut stats);")
@@ -5076,7 +5294,7 @@ mod tests {
             .find("self.first_person_item_pass(&frame, &mut encoder, &mut stats);")
             .expect("first-person item pass is scheduled");
         let post_effect = source
-            .find("self.camera_post_effect_pass(&frame, &mut encoder, &mut stats);")
+            .find("self.camera_post_effect_pass(&frame, &mut encoder, &mut stats)")
             .expect("camera post-effect pass is scheduled");
         let entity_preview = source
             .find("self.entity_preview_pip_passes(&mut encoder, &mut stats);")
@@ -5085,7 +5303,7 @@ mod tests {
             .find("self.vignette_pass(&frame, &mut encoder, &mut stats);")
             .expect("vignette pass is scheduled");
         let hud = source
-            .find("self.hud_passes(&frame, &mut encoder, &mut stats);")
+            .find("self.hud_passes(&frame, &mut encoder, &mut stats)")
             .expect("HUD pass is scheduled");
 
         assert!(
@@ -5188,7 +5406,7 @@ mod tests {
             .find("self.vignette_pass(&frame, &mut encoder, &mut stats);")
             .expect("vignette pass is scheduled");
         let hud_call = source
-            .find("self.hud_passes(&frame, &mut encoder, &mut stats);")
+            .find("self.hud_passes(&frame, &mut encoder, &mut stats)")
             .expect("HUD passes are scheduled");
         let vignette_pass = source
             .find("label: Some(VIGNETTE_PASS_LABEL)")
@@ -7139,6 +7357,9 @@ mod tests {
         let blit = source
             .find("label: Some(TRANSPARENCY_BLIT_PASS_LABEL)")
             .expect("transparency blit pass label is used");
+        let blit_owner = source
+            .find("fn transparency_blit_pass(")
+            .expect("transparency blit owner is defined");
         let hud_pass = source
             .find("\"bbb-native-hud-pass\",")
             .expect("hud pass label is used");
@@ -7188,10 +7409,12 @@ mod tests {
             "transparency blit writes the swapchain surface before HUD rendering"
         );
         assert!(
-            source[blit..hud_pass].contains(
-                "pass.set_bind_group(0, &self.transparency_final_target.bind_group, &[])"
-            ),
-            "transparency blit samples the internal final target"
+            source[blit_owner..hud_pass].contains(
+                ".map(|_| self.create_post_effect_blit_bind_group(&self.main_target.view))"
+            ) && source[blit_owner..hud_pass]
+                .contains(".unwrap_or(&self.transparency_final_target.bind_group)")
+                && source[blit_owner..hud_pass].contains("pass.set_bind_group(0, bind_group, &[])"),
+            "transparency blit samples selected main or the embedded internal final target"
         );
         assert!(
             combine < blit

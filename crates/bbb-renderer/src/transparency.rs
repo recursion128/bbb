@@ -190,7 +190,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 "#;
 
 pub(super) struct MainTarget {
-    pub(super) _texture: wgpu::Texture,
+    pub(super) texture: wgpu::Texture,
     pub(super) view: wgpu::TextureView,
 }
 
@@ -402,15 +402,14 @@ pub(super) fn create_main_target(
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+            | wgpu::TextureUsages::TEXTURE_BINDING
+            | wgpu::TextureUsages::COPY_DST,
         view_formats: &[],
     });
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-    MainTarget {
-        _texture: texture,
-        view,
-    }
+    MainTarget { texture, view }
 }
 
 pub(super) fn create_transparency_final_target(

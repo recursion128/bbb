@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::BTreeMap};
+use std::{borrow::Cow, cell::Cell, collections::BTreeMap};
 
 use anyhow::{bail, Context, Result};
 use bbb_pack::{
@@ -7,12 +7,15 @@ use bbb_pack::{
 };
 use wgpu::util::DeviceExt;
 
+mod depth;
 mod glsl;
+mod runtime;
 mod std140;
 #[cfg(test)]
 mod tests;
 
 use glsl::{adapt_pass_shaders, PassGlslBindings, SamplerBinding};
+pub(crate) use runtime::{PostEffectGraphRuntime, PostEffectTransparencyTargets};
 use std140::{pack_globals, pack_sampler_info, pack_uniforms};
 
 const DEPTH_SAMPLE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
@@ -148,7 +151,7 @@ impl PostEffectGraphGeneration {
     }
 
     pub(crate) fn execute(
-        &mut self,
+        &self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         encoder: &mut wgpu::CommandEncoder,
@@ -157,20 +160,18 @@ impl PostEffectGraphGeneration {
     ) -> Result<u64> {
         let graph = self
             .graphs
-            .get_mut(graph_id)
+            .get(graph_id)
             .with_context(|| format!("missing compiled post-effect graph {graph_id}"))?;
-        capture_gpu_errors(device, || {
-            graph.execute(
-                device,
-                queue,
-                encoder,
-                self.screen_size,
-                &self.textures,
-                &self.nearest_sampler,
-                &self.linear_sampler,
-                context,
-            )
-        })
+        graph.execute(
+            device,
+            queue,
+            encoder,
+            self.screen_size,
+            &self.textures,
+            &self.nearest_sampler,
+            &self.linear_sampler,
+            context,
+        )
     }
 }
 
@@ -275,7 +276,7 @@ impl CompiledGraph {
 
     #[allow(clippy::too_many_arguments)]
     fn execute(
-        &mut self,
+        &self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         encoder: &mut wgpu::CommandEncoder,
@@ -285,7 +286,15 @@ impl CompiledGraph {
         linear_sampler: &wgpu::Sampler,
         context: &PostEffectExecutionContext<'_>,
     ) -> Result<u64> {
-        clear_internal_targets(encoder, &mut self.targets);
+        for (index, pass) in self.passes.iter().enumerate() {
+            for input in &pass.inputs {
+                resolve_input(input, &self.targets, textures, context)
+                    .with_context(|| format!("validate pass {index} input"))?;
+            }
+            resolve_output(&pass.output, &self.targets, context)
+                .with_context(|| format!("validate pass {index} output"))?;
+        }
+        clear_internal_targets(encoder, &self.targets);
         let Self { targets, passes } = self;
         for (index, pass) in passes.iter().enumerate() {
             let mut input_views = Vec::with_capacity(pass.inputs.len());
@@ -380,7 +389,7 @@ struct CompiledTarget {
     _depth_sample: Option<wgpu::Texture>,
     depth_sample_view: Option<wgpu::TextureView>,
     size: [u32; 2],
-    needs_clear: bool,
+    needs_clear: Cell<bool>,
 }
 
 impl CompiledTarget {
@@ -419,7 +428,7 @@ impl CompiledTarget {
             _depth_sample: depth_sample,
             depth_sample_view,
             size,
-            needs_clear: true,
+            needs_clear: Cell::new(true),
         })
     }
 }
@@ -628,10 +637,10 @@ impl UniformBuffer {
 
 fn clear_internal_targets(
     encoder: &mut wgpu::CommandEncoder,
-    targets: &mut BTreeMap<String, CompiledTarget>,
+    targets: &BTreeMap<String, CompiledTarget>,
 ) {
-    for target in targets.values_mut() {
-        if !target.needs_clear && target.descriptor.persistent {
+    for target in targets.values() {
+        if !target.needs_clear.get() && target.descriptor.persistent {
             continue;
         }
         {
@@ -667,7 +676,7 @@ fn clear_internal_targets(
             });
         }
         if target.descriptor.persistent {
-            target.needs_clear = false;
+            target.needs_clear.set(false);
         }
     }
 }
@@ -909,7 +918,7 @@ fn create_glsl_module(
     }))
 }
 
-fn capture_gpu_errors<T>(
+pub(super) fn capture_gpu_errors<T>(
     device: &wgpu::Device,
     operation: impl FnOnce() -> Result<T>,
 ) -> Result<T> {

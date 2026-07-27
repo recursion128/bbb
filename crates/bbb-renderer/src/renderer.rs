@@ -107,6 +107,7 @@ use crate::{
         ParticleUvRect,
     },
     player_skin::{DynamicEntityTextureImage, DynamicPlayerSkinImage},
+    post_effect_graph::PostEffectGraphRuntime,
     screen_blur::{
         create_screen_blur_bind_group_layout, create_screen_blur_horizontal_pipeline,
         create_screen_blur_target, create_screen_blur_vertical_pipeline,
@@ -269,6 +270,7 @@ pub struct Renderer {
     pub(super) current_post_effect_id: Option<String>,
     pub(super) camera_post_effect_active: bool,
     pub(super) camera_post_effect: CameraPostEffectGpu,
+    pub(super) post_effect_graphs: Option<PostEffectGraphRuntime>,
     pub(super) menu_background_blurriness: f32,
     pub(super) hide_gui: bool,
     pub(super) hud_screen_blur: bool,
@@ -1681,6 +1683,7 @@ impl Renderer {
             current_post_effect_id: None,
             camera_post_effect_active: false,
             camera_post_effect,
+            post_effect_graphs: None,
             menu_background_blurriness: sanitize_menu_background_blurriness(
                 VANILLA_DEFAULT_MENU_BACKGROUND_BLURRINESS,
             ),
@@ -2300,9 +2303,12 @@ impl Renderer {
         })
     }
 
-    pub fn resize(&mut self, size: PhysicalSize<u32>) {
+    pub fn resize(&mut self, size: PhysicalSize<u32>) -> Result<()> {
         if size.width == 0 || size.height == 0 {
-            return;
+            return Ok(());
+        }
+        if let Some(post_effect_graphs) = &mut self.post_effect_graphs {
+            post_effect_graphs.resize(&self.device, size.width, size.height)?;
         }
         self.size = size;
         self.config.width = size.width;
@@ -2386,6 +2392,7 @@ impl Renderer {
         self.update_camera();
         self.counters.width = size.width;
         self.counters.height = size.height;
+        Ok(())
     }
 
     pub fn counters(&self) -> RendererCounters {
