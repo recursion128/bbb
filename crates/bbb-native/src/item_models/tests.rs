@@ -1927,7 +1927,7 @@ fn first_person_item_models_render_idle_spyglass_and_hide_when_scoping() {
     write_flat_item_runtime_fixture(&root, &["spyglass", "off_item"]);
     let item_runtime =
         NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
-    let spyglass = ItemStackSummary {
+    let renderable_spyglass = ItemStackSummary {
         item_id: item_runtime.item_protocol_id("minecraft:spyglass"),
         count: 1,
         component_patch: DataComponentPatchSummary::default(),
@@ -1947,7 +1947,7 @@ fn first_person_item_models_render_idle_spyglass_and_hide_when_scoping() {
     let mut idle_world = WorldStore::new();
     idle_world.apply_set_player_inventory(SetPlayerInventory {
         slot: 0,
-        item: spyglass.clone(),
+        item: renderable_spyglass,
     });
     let idle = first_person_item_models(
         &idle_world,
@@ -1961,7 +1961,11 @@ fn first_person_item_models_render_idle_spyglass_and_hide_when_scoping() {
     let mut scoping_world = WorldStore::new();
     scoping_world.apply_set_player_inventory(SetPlayerInventory {
         slot: 0,
-        item: spyglass,
+        item: ItemStackSummary {
+            item_id: Some(item_types::VANILLA_ITEM_SPYGLASS_ID),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        },
     });
     scoping_world.apply_set_player_inventory(SetPlayerInventory {
         slot: 40,

@@ -21,8 +21,8 @@ fn jigsaw_priority_tooltip_hit_testing_matches_priority_fields() {
 }
 
 use bbb_pack::{
-    BiomeColorCatalog, BiomeColorProfile, BiomeTemperatureModifier, EquipmentAssetCatalog,
-    GrassColorModifier, ItemRegistryCatalog, RegistryDependentItemComponentInitializer,
+    BiomeColorCatalog, BiomeColorProfile, BiomeTemperatureModifier, GrassColorModifier,
+    RegistryDependentItemComponentInitializer,
 };
 use bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_COMMAND_BLOCK_ID;
 use bbb_protocol::builtin_enum_component_values::VANILLA_DYE_COLOR_RED_ID;
@@ -154,23 +154,79 @@ fn hud_win_screen_reuses_resource_lines_and_sanitizes_vanilla_realtime_delta() {
     );
 
     let start = Instant::now();
+    let first_delta = state.frame_delta_ticks(start, Duration::from_millis(50));
+    assert_eq!(first_delta, HudFrameDeltaTicks::default());
     assert_eq!(
-        state.win_screen_realtime_delta_ticks(Some(screen.generation), start),
+        HudRenderRuntime::win_screen_realtime_delta_ticks(Some(screen.generation), first_delta),
         None
     );
+    let ordinary_delta =
+        state.frame_delta_ticks(start + Duration::from_millis(50), Duration::from_millis(50));
     assert_eq!(
-        state.win_screen_realtime_delta_ticks(
-            Some(screen.generation),
-            start + Duration::from_millis(50),
-        ),
-        Some((screen.generation, 1.0))
+        ordinary_delta,
+        HudFrameDeltaTicks {
+            game_time: 1.0,
+            realtime: 1.0,
+        }
     );
     assert_eq!(
-        state.win_screen_realtime_delta_ticks(
-            Some(screen.generation),
-            start + Duration::from_millis(450),
-        ),
+        HudRenderRuntime::win_screen_realtime_delta_ticks(Some(screen.generation), ordinary_delta),
+        Some((screen.generation, 1.0))
+    );
+    let slow_delta = state.frame_delta_ticks(
+        start + Duration::from_millis(450),
+        Duration::from_millis(50),
+    );
+    assert_eq!(
+        slow_delta,
+        HudFrameDeltaTicks {
+            game_time: 8.0,
+            realtime: 0.5,
+        }
+    );
+    assert_eq!(
+        HudRenderRuntime::win_screen_realtime_delta_ticks(Some(screen.generation), slow_delta),
         Some((screen.generation, 0.5))
+    );
+    let invalid_tick_interval =
+        state.frame_delta_ticks(start + Duration::from_millis(500), Duration::ZERO);
+    assert_eq!(
+        invalid_tick_interval,
+        HudFrameDeltaTicks {
+            game_time: 0.0,
+            realtime: 1.0,
+        }
+    );
+}
+
+#[test]
+fn hud_spyglass_scope_matches_vanilla_frame_interpolation_and_visibility() {
+    let mut state = HudRenderRuntime::default();
+
+    assert_eq!(
+        state.spyglass_scope(0.0, false, true, true),
+        Some(HudSpyglassScope { scale: 0.0 })
+    );
+    assert_eq!(state.spyglass_scope(1.0, true, true, true), None);
+    assert_eq!(
+        state.spyglass_scope(0.5, false, true, true),
+        Some(HudSpyglassScope { scale: 0.28125 })
+    );
+
+    assert_eq!(state.spyglass_scope(1.0, false, false, true), None);
+    assert_eq!(
+        state.spyglass_scope(0.0, false, true, true),
+        Some(HudSpyglassScope { scale: 0.703125 })
+    );
+
+    assert_eq!(state.spyglass_scope(1.0, false, true, false), None);
+    assert_eq!(
+        state.spyglass_scope(f32::NAN, false, true, true),
+        Some(HudSpyglassScope { scale: 0.5 })
+    );
+    assert_eq!(
+        state.spyglass_scope(4.0, false, true, true),
+        Some(HudSpyglassScope { scale: 1.75 })
     );
 }
 
@@ -864,14 +920,6 @@ fn particle_light_block_pos_uses_block_pos_containing_floor() {
 
 #[test]
 fn particle_scope_context_tracks_local_spyglass_use() {
-    let runtime = NativeItemRuntime::for_test_with_registry_and_equipment_assets(
-        serde_json::from_value::<ItemRegistryCatalog>(serde_json::json!({
-            "resource_ids": ["minecraft:spyglass", "minecraft:stone"],
-            "protocol_ids": {"minecraft:spyglass": 0, "minecraft:stone": 1}
-        }))
-        .unwrap(),
-        EquipmentAssetCatalog::default(),
-    );
     let mut world = WorldStore::new();
     let pose = LocalPlayerPoseState {
         position: bbb_protocol::packets::Vec3d {
@@ -884,30 +932,20 @@ fn particle_scope_context_tracks_local_spyglass_use() {
     world.set_local_player_pose(pose);
     world.apply_set_player_inventory(ProtocolSetPlayerInventory {
         slot: 0,
-        item: item_stack(0, 1),
+        item: item_stack(VANILLA_ITEM_SPYGLASS_ID, 1),
     });
     world.set_local_using_item(true);
 
-    let context = particle_local_player_scope_context(
-        &world,
-        Some(&runtime),
-        camera_pose_from_world(&world),
-        true,
-    )
-    .unwrap();
+    let context =
+        particle_local_player_scope_context(&world, camera_pose_from_world(&world), true).unwrap();
     assert_eq!(
         context.eye_position,
         camera_eye_position(camera_pose_from_world(&world).unwrap()).map(f64::from)
     );
     assert!(context.first_person);
     assert!(context.scoping);
-    let detached_context = particle_local_player_scope_context(
-        &world,
-        Some(&runtime),
-        camera_pose_from_world(&world),
-        false,
-    )
-    .unwrap();
+    let detached_context =
+        particle_local_player_scope_context(&world, camera_pose_from_world(&world), false).unwrap();
     assert!(!detached_context.first_person);
     assert!(detached_context.scoping);
 
@@ -916,16 +954,7 @@ fn particle_scope_context_tracks_local_spyglass_use() {
         item: item_stack(1, 1),
     });
     assert_eq!(
-        particle_local_player_scope_context(
-            &world,
-            Some(&runtime),
-            camera_pose_from_world(&world),
-            true,
-        ),
-        None
-    );
-    assert_eq!(
-        particle_local_player_scope_context(&world, None, camera_pose_from_world(&world), true),
+        particle_local_player_scope_context(&world, camera_pose_from_world(&world), true),
         None
     );
 }

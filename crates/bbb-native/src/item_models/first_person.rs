@@ -107,7 +107,7 @@ pub(crate) fn first_person_item_models_with_map_cache(
     if !world.local_player().camera.follows_player || world.local_player_is_spectator() {
         return models;
     }
-    if local_player_is_scoping(world, item_runtime) {
+    if world.local_player_is_scoping() {
         return models;
     }
 
@@ -460,7 +460,7 @@ pub(crate) fn first_person_player_arms(
     if !world.local_player().camera.follows_player || world.local_player_is_spectator() {
         return Vec::new();
     }
-    if item_runtime.is_some_and(|item_runtime| local_player_is_scoping(world, item_runtime)) {
+    if world.local_player_is_scoping() {
         return Vec::new();
     }
     if local_player_instance.render_state.invisible {
@@ -936,18 +936,6 @@ fn first_person_stack_removes_swing_animation(stack: &ItemStackSummary) -> bool 
         .component_patch
         .removed_type_ids
         .contains(&VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID)
-}
-
-fn local_player_is_scoping(world: &WorldStore, item_runtime: &NativeItemRuntime) -> bool {
-    world
-        .local_using_item_item_id()
-        .and_then(|item_id| item_runtime.item_resource_id(item_id))
-        .is_some_and(|resource_id| {
-            item_types::vanilla_item_resource_id_matches_type(
-                resource_id,
-                item_types::VANILLA_ITEM_SPYGLASS_ID,
-            )
-        })
 }
 
 fn first_person_block_fallback(context: BlockModelDisplayContext) -> BlockModelDisplayTransform {

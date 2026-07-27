@@ -58,10 +58,10 @@ use bbb_renderer::{
     HudJigsawBlockEditorScreen, HudJigsawBlockEditorTextField, HudJumpBar, HudMobEffect,
     HudPauseScreen, HudPlayerHealth, HudResidentItemLayer, HudSignEditorKind, HudSignEditorPreedit,
     HudSignEditorScreen, HudSocialInteractionsFocus, HudSocialInteractionsPage,
-    HudSocialInteractionsPlayerAction, HudSocialInteractionsScreen, HudStatsItemRow, HudStatsRow,
-    HudStatsScreen, HudStructureBlockEditorScreen, HudStructureBlockEditorTextField,
-    HudStructureBlockMode, HudStyledTextRun, HudSystemToast, HudTestBlockEditorScreen,
-    HudTestBlockEditorTextField, HudTestInstanceBlockEditorScreen,
+    HudSocialInteractionsPlayerAction, HudSocialInteractionsScreen, HudSpyglassScope,
+    HudStatsItemRow, HudStatsRow, HudStatsScreen, HudStructureBlockEditorScreen,
+    HudStructureBlockEditorTextField, HudStructureBlockMode, HudStyledTextRun, HudSystemToast,
+    HudTestBlockEditorScreen, HudTestBlockEditorTextField, HudTestInstanceBlockEditorScreen,
     HudTestInstanceBlockEditorTextField, HudTextStyle, HudUvRect, HudVehicleHealth, HudWinScreen,
     HudWinScreenLine, ItemModelAssetIdentity, ItemModelAssetSource, ItemModelGeometryClass,
     LevelLighting, LightmapEnvironment, LightningBoltRenderState, ParticleBlockFluidSurfaceSample,
@@ -687,6 +687,8 @@ const DEBUG_HEIGHTMAP_BOX_HEIGHT: f32 = 3.0 / 32.0;
 const DEBUG_WATER_SCAN_RADIUS: i32 = 10;
 const DEBUG_WATER_BOX_INSET: f32 = 0.01;
 const DEBUG_WATER_BOX_COLOR: [u8; 4] = [0, 255, 0, 38];
+const VANILLA_SPYGLASS_SCOPE_TARGET_SCALE: f32 = 1.125;
+const VANILLA_SPYGLASS_SCOPE_RESET_SCALE: f32 = 0.5;
 
 fn push_capped_hud_debug_sample<T>(samples: &mut Vec<T>, value: T, capacity: usize) {
     samples.push(value);
@@ -722,6 +724,13 @@ pub(crate) struct HudRenderRuntime {
     boss_progress: BTreeMap<uuid::Uuid, BossBarProgressPresentation>,
     contextual: waypoint_locator::HudContextualRuntime,
     vignette: vignette::VignetteRuntime,
+    scope_scale: f32,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
+struct HudFrameDeltaTicks {
+    game_time: f32,
+    realtime: f32,
 }
 
 #[derive(Debug)]
@@ -792,22 +801,75 @@ impl HudRenderRuntime {
         Arc::clone(&self.win_screen_lines)
     }
 
-    fn win_screen_realtime_delta_ticks(
-        &mut self,
-        generation: Option<u64>,
-        now: Instant,
-    ) -> Option<(u64, f32)> {
-        let previous = self.last_ui_frame_at.replace(now)?;
-        let generation = generation?;
-        let elapsed_ticks = now.saturating_duration_since(previous).as_secs_f32() * 20.0;
-        let delta_ticks = if !elapsed_ticks.is_finite() || elapsed_ticks <= 0.0 {
-            return None;
-        } else if elapsed_ticks > 7.0 {
+    fn frame_delta_ticks(&mut self, now: Instant, tick_interval: Duration) -> HudFrameDeltaTicks {
+        let Some(previous) = self.last_ui_frame_at.replace(now) else {
+            return HudFrameDeltaTicks::default();
+        };
+        let elapsed_seconds = now.saturating_duration_since(previous).as_secs_f32();
+        if !elapsed_seconds.is_finite() || elapsed_seconds <= 0.0 {
+            return HudFrameDeltaTicks::default();
+        }
+        let tick_interval_seconds = tick_interval.as_secs_f32();
+        let game_time = if tick_interval_seconds.is_finite() && tick_interval_seconds > 0.0 {
+            let delta = elapsed_seconds / tick_interval_seconds;
+            if delta.is_finite() && delta > 0.0 {
+                delta
+            } else {
+                0.0
+            }
+        } else {
+            0.0
+        };
+        let realtime_ticks = elapsed_seconds * 20.0;
+        let realtime = if !realtime_ticks.is_finite() || realtime_ticks <= 0.0 {
+            0.0
+        } else if realtime_ticks > 7.0 {
             0.5
         } else {
-            elapsed_ticks
+            realtime_ticks
         };
-        Some((generation, delta_ticks))
+        HudFrameDeltaTicks {
+            game_time,
+            realtime,
+        }
+    }
+
+    fn win_screen_realtime_delta_ticks(
+        generation: Option<u64>,
+        frame_delta: HudFrameDeltaTicks,
+    ) -> Option<(u64, f32)> {
+        let generation = generation?;
+        (frame_delta.realtime > 0.0).then_some((generation, frame_delta.realtime))
+    }
+
+    fn spyglass_scope(
+        &mut self,
+        game_time_delta_ticks: f32,
+        hide_gui: bool,
+        first_person: bool,
+        scoping: bool,
+    ) -> Option<HudSpyglassScope> {
+        if hide_gui {
+            return None;
+        }
+        let delta_ticks = if game_time_delta_ticks.is_finite() && game_time_delta_ticks > 0.0 {
+            game_time_delta_ticks
+        } else {
+            0.0
+        };
+        self.scope_scale +=
+            0.5 * delta_ticks * (VANILLA_SPYGLASS_SCOPE_TARGET_SCALE - self.scope_scale);
+        if !first_person {
+            return None;
+        }
+        if scoping {
+            Some(HudSpyglassScope {
+                scale: self.scope_scale,
+            })
+        } else {
+            self.scope_scale = VANILLA_SPYGLASS_SCOPE_RESET_SCALE;
+            None
+        }
     }
 
     fn chat_messages_update(
@@ -2616,7 +2678,6 @@ pub(crate) fn advance_simulation(
     let particle_camera_pose = render_camera_pose;
     let particle_scope_context = particle_local_player_scope_context(
         world,
-        item_runtime.as_ref(),
         particle_camera_pose,
         input.camera_type().is_first_person(),
     );
@@ -2754,12 +2815,14 @@ pub(crate) fn update_renderer_from_publication(
     let hud_debug_tps_sampler = &publication.hud_debug_tps_sampler;
     let render_started_at = Instant::now();
     let entity_partial_tick = publication.partial_tick_at(render_started_at);
+    let hud_frame_delta =
+        hud_render_runtime.frame_delta_ticks(render_started_at, publication.tick_interval);
     let win_generation = match input.game_event_screen_runtime() {
         Some(GameEventScreenRuntime::Win(screen)) => Some(screen.generation),
         _ => None,
     };
     if let Some((generation, delta_ticks)) =
-        hud_render_runtime.win_screen_realtime_delta_ticks(win_generation, render_started_at)
+        HudRenderRuntime::win_screen_realtime_delta_ticks(win_generation, hud_frame_delta)
     {
         mailbox.enqueue(
             crate::simulation::commands::SimulationCommand::GameEventScreenRenderDelta {
@@ -3280,6 +3343,12 @@ pub(crate) fn update_renderer_from_publication(
         camera_pose.map(camera_eye_position),
         input.hide_gui(),
     );
+    let hud_spyglass_scope = hud_render_runtime.spyglass_scope(
+        hud_frame_delta.game_time,
+        input.hide_gui(),
+        input.camera_type().is_first_person(),
+        world.local_player_is_scoping(),
+    );
     let camera_hurt_effect =
         camera_hurt_effect_from_world(world, entity_partial_tick, damage_tilt_strength);
     let camera_spinning_effect = camera_spinning_ticks.effect_for_world(world, entity_partial_tick);
@@ -3747,6 +3816,7 @@ pub(crate) fn update_renderer_from_publication(
             hud_air,
             hud_vehicle_health,
             hud_vignette,
+            hud_spyglass_scope,
             hud_contextual_bar,
             hud_experience_level,
             hud_hotbar_mode,
@@ -17443,13 +17513,10 @@ pub(crate) fn monotonic_millis() -> u64 {
 
 fn particle_local_player_scope_context(
     world: &WorldStore,
-    item_runtime: Option<&NativeItemRuntime>,
     camera_pose: Option<CameraPose>,
     first_person: bool,
 ) -> Option<ParticleLocalPlayerScopeContext> {
-    let item_id = world.local_using_item_item_id()?;
-    let scoping = item_runtime.and_then(|items| items.item_resource_id(item_id))
-        == Some("minecraft:spyglass");
+    let scoping = world.local_player_is_scoping();
     if !scoping {
         return None;
     }

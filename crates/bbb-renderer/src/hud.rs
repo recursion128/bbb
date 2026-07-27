@@ -1147,6 +1147,13 @@ pub struct HudSleepOverlay {
     pub alpha: u8,
 }
 
+/// Vanilla `Gui.scopeScale` presentation value for the current first-person
+/// spyglass frame. The renderer combines it with the selected-pack scope image.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HudSpyglassScope {
+    pub scale: f32,
+}
+
 /// Vanilla `BossEvent.BossBarColor` (BossEvent.java:90-97): selects the
 /// `boss_bar/{name}_background` / `boss_bar/{name}_progress` sprite pair.
 /// Declaration order is the vanilla ordinal (the sprite-array index,
@@ -5112,6 +5119,11 @@ impl Renderer {
 
     pub fn set_hud_sleep_overlay(&mut self, overlay: Option<HudSleepOverlay>) {
         self.hud_sleep_overlay = sanitize_hud_sleep_overlay(overlay);
+    }
+
+    pub fn set_hud_spyglass_scope(&mut self, scope: Option<HudSpyglassScope>) {
+        self.hud_spyglass_scope =
+            scope.filter(|scope| scope.scale.is_finite() && scope.scale >= 0.0);
     }
 
     /// Applies Vanilla's transient F1 `Options.hideGui` presentation policy.
