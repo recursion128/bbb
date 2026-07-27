@@ -429,10 +429,7 @@ stack、cache 状态机或 selectable old/new reload path。
 2. **同步 registry 到 custom presentation**：server/datapack 的 custom
    block/entity identity 接现有 model/texture loader 与 exact fallback；不用
    bootstrap ordinal、名称猜测或第二套 schema 代替 session RegistryAccess。
-3. **剩余 pack-backed consumer parity**：消费 atlas mip animation metadata，
-   完成所有 item render path 的 dynamic tint，加载 equipment asset layers；
-   reload 继续原子失效对应 renderer/audio owner。
-4. **诊断与集成证据**：missing/invalid/unsupported resource 有精确
+3. **诊断与集成证据**：missing/invalid/unsupported resource 有精确
    resource-id/fallback 观测；live playable 增加 deterministic
    screenshot/audio 变化证明 presentation 随 push→apply→pop 切换。
 
