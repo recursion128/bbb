@@ -633,3 +633,7 @@
 - **2026-07-27（同步环境 ParticleOptions 工程闭环）**：完整 MapCodec payload、
   registry-aware item 组件、ambient 粒子与滴水石事件 1504 已贯通同一原生
   provider/command 路径；合同见 `docs/archive/environment-particle-options-design.md`。
+- **2026-07-27（递归不可信解码栈预算工程闭环）**：Component 全解码/投影、
+  flattened SNBT 与 direct Dialog HolderSet 的精确深度边界现均由生产尺寸线程上的
+  字节预算反向守卫；合同见
+  `docs/archive/recursive-untrusted-decode-stack-budget-design.md`。

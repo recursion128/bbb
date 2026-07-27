@@ -1,5 +1,7 @@
 # Recursive Untrusted Decode Stack-Budget Closure
 
+Status: completed on 2026-07-27.
+
 This document freezes the engineering contract for the remaining
 byte-denominated recursion guards in the protocol ledger. Work starts from
 fully gated commit `7980738db`.
