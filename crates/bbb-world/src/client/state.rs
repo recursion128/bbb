@@ -104,7 +104,7 @@ pub use crate::client::ui::{
     CodeOfConductState, DialogBodyFocusPartState, DialogFocusState, DialogInputValueState,
     DialogLinkConfirmationState, DialogPreviousScreenState, DialogTextEditState,
     GhostRecipeSlotState, GhostRecipeState, MountScreenState, OpenSignEditorState,
-    PongResponseState,
+    PauseScreenCustomDialogState, PongResponseState,
 };
 pub use crate::client::waypoints::{
     ClientWaypointsState, WaypointDataState, WaypointEventState, WaypointState, WaypointVec3iState,

@@ -13,7 +13,7 @@ use crate::{
     client::book::{BookScreenState, OpenBookState},
     client::dialog::{
         decode_component_click_dialog, decode_dialog_registry_entry, CommonDialogDataState,
-        DialogBodyState, DialogDataState, DialogInputControlState, DialogState,
+        DialogBodyState, DialogDataState, DialogInputControlState, DialogState, DialogTextState,
     },
     client::inventory::{RecipeUpdateListenerContext, RecipeUpdateListenerLayout},
     entities::{is_vanilla_abstract_horse_type, is_vanilla_abstract_nautilus_type},
@@ -514,6 +514,26 @@ fn common_dialog_data(data: &DialogDataState) -> &CommonDialogDataState {
 }
 
 const DIALOG_REGISTRY: &str = "minecraft:dialog";
+const PAUSE_SCREEN_ADDITIONS_TAG: &str = "minecraft:pause_screen_additions";
+const CUSTOM_OPTIONS_DIALOG: &str = "minecraft:custom_options";
+const SERVER_LINKS_DIALOG: &str = "minecraft:server_links";
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PauseScreenCustomDialogState {
+    resource_id: String,
+    external_title: DialogTextState,
+    dialog: DialogState,
+}
+
+impl PauseScreenCustomDialogState {
+    pub fn resource_id(&self) -> &str {
+        &self.resource_id
+    }
+
+    pub fn external_title(&self) -> &DialogTextState {
+        &self.external_title
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CodeOfConductState {
@@ -600,6 +620,56 @@ impl WorldStore {
     /// original non-dialog previous screen, matching vanilla's dialog stack.
     pub fn show_dialog_from_action(&mut self, dialog: DialogState) -> bool {
         self.client_ui.show_dialog(dialog);
+        true
+    }
+
+    /// Selects the custom addition installed by Vanilla `PauseScreen.init`.
+    ///
+    /// One tagged dialog is used directly, multiple tagged dialogs route
+    /// through the built-in custom-options list, and a non-empty server-links
+    /// packet is the final fallback. Invalid synchronized dialog data fails
+    /// closed instead of manufacturing a local replacement.
+    pub fn pause_screen_custom_dialog(&self) -> Option<PauseScreenCustomDialogState> {
+        if self
+            .registry_unresolved_holder_ids_for_tag(DIALOG_REGISTRY, PAUSE_SCREEN_ADDITIONS_TAG)
+            .is_some_and(|holders| !holders.is_empty())
+        {
+            return None;
+        }
+        let tagged = self
+            .registry_resource_ids_for_tag(DIALOG_REGISTRY, PAUSE_SCREEN_ADDITIONS_TAG)
+            .ok()?
+            .unwrap_or_default();
+        let resource_id = match tagged.as_slice() {
+            [] if !self.server_links().is_empty() => SERVER_LINKS_DIALOG,
+            [] => return None,
+            [resource_id] => *resource_id,
+            _ => CUSTOM_OPTIONS_DIALOG,
+        };
+        let entry = self
+            .frozen_registry_access()
+            .entry_by_resource_id(DIALOG_REGISTRY, resource_id)?;
+        let dialog = self.dialog_state_from_reference(entry.holder_id);
+        let data = dialog.data.as_ref()?;
+        let common = common_dialog_data(data);
+        let external_title = common
+            .external_title
+            .clone()
+            .unwrap_or_else(|| common.title.clone());
+        Some(PauseScreenCustomDialogState {
+            resource_id: entry.resource_id.to_string(),
+            external_title,
+            dialog,
+        })
+    }
+
+    /// Opens the frozen registry dialog selected when a native pause menu was
+    /// initialized, preserving the existing dialog parent/return lifecycle.
+    pub fn open_pause_screen_custom_dialog(
+        &mut self,
+        custom: &PauseScreenCustomDialogState,
+    ) -> bool {
+        self.client_ui.show_dialog(custom.dialog.clone());
         true
     }
 
@@ -1707,8 +1777,9 @@ mod tests {
         AddEntity as ProtocolAddEntity, BlockPos as ProtocolBlockPos,
         ContainerSetSlot as ProtocolContainerSetSlot, DataComponentPatchSummary, DialogHolder,
         InteractionHand, ItemStackSummary, OpenBook as ProtocolOpenBook,
-        OpenScreen as ProtocolOpenScreen, SetPlayerInventory as ProtocolSetPlayerInventory,
-        Vec3d as ProtocolVec3d, WrittenBookContentSummary,
+        OpenScreen as ProtocolOpenScreen, RegistryTags, ServerLinkEntry, ServerLinkKnownType,
+        ServerLinkType, ServerLinks, SetPlayerInventory as ProtocolSetPlayerInventory,
+        TagNetworkPayload, UpdateTags, Vec3d as ProtocolVec3d, WrittenBookContentSummary,
     };
     use bbb_protocol::recipe_wire_types::{
         VANILLA_RECIPE_DISPLAY_TYPE_STONECUTTER_ID, VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
@@ -1722,6 +1793,124 @@ mod tests {
         let source = include_str!("ui.rs");
         let old_alias = ["VANILLA_WRITABLE_BOOK_CONTENT_", "COMPONENT_ID"].concat();
         assert!(!source.contains(&format!("const {old_alias}")));
+    }
+
+    #[test]
+    fn pause_screen_custom_dialog_selects_single_tag_and_opens_frozen_target() {
+        let mut store = WorldStore::new();
+        store.record_registry_entries(
+            DIALOG_REGISTRY,
+            0,
+            vec![crate::RegistryPacketEntry::with_known_pack_data_for_test(
+                "example:custom",
+                br#"{"type":"minecraft:notice","title":"Internal","external_title":"External"}"#
+                    .to_vec(),
+            )],
+        );
+        apply_pause_screen_dialog_tag(&mut store, vec![0]);
+
+        let custom = store.pause_screen_custom_dialog().expect("custom dialog");
+        assert_eq!(custom.resource_id(), "example:custom");
+        assert_eq!(custom.external_title().text, "External");
+        assert!(store.open_pause_screen_custom_dialog(&custom));
+
+        let current = store.current_dialog().expect("opened dialog");
+        assert_eq!(current.resource_id.as_deref(), Some("example:custom"));
+        assert!(matches!(
+            current.data,
+            Some(DialogDataState::Notice { ref common, .. })
+                if common.title.text == "Internal"
+        ));
+        assert_eq!(store.counters().show_dialog_packets, 0);
+    }
+
+    #[test]
+    fn pause_screen_custom_dialog_uses_builtin_list_for_multiple_tagged_entries() {
+        let mut store = WorldStore::new();
+        store.record_registry_entries(
+            DIALOG_REGISTRY,
+            0,
+            vec![
+                pause_notice_registry_entry("example:first", "First"),
+                pause_notice_registry_entry("example:second", "Second"),
+                crate::RegistryPacketEntry::with_known_pack_data_for_test(
+                    CUSTOM_OPTIONS_DIALOG,
+                    br##"{"type":"minecraft:dialog_list","title":"Custom Options","external_title":"Server Options","dialogs":"#minecraft:pause_screen_additions"}"##
+                        .to_vec(),
+                ),
+            ],
+        );
+        apply_pause_screen_dialog_tag(&mut store, vec![1, 0]);
+
+        let custom = store.pause_screen_custom_dialog().expect("custom list");
+        assert_eq!(custom.resource_id(), CUSTOM_OPTIONS_DIALOG);
+        assert_eq!(custom.external_title().text, "Server Options");
+        assert!(matches!(
+            custom.dialog.data,
+            Some(DialogDataState::DialogList {
+                ref dialogs, ..
+            }) if dialogs
+                .entries
+                .iter()
+                .map(|entry| entry.resource_id.as_deref())
+                .eq([Some("example:second"), Some("example:first")])
+        ));
+    }
+
+    #[test]
+    fn pause_screen_custom_dialog_falls_back_only_for_nonempty_server_links() {
+        let mut store = WorldStore::new();
+        store.record_registry_entries(
+            DIALOG_REGISTRY,
+            0,
+            vec![crate::RegistryPacketEntry::with_known_pack_data_for_test(
+                SERVER_LINKS_DIALOG,
+                br#"{"type":"minecraft:server_links","title":"Links","external_title":"Server Links"}"#
+                    .to_vec(),
+            )],
+        );
+        apply_pause_screen_dialog_tag(&mut store, Vec::new());
+        assert_eq!(store.pause_screen_custom_dialog(), None);
+
+        store.apply_server_links(ServerLinks {
+            links: vec![ServerLinkEntry {
+                link_type: ServerLinkType::Known(ServerLinkKnownType::Website),
+                url: "https://example.invalid/".to_string(),
+            }],
+        });
+        let custom = store.pause_screen_custom_dialog().expect("server links");
+        assert_eq!(custom.resource_id(), SERVER_LINKS_DIALOG);
+        assert_eq!(custom.external_title().text, "Server Links");
+    }
+
+    #[test]
+    fn pause_screen_custom_dialog_fails_closed_for_unresolved_or_invalid_targets() {
+        let mut invalid = WorldStore::new();
+        invalid.record_registry_entries(
+            DIALOG_REGISTRY,
+            0,
+            vec![crate::RegistryPacketEntry::stub("example:stub")],
+        );
+        apply_pause_screen_dialog_tag(&mut invalid, vec![0]);
+        assert_eq!(invalid.pause_screen_custom_dialog(), None);
+
+        let mut unresolved = WorldStore::new();
+        unresolved.record_registry_entries(
+            DIALOG_REGISTRY,
+            0,
+            vec![crate::RegistryPacketEntry::with_known_pack_data_for_test(
+                SERVER_LINKS_DIALOG,
+                br#"{"type":"minecraft:server_links","title":"Links"}"#.to_vec(),
+            )],
+        );
+        unresolved.apply_server_links(ServerLinks {
+            links: vec![ServerLinkEntry {
+                link_type: ServerLinkType::Known(ServerLinkKnownType::Website),
+                url: "https://example.invalid/".to_string(),
+            }],
+        });
+        apply_pause_screen_dialog_tag(&mut unresolved, vec![99]);
+        assert_eq!(unresolved.pause_screen_custom_dialog(), None);
     }
 
     #[test]
@@ -2655,6 +2844,25 @@ mod tests {
         bytes.extend_from_slice(b"Title");
         bytes.push(0);
         bytes
+    }
+
+    fn pause_notice_registry_entry(resource_id: &str, title: &str) -> crate::RegistryPacketEntry {
+        crate::RegistryPacketEntry::with_known_pack_data_for_test(
+            resource_id,
+            format!(r#"{{"type":"minecraft:notice","title":"{title}"}}"#).into_bytes(),
+        )
+    }
+
+    fn apply_pause_screen_dialog_tag(store: &mut WorldStore, entries: Vec<i32>) {
+        store.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: DIALOG_REGISTRY.to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: PAUSE_SCREEN_ADDITIONS_TAG.to_string(),
+                    entries,
+                }],
+            }],
+        });
     }
 
     fn show_notice(store: &mut WorldStore, title: &str) {
