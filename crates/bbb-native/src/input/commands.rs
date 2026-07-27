@@ -394,6 +394,37 @@ pub(crate) fn queue_set_creative_mode_slot_command(
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum QueueCreativeModeSlotBatchError {
+    Unavailable,
+    Full,
+    Closed,
+}
+
+pub(crate) fn queue_set_creative_mode_slot_commands_atomically(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    commands: &[SetCreativeModeSlot],
+) -> Result<(), QueueCreativeModeSlotBatchError> {
+    if commands.is_empty() {
+        return Ok(());
+    }
+    let tx = net_commands
+        .as_ref()
+        .ok_or(QueueCreativeModeSlotBatchError::Unavailable)?;
+    let permits = tx
+        .try_reserve_many(commands.len())
+        .map_err(|error| match error {
+            mpsc::error::TrySendError::Full(()) => QueueCreativeModeSlotBatchError::Full,
+            mpsc::error::TrySendError::Closed(()) => QueueCreativeModeSlotBatchError::Closed,
+        })?;
+    for (permit, command) in permits.zip(commands.iter().cloned()) {
+        permit.send(NetCommand::SetCreativeModeSlot(command));
+    }
+    counters.set_creative_mode_slot_commands_queued += commands.len();
+    Ok(())
+}
+
 pub(crate) fn queue_sign_update_command(
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
@@ -1348,6 +1379,43 @@ mod tests {
         assert_eq!(
             rx.try_recv().unwrap(),
             NetCommand::SetCreativeModeSlot(command)
+        );
+    }
+
+    #[test]
+    fn creative_mode_slot_batch_reserves_all_capacity_before_sending() {
+        let (tx, mut rx) = mpsc::channel(2);
+        tx.try_send(NetCommand::ClientTickEnd).unwrap();
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+        let batch = [
+            SetCreativeModeSlot {
+                slot_num: 36,
+                item: bbb_protocol::packets::ItemStackSummary::empty(),
+            },
+            SetCreativeModeSlot {
+                slot_num: 37,
+                item: bbb_protocol::packets::ItemStackSummary::empty(),
+            },
+        ];
+
+        assert_eq!(
+            queue_set_creative_mode_slot_commands_atomically(&mut counters, &commands, &batch),
+            Err(QueueCreativeModeSlotBatchError::Full)
+        );
+        assert_eq!(counters.set_creative_mode_slot_commands_queued, 0);
+        assert_eq!(rx.try_recv().unwrap(), NetCommand::ClientTickEnd);
+        assert!(rx.try_recv().is_err());
+
+        queue_set_creative_mode_slot_commands_atomically(&mut counters, &commands, &batch).unwrap();
+        assert_eq!(counters.set_creative_mode_slot_commands_queued, 2);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::SetCreativeModeSlot(batch[0].clone())
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::SetCreativeModeSlot(batch[1].clone())
         );
     }
 

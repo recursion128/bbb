@@ -1,9 +1,13 @@
 //! Vanilla creative-inventory catalog facts and canonical state.
 
+mod action;
 mod generated_26_1;
 mod materialize;
 mod state;
 
+pub use action::{
+    CreativeInventoryAction, CreativeInventoryActionPlan, CreativeInventoryActionPlanError,
+};
 pub use materialize::{
     CreativeInventoryBuildError, CreativeInventoryMaterializationRevision,
     CreativeInventorySnapshot, CreativeInventoryTabSnapshot,

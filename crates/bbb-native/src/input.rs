@@ -242,12 +242,12 @@ pub(crate) use inventory::creative::{
 #[cfg(test)]
 pub(crate) use inventory::handle_inventory_mouse_input;
 pub(crate) use inventory::{
-    anvil_rename_entry_consumes_key, creative_inventory_search_entry_consumes_key,
-    handle_inventory_cursor_moved, handle_inventory_key_input,
-    handle_inventory_mouse_input_with_item_runtime, handle_inventory_mouse_wheel,
-    handle_inventory_text_input, inventory_screen_layout, inventory_screen_layout_for_surface,
-    inventory_screen_selected_hotbar_slot_id, maybe_close_narrow_recipe_book,
-    recipe_book_button_position, recipe_book_main_gui_offset,
+    advance_creative_inventory_commands, anvil_rename_entry_consumes_key,
+    creative_inventory_search_entry_consumes_key, handle_inventory_cursor_moved,
+    handle_inventory_key_input, handle_inventory_mouse_input_with_item_runtime,
+    handle_inventory_mouse_wheel, handle_inventory_text_input, inventory_screen_layout,
+    inventory_screen_layout_for_surface, inventory_screen_selected_hotbar_slot_id,
+    maybe_close_narrow_recipe_book, recipe_book_button_position, recipe_book_main_gui_offset,
     recipe_book_search_entry_consumes_key, recipe_book_tab_count_for_background,
     recipe_book_type_for_background, recipe_book_type_settings, recipe_book_visible_tab_indices,
     sync_beacon_effect_selection_state, sync_loom_pattern_state_for_hud,

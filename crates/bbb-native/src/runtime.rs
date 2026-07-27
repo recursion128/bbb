@@ -122,8 +122,8 @@ use crate::{
     },
     game_test_highlights::game_test_highlight_gizmos,
     input::{
-        advance_destroying_block_at_partial_tick, advance_local_using_item_ticks_with_effects,
-        advance_player_input_for_client_ticks,
+        advance_creative_inventory_commands, advance_destroying_block_at_partial_tick,
+        advance_local_using_item_ticks_with_effects, advance_player_input_for_client_ticks,
         advance_using_item_at_partial_tick_with_effects_and_presentation,
         death_screen::DeathScreenRuntime,
         game_event_screen::{DemoHelpFocus, DemoLinkConfirmationFocus, GameEventScreenRuntime},
@@ -2555,6 +2555,7 @@ pub(crate) fn advance_simulation(
     world.advance_moving_piston_ticks(running_ticks);
     world.advance_item_cooldowns(advanced_ticks);
     input.advance_death_screen_ticks(advanced_ticks);
+    advance_creative_inventory_commands(input, world, net_counters, net_commands, advanced_ticks);
     advance_player_input_for_client_ticks(
         input,
         world,

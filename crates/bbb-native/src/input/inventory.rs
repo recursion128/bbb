@@ -374,14 +374,14 @@ pub(crate) fn handle_inventory_mouse_input_with_item_runtime(
         if !input.focused {
             return false;
         }
-        let Some(snapshot) = world.creative_inventory_snapshot() else {
+        let Some(snapshot) = world.creative_inventory_snapshot().cloned() else {
             return true;
         };
         let visible_item_count = input.creative_inventory.visible_item_count();
         input.creative_inventory.set_cursor_position(
             cursor_position,
             surface_size,
-            snapshot,
+            &snapshot,
             visible_item_count,
         );
         input.inventory_cursor_position = input.creative_inventory.cursor_position();
@@ -389,16 +389,52 @@ pub(crate) fn handle_inventory_mouse_input_with_item_runtime(
             .creative_inventory
             .hovered_slot()
             .and_then(|slot| i16::try_from(slot.hud_id()).ok());
+        let button_num = match button {
+            MouseButton::Left => 0,
+            MouseButton::Right => 1,
+            MouseButton::Middle => 2,
+            _ => return true,
+        };
         match (button, state) {
             (MouseButton::Left, ElementState::Pressed) => {
                 input
                     .creative_inventory
-                    .handle_primary_press(snapshot, visible_item_count);
+                    .handle_primary_press(&snapshot, visible_item_count);
             }
             (MouseButton::Left, ElementState::Released) => {
-                input.creative_inventory.handle_primary_release(snapshot);
+                input.creative_inventory.handle_action_release(
+                    world,
+                    counters,
+                    net_commands,
+                    item_runtime,
+                    &snapshot,
+                    button_num,
+                );
+                input.creative_inventory.handle_primary_release(&snapshot);
+            }
+            (_, ElementState::Released) => {
+                input.creative_inventory.handle_action_release(
+                    world,
+                    counters,
+                    net_commands,
+                    item_runtime,
+                    &snapshot,
+                    button_num,
+                );
             }
             _ => {}
+        }
+        if state == ElementState::Pressed {
+            let shift_down = input.shift_down();
+            input.creative_inventory.handle_action_press(
+                world,
+                counters,
+                net_commands,
+                item_runtime,
+                &snapshot,
+                button_num,
+                shift_down,
+            );
         }
         return true;
     }
@@ -1590,11 +1626,31 @@ pub(crate) fn handle_inventory_key_input(
         if !input.focused {
             return false;
         }
+        let control_down = input.control_down();
+        let shift_down = input.shift_down();
+        if code == KeyCode::KeyQ || hotbar_slot_for_key(code).is_some() {
+            let Some(snapshot) = world.creative_inventory_snapshot().cloned() else {
+                return true;
+            };
+            if input.creative_inventory.handle_action_key(
+                world,
+                counters,
+                net_commands,
+                item_runtime,
+                &snapshot,
+                code,
+                control_down,
+            ) {
+                return true;
+            }
+            input
+                .creative_inventory
+                .handle_key(&snapshot, code, control_down, shift_down);
+            return true;
+        }
         let Some(snapshot) = world.creative_inventory_snapshot() else {
             return true;
         };
-        let control_down = input.control_down();
-        let shift_down = input.shift_down();
         input
             .creative_inventory
             .handle_key(snapshot, code, control_down, shift_down);
@@ -2290,6 +2346,18 @@ pub(crate) fn handle_inventory_mouse_wheel(
         );
     }
     true
+}
+
+pub(crate) fn advance_creative_inventory_commands(
+    input: &mut ClientInputState,
+    world: &mut WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    ticks: u32,
+) {
+    input
+        .creative_inventory
+        .advance_commands(world, counters, net_commands, ticks);
 }
 
 fn maybe_scroll_stonecutter_recipes(

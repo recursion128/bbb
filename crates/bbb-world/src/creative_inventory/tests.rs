@@ -16,8 +16,8 @@ use bbb_protocol::{
         VANILLA_ITEM_STONE_ID, VANILLA_SUSPICIOUS_STEW_INGREDIENTS,
     },
     packets::{
-        ContainerSetSlot, DataComponentPatchSummary, ItemStackSummary, PlayerAbilities,
-        SetCursorItem, UpdateEnabledFeatures,
+        ContainerInput, ContainerSetSlot, DataComponentPatchSummary, ItemStackSummary,
+        PlayerAbilities, SetCursorItem, SetPlayerInventory, UpdateEnabledFeatures,
     },
 };
 
@@ -27,7 +27,7 @@ use crate::{
     VanillaEnchantmentIdentity, WorldStore, INSTRUMENT_REGISTRY, PAINTING_VARIANT_REGISTRY,
 };
 
-use super::CreativeInventoryTabType;
+use super::{CreativeInventoryAction, CreativeInventoryActionPlanError, CreativeInventoryTabType};
 
 const REGULAR_GOAT_HORNS: &str = "minecraft:regular_goat_horns";
 const SCREAMING_GOAT_HORNS: &str = "minecraft:screaming_goat_horns";
@@ -706,4 +706,379 @@ fn every_materialized_stack_uses_a_known_protocol_item_id() {
             .item_id
             .is_some_and(|id| vanilla_item_type(id).is_some())));
     }
+}
+
+#[test]
+fn creative_picker_actions_copy_grow_clone_swap_and_reject_locked_or_invalid_stacks() {
+    let mut world = world_with_instrument_registry();
+    world.local_player.abilities = Some(creative_abilities());
+    world.open_local_inventory_with_operator_tab(false).unwrap();
+    let stone = item_stack(VANILLA_ITEM_STONE_ID, 1);
+
+    let pickup = world
+        .plan_creative_inventory_action(
+            &CreativeInventoryAction::PickerClick {
+                item: stone.clone(),
+                button_num: 0,
+                input: ContainerInput::Pickup,
+            },
+            true,
+        )
+        .unwrap();
+    assert!(pickup.commands().is_empty());
+    assert!(world.apply_creative_inventory_action_plan(pickup));
+    assert_eq!(world.inventory.cursor_item, stone);
+
+    let grow = world
+        .plan_creative_inventory_action(
+            &CreativeInventoryAction::PickerClick {
+                item: item_stack(VANILLA_ITEM_STONE_ID, 1),
+                button_num: 0,
+                input: ContainerInput::QuickMove,
+            },
+            true,
+        )
+        .unwrap();
+    assert!(world.apply_creative_inventory_action_plan(grow));
+    assert_eq!(world.inventory.cursor_item.count, 64);
+
+    let swap = world
+        .plan_creative_inventory_action(
+            &CreativeInventoryAction::PickerClick {
+                item: item_stack(VANILLA_ITEM_DIAMOND_ID, 1),
+                button_num: 2,
+                input: ContainerInput::Swap,
+            },
+            true,
+        )
+        .unwrap();
+    assert_eq!(
+        swap.commands(),
+        &[bbb_protocol::packets::SetCreativeModeSlot {
+            slot_num: 38,
+            item: item_stack(VANILLA_ITEM_DIAMOND_ID, 64),
+        }]
+    );
+    assert!(world.apply_creative_inventory_action_plan(swap));
+    assert_eq!(
+        world.inventory.hotbar_items()[2],
+        item_stack(VANILLA_ITEM_DIAMOND_ID, 64)
+    );
+
+    let mut locked = item_stack(VANILLA_ITEM_STONE_ID, 1);
+    locked.component_patch.creative_slot_lock = true;
+    assert_eq!(
+        world.plan_creative_inventory_action(
+            &CreativeInventoryAction::PickerClick {
+                item: locked,
+                button_num: 0,
+                input: ContainerInput::Pickup,
+            },
+            true,
+        ),
+        Err(CreativeInventoryActionPlanError::LockedItem)
+    );
+    assert_eq!(
+        world.plan_creative_inventory_action(
+            &CreativeInventoryAction::PickerClick {
+                item: item_stack(VANILLA_ITEM_STONE_ID, 65),
+                button_num: 0,
+                input: ContainerInput::Pickup,
+            },
+            true,
+        ),
+        Err(CreativeInventoryActionPlanError::InvalidItemCount(65))
+    );
+}
+
+#[test]
+fn creative_inventory_throw_orders_drop_before_real_slot_update() {
+    let mut world = world_with_instrument_registry();
+    world.local_player.abilities = Some(creative_abilities());
+    world.open_local_inventory_with_operator_tab(false).unwrap();
+    assert!(world.apply_set_player_inventory(SetPlayerInventory {
+        slot: 0,
+        item: item_stack(VANILLA_ITEM_STONE_ID, 5),
+    }));
+
+    let plan = world
+        .plan_creative_inventory_action(
+            &CreativeInventoryAction::InventoryClick {
+                slot_num: 36,
+                button_num: 0,
+                input: ContainerInput::Throw,
+            },
+            true,
+        )
+        .unwrap();
+    assert_eq!(
+        plan.commands(),
+        &[
+            bbb_protocol::packets::SetCreativeModeSlot {
+                slot_num: -1,
+                item: item_stack(VANILLA_ITEM_STONE_ID, 1),
+            },
+            bbb_protocol::packets::SetCreativeModeSlot {
+                slot_num: 36,
+                item: item_stack(VANILLA_ITEM_STONE_ID, 4),
+            },
+        ]
+    );
+    assert_eq!(plan.drop_command_count(), 1);
+    assert_eq!(world.inventory.hotbar_items()[0].count, 5);
+    assert!(world.apply_creative_inventory_action_plan(plan));
+    assert_eq!(world.inventory.hotbar_items()[0].count, 4);
+}
+
+#[test]
+fn creative_clone_outside_drop_and_noninventory_hotbar_clear_follow_vanilla_counts() {
+    let mut world = world_with_instrument_registry();
+    world.local_player.abilities = Some(creative_abilities());
+    world.open_local_inventory_with_operator_tab(false).unwrap();
+    let diamond = item_stack(VANILLA_ITEM_DIAMOND_ID, 1);
+
+    let clone = world
+        .plan_creative_inventory_action(
+            &CreativeInventoryAction::PickerClick {
+                item: diamond.clone(),
+                button_num: 2,
+                input: ContainerInput::Clone,
+            },
+            true,
+        )
+        .unwrap();
+    assert!(clone.commands().is_empty());
+    assert!(world.apply_creative_inventory_action_plan(clone));
+    assert_eq!(
+        world.inventory.cursor_item,
+        item_stack(VANILLA_ITEM_DIAMOND_ID, 64)
+    );
+
+    let outside = world
+        .plan_creative_inventory_action(
+            &CreativeInventoryAction::OutsideClick { button_num: 1 },
+            true,
+        )
+        .unwrap();
+    assert_eq!(
+        outside.commands(),
+        &[bbb_protocol::packets::SetCreativeModeSlot {
+            slot_num: -1,
+            item: diamond,
+        }]
+    );
+    assert!(world.apply_creative_inventory_action_plan(outside));
+    assert_eq!(world.inventory.cursor_item.count, 63);
+
+    let install = world
+        .plan_creative_inventory_action(
+            &CreativeInventoryAction::PickerClick {
+                item: item_stack(VANILLA_ITEM_STONE_ID, 1),
+                button_num: 0,
+                input: ContainerInput::Swap,
+            },
+            true,
+        )
+        .unwrap();
+    assert!(world.apply_creative_inventory_action_plan(install));
+    let clear = world
+        .plan_creative_inventory_action(
+            &CreativeInventoryAction::HotbarClick {
+                hotbar_index: 0,
+                button_num: 0,
+                input: ContainerInput::QuickMove,
+            },
+            true,
+        )
+        .unwrap();
+    assert_eq!(
+        clear.commands(),
+        &[bbb_protocol::packets::SetCreativeModeSlot {
+            slot_num: 36,
+            item: ItemStackSummary::empty(),
+        }]
+    );
+    assert!(world.apply_creative_inventory_action_plan(clear));
+    assert!(world.inventory.hotbar_items()[0].item_id.is_none());
+}
+
+#[test]
+fn creative_inventory_pickup_delegates_to_canonical_cursor_and_slot_owner() {
+    let mut world = world_with_instrument_registry();
+    world.local_player.abilities = Some(creative_abilities());
+    world.open_local_inventory_with_operator_tab(false).unwrap();
+    assert!(world.apply_set_player_inventory(SetPlayerInventory {
+        slot: 0,
+        item: item_stack(VANILLA_ITEM_STONE_ID, 5),
+    }));
+
+    let pickup = world
+        .plan_creative_inventory_action(
+            &CreativeInventoryAction::InventoryClick {
+                slot_num: 36,
+                button_num: 0,
+                input: ContainerInput::Pickup,
+            },
+            true,
+        )
+        .unwrap();
+    assert_eq!(
+        pickup.commands(),
+        &[bbb_protocol::packets::SetCreativeModeSlot {
+            slot_num: 36,
+            item: ItemStackSummary::empty(),
+        }]
+    );
+    assert!(world.apply_creative_inventory_action_plan(pickup));
+    assert_eq!(
+        world.inventory.cursor_item,
+        item_stack(VANILLA_ITEM_STONE_ID, 5)
+    );
+    assert!(world.inventory.hotbar_items()[0].item_id.is_none());
+
+    let place_one = world
+        .plan_creative_inventory_action(
+            &CreativeInventoryAction::InventoryClick {
+                slot_num: 36,
+                button_num: 1,
+                input: ContainerInput::Pickup,
+            },
+            true,
+        )
+        .unwrap();
+    assert!(world.apply_creative_inventory_action_plan(place_one));
+    assert_eq!(world.inventory.hotbar_items()[0].count, 1);
+    assert_eq!(world.inventory.cursor_item.count, 4);
+}
+
+#[test]
+fn creative_quick_craft_syncs_all_hotbar_slots_and_shift_trash_is_ascending() {
+    let mut world = world_with_instrument_registry();
+    world.local_player.abilities = Some(creative_abilities());
+    world.open_local_inventory_with_operator_tab(false).unwrap();
+
+    let carried = world
+        .plan_creative_inventory_action(
+            &CreativeInventoryAction::PickerClick {
+                item: item_stack(VANILLA_ITEM_STONE_ID, 1),
+                button_num: 0,
+                input: ContainerInput::QuickMove,
+            },
+            true,
+        )
+        .unwrap();
+    assert!(world.apply_creative_inventory_action_plan(carried));
+    let quick_craft = world
+        .plan_creative_inventory_action(
+            &CreativeInventoryAction::QuickCraft {
+                button_num: 1,
+                slots: vec![36, 37],
+                sync_all_hotbar_slots: true,
+            },
+            true,
+        )
+        .unwrap();
+    assert_eq!(
+        quick_craft
+            .commands()
+            .iter()
+            .map(|command| command.slot_num)
+            .collect::<Vec<_>>(),
+        (36..=44).collect::<Vec<_>>()
+    );
+    assert!(world.apply_creative_inventory_action_plan(quick_craft));
+    assert_eq!(world.inventory.hotbar_items()[0].count, 1);
+    assert_eq!(world.inventory.hotbar_items()[1].count, 1);
+    assert_eq!(world.inventory.cursor_item.count, 62);
+
+    let trash = world
+        .plan_creative_inventory_action(&CreativeInventoryAction::Trash { quick_move: true }, true)
+        .unwrap();
+    assert_eq!(
+        trash
+            .commands()
+            .iter()
+            .map(|command| command.slot_num)
+            .collect::<Vec<_>>(),
+        (0..=45).collect::<Vec<_>>()
+    );
+    assert!(trash
+        .commands()
+        .iter()
+        .all(|command| command.item.item_id.is_none()));
+    assert!(world.apply_creative_inventory_action_plan(trash));
+    assert!(world
+        .inventory
+        .inventory_menu
+        .slots
+        .iter()
+        .all(|slot| slot.item.item_id.is_none()));
+    assert_eq!(
+        world.inventory.cursor_item.count, 62,
+        "Vanilla shift-trash clears inventory slots without clearing carried"
+    );
+}
+
+#[test]
+fn creative_action_gates_and_stale_plan_preserve_server_authority() {
+    let mut world = world_with_instrument_registry();
+    world.local_player.abilities = Some(creative_abilities());
+    world.open_local_inventory_with_operator_tab(false).unwrap();
+    let action = CreativeInventoryAction::PickerClick {
+        item: item_stack(VANILLA_ITEM_STONE_ID, 1),
+        button_num: 0,
+        input: ContainerInput::Swap,
+    };
+    assert_eq!(
+        world.plan_creative_inventory_action(
+            &CreativeInventoryAction::PickerClick {
+                item: item_stack(VANILLA_ITEM_STONE_ID, 1),
+                button_num: 0,
+                input: ContainerInput::Throw,
+            },
+            false,
+        ),
+        Err(CreativeInventoryActionPlanError::DropThrottled)
+    );
+    let stale = world.plan_creative_inventory_action(&action, true).unwrap();
+    assert!(world.apply_container_set_slot(ContainerSetSlot {
+        container_id: 0,
+        state_id: 9,
+        slot: 36,
+        item: item_stack(VANILLA_ITEM_DIAMOND_ID, 2),
+    }));
+    assert!(!world.apply_creative_inventory_action_plan(stale));
+    assert_eq!(
+        world.inventory.hotbar_items()[0],
+        item_stack(VANILLA_ITEM_DIAMOND_ID, 2)
+    );
+
+    world.inventory.open_container = Some(Default::default());
+    assert_eq!(
+        world.plan_creative_inventory_action(&action, true),
+        Err(CreativeInventoryActionPlanError::OtherContainerOpen)
+    );
+    world.inventory.open_container = None;
+    world.apply_update_enabled_features(UpdateEnabledFeatures {
+        features: Vec::new(),
+    });
+    assert_eq!(
+        world.plan_creative_inventory_action(&action, true),
+        Err(CreativeInventoryActionPlanError::DisabledItem)
+    );
+    world.apply_update_enabled_features(UpdateEnabledFeatures {
+        features: vec!["minecraft:vanilla".to_string()],
+    });
+    world.apply_player_abilities(PlayerAbilities {
+        invulnerable: false,
+        flying: false,
+        can_fly: false,
+        instabuild: false,
+        flying_speed: 0.05,
+        walking_speed: 0.1,
+    });
+    assert_eq!(
+        world.plan_creative_inventory_action(&action, true),
+        Err(CreativeInventoryActionPlanError::NoCreativeScreen)
+    );
 }

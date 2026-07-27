@@ -3834,6 +3834,23 @@ impl WorldStore {
         )
     }
 
+    pub(crate) fn preview_creative_inventory_click(
+        &self,
+        inventory: &mut InventoryState,
+        request: ContainerClickSlotRequest,
+    ) -> Result<(), ContainerClickBuildError> {
+        let mut counters = WorldCounters::default();
+        inventory
+            .apply_local_container_click_slot(inventory_ctx!(self), &mut counters, request)
+            .map(|_| ())
+    }
+
+    pub(crate) fn commit_creative_inventory_state(&mut self, inventory: InventoryState) {
+        self.inventory = inventory;
+        self.inventory
+            .update_inventory_slot_count(&mut self.counters);
+    }
+
     pub(crate) fn local_player_has_freeze_immune_wearable(&self) -> bool {
         self.inventory
             .local_player_has_freeze_immune_wearable(inventory_ctx!(self))
