@@ -497,18 +497,30 @@ pub struct HudDebugOverlay {
 pub struct HudPauseScreen {
     pub title: String,
     pub show_pause_menu: bool,
+    pub feedback_subscreen: bool,
     pub return_to_game_hovered: bool,
     pub advancements_hovered: bool,
     pub stats_hovered: bool,
     pub send_feedback_hovered: bool,
     pub report_bugs_hovered: bool,
     pub report_bugs_enabled: bool,
+    pub custom_dialog_label: Option<String>,
+    pub custom_dialog_hovered: bool,
+    pub custom_dialog_tooltip: Option<HudPauseScreenTooltip>,
+    pub feedback_back_hovered: bool,
     pub options_hovered: bool,
     pub options_enabled: bool,
     pub player_reporting_hovered: bool,
     pub player_reporting_enabled: bool,
     pub disconnect_hovered: bool,
     pub disconnect_enabled: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HudPauseScreenTooltip {
+    pub text: String,
+    pub x: i32,
+    pub y: i32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1339,6 +1351,11 @@ const HUD_PAUSE_THIRD_ROW_TOP_OFFSET: i32 = 56;
 const HUD_PAUSE_FOURTH_ROW_TOP_OFFSET: i32 = 80;
 const HUD_PAUSE_DISCONNECT_ROW_TOP_OFFSET: i32 = 128;
 const HUD_PAUSE_BUTTON_TEXT_Y_OFFSET: i32 = 6;
+const HUD_PAUSE_FEEDBACK_HEADER_HEIGHT: i32 = 33;
+const HUD_PAUSE_FEEDBACK_FOOTER_HEIGHT: i32 = 33;
+const HUD_PAUSE_FEEDBACK_CONTENT_MARGIN_TOP: i32 = 30;
+const HUD_PAUSE_FEEDBACK_CELL_PADDING: i32 = 4;
+const HUD_PAUSE_FEEDBACK_BACK_BUTTON_WIDTH: i32 = 200;
 const HUD_PAUSE_BACKGROUND_TOP_TINT: [f32; 4] =
     [16.0 / 255.0, 16.0 / 255.0, 16.0 / 255.0, 192.0 / 255.0];
 const HUD_PAUSE_BACKGROUND_BOTTOM_TINT: [f32; 4] =
@@ -7022,6 +7039,8 @@ impl Renderer {
                 &mut vertices,
                 &mut post_gui_item_commands,
                 &self.hud_white_pixel,
+                self.hud_tooltip_background.as_ref(),
+                self.hud_tooltip_frame.as_ref(),
                 self.hud_font_atlas.as_ref(),
                 &self.hud_font_glyphs,
                 &self.hud_obfuscated_glyph_pool,
@@ -10091,6 +10110,8 @@ fn push_hud_pause_screen<'a>(
     vertices: &mut Vec<HudVertex>,
     commands: &mut Vec<HudDrawCommand<'a>>,
     white_pixel: &'a HudSpriteGpu,
+    tooltip_background: Option<&'a HudNineSliceSprite>,
+    tooltip_frame: Option<&'a HudNineSliceSprite>,
     font_atlas: Option<&'a HudSpriteGpu>,
     glyphs: &HudFontGlyphMap,
     obfuscated_pool: &HudObfuscatedGlyphPool,
@@ -10123,7 +10144,50 @@ fn push_hud_pause_screen<'a>(
         surface_size,
         &draw,
     );
-    if screen.show_pause_menu {
+    if screen.show_pause_menu && screen.feedback_subscreen {
+        push_hud_pause_button(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            hud_pause_feedback_send_feedback_button_rect(surface_size),
+            "Give Feedback",
+            screen.send_feedback_hovered,
+            true,
+        );
+        push_hud_pause_button(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            hud_pause_feedback_report_bugs_button_rect(surface_size),
+            "Report Bugs",
+            screen.report_bugs_hovered,
+            screen.report_bugs_enabled,
+        );
+        push_hud_pause_button(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            hud_pause_feedback_back_button_rect(surface_size),
+            "Back",
+            screen.feedback_back_hovered,
+            true,
+        );
+    } else if screen.show_pause_menu {
         push_hud_pause_button(
             vertices,
             commands,
@@ -10176,7 +10240,11 @@ fn push_hud_pause_screen<'a>(
             frame_index,
             surface_size,
             hud_pause_send_feedback_button_rect(surface_size),
-            "Send Feedback",
+            if screen.custom_dialog_label.is_some() {
+                "Feedback..."
+            } else {
+                "Give Feedback"
+            },
             screen.send_feedback_hovered,
             true,
         );
@@ -10190,9 +10258,16 @@ fn push_hud_pause_screen<'a>(
             frame_index,
             surface_size,
             hud_pause_report_bugs_button_rect(surface_size),
-            "Report Bugs",
-            screen.report_bugs_hovered,
-            screen.report_bugs_enabled,
+            screen
+                .custom_dialog_label
+                .as_deref()
+                .unwrap_or("Report Bugs"),
+            if screen.custom_dialog_label.is_some() {
+                screen.custom_dialog_hovered
+            } else {
+                screen.report_bugs_hovered
+            },
+            screen.custom_dialog_label.is_some() || screen.report_bugs_enabled,
         );
         push_hud_pause_button(
             vertices,
@@ -10235,6 +10310,23 @@ fn push_hud_pause_screen<'a>(
             "Disconnect",
             screen.disconnect_hovered,
             screen.disconnect_enabled,
+        );
+    }
+    if let Some(tooltip) = screen.custom_dialog_tooltip.as_ref() {
+        push_hud_rich_tooltip(
+            vertices,
+            commands,
+            white_pixel,
+            tooltip_background,
+            tooltip_frame,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            &[HudStyledTextRun::plain(&tooltip.text)],
+            tooltip.x,
+            tooltip.y,
         );
     }
 }
@@ -13246,7 +13338,13 @@ fn hud_pause_screen_title_origin(
 ) -> (f32, f32) {
     let runs = [HudStyledTextRun::plain(screen.title.as_str())];
     let width = hud_font_runs_width(&runs, glyphs).unwrap_or_default() as f32;
-    let y = if screen.show_pause_menu { 40.0 } else { 10.0 };
+    let y = if screen.feedback_subscreen {
+        12.0
+    } else if screen.show_pause_menu {
+        40.0
+    } else {
+        10.0
+    };
     (surface_size.width.max(1) as f32 * 0.5 - width * 0.5, y)
 }
 
@@ -13336,6 +13434,50 @@ fn hud_pause_disconnect_button_rect(surface_size: PhysicalSize<u32>) -> (i32, i3
         HUD_PAUSE_RETURN_TO_GAME_BUTTON_WIDTH,
         HUD_PAUSE_RETURN_TO_GAME_BUTTON_HEIGHT,
     )
+}
+
+fn hud_pause_feedback_send_feedback_button_rect(
+    surface_size: PhysicalSize<u32>,
+) -> (i32, i32, i32, i32) {
+    let width = i32::try_from(surface_size.width).unwrap_or(i32::MAX);
+    (
+        width / 2 - HUD_PAUSE_RETURN_TO_GAME_BUTTON_WIDTH / 2,
+        hud_pause_feedback_button_y(surface_size),
+        HUD_PAUSE_HALF_BUTTON_WIDTH,
+        HUD_PAUSE_RETURN_TO_GAME_BUTTON_HEIGHT,
+    )
+}
+
+fn hud_pause_feedback_report_bugs_button_rect(
+    surface_size: PhysicalSize<u32>,
+) -> (i32, i32, i32, i32) {
+    let width = i32::try_from(surface_size.width).unwrap_or(i32::MAX);
+    (
+        width / 2 + 4,
+        hud_pause_feedback_button_y(surface_size),
+        HUD_PAUSE_HALF_BUTTON_WIDTH,
+        HUD_PAUSE_RETURN_TO_GAME_BUTTON_HEIGHT,
+    )
+}
+
+fn hud_pause_feedback_back_button_rect(surface_size: PhysicalSize<u32>) -> (i32, i32, i32, i32) {
+    let width = i32::try_from(surface_size.width).unwrap_or(i32::MAX);
+    let height = i32::try_from(surface_size.height).unwrap_or(i32::MAX);
+    (
+        width / 2 - HUD_PAUSE_FEEDBACK_BACK_BUTTON_WIDTH / 2,
+        height - HUD_PAUSE_FEEDBACK_FOOTER_HEIGHT
+            + (HUD_PAUSE_FEEDBACK_FOOTER_HEIGHT - HUD_PAUSE_RETURN_TO_GAME_BUTTON_HEIGHT) / 2,
+        HUD_PAUSE_FEEDBACK_BACK_BUTTON_WIDTH,
+        HUD_PAUSE_RETURN_TO_GAME_BUTTON_HEIGHT,
+    )
+}
+
+fn hud_pause_feedback_button_y(surface_size: PhysicalSize<u32>) -> i32 {
+    let height = i32::try_from(surface_size.height).unwrap_or(i32::MAX);
+    let grid_height = HUD_PAUSE_RETURN_TO_GAME_BUTTON_HEIGHT + HUD_PAUSE_FEEDBACK_CELL_PADDING;
+    (HUD_PAUSE_FEEDBACK_HEADER_HEIGHT + HUD_PAUSE_FEEDBACK_CONTENT_MARGIN_TOP)
+        .min(height - HUD_PAUSE_FEEDBACK_FOOTER_HEIGHT - grid_height)
+        + HUD_PAUSE_FEEDBACK_CELL_PADDING
 }
 
 fn hud_stats_done_button_rect(surface_size: PhysicalSize<u32>) -> (i32, i32, i32, i32) {
@@ -18845,15 +18987,27 @@ fn sanitize_hud_debug_game_mode_switcher(
 
 fn sanitize_hud_pause_screen(screen: HudPauseScreen) -> Option<HudPauseScreen> {
     let title = sanitize_hud_text_line(screen.title)?;
+    let custom_dialog_label = screen
+        .custom_dialog_label
+        .map(|label| sanitize_hud_text_preserving_empty(label, 256));
+    let custom_dialog_tooltip = screen.custom_dialog_tooltip.and_then(|tooltip| {
+        let text = sanitize_hud_multiline_text(tooltip.text, 512);
+        (!text.is_empty()).then_some(HudPauseScreenTooltip { text, ..tooltip })
+    });
     (!title.is_empty()).then_some(HudPauseScreen {
         title,
         show_pause_menu: screen.show_pause_menu,
+        feedback_subscreen: screen.feedback_subscreen,
         return_to_game_hovered: screen.return_to_game_hovered,
         advancements_hovered: screen.advancements_hovered,
         stats_hovered: screen.stats_hovered,
         send_feedback_hovered: screen.send_feedback_hovered,
         report_bugs_hovered: screen.report_bugs_hovered,
         report_bugs_enabled: screen.report_bugs_enabled,
+        custom_dialog_label,
+        custom_dialog_hovered: screen.custom_dialog_hovered,
+        custom_dialog_tooltip,
+        feedback_back_hovered: screen.feedback_back_hovered,
         options_hovered: screen.options_hovered,
         options_enabled: screen.options_enabled,
         player_reporting_hovered: screen.player_reporting_hovered,
@@ -26227,12 +26381,21 @@ mod tests {
         let screen = sanitize_hud_pause_screen(HudPauseScreen {
             title: "Game\nPaused".to_string(),
             show_pause_menu: false,
+            feedback_subscreen: false,
             return_to_game_hovered: true,
             advancements_hovered: true,
             stats_hovered: true,
             send_feedback_hovered: true,
             report_bugs_hovered: true,
             report_bugs_enabled: false,
+            custom_dialog_label: Some("Server\nOptions".to_string()),
+            custom_dialog_hovered: true,
+            custom_dialog_tooltip: Some(HudPauseScreenTooltip {
+                text: "Third party\nHandle carefully".to_string(),
+                x: 5,
+                y: 6,
+            }),
+            feedback_back_hovered: true,
             options_hovered: true,
             options_enabled: false,
             player_reporting_hovered: true,
@@ -26249,6 +26412,14 @@ mod tests {
         assert!(screen.send_feedback_hovered);
         assert!(screen.report_bugs_hovered);
         assert!(!screen.report_bugs_enabled);
+        assert_eq!(screen.custom_dialog_label.as_deref(), Some("ServerOptions"));
+        assert_eq!(
+            screen
+                .custom_dialog_tooltip
+                .as_ref()
+                .map(|tooltip| tooltip.text.as_str()),
+            Some("Third party\nHandle carefully")
+        );
         assert!(screen.options_hovered);
         assert!(!screen.options_enabled);
         assert!(screen.player_reporting_hovered);
@@ -26259,12 +26430,17 @@ mod tests {
         assert!(sanitize_hud_pause_screen(HudPauseScreen {
             title: "\n\t".to_string(),
             show_pause_menu: true,
+            feedback_subscreen: false,
             return_to_game_hovered: false,
             advancements_hovered: false,
             stats_hovered: false,
             send_feedback_hovered: false,
             report_bugs_hovered: false,
             report_bugs_enabled: true,
+            custom_dialog_label: None,
+            custom_dialog_hovered: false,
+            custom_dialog_tooltip: None,
+            feedback_back_hovered: false,
             options_hovered: false,
             options_enabled: false,
             player_reporting_hovered: false,
@@ -26518,12 +26694,17 @@ mod tests {
         let no_menu = HudPauseScreen {
             title: "ab".to_string(),
             show_pause_menu: false,
+            feedback_subscreen: false,
             return_to_game_hovered: false,
             advancements_hovered: false,
             stats_hovered: false,
             send_feedback_hovered: false,
             report_bugs_hovered: false,
             report_bugs_enabled: true,
+            custom_dialog_label: None,
+            custom_dialog_hovered: false,
+            custom_dialog_tooltip: None,
+            feedback_back_hovered: false,
             options_hovered: false,
             options_enabled: false,
             player_reporting_hovered: false,
@@ -26534,18 +26715,27 @@ mod tests {
         let menu = HudPauseScreen {
             title: "ab".to_string(),
             show_pause_menu: true,
+            feedback_subscreen: false,
             return_to_game_hovered: false,
             advancements_hovered: false,
             stats_hovered: false,
             send_feedback_hovered: false,
             report_bugs_hovered: false,
             report_bugs_enabled: true,
+            custom_dialog_label: None,
+            custom_dialog_hovered: false,
+            custom_dialog_tooltip: None,
+            feedback_back_hovered: false,
             options_hovered: false,
             options_enabled: false,
             player_reporting_hovered: false,
             player_reporting_enabled: false,
             disconnect_hovered: false,
             disconnect_enabled: true,
+        };
+        let feedback = HudPauseScreen {
+            feedback_subscreen: true,
+            ..menu.clone()
         };
 
         assert_eq!(
@@ -26556,8 +26746,13 @@ mod tests {
             hud_pause_screen_title_origin(&menu, &glyphs, PhysicalSize::new(100, 50)),
             (44.0, 40.0)
         );
+        assert_eq!(
+            hud_pause_screen_title_origin(&feedback, &glyphs, PhysicalSize::new(100, 50)),
+            (44.0, 12.0)
+        );
         assert!(!hud_pause_screen_draws_background(&no_menu));
         assert!(hud_pause_screen_draws_background(&menu));
+        assert!(hud_pause_screen_draws_background(&feedback));
     }
 
     #[test]
@@ -26579,7 +26774,7 @@ mod tests {
     }
 
     #[test]
-    fn pause_screen_return_to_game_button_rect_matches_vanilla_grid_layout() {
+    fn pause_screen_button_rects_match_vanilla_grid_and_header_footer_layouts() {
         assert_eq!(
             hud_pause_return_to_game_button_rect(PhysicalSize::new(320, 240)),
             (58, 68, 204, 20)
@@ -26643,6 +26838,26 @@ mod tests {
         assert_eq!(
             hud_pause_disconnect_button_rect(PhysicalSize::new(854, 480)),
             (325, 248, 204, 20)
+        );
+        assert_eq!(
+            hud_pause_feedback_send_feedback_button_rect(PhysicalSize::new(320, 240)),
+            (58, 67, 98, 20)
+        );
+        assert_eq!(
+            hud_pause_feedback_report_bugs_button_rect(PhysicalSize::new(320, 240)),
+            (164, 67, 98, 20)
+        );
+        assert_eq!(
+            hud_pause_feedback_back_button_rect(PhysicalSize::new(320, 240)),
+            (60, 213, 200, 20)
+        );
+        assert_eq!(
+            hud_pause_feedback_send_feedback_button_rect(PhysicalSize::new(320, 100)),
+            (58, 47, 98, 20)
+        );
+        assert_eq!(
+            hud_pause_feedback_back_button_rect(PhysicalSize::new(320, 100)),
+            (60, 73, 200, 20)
         );
         assert_eq!(
             hud_stats_done_button_rect(PhysicalSize::new(320, 240)),

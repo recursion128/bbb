@@ -142,7 +142,7 @@ exists. Music-toast presentation, general screen narration, and
    tooltip, and restoration tests. Run
    `scripts/cargo-dev.sh test -p bbb-native pause_screen`,
    `scripts/cargo-dev.sh test -p bbb-native dialog_clear_restores_the_native_pause`,
-   and `scripts/cargo-dev.sh test -p bbb-renderer hud_pause`.
+   and `scripts/cargo-dev.sh test -p bbb-renderer pause_screen`.
 3. Remove the completed ledger item, archive this contract, append the
    engineering milestone index, review the integrated diff, then run the full
    gate and P0 audit.

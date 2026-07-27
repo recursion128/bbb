@@ -6477,7 +6477,7 @@ fn hud_boss_bar_projection_covers_every_vanilla_color_and_overlay() {
 fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
     let source = include_str!("../runtime.rs");
     let entity_tick = source
-        .find("let advanced_ticks = advance_entity_client_animations(")
+        .find("advance_native_client_ticks(")
         .expect("pump should advance entity client animations before render extraction");
     let partial_tick = source
         .find("let entity_partial_tick = client_animation_ticks.entity_partial_tick();")
@@ -6753,7 +6753,7 @@ fn renderer_frame_outlines_extract_after_input_camera_and_partial_tick() {
         .find("advance_local_using_item_ticks_with_effects(")
         .expect("pump should advance local use-item ticks before outline extraction");
     let entity_tick = source
-        .find("let advanced_ticks = advance_entity_client_animations(")
+        .find("advance_native_client_ticks(")
         .expect("pump should advance entity client animations before outline extraction");
     let partial_tick = source
         .find("let entity_partial_tick = client_animation_ticks.entity_partial_tick();")
@@ -6883,7 +6883,7 @@ fn renderer_frame_commits_debug_gizmos_from_one_water_sample_snapshot() {
 fn renderer_frame_cloud_frame_extracts_after_client_time_camera_and_partial_tick() {
     let source = include_str!("../runtime.rs");
     let entity_tick = source
-        .find("let advanced_ticks = advance_entity_client_animations(")
+        .find("advance_native_client_ticks(")
         .expect("pump should advance entity client animations before cloud frame extraction");
     let partial_tick = source
         .find("let entity_partial_tick = client_animation_ticks.entity_partial_tick();")
@@ -6914,7 +6914,7 @@ fn renderer_frame_cloud_frame_extracts_after_client_time_camera_and_partial_tick
 fn renderer_frame_weather_extracts_after_client_time_camera_and_partial_tick() {
     let source = include_str!("../runtime.rs");
     let entity_tick = source
-        .find("let advanced_ticks = advance_entity_client_animations(")
+        .find("advance_native_client_ticks(")
         .expect("pump should advance entity client animations before weather extraction");
     let partial_tick = source
         .find("let entity_partial_tick = client_animation_ticks.entity_partial_tick();")
@@ -10022,10 +10022,10 @@ fn hud_pause_screen_projects_no_menu_title() {
     let mut input = ClientInputState::new(true);
     let surface = winit::dpi::PhysicalSize::new(320, 240);
 
-    assert!(hud_pause_screen(&input, surface).is_none());
+    assert!(hud_pause_screen(&input, None, surface).is_none());
     input.open_debug_pause_screen_without_menu();
 
-    let screen = hud_pause_screen(&input, surface).expect("pause screen");
+    let screen = hud_pause_screen(&input, None, surface).expect("pause screen");
     assert_eq!(screen.title, "Game Paused");
     assert!(!screen.show_pause_menu);
     assert!(!screen.return_to_game_hovered);
@@ -10046,9 +10046,9 @@ fn hud_pause_screen_projects_no_menu_title() {
 fn hud_pause_screen_projects_menu_title() {
     let mut input = ClientInputState::new(true);
     let surface = winit::dpi::PhysicalSize::new(320, 240);
-    input.open_debug_pause_screen_with_menu();
+    input.open_debug_pause_screen_with_menu(&WorldStore::new());
 
-    let screen = hud_pause_screen(&input, surface).expect("pause screen");
+    let screen = hud_pause_screen(&input, None, surface).expect("pause screen");
     assert_eq!(screen.title, "Game Menu");
     assert!(screen.show_pause_menu);
     assert!(!screen.return_to_game_hovered);
@@ -10069,7 +10069,7 @@ fn hud_pause_screen_projects_menu_title() {
 fn hud_pause_screen_projects_return_to_game_hover() {
     let mut input = ClientInputState::new(true);
     let surface = winit::dpi::PhysicalSize::new(320, 240);
-    input.open_debug_pause_screen_with_menu();
+    input.open_debug_pause_screen_with_menu(&WorldStore::new());
 
     assert!(
         input.handle_debug_pause_screen_cursor_moved(Some(winit::dpi::PhysicalPosition::new(
@@ -10077,7 +10077,7 @@ fn hud_pause_screen_projects_return_to_game_hover() {
         )))
     );
 
-    let screen = hud_pause_screen(&input, surface).expect("pause screen");
+    let screen = hud_pause_screen(&input, None, surface).expect("pause screen");
     assert!(screen.show_pause_menu);
     assert!(screen.return_to_game_hovered);
     assert!(!screen.advancements_hovered);
@@ -10093,7 +10093,7 @@ fn hud_pause_screen_projects_return_to_game_hover() {
 fn hud_pause_screen_projects_advancements_hover() {
     let mut input = ClientInputState::new(true);
     let surface = winit::dpi::PhysicalSize::new(320, 240);
-    input.open_debug_pause_screen_with_menu();
+    input.open_debug_pause_screen_with_menu(&WorldStore::new());
 
     assert!(
         input.handle_debug_pause_screen_cursor_moved(Some(winit::dpi::PhysicalPosition::new(
@@ -10101,7 +10101,7 @@ fn hud_pause_screen_projects_advancements_hover() {
         )))
     );
 
-    let screen = hud_pause_screen(&input, surface).expect("pause screen");
+    let screen = hud_pause_screen(&input, None, surface).expect("pause screen");
     assert!(screen.show_pause_menu);
     assert!(!screen.return_to_game_hovered);
     assert!(screen.advancements_hovered);
@@ -10117,7 +10117,7 @@ fn hud_pause_screen_projects_advancements_hover() {
 fn hud_pause_screen_projects_stats_hover() {
     let mut input = ClientInputState::new(true);
     let surface = winit::dpi::PhysicalSize::new(320, 240);
-    input.open_debug_pause_screen_with_menu();
+    input.open_debug_pause_screen_with_menu(&WorldStore::new());
 
     assert!(
         input.handle_debug_pause_screen_cursor_moved(Some(winit::dpi::PhysicalPosition::new(
@@ -10125,7 +10125,7 @@ fn hud_pause_screen_projects_stats_hover() {
         )))
     );
 
-    let screen = hud_pause_screen(&input, surface).expect("pause screen");
+    let screen = hud_pause_screen(&input, None, surface).expect("pause screen");
     assert!(screen.show_pause_menu);
     assert!(!screen.return_to_game_hovered);
     assert!(!screen.advancements_hovered);
@@ -10141,7 +10141,7 @@ fn hud_pause_screen_projects_stats_hover() {
 fn hud_pause_screen_projects_send_feedback_hover() {
     let mut input = ClientInputState::new(true);
     let surface = winit::dpi::PhysicalSize::new(320, 240);
-    input.open_debug_pause_screen_with_menu();
+    input.open_debug_pause_screen_with_menu(&WorldStore::new());
 
     assert!(
         input.handle_debug_pause_screen_cursor_moved(Some(winit::dpi::PhysicalPosition::new(
@@ -10149,7 +10149,7 @@ fn hud_pause_screen_projects_send_feedback_hover() {
         )))
     );
 
-    let screen = hud_pause_screen(&input, surface).expect("pause screen");
+    let screen = hud_pause_screen(&input, None, surface).expect("pause screen");
     assert!(screen.show_pause_menu);
     assert!(screen.send_feedback_hovered);
     assert!(!screen.report_bugs_hovered);
@@ -10163,7 +10163,7 @@ fn hud_pause_screen_projects_send_feedback_hover() {
 fn hud_pause_screen_projects_report_bugs_hover() {
     let mut input = ClientInputState::new(true);
     let surface = winit::dpi::PhysicalSize::new(320, 240);
-    input.open_debug_pause_screen_with_menu();
+    input.open_debug_pause_screen_with_menu(&WorldStore::new());
 
     assert!(
         input.handle_debug_pause_screen_cursor_moved(Some(winit::dpi::PhysicalPosition::new(
@@ -10171,7 +10171,7 @@ fn hud_pause_screen_projects_report_bugs_hover() {
         )))
     );
 
-    let screen = hud_pause_screen(&input, surface).expect("pause screen");
+    let screen = hud_pause_screen(&input, None, surface).expect("pause screen");
     assert!(screen.show_pause_menu);
     assert!(!screen.send_feedback_hovered);
     assert!(screen.report_bugs_hovered);
@@ -10182,10 +10182,91 @@ fn hud_pause_screen_projects_report_bugs_hover() {
 }
 
 #[test]
+fn hud_pause_screen_projects_custom_dialog_and_feedback_subscreen() {
+    fn network_notice_dialog(title: &str, external_title: &str) -> Vec<u8> {
+        fn write_string_tag(payload: &mut Vec<u8>, name: &str, value: &str) {
+            payload.push(8);
+            payload.extend_from_slice(&(name.len() as u16).to_be_bytes());
+            payload.extend_from_slice(name.as_bytes());
+            payload.extend_from_slice(&(value.len() as u16).to_be_bytes());
+            payload.extend_from_slice(value.as_bytes());
+        }
+
+        let mut payload = vec![10];
+        write_string_tag(&mut payload, "type", "minecraft:notice");
+        write_string_tag(&mut payload, "title", title);
+        write_string_tag(&mut payload, "external_title", external_title);
+        payload.push(0);
+        payload
+    }
+
+    let mut world = WorldStore::new();
+    world.record_registry_entries(
+        "minecraft:dialog",
+        0,
+        vec![RegistryPacketEntry::with_raw_data(
+            "example:custom",
+            network_notice_dialog("Internal", "External"),
+        )],
+    );
+    world.apply_update_tags(bbb_protocol::packets::UpdateTags {
+        registries: vec![bbb_protocol::packets::RegistryTags {
+            registry: "minecraft:dialog".to_string(),
+            tags: vec![bbb_protocol::packets::TagNetworkPayload {
+                tag: "minecraft:pause_screen_additions".to_string(),
+                entries: vec![0],
+            }],
+        }],
+    });
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let surface = winit::dpi::PhysicalSize::new(320, 240);
+    input.open_debug_pause_screen_with_menu(&world);
+    assert!(
+        input.handle_debug_pause_screen_cursor_moved(Some(winit::dpi::PhysicalPosition::new(
+            170.0, 126.0
+        )))
+    );
+
+    let screen = hud_pause_screen(&input, None, surface).expect("custom pause screen");
+    assert_eq!(screen.title, "Game Menu");
+    assert!(!screen.feedback_subscreen);
+    assert_eq!(screen.custom_dialog_label.as_deref(), Some("External"));
+    assert!(screen.custom_dialog_hovered);
+    let tooltip = screen.custom_dialog_tooltip.expect("custom tooltip");
+    assert!(tooltip.text.contains("third-party servers"));
+    assert_eq!((tooltip.x, tooltip.y), (170, 126));
+    assert!(!screen.report_bugs_hovered);
+
+    assert!(input.handle_debug_pause_screen_mouse_input(
+        &mut counters,
+        &mut world,
+        &None,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(winit::dpi::PhysicalPosition::new(68.0, 126.0)),
+        surface,
+    ));
+    assert!(
+        input.handle_debug_pause_screen_cursor_moved(Some(winit::dpi::PhysicalPosition::new(
+            68.0, 68.0
+        )))
+    );
+
+    let screen = hud_pause_screen(&input, None, surface).expect("feedback subscreen");
+    assert_eq!(screen.title, "Feedback");
+    assert!(screen.feedback_subscreen);
+    assert!(screen.send_feedback_hovered);
+    assert!(!screen.custom_dialog_hovered);
+    assert!(screen.custom_dialog_tooltip.is_none());
+    assert!(!screen.feedback_back_hovered);
+}
+
+#[test]
 fn hud_pause_screen_projects_disabled_options_row_shell() {
     let mut input = ClientInputState::new(true);
     let surface = winit::dpi::PhysicalSize::new(320, 240);
-    input.open_debug_pause_screen_with_menu();
+    input.open_debug_pause_screen_with_menu(&WorldStore::new());
 
     assert!(
         input.handle_debug_pause_screen_cursor_moved(Some(winit::dpi::PhysicalPosition::new(
@@ -10193,7 +10274,7 @@ fn hud_pause_screen_projects_disabled_options_row_shell() {
         )))
     );
 
-    let screen = hud_pause_screen(&input, surface).expect("pause screen");
+    let screen = hud_pause_screen(&input, None, surface).expect("pause screen");
     assert!(screen.show_pause_menu);
     assert!(!screen.options_hovered);
     assert!(!screen.options_enabled);
@@ -10206,7 +10287,7 @@ fn hud_pause_screen_projects_disabled_options_row_shell() {
 fn social_interactions_pause_screen_projects_player_reporting_hover() {
     let mut input = ClientInputState::new(true);
     let surface = winit::dpi::PhysicalSize::new(320, 240);
-    input.open_debug_pause_screen_with_menu();
+    input.open_debug_pause_screen_with_menu(&WorldStore::new());
 
     assert!(
         input.handle_debug_pause_screen_cursor_moved(Some(winit::dpi::PhysicalPosition::new(
@@ -10214,7 +10295,7 @@ fn social_interactions_pause_screen_projects_player_reporting_hover() {
         )))
     );
 
-    let screen = hud_pause_screen(&input, surface).expect("pause screen");
+    let screen = hud_pause_screen(&input, None, surface).expect("pause screen");
     assert!(screen.show_pause_menu);
     assert!(!screen.options_hovered);
     assert!(screen.player_reporting_hovered);
@@ -10228,7 +10309,7 @@ fn hud_pause_screen_projects_disconnect_hover_and_disabled_after_click() {
     let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
     let surface = winit::dpi::PhysicalSize::new(320, 240);
-    input.open_debug_pause_screen_with_menu();
+    input.open_debug_pause_screen_with_menu(&WorldStore::new());
 
     assert!(
         input.handle_debug_pause_screen_cursor_moved(Some(winit::dpi::PhysicalPosition::new(
@@ -10236,7 +10317,7 @@ fn hud_pause_screen_projects_disconnect_hover_and_disabled_after_click() {
         )))
     );
 
-    let screen = hud_pause_screen(&input, surface).expect("pause screen");
+    let screen = hud_pause_screen(&input, None, surface).expect("pause screen");
     assert!(screen.show_pause_menu);
     assert!(screen.disconnect_hovered);
     assert!(screen.disconnect_enabled);
@@ -10251,7 +10332,7 @@ fn hud_pause_screen_projects_disconnect_hover_and_disabled_after_click() {
         surface,
     ));
 
-    let screen = hud_pause_screen(&input, surface).expect("pause screen");
+    let screen = hud_pause_screen(&input, None, surface).expect("pause screen");
     assert!(!screen.disconnect_hovered);
     assert!(!screen.disconnect_enabled);
 }
@@ -11611,7 +11692,7 @@ fn hud_debug_options_screen_projects_visible_rows_and_suppresses_pause() {
         crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
     );
 
-    assert!(hud_pause_screen(&input, winit::dpi::PhysicalSize::new(420, 240)).is_none());
+    assert!(hud_pause_screen(&input, None, winit::dpi::PhysicalSize::new(420, 240)).is_none());
     let screen = hud_debug_options_screen(&input, &world, winit::dpi::PhysicalSize::new(420, 240))
         .expect("debug options screen");
 
@@ -22418,6 +22499,42 @@ fn entity_client_tick_cadence_tracks_normal_world_tick_rate() {
         world_client_tick_interval(&world),
         Duration::from_millis(50)
     );
+}
+
+#[test]
+fn native_pause_screens_never_freeze_external_client_or_running_level_ticks() {
+    for show_menu in [false, true] {
+        let start = Instant::now();
+        let mut ticks = ClientAnimationTickState::default();
+        let mut world = WorldStore::new();
+        world.apply_add_entity(test_add_entity(123, 104));
+        let mut input = ClientInputState::new(true);
+        if show_menu {
+            input.open_debug_pause_screen_with_menu(&world);
+        } else {
+            input.open_debug_pause_screen_without_menu();
+        }
+
+        assert!(!native_pause_freezes_client_ticks(&input, &world));
+        assert_eq!(
+            advance_native_client_ticks(&input, &mut world, &mut ticks, start),
+            0
+        );
+        assert_eq!(
+            advance_native_client_ticks(
+                &input,
+                &mut world,
+                &mut ticks,
+                start + Duration::from_millis(50),
+            ),
+            1
+        );
+        assert_eq!(ticks.last_running_level_ticks, 1);
+        assert_eq!(
+            world.probe_entity(123).unwrap().client_animations.age_ticks,
+            1
+        );
+    }
 }
 
 #[test]

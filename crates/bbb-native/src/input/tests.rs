@@ -16375,9 +16375,11 @@ fn escape_opens_pause_screen_with_menu() {
 
     assert_eq!(
         input.debug_pause_screen(),
-        Some(DebugPauseScreenState {
+        Some(&DebugPauseScreenState {
             show_pause_menu: true,
-            cursor_position: None
+            page: PauseScreenPage::Main,
+            cursor_position: None,
+            custom_dialog: None,
         })
     );
     assert!(!input.pressed_keys.contains(&KeyCode::Escape));
@@ -16389,14 +16391,16 @@ fn debug_pause_screen_return_to_game_button_closes_menu_screen() {
     let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
     let surface = PhysicalSize::new(320, 240);
-    input.open_debug_pause_screen_with_menu();
+    input.open_debug_pause_screen_with_menu(&world);
 
     assert!(input.handle_debug_pause_screen_cursor_moved(Some(PhysicalPosition::new(68.0, 78.0))));
     assert_eq!(
         input.debug_pause_screen(),
-        Some(DebugPauseScreenState {
+        Some(&DebugPauseScreenState {
             show_pause_menu: true,
-            cursor_position: Some((68, 78))
+            page: PauseScreenPage::Main,
+            cursor_position: Some((68, 78)),
+            custom_dialog: None,
         })
     );
     assert!(input.handle_debug_pause_screen_mouse_input(
@@ -16427,7 +16431,7 @@ fn debug_pause_screen_advancements_button_opens_advancements_screen() {
         progress: Vec::new(),
         show_advancements: false,
     });
-    input.open_debug_pause_screen_with_menu();
+    input.open_debug_pause_screen_with_menu(&world);
 
     assert!(input.handle_debug_pause_screen_mouse_input(
         &mut counters,
@@ -16463,7 +16467,7 @@ fn debug_pause_screen_stats_button_opens_stats_screen_and_requests_stats() {
     let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
     let surface = PhysicalSize::new(320, 240);
-    input.open_debug_pause_screen_with_menu();
+    input.open_debug_pause_screen_with_menu(&world);
 
     assert!(input.handle_debug_pause_screen_mouse_input(
         &mut counters,
@@ -16488,7 +16492,7 @@ fn social_interactions_pause_player_reporting_button_opens_with_pause_return() {
     let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
     let surface = PhysicalSize::new(320, 240);
-    input.open_debug_pause_screen_with_menu();
+    input.open_debug_pause_screen_with_menu(&world);
 
     assert!(pause_screen_player_reporting_button_enabled());
     assert!(input.handle_debug_pause_screen_mouse_input(
@@ -16515,7 +16519,7 @@ fn debug_pause_screen_send_feedback_button_records_link_request() {
     let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
     let surface = PhysicalSize::new(320, 240);
-    input.open_debug_pause_screen_with_menu();
+    input.open_debug_pause_screen_with_menu(&world);
 
     assert!(input.handle_debug_pause_screen_mouse_input(
         &mut counters,
@@ -16542,7 +16546,7 @@ fn debug_pause_screen_report_bugs_button_records_link_request_when_enabled() {
     let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
     let surface = PhysicalSize::new(320, 240);
-    input.open_debug_pause_screen_with_menu();
+    input.open_debug_pause_screen_with_menu(&world);
 
     assert!(pause_screen_report_bugs_button_enabled());
     assert!(input.handle_debug_pause_screen_mouse_input(
@@ -16570,7 +16574,7 @@ fn debug_pause_screen_disconnect_button_records_disconnect_request() {
     let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
     let surface = PhysicalSize::new(320, 240);
-    input.open_debug_pause_screen_with_menu();
+    input.open_debug_pause_screen_with_menu(&world);
 
     assert!(input.handle_debug_pause_screen_mouse_input(
         &mut counters,
@@ -17686,10 +17690,10 @@ fn dialog_clear_restores_the_native_pause_screen_state() {
     let mut counters = NetCounters::default();
     let commands = None;
     let mut world = WorldStore::new();
-    input.open_debug_pause_screen_with_menu();
+    input.open_debug_pause_screen_with_menu(&world);
     assert!(input.handle_debug_pause_screen_cursor_moved(Some(PhysicalPosition::new(68.0, 198.0,))));
     input.pause_screen_disconnect_requested = true;
-    let expected = input.debug_pause_screen.unwrap();
+    let expected = input.debug_pause_screen.clone().unwrap();
 
     world.apply_show_dialog(ProtocolShowDialog {
         dialog: DialogHolder::Reference { registry_id: 11 },
@@ -17700,7 +17704,7 @@ fn dialog_clear_restores_the_native_pause_screen_state() {
 
     world.apply_clear_dialog();
     input.sync_dialog_native_previous_screen(&world, &mut counters, &commands);
-    assert_eq!(input.debug_pause_screen(), Some(expected));
+    assert_eq!(input.debug_pause_screen(), Some(&expected));
     assert!(input.pause_screen_disconnect_requested());
 }
 

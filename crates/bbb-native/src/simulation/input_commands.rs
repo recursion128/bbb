@@ -1097,17 +1097,22 @@ impl SimulationInputRuntime {
                 self.cursor_position,
                 self.surface_size,
             );
+            let queued_effects = RefCell::new(Vec::new());
             for request in context.input.take_pause_screen_link_requests() {
-                match request {
-                    PauseScreenLinkRequest::SendFeedback { url } => tracing::info!(
-                        url,
-                        "pause screen send-feedback link requested; native confirm-link screen is not implemented"
-                    ),
-                    PauseScreenLinkRequest::ReportBugs { url } => tracing::info!(
-                        url,
-                        "pause screen report-bugs link requested; native confirm-link screen is not implemented"
-                    ),
-                }
+                let url = match request {
+                    PauseScreenLinkRequest::SendFeedback { url }
+                    | PauseScreenLinkRequest::ReportBugs { url } => url,
+                };
+                context.world.open_chat_url(url.to_string());
+            }
+            collect_dialog_open_uri_effects(context.world, &queued_effects);
+            flush_platform_effects(&queued_effects, context.platform);
+            if context.world.dialog_screen_is_open() {
+                context.input.sync_dialog_native_previous_screen(
+                    context.world,
+                    context.net_counters,
+                    context.net_commands,
+                );
             }
             if context.input.pause_screen_disconnect_requested() {
                 request_net_disconnect(context.net_commands, &mut self.net_disconnect_requested);
@@ -2143,6 +2148,31 @@ mod tests {
         fn apply_platform_effect(&mut self, effect: PlatformEffect) {
             self.0.push(effect);
         }
+    }
+
+    #[test]
+    fn pause_screen_links_reuse_dialog_policy_and_sync_the_parent_stack() {
+        let source = include_str!("input_commands.rs");
+        let pause_start = source
+            .find("if context.input.debug_pause_screen_is_open()")
+            .expect("pause-screen mouse branch");
+        let pause_end = source[pause_start..]
+            .find("if context.world.death_screen().is_some()")
+            .map(|offset| pause_start + offset)
+            .expect("next mouse branch");
+        let pause_branch = &source[pause_start..pause_end];
+
+        let open_url = pause_branch
+            .find(".open_chat_url(")
+            .expect("shared URL policy");
+        let collect = pause_branch
+            .find("collect_dialog_open_uri_effects")
+            .expect("dialog URI effects");
+        let sync = pause_branch
+            .find("sync_dialog_native_previous_screen")
+            .expect("dialog parent sync");
+        assert!(open_url < collect && collect < sync);
+        assert!(!pause_branch.contains("confirm-link screen is not implemented"));
     }
 
     #[test]

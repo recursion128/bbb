@@ -3687,7 +3687,7 @@ mod tests {
         assert_eq!(counters.swing_commands_queued, 1);
         assert!(rx.try_recv().is_err());
 
-        input.open_debug_pause_screen_with_menu();
+        input.open_debug_pause_screen_with_menu(&world);
         crate::input::advance_player_input_for_client_ticks(
             &mut input,
             &mut world,

@@ -56,10 +56,10 @@ use bbb_renderer::{
     HudInventoryTextInputDecoration, HudInventoryTextLabel, HudInventoryTooltip,
     HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
     HudJigsawBlockEditorScreen, HudJigsawBlockEditorTextField, HudJumpBar, HudMobEffect,
-    HudPauseScreen, HudPlayerHealth, HudResidentItemLayer, HudSignEditorKind, HudSignEditorPreedit,
-    HudSignEditorScreen, HudSocialInteractionsFocus, HudSocialInteractionsPage,
-    HudSocialInteractionsPlayerAction, HudSocialInteractionsScreen, HudSpyglassScope,
-    HudStatsItemRow, HudStatsRow, HudStatsScreen, HudStructureBlockEditorScreen,
+    HudPauseScreen, HudPauseScreenTooltip, HudPlayerHealth, HudResidentItemLayer,
+    HudSignEditorKind, HudSignEditorPreedit, HudSignEditorScreen, HudSocialInteractionsFocus,
+    HudSocialInteractionsPage, HudSocialInteractionsPlayerAction, HudSocialInteractionsScreen,
+    HudSpyglassScope, HudStatsItemRow, HudStatsRow, HudStatsScreen, HudStructureBlockEditorScreen,
     HudStructureBlockEditorTextField, HudStructureBlockMode, HudStyledTextRun, HudSystemToast,
     HudTestBlockEditorScreen, HudTestBlockEditorTextField, HudTestInstanceBlockEditorScreen,
     HudTestInstanceBlockEditorTextField, HudTextStyle, HudUvRect, HudVehicleHealth, HudWinScreen,
@@ -132,8 +132,11 @@ use crate::{
         death_screen::DeathScreenRuntime,
         game_event_screen::{DemoHelpFocus, DemoLinkConfirmationFocus, GameEventScreenRuntime},
         inventory_screen_layout_for_surface, inventory_screen_selected_hotbar_slot_id,
-        local_player_hands_are_busy, pause_screen_advancements_button_contains,
-        pause_screen_disconnect_button_contains, pause_screen_options_button_contains,
+        local_player_hands_are_busy, native_pause_freezes_client_ticks,
+        pause_screen_advancements_button_contains, pause_screen_disconnect_button_contains,
+        pause_screen_feedback_back_button_contains,
+        pause_screen_feedback_report_bugs_button_contains,
+        pause_screen_feedback_send_feedback_button_contains, pause_screen_options_button_contains,
         pause_screen_options_button_enabled, pause_screen_player_reporting_button_contains,
         pause_screen_player_reporting_button_enabled, pause_screen_report_bugs_button_contains,
         pause_screen_report_bugs_button_enabled, pause_screen_return_to_game_button_contains,
@@ -145,14 +148,15 @@ use crate::{
         sync_loom_pattern_state_for_hud, sync_recipe_book_presentation,
         sync_stonecutter_recipe_scroll_state, ClientInputState, CommandSuggestionHudTooltip,
         CommandSuggestionNarrationState, CreativeInventoryHudState, DebugOptionsScreenHudRow,
-        DialogImePreeditHudState, InventoryScreenBackground, RecipeBookOverlayHudState,
-        RecipeBookPageHudState, RecipeBookPresentationHudState, RecipeBookSearchHudState,
-        RecipeBookTabSelectionHudState, StatsScreenFocus, LOOM_PATTERN_BUTTON_COLUMNS,
-        LOOM_PATTERN_BUTTON_ROWS, LOOM_PATTERN_BUTTON_SIZE, LOOM_PATTERN_BUTTON_X,
-        LOOM_PATTERN_BUTTON_Y, LOOM_SCROLLER_HEIGHT, LOOM_SCROLLER_MAX_OFFSET, LOOM_SCROLLER_WIDTH,
-        LOOM_SCROLLER_X, LOOM_SCROLLER_Y, LOOM_SELECTED_PATTERN_DATA_ID, RECIPE_BOOK_BUTTON_HEIGHT,
-        RECIPE_BOOK_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_HEIGHT,
-        RECIPE_BOOK_FILTER_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y,
+        DialogImePreeditHudState, InventoryScreenBackground, PauseScreenPage,
+        RecipeBookOverlayHudState, RecipeBookPageHudState, RecipeBookPresentationHudState,
+        RecipeBookSearchHudState, RecipeBookTabSelectionHudState, StatsScreenFocus,
+        LOOM_PATTERN_BUTTON_COLUMNS, LOOM_PATTERN_BUTTON_ROWS, LOOM_PATTERN_BUTTON_SIZE,
+        LOOM_PATTERN_BUTTON_X, LOOM_PATTERN_BUTTON_Y, LOOM_SCROLLER_HEIGHT,
+        LOOM_SCROLLER_MAX_OFFSET, LOOM_SCROLLER_WIDTH, LOOM_SCROLLER_X, LOOM_SCROLLER_Y,
+        LOOM_SELECTED_PATTERN_DATA_ID, RECIPE_BOOK_BUTTON_HEIGHT, RECIPE_BOOK_BUTTON_WIDTH,
+        RECIPE_BOOK_FILTER_BUTTON_HEIGHT, RECIPE_BOOK_FILTER_BUTTON_WIDTH,
+        RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y,
         RECIPE_BOOK_PAGE_BACKWARD_BUTTON_X, RECIPE_BOOK_PAGE_BUTTON_HEIGHT,
         RECIPE_BOOK_PAGE_BUTTON_WIDTH, RECIPE_BOOK_PAGE_BUTTON_Y,
         RECIPE_BOOK_PAGE_FORWARD_BUTTON_X, RECIPE_BOOK_RECIPE_BUTTON_COLUMNS,
@@ -2489,7 +2493,7 @@ pub(crate) fn advance_simulation(
     );
     hud_debug_tps_sampler.sync_subscriptions_and_tick(input, world, net_counters, net_commands);
     let entity_tick_started_at = Instant::now();
-    let advanced_ticks = advance_entity_client_animations(world, client_animation_ticks, now);
+    let advanced_ticks = advance_native_client_ticks(input, world, client_animation_ticks, now);
     sync_recipe_book_presentation(
         input,
         world,
@@ -3091,7 +3095,7 @@ pub(crate) fn update_renderer_from_publication(
     let hud_pause_screen = if exclusive_game_screen_present || hud_debug_options_screen.is_some() {
         None
     } else {
-        hud_pause_screen(input, surface_size)
+        hud_pause_screen(input, item_runtime, surface_size)
     };
     let hud_game_rules_screen = if exclusive_game_screen_present
         || hud_debug_options_screen.is_some()
@@ -4713,44 +4717,90 @@ fn input_screen_is_open(input: &ClientInputState, world: &WorldStore) -> bool {
 
 fn hud_pause_screen(
     input: &ClientInputState,
+    item_runtime: Option<&NativeItemRuntime>,
     surface_size: winit::dpi::PhysicalSize<u32>,
 ) -> Option<HudPauseScreen> {
     let state = input.debug_pause_screen()?;
+    let feedback_subscreen = state.page == PauseScreenPage::Feedback;
     let return_to_game_hovered = state.show_pause_menu
+        && !feedback_subscreen
         && pause_screen_return_to_game_button_contains(state.cursor_position, surface_size);
     let advancements_hovered = state.show_pause_menu
+        && !feedback_subscreen
         && pause_screen_advancements_button_contains(state.cursor_position, surface_size);
     let stats_hovered = state.show_pause_menu
+        && !feedback_subscreen
         && pause_screen_stats_button_contains(state.cursor_position, surface_size);
     let send_feedback_hovered = state.show_pause_menu
-        && pause_screen_send_feedback_button_contains(state.cursor_position, surface_size);
+        && if feedback_subscreen {
+            pause_screen_feedback_send_feedback_button_contains(state.cursor_position, surface_size)
+        } else {
+            pause_screen_send_feedback_button_contains(state.cursor_position, surface_size)
+        };
     let report_bugs_hovered = state.show_pause_menu
         && pause_screen_report_bugs_button_enabled()
+        && if feedback_subscreen {
+            pause_screen_feedback_report_bugs_button_contains(state.cursor_position, surface_size)
+        } else {
+            state.custom_dialog.is_none()
+                && pause_screen_report_bugs_button_contains(state.cursor_position, surface_size)
+        };
+    let custom_dialog_hovered = state.show_pause_menu
+        && !feedback_subscreen
+        && state.custom_dialog.is_some()
         && pause_screen_report_bugs_button_contains(state.cursor_position, surface_size);
+    let feedback_back_hovered = state.show_pause_menu
+        && feedback_subscreen
+        && pause_screen_feedback_back_button_contains(state.cursor_position, surface_size);
     let options_hovered = state.show_pause_menu
+        && !feedback_subscreen
         && pause_screen_options_button_enabled()
         && pause_screen_options_button_contains(state.cursor_position, surface_size);
     let player_reporting_hovered = state.show_pause_menu
+        && !feedback_subscreen
         && pause_screen_player_reporting_button_enabled()
         && pause_screen_player_reporting_button_contains(state.cursor_position, surface_size);
     let disconnect_enabled = !input.pause_screen_disconnect_requested();
     let disconnect_hovered = state.show_pause_menu
+        && !feedback_subscreen
         && disconnect_enabled
         && pause_screen_disconnect_button_contains(state.cursor_position, surface_size);
-    Some(HudPauseScreen {
-        title: if state.show_pause_menu {
-            "Game Menu"
-        } else {
-            "Game Paused"
+    let custom_dialog_label = state
+        .custom_dialog
+        .as_ref()
+        .map(|dialog| dialog.external_title().text.clone());
+    let custom_dialog_tooltip = custom_dialog_hovered.then(|| {
+        let (x, y) = state.cursor_position.unwrap_or_default();
+        HudPauseScreenTooltip {
+            text: localized_gui_text(
+                item_runtime,
+                "menu.custom_options.tooltip",
+                "Note: Custom options are provided by third-party servers and/or content.\nHandle with care!",
+            ),
+            x,
+            y,
         }
-        .to_string(),
+    });
+    Some(HudPauseScreen {
+        title: if feedback_subscreen {
+            localized_gui_text(item_runtime, "menu.feedback.title", "Feedback")
+        } else if state.show_pause_menu {
+            localized_gui_text(item_runtime, "menu.game", "Game Menu")
+        } else {
+            localized_gui_text(item_runtime, "menu.paused", "Game Paused")
+        },
         show_pause_menu: state.show_pause_menu,
+        feedback_subscreen,
         return_to_game_hovered,
         advancements_hovered,
         stats_hovered,
         send_feedback_hovered,
         report_bugs_hovered,
         report_bugs_enabled: pause_screen_report_bugs_button_enabled(),
+        custom_dialog_label,
+        custom_dialog_hovered,
+        custom_dialog_tooltip,
+        feedback_back_hovered,
         options_hovered,
         options_enabled: pause_screen_options_button_enabled(),
         player_reporting_hovered,
@@ -16735,6 +16785,21 @@ fn advance_entity_client_animations(
     (ticks.last_entity_tick_work, ticks.last_running_level_ticks) =
         world.advance_client_level_entity_ticks_with_observation(advanced_ticks);
     advanced_ticks
+}
+
+fn advance_native_client_ticks(
+    input: &ClientInputState,
+    world: &mut WorldStore,
+    ticks: &mut ClientAnimationTickState,
+    now: Instant,
+) -> u32 {
+    if native_pause_freezes_client_ticks(input, world) {
+        ticks.last_entity_tick_work = EntityClientTickWork::default();
+        ticks.last_running_level_ticks = 0;
+        ticks.last_entity_animation_at = Some(now);
+        return 0;
+    }
+    advance_entity_client_animations(world, ticks, now)
 }
 
 fn record_entity_client_tick_observation(

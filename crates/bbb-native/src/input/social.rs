@@ -593,7 +593,7 @@ impl ClientInputState {
             return;
         }
         if active.return_to_pause {
-            self.open_debug_pause_screen_with_menu();
+            self.open_debug_pause_screen_with_menu(world);
         }
     }
 
@@ -1062,7 +1062,7 @@ mod tests {
         assert!(world.social_interactions_screen().is_none());
         assert!(!input.debug_pause_screen_is_open());
 
-        input.open_debug_pause_screen_with_menu();
+        input.open_debug_pause_screen_with_menu(&world);
         assert!(input.open_social_interactions_screen(&mut world, true));
         assert!(!input.debug_pause_screen_is_open());
         assert!(input.handle_social_interactions_key(&mut world, KeyCode::Escape, true));
