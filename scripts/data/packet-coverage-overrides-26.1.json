@@ -4195,13 +4195,16 @@
       "runtime_side_effect": {
         "evidence": [
           "crates/bbb-world/src/client/stats.rs#client_stats",
+          "crates/bbb-world/src/client/stats.rs#award_stats_only_completes_an_open_stats_screen_request",
           "crates/bbb-native/src/runtime.rs#hud_stats_screen",
           "crates/bbb-native/src/runtime.rs#stats_item_rows",
           "crates/bbb-native/src/runtime.rs#format_vanilla_stat_value",
-          "crates/bbb-renderer/src/hud.rs#push_hud_stats_screen"
+          "crates/bbb-native/src/runtime/tests.rs#hud_stats_screen_waits_for_response_then_projects_general_item_and_mob_rows",
+          "crates/bbb-renderer/src/hud.rs#push_hud_stats_screen",
+          "vanilla:net/minecraft/client/gui/screens/achievement/StatsScreen.java#onStatsUpdated",
+          "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleAwardStats"
         ],
-        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-        "status": "partial"
+        "status": "complete"
       },
       "tests": {
         "evidence": [
