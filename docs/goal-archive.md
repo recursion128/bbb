@@ -577,3 +577,7 @@
   共用有序五槽调度，高亮配方按可见按钮顺序完成自动 SeenRecipe、动画、提示和旁白；
   双向 packet coverage 适用单元全部关闭，合同见
   `docs/archive/recipe-book-lifecycle-closure-design.md`。
+- **2026-07-26（Creative inventory 与 SetCreativeModeSlot 闭环）**：十四类
+  Vanilla tab 目录、动态物品、原生屏幕/交互、原子发包与服务端校正全链闭合，
+  三条 packet coverage 行全部 complete，合同见
+  `docs/archive/creative-inventory-set-slot-closure-design.md`。

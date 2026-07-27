@@ -5898,21 +5898,23 @@
           "evidence": [
             "crates/bbb-world/src/client/inventory.rs#apply_set_player_inventory",
             "crates/bbb-world/src/client/inventory.rs#apply_container_set_slot",
-            "crates/bbb-world/src/client/inventory/tests.rs#component_rich_stacks_survive_inventory_equipment_and_pick_response_paths",
+            "crates/bbb-world/src/creative_inventory/tests.rs#creative_action_gates_and_stale_plan_preserve_server_authority",
             "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleSetCreativeModeSlot"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "command_surface": {
           "evidence": [
             "crates/bbb-control/src/server.rs#net.set_creative_mode_slot",
             "crates/bbb-native/src/runtime/control_requests.rs#NetControlRequest::SetCreativeModeSlot",
-            "crates/bbb-native/src/input/commands.rs#queue_set_creative_mode_slot_command",
+            "crates/bbb-native/src/input/commands.rs#queue_set_creative_mode_slot_commands_atomically",
+            "crates/bbb-native/src/input/inventory/creative.rs#CreativeInventoryInputState",
+            "crates/bbb-native/src/input/inventory/creative.rs#pointer_clone_right_pickup_number_key_and_throw_emit_creative_actions",
             "crates/bbb-net/src/driver/commands.rs#send_set_creative_mode_slot"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
           "evidence": [
@@ -5930,13 +5932,14 @@
         "state_guard": {
           "evidence": [
             "crates/bbb-control/src/server/params.rs#validate_creative_mode_slot_request",
-            "crates/bbb-protocol/src/packets/serverbound.rs#encode_item_stack_summary",
+            "crates/bbb-world/src/creative_inventory/action.rs#plan_creative_inventory_action",
+            "crates/bbb-native/src/input/inventory/creative.rs#creative_drop_throttler_limits_decays_and_resets_for_a_new_level_owner",
             "vanilla:net/minecraft/client/multiplayer/MultiPlayerGameMode.java#handleCreativeModeItemAdd",
             "vanilla:net/minecraft/client/multiplayer/MultiPlayerGameMode.java#handleCreativeModeItemDrop",
             "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleSetCreativeModeSlot"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -5951,7 +5954,8 @@
             "crates/bbb-net/src/driver/commands/tests.rs#send_set_creative_mode_slot_rejects_invalid_component_ids",
             "crates/bbb-control/src/server/tests.rs#net_set_creative_mode_slot_queues_request",
             "crates/bbb-control/src/server/tests.rs#net_set_creative_mode_slot_rejects_invalid_item_stack",
-            "crates/bbb-protocol/src/packet_coverage.rs#play_serverbound_set_creative_mode_slot_keeps_ui_and_authority_response_open"
+            "crates/bbb-native/src/input/inventory/creative.rs#saturated_shift_trash_retries_all_forty_six_packets_atomically",
+            "crates/bbb-protocol/src/packet_coverage.rs#play_serverbound_set_creative_mode_slot_closes_ui_and_authority_response"
           ],
           "gap": null,
           "status": "complete"
@@ -7987,11 +7991,11 @@
             "crates/bbb-world/src/client/inventory.rs#apply_container_set_slot",
             "crates/bbb-protocol/src/packets/data_components.rs#DataComponentPatchSummary",
             "crates/bbb-protocol/src/packets/inventory.rs#item_stack_packets_share_component_rich_patch_decode",
-            "crates/bbb-world/src/client/inventory/tests.rs#component_rich_stacks_survive_inventory_equipment_and_pick_response_paths",
+            "crates/bbb-world/src/creative_inventory/tests.rs#inventory_menu_corrections_sync_remote_player_slot_and_hotbar_pop_time",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleContainerSetSlot"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
@@ -8011,11 +8015,11 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-world/src/client/inventory/tests.rs#container_set_slot_only_updates_inventory_or_the_matching_active_menu",
-            "crates/bbb-world/src/client/inventory/tests.rs#component_rich_stacks_survive_inventory_equipment_and_pick_response_paths",
+            "crates/bbb-world/src/creative_inventory/tests.rs#inventory_menu_corrections_sync_remote_player_slot_and_hotbar_pop_time",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleContainerSetSlot"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -8025,7 +8029,8 @@
             "crates/bbb-world/src/client/inventory/tests.rs#container_set_slot_only_updates_inventory_or_the_matching_active_menu",
             "crates/bbb-protocol/src/packets/inventory.rs#item_stack_packets_share_component_rich_patch_decode",
             "crates/bbb-world/src/client/inventory/tests.rs#component_rich_stacks_survive_inventory_equipment_and_pick_response_paths",
-            "crates/bbb-protocol/src/packet_coverage.rs#play_container_slot_keeps_creative_sync_and_pop_semantics_open",
+            "crates/bbb-world/src/creative_inventory/tests.rs#inventory_menu_corrections_sync_remote_player_slot_and_hotbar_pop_time",
+            "crates/bbb-protocol/src/packet_coverage.rs#play_container_slot_closes_creative_sync_and_pop_semantics",
             "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#inventory_events_update_world_and_world_counters"
           ],
           "gap": null,
@@ -12447,11 +12452,11 @@
             "crates/bbb-world/src/client/inventory.rs#apply_set_cursor_item",
             "crates/bbb-protocol/src/packets/data_components.rs#DataComponentPatchSummary",
             "crates/bbb-protocol/src/packets/inventory.rs#item_stack_packets_share_component_rich_patch_decode",
-            "crates/bbb-world/src/client/inventory/tests.rs#component_rich_stacks_survive_inventory_equipment_and_pick_response_paths",
+            "crates/bbb-world/src/creative_inventory/tests.rs#creative_screen_suppresses_cursor_updates_and_resets_with_screen_replacement",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleSetCursorItem"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
@@ -12471,11 +12476,11 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-world/src/client/inventory/tests.rs#tracks_player_inventory_and_container_state",
-            "crates/bbb-world/src/client/inventory/tests.rs#component_rich_stacks_survive_inventory_equipment_and_pick_response_paths",
+            "crates/bbb-world/src/creative_inventory/tests.rs#creative_screen_suppresses_cursor_updates_and_resets_with_screen_replacement",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleSetCursorItem"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -12485,7 +12490,8 @@
             "crates/bbb-world/src/client/inventory/tests.rs#tracks_player_inventory_and_container_state",
             "crates/bbb-protocol/src/packets/inventory.rs#item_stack_packets_share_component_rich_patch_decode",
             "crates/bbb-world/src/client/inventory/tests.rs#component_rich_stacks_survive_inventory_equipment_and_pick_response_paths",
-            "crates/bbb-protocol/src/packet_coverage.rs#play_set_cursor_item_keeps_creative_screen_suppression_open",
+            "crates/bbb-world/src/creative_inventory/tests.rs#creative_screen_suppresses_cursor_updates_and_resets_with_screen_replacement",
+            "crates/bbb-protocol/src/packet_coverage.rs#play_set_cursor_item_closes_creative_screen_suppression",
             "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#inventory_events_update_world_and_world_counters"
           ],
           "gap": null,

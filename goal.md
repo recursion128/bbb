@@ -260,9 +260,6 @@ foundation milestone 均已闭环（见 goal-archive 索引），后续裁决顺
 
 重启判据见对应账本条目；条件满足前不列入候选集，也不因 ledger 文字重开。
 
-- creative inventory-tab preview（原 P1-3）：blocked on creative-screen 基建
-  （客户端 `CreativeModeInventoryScreen` 外壳 + `CreativeModeTabs` 物品目录
-  均缺失；玩家预览调用点零成本，随外壳落地折叠）。
 - entity-in-UI preview 的 `item_layers` GPU 绘制（原 P1-4）：defer，需 native
   侧 baked hand/head item model 元数据。
 - font bidi / unihex（原 P1-3 font 五连剩余）：defer。
@@ -414,6 +411,7 @@ packet 行为。
 - vanilla profiler section 全覆盖 + profiling metrics recorder/output。
 - DebugOptionsScreen narration / focus / 完整 widget styling polish。
 - native pause tick-freeze eligibility 与 PauseScreen 剩余 action/subscreen。
+- creative inventory-tab 的 entity-in-UI 玩家预览。
 
 完成标准：不做临时配置 UI，启动配置从命令行进入；上述开放项及账本归属本
 队列的条目全部完成或有窄 deferred/not-needed 依据；视觉结果有 deterministic

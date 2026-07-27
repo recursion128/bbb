@@ -1698,7 +1698,7 @@ mod tests {
     }
 
     #[test]
-    fn play_container_slot_keeps_creative_sync_and_pop_semantics_open() {
+    fn play_container_slot_closes_creative_sync_and_pop_semantics() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -1707,21 +1707,14 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "CLIENTBOUND_CONTAINER_SET_SLOT"
             })
             .expect("play container set slot coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "runtime_side_effect"])
-        );
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]
-    fn play_set_cursor_item_keeps_creative_screen_suppression_open() {
+    fn play_set_cursor_item_closes_creative_screen_suppression() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -1730,17 +1723,10 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "CLIENTBOUND_SET_CURSOR_ITEM"
             })
             .expect("play set cursor item coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "runtime_side_effect"])
-        );
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]
@@ -3839,7 +3825,7 @@ mod tests {
     }
 
     #[test]
-    fn play_serverbound_set_creative_mode_slot_keeps_ui_and_authority_response_open() {
+    fn play_serverbound_set_creative_mode_slot_closes_ui_and_authority_response() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -3848,17 +3834,10 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "SERVERBOUND_SET_CREATIVE_MODE_SLOT"
             })
             .expect("play serverbound set creative mode slot coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["ack_response", "command_surface", "state_guard"])
-        );
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]

@@ -657,16 +657,8 @@ Commands:
   owner becomes client-visible on the wire.
 Inventory:
 
-- Implement the generated Vanilla creative-tab/item catalog, native creative
-  inventory screen, and item-add/item-drop interactions that drive
-  `SetCreativeModeSlot`, including local infinite-material, enabled-feature,
-  slot, count, open-container, and drop-throttler gates. Complete the creative
-  `ContainerSetSlot` remote-slot/hotbar-pop and `SetCursorItem` suppression
-  branches. The server remains authoritative for reach, creative/game-master
-  data access, hotbar selection and inventory mutation.
 - Persist Vanilla creative hotbar presets in `hotbar.nbt` and implement their
-  save/load activator-key lifecycle. Restart after the core creative screen and
-  item-picker interaction state exists.
+  save/load activator-key lifecycle.
 - Implement the rich-tooltip `space` font provider, the remaining text styles,
   italic/complex component styles, and component-specific detail lines from
   `font/default.json`.
@@ -733,6 +725,8 @@ Environment:
 
 Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 
+- Render the creative inventory-tab player preview through the existing
+  entity-in-UI surface.
 - Render the first-person spyglass scope from
   `textures/misc/spyglass_scope.png`, including the black outside mask and
   `Gui.scopeScale` interpolation. The interpolation needs a deterministic
@@ -965,8 +959,6 @@ back into a todo. Do not delete these.
 - **Code of Conduct screen presentation parity.** Canonical UI state and control
   requests are covered. Restart when the renderer UI stack grows fuller vanilla
   screen and font rendering.
-- **Creative inventory-tab entity preview.** Restart when creative screen state
-  exists.
 - **Entity-in-UI preview `item_layers` GPU drawing**, per-preview override-camera
   orientation, and PIP-camera glint scroll animation time
   (`HudEntityPreviewItemLayer` / `GuiEntityRenderer`). Hand/head item models need
@@ -1005,11 +997,7 @@ back into a todo. Do not delete these.
 - ContainerSetData is gated by the current `containerMenu` id in vanilla.
   Mismatched property updates must remain ignored rather than creating a future
   synthetic menu or replacing the active one.
-- ContainerSetSlot also rejects mismatched nonzero menu ids. Remaining parity
-  includes creative-inventory remote-slot synchronization and hotbar pop-time
-  presentation.
-- SetCursorItem updates carried state outside creative inventory; the creative
-  screen suppression branch is still open.
+- ContainerSetSlot also rejects mismatched nonzero menu ids.
 - SetPlayerInventory now limits canonical state to vanilla inventory/equipment
   slots 0..42. Tutorial pickup presentation is still open.
 - PlayerCombatEnter is a strict unit packet whose 26.1 client handler is empty;

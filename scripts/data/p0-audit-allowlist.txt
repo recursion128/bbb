@@ -137,6 +137,9 @@
 # Advancement toast frame labels likewise resolve the selected language first;
 # the fixed English text is only the Vanilla localization fallback for a missing key.
 ^crates/bbb-native/src/runtime/toast[.]rs$	let [(]translation_key, fallback, frame_label_color[)]|localized_gui_text[(]Some[(]item_runtime[)], translation_key, fallback[)]
+# Creative-tab titles use fixed Vanilla English only when the active language
+# has no matching key; canonical item/tab identity does not fall back.
+^crates/bbb-native/src/runtime/creative_inventory[.]rs$	let fallback = tab|localized_gui_text[(]item_runtime, &tab[.]title_key, &fallback[)]
 # Entity name displays use the same client-language key/Component fallback
 # semantics; these matches are localization data flow, not model placeholders.
 ^crates/bbb-native/src/entity_name_tags[.]rs$	localized_or_fallback|let fallback = match|String[(]fallback[)]|fallback[.]as_str|^[[:space:]]*fallback[:,]|unwrap_or[(]fallback[)]|fallback_formats_arguments|name: "fallback"

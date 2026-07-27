@@ -1,5 +1,7 @@
 # Creative inventory and SetCreativeModeSlot closure
 
+Status: completed on 2026-07-26.
+
 ## Goal and completion contract
 
 Implement the native Vanilla 26.1 creative-inventory screen and close the
