@@ -1064,6 +1064,9 @@ pub(super) fn resident_item_test_meshes(frame: &ItemModelResidencyFrame) -> Resi
             instance.overlay,
             foil,
         );
+        // This helper compares only the legacy block/item buckets. Renderer-
+        // owned special phases and entity atlases have no pre-residency mesh
+        // counterpart and are covered by renderer semantic/offscreen tests.
         let target = match (instance.atlas, instance.phase) {
             (ItemModelAtlasKind::Blocks, ItemModelDrawPhase::Solid) => &mut meshes.block,
             (ItemModelAtlasKind::Blocks, ItemModelDrawPhase::Translucent) => {
@@ -1081,14 +1084,35 @@ pub(super) fn resident_item_test_meshes(frame: &ItemModelResidencyFrame) -> Resi
             (ItemModelAtlasKind::Items, ItemModelDrawPhase::GlintTranslucent) => {
                 &mut meshes.flat_glint_translucent
             }
-            (_, ItemModelDrawPhase::SolidZOffsetForward) => continue,
+            (
+                ItemModelAtlasKind::Entity
+                | ItemModelAtlasKind::DynamicPlayerSkin
+                | ItemModelAtlasKind::DynamicEntity,
+                _,
+            )
+            | (
+                _,
+                ItemModelDrawPhase::SolidZOffsetForward
+                | ItemModelDrawPhase::CutoutNoCull
+                | ItemModelDrawPhase::CutoutZOffset
+                | ItemModelDrawPhase::Pattern
+                | ItemModelDrawPhase::TranslucentNoCull
+                | ItemModelDrawPhase::EndPortal
+                | ItemModelDrawPhase::EndGateway,
+            ) => continue,
         };
         let mesh = match instance.phase {
             ItemModelDrawPhase::Solid => baked.solid,
             ItemModelDrawPhase::Translucent => baked.translucent,
             ItemModelDrawPhase::Glint => baked.glint,
             ItemModelDrawPhase::GlintTranslucent => baked.glint_translucent,
-            ItemModelDrawPhase::SolidZOffsetForward => continue,
+            ItemModelDrawPhase::SolidZOffsetForward
+            | ItemModelDrawPhase::CutoutNoCull
+            | ItemModelDrawPhase::CutoutZOffset
+            | ItemModelDrawPhase::Pattern
+            | ItemModelDrawPhase::TranslucentNoCull
+            | ItemModelDrawPhase::EndPortal
+            | ItemModelDrawPhase::EndGateway => continue,
         };
         if !mesh.is_empty() {
             target.push(mesh);
