@@ -3528,7 +3528,7 @@ mod tests {
     }
 
     #[test]
-    fn play_serverbound_player_command_keeps_response_runtime_gaps_open() {
+    fn play_serverbound_player_command_closes_all_vanilla_client_action_lifecycles() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -3537,18 +3537,49 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "SERVERBOUND_PLAYER_COMMAND"
             })
             .expect("play serverbound player command coverage row");
-        for dimension in ["command_surface", "encoder"] {
-            assert_eq!(
-                entry.coverage[dimension].status,
-                PacketCoverageStatus::Complete,
-                "{dimension}"
+        let incomplete: BTreeSet<_> = entry
+            .coverage
+            .iter()
+            .filter_map(|(dimension, cell)| {
+                (cell.status != PacketCoverageStatus::Complete).then_some(dimension.as_str())
+            })
+            .collect();
+
+        assert!(
+            incomplete.is_empty(),
+            "incomplete player-command coverage: {incomplete:?}"
+        );
+        for response in [
+            "apply_entity_animation",
+            "apply_player_position",
+            "apply_set_entity_data",
+            "apply_open_screen",
+            "apply_mount_screen_open",
+        ] {
+            assert!(
+                entry.coverage["ack_response"]
+                    .evidence
+                    .iter()
+                    .any(|evidence| evidence.contains(response)),
+                "missing authoritative response evidence for {response}"
             );
         }
-        for dimension in ["ack_response", "state_guard", "tests"] {
-            assert_eq!(
-                entry.coverage[dimension].status,
-                PacketCoverageStatus::Partial,
-                "{dimension}"
+        // Vanilla's sole riding-jump producer sends START_RIDING_JUMP. The
+        // server-recognized STOP_RIDING_JUMP action has no 26.1 client producer,
+        // so it remains encoder-covered without an invented input surface.
+        for producer in [
+            "InBedChatScreen.java#sendWakeUp",
+            "LocalPlayer.java#sendIsSprintingIfNeeded",
+            "LocalPlayer.java#sendRidingJump",
+            "LocalPlayer.java#sendOpenInventory",
+            "LocalPlayer.java#aiStep",
+        ] {
+            assert!(
+                entry.coverage["state_guard"]
+                    .evidence
+                    .iter()
+                    .any(|evidence| evidence.contains(producer)),
+                "missing vanilla producer evidence for {producer}"
             );
         }
     }

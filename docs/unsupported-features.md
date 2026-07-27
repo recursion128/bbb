@@ -78,7 +78,10 @@ Owner: `bbb-protocol`
   request coverage must include every distinct success/fallback response
   branch, including ordinary authoritative state-sync packets; local
   prediction alone does not replace accepting a later server correction with
-  exact item components and associated menu data.
+  exact item components and associated menu data. Conversely, do not invent a
+  native command producer for an enum action that the Vanilla client never
+  sends; pin that exception with a reverse client-callsite audit plus the
+  server handler and encoder evidence.
 - Use `docs/item-component-coverage-26.1.json` as the complete 110-entry
   ItemStack component semantic inventory. Each `partial` cell must close
   through its sparse evidence override; consuming the right wire length or

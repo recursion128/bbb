@@ -5053,13 +5053,24 @@
       "coverage": {
         "ack_response": {
           "evidence": [
+            "crates/bbb-world/src/entities/updates.rs#apply_entity_animation",
+            "crates/bbb-world/src/entities/tests/player_wake.rs#player_wake_uses_safe_bed_position_and_updates_local_pose",
             "crates/bbb-world/src/client/local_player.rs#apply_player_position",
-            "crates/bbb-world/src/client/inventory.rs#apply_open_screen",
             "crates/bbb-world/src/entities/metadata.rs#apply_set_entity_data",
-            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handlePlayerCommand"
+            "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#nautilus_synced_dash_update_seeds_cooldown_even_when_false",
+            "crates/bbb-world/src/client/inventory.rs#apply_open_screen",
+            "crates/bbb-world/src/client/inventory/tests.rs#open_screen_exact_title_is_stored_and_survives_set_content",
+            "crates/bbb-world/src/client/ui.rs#apply_mount_screen_open",
+            "crates/bbb-world/src/client/ui.rs#mount_screen_open_ignores_missing_and_non_mount_entities",
+            "crates/bbb-world/src/entities/tests/player_pose_and_sleeping_projection.rs#entity_model_sources_project_elytra_animation_state",
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handlePlayerCommand",
+            "vanilla:net/minecraft/server/level/ServerPlayer.java#stopSleepInBed",
+            "vanilla:net/minecraft/server/level/ServerPlayer.java#openMenu",
+            "vanilla:net/minecraft/server/level/ServerPlayer.java#openHorseInventory",
+            "vanilla:net/minecraft/server/level/ServerPlayer.java#openNautilusInventory"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "command_surface": {
           "evidence": [
@@ -5067,7 +5078,13 @@
             "crates/bbb-native/src/input/commands.rs#queue_sprint_command",
             "crates/bbb-native/src/input/commands.rs#queue_player_command_action",
             "crates/bbb-native/src/input/movement.rs#queue_released_riding_jump_command",
-            "crates/bbb-net/src/driver/commands.rs#send_player_command"
+            "crates/bbb-native/src/input.rs#should_queue_start_fall_flying",
+            "crates/bbb-net/src/driver/commands.rs#send_player_command",
+            "vanilla:net/minecraft/client/gui/screens/InBedChatScreen.java#sendWakeUp",
+            "vanilla:net/minecraft/client/player/LocalPlayer.java#sendIsSprintingIfNeeded",
+            "vanilla:net/minecraft/client/player/LocalPlayer.java#sendRidingJump",
+            "vanilla:net/minecraft/client/player/LocalPlayer.java#sendOpenInventory",
+            "vanilla:net/minecraft/client/player/LocalPlayer.java#aiStep"
           ],
           "gap": null,
           "status": "complete"
@@ -5083,14 +5100,24 @@
         },
         "state_guard": {
           "evidence": [
+            "crates/bbb-native/src/input/tests.rs#sleeping_state_consumes_gameplay_keys_without_queueing_actions",
+            "crates/bbb-native/src/input/commands.rs#queue_sprint_command",
+            "crates/bbb-native/src/input/tests.rs#sprint_key_with_low_food_only_queues_raw_player_input",
             "crates/bbb-world/src/entities/passengers.rs#local_player_rideable_jumping_vehicle_id",
+            "crates/bbb-world/src/entities/passengers.rs#local_player_rideable_jumping_vehicle_cooldown_ticks",
+            "crates/bbb-native/src/input/movement.rs#queue_released_riding_jump_command",
             "crates/bbb-world/src/entities/passengers.rs#local_player_server_controlled_inventory_vehicle_id",
+            "crates/bbb-world/src/client/local_player.rs#local_player_can_start_fall_flying",
             "crates/bbb-native/src/input.rs#should_queue_start_fall_flying",
+            "vanilla:net/minecraft/client/gui/screens/InBedChatScreen.java#sendWakeUp",
             "vanilla:net/minecraft/client/player/LocalPlayer.java#sendIsSprintingIfNeeded",
+            "vanilla:net/minecraft/client/player/LocalPlayer.java#sendRidingJump",
+            "vanilla:net/minecraft/client/player/LocalPlayer.java#sendOpenInventory",
+            "vanilla:net/minecraft/client/player/LocalPlayer.java#aiStep",
             "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handlePlayerCommand"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -5100,12 +5127,23 @@
             "crates/bbb-net/src/driver.rs#drive_connection_sends_player_command_and_input_net_commands_in_play",
             "crates/bbb-native/src/input/tests.rs#sleeping_escape_key_queues_stop_sleeping_command",
             "crates/bbb-native/src/input/tests.rs#sprint_key_with_forward_input_queues_player_input_and_sprint_commands",
+            "crates/bbb-native/src/input/tests.rs#focus_loss_stops_active_sprinting",
             "crates/bbb-native/src/input/movement.rs#mounted_jumpable_vehicle_release_queues_riding_jump_command",
+            "crates/bbb-native/src/input/movement.rs#zero_charge_riding_jump_release_still_queues_vanilla_command",
             "crates/bbb-native/src/input/tests.rs#inventory_key_on_server_controlled_mount_queues_open_inventory_command",
-            "crates/bbb-native/src/input/tests.rs#jump_key_queues_start_fall_flying_when_airborne_with_usable_glider"
+            "crates/bbb-native/src/input/tests.rs#jump_key_queues_start_fall_flying_when_airborne_with_usable_glider",
+            "crates/bbb-native/src/input/tests.rs#start_fall_flying_gate_rejects_last_durability_glider_and_creative_flight",
+            "crates/bbb-world/src/entities/tests/player_wake.rs#player_wake_uses_safe_bed_position_and_updates_local_pose",
+            "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#local_player_server_controlled_inventory_vehicle_tracks_vanilla_types",
+            "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#local_abstract_horse_jump_release_is_retained_then_consumed_by_ridden_tick",
+            "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#local_camel_dash_consumes_pending_jump_and_starts_exact_cooldown",
+            "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#nautilus_synced_dash_update_seeds_cooldown_even_when_false",
+            "crates/bbb-world/src/client/inventory/tests.rs#open_screen_exact_title_is_stored_and_survives_set_content",
+            "crates/bbb-world/src/client/ui.rs#mount_screen_open_ignores_missing_and_non_mount_entities",
+            "crates/bbb-world/src/entities/tests/player_pose_and_sleeping_projection.rs#entity_model_sources_project_elytra_animation_state"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",
