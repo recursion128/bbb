@@ -1146,7 +1146,10 @@ fn hud_player_list_projection_uses_scores_rich_names_and_vanilla_visibility() {
         number_format: None,
     }));
     let mut input = ClientInputState::new(true);
-    assert_eq!(hud_player_list_from_world(&input, &world, None, 0), None);
+    assert_eq!(
+        hud_player_list_from_world(&input, &world, None, 0, false),
+        None
+    );
     crate::input::handle_key_input(
         &mut input,
         &mut NetCounters::default(),
@@ -1156,7 +1159,7 @@ fn hud_player_list_projection_uses_scores_rich_names_and_vanilla_visibility() {
         ElementState::Pressed,
     );
 
-    let list = hud_player_list_from_world(&input, &world, None, 42).expect("Tab list");
+    let list = hud_player_list_from_world(&input, &world, None, 42, false).expect("Tab list");
     let header = list.header.as_deref().expect("styled header");
     assert_eq!(header.len(), 1);
     assert_eq!(header[0].text, "Welcome");
@@ -1211,7 +1214,7 @@ fn hud_player_list_projection_uses_scores_rich_names_and_vanilla_visibility() {
             number_format: None,
         }),
     }));
-    let hearts = hud_player_list_from_world(&input, &world, None, 43).expect("heart list");
+    let hearts = hud_player_list_from_world(&input, &world, None, 43, false).expect("heart list");
     assert_eq!(
         hearts.entries[0].score,
         Some(HudPlayerListScore::Hearts {
@@ -1237,7 +1240,10 @@ fn hud_player_list_projection_uses_scores_rich_names_and_vanilla_visibility() {
         PhysicalKey::Code(KeyCode::F1),
         ElementState::Pressed,
     );
-    assert_eq!(hud_player_list_from_world(&input, &world, None, 44), None);
+    assert_eq!(
+        hud_player_list_from_world(&input, &world, None, 44, false),
+        None
+    );
 }
 
 #[test]

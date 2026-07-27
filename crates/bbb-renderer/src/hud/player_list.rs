@@ -18,6 +18,9 @@ pub struct HudPlayerList {
     pub header: Option<Vec<HudStyledTextRun>>,
     pub footer: Option<Vec<HudStyledTextRun>>,
     pub entries: Vec<HudPlayerListEntry>,
+    /// Remote native clients show player faces only while the play transport
+    /// is encrypted (`PlayerTabOverlay.showHead`).
+    pub show_heads: bool,
     /// Vanilla `Gui.getGuiTicks()` at extraction time.
     pub tick_count: u64,
 }

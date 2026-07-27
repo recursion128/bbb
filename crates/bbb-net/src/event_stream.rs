@@ -1396,7 +1396,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn play_session_and_player_info_packets_emit_matching_events_without_responses() {
+    async fn play_session_security_precedes_login_and_player_info_events_without_responses() {
         let (client, mut server) = raw_connection_pair().await;
         let (events_tx, mut events_rx) = mpsc::channel(6);
         let (_commands_tx, commands_rx) = mpsc::channel(1);
@@ -1449,11 +1449,31 @@ mod tests {
             },
             enforces_secure_chat: false,
         };
-        assert_matching_event!(
-            PlayClientbound::Login(login.clone()),
-            "play login event should be emitted",
-            NetEvent::Play(PlayClientbound::Login(update)) if update == login
-        );
+        stream
+            .handle_play_packet(PlayClientbound::Login(login.clone()))
+            .await
+            .unwrap();
+        assert!(matches!(
+            events_rx.recv().await,
+            Some(NetEvent::PlaySessionSecurity { encrypted: false })
+        ));
+        assert!(matches!(
+            events_rx.recv().await,
+            Some(NetEvent::Play(PlayClientbound::Login(update))) if update == login
+        ));
+        stream.conn.enable_encryption([0x5A; 16]).unwrap();
+        stream
+            .handle_play_packet(PlayClientbound::Login(login.clone()))
+            .await
+            .unwrap();
+        assert!(matches!(
+            events_rx.recv().await,
+            Some(NetEvent::PlaySessionSecurity { encrypted: true })
+        ));
+        assert!(matches!(
+            events_rx.recv().await,
+            Some(NetEvent::Play(PlayClientbound::Login(update))) if update == login
+        ));
 
         let profile_id = uuid::Uuid::from_u128(1);
         let player_info = packets::PlayerInfoUpdate {

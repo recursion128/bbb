@@ -1846,6 +1846,7 @@ pub(crate) fn hud_player_list_from_world(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     tick_count: u64,
+    show_heads: bool,
 ) -> Option<HudPlayerList> {
     if input.hide_gui() || !input.player_list_key_down() || input_screen_is_open(input, world) {
         return None;
@@ -1942,6 +1943,7 @@ pub(crate) fn hud_player_list_from_world(
         header,
         footer,
         entries,
+        show_heads,
         tick_count,
     })
 }

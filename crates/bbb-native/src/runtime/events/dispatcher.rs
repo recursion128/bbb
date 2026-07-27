@@ -104,10 +104,12 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
     level_event_sound_random: &mut LevelEventSoundRandomState,
 ) -> usize {
     let particle_target = particle_target.map(|renderer| renderer as &mut dyn ParticleBatchSink);
+    let mut play_session_encrypted = false;
     drain_net_events_with_sinks_and_debug(
         rx,
         world,
         counters,
+        &mut play_session_encrypted,
         net_commands,
         audio_events,
         particle_events,
@@ -124,6 +126,7 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
     rx: &mut mpsc::Receiver<NetEvent>,
     world: &mut WorldStore,
     counters: &mut NetCounters,
+    play_session_encrypted: &mut bool,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     mut audio_events: Option<&mut dyn AudioEventSink>,
     mut particle_events: Option<&mut dyn ParticleEventSink>,
@@ -141,6 +144,7 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
             Err(mpsc::error::TryRecvError::Empty) => break,
             Err(mpsc::error::TryRecvError::Disconnected) => {
                 counters.connected = false;
+                *play_session_encrypted = false;
                 if let Some(terminal) = network_terminal.as_deref_mut() {
                     *terminal = true;
                 }
@@ -249,6 +253,9 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
             NetEvent::ServicesProfileKeys { public_keys } => {
                 world.replace_services_profile_keys(public_keys);
             }
+            NetEvent::PlaySessionSecurity { encrypted } => {
+                *play_session_encrypted = encrypted;
+            }
             NetEvent::CookieRequest {
                 key,
                 response_payload_present,
@@ -316,10 +323,13 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
                 }
             }
             NetEvent::Connected => {
+                *play_session_encrypted = false;
                 world.reset_resource_pack_session();
             }
-            NetEvent::Disconnected { .. }
-            | NetEvent::StateChanged { .. }
+            NetEvent::Disconnected { .. } => {
+                *play_session_encrypted = false;
+            }
+            NetEvent::StateChanged { .. }
             | NetEvent::CompressionSet { .. }
             | NetEvent::PacketSeen { .. }
             | NetEvent::UnsupportedPacket { .. } => {
@@ -1758,6 +1768,80 @@ mod terminal_tests {
     use super::*;
 
     #[test]
+    fn play_session_security_tracks_event_and_connection_lifecycle() {
+        let (tx, mut rx) = mpsc::channel(8);
+        tx.try_send(NetEvent::Connected).unwrap();
+        tx.try_send(NetEvent::PlaySessionSecurity { encrypted: true })
+            .unwrap();
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+        let mut play_session_encrypted = false;
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+
+        let drained = drain_net_events_with_sinks_and_debug(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &mut play_session_encrypted,
+            &None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            &mut random,
+            None,
+        );
+        assert_eq!(drained, 2);
+        assert!(play_session_encrypted);
+
+        tx.try_send(NetEvent::Disconnected { reason: None })
+            .unwrap();
+        assert_eq!(
+            drain_net_events_with_sinks_and_debug(
+                &mut rx,
+                &mut world,
+                &mut counters,
+                &mut play_session_encrypted,
+                &None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                &mut random,
+                None,
+            ),
+            1
+        );
+        assert!(!play_session_encrypted);
+
+        play_session_encrypted = true;
+        drop(tx);
+        assert_eq!(
+            drain_net_events_with_sinks_and_debug(
+                &mut rx,
+                &mut world,
+                &mut counters,
+                &mut play_session_encrypted,
+                &None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                &mut random,
+                None,
+            ),
+            0
+        );
+        assert!(!play_session_encrypted);
+    }
+
+    #[test]
     fn terminal_flag_observes_connected_and_disconnected_in_one_drain() {
         let (tx, mut rx) = mpsc::channel(4);
         tx.try_send(NetEvent::Connected).unwrap();
@@ -1765,6 +1849,7 @@ mod terminal_tests {
             .unwrap();
         let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
+        let mut play_session_encrypted = true;
         let mut random = LevelEventSoundRandomState::with_seed(0);
         let mut terminal = false;
 
@@ -1772,6 +1857,7 @@ mod terminal_tests {
             &mut rx,
             &mut world,
             &mut counters,
+            &mut play_session_encrypted,
             &None,
             None,
             None,
@@ -1786,5 +1872,6 @@ mod terminal_tests {
         assert_eq!(drained, 2);
         assert!(terminal);
         assert!(!counters.connected);
+        assert!(!play_session_encrypted);
     }
 }

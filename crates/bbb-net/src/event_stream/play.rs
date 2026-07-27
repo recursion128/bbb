@@ -24,6 +24,16 @@ impl EventStreamContext {
         let mut transfer = None;
         match packet {
             PlayClientbound::BundleDelimiter => {}
+            PlayClientbound::Login(login) => {
+                emit(
+                    &self.events,
+                    NetEvent::PlaySessionSecurity {
+                        encrypted: self.conn.encryption_enabled(),
+                    },
+                )
+                .await?;
+                emit(&self.events, NetEvent::Play(PlayClientbound::Login(login))).await?;
+            }
             PlayClientbound::KeepAlive { id } => {
                 // Vanilla answers keep-alives on the connection thread
                 // (ClientCommonPacketListenerImpl.handleKeepAlive has no

@@ -2343,6 +2343,7 @@ pub(crate) fn advance_simulation(
     first_person_hand_presentation: &mut FirstPersonHandPresentation,
     world: &mut WorldStore,
     net_counters: &mut NetCounters,
+    play_session_encrypted: &mut bool,
     client_animation_ticks: &mut ClientAnimationTickState,
     camera_fov_ticks: &mut CameraFovTickState,
     camera_spinning_ticks: &mut CameraSpinningEffectTickState,
@@ -2380,6 +2381,7 @@ pub(crate) fn advance_simulation(
             rx,
             world,
             net_counters,
+            play_session_encrypted,
             net_commands,
             audio_events_for_drain,
             particle_events_for_drain,
@@ -2951,8 +2953,13 @@ pub(crate) fn update_renderer_from_publication(
         hud_action_bar_text_from_world(world, item_runtime, entity_partial_tick);
     let hud_title_text = hud_title_text_from_world(world, item_runtime, entity_partial_tick);
     let hud_scoreboard_sidebar = hud_scoreboard_sidebar_from_world(input, world, item_runtime);
-    let hud_player_list =
-        hud_player_list_from_world(input, world, item_runtime, publication.client_tick_index);
+    let hud_player_list = hud_player_list_from_world(
+        input,
+        world,
+        item_runtime,
+        publication.client_tick_index,
+        publication.play_session_encrypted,
+    );
     let hud_chat_messages = hud_render_runtime.chat_messages_update(world, item_runtime);
     let queued_chat_messages = world.client_chat().delayed_messages.len();
     let queued_chat_messages_text = (queued_chat_messages > 0).then(|| {

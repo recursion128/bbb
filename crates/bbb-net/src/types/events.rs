@@ -22,6 +22,12 @@ pub enum NetEvent {
     StateChanged {
         state: ConnectionState,
     },
+    /// Transport security for the play session announced immediately before
+    /// its clientbound Login packet. Reconfiguration can begin another play
+    /// session on the same encrypted connection, so every Login restates it.
+    PlaySessionSecurity {
+        encrypted: bool,
+    },
     /// RSA-4096 public keys acquired from the Minecraft Services key set.
     /// World state uses them to validate player profile keys before retaining
     /// remote chat sessions.
