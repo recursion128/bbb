@@ -16,11 +16,13 @@ use wgpu::util::DeviceExt;
 use crate::{
     bake_generated_item_quads,
     counters::RendererCounters,
+    entity_models::{bake_special_item_geometry, ResolvedSpecialItemTexture},
     frame_buffers::FrameDataBuffer,
     gpu::DEPTH_FORMAT,
     item_models::ItemModelVertex,
     pipeline_builder::{depth_stencil_state, RenderPipelineBuilder},
-    ItemSpriteRect, Renderer, SpriteAlphaMask,
+    EntityDynamicPlayerSkinStatus, ItemSpriteRect, Renderer, SpecialItemModel,
+    SpecialItemModelBounds, SpecialItemTexture, SpriteAlphaMask,
 };
 
 use super::{
@@ -59,6 +61,9 @@ impl ItemModelAtlasGeneration {
 pub enum ItemModelAtlasKind {
     Blocks,
     Items,
+    Entity,
+    DynamicPlayerSkin,
+    DynamicEntity,
 }
 
 /// Static geometry subset. Solid and translucent quads have separate owner
@@ -81,6 +86,7 @@ pub struct ItemModelAssetIdentity {
     model_id: Arc<str>,
     variant: Arc<str>,
     part: u32,
+    portal_metadata: bool,
 }
 
 impl ItemModelAssetIdentity {
@@ -89,7 +95,13 @@ impl ItemModelAssetIdentity {
             model_id: model_id.into(),
             variant: variant.into(),
             part,
+            portal_metadata: false,
         }
+    }
+
+    fn with_portal_metadata(mut self) -> Self {
+        self.portal_metadata = true;
+        self
     }
 
     pub fn model_id(&self) -> &str {
@@ -144,9 +156,17 @@ impl ItemModelAssetKey {
 pub enum ItemModelDrawPhase {
     Solid,
     SolidZOffsetForward,
+    CutoutNoCull,
+    CutoutZOffset,
+    /// Vanilla `RenderPipelines.BANNER_PATTERN`: translucent blending, no
+    /// depth writes, submitted after the solid banner/shield base.
+    Pattern,
     Translucent,
+    TranslucentNoCull,
     Glint,
     GlintTranslucent,
+    EndPortal,
+    EndGateway,
 }
 
 /// Render target/lifetime lane. It is not part of static asset identity.
@@ -264,6 +284,7 @@ pub struct ItemModelInstanceRequest {
 pub struct ItemModelResidencyFrame {
     pub assets: Vec<ItemModelAssetRequest>,
     pub instances: Vec<ItemModelInstanceRequest>,
+    pub special_items: Vec<super::SpecialItemInstanceRequest>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -359,6 +380,9 @@ pub(crate) struct ItemModelResidency {
     resource_generation: ItemModelResourceGeneration,
     block_atlas_generation: ItemModelAtlasGeneration,
     item_atlas_generation: ItemModelAtlasGeneration,
+    entity_atlas_generation: ItemModelAtlasGeneration,
+    dynamic_player_skin_atlas_generation: ItemModelAtlasGeneration,
+    dynamic_entity_atlas_generation: ItemModelAtlasGeneration,
     owners: BTreeMap<ItemModelAssetKey, ResidentItemModelGpu>,
     pinned: BTreeSet<ItemModelAssetKey>,
     instances: Vec<ItemModelInstanceRecord>,
@@ -392,6 +416,9 @@ impl ItemModelResidency {
             resource_generation: ItemModelResourceGeneration(1),
             block_atlas_generation: ItemModelAtlasGeneration(1),
             item_atlas_generation: ItemModelAtlasGeneration(1),
+            entity_atlas_generation: ItemModelAtlasGeneration(1),
+            dynamic_player_skin_atlas_generation: ItemModelAtlasGeneration(1),
+            dynamic_entity_atlas_generation: ItemModelAtlasGeneration(1),
             owners: BTreeMap::new(),
             pinned: BTreeSet::new(),
             instances: Vec::new(),
@@ -413,6 +440,9 @@ impl ItemModelResidency {
             resource_generation: self.resource_generation,
             block_atlas_generation: self.block_atlas_generation,
             item_atlas_generation: self.item_atlas_generation,
+            entity_atlas_generation: self.entity_atlas_generation,
+            dynamic_player_skin_atlas_generation: self.dynamic_player_skin_atlas_generation,
+            dynamic_entity_atlas_generation: self.dynamic_entity_atlas_generation,
             frame_index: self.frame_index,
             ..Self::with_limits(self.max_owners, self.max_bytes)
         }
@@ -437,6 +467,9 @@ impl ItemModelResidency {
         match atlas {
             ItemModelAtlasKind::Blocks => self.block_atlas_generation,
             ItemModelAtlasKind::Items => self.item_atlas_generation,
+            ItemModelAtlasKind::Entity => self.entity_atlas_generation,
+            ItemModelAtlasKind::DynamicPlayerSkin => self.dynamic_player_skin_atlas_generation,
+            ItemModelAtlasKind::DynamicEntity => self.dynamic_entity_atlas_generation,
         }
     }
 
@@ -498,7 +531,7 @@ impl ItemModelResidency {
 
         let apply_started = Instant::now();
         let quads = build();
-        let mesh = resident_geometry(&quads, key.geometry_class);
+        let mesh = resident_geometry(&quads, key.geometry_class, key.identity.portal_metadata);
         if mesh.1.is_empty() {
             record_apply_time(counters, apply_started);
             return ItemModelResidencyOutcome::Empty;
@@ -677,6 +710,30 @@ impl ItemModelResidency {
                         .0
                         .checked_add(1)
                         .expect("item atlas generation overflow"),
+                );
+            }
+            ItemModelAtlasKind::Entity => {
+                self.entity_atlas_generation = ItemModelAtlasGeneration(
+                    self.entity_atlas_generation
+                        .0
+                        .checked_add(1)
+                        .expect("item entity-atlas generation overflow"),
+                );
+            }
+            ItemModelAtlasKind::DynamicPlayerSkin => {
+                self.dynamic_player_skin_atlas_generation = ItemModelAtlasGeneration(
+                    self.dynamic_player_skin_atlas_generation
+                        .0
+                        .checked_add(1)
+                        .expect("item dynamic-player-skin atlas generation overflow"),
+                );
+            }
+            ItemModelAtlasKind::DynamicEntity => {
+                self.dynamic_entity_atlas_generation = ItemModelAtlasGeneration(
+                    self.dynamic_entity_atlas_generation
+                        .0
+                        .checked_add(1)
+                        .expect("item dynamic-entity atlas generation overflow"),
                 );
             }
         }
@@ -920,6 +977,30 @@ fn resident_z_offset_forward_shader() -> String {
         .replace("out.position = camera.view_proj * world;", "out.position = camera.view_proj_view_offset_z_forward * world;")
 }
 
+fn resident_per_face_shader() -> String {
+    ITEM_MODEL_RESIDENT_SHADER
+        .replace(
+            "fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {",
+            "fn fs_main(input: VertexOut, @builtin(front_facing) front_facing: bool) -> @location(0) vec4<f32> {",
+        )
+        .replace(
+            "    let diffuse = mix(1.0, diffuse_light(input.normal_diffuse.xyz), input.normal_diffuse.w);",
+            "    let face_normal = select(-input.normal_diffuse.xyz, input.normal_diffuse.xyz, front_facing);\n    let diffuse = mix(1.0, diffuse_light(face_normal), input.normal_diffuse.w);",
+        )
+}
+
+fn resident_cutout_z_offset_shader() -> String {
+    resident_per_face_shader()
+        .replace(
+            "    minecraft_light1: vec4<f32>,\n};",
+            "    minecraft_light1: vec4<f32>,\n    glint_offsets: vec4<f32>,\n    view_proj_view_offset_z: mat4x4<f32>,\n};",
+        )
+        .replace(
+            "out.position = camera.view_proj * world;",
+            "out.position = camera.view_proj_view_offset_z * world;",
+        )
+}
+
 const ITEM_MODEL_RESIDENT_GLINT_SHADER: &str = r#"
 struct Camera {
     view_proj: mat4x4<f32>,
@@ -1039,6 +1120,46 @@ pub(crate) fn create_resident_item_model_z_offset_forward_pipeline(
     )
 }
 
+pub(crate) fn create_resident_item_model_cutout_no_cull_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    let shader = resident_per_face_shader();
+    create_resident_item_model_pipeline_with_state(
+        device,
+        format,
+        bind_group_layout,
+        lightmap_bind_group_layout,
+        &shader,
+        "bbb-item-model-resident-cutout-no-cull-pipeline",
+        wgpu::BlendState::REPLACE,
+        None,
+        true,
+    )
+}
+
+pub(crate) fn create_resident_item_model_cutout_z_offset_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    let shader = resident_cutout_z_offset_shader();
+    create_resident_item_model_pipeline_with_state(
+        device,
+        format,
+        bind_group_layout,
+        lightmap_bind_group_layout,
+        &shader,
+        "bbb-item-model-resident-cutout-z-offset-pipeline",
+        wgpu::BlendState::REPLACE,
+        None,
+        true,
+    )
+}
+
 pub(crate) fn create_resident_item_model_translucent_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
@@ -1054,6 +1175,51 @@ pub(crate) fn create_resident_item_model_translucent_pipeline(
         "bbb-item-model-resident-translucent-pipeline",
         wgpu::BlendState::ALPHA_BLENDING,
     )
+}
+
+pub(crate) fn create_resident_item_model_translucent_no_cull_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    let shader = resident_per_face_shader();
+    create_resident_item_model_pipeline_with_state(
+        device,
+        format,
+        bind_group_layout,
+        lightmap_bind_group_layout,
+        &shader,
+        "bbb-item-model-resident-translucent-no-cull-pipeline",
+        wgpu::BlendState::ALPHA_BLENDING,
+        None,
+        true,
+    )
+}
+
+pub(crate) fn create_resident_item_model_pattern_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    let shader =
+        ITEM_MODEL_RESIDENT_SHADER.replace("    if (sampled.a < ALPHA_CUTOUT) { discard; }\n", "");
+    RenderPipelineBuilder::new(device, "bbb-item-model-resident-pattern-pipeline")
+        .shader("bbb-item-model-resident-pattern-shader", &shader)
+        .layout(
+            "bbb-item-model-resident-pattern-pipeline-layout",
+            &[bind_group_layout, lightmap_bind_group_layout],
+        )
+        .vertex_buffers(&[resident_vertex_layout(), instance_vertex_layout()])
+        .color_target(format, Some(wgpu::BlendState::ALPHA_BLENDING))
+        .cull_mode(ITEM_MODEL_PIPELINE_CULL_MODE)
+        .depth_stencil(depth_stencil_state(
+            DEPTH_FORMAT,
+            false,
+            wgpu::CompareFunction::LessEqual,
+        ))
+        .build()
 }
 
 pub(crate) fn create_resident_item_model_glint_pipeline(
@@ -1081,23 +1247,47 @@ pub(crate) fn create_resident_item_model_glint_pipeline(
         .build()
 }
 
-fn create_resident_item_model_pipeline_with_blend(
+pub(crate) fn create_resident_item_model_end_portal_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
-    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
-    shader: &str,
-    label: &str,
-    blend: wgpu::BlendState,
 ) -> wgpu::RenderPipeline {
+    create_resident_item_model_end_cube_pipeline(
+        device,
+        format,
+        bind_group_layout,
+        "bbb-item-model-resident-end-portal",
+        15,
+    )
+}
+
+pub(crate) fn create_resident_item_model_end_gateway_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    create_resident_item_model_end_cube_pipeline(
+        device,
+        format,
+        bind_group_layout,
+        "bbb-item-model-resident-end-gateway",
+        16,
+    )
+}
+
+fn create_resident_item_model_end_cube_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    label: &str,
+    layers: u32,
+) -> wgpu::RenderPipeline {
+    let shader = resident_end_cube_shader(layers);
     RenderPipelineBuilder::new(device, label)
-        .shader(label, shader)
-        .layout(
-            &format!("{label}-layout"),
-            &[bind_group_layout, lightmap_bind_group_layout],
-        )
+        .shader(label, &shader)
+        .layout(&format!("{label}-layout"), &[bind_group_layout])
         .vertex_buffers(&[resident_vertex_layout(), instance_vertex_layout()])
-        .color_target(format, Some(blend))
+        .color_target(format, None)
         .cull_mode(ITEM_MODEL_PIPELINE_CULL_MODE)
         .depth_stencil(depth_stencil_state(
             DEPTH_FORMAT,
@@ -1107,9 +1297,221 @@ fn create_resident_item_model_pipeline_with_blend(
         .build()
 }
 
+fn resident_end_cube_shader(layers: u32) -> String {
+    let samples = (0..layers)
+        .map(|index| {
+            let layer = index + 1;
+            format!(
+                "    color += atlas_repeat_sample(input.portal_rect_min, input.portal_rect_size, end_portal_layer_uv(input.tex_proj, {layer}.0)) * COLORS[{index}];"
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    format!(
+        r#"
+struct Camera {{
+    view_proj: mat4x4<f32>,
+    lightmap_factors: vec4<f32>,
+    lightmap_effects: vec4<f32>,
+    block_light_tint: vec4<f32>,
+    sky_light_color: vec4<f32>,
+    ambient_color: vec4<f32>,
+    night_vision_color: vec4<f32>,
+    camera_position: vec4<f32>,
+    fog_color: vec4<f32>,
+    fog_distances: vec4<f32>,
+    fog_visibility_ends: vec4<f32>,
+    minecraft_light0: vec4<f32>,
+    minecraft_light1: vec4<f32>,
+    glint_offsets: vec4<f32>,
+    view_proj_view_offset_z: mat4x4<f32>,
+    view_proj_view_offset_z_forward: mat4x4<f32>,
+    projection: mat4x4<f32>,
+    sky_model_view: mat4x4<f32>,
+    shader_game_time: vec4<f32>,
+}};
+
+@group(0) @binding(0) var<uniform> camera: Camera;
+@group(0) @binding(1) var entity_texture_atlas: texture_2d<f32>;
+@group(0) @binding(2) var entity_sampler: sampler;
+
+struct VertexIn {{
+    @location(0) position: vec3<f32>,
+    @location(1) uv: vec2<f32>,
+    @location(2) color: vec4<f32>,
+    @location(3) normal_diffuse: vec4<f32>,
+    @location(4) decal_uv: vec2<f32>,
+    @location(5) model_0: vec4<f32>,
+    @location(6) model_1: vec4<f32>,
+    @location(7) model_2: vec4<f32>,
+    @location(8) model_3: vec4<f32>,
+    @location(9) normal_0: vec4<f32>,
+    @location(10) normal_1: vec4<f32>,
+    @location(11) normal_2: vec4<f32>,
+    @location(12) tint: vec4<f32>,
+    @location(13) light_overlay: vec4<f32>,
+    @location(14) foil: vec4<f32>,
+}};
+
+struct VertexOut {{
+    @builtin(position) position: vec4<f32>,
+    @location(0) tex_proj: vec4<f32>,
+    @location(1) sky_rect_min: vec2<f32>,
+    @location(2) sky_rect_size: vec2<f32>,
+    @location(3) portal_rect_min: vec2<f32>,
+    @location(4) portal_rect_size: vec2<f32>,
+    @location(5) spherical_distance: f32,
+    @location(6) cylindrical_distance: f32,
+}};
+
+fn linear_fog_value(distance: f32, start: f32, end: f32) -> f32 {{
+    if (distance <= start) {{ return 0.0; }}
+    if (distance >= end) {{ return 1.0; }}
+    return (distance - start) / (end - start);
+}}
+
+fn apply_fog(color: vec4<f32>, spherical: f32, cylindrical: f32) -> vec4<f32> {{
+    let fog = max(
+        linear_fog_value(spherical, camera.fog_distances.x, camera.fog_distances.y),
+        linear_fog_value(cylindrical, camera.fog_distances.z, camera.fog_distances.w),
+    );
+    return vec4<f32>(mix(color.rgb, camera.fog_color.rgb, fog * camera.fog_color.a), color.a);
+}}
+
+fn projection_from_position(position: vec4<f32>) -> vec4<f32> {{
+    var projection = position * 0.5;
+    projection.x += projection.w;
+    projection.y += projection.w;
+    projection.z = position.z;
+    projection.w = position.w;
+    return projection;
+}}
+
+@vertex
+fn vs_main(input: VertexIn) -> VertexOut {{
+    var out: VertexOut;
+    let model = mat4x4<f32>(input.model_0, input.model_1, input.model_2, input.model_3);
+    let world = model * vec4<f32>(input.position, 1.0);
+    out.position = camera.view_proj * world;
+    out.tex_proj = projection_from_position(out.position);
+    out.sky_rect_min = input.color.xy;
+    out.sky_rect_size = input.color.zw;
+    out.portal_rect_min = input.normal_diffuse.xy;
+    out.portal_rect_size = input.normal_diffuse.zw;
+    let fog_pos = world.xyz - camera.camera_position.xyz;
+    out.spherical_distance = length(fog_pos);
+    out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
+    return out;
+}}
+
+fn atlas_repeat_sample(rect_min: vec2<f32>, rect_size: vec2<f32>, uv: vec2<f32>) -> vec3<f32> {{
+    return textureSample(entity_texture_atlas, entity_sampler, rect_min + fract(uv) * rect_size).rgb;
+}}
+
+fn end_portal_layer_uv(tex_proj: vec4<f32>, layer: f32) -> vec2<f32> {{
+    let angle = radians((layer * layer * 4321.0 + layer * 9.0) * 2.0);
+    let scale = (4.5 - layer / 4.0) * 2.0;
+    let c = cos(angle);
+    let s = sin(angle);
+    let rotated = vec2<f32>(
+        (tex_proj.x * c - tex_proj.y * s) * scale,
+        (tex_proj.x * s + tex_proj.y * c) * scale,
+    );
+    let translated = rotated + vec2<f32>(
+        17.0 / layer,
+        (2.0 + layer / 1.5) * (camera.shader_game_time.x * 1.5),
+    ) * tex_proj.w;
+    return (translated * 0.5 + vec2<f32>(0.25 * tex_proj.w)) / tex_proj.w;
+}}
+
+const COLORS: array<vec3<f32>, 16> = array<vec3<f32>, 16>(
+    vec3<f32>(0.022087, 0.098399, 0.110818),
+    vec3<f32>(0.011892, 0.095924, 0.089485),
+    vec3<f32>(0.027636, 0.101689, 0.100326),
+    vec3<f32>(0.046564, 0.109883, 0.114838),
+    vec3<f32>(0.064901, 0.117696, 0.097189),
+    vec3<f32>(0.063761, 0.086895, 0.123646),
+    vec3<f32>(0.084817, 0.111994, 0.166380),
+    vec3<f32>(0.097489, 0.154120, 0.091064),
+    vec3<f32>(0.106152, 0.131144, 0.195191),
+    vec3<f32>(0.097721, 0.110188, 0.187229),
+    vec3<f32>(0.133516, 0.138278, 0.148582),
+    vec3<f32>(0.070006, 0.243332, 0.235792),
+    vec3<f32>(0.196766, 0.142899, 0.214696),
+    vec3<f32>(0.047281, 0.315338, 0.321970),
+    vec3<f32>(0.204675, 0.390010, 0.302066),
+    vec3<f32>(0.080955, 0.314821, 0.661491),
+);
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {{
+    var color = atlas_repeat_sample(
+        input.sky_rect_min,
+        input.sky_rect_size,
+        input.tex_proj.xy / input.tex_proj.w,
+    ) * COLORS[0];
+{samples}
+    return apply_fog(vec4<f32>(color, 1.0), input.spherical_distance, input.cylindrical_distance);
+}}
+"#
+    )
+}
+
+fn create_resident_item_model_pipeline_with_blend(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+    shader: &str,
+    label: &str,
+    blend: wgpu::BlendState,
+) -> wgpu::RenderPipeline {
+    create_resident_item_model_pipeline_with_state(
+        device,
+        format,
+        bind_group_layout,
+        lightmap_bind_group_layout,
+        shader,
+        label,
+        blend,
+        ITEM_MODEL_PIPELINE_CULL_MODE,
+        true,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn create_resident_item_model_pipeline_with_state(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+    shader: &str,
+    label: &str,
+    blend: wgpu::BlendState,
+    cull_mode: Option<wgpu::Face>,
+    depth_write_enabled: bool,
+) -> wgpu::RenderPipeline {
+    RenderPipelineBuilder::new(device, label)
+        .shader(label, shader)
+        .layout(
+            &format!("{label}-layout"),
+            &[bind_group_layout, lightmap_bind_group_layout],
+        )
+        .vertex_buffers(&[resident_vertex_layout(), instance_vertex_layout()])
+        .color_target(format, Some(blend))
+        .cull_mode(cull_mode)
+        .depth_stencil(depth_stencil_state(
+            DEPTH_FORMAT,
+            depth_write_enabled,
+            wgpu::CompareFunction::LessEqual,
+        ))
+        .build()
+}
+
 fn resident_geometry(
     quads: &[ItemModelQuad],
     geometry_class: ItemModelGeometryClass,
+    portal_metadata: bool,
 ) -> (Vec<ItemModelResidentVertex>, Vec<u32>) {
     let selected = quads
         .iter()
@@ -1119,7 +1521,7 @@ fn resident_geometry(
         })
         .collect::<Vec<_>>();
     let mesh = bake_item_model_mesh(&selected, Mat4::IDENTITY);
-    let vertices = mesh
+    let mut vertices = mesh
         .vertices
         .into_iter()
         .map(|vertex: ItemModelVertex| {
@@ -1140,7 +1542,15 @@ fn resident_geometry(
                 decal_uv,
             }
         })
-        .collect();
+        .collect::<Vec<_>>();
+    if portal_metadata {
+        for (quad, face_vertices) in selected.iter().zip(vertices.chunks_exact_mut(4)) {
+            for vertex in face_vertices {
+                vertex.normal_diffuse =
+                    [quad.normal[0], quad.normal[1], quad.normal[2], quad.shade];
+            }
+        }
+    }
     (vertices, mesh.indices)
 }
 
@@ -1213,12 +1623,14 @@ impl Renderer {
 
     /// Applies one atomic model-space asset/instance extraction. Exact keys
     /// are minted from the renderer's current resource generations, and each
-    /// source is evaluated only after a miss.
+    /// ordinary asset source is evaluated only after a miss. Special
+    /// submissions first expand into their exact static parts and keys.
     pub fn set_item_model_residency_frame(
         &mut self,
         mut frame: ItemModelResidencyFrame,
     ) -> Result<()> {
         self.append_hud_block_item_residency(&mut frame);
+        self.append_special_item_residency(&mut frame)?;
         self.begin_item_model_frame();
         let mut requested_keys = BTreeSet::new();
         for request in frame.assets {
@@ -1240,7 +1652,7 @@ impl Renderer {
                 }
             }
         }
-        let instances = frame
+        let mut instances = frame
             .instances
             .into_iter()
             .map(|request| {
@@ -1260,8 +1672,273 @@ impl Renderer {
                     request.submit_order,
                 )
             })
-            .collect();
+            .collect::<Vec<_>>();
+        // Composite leaves publish a single monotonically increasing order.
+        // Stable sorting keeps the renderer's expansion order for the several
+        // geometry parts belonging to one special leaf.
+        instances.sort_by_key(|instance| instance.submit_order);
         self.set_resident_item_model_instances(instances)
+    }
+
+    fn append_special_item_residency(&self, frame: &mut ItemModelResidencyFrame) -> Result<()> {
+        for request in std::mem::take(&mut frame.special_items) {
+            let model_variant = Arc::<str>::from(format!("{:?}", request.model));
+            let model_id = Arc::<str>::from(format!(
+                "minecraft:special/{}",
+                request.model.registered_type_name()
+            ));
+            let parts = bake_special_item_geometry(&request.model, |texture| {
+                self.resolve_special_item_texture(texture)
+            })?;
+            for (part_index, part) in parts.into_iter().enumerate() {
+                let part_index = u32::try_from(part_index)
+                    .map_err(|_| anyhow::anyhow!("special item has too many geometry parts"))?;
+                let portal_metadata = matches!(
+                    part.phase,
+                    ItemModelDrawPhase::EndPortal | ItemModelDrawPhase::EndGateway
+                );
+                let mut identity = ItemModelAssetIdentity::new(
+                    model_id.clone(),
+                    Arc::<str>::from(format!(
+                        "{}|{}|{}",
+                        model_variant, part.semantic_part, part.texture_identity
+                    )),
+                    part_index,
+                );
+                if portal_metadata {
+                    identity = identity.with_portal_metadata();
+                }
+                let geometry_class = match part.phase {
+                    ItemModelDrawPhase::Pattern
+                    | ItemModelDrawPhase::Translucent
+                    | ItemModelDrawPhase::TranslucentNoCull => ItemModelGeometryClass::Translucent,
+                    ItemModelDrawPhase::Solid
+                    | ItemModelDrawPhase::SolidZOffsetForward
+                    | ItemModelDrawPhase::CutoutNoCull
+                    | ItemModelDrawPhase::CutoutZOffset
+                    | ItemModelDrawPhase::Glint
+                    | ItemModelDrawPhase::GlintTranslucent
+                    | ItemModelDrawPhase::EndPortal
+                    | ItemModelDrawPhase::EndGateway => ItemModelGeometryClass::Solid,
+                };
+                frame.assets.push(ItemModelAssetRequest {
+                    identity: identity.clone(),
+                    atlas: part.atlas,
+                    geometry_class,
+                    source: ItemModelAssetSource::Quads(part.quads.into()),
+                });
+                let foil = if part.accepts_foil {
+                    request.foil
+                } else {
+                    ItemModelFoil::None
+                };
+                frame.instances.push(ItemModelInstanceRequest {
+                    identity: identity.clone(),
+                    atlas: part.atlas,
+                    geometry_class,
+                    transform: request.transform,
+                    tint: part.tint,
+                    light: request.light,
+                    overlay: request.overlay,
+                    foil,
+                    target: request.target,
+                    phase: part.phase,
+                    submit_order: request.submit_order,
+                });
+                if part.accepts_foil && request.foil.has_foil() {
+                    frame.instances.push(ItemModelInstanceRequest {
+                        identity,
+                        atlas: part.atlas,
+                        geometry_class,
+                        transform: request.transform,
+                        tint: part.tint,
+                        light: request.light,
+                        overlay: request.overlay,
+                        foil: request.foil,
+                        target: request.target,
+                        phase: ItemModelDrawPhase::Glint,
+                        submit_order: request.submit_order,
+                    });
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn resolve_special_item_texture(
+        &self,
+        texture: &SpecialItemTexture,
+    ) -> Result<ResolvedSpecialItemTexture> {
+        match texture {
+            SpecialItemTexture::Static(texture) => {
+                if texture.size.contains(&0) {
+                    bail!(
+                        "entity model texture `{}` has zero-sized logical dimensions",
+                        texture.path
+                    );
+                }
+                let atlas = self
+                    .entity_model_texture_atlas
+                    .as_ref()
+                    .ok_or_else(|| anyhow::anyhow!("entity model texture atlas is not uploaded"))?;
+                let entry = atlas
+                    .layout
+                    .entries
+                    .iter()
+                    .find(|entry| entry.texture == *texture)
+                    .ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "entity model texture `{}` is absent from the static atlas",
+                            texture.path
+                        )
+                    })?;
+                Ok(ResolvedSpecialItemTexture {
+                    atlas: ItemModelAtlasKind::Entity,
+                    logical_size: texture.size,
+                    uv: entry.uv,
+                    identity: Arc::from(format!("static:{}", texture.path)),
+                })
+            }
+            SpecialItemTexture::Pack(texture) => {
+                let atlas = self
+                    .entity_model_texture_atlas
+                    .as_ref()
+                    .ok_or_else(|| anyhow::anyhow!("entity model texture atlas is not uploaded"))?;
+                let uv = atlas
+                    .owned_entries
+                    .iter()
+                    .find(|entry| entry.texture == *texture)
+                    .map(|entry| entry.uv)
+                    // A direct pack texture may already be present through a
+                    // static entity layer. Reuse that physical atlas entry
+                    // while retaining the special layer's logical UV size.
+                    .or_else(|| {
+                        atlas
+                            .layout
+                            .entries
+                            .iter()
+                            .find(|entry| entry.texture.path == texture.path.as_ref())
+                            .map(|entry| entry.uv)
+                    })
+                    .ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "entity model texture `{}` is absent from the pack-owned atlas",
+                            texture.path
+                        )
+                    })?;
+                Ok(ResolvedSpecialItemTexture {
+                    atlas: ItemModelAtlasKind::Entity,
+                    logical_size: texture.size,
+                    uv,
+                    identity: Arc::from(format!("pack:{}:{:?}", texture.path, texture.size)),
+                })
+            }
+            SpecialItemTexture::Dynamic {
+                texture,
+                logical_size,
+            } => {
+                if logical_size.contains(&0) {
+                    bail!("dynamic special item texture has zero-sized logical dimensions");
+                }
+                let atlas = self
+                    .entity_dynamic_player_texture_atlas
+                    .as_ref()
+                    .ok_or_else(|| {
+                        anyhow::anyhow!("dynamic entity texture atlas is not uploaded")
+                    })?;
+                let entry = atlas
+                    .layout
+                    .entries
+                    .iter()
+                    .find(|entry| entry.handle == texture.handle)
+                    .ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "dynamic entity texture handle {} is absent from the atlas",
+                            texture.handle
+                        )
+                    })?;
+                Ok(ResolvedSpecialItemTexture {
+                    atlas: ItemModelAtlasKind::DynamicEntity,
+                    logical_size: *logical_size,
+                    uv: entry.uv,
+                    identity: Arc::from(format!("dynamic:{}:{logical_size:?}", texture.handle)),
+                })
+            }
+            SpecialItemTexture::DynamicPlayerSkin(skin) => {
+                if skin.status != EntityDynamicPlayerSkinStatus::Ready {
+                    bail!(
+                        "dynamic player skin {} is not ready for special item rendering",
+                        skin.handle
+                    );
+                }
+                let atlas = self
+                    .entity_dynamic_player_skin_atlas
+                    .as_ref()
+                    .ok_or_else(|| anyhow::anyhow!("dynamic player skin atlas is not uploaded"))?;
+                let entry = atlas
+                    .layout
+                    .entries
+                    .iter()
+                    .find(|entry| entry.handle == skin.handle)
+                    .ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "dynamic player skin handle {} is absent from the atlas",
+                            skin.handle
+                        )
+                    })?;
+                Ok(ResolvedSpecialItemTexture {
+                    atlas: ItemModelAtlasKind::DynamicPlayerSkin,
+                    logical_size: [64, 64],
+                    uv: entry.uv,
+                    identity: Arc::from(format!(
+                        "dynamic_player_skin:{}:{:?}",
+                        skin.handle, skin.model
+                    )),
+                })
+            }
+        }
+    }
+
+    /// Computes the exact model-space bounds used by Vanilla's item extent
+    /// visits and oversized-GUI bounds. The same resolved atlas rectangles and
+    /// posed builders feed both this query and resident geometry.
+    pub fn special_item_model_bounds(
+        &self,
+        model: &SpecialItemModel,
+    ) -> Result<SpecialItemModelBounds> {
+        let mut bounds_model = model.clone();
+        if let SpecialItemModel::Banner { attachment, .. } = &mut bounds_model {
+            // Vanilla `BannerRenderer.getExtents` always visits the standing
+            // frame and flag, independently of the configured attachment.
+            *attachment = super::SpecialItemBannerAttachment::Ground;
+        }
+        let parts = bake_special_item_geometry(&bounds_model, |texture| {
+            self.resolve_special_item_texture(texture)
+        })?;
+        let mut min = [f32::INFINITY; 3];
+        let mut max = [f32::NEG_INFINITY; 3];
+        for corner in parts
+            .iter()
+            // `DecoratedPotRenderer.getExtents` visits neck/top/bottom only;
+            // its material side quads are submit geometry, not extents.
+            .filter(|part| {
+                !matches!(model, SpecialItemModel::DecoratedPot { .. })
+                    || part.semantic_part.as_ref() == "decorated_pot_base"
+            })
+            .flat_map(|part| &part.quads)
+            .flat_map(|quad| quad.corners)
+        {
+            for axis in 0..3 {
+                let coordinate = corner[axis] / 16.0;
+                min[axis] = min[axis].min(coordinate);
+                max[axis] = max[axis].max(coordinate);
+            }
+        }
+        if min.iter().any(|value| !value.is_finite()) || max.iter().any(|value| !value.is_finite())
+        {
+            bail!("special item model produced no finite extents");
+        }
+        Ok(SpecialItemModelBounds { min, max })
     }
 
     /// Advances the resource generation and drops all derived model owners.
@@ -1308,6 +1985,19 @@ impl Renderer {
 mod tests {
     use super::*;
 
+    const SPECIAL_TRIDENT_TEXTURE: crate::EntityModelTextureRef = crate::EntityModelTextureRef {
+        path: "textures/entity/test_special_trident.png",
+        size: [64, 64],
+    };
+    const SPECIAL_SKY_TEXTURE: crate::EntityModelTextureRef = crate::EntityModelTextureRef {
+        path: "textures/entity/test_special_sky.png",
+        size: [16, 16],
+    };
+    const SPECIAL_PORTAL_TEXTURE: crate::EntityModelTextureRef = crate::EntityModelTextureRef {
+        path: "textures/entity/test_special_portal.png",
+        size: [16, 16],
+    };
+
     fn quad(translucent: bool) -> ItemModelQuad {
         ItemModelQuad {
             corners: [
@@ -1350,7 +2040,80 @@ mod tests {
                 phase: ItemModelDrawPhase::Solid,
                 submit_order: 0,
             }],
+            special_items: Vec::new(),
         }
+    }
+
+    #[test]
+    fn special_item_texture_sources_resolve_all_entity_atlas_owners() {
+        let Some(mut renderer) = Renderer::new_offscreen(16, 16) else {
+            return;
+        };
+        let owned_texture = crate::EntityModelOwnedTextureRef::new(
+            "textures/entity/test_special_owned.png",
+            [64, 32],
+        );
+        renderer
+            .upload_entity_model_textures_with_owned(
+                &[crate::EntityModelTextureImage::with_physical_size(
+                    SPECIAL_TRIDENT_TEXTURE,
+                    [1, 1],
+                    vec![255; 4],
+                )],
+                &[crate::EntityModelOwnedTextureImage::with_physical_size(
+                    owned_texture.clone(),
+                    [2, 1],
+                    vec![127; 8],
+                )],
+            )
+            .unwrap();
+        renderer
+            .upload_dynamic_entity_texture(crate::DynamicEntityTextureImage {
+                handle: 42,
+                size: [2, 3],
+                rgba: vec![63; 2 * 3 * 4],
+            })
+            .unwrap();
+        renderer
+            .upload_dynamic_player_skin(crate::DynamicPlayerSkinImage {
+                handle: 43,
+                rgba: vec![31; 64 * 64 * 4],
+            })
+            .unwrap();
+
+        let static_texture = renderer
+            .resolve_special_item_texture(&SpecialItemTexture::Static(SPECIAL_TRIDENT_TEXTURE))
+            .unwrap();
+        assert_eq!(static_texture.atlas, ItemModelAtlasKind::Entity);
+        assert_eq!(static_texture.logical_size, [64, 64]);
+
+        let pack_texture = renderer
+            .resolve_special_item_texture(&SpecialItemTexture::Pack(owned_texture))
+            .unwrap();
+        assert_eq!(pack_texture.atlas, ItemModelAtlasKind::Entity);
+        assert_eq!(pack_texture.logical_size, [64, 32]);
+
+        let dynamic_texture = renderer
+            .resolve_special_item_texture(&SpecialItemTexture::Dynamic {
+                texture: crate::EntityDynamicTexture { handle: 42 },
+                logical_size: [128, 64],
+            })
+            .unwrap();
+        assert_eq!(dynamic_texture.atlas, ItemModelAtlasKind::DynamicEntity);
+        assert_eq!(dynamic_texture.logical_size, [128, 64]);
+
+        let dynamic_skin = renderer
+            .resolve_special_item_texture(&SpecialItemTexture::DynamicPlayerSkin(
+                crate::EntityDynamicPlayerSkin {
+                    handle: 43,
+                    fallback: crate::EntityDefaultPlayerSkin::WideSteve,
+                    model: crate::EntityPlayerSkinModel::Wide,
+                    status: crate::EntityDynamicPlayerSkinStatus::Ready,
+                },
+            ))
+            .unwrap();
+        assert_eq!(dynamic_skin.atlas, ItemModelAtlasKind::DynamicPlayerSkin);
+        assert_eq!(dynamic_skin.logical_size, [64, 64]);
     }
 
     #[test]
@@ -1454,7 +2217,7 @@ mod tests {
         let transform = Mat4::from_translation(glam::Vec3::new(2.0, -1.0, 4.0))
             * Mat4::from_rotation_y(0.73)
             * Mat4::from_scale(glam::Vec3::new(0.5, 0.75, 1.25));
-        let (vertices, _) = resident_geometry(&source, ItemModelGeometryClass::Solid);
+        let (vertices, _) = resident_geometry(&source, ItemModelGeometryClass::Solid, false);
 
         for decal_pose_scale in [1.0, 0.75, 0.5] {
             let legacy = super::super::bake_item_model_meshes_with_light_and_overlay_and_foil_mode(
@@ -1639,5 +2402,199 @@ mod tests {
         );
         assert_eq!(renderer.counters().item_model_resident_bytes > 0, true);
         assert_eq!(renderer.counters().item_model_fallbacks, 1);
+    }
+
+    #[test]
+    fn special_item_model_residency_reuses_entity_geometry_and_draws_end_cube_pipeline() {
+        let Some(mut renderer) = Renderer::new_offscreen(32, 32) else {
+            return;
+        };
+        renderer
+            .upload_entity_model_textures(&[
+                crate::EntityModelTextureImage::with_physical_size(
+                    SPECIAL_TRIDENT_TEXTURE,
+                    [1, 1],
+                    vec![255; 4],
+                ),
+                crate::EntityModelTextureImage::with_physical_size(
+                    SPECIAL_SKY_TEXTURE,
+                    [1, 1],
+                    vec![31, 63, 95, 255],
+                ),
+                crate::EntityModelTextureImage::with_physical_size(
+                    SPECIAL_PORTAL_TEXTURE,
+                    [1, 1],
+                    vec![127, 63, 191, 255],
+                ),
+            ])
+            .unwrap();
+        renderer
+            .upload_dynamic_player_skin(crate::DynamicPlayerSkinImage {
+                handle: 41,
+                rgba: vec![0xff; 64 * 64 * 4],
+            })
+            .unwrap();
+        renderer.update_camera();
+
+        let frame = || ItemModelResidencyFrame {
+            special_items: vec![
+                super::super::SpecialItemInstanceRequest {
+                    model: SpecialItemModel::Trident {
+                        texture: SpecialItemTexture::Static(SPECIAL_TRIDENT_TEXTURE),
+                    },
+                    transform: Mat4::IDENTITY,
+                    light: [1.0; 2],
+                    overlay: [0.0, 10.0],
+                    foil: ItemModelFoil::Standard,
+                    target: ItemModelDrawTarget::World,
+                    submit_order: 7,
+                },
+                super::super::SpecialItemInstanceRequest {
+                    model: SpecialItemModel::EndCube {
+                        sky_texture: SpecialItemTexture::Static(SPECIAL_SKY_TEXTURE),
+                        portal_texture: SpecialItemTexture::Static(SPECIAL_PORTAL_TEXTURE),
+                        effect: super::super::SpecialItemEndCubeEffect::Gateway,
+                    },
+                    transform: Mat4::IDENTITY,
+                    light: [1.0; 2],
+                    overlay: [0.0, 10.0],
+                    foil: ItemModelFoil::Standard,
+                    target: ItemModelDrawTarget::World,
+                    submit_order: 8,
+                },
+                super::super::SpecialItemInstanceRequest {
+                    model: SpecialItemModel::Trident {
+                        texture: SpecialItemTexture::Static(SPECIAL_TRIDENT_TEXTURE),
+                    },
+                    transform: Mat4::IDENTITY,
+                    light: [1.0; 2],
+                    overlay: [0.0, 10.0],
+                    foil: ItemModelFoil::None,
+                    target: ItemModelDrawTarget::Gui,
+                    submit_order: 9,
+                },
+                super::super::SpecialItemInstanceRequest {
+                    model: SpecialItemModel::Banner {
+                        attachment: super::super::SpecialItemBannerAttachment::Ground,
+                        base_texture: SpecialItemTexture::Static(SPECIAL_TRIDENT_TEXTURE),
+                        pattern_base_texture: SpecialItemTexture::Static(SPECIAL_TRIDENT_TEXTURE),
+                        base_color: crate::EntityDyeColor::Blue,
+                        patterns: Arc::from([super::super::SpecialItemPatternLayer::new(
+                            SpecialItemTexture::Static(SPECIAL_TRIDENT_TEXTURE),
+                            crate::EntityDyeColor::Red,
+                        )]),
+                    },
+                    transform: Mat4::IDENTITY,
+                    light: [1.0; 2],
+                    overlay: [0.0, 10.0],
+                    foil: ItemModelFoil::None,
+                    target: ItemModelDrawTarget::Gui,
+                    submit_order: 10,
+                },
+                super::super::SpecialItemInstanceRequest {
+                    model: SpecialItemModel::CopperGolemStatue {
+                        texture: SpecialItemTexture::Static(SPECIAL_TRIDENT_TEXTURE),
+                        pose: super::super::SpecialItemCopperGolemPose::Standing,
+                    },
+                    transform: Mat4::IDENTITY,
+                    light: [1.0; 2],
+                    overlay: [0.0, 10.0],
+                    foil: ItemModelFoil::None,
+                    target: ItemModelDrawTarget::Gui,
+                    submit_order: 11,
+                },
+                super::super::SpecialItemInstanceRequest {
+                    model: SpecialItemModel::Head {
+                        texture: SpecialItemTexture::Static(SPECIAL_TRIDENT_TEXTURE),
+                        kind: super::super::SpecialItemHeadKind::Skeleton,
+                        animation: 0.0,
+                    },
+                    transform: Mat4::IDENTITY,
+                    light: [1.0; 2],
+                    overlay: [0.0, 10.0],
+                    foil: ItemModelFoil::None,
+                    target: ItemModelDrawTarget::Gui,
+                    submit_order: 12,
+                },
+                super::super::SpecialItemInstanceRequest {
+                    model: SpecialItemModel::PlayerHead {
+                        skin: Some(crate::EntityDynamicPlayerSkin {
+                            handle: 41,
+                            fallback: crate::EntityDefaultPlayerSkin::WideSteve,
+                            model: crate::EntityPlayerSkinModel::Wide,
+                            status: crate::EntityDynamicPlayerSkinStatus::Ready,
+                        }),
+                        fallback_texture: SPECIAL_TRIDENT_TEXTURE,
+                    },
+                    transform: Mat4::IDENTITY,
+                    light: [1.0; 2],
+                    overlay: [0.0, 10.0],
+                    foil: ItemModelFoil::None,
+                    target: ItemModelDrawTarget::Gui,
+                    submit_order: 13,
+                },
+            ],
+            ..ItemModelResidencyFrame::default()
+        };
+
+        renderer.set_item_model_residency_frame(frame()).unwrap();
+        assert_eq!(
+            renderer.resident_item_model_instance_orders_for_test(),
+            vec![7, 7, 8, 9, 10, 10, 10, 10, 11, 12, 13]
+        );
+        assert!(renderer
+            .item_model_residency
+            .draws()
+            .iter()
+            .any(|draw| draw.phase == ItemModelDrawPhase::EndGateway));
+        assert!(renderer
+            .item_model_residency
+            .draws()
+            .iter()
+            .any(|draw| draw.phase == ItemModelDrawPhase::Pattern));
+        for phase in [
+            ItemModelDrawPhase::CutoutNoCull,
+            ItemModelDrawPhase::CutoutZOffset,
+            ItemModelDrawPhase::TranslucentNoCull,
+        ] {
+            assert!(renderer
+                .item_model_residency
+                .draws()
+                .iter()
+                .any(|draw| draw.phase == phase));
+        }
+        assert!(renderer.item_model_residency.draws().iter().any(|draw| {
+            draw.phase == ItemModelDrawPhase::TranslucentNoCull
+                && draw.asset.atlas() == ItemModelAtlasKind::DynamicPlayerSkin
+        }));
+        let bounds = renderer
+            .special_item_model_bounds(&SpecialItemModel::Trident {
+                texture: SpecialItemTexture::Static(SPECIAL_TRIDENT_TEXTURE),
+            })
+            .unwrap();
+        assert!(bounds.size().iter().all(|size| *size > 0.0));
+        let banner = |attachment| SpecialItemModel::Banner {
+            attachment,
+            base_texture: SpecialItemTexture::Static(SPECIAL_TRIDENT_TEXTURE),
+            pattern_base_texture: SpecialItemTexture::Static(SPECIAL_TRIDENT_TEXTURE),
+            base_color: crate::EntityDyeColor::White,
+            patterns: Arc::from([]),
+        };
+        assert_eq!(
+            renderer
+                .special_item_model_bounds(&banner(
+                    super::super::SpecialItemBannerAttachment::Ground
+                ))
+                .unwrap(),
+            renderer
+                .special_item_model_bounds(&banner(super::super::SpecialItemBannerAttachment::Wall))
+                .unwrap()
+        );
+        renderer.render_offscreen_frame().unwrap();
+
+        renderer.set_item_model_residency_frame(frame()).unwrap();
+        renderer.render_offscreen_frame().unwrap();
+        assert_eq!(renderer.counters().item_model_vertex_upload_bytes, 0);
+        assert_eq!(renderer.counters().item_model_index_upload_bytes, 0);
     }
 }

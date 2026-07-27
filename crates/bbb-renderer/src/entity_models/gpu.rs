@@ -17,6 +17,7 @@ use super::{
     catalog::{
         EntityDynamicPlayerSkinAtlasEntry, EntityDynamicPlayerSkinAtlasLayout,
         EntityDynamicPlayerTextureAtlasEntry, EntityDynamicPlayerTextureAtlasLayout,
+        EntityModelOwnedTextureAtlasEntry, EntityModelOwnedTextureImage,
         EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout, EntityModelTextureImage,
         EntityModelUvRect, FirstPersonPlayerArm,
     },
@@ -69,7 +70,10 @@ pub(crate) struct EntityModelTextureAtlasGpu {
     _view: wgpu::TextureView,
     _sampler: wgpu::Sampler,
     pub(crate) bind_group: wgpu::BindGroup,
+    pub(crate) gui_bind_group: wgpu::BindGroup,
     pub(crate) layout: EntityModelTextureAtlasLayout,
+    #[allow(dead_code)]
+    pub(crate) owned_entries: Vec<EntityModelOwnedTextureAtlasEntry>,
 }
 
 impl EntityModelTextureAtlasGpu {
@@ -101,6 +105,7 @@ pub(crate) struct EntityDynamicPlayerSkinAtlasGpu {
     _view: wgpu::TextureView,
     _sampler: wgpu::Sampler,
     pub(crate) bind_group: wgpu::BindGroup,
+    pub(crate) gui_bind_group: wgpu::BindGroup,
     pub(crate) layout: EntityDynamicPlayerSkinAtlasLayout,
 }
 
@@ -117,6 +122,7 @@ pub(crate) struct EntityDynamicPlayerTextureAtlasGpu {
     _view: wgpu::TextureView,
     _sampler: wgpu::Sampler,
     pub(crate) bind_group: wgpu::BindGroup,
+    pub(crate) gui_bind_group: wgpu::BindGroup,
     pub(crate) layout: EntityDynamicPlayerTextureAtlasLayout,
 }
 
@@ -2544,6 +2550,10 @@ impl Renderer {
         self.entity_dynamic_player_texture_images.clear();
         self.entity_dynamic_player_texture_atlas = None;
         if had_dynamic_textures {
+            self.invalidate_item_model_atlas(
+                crate::item_models::ItemModelAtlasKind::DynamicPlayerSkin,
+            );
+            self.invalidate_item_model_atlas(crate::item_models::ItemModelAtlasKind::DynamicEntity);
             self.rebuild_entity_model_meshes();
             self.rebuild_first_person_player_arm_meshes();
         }
@@ -2554,6 +2564,16 @@ impl Renderer {
         &mut self,
         images: &[EntityModelTextureImage],
     ) -> Result<()> {
+        self.upload_entity_model_textures_with_owned(images, &[])
+    }
+
+    /// Replaces the shared entity atlas with the static catalog plus
+    /// resource-pack-owned special item textures in one atomic upload.
+    pub fn upload_entity_model_textures_with_owned(
+        &mut self,
+        images: &[EntityModelTextureImage],
+        owned_images: &[EntityModelOwnedTextureImage],
+    ) -> Result<()> {
         let (default_faces, dynamic_faces) =
             self.build_hud_player_face_owners(images, &self.entity_dynamic_player_skin_images)?;
         let atlas = create_entity_model_texture_atlas_gpu(
@@ -2561,7 +2581,9 @@ impl Renderer {
             &self.queue,
             &self.terrain_bind_group_layout,
             &self.camera_buffer,
+            &self.gui_item_camera_buffer,
             images,
+            owned_images,
         )?;
         self.entity_model_texture_atlas = Some(atlas);
         self.hud_win_portal_mesh = self
@@ -2572,6 +2594,7 @@ impl Renderer {
         self.hud_dynamic_player_faces = dynamic_faces;
         self.rebuild_entity_model_meshes();
         self.rebuild_first_person_player_arm_meshes();
+        self.invalidate_item_model_atlas(crate::item_models::ItemModelAtlasKind::Entity);
         Ok(())
     }
 
@@ -2590,6 +2613,7 @@ impl Renderer {
             &self.queue,
             &self.terrain_bind_group_layout,
             &self.camera_buffer,
+            &self.gui_item_camera_buffer,
             &images,
         )?;
         self.entity_dynamic_player_skin_images = images;
@@ -2597,6 +2621,7 @@ impl Renderer {
         self.hud_dynamic_player_faces.insert(handle, face);
         self.rebuild_entity_model_meshes();
         self.rebuild_first_person_player_arm_meshes();
+        self.invalidate_item_model_atlas(crate::item_models::ItemModelAtlasKind::DynamicPlayerSkin);
         Ok(())
     }
 
@@ -2644,9 +2669,11 @@ impl Renderer {
             &self.queue,
             &self.terrain_bind_group_layout,
             &self.camera_buffer,
+            &self.gui_item_camera_buffer,
             &self.entity_dynamic_player_texture_images,
         )?);
         self.rebuild_entity_model_meshes();
+        self.invalidate_item_model_atlas(crate::item_models::ItemModelAtlasKind::DynamicEntity);
         Ok(())
     }
 
@@ -3176,10 +3203,16 @@ fn create_entity_model_texture_atlas_gpu(
     queue: &wgpu::Queue,
     bind_group_layout: &wgpu::BindGroupLayout,
     camera_buffer: &wgpu::Buffer,
+    gui_camera_buffer: &wgpu::Buffer,
     images: &[EntityModelTextureImage],
+    owned_images: &[EntityModelOwnedTextureImage],
 ) -> Result<EntityModelTextureAtlasGpu> {
     let max_dimension = device.limits().max_texture_dimension_2d;
-    let (layout, rgba) = build_entity_model_texture_atlas_with_height_limit(images, max_dimension)?;
+    let (layout, owned_entries, rgba) = build_entity_model_texture_atlas_with_owned_height_limit(
+        images,
+        owned_images,
+        max_dimension,
+    )?;
     if layout.width > max_dimension {
         bail!(
             "entity model texture atlas width {} exceeds device limit {}",
@@ -3240,13 +3273,23 @@ fn create_entity_model_texture_atlas_gpu(
             },
         ],
     });
+    let gui_bind_group = create_entity_model_texture_bind_group(
+        device,
+        bind_group_layout,
+        gui_camera_buffer,
+        &view,
+        &sampler,
+        "bbb-entity-model-texture-gui-bind-group",
+    );
 
     Ok(EntityModelTextureAtlasGpu {
         _texture: texture,
         _view: view,
         _sampler: sampler,
         bind_group,
+        gui_bind_group,
         layout,
+        owned_entries,
     })
 }
 
@@ -3255,6 +3298,7 @@ fn create_dynamic_player_skin_atlas_gpu(
     queue: &wgpu::Queue,
     bind_group_layout: &wgpu::BindGroupLayout,
     camera_buffer: &wgpu::Buffer,
+    gui_camera_buffer: &wgpu::Buffer,
     images: &[DynamicPlayerSkinImage],
 ) -> Result<EntityDynamicPlayerSkinAtlasGpu> {
     let (layout, rgba) = build_dynamic_player_skin_atlas(images)?;
@@ -3311,12 +3355,21 @@ fn create_dynamic_player_skin_atlas_gpu(
             },
         ],
     });
+    let gui_bind_group = create_entity_model_texture_bind_group(
+        device,
+        bind_group_layout,
+        gui_camera_buffer,
+        &view,
+        &sampler,
+        "bbb-dynamic-player-skin-gui-bind-group",
+    );
 
     Ok(EntityDynamicPlayerSkinAtlasGpu {
         _texture: texture,
         _view: view,
         _sampler: sampler,
         bind_group,
+        gui_bind_group,
         layout,
     })
 }
@@ -3326,6 +3379,7 @@ fn create_dynamic_player_texture_atlas_gpu(
     queue: &wgpu::Queue,
     bind_group_layout: &wgpu::BindGroupLayout,
     camera_buffer: &wgpu::Buffer,
+    gui_camera_buffer: &wgpu::Buffer,
     images: &[DynamicPlayerTextureImage],
 ) -> Result<EntityDynamicPlayerTextureAtlasGpu> {
     let max_dimension = device.limits().max_texture_dimension_2d;
@@ -3391,13 +3445,50 @@ fn create_dynamic_player_texture_atlas_gpu(
             },
         ],
     });
+    let gui_bind_group = create_entity_model_texture_bind_group(
+        device,
+        bind_group_layout,
+        gui_camera_buffer,
+        &view,
+        &sampler,
+        "bbb-dynamic-player-texture-gui-bind-group",
+    );
 
     Ok(EntityDynamicPlayerTextureAtlasGpu {
         _texture: texture,
         _view: view,
         _sampler: sampler,
         bind_group,
+        gui_bind_group,
         layout,
+    })
+}
+
+fn create_entity_model_texture_bind_group(
+    device: &wgpu::Device,
+    layout: &wgpu::BindGroupLayout,
+    camera_buffer: &wgpu::Buffer,
+    view: &wgpu::TextureView,
+    sampler: &wgpu::Sampler,
+    label: &'static str,
+) -> wgpu::BindGroup {
+    device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some(label),
+        layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: camera_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::TextureView(view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: wgpu::BindingResource::Sampler(sampler),
+            },
+        ],
     })
 }
 
@@ -3588,11 +3679,27 @@ pub(crate) fn build_entity_model_texture_atlas(
 /// Packs static pack-backed entity images into vertical columns bounded by
 /// the active device's 2D texture limit. Physical pack resolutions are not
 /// reduced; model UVs continue to use each texture ref's logical extent.
+#[cfg_attr(not(test), allow(dead_code))]
 pub(crate) fn build_entity_model_texture_atlas_with_height_limit(
     images: &[EntityModelTextureImage],
     max_column_height: u32,
 ) -> Result<(EntityModelTextureAtlasLayout, Vec<u8>)> {
-    if images.is_empty() {
+    let (layout, owned_entries, rgba) =
+        build_entity_model_texture_atlas_with_owned_height_limit(images, &[], max_column_height)?;
+    debug_assert!(owned_entries.is_empty());
+    Ok((layout, rgba))
+}
+
+pub(crate) fn build_entity_model_texture_atlas_with_owned_height_limit(
+    images: &[EntityModelTextureImage],
+    owned_images: &[EntityModelOwnedTextureImage],
+    max_column_height: u32,
+) -> Result<(
+    EntityModelTextureAtlasLayout,
+    Vec<EntityModelOwnedTextureAtlasEntry>,
+    Vec<u8>,
+)> {
+    if images.is_empty() && owned_images.is_empty() {
         bail!("entity model texture atlas requires at least one image");
     }
     let mut seen = BTreeMap::new();
@@ -3600,6 +3707,21 @@ pub(crate) fn build_entity_model_texture_atlas_with_height_limit(
     for image in images {
         validate_entity_model_texture_image(image)?;
         if seen.insert(image.texture.path, ()).is_some() {
+            bail!("duplicate entity model texture {}", image.texture.path);
+        }
+        if image.size[1] > max_column_height {
+            bail!(
+                "entity model texture {} height {} exceeds atlas column limit {}",
+                image.texture.path,
+                image.size[1],
+                max_column_height
+            );
+        }
+        column_width = column_width.max(image.size[0]);
+    }
+    for image in owned_images {
+        validate_owned_entity_model_texture_image(image)?;
+        if seen.insert(image.texture.path.as_ref(), ()).is_some() {
             bail!("duplicate entity model texture {}", image.texture.path);
         }
         if image.size[1] > max_column_height {
@@ -3627,6 +3749,18 @@ pub(crate) fn build_entity_model_texture_atlas_with_height_limit(
         column_y += image_height;
         height = height.max(column_y);
     }
+    for image in owned_images {
+        let image_height = image.size[1];
+        if column_y
+            .checked_add(image_height)
+            .is_none_or(|fill| fill > max_column_height)
+        {
+            columns += 1;
+            column_y = 0;
+        }
+        column_y += image_height;
+        height = height.max(column_y);
+    }
     let width = column_width
         .checked_mul(columns)
         .ok_or_else(|| anyhow!("entity model texture atlas width overflow"))?;
@@ -3636,6 +3770,7 @@ pub(crate) fn build_entity_model_texture_atlas_with_height_limit(
     let atlas_len = rgba_len(width, height, "entity model texture atlas")?;
     let mut rgba = vec![0u8; atlas_len];
     let mut entries = Vec::with_capacity(images.len());
+    let mut owned_entries = Vec::with_capacity(owned_images.len());
     let mut x = 0u32;
     let mut y = 0u32;
     for image in images {
@@ -3670,6 +3805,37 @@ pub(crate) fn build_entity_model_texture_atlas_with_height_limit(
         });
         y += image_height;
     }
+    for image in owned_images {
+        let image_width = image.size[0];
+        let image_height = image.size[1];
+        if y.checked_add(image_height)
+            .is_none_or(|fill| fill > max_column_height)
+        {
+            x += column_width;
+            y = 0;
+        }
+        copy_rgba_image(
+            &mut rgba,
+            width,
+            x,
+            y,
+            image_width,
+            image_height,
+            &image.rgba,
+            "owned entity model texture",
+        )?;
+        owned_entries.push(EntityModelOwnedTextureAtlasEntry {
+            texture: image.texture.clone(),
+            uv: EntityModelUvRect {
+                min: [x as f32 / width as f32, y as f32 / height as f32],
+                max: [
+                    (x + image_width) as f32 / width as f32,
+                    (y + image_height) as f32 / height as f32,
+                ],
+            },
+        });
+        y += image_height;
+    }
 
     Ok((
         EntityModelTextureAtlasLayout {
@@ -3677,8 +3843,33 @@ pub(crate) fn build_entity_model_texture_atlas_with_height_limit(
             height,
             entries,
         },
+        owned_entries,
         rgba,
     ))
+}
+
+fn copy_rgba_image(
+    atlas: &mut [u8],
+    atlas_width: u32,
+    x: u32,
+    y: u32,
+    image_width: u32,
+    image_height: u32,
+    image: &[u8],
+    label: &str,
+) -> Result<()> {
+    let row_len = usize::try_from(image_width)
+        .ok()
+        .and_then(|width| width.checked_mul(4))
+        .ok_or_else(|| anyhow!("{label} row size overflow"))?;
+    for row in 0..image_height {
+        let src_start = rgba_offset(image_width, row, 0, label)?;
+        let src_end = src_start + row_len;
+        let dst_start = rgba_offset(atlas_width, y + row, x, "entity model texture atlas")?;
+        let dst_end = dst_start + row_len;
+        atlas[dst_start..dst_end].copy_from_slice(&image[src_start..src_end]);
+    }
+    Ok(())
 }
 
 fn validate_entity_model_texture_image(image: &EntityModelTextureImage) -> Result<()> {
@@ -3690,6 +3881,34 @@ fn validate_entity_model_texture_image(image: &EntityModelTextureImage) -> Resul
         );
     }
     let expected_len = rgba_len(width, height, image.texture.path)?;
+    if image.rgba.len() != expected_len {
+        bail!(
+            "entity model texture {} has {} RGBA bytes, expected {} for {}x{}",
+            image.texture.path,
+            image.rgba.len(),
+            expected_len,
+            width,
+            height
+        );
+    }
+    Ok(())
+}
+
+fn validate_owned_entity_model_texture_image(image: &EntityModelOwnedTextureImage) -> Result<()> {
+    let [width, height] = image.size;
+    if width == 0 || height == 0 {
+        bail!(
+            "entity model texture {} has zero-sized dimensions",
+            image.texture.path
+        );
+    }
+    if image.texture.size.contains(&0) {
+        bail!(
+            "entity model texture {} has zero-sized logical dimensions",
+            image.texture.path
+        );
+    }
+    let expected_len = rgba_len(width, height, &image.texture.path)?;
     if image.rgba.len() != expected_len {
         bail!(
             "entity model texture {} has {} RGBA bytes, expected {} for {}x{}",
@@ -4103,6 +4322,38 @@ mod tests {
         ENTITY_MODEL_WATER_MASK_CULL_MODE, ENTITY_MODEL_WATER_MASK_DEPTH_COMPARE,
         ENTITY_MODEL_WATER_MASK_DEPTH_WRITE_ENABLED, ENTITY_MODEL_WATER_MASK_SHADER,
     };
+
+    #[test]
+    fn special_item_owned_entity_atlas_keeps_owned_identity_and_logical_size() {
+        let static_texture = crate::EntityModelTextureRef {
+            path: "textures/entity/static_special_test.png",
+            size: [32, 16],
+        };
+        let owned_texture = crate::EntityModelOwnedTextureRef::new(
+            "textures/entity/pack/special_test.png",
+            [64, 32],
+        );
+        let static_image =
+            crate::EntityModelTextureImage::with_physical_size(static_texture, [1, 2], vec![17; 8]);
+        let owned_image = crate::EntityModelOwnedTextureImage::with_physical_size(
+            owned_texture.clone(),
+            [2, 1],
+            vec![29; 8],
+        );
+        let (layout, owned_entries, rgba) =
+            super::build_entity_model_texture_atlas_with_owned_height_limit(
+                &[static_image],
+                &[owned_image],
+                2,
+            )
+            .unwrap();
+        assert_eq!(layout.entries.len(), 1);
+        assert_eq!(owned_entries.len(), 1);
+        assert_eq!(owned_entries[0].texture, owned_texture);
+        assert_eq!(owned_entries[0].texture.size, [64, 32]);
+        assert_eq!([layout.width, layout.height], [4, 2]);
+        assert_eq!(rgba.len(), 4 * 2 * 4);
+    }
 
     #[test]
     fn dynamic_entity_texture_generation_reuses_exact_owner_and_invalidates_edges() {

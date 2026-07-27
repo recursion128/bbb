@@ -1,6 +1,9 @@
 use super::*;
 
 use crate::entity_models::colored::chest_model_root_transform;
+use crate::entity_models::geometry::{
+    MODEL_CUBE_FACES_ALL, MODEL_CUBE_FACE_EAST, MODEL_CUBE_FACE_WEST,
+};
 use crate::entity_models::model::{EntityModel, ModelCube};
 use crate::entity_models::model_layers::{
     chest_lid_eased_openness, ChestModel, CHEST_LEFT_BOTTOM_CUBE, CHEST_LEFT_LID_CUBE,
@@ -37,28 +40,34 @@ fn chest_cubes_match_vanilla_26_1_model_layers() {
     assert_eq!(
         CHEST_RIGHT_BOTTOM_CUBE,
         chest_cube([1.0, 0.0, 1.0], [15.0, 10.0, 14.0], [0.0, 19.0])
+            .with_visible_faces(MODEL_CUBE_FACES_ALL & !MODEL_CUBE_FACE_EAST)
     );
     assert_eq!(
         CHEST_RIGHT_LID_CUBE,
         chest_cube([1.0, 0.0, 0.0], [15.0, 5.0, 14.0], [0.0, 0.0])
+            .with_visible_faces(MODEL_CUBE_FACES_ALL & !MODEL_CUBE_FACE_EAST)
     );
     assert_eq!(
         CHEST_RIGHT_LOCK_CUBE,
         chest_cube([15.0, -2.0, 14.0], [1.0, 4.0, 1.0], [0.0, 0.0])
+            .with_visible_faces(MODEL_CUBE_FACES_ALL & !MODEL_CUBE_FACE_EAST)
     );
     // Left half (`createDoubleBodyLeftLayer`): 15-wide boxes spanning x = 0..15,
     // lock box (0,-2,14)+(1,4,1).
     assert_eq!(
         CHEST_LEFT_BOTTOM_CUBE,
         chest_cube([0.0, 0.0, 1.0], [15.0, 10.0, 14.0], [0.0, 19.0])
+            .with_visible_faces(MODEL_CUBE_FACES_ALL & !MODEL_CUBE_FACE_WEST)
     );
     assert_eq!(
         CHEST_LEFT_LID_CUBE,
         chest_cube([0.0, 0.0, 0.0], [15.0, 5.0, 14.0], [0.0, 0.0])
+            .with_visible_faces(MODEL_CUBE_FACES_ALL & !MODEL_CUBE_FACE_WEST)
     );
     assert_eq!(
         CHEST_LEFT_LOCK_CUBE,
         chest_cube([0.0, -2.0, 14.0], [1.0, 4.0, 1.0], [0.0, 0.0])
+            .with_visible_faces(MODEL_CUBE_FACES_ALL & !MODEL_CUBE_FACE_WEST)
     );
     assert_eq!(CHEST_LID_POSE.offset, [0.0, 9.0, 1.0]);
     assert_eq!(CHEST_LID_POSE.rotation, [0.0, 0.0, 0.0]);
@@ -101,6 +110,14 @@ fn chest_lid_angle_matches_vanilla_easing_and_rotation() {
         closed.root().try_child("lid").unwrap().pose.rotation,
         [0.0, 0.0, 0.0]
     );
+
+    // `ChestSpecialRenderer` passes its JSON openness directly to
+    // `ChestModel.setupAnim` instead of using the world-renderer easing.
+    let mut special = ChestModel::new(ChestModelHalf::Single);
+    special.apply_special_openness(0.5);
+    let special_lid = special.root().try_child("lid").unwrap().pose.rotation[0];
+    assert!((special_lid + 0.5 * FRAC_PI_2).abs() < 1e-6);
+    assert_ne!(special_lid, lid_rot[0]);
 }
 
 #[test]

@@ -1641,7 +1641,7 @@ pub(in crate::entity_models) const COPPER_GOLEM_CHEST_INTERACTION_ITEM_NODROP: A
         bones: &COPPER_GOLEM_CHEST_ITEM_NODROP_BONES,
     };
 
-fn copper_golem_tree() -> ModelPart {
+pub(in crate::entity_models) fn copper_golem_tree() -> ModelPart {
     let body = ModelPart::new(
         COPPER_GOLEM_BODY_POSE,
         COPPER_GOLEM_BODY.to_vec(),

@@ -533,6 +533,31 @@ pub(super) fn emit_textured_model_cube_with_faces(
     tint: [f32; 4],
     visible_faces: u8,
 ) {
+    emit_textured_model_cube_with_faces_and_size(
+        mesh,
+        transform,
+        cube,
+        texture.size,
+        uv_rect,
+        tint,
+        visible_faces,
+    );
+}
+
+/// Owned/dynamic-atlas counterpart of
+/// [`emit_textured_model_cube_with_faces`]. Model UV calculation needs only
+/// the layer's logical texture extent; the atlas identity is resolved before
+/// geometry emission.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn emit_textured_model_cube_with_faces_and_size(
+    mesh: &mut EntityModelTexturedMesh,
+    transform: Mat4,
+    cube: TexturedModelCubeDesc,
+    texture_size: [u32; 2],
+    uv_rect: EntityModelUvRect,
+    tint: [f32; 4],
+    visible_faces: u8,
+) {
     let mut min = Vec3::from_array(cube.min) * MODEL_UNIT_SCALE;
     let mut max = min + Vec3::from_array(cube.size) * MODEL_UNIT_SCALE;
     if cube.mirror {
@@ -544,7 +569,7 @@ pub(super) fn emit_textured_model_cube_with_faces(
         min,
         max,
         cube,
-        texture,
+        texture_size,
         uv_rect,
         tint,
         visible_faces,
@@ -610,7 +635,7 @@ fn emit_textured_model_cube_from_min_max(
     min: Vec3,
     max: Vec3,
     cube: TexturedModelCubeDesc,
-    texture: EntityModelTextureRef,
+    texture_size: [u32; 2],
     uv_rect: EntityModelUvRect,
     tint: [f32; 4],
     visible_faces: u8,
@@ -645,7 +670,7 @@ fn emit_textured_model_cube_from_min_max(
             [l1, l0, t0, t1].map(|corner| transform.transform_point3(corner)),
             [u1, v0, u2, v1],
             transform_entity_normal(transform, cube.mirror, [-1.0, 0.0, 0.0], [0.0, -1.0, 0.0]),
-            texture,
+            texture_size,
             uv_rect,
             tint,
             cube.mirror,
@@ -657,7 +682,7 @@ fn emit_textured_model_cube_from_min_max(
             [t2, t3, l3, l2].map(|corner| transform.transform_point3(corner)),
             [u2, v1, u22, v0],
             transform_entity_normal(transform, cube.mirror, [-1.0, 0.0, 0.0], [0.0, 1.0, 0.0]),
-            texture,
+            texture_size,
             uv_rect,
             tint,
             cube.mirror,
@@ -669,7 +694,7 @@ fn emit_textured_model_cube_from_min_max(
             [t0, l0, l3, t3].map(|corner| transform.transform_point3(corner)),
             [u0, v1, u1, v2],
             transform_entity_normal(transform, cube.mirror, [1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]),
-            texture,
+            texture_size,
             uv_rect,
             tint,
             cube.mirror,
@@ -681,7 +706,7 @@ fn emit_textured_model_cube_from_min_max(
             [t1, t0, t3, t2].map(|corner| transform.transform_point3(corner)),
             [u1, v1, u2, v2],
             transform_entity_normal(transform, cube.mirror, [-1.0, 0.0, 0.0], [0.0, 0.0, -1.0]),
-            texture,
+            texture_size,
             uv_rect,
             tint,
             cube.mirror,
@@ -693,7 +718,7 @@ fn emit_textured_model_cube_from_min_max(
             [l1, t1, t2, l2].map(|corner| transform.transform_point3(corner)),
             [u2, v1, u3, v2],
             transform_entity_normal(transform, cube.mirror, [-1.0, 0.0, 0.0], [1.0, 0.0, 0.0]),
-            texture,
+            texture_size,
             uv_rect,
             tint,
             cube.mirror,
@@ -705,7 +730,7 @@ fn emit_textured_model_cube_from_min_max(
             [l0, l1, l2, l3].map(|corner| transform.transform_point3(corner)),
             [u3, v1, u4, v2],
             transform_entity_normal(transform, cube.mirror, [-1.0, 0.0, 0.0], [0.0, 0.0, 1.0]),
-            texture,
+            texture_size,
             uv_rect,
             tint,
             cube.mirror,
@@ -718,7 +743,7 @@ fn emit_textured_model_polygon(
     corners: [Vec3; 4],
     texture_uv: [f32; 4],
     normal: [f32; 3],
-    texture: EntityModelTextureRef,
+    texture_size: [u32; 2],
     uv_rect: EntityModelUvRect,
     tint: [f32; 4],
     mirror: bool,
@@ -738,7 +763,7 @@ fn emit_textured_model_polygon(
     mesh.vertices
         .extend(vertices.map(|(position, uv)| EntityModelTexturedVertex {
             position: position.to_array(),
-            uv: atlas_uv(uv, texture, uv_rect),
+            uv: atlas_uv(uv, texture_size, uv_rect),
             tint,
             light: ENTITY_VERTEX_FULL_BRIGHT_LIGHT,
             overlay: ENTITY_VERTEX_NO_OVERLAY,
@@ -771,14 +796,10 @@ fn transform_model_normal(transform: Mat4, normal: [f32; 3]) -> [f32; 3] {
         .to_array()
 }
 
-fn atlas_uv(
-    texture_uv: [f32; 2],
-    texture: EntityModelTextureRef,
-    rect: EntityModelUvRect,
-) -> [f32; 2] {
+fn atlas_uv(texture_uv: [f32; 2], texture_size: [u32; 2], rect: EntityModelUvRect) -> [f32; 2] {
     let source = [
-        texture_uv[0] / texture.size[0] as f32,
-        texture_uv[1] / texture.size[1] as f32,
+        texture_uv[0] / texture_size[0] as f32,
+        texture_uv[1] / texture_size[1] as f32,
     ];
     [
         rect.min[0] + source[0] * (rect.max[0] - rect.min[0]),

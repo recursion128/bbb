@@ -1,9 +1,9 @@
 use glam::Mat4;
 
 use super::geometry::{
-    emit_model_cube_with_faces, emit_textured_model_cube_with_faces, part_pose_transform,
-    EntityModelMesh, EntityModelTexturedMesh, ModelCubeDesc, PartPose, TexturedModelCubeDesc,
-    MODEL_CUBE_FACES_ALL,
+    emit_model_cube_with_faces, emit_textured_model_cube_with_faces,
+    emit_textured_model_cube_with_faces_and_size, part_pose_transform, EntityModelMesh,
+    EntityModelTexturedMesh, ModelCubeDesc, PartPose, TexturedModelCubeDesc, MODEL_CUBE_FACES_ALL,
 };
 use super::instances::EntityModelInstance;
 use super::{EntityModelTextureRef, EntityModelUvRect};
@@ -369,6 +369,36 @@ impl ModelPart {
         }
     }
 
+    /// Texture-path-independent counterpart used by special item residency for
+    /// owned and dynamic entity atlas entries.
+    pub(in crate::entity_models) fn render_textured_with_size(
+        &self,
+        mesh: &mut EntityModelTexturedMesh,
+        parent_transform: Mat4,
+        texture_size: [u32; 2],
+        uv_rect: EntityModelUvRect,
+        tint: [f32; 4],
+    ) {
+        if !self.visible {
+            return;
+        }
+        let transform = parent_transform * self.local_transform();
+        for cube in &self.cubes {
+            emit_textured_model_cube_with_faces_and_size(
+                mesh,
+                transform,
+                cube.textured_desc(),
+                texture_size,
+                uv_rect,
+                tint,
+                cube.visible_faces,
+            );
+        }
+        for (_, child) in &self.children {
+            child.render_textured_with_size(mesh, transform, texture_size, uv_rect, tint);
+        }
+    }
+
     /// Walks the subtree like [`ModelPart::render_textured`], but emits only the cubes of the parts
     /// named in `retained`, mirroring vanilla `PartDefinition.retainExactParts`: a retained part draws
     /// its own cubes and its whole subtree is dropped (vanilla `clearRecursively` empties every
@@ -409,6 +439,48 @@ impl ModelPart {
         for (child_name, child) in &self.children {
             child.render_textured_retained(
                 mesh, transform, texture, uv_rect, tint, child_name, retained,
+            );
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(in crate::entity_models) fn render_textured_retained_with_size(
+        &self,
+        mesh: &mut EntityModelTexturedMesh,
+        parent_transform: Mat4,
+        texture_size: [u32; 2],
+        uv_rect: EntityModelUvRect,
+        tint: [f32; 4],
+        name: &str,
+        retained: &[&str],
+    ) {
+        if !self.visible {
+            return;
+        }
+        let transform = parent_transform * self.local_transform();
+        if retained.contains(&name) {
+            for cube in &self.cubes {
+                emit_textured_model_cube_with_faces_and_size(
+                    mesh,
+                    transform,
+                    cube.textured_desc(),
+                    texture_size,
+                    uv_rect,
+                    tint,
+                    cube.visible_faces,
+                );
+            }
+            return;
+        }
+        for (child_name, child) in &self.children {
+            child.render_textured_retained_with_size(
+                mesh,
+                transform,
+                texture_size,
+                uv_rect,
+                tint,
+                child_name,
+                retained,
             );
         }
     }

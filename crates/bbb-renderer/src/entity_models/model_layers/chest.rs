@@ -2,6 +2,9 @@ use std::f32::consts::FRAC_PI_2;
 
 use super::{PartPose, CHEST_WOOD, PART_POSE_ZERO};
 use crate::entity_models::catalog::ChestModelHalf;
+use crate::entity_models::geometry::{
+    MODEL_CUBE_FACES_ALL, MODEL_CUBE_FACE_EAST, MODEL_CUBE_FACE_WEST,
+};
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
@@ -13,6 +16,15 @@ pub(in crate::entity_models) const MODEL_LAYER_CHEST_RIGHT: &str =
 
 const fn chest_cube(min: [f32; 3], size: [f32; 3], tex: [f32; 2]) -> ModelCube {
     ModelCube::new(min, size, CHEST_WOOD, size, tex, false)
+}
+
+const fn chest_cube_with_faces(
+    min: [f32; 3],
+    size: [f32; 3],
+    tex: [f32; 2],
+    visible_faces: u8,
+) -> ModelCube {
+    chest_cube(min, size, tex).with_visible_faces(visible_faces)
 }
 
 // Vanilla 26.1 `ChestModel.createSingleBodyLayer` (atlas 64×64): `bottom` at ZERO with a 14×10×14
@@ -28,25 +40,47 @@ pub(in crate::entity_models) const CHEST_SINGLE_LOCK_CUBE: ModelCube =
     chest_cube([7.0, -2.0, 14.0], [2.0, 4.0, 1.0], [0.0, 0.0]);
 
 // Vanilla `ChestModel.createDoubleBodyRightLayer`: the 15-wide right half spans x = 1..16 toward the
-// seam. (The vanilla mesh culls the seam-facing EAST faces via `Util.allOfEnumExcept(Direction.EAST)`;
-// bbb keeps emitting the seam quads — they sit enclosed inside the joined double-chest volume and
-// are never visible, so the chest mesh predates and does not use the `with_visible_faces` mask the
-// bed introduced.)
-pub(in crate::entity_models) const CHEST_RIGHT_BOTTOM_CUBE: ModelCube =
-    chest_cube([1.0, 0.0, 1.0], [15.0, 10.0, 14.0], [0.0, 19.0]);
-pub(in crate::entity_models) const CHEST_RIGHT_LID_CUBE: ModelCube =
-    chest_cube([1.0, 0.0, 0.0], [15.0, 5.0, 14.0], [0.0, 0.0]);
-pub(in crate::entity_models) const CHEST_RIGHT_LOCK_CUBE: ModelCube =
-    chest_cube([15.0, -2.0, 14.0], [1.0, 4.0, 1.0], [0.0, 0.0]);
+// seam. Vanilla culls the seam-facing EAST faces via
+// `Util.allOfEnumExcept(Direction.EAST)`.
+pub(in crate::entity_models) const CHEST_RIGHT_BOTTOM_CUBE: ModelCube = chest_cube_with_faces(
+    [1.0, 0.0, 1.0],
+    [15.0, 10.0, 14.0],
+    [0.0, 19.0],
+    MODEL_CUBE_FACES_ALL & !MODEL_CUBE_FACE_EAST,
+);
+pub(in crate::entity_models) const CHEST_RIGHT_LID_CUBE: ModelCube = chest_cube_with_faces(
+    [1.0, 0.0, 0.0],
+    [15.0, 5.0, 14.0],
+    [0.0, 0.0],
+    MODEL_CUBE_FACES_ALL & !MODEL_CUBE_FACE_EAST,
+);
+pub(in crate::entity_models) const CHEST_RIGHT_LOCK_CUBE: ModelCube = chest_cube_with_faces(
+    [15.0, -2.0, 14.0],
+    [1.0, 4.0, 1.0],
+    [0.0, 0.0],
+    MODEL_CUBE_FACES_ALL & !MODEL_CUBE_FACE_EAST,
+);
 
-// Vanilla `ChestModel.createDoubleBodyLeftLayer`: the 15-wide left half spans x = 0..15 with the
-// seam-facing WEST faces culled in vanilla (same emitted-but-enclosed note as the right half).
-pub(in crate::entity_models) const CHEST_LEFT_BOTTOM_CUBE: ModelCube =
-    chest_cube([0.0, 0.0, 1.0], [15.0, 10.0, 14.0], [0.0, 19.0]);
-pub(in crate::entity_models) const CHEST_LEFT_LID_CUBE: ModelCube =
-    chest_cube([0.0, 0.0, 0.0], [15.0, 5.0, 14.0], [0.0, 0.0]);
-pub(in crate::entity_models) const CHEST_LEFT_LOCK_CUBE: ModelCube =
-    chest_cube([0.0, -2.0, 14.0], [1.0, 4.0, 1.0], [0.0, 0.0]);
+// Vanilla `ChestModel.createDoubleBodyLeftLayer`: the 15-wide left half spans
+// x = 0..15 with the seam-facing WEST faces culled.
+pub(in crate::entity_models) const CHEST_LEFT_BOTTOM_CUBE: ModelCube = chest_cube_with_faces(
+    [0.0, 0.0, 1.0],
+    [15.0, 10.0, 14.0],
+    [0.0, 19.0],
+    MODEL_CUBE_FACES_ALL & !MODEL_CUBE_FACE_WEST,
+);
+pub(in crate::entity_models) const CHEST_LEFT_LID_CUBE: ModelCube = chest_cube_with_faces(
+    [0.0, 0.0, 0.0],
+    [15.0, 5.0, 14.0],
+    [0.0, 0.0],
+    MODEL_CUBE_FACES_ALL & !MODEL_CUBE_FACE_WEST,
+);
+pub(in crate::entity_models) const CHEST_LEFT_LOCK_CUBE: ModelCube = chest_cube_with_faces(
+    [0.0, -2.0, 14.0],
+    [1.0, 4.0, 1.0],
+    [0.0, 0.0],
+    MODEL_CUBE_FACES_ALL & !MODEL_CUBE_FACE_WEST,
+);
 
 /// Vanilla `PartPose.offset(0, 9, 1)` shared by the lid and the lock, so the
 /// lock rotates with the lid about the hinge.
@@ -94,6 +128,16 @@ impl ChestModel {
                 ],
             ),
         }
+    }
+
+    /// Applies the direct `ChestModel.setupAnim(open)` argument used by
+    /// `ChestSpecialRenderer`. World chests ease their block-entity openness
+    /// before setup; the special JSON value must not pass through that easing.
+    pub(in crate::entity_models) fn apply_special_openness(&mut self, openness: f32) {
+        self.root.reset_pose();
+        let x_rot = -(openness * FRAC_PI_2);
+        self.root.child_mut("lid").pose.rotation[0] = x_rot;
+        self.root.child_mut("lock").pose.rotation[0] = x_rot;
     }
 }
 

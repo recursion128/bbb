@@ -139,6 +139,38 @@ impl BookModel {
             root: ModelPart::new(PART_POSE_ZERO, Vec::new(), children),
         }
     }
+
+    /// Applies the direct `BookModel.State` used by
+    /// `BookSpecialRenderer`. Unlike block-entity books, `open_angle` is
+    /// already the final radian openness and must not pass through
+    /// `State.forAnimation`.
+    pub(in crate::entity_models) fn apply_special_state(
+        &mut self,
+        open_angle: f32,
+        page_flip_1: f32,
+        page_flip_2: f32,
+    ) {
+        self.root.reset_pose();
+        let page_x = open_angle.sin();
+        self.root.child_mut("left_lid").pose.rotation[1] = PI + open_angle;
+        self.root.child_mut("right_lid").pose.rotation[1] = -open_angle;
+
+        let left_pages = self.root.child_mut("left_pages");
+        left_pages.pose.rotation[1] = open_angle;
+        left_pages.pose.offset[0] = page_x;
+
+        let right_pages = self.root.child_mut("right_pages");
+        right_pages.pose.rotation[1] = -open_angle;
+        right_pages.pose.offset[0] = page_x;
+
+        let flip_page1 = self.root.child_mut("flip_page1");
+        flip_page1.pose.rotation[1] = open_angle - open_angle * 2.0 * page_flip_1;
+        flip_page1.pose.offset[0] = page_x;
+
+        let flip_page2 = self.root.child_mut("flip_page2");
+        flip_page2.pose.rotation[1] = open_angle - open_angle * 2.0 * page_flip_2;
+        flip_page2.pose.offset[0] = page_x;
+    }
 }
 
 impl EntityModel for BookModel {

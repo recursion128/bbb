@@ -77,7 +77,12 @@ use crate::{
         create_display_text_see_through_pipeline, create_entity_shadow_pipeline,
         create_item_model_glint_pipeline, create_item_model_pipeline,
         create_item_model_translucent_pipeline, create_item_model_z_offset_forward_pipeline,
-        create_resident_item_model_glint_pipeline, create_resident_item_model_pipeline,
+        create_resident_item_model_cutout_no_cull_pipeline,
+        create_resident_item_model_cutout_z_offset_pipeline,
+        create_resident_item_model_end_gateway_pipeline,
+        create_resident_item_model_end_portal_pipeline, create_resident_item_model_glint_pipeline,
+        create_resident_item_model_pattern_pipeline, create_resident_item_model_pipeline,
+        create_resident_item_model_translucent_no_cull_pipeline,
         create_resident_item_model_translucent_pipeline,
         create_resident_item_model_z_offset_forward_pipeline, DisplayTextSurface,
         EntityNameTagSurface, FirstPersonMapBackgroundAtlasGpu, ItemFrameMapAtlasGpu,
@@ -324,8 +329,14 @@ pub struct Renderer {
     pub(super) display_text_see_through_pipeline: wgpu::RenderPipeline,
     pub(super) resident_item_model_pipeline: wgpu::RenderPipeline,
     pub(super) resident_item_model_z_offset_forward_pipeline: wgpu::RenderPipeline,
+    pub(super) resident_item_model_cutout_no_cull_pipeline: wgpu::RenderPipeline,
+    pub(super) resident_item_model_cutout_z_offset_pipeline: wgpu::RenderPipeline,
+    pub(super) resident_item_model_pattern_pipeline: wgpu::RenderPipeline,
     pub(super) resident_item_model_translucent_pipeline: wgpu::RenderPipeline,
+    pub(super) resident_item_model_translucent_no_cull_pipeline: wgpu::RenderPipeline,
     pub(super) resident_item_model_glint_pipeline: wgpu::RenderPipeline,
+    pub(super) resident_item_model_end_portal_pipeline: wgpu::RenderPipeline,
+    pub(super) resident_item_model_end_gateway_pipeline: wgpu::RenderPipeline,
     pub(super) hud_item_glint_pipeline: wgpu::RenderPipeline,
     pub(super) selection_pipeline: wgpu::RenderPipeline,
     pub(super) translucent_debug_line_pipeline: wgpu::RenderPipeline,
@@ -1392,6 +1403,26 @@ impl Renderer {
                 &terrain_bind_group_layout,
                 &lightmap_sample_bind_group_layout,
             );
+        let resident_item_model_cutout_no_cull_pipeline =
+            create_resident_item_model_cutout_no_cull_pipeline(
+                &device,
+                format,
+                &terrain_bind_group_layout,
+                &lightmap_sample_bind_group_layout,
+            );
+        let resident_item_model_cutout_z_offset_pipeline =
+            create_resident_item_model_cutout_z_offset_pipeline(
+                &device,
+                format,
+                &terrain_bind_group_layout,
+                &lightmap_sample_bind_group_layout,
+            );
+        let resident_item_model_pattern_pipeline = create_resident_item_model_pattern_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            &lightmap_sample_bind_group_layout,
+        );
         let resident_item_model_translucent_pipeline =
             create_resident_item_model_translucent_pipeline(
                 &device,
@@ -1399,8 +1430,27 @@ impl Renderer {
                 &terrain_bind_group_layout,
                 &lightmap_sample_bind_group_layout,
             );
+        let resident_item_model_translucent_no_cull_pipeline =
+            create_resident_item_model_translucent_no_cull_pipeline(
+                &device,
+                format,
+                &terrain_bind_group_layout,
+                &lightmap_sample_bind_group_layout,
+            );
         let resident_item_model_glint_pipeline =
             create_resident_item_model_glint_pipeline(&device, format, &terrain_bind_group_layout);
+        let resident_item_model_end_portal_pipeline =
+            create_resident_item_model_end_portal_pipeline(
+                &device,
+                format,
+                &terrain_bind_group_layout,
+            );
+        let resident_item_model_end_gateway_pipeline =
+            create_resident_item_model_end_gateway_pipeline(
+                &device,
+                format,
+                &terrain_bind_group_layout,
+            );
         let hud_item_glint_pipeline = create_hud_item_glint_pipeline(
             &device,
             format,
@@ -1697,8 +1747,14 @@ impl Renderer {
             display_text_see_through_pipeline,
             resident_item_model_pipeline,
             resident_item_model_z_offset_forward_pipeline,
+            resident_item_model_cutout_no_cull_pipeline,
+            resident_item_model_cutout_z_offset_pipeline,
+            resident_item_model_pattern_pipeline,
             resident_item_model_translucent_pipeline,
+            resident_item_model_translucent_no_cull_pipeline,
             resident_item_model_glint_pipeline,
+            resident_item_model_end_portal_pipeline,
+            resident_item_model_end_gateway_pipeline,
             hud_item_glint_pipeline,
             selection_pipeline,
             translucent_debug_line_pipeline,

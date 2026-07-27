@@ -30,6 +30,7 @@ mod entity_name_tag;
 mod map;
 mod residency;
 mod sign_text;
+mod special;
 pub use display_text::{
     bake_display_text_surface, split_display_text_lines, DisplayTextAlignment,
     DisplayTextLayerSubmission, DisplayTextLine, DisplayTextRenderType, DisplayTextSubmission,
@@ -64,7 +65,12 @@ pub(crate) use map::{
 };
 pub(crate) use residency::ItemModelResidency;
 pub(crate) use residency::{
-    create_resident_item_model_glint_pipeline, create_resident_item_model_pipeline,
+    create_resident_item_model_cutout_no_cull_pipeline,
+    create_resident_item_model_cutout_z_offset_pipeline,
+    create_resident_item_model_end_gateway_pipeline,
+    create_resident_item_model_end_portal_pipeline, create_resident_item_model_glint_pipeline,
+    create_resident_item_model_pattern_pipeline, create_resident_item_model_pipeline,
+    create_resident_item_model_translucent_no_cull_pipeline,
     create_resident_item_model_translucent_pipeline,
     create_resident_item_model_z_offset_forward_pipeline,
 };
@@ -80,6 +86,11 @@ pub use sign_text::{
     truncate_sign_line_runs_to_width, SignTextSubmission, SignTextSurface,
     HANGING_SIGN_MAX_TEXT_LINE_WIDTH, HANGING_SIGN_TEXT_LINE_HEIGHT, SIGN_MAX_TEXT_LINE_WIDTH,
     SIGN_TEXT_LINE_HEIGHT,
+};
+pub use special::{
+    SpecialItemBannerAttachment, SpecialItemCopperGolemPose, SpecialItemEndCubeEffect,
+    SpecialItemHeadKind, SpecialItemInstanceRequest, SpecialItemModel, SpecialItemModelBounds,
+    SpecialItemPatternLayer, SpecialItemTexture,
 };
 /// Vanilla model space is `0..=16`; the unit cube is that divided by 16.
 const MODEL_SPACE_SCALE: f32 = 1.0 / 16.0;

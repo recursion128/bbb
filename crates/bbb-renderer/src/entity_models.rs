@@ -14,6 +14,7 @@ mod instances;
 mod keyframe;
 mod model;
 mod model_layers;
+mod special_item;
 mod temperature_animal_variants;
 mod textured;
 mod wolf_variants;
@@ -140,6 +141,7 @@ pub use model_layers::{
     wither_entity_texture_refs, wither_skull_entity_texture_refs, wolf_entity_texture_refs,
     zombie_entity_texture_refs, zombie_villager_entity_texture_refs, SheepHeadEatPose,
 };
+pub(crate) use special_item::{bake_special_item_geometry, ResolvedSpecialItemTexture};
 pub use temperature_animal_variants::{
     ChickenModelVariant, CowModelVariant, FrogModelVariant, PigModelVariant,
 };

@@ -1,5 +1,7 @@
 mod selection;
 
+use std::sync::Arc;
+
 use glam::Mat4;
 
 use super::{
@@ -1897,6 +1899,55 @@ pub struct EntityModelTextureImage {
     pub rgba: Vec<u8>,
 }
 
+/// Owned pack texture reference admitted to the shared entity atlas for
+/// resource-defined special item models. Static entity layers retain their
+/// compact `&'static str` references; only pack-defined paths pay for `Arc`.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct EntityModelOwnedTextureRef {
+    pub path: Arc<str>,
+    /// Logical UV extent used by the model layer, independent of the physical
+    /// pack image resolution.
+    pub size: [u32; 2],
+}
+
+impl EntityModelOwnedTextureRef {
+    pub fn new(path: impl Into<Arc<str>>, size: [u32; 2]) -> Self {
+        Self {
+            path: path.into(),
+            size,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct EntityModelOwnedTextureImage {
+    pub texture: EntityModelOwnedTextureRef,
+    pub size: [u32; 2],
+    pub rgba: Vec<u8>,
+}
+
+impl EntityModelOwnedTextureImage {
+    pub fn new(texture: EntityModelOwnedTextureRef, rgba: Vec<u8>) -> Self {
+        Self {
+            size: texture.size,
+            texture,
+            rgba,
+        }
+    }
+
+    pub fn with_physical_size(
+        texture: EntityModelOwnedTextureRef,
+        size: [u32; 2],
+        rgba: Vec<u8>,
+    ) -> Self {
+        Self {
+            texture,
+            size,
+            rgba,
+        }
+    }
+}
+
 impl EntityModelTextureImage {
     pub fn new(texture: EntityModelTextureRef, rgba: Vec<u8>) -> Self {
         Self {
@@ -1928,6 +1979,12 @@ pub struct EntityModelUvRect {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct EntityModelTextureAtlasEntry {
     pub texture: EntityModelTextureRef,
+    pub uv: EntityModelUvRect,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct EntityModelOwnedTextureAtlasEntry {
+    pub texture: EntityModelOwnedTextureRef,
     pub uv: EntityModelUvRect,
 }
 

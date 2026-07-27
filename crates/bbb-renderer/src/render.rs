@@ -47,6 +47,11 @@ const TERRAIN_OPAQUE_GROUP_LAYERS: &[TerrainOpaqueGroupLayer] = &[
     TerrainOpaqueGroupLayer::Solid,
     TerrainOpaqueGroupLayer::Cutout,
 ];
+const RESIDENT_SPECIAL_ITEM_ATLASES: &[crate::item_models::ItemModelAtlasKind] = &[
+    crate::item_models::ItemModelAtlasKind::Entity,
+    crate::item_models::ItemModelAtlasKind::DynamicPlayerSkin,
+    crate::item_models::ItemModelAtlasKind::DynamicEntity,
+];
 const ENTITY_OUTLINE_TARGET_PASS_LABEL: &str = "bbb-native-entity-outline-target-pass";
 const ENTITY_OUTLINE_SOBEL_PASS_LABEL: &str = "bbb-native-entity-outline-sobel-pass";
 const ENTITY_OUTLINE_BLUR_HORIZONTAL_PASS_LABEL: &str =
@@ -643,8 +648,8 @@ impl Renderer {
         }
         self.resident_item_model_main_pass(
             &mut *encoder,
-            crate::item_models::ItemModelDrawPhase::Solid,
-            Some(crate::item_models::ItemModelAtlasKind::Blocks),
+            &[crate::item_models::ItemModelDrawPhase::Solid],
+            Some(&[crate::item_models::ItemModelAtlasKind::Blocks]),
             stats,
         );
         let (block_item_z_offset_forward_vertices, block_item_z_offset_forward_indices) =
@@ -663,8 +668,8 @@ impl Renderer {
         }
         self.resident_item_model_main_pass(
             &mut *encoder,
-            crate::item_models::ItemModelDrawPhase::SolidZOffsetForward,
-            Some(crate::item_models::ItemModelAtlasKind::Blocks),
+            &[crate::item_models::ItemModelDrawPhase::SolidZOffsetForward],
+            Some(&[crate::item_models::ItemModelAtlasKind::Blocks]),
             stats,
         );
         self.resident_dynamic_map_main_pass(
@@ -695,8 +700,21 @@ impl Renderer {
         }
         self.resident_item_model_main_pass(
             &mut *encoder,
-            crate::item_models::ItemModelDrawPhase::Solid,
-            Some(crate::item_models::ItemModelAtlasKind::Items),
+            &[crate::item_models::ItemModelDrawPhase::Solid],
+            Some(&[crate::item_models::ItemModelAtlasKind::Items]),
+            stats,
+        );
+        self.resident_item_model_main_pass(
+            &mut *encoder,
+            &[
+                crate::item_models::ItemModelDrawPhase::Solid,
+                crate::item_models::ItemModelDrawPhase::CutoutNoCull,
+                crate::item_models::ItemModelDrawPhase::CutoutZOffset,
+                crate::item_models::ItemModelDrawPhase::EndPortal,
+                crate::item_models::ItemModelDrawPhase::EndGateway,
+                crate::item_models::ItemModelDrawPhase::Pattern,
+            ],
+            Some(RESIDENT_SPECIAL_ITEM_ATLASES),
             stats,
         );
         let (item_model_glint_vertices, item_model_glint_indices) =
@@ -716,7 +734,7 @@ impl Renderer {
         }
         self.resident_item_model_main_pass(
             &mut *encoder,
-            crate::item_models::ItemModelDrawPhase::Glint,
+            &[crate::item_models::ItemModelDrawPhase::Glint],
             None,
             stats,
         );
@@ -1262,7 +1280,7 @@ impl Renderer {
                 &mut pass,
                 crate::item_models::ItemModelDrawTarget::World,
                 &[crate::item_models::ItemModelDrawPhase::Translucent],
-                Some(crate::item_models::ItemModelAtlasKind::Blocks),
+                Some(&[crate::item_models::ItemModelAtlasKind::Blocks]),
                 stats,
             );
             if let (Some(atlas), Some(buffers)) =
@@ -1281,7 +1299,17 @@ impl Renderer {
                 &mut pass,
                 crate::item_models::ItemModelDrawTarget::World,
                 &[crate::item_models::ItemModelDrawPhase::Translucent],
-                Some(crate::item_models::ItemModelAtlasKind::Items),
+                Some(&[crate::item_models::ItemModelAtlasKind::Items]),
+                stats,
+            );
+            self.draw_resident_item_models(
+                &mut pass,
+                crate::item_models::ItemModelDrawTarget::World,
+                &[
+                    crate::item_models::ItemModelDrawPhase::Translucent,
+                    crate::item_models::ItemModelDrawPhase::TranslucentNoCull,
+                ],
+                Some(RESIDENT_SPECIAL_ITEM_ATLASES),
                 stats,
             );
             if let (Some(glint), Some(buffers)) = (
@@ -1786,7 +1814,7 @@ impl Renderer {
                 &mut pass,
                 crate::item_models::ItemModelDrawTarget::Particle,
                 &[crate::item_models::ItemModelDrawPhase::Solid],
-                Some(crate::item_models::ItemModelAtlasKind::Blocks),
+                Some(&[crate::item_models::ItemModelAtlasKind::Blocks]),
                 stats,
             );
             if let (Some(atlas), Some(buffers)) =
@@ -1805,7 +1833,21 @@ impl Renderer {
                 &mut pass,
                 crate::item_models::ItemModelDrawTarget::Particle,
                 &[crate::item_models::ItemModelDrawPhase::Solid],
-                Some(crate::item_models::ItemModelAtlasKind::Items),
+                Some(&[crate::item_models::ItemModelAtlasKind::Items]),
+                stats,
+            );
+            self.draw_resident_item_models(
+                &mut pass,
+                crate::item_models::ItemModelDrawTarget::Particle,
+                &[
+                    crate::item_models::ItemModelDrawPhase::Solid,
+                    crate::item_models::ItemModelDrawPhase::CutoutNoCull,
+                    crate::item_models::ItemModelDrawPhase::CutoutZOffset,
+                    crate::item_models::ItemModelDrawPhase::EndPortal,
+                    crate::item_models::ItemModelDrawPhase::EndGateway,
+                    crate::item_models::ItemModelDrawPhase::Pattern,
+                ],
+                Some(RESIDENT_SPECIAL_ITEM_ATLASES),
                 stats,
             );
             if let (Some(glint), Some(buffers)) =
@@ -1840,7 +1882,7 @@ impl Renderer {
                 &mut pass,
                 crate::item_models::ItemModelDrawTarget::Particle,
                 &[crate::item_models::ItemModelDrawPhase::Translucent],
-                Some(crate::item_models::ItemModelAtlasKind::Blocks),
+                Some(&[crate::item_models::ItemModelAtlasKind::Blocks]),
                 stats,
             );
             if let (Some(atlas), Some(buffers)) = (
@@ -1860,7 +1902,17 @@ impl Renderer {
                 &mut pass,
                 crate::item_models::ItemModelDrawTarget::Particle,
                 &[crate::item_models::ItemModelDrawPhase::Translucent],
-                Some(crate::item_models::ItemModelAtlasKind::Items),
+                Some(&[crate::item_models::ItemModelAtlasKind::Items]),
+                stats,
+            );
+            self.draw_resident_item_models(
+                &mut pass,
+                crate::item_models::ItemModelDrawTarget::Particle,
+                &[
+                    crate::item_models::ItemModelDrawPhase::Translucent,
+                    crate::item_models::ItemModelDrawPhase::TranslucentNoCull,
+                ],
+                Some(RESIDENT_SPECIAL_ITEM_ATLASES),
                 stats,
             );
             if let (Some(glint), Some(buffers)) = (
@@ -2524,7 +2576,7 @@ impl Renderer {
             &mut pass,
             crate::item_models::ItemModelDrawTarget::FirstPerson,
             &[crate::item_models::ItemModelDrawPhase::Solid],
-            Some(crate::item_models::ItemModelAtlasKind::Blocks),
+            Some(&[crate::item_models::ItemModelAtlasKind::Blocks]),
             stats,
         );
         if let (Some(atlas), Some(buffers)) = (&self.item_entity_atlas, &flat_buffers) {
@@ -2541,7 +2593,21 @@ impl Renderer {
             &mut pass,
             crate::item_models::ItemModelDrawTarget::FirstPerson,
             &[crate::item_models::ItemModelDrawPhase::Solid],
-            Some(crate::item_models::ItemModelAtlasKind::Items),
+            Some(&[crate::item_models::ItemModelAtlasKind::Items]),
+            stats,
+        );
+        self.draw_resident_item_models(
+            &mut pass,
+            crate::item_models::ItemModelDrawTarget::FirstPerson,
+            &[
+                crate::item_models::ItemModelDrawPhase::Solid,
+                crate::item_models::ItemModelDrawPhase::CutoutNoCull,
+                crate::item_models::ItemModelDrawPhase::CutoutZOffset,
+                crate::item_models::ItemModelDrawPhase::EndPortal,
+                crate::item_models::ItemModelDrawPhase::EndGateway,
+                crate::item_models::ItemModelDrawPhase::Pattern,
+            ],
+            Some(RESIDENT_SPECIAL_ITEM_ATLASES),
             stats,
         );
         self.draw_resident_map_backgrounds(&mut pass, stats);
@@ -2586,7 +2652,7 @@ impl Renderer {
             &mut pass,
             crate::item_models::ItemModelDrawTarget::FirstPerson,
             &[crate::item_models::ItemModelDrawPhase::Translucent],
-            Some(crate::item_models::ItemModelAtlasKind::Blocks),
+            Some(&[crate::item_models::ItemModelAtlasKind::Blocks]),
             stats,
         );
         if let (Some(atlas), Some(buffers)) = (&self.item_entity_atlas, &flat_translucent_buffers) {
@@ -2603,7 +2669,17 @@ impl Renderer {
             &mut pass,
             crate::item_models::ItemModelDrawTarget::FirstPerson,
             &[crate::item_models::ItemModelDrawPhase::Translucent],
-            Some(crate::item_models::ItemModelAtlasKind::Items),
+            Some(&[crate::item_models::ItemModelAtlasKind::Items]),
+            stats,
+        );
+        self.draw_resident_item_models(
+            &mut pass,
+            crate::item_models::ItemModelDrawTarget::FirstPerson,
+            &[
+                crate::item_models::ItemModelDrawPhase::Translucent,
+                crate::item_models::ItemModelDrawPhase::TranslucentNoCull,
+            ],
+            Some(RESIDENT_SPECIAL_ITEM_ATLASES),
             stats,
         );
         if let (Some(glint), Some(buffers)) = (&self.item_glint_texture, &glint_translucent_buffers)
@@ -3043,7 +3119,14 @@ impl Renderer {
         self.draw_resident_item_models(
             &mut pass,
             target,
-            &[crate::item_models::ItemModelDrawPhase::Solid],
+            &[
+                crate::item_models::ItemModelDrawPhase::Solid,
+                crate::item_models::ItemModelDrawPhase::CutoutNoCull,
+                crate::item_models::ItemModelDrawPhase::CutoutZOffset,
+                crate::item_models::ItemModelDrawPhase::EndPortal,
+                crate::item_models::ItemModelDrawPhase::EndGateway,
+                crate::item_models::ItemModelDrawPhase::Pattern,
+            ],
             None,
             stats,
         );
@@ -3072,7 +3155,10 @@ impl Renderer {
         self.draw_resident_item_models(
             &mut pass,
             target,
-            &[crate::item_models::ItemModelDrawPhase::Translucent],
+            &[
+                crate::item_models::ItemModelDrawPhase::Translucent,
+                crate::item_models::ItemModelDrawPhase::TranslucentNoCull,
+            ],
             None,
             stats,
         );
@@ -3493,14 +3579,14 @@ impl Renderer {
     fn resident_item_model_main_pass(
         &self,
         encoder: &mut wgpu::CommandEncoder,
-        phase: crate::item_models::ItemModelDrawPhase,
-        atlas: Option<crate::item_models::ItemModelAtlasKind>,
+        phases: &[crate::item_models::ItemModelDrawPhase],
+        atlases: Option<&[crate::item_models::ItemModelAtlasKind]>,
         stats: &mut FrameDrawStats,
     ) {
         if !self.item_model_residency.draws().iter().any(|draw| {
             draw.target == crate::item_models::ItemModelDrawTarget::World
-                && draw.phase == phase
-                && atlas.is_none_or(|atlas| draw.asset.atlas() == atlas)
+                && phases.contains(&draw.phase)
+                && atlases.is_none_or(|atlases| atlases.contains(&draw.asset.atlas()))
         }) {
             return;
         }
@@ -3528,8 +3614,8 @@ impl Renderer {
         self.draw_resident_item_models(
             &mut pass,
             crate::item_models::ItemModelDrawTarget::World,
-            &[phase],
-            atlas,
+            phases,
+            atlases,
             stats,
         );
     }
@@ -3539,7 +3625,7 @@ impl Renderer {
         pass: &mut wgpu::RenderPass<'a>,
         target: crate::item_models::ItemModelDrawTarget,
         phases: &[crate::item_models::ItemModelDrawPhase],
-        atlas: Option<crate::item_models::ItemModelAtlasKind>,
+        atlases: Option<&[crate::item_models::ItemModelAtlasKind]>,
         stats: &mut FrameDrawStats,
     ) {
         let Some(instance_buffer) = self.item_model_residency.instance_buffer() else {
@@ -3549,7 +3635,7 @@ impl Renderer {
         for draw in self.item_model_residency.draws() {
             if draw.target != target
                 || !phases.contains(&draw.phase)
-                || atlas.is_some_and(|atlas| draw.asset.atlas() != atlas)
+                || atlases.is_some_and(|atlases| !atlases.contains(&draw.asset.atlas()))
             {
                 continue;
             }
@@ -3561,12 +3647,30 @@ impl Renderer {
                 crate::item_models::ItemModelDrawPhase::SolidZOffsetForward => {
                     &self.resident_item_model_z_offset_forward_pipeline
                 }
+                crate::item_models::ItemModelDrawPhase::CutoutNoCull => {
+                    &self.resident_item_model_cutout_no_cull_pipeline
+                }
+                crate::item_models::ItemModelDrawPhase::CutoutZOffset => {
+                    &self.resident_item_model_cutout_z_offset_pipeline
+                }
+                crate::item_models::ItemModelDrawPhase::Pattern => {
+                    &self.resident_item_model_pattern_pipeline
+                }
                 crate::item_models::ItemModelDrawPhase::Translucent => {
                     &self.resident_item_model_translucent_pipeline
+                }
+                crate::item_models::ItemModelDrawPhase::TranslucentNoCull => {
+                    &self.resident_item_model_translucent_no_cull_pipeline
                 }
                 crate::item_models::ItemModelDrawPhase::Glint
                 | crate::item_models::ItemModelDrawPhase::GlintTranslucent => {
                     &self.resident_item_model_glint_pipeline
+                }
+                crate::item_models::ItemModelDrawPhase::EndPortal => {
+                    &self.resident_item_model_end_portal_pipeline
+                }
+                crate::item_models::ItemModelDrawPhase::EndGateway => {
+                    &self.resident_item_model_end_gateway_pipeline
                 }
             };
             if active_phase != Some(draw.phase) {
@@ -3589,21 +3693,62 @@ impl Renderer {
                 };
                 pass.set_bind_group(0, bind_group, &[]);
             } else {
-                let bind_group = if target.is_gui() {
-                    &self.gui_item_bind_group
-                } else {
-                    match draw.asset.atlas() {
-                        crate::item_models::ItemModelAtlasKind::Blocks => &self.terrain_bind_group,
-                        crate::item_models::ItemModelAtlasKind::Items => {
-                            let Some(atlas) = &self.item_entity_atlas else {
-                                continue;
-                            };
+                let bind_group = match (draw.asset.atlas(), target.is_gui()) {
+                    (crate::item_models::ItemModelAtlasKind::Blocks, false) => {
+                        &self.terrain_bind_group
+                    }
+                    (crate::item_models::ItemModelAtlasKind::Blocks, true) => {
+                        &self.gui_item_bind_group
+                    }
+                    (crate::item_models::ItemModelAtlasKind::Items, gui) => {
+                        let Some(atlas) = &self.item_entity_atlas else {
+                            continue;
+                        };
+                        if gui {
+                            &atlas.gui_bind_group
+                        } else {
+                            &atlas.bind_group
+                        }
+                    }
+                    (crate::item_models::ItemModelAtlasKind::Entity, gui) => {
+                        let Some(atlas) = &self.entity_model_texture_atlas else {
+                            continue;
+                        };
+                        if gui {
+                            &atlas.gui_bind_group
+                        } else {
+                            &atlas.bind_group
+                        }
+                    }
+                    (crate::item_models::ItemModelAtlasKind::DynamicPlayerSkin, gui) => {
+                        let Some(atlas) = &self.entity_dynamic_player_skin_atlas else {
+                            continue;
+                        };
+                        if gui {
+                            &atlas.gui_bind_group
+                        } else {
+                            &atlas.bind_group
+                        }
+                    }
+                    (crate::item_models::ItemModelAtlasKind::DynamicEntity, gui) => {
+                        let Some(atlas) = &self.entity_dynamic_player_texture_atlas else {
+                            continue;
+                        };
+                        if gui {
+                            &atlas.gui_bind_group
+                        } else {
                             &atlas.bind_group
                         }
                     }
                 };
                 pass.set_bind_group(0, bind_group, &[]);
-                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                if !matches!(
+                    draw.phase,
+                    crate::item_models::ItemModelDrawPhase::EndPortal
+                        | crate::item_models::ItemModelDrawPhase::EndGateway
+                ) {
+                    pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                }
             }
             pass.set_vertex_buffer(0, owner.vertex_buffer.slice(..));
             pass.set_vertex_buffer(1, instance_buffer.slice(..));
