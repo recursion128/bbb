@@ -622,3 +622,7 @@
 - **2026-07-26（PauseScreen 工程闭环）**：远端菜单与 F3+Escape 显式保持
   client/level tick；动态 dialog 快照、Feedback 子页、可信链接确认及精确父屏恢复
   已贯通 world/native/renderer，合同见 `docs/archive/pause-screen-closure-design.md`。
+- **2026-07-26（原生 profiler 与指标工程闭环）**：F3+1 的 Vanilla 嵌套分区、
+  F3+L 十秒/手动记录、真实 CPU/内存/区块/GPU 指标、deviation 与异步 ZIP 输出已
+  贯通 simulation/native/renderer；合同见
+  `docs/archive/native-profiler-metrics-closure-design.md`。

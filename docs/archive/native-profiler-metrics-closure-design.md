@@ -1,6 +1,6 @@
 # Native profiler and metrics closure
 
-Status: active engineering contract.
+Status: completed and archived.
 
 Pre-start fully gated baseline:
 `c37a14cd268a1288a950e2f01c7a14265cc4e8f8`.

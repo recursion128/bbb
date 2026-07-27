@@ -408,7 +408,6 @@ packet 行为。
 仍在推进（todo 见账本 "HUD overlay and screen render surfaces" 节；整体低
 优先；F3+I entity save payload 由 entity matrix 唯一拥有）：
 
-- vanilla profiler section 全覆盖 + profiling metrics recorder/output。
 - DebugOptionsScreen narration / focus / 完整 widget styling polish。
 
 完成标准：不做临时配置 UI，启动配置从命令行进入；上述开放项及账本归属本
