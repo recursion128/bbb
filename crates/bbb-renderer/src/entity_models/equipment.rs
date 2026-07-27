@@ -97,16 +97,23 @@ impl EntityEquipmentAsset {
 /// `bbb_pack::EquipmentAssetCatalog`.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct EntityEquipmentAssetCatalog {
+    generation: u64,
     assets: Vec<EntityEquipmentAsset>,
 }
 
 impl EntityEquipmentAssetCatalog {
-    pub fn new(assets: Vec<EntityEquipmentAsset>) -> Self {
-        Self { assets }
+    pub fn new(generation: u64, assets: Vec<EntityEquipmentAsset>) -> Self {
+        Self { generation, assets }
+    }
+
+    pub fn generation(&self) -> u64 {
+        self.generation
     }
 
     pub fn asset(&self, id: EntityEquipmentAssetId) -> Option<&EntityEquipmentAsset> {
-        self.assets.get(id.0 as usize)
+        (id.generation == self.generation)
+            .then_some(id.index)
+            .and_then(|index| self.assets.get(index as usize))
     }
 
     pub fn assets(&self) -> &[EntityEquipmentAsset] {
@@ -170,7 +177,10 @@ impl EntityEquipmentAssetCatalog {
             }
             assets.push(ResolvedEntityEquipmentAsset { layers });
         }
-        Ok(ResolvedEntityEquipmentAssetCatalog { assets })
+        Ok(ResolvedEntityEquipmentAssetCatalog {
+            generation: self.generation,
+            assets,
+        })
     }
 }
 
@@ -206,6 +216,7 @@ impl ResolvedEntityEquipmentAsset {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct ResolvedEntityEquipmentAssetCatalog {
+    generation: u64,
     assets: Vec<ResolvedEntityEquipmentAsset>,
 }
 
@@ -215,7 +226,9 @@ impl ResolvedEntityEquipmentAssetCatalog {
         &self,
         id: EntityEquipmentAssetId,
     ) -> Option<&ResolvedEntityEquipmentAsset> {
-        self.assets.get(id.0 as usize)
+        (id.generation == self.generation)
+            .then_some(id.index)
+            .and_then(|index| self.assets.get(index as usize))
     }
 }
 
@@ -230,18 +243,21 @@ mod tests {
     fn equipment_catalog_resolves_owned_paths_without_changing_asset_ids() {
         let texture =
             EntityModelOwnedTextureRef::new(Arc::<str>::from("example:equipment.png"), [64, 32]);
-        let catalog = EntityEquipmentAssetCatalog::new(vec![EntityEquipmentAsset {
-            layers: BTreeMap::from([(
-                EntityEquipmentLayerType::Humanoid,
-                vec![EntityEquipmentAssetLayer {
-                    texture: EntityEquipmentAssetLayerTexture::Owned(texture.clone()),
-                    dyeable: Some(EntityEquipmentDyeable {
-                        color_when_undyed: None,
-                    }),
-                    use_player_texture: false,
-                }],
-            )]),
-        }]);
+        let catalog = EntityEquipmentAssetCatalog::new(
+            7,
+            vec![EntityEquipmentAsset {
+                layers: BTreeMap::from([(
+                    EntityEquipmentLayerType::Humanoid,
+                    vec![EntityEquipmentAssetLayer {
+                        texture: EntityEquipmentAssetLayerTexture::Owned(texture.clone()),
+                        dyeable: Some(EntityEquipmentDyeable {
+                            color_when_undyed: None,
+                        }),
+                        use_player_texture: false,
+                    }],
+                )]),
+            }],
+        );
         let resolved = catalog
             .resolve(&[EntityModelOwnedTextureAtlasEntry {
                 texture,
@@ -252,7 +268,7 @@ mod tests {
             }])
             .unwrap();
         let layer = resolved
-            .asset(EntityEquipmentAssetId(0))
+            .asset(EntityEquipmentAssetId::new(7, 0))
             .unwrap()
             .layers(EntityEquipmentLayerType::Humanoid)[0];
 
@@ -262,6 +278,10 @@ mod tests {
                 index: 0,
                 logical_size: [64, 32],
             }
+        );
+        assert!(
+            resolved.asset(EntityEquipmentAssetId::new(6, 0)).is_none(),
+            "an old world generation must not address a reloaded atlas catalog"
         );
         assert_eq!(
             layer.dyeable,

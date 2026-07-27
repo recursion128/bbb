@@ -66,8 +66,11 @@ No renderer type or GPU handle enters `bbb-pack`.
 ### `bbb-render-types`
 
 A small copyable equipment-asset id crosses native into
-`EntityModelInstance`. It is a selected-generation index, not canonical
-network state and not persistent across reloads.
+`EntityModelInstance`. It is a `(resource generation, sorted catalog index)`
+pair, not canonical network state. The generation tag makes both world
+asset-name lookup and renderer catalog lookup reject stale snapshots while a
+reload crosses the simulation/render boundary, so an old index can never
+address a newly selected asset.
 
 ### `bbb-world`
 
@@ -88,7 +91,9 @@ layer type.
 
 World snapshots carry only compact asset ids, dye/foil/trim state, and the
 existing semantic booleans. They never own texture bytes, atlas UVs, or
-renderer catalogs.
+renderer catalogs. A snapshot whose generation no longer matches the current
+catalog temporarily omits that equipment layer instead of rendering a
+same-index asset from the new generation.
 
 ### `bbb-item-model` and `bbb-native`
 

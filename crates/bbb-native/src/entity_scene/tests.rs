@@ -8519,10 +8519,7 @@ fn entity_model_instances_project_chest_equipment_layers() {
         NativeItemRuntime::for_test_with_registry_and_equipment_assets(registry, equipment_assets);
 
     let mut world = WorldStore::new();
-    world.set_item_armor_materials(runtime.item_armor_materials_by_protocol_id());
-    world.set_default_item_wings_equipment_assets(
-        runtime.item_wings_equipment_assets_by_protocol_id(),
-    );
+    crate::resource_reload::apply_item_runtime_world_defaults(&runtime, &mut world);
     world.apply_add_entity(protocol_add_entity(
         1553,
         VANILLA_ENTITY_TYPE_PLAYER_ID,
@@ -8590,7 +8587,18 @@ fn entity_model_instances_project_chest_equipment_layers() {
     assert!(with_elytra.chest_equipment_has_wings);
     assert!(!with_elytra.chest_equipment_has_humanoid);
     assert_eq!(with_elytra.chest_armor, None);
-    assert!(!with_elytra.chest_armor_foil);
+    assert_eq!(
+        with_elytra.chest_equipment_asset,
+        Some(EntityEquipmentAssetId::new(0, 1))
+    );
+    assert_eq!(
+        with_elytra.chest_wings_equipment_asset,
+        Some(EntityEquipmentAssetId::new(0, 1))
+    );
+    assert!(
+        with_elytra.chest_armor_foil,
+        "foil is stack state; the empty HUMANOID layer list suppresses its submission"
+    );
     assert!(with_elytra.chest_wings_foil);
     assert_eq!(
         with_elytra.chest_wings_trim,
@@ -8629,8 +8637,19 @@ fn entity_model_instances_project_chest_equipment_layers() {
         with_chestplate.chest_armor,
         Some(EntityArmorMaterial::Diamond)
     );
+    assert_eq!(
+        with_chestplate.chest_equipment_asset,
+        Some(EntityEquipmentAssetId::new(0, 0))
+    );
+    assert_eq!(
+        with_chestplate.chest_wings_equipment_asset,
+        Some(EntityEquipmentAssetId::new(0, 0))
+    );
     assert!(with_chestplate.chest_armor_foil);
-    assert!(!with_chestplate.chest_wings_foil);
+    assert!(
+        with_chestplate.chest_wings_foil,
+        "foil stays paired with the effective asset; the empty WINGS layer list suppresses it"
+    );
     assert_eq!(with_chestplate.chest_wings_trim, None);
     assert_eq!(with_chestplate.chest_wings_layer, None);
 
@@ -8639,6 +8658,8 @@ fn entity_model_instances_project_chest_equipment_layers() {
     assert!(!empty_chest.chest_equipment_has_wings);
     assert!(!empty_chest.chest_equipment_has_humanoid);
     assert_eq!(empty_chest.chest_armor, None);
+    assert_eq!(empty_chest.chest_equipment_asset, None);
+    assert_eq!(empty_chest.chest_wings_equipment_asset, None);
     assert!(!empty_chest.chest_armor_foil);
     assert!(!empty_chest.chest_wings_foil);
     assert_eq!(empty_chest.chest_wings_trim, None);
@@ -8649,7 +8670,15 @@ fn entity_model_instances_project_chest_equipment_layers() {
     assert!(zombie.chest_equipment_has_wings);
     assert!(!zombie.chest_equipment_has_humanoid);
     assert_eq!(zombie.chest_armor, None);
-    assert!(!zombie.chest_armor_foil);
+    assert_eq!(
+        zombie.chest_equipment_asset,
+        Some(EntityEquipmentAssetId::new(0, 1))
+    );
+    assert_eq!(
+        zombie.chest_wings_equipment_asset,
+        Some(EntityEquipmentAssetId::new(0, 1))
+    );
+    assert!(zombie.chest_armor_foil);
     assert!(zombie.chest_wings_foil);
     assert_eq!(
         zombie.chest_wings_trim,

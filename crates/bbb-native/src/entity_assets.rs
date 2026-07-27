@@ -17,6 +17,7 @@ pub(crate) fn load_entity_model_textures(
     renderer: &mut bbb_renderer::Renderer,
     roots: Option<&PackRoots>,
     equipment_assets: Option<&EquipmentAssetCatalog>,
+    equipment_asset_generation: u64,
 ) {
     let Some(roots) = roots else {
         tracing::warn!(
@@ -29,6 +30,7 @@ pub(crate) fn load_entity_model_textures(
         renderer,
         roots,
         equipment_assets.unwrap_or(&empty_equipment_assets),
+        equipment_asset_generation,
     ) {
         tracing::warn!(?err, "continuing without vanilla entity feature textures");
     }
@@ -38,14 +40,19 @@ pub(crate) fn try_load_entity_model_textures(
     renderer: &mut bbb_renderer::Renderer,
     roots: &PackRoots,
     equipment_assets: &EquipmentAssetCatalog,
+    equipment_asset_generation: u64,
 ) -> Result<()> {
     let images = load_entity_model_texture_images(roots)?;
     let mut owned_images = load_special_item_texture_images(roots)?
         .into_iter()
         .map(|image| (image.texture.path.to_string(), image))
         .collect::<BTreeMap<_, _>>();
-    let equipment_assets =
-        load_equipment_asset_resources(roots, equipment_assets, &mut owned_images);
+    let equipment_assets = load_equipment_asset_resources(
+        roots,
+        equipment_assets,
+        equipment_asset_generation,
+        &mut owned_images,
+    );
     let owned_images = owned_images.into_values().collect::<Vec<_>>();
     let shadow = load_entity_shadow_texture_image(roots)?;
     renderer.upload_entity_model_textures_with_owned_and_equipment(
@@ -76,6 +83,7 @@ pub(crate) fn try_load_entity_model_textures(
 fn load_equipment_asset_resources(
     roots: &PackRoots,
     source: &EquipmentAssetCatalog,
+    generation: u64,
     owned_images: &mut BTreeMap<String, EntityModelOwnedTextureImage>,
 ) -> EntityEquipmentAssetCatalog {
     let mut assets = Vec::with_capacity(source.len());
@@ -120,7 +128,7 @@ fn load_equipment_asset_resources(
         }
         assets.push(EntityEquipmentAsset { layers });
     }
-    EntityEquipmentAssetCatalog::new(assets)
+    EntityEquipmentAssetCatalog::new(generation, assets)
 }
 
 fn static_entity_texture_ref(path: &str) -> Option<EntityModelTextureRef> {
@@ -560,10 +568,10 @@ mod tests {
         let source = roots.load_equipment_asset_catalog().unwrap();
         let mut owned = BTreeMap::new();
 
-        let catalog = load_equipment_asset_resources(&roots, &source, &mut owned);
+        let catalog = load_equipment_asset_resources(&roots, &source, 9, &mut owned);
 
         let asset = catalog
-            .asset(bbb_renderer::EntityEquipmentAssetId(0))
+            .asset(bbb_renderer::EntityEquipmentAssetId::new(9, 0))
             .unwrap();
         let humanoid = asset.layers(EntityEquipmentLayerType::Humanoid);
         assert_eq!(humanoid.len(), 2);

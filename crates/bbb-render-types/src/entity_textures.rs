@@ -54,10 +54,20 @@ pub struct EntityDynamicTexture {
 }
 
 /// Compact selected-resource-generation identity for one `equipment/*.json`
-/// asset. The id is the asset's position in the pack catalog's sorted resource
-/// id order and is invalid across a resource reload.
+/// asset. `index` is the asset's position in the pack catalog's sorted
+/// resource-id order; `generation` prevents an old world snapshot from
+/// addressing a newly reloaded catalog at the same index.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct EntityEquipmentAssetId(pub u32);
+pub struct EntityEquipmentAssetId {
+    pub generation: u64,
+    pub index: u32,
+}
+
+impl EntityEquipmentAssetId {
+    pub const fn new(generation: u64, index: u32) -> Self {
+        Self { generation, index }
+    }
+}
 
 /// One resolved armor-trim atlas sprite. `texture` addresses the shared runtime entity atlas;
 /// `decal` selects vanilla's equal-depth, no-depth-write armor decal pipeline.

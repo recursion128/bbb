@@ -16,9 +16,10 @@ use bbb_pack::{
 };
 use bbb_renderer::{ParticleSpriteUv, ParticleUvRect};
 use bbb_world::{
-    ArmorMaterialKind, FurnaceFuelRule, HappyGhastHarnessColor, ItemAttackRange, ItemEquipmentSlot,
-    ItemFoodProperties, ItemUseEffects, LlamaBodyDecorColor, MountArmorSlotKind,
-    WorldBlockDestroyProfile, WorldBlockSoundProfile, WorldItemMiningProfile, WorldStore,
+    ArmorMaterialKind, EquipmentAssetId as WorldEquipmentAssetId, FurnaceFuelRule,
+    HappyGhastHarnessColor, ItemAttackRange, ItemEquipmentSlot, ItemFoodProperties, ItemUseEffects,
+    LlamaBodyDecorColor, MountArmorSlotKind, WorldBlockDestroyProfile, WorldBlockSoundProfile,
+    WorldItemMiningProfile, WorldStore,
 };
 
 use crate::{
@@ -208,6 +209,7 @@ fn apply_native_resource_reload(
                         renderer,
                         &prepared.roots,
                         prepared.items.equipment_asset_catalog(),
+                        prepared.items.resource_generation(),
                     )
                     .context("upload entity resources during resource reload")?;
                     try_load_sky_textures(renderer, &prepared.roots)
@@ -497,6 +499,9 @@ pub(crate) struct ItemRuntimeWorldDefaults {
     swappable_equipment_item_ids: BTreeSet<i32>,
     player_swappable_equipment_item_ids: BTreeSet<i32>,
     shearable_equipment_item_ids: BTreeSet<i32>,
+    equipment_asset_generation: u64,
+    equipment_asset_names: Vec<String>,
+    equipment_assets: BTreeMap<i32, WorldEquipmentAssetId>,
     armor_materials: BTreeMap<i32, ArmorMaterialKind>,
     wings_equipment_assets: BTreeMap<i32, String>,
     mount_body_armor_kinds: BTreeMap<i32, MountArmorSlotKind>,
@@ -574,6 +579,18 @@ impl ItemRuntimeWorldDefaults {
                 .default_player_swappable_equipment_item_ids_by_protocol_id(),
             shearable_equipment_item_ids: items
                 .default_shearable_equipment_item_ids_by_protocol_id(),
+            equipment_asset_generation: items.resource_generation(),
+            equipment_asset_names: items.equipment_asset_names(),
+            equipment_assets: items
+                .item_equipment_asset_ids_by_protocol_id()
+                .into_iter()
+                .map(|(item_id, asset_id)| {
+                    (
+                        item_id,
+                        WorldEquipmentAssetId::new(asset_id.generation, asset_id.index),
+                    )
+                })
+                .collect(),
             armor_materials: items.item_armor_materials_by_protocol_id(),
             wings_equipment_assets: items.item_wings_equipment_assets_by_protocol_id(),
             mount_body_armor_kinds: items.mount_body_armor_kinds_by_protocol_id(),
@@ -627,6 +644,11 @@ impl ItemRuntimeWorldDefaults {
             self.player_swappable_equipment_item_ids,
         );
         world.set_default_shearable_equipment_item_ids(self.shearable_equipment_item_ids);
+        world.set_default_item_equipment_assets(
+            self.equipment_asset_generation,
+            self.equipment_asset_names,
+            self.equipment_assets,
+        );
         world.set_item_armor_materials(self.armor_materials);
         world.set_default_item_wings_equipment_assets(self.wings_equipment_assets);
         world.set_default_mount_body_armor_kinds(self.mount_body_armor_kinds);

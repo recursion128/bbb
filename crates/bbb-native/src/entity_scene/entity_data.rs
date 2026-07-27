@@ -52,6 +52,12 @@ pub(crate) fn armor_material(
     })
 }
 
+pub(super) fn equipment_asset(
+    asset: Option<WorldEquipmentAssetId>,
+) -> Option<EntityEquipmentAssetId> {
+    asset.map(|asset| EntityEquipmentAssetId::new(asset.generation, asset.index))
+}
+
 pub(super) fn armor_trim(
     trim: Option<&WorldArmorTrimSprite>,
     registries: Option<&dyn EntityVariantRegistryLookup>,

@@ -638,6 +638,9 @@ fn main() -> Result<()> {
         item_runtime
             .as_ref()
             .map(NativeItemRuntime::equipment_asset_catalog),
+        item_runtime
+            .as_ref()
+            .map_or(0, NativeItemRuntime::resource_generation),
     );
     load_sky_textures(&mut renderer, pack_roots.as_ref());
     if let Some(particles) = &particle_render_runtime {

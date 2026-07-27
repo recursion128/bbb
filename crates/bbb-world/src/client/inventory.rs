@@ -3897,6 +3897,16 @@ impl WorldStore {
             .set_default_shearable_equipment_item_ids(item_ids)
     }
 
+    pub fn set_default_item_equipment_assets(
+        &mut self,
+        generation: u64,
+        asset_names: Vec<String>,
+        item_assets: BTreeMap<i32, crate::entities::EquipmentAssetId>,
+    ) {
+        self.items
+            .set_default_item_equipment_assets(generation, asset_names, item_assets)
+    }
+
     /// Installs the item id → humanoid armor material table (from the item registry), used to project
     /// worn armor onto entity render sources for the `HumanoidArmorLayer` overlay.
     pub fn set_item_armor_materials(

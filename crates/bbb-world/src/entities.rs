@@ -1931,6 +1931,10 @@ entity_model_source_state! {
     /// has a `wolf_body` layer. Baby wolves skip it because `WolfArmorLayer` renders only the adult
     /// `ModelLayers.WOLF_ARMOR` model.
     #[serde(default)]
+    pub wolf_body_equipment_asset: Option<EquipmentAssetId>,
+    /// Legacy vanilla-material projection retained until the generic equipment
+    /// catalog consumer owns the wolf armor texture.
+    #[serde(default)]
     pub wolf_body_armor: Option<ArmorMaterialKind>,
     /// Vanilla `ArmorTrim.layerAssetId` for the adult wolf's `WOLF_BODY` equipment layer. The
     /// resolved sprite uses `trims/entity/wolf_body`; native binds it from the startup trim atlas.
@@ -2501,6 +2505,16 @@ entity_model_source_state! {
     /// from the entity's `SetEquipment` items against the item registry. `None` leaves the slot bare.
     /// Only humanoid armor-wearers carry these; the renderer drapes the matching inflated armor piece.
     #[serde(default)]
+    pub head_equipment_asset: Option<EquipmentAssetId>,
+    #[serde(default)]
+    pub chest_equipment_asset: Option<EquipmentAssetId>,
+    #[serde(default)]
+    pub legs_equipment_asset: Option<EquipmentAssetId>,
+    #[serde(default)]
+    pub feet_equipment_asset: Option<EquipmentAssetId>,
+    /// Legacy vanilla-material projections retained while humanoid geometry
+    /// migrates to the generic equipment catalog.
+    #[serde(default)]
     pub head_armor: Option<ArmorMaterialKind>,
     #[serde(default)]
     pub chest_armor: Option<ArmorMaterialKind>,
@@ -2544,12 +2558,16 @@ entity_model_source_state! {
     /// Vanilla WINGS `ArmorTrim.layerAssetId`, resolved from a non-empty chest item's equipment
     /// asset. Unlike `HUMANOID_BABY`, the WINGS layer retains trims on baby elytra models.
     #[serde(default)]
+    pub chest_wings_equipment_asset: Option<EquipmentAssetId>,
+    #[serde(default)]
     pub chest_wings_trim: Option<ArmorTrimSprite>,
     /// Vanilla `ItemStack.hasFoil()` for a chest item whose equipment asset has a WINGS layer.
     #[serde(default)]
     pub chest_wings_foil: bool,
     /// Vanilla `PigRenderState.saddle`: true when a pig carries a non-empty saddle item in
     /// `EquipmentSlot.SADDLE`. The renderer consumes this to draw the `PIG_SADDLE` equipment layer.
+    #[serde(default)]
+    pub pig_saddle_equipment_asset: Option<EquipmentAssetId>,
     #[serde(default)]
     pub pig_saddle: bool,
     /// Vanilla `ArmorTrim.layerAssetId` for an adult pig's `PIG_SADDLE` equipment layer.
@@ -2561,6 +2579,8 @@ entity_model_source_state! {
     pub pig_saddle_foil: bool,
     /// Vanilla `EquineRenderState.saddle`: true when an adult horse/donkey/mule/skeleton-horse/
     /// zombie-horse carries a non-empty saddle item in `EquipmentSlot.SADDLE`.
+    #[serde(default)]
+    pub equine_saddle_equipment_asset: Option<EquipmentAssetId>,
     #[serde(default)]
     pub equine_saddle: bool,
     /// Vanilla armor-trim sprite for the family-specific equine saddle equipment layer.
@@ -2594,6 +2614,8 @@ entity_model_source_state! {
     /// skip it because `SimpleEquipmentLayer` supplies no baby armor model; skeleton horses are
     /// excluded by the vanilla armor-wearer tag.
     #[serde(default)]
+    pub equine_body_equipment_asset: Option<EquipmentAssetId>,
+    #[serde(default)]
     pub equine_body_armor: Option<ArmorMaterialKind>,
     /// Vanilla `ArmorTrim.layerAssetId` for an adult horse or zombie horse's `HORSE_BODY`
     /// equipment layer. Native resolves the `trims/entity/horse_body` sprite at the atlas boundary.
@@ -2616,6 +2638,8 @@ entity_model_source_state! {
     /// `EquipmentSlot.SADDLE`. The renderer consumes this to draw the `STRIDER_SADDLE` equipment
     /// layer on adult striders.
     #[serde(default)]
+    pub strider_saddle_equipment_asset: Option<EquipmentAssetId>,
+    #[serde(default)]
     pub strider_saddle: bool,
     /// Vanilla `ArmorTrim.layerAssetId` for an adult strider's `STRIDER_SADDLE` equipment layer.
     #[serde(default)]
@@ -2626,6 +2650,8 @@ entity_model_source_state! {
     /// Vanilla `CamelRenderState.saddle`: true when a camel/camel_husk carries a non-empty saddle item
     /// in `EquipmentSlot.SADDLE`. The renderer consumes this to draw the adult `CamelSaddleModel`
     /// equipment layer.
+    #[serde(default)]
+    pub camel_saddle_equipment_asset: Option<EquipmentAssetId>,
     #[serde(default)]
     pub camel_saddle: bool,
     /// Vanilla armor-trim sprite for a camel's family-specific `CAMEL*_SADDLE` equipment layer.
@@ -2642,6 +2668,8 @@ entity_model_source_state! {
     /// non-empty saddle item in `EquipmentSlot.SADDLE`. The renderer consumes this to draw the adult
     /// `NautilusSaddleModel` equipment layer.
     #[serde(default)]
+    pub nautilus_saddle_equipment_asset: Option<EquipmentAssetId>,
+    #[serde(default)]
     pub nautilus_saddle: bool,
     /// Vanilla armor-trim sprite for the adult `NAUTILUS_SADDLE` equipment layer.
     #[serde(default)]
@@ -2653,6 +2681,10 @@ entity_model_source_state! {
     /// this independently of asset recognition to squeeze its body subtree to 0.9375.
     #[serde(default)]
     pub happy_ghast_body_item: bool,
+    /// Effective BODY-stack equipment asset, independent of the legacy
+    /// vanilla harness-color classification.
+    #[serde(default)]
+    pub happy_ghast_body_equipment_asset: Option<EquipmentAssetId>,
     /// Recognized vanilla happy-ghast harness color derived from the BODY item's equipment asset.
     #[serde(default)]
     pub happy_ghast_harness: Option<HappyGhastHarnessColor>,
@@ -2707,6 +2739,8 @@ entity_model_source_state! {
     /// equipment item. Baby llamas ignore body items for the decor layer; trader llamas still get their
     /// built-in trader decor in the renderer when this is `None`.
     #[serde(default)]
+    pub llama_body_equipment_asset: Option<EquipmentAssetId>,
+    #[serde(default)]
     pub llama_body_decor: Option<LlamaBodyDecorColor>,
     /// Vanilla `ArmorTrim.layerAssetId` for an adult carpet item's `LLAMA_BODY` equipment layer.
     /// Trader-llama built-in decor uses `ItemStack.EMPTY` and therefore has no trim.
@@ -2719,6 +2753,8 @@ entity_model_source_state! {
     /// Vanilla `NautilusRenderState.bodyArmorItem`: an adult living nautilus / zombie nautilus body
     /// equipment item whose equipment asset has a `nautilus_body` layer. Baby living nautilus skip it
     /// because `SimpleEquipmentLayer` supplies no baby armor model.
+    #[serde(default)]
+    pub nautilus_body_equipment_asset: Option<EquipmentAssetId>,
     #[serde(default)]
     pub nautilus_body_armor: Option<ArmorMaterialKind>,
     /// Vanilla `ArmorTrim.layerAssetId` for the `NAUTILUS_BODY` equipment layer. Native resolves
@@ -2915,6 +2951,21 @@ impl LlamaBodyDecorColor {
             Self::Red => "minecraft:red_carpet",
             Self::Black => "minecraft:black_carpet",
         }
+    }
+}
+
+/// Compact identity for one selected resource generation's `equipment/*.json`
+/// asset. The native resource owner replaces the complete name/id table on
+/// reload, so the index is never reused without also changing `generation`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct EquipmentAssetId {
+    pub generation: u64,
+    pub index: u32,
+}
+
+impl EquipmentAssetId {
+    pub const fn new(generation: u64, index: u32) -> Self {
+        Self { generation, index }
     }
 }
 
@@ -4105,6 +4156,9 @@ impl WorldStore {
             self.is_feature_enabled("minecraft:minecart_improvements"),
             &self.registries,
             &self.items.default_item_max_damage,
+            &self.items.default_item_equipment_assets,
+            self.items.equipment_asset_generation,
+            &self.items.equipment_asset_names,
             &self.items.default_item_armor_materials,
             &self.items.default_item_wings_equipment_assets,
             &self.items.default_item_equipment_slots,

@@ -115,11 +115,11 @@ use super::{
     EntityLivingLifecycle, EntityMetadata, EntityMinecartCommandBlock, EntityMinecartLerp,
     EntityMobEffects, EntityModelSourceState, EntityMount, EntityPlayerSleep,
     EntityProjectileLifecycle, EntityState, EntitySupportingBlock, EntityTransform,
-    EntityTransformState, EntityTransientEvents, EntityVec3, EvokerFangsCritParticleState,
-    FallingBlockModelState, FireworkRocketExplosionParticleState, FireworkRocketItemState,
-    FishingHookRenderSourceState, FoxEatParticleState, GuardianAmbientParticleState,
-    GuardianAttackParticleState, HappyGhastHarnessColor, ItemEntityStackState,
-    ItemFrameRenderState, LivingDeathWakeTransition, LlamaBodyDecorColor,
+    EntityTransformState, EntityTransientEvents, EntityVec3, EquipmentAssetId,
+    EvokerFangsCritParticleState, FallingBlockModelState, FireworkRocketExplosionParticleState,
+    FireworkRocketItemState, FishingHookRenderSourceState, FoxEatParticleState,
+    GuardianAmbientParticleState, GuardianAttackParticleState, HappyGhastHarnessColor,
+    ItemEntityStackState, ItemFrameRenderState, LivingDeathWakeTransition, LlamaBodyDecorColor,
     LocalPlayerAttackSwingState, MinecartDisplayBlockState, OminousItemSpawnerItemState,
     OminousItemSpawnerParticleState, PowderSnowFlakeParticleState, RavagerRoarParticleState,
     RavagerStunParticleState, SlimeLandingParticleState, VanillaEntityBlockEffectTickPolicy,
@@ -355,6 +355,103 @@ fn equipment_contains_saddle_item(
     equipment_slots: &BTreeMap<i32, ItemEquipmentSlot>,
 ) -> bool {
     equipment_saddle_item(equipment, equipment_slots).is_some()
+}
+
+fn equipment_slot_item(
+    equipment: Option<&EntityEquipment>,
+    slot: ProtocolEquipmentSlot,
+) -> Option<&ItemStackSummary> {
+    equipment?
+        .equipment
+        .iter()
+        .find(|update| update.slot == slot)
+        .map(|update| &update.item)
+        .filter(|item| item.count > 0)
+}
+
+fn equipment_asset_name(
+    generation: u64,
+    asset_names: &[String],
+    asset_id: EquipmentAssetId,
+) -> Option<&str> {
+    if asset_id.generation != generation {
+        return None;
+    }
+    usize::try_from(asset_id.index)
+        .ok()
+        .and_then(|asset_id| asset_names.get(asset_id))
+        .map(String::as_str)
+}
+
+fn equipment_asset_id_by_name(
+    generation: u64,
+    asset_names: &[String],
+    asset_name: &str,
+) -> Option<EquipmentAssetId> {
+    asset_names
+        .iter()
+        .position(|candidate| candidate == asset_name)
+        .and_then(|index| u32::try_from(index).ok())
+        .map(|index| EquipmentAssetId::new(generation, index))
+}
+
+fn item_equipment_slot_matches_protocol(
+    item_slot: ItemEquipmentSlot,
+    protocol_slot: ProtocolEquipmentSlot,
+) -> bool {
+    matches!(
+        (item_slot, protocol_slot),
+        (ItemEquipmentSlot::MainHand, ProtocolEquipmentSlot::MainHand)
+            | (ItemEquipmentSlot::OffHand, ProtocolEquipmentSlot::OffHand)
+            | (ItemEquipmentSlot::Feet, ProtocolEquipmentSlot::Feet)
+            | (ItemEquipmentSlot::Legs, ProtocolEquipmentSlot::Legs)
+            | (ItemEquipmentSlot::Chest, ProtocolEquipmentSlot::Chest)
+            | (ItemEquipmentSlot::Head, ProtocolEquipmentSlot::Head)
+            | (ItemEquipmentSlot::Body, ProtocolEquipmentSlot::Body)
+            | (ItemEquipmentSlot::Saddle, ProtocolEquipmentSlot::Saddle)
+    )
+}
+
+fn effective_equipment_asset(
+    item: &ItemStackSummary,
+    required_slot: Option<ProtocolEquipmentSlot>,
+    default_item_assets: &BTreeMap<i32, EquipmentAssetId>,
+    equipment_asset_generation: u64,
+    asset_names: &[String],
+    default_equipment_slots: &BTreeMap<i32, ItemEquipmentSlot>,
+) -> Option<EquipmentAssetId> {
+    if item.count <= 0 {
+        return None;
+    }
+    if let Some(equippable) = item.component_patch.equippable.as_ref() {
+        if let Some(required_slot) = required_slot {
+            let required_slot_id = vanilla_equipment_slot_by_ordinal(required_slot.ordinal())?.id;
+            if equippable.slot_id != required_slot_id {
+                return None;
+            }
+        }
+        return equippable.asset_id.as_deref().and_then(|asset_name| {
+            equipment_asset_id_by_name(equipment_asset_generation, asset_names, asset_name)
+        });
+    }
+    if item
+        .component_patch
+        .removed_type_ids
+        .contains(&VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID)
+    {
+        return None;
+    }
+    let item_id = item.item_id?;
+    if let Some(required_slot) = required_slot {
+        if !default_equipment_slots
+            .get(&item_id)
+            .copied()
+            .is_some_and(|slot| item_equipment_slot_matches_protocol(slot, required_slot))
+        {
+            return None;
+        }
+    }
+    default_item_assets.get(&item_id).copied()
 }
 
 fn patched_equippable_asset_for_slot<'a>(
@@ -3785,6 +3882,9 @@ impl EntityStore {
         minecart_improvements_enabled: bool,
         registries: &RegistrySet,
         default_item_max_damage: &BTreeMap<i32, i32>,
+        default_item_equipment_assets: &BTreeMap<i32, EquipmentAssetId>,
+        equipment_asset_generation: u64,
+        equipment_asset_names: &[String],
         armor_materials: &BTreeMap<i32, ArmorMaterialKind>,
         wings_equipment_assets: &BTreeMap<i32, String>,
         equipment_slots: &BTreeMap<i32, ItemEquipmentSlot>,
@@ -3827,12 +3927,29 @@ impl EntityStore {
         ) = query.get()?;
         let entity_accessors = vanilla_entity_metadata_entity_accessors()?;
         let armor_item = |slot: ProtocolEquipmentSlot| -> Option<&ItemStackSummary> {
-            equipment
-                .as_ref()?
-                .equipment
-                .iter()
-                .find(|update| update.slot == slot)
-                .map(|update| &update.item)
+            equipment_slot_item(equipment, slot)
+        };
+        let resolved_equipment_asset = |item: &ItemStackSummary,
+                                        required_slot: Option<ProtocolEquipmentSlot>|
+         -> Option<EquipmentAssetId> {
+            effective_equipment_asset(
+                item,
+                required_slot,
+                default_item_equipment_assets,
+                equipment_asset_generation,
+                equipment_asset_names,
+                equipment_slots,
+            )
+        };
+        let armor_equipment_asset = |slot: ProtocolEquipmentSlot| -> Option<EquipmentAssetId> {
+            resolved_equipment_asset(armor_item(slot)?, Some(slot))
+        };
+        let armor_equipment_asset_name = |slot: ProtocolEquipmentSlot| -> Option<&str> {
+            equipment_asset_name(
+                equipment_asset_generation,
+                equipment_asset_names,
+                armor_equipment_asset(slot)?,
+            )
         };
         let armor_material = |slot: ProtocolEquipmentSlot| -> Option<ArmorMaterialKind> {
             let item = armor_item(slot)?;
@@ -3851,16 +3968,21 @@ impl EntityStore {
             armor_item(slot)?.component_patch.dyed_color
         };
         let armor_foil = |slot: ProtocolEquipmentSlot| -> bool {
-            armor_material(slot)
-                .and_then(|_| armor_item(slot))
-                .is_some_and(ItemStackSummary::has_foil)
+            (armor_equipment_asset(slot).is_some()
+                || (equipment_asset_names.is_empty() && armor_material(slot).is_some()))
+                && armor_item(slot).is_some_and(ItemStackSummary::has_foil)
         };
         let armor_trim = |slot: ProtocolEquipmentSlot| {
-            let material = armor_material(slot)?;
+            let asset_name = armor_equipment_asset_name(slot).or_else(|| {
+                equipment_asset_names
+                    .is_empty()
+                    .then(|| armor_material(slot).map(ArmorMaterialKind::equipment_asset_id))
+                    .flatten()
+            })?;
             armor_trim_sprite(
                 registries,
                 armor_item(slot)?,
-                material.equipment_asset_id(),
+                asset_name,
                 if slot == ProtocolEquipmentSlot::Legs {
                     ArmorTrimLayer::HumanoidLeggings
                 } else {
@@ -3869,10 +3991,22 @@ impl EntityStore {
             )
         };
         let chest_wings_equipment_asset = armor_item(ProtocolEquipmentSlot::Chest)
+            .and_then(|item| resolved_equipment_asset(item, None));
+        let legacy_chest_wings_equipment_asset = armor_item(ProtocolEquipmentSlot::Chest)
             .filter(|item| item.count > 0)
             .and_then(|item| item.item_id)
             .and_then(|item_id| wings_equipment_assets.get(&item_id));
-        let chest_wings_trim = chest_wings_equipment_asset.and_then(|equipment_asset| {
+        let chest_wings_asset_name = chest_wings_equipment_asset
+            .and_then(|asset| {
+                equipment_asset_name(equipment_asset_generation, equipment_asset_names, asset)
+            })
+            .or_else(|| {
+                equipment_asset_names
+                    .is_empty()
+                    .then(|| legacy_chest_wings_equipment_asset.map(String::as_str))
+                    .flatten()
+            });
+        let chest_wings_trim = chest_wings_asset_name.and_then(|equipment_asset| {
             armor_trim_sprite(
                 registries,
                 armor_item(ProtocolEquipmentSlot::Chest)?,
@@ -3880,7 +4014,7 @@ impl EntityStore {
                 ArmorTrimLayer::Wings,
             )
         });
-        let chest_wings_foil = chest_wings_equipment_asset
+        let chest_wings_foil = chest_wings_asset_name
             .and_then(|_| armor_item(ProtocolEquipmentSlot::Chest))
             .is_some_and(ItemStackSummary::has_foil);
         // Vanilla `SimpleEquipmentLayer` saddle users copy `EquipmentSlot.SADDLE` into render state,
@@ -3888,22 +4022,44 @@ impl EntityStore {
         // from the item equipment-slot map.
         let saddle_slot_item = || equipment_saddle_item(equipment, equipment_slots);
         let saddle_slot_contains_saddle_item = || saddle_slot_item().is_some();
-        let saddle_trim = |enabled: bool, layer| {
-            enabled.then_some(()).and_then(|()| {
-                armor_trim_sprite(registries, saddle_slot_item()?, "minecraft:saddle", layer)
-            })
+        let saddle_equipment_item =
+            || equipment_slot_item(equipment, ProtocolEquipmentSlot::Saddle);
+        let saddle_equipment_asset =
+            saddle_equipment_item().and_then(|item| resolved_equipment_asset(item, None));
+        let consumer_saddle_asset =
+            |enabled: bool| enabled.then_some(saddle_equipment_asset).flatten();
+        let saddle_trim = |asset: Option<EquipmentAssetId>, legacy_enabled: bool, layer| {
+            let asset_name = asset
+                .and_then(|asset| {
+                    equipment_asset_name(equipment_asset_generation, equipment_asset_names, asset)
+                })
+                .or_else(|| {
+                    (equipment_asset_names.is_empty() && legacy_enabled)
+                        .then_some("minecraft:saddle")
+                })?;
+            armor_trim_sprite(registries, saddle_equipment_item()?, asset_name, layer)
         };
-        let saddle_foil =
-            |enabled: bool| enabled && saddle_slot_item().is_some_and(ItemStackSummary::has_foil);
-        let pig_saddle = identity.entity_type_id == VANILLA_ENTITY_TYPE_PIG_ID
-            && saddle_slot_contains_saddle_item();
-        let pig_saddle_trim = saddle_trim(pig_saddle, ArmorTrimLayer::PigSaddle);
-        let pig_saddle_foil = saddle_foil(pig_saddle);
+        let saddle_foil = |asset: Option<EquipmentAssetId>, legacy_enabled: bool| {
+            (asset.is_some() || (equipment_asset_names.is_empty() && legacy_enabled))
+                && saddle_equipment_item().is_some_and(ItemStackSummary::has_foil)
+        };
+        let pig_saddle_type = identity.entity_type_id == VANILLA_ENTITY_TYPE_PIG_ID;
+        let pig_saddle_equipment_asset = consumer_saddle_asset(pig_saddle_type);
+        let pig_saddle = pig_saddle_type && saddle_slot_contains_saddle_item();
+        let pig_saddle_trim = saddle_trim(
+            pig_saddle_equipment_asset,
+            pig_saddle,
+            ArmorTrimLayer::PigSaddle,
+        );
+        let pig_saddle_foil = saddle_foil(pig_saddle_equipment_asset, pig_saddle);
         let equine_saddle = || -> bool {
             vanilla_entity_renderer_uses_abstract_horse_renderer(identity.entity_type_id)
                 && saddle_slot_contains_saddle_item()
         };
         let equine_saddle = equine_saddle();
+        let equine_saddle_equipment_asset = consumer_saddle_asset(
+            vanilla_entity_renderer_uses_abstract_horse_renderer(identity.entity_type_id),
+        );
         let equine_saddle_trim_layer = match identity.entity_type_id {
             VANILLA_ENTITY_TYPE_HORSE_ID => Some(ArmorTrimLayer::HorseSaddle),
             VANILLA_ENTITY_TYPE_DONKEY_ID => Some(ArmorTrimLayer::DonkeySaddle),
@@ -3912,9 +4068,9 @@ impl EntityStore {
             VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID => Some(ArmorTrimLayer::ZombieHorseSaddle),
             _ => None,
         };
-        let equine_saddle_trim =
-            equine_saddle_trim_layer.and_then(|layer| saddle_trim(equine_saddle, layer));
-        let equine_saddle_foil = saddle_foil(equine_saddle);
+        let equine_saddle_trim = equine_saddle_trim_layer
+            .and_then(|layer| saddle_trim(equine_saddle_equipment_asset, equine_saddle, layer));
+        let equine_saddle_foil = saddle_foil(equine_saddle_equipment_asset, equine_saddle);
         let equine_saddle_ridden = equine_saddle
             && mount
                 .as_ref()
@@ -3923,61 +4079,81 @@ impl EntityStore {
             && mount
                 .as_ref()
                 .is_some_and(|mount| !mount.passengers.is_empty());
-        let strider_saddle = identity.entity_type_id == VANILLA_ENTITY_TYPE_STRIDER_ID
-            && saddle_slot_contains_saddle_item();
-        let strider_saddle_trim = saddle_trim(strider_saddle, ArmorTrimLayer::StriderSaddle);
-        let strider_saddle_foil = saddle_foil(strider_saddle);
-        let camel_saddle = vanilla_camel_saddle_type(identity.entity_type_id)
-            && saddle_slot_contains_saddle_item();
+        let strider_saddle_type = identity.entity_type_id == VANILLA_ENTITY_TYPE_STRIDER_ID;
+        let strider_saddle_equipment_asset = consumer_saddle_asset(strider_saddle_type);
+        let strider_saddle = strider_saddle_type && saddle_slot_contains_saddle_item();
+        let strider_saddle_trim = saddle_trim(
+            strider_saddle_equipment_asset,
+            strider_saddle,
+            ArmorTrimLayer::StriderSaddle,
+        );
+        let strider_saddle_foil = saddle_foil(strider_saddle_equipment_asset, strider_saddle);
+        let camel_saddle_type = vanilla_camel_saddle_type(identity.entity_type_id);
+        let camel_saddle_equipment_asset = consumer_saddle_asset(camel_saddle_type);
+        let camel_saddle = camel_saddle_type && saddle_slot_contains_saddle_item();
         let camel_saddle_trim_layer =
             if identity.entity_type_id == VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID {
                 ArmorTrimLayer::CamelHuskSaddle
             } else {
                 ArmorTrimLayer::CamelSaddle
             };
-        let camel_saddle_trim = saddle_trim(camel_saddle, camel_saddle_trim_layer);
-        let camel_saddle_foil = saddle_foil(camel_saddle);
+        let camel_saddle_trim = saddle_trim(
+            camel_saddle_equipment_asset,
+            camel_saddle,
+            camel_saddle_trim_layer,
+        );
+        let camel_saddle_foil = saddle_foil(camel_saddle_equipment_asset, camel_saddle);
         let camel_saddle_ridden = camel_saddle
             && mount
                 .as_ref()
                 .is_some_and(|mount| !mount.passengers.is_empty());
-        let nautilus_saddle = is_vanilla_abstract_nautilus_type(identity.entity_type_id)
-            && saddle_slot_contains_saddle_item();
-        let nautilus_saddle_trim = saddle_trim(nautilus_saddle, ArmorTrimLayer::NautilusSaddle);
-        let nautilus_saddle_foil = saddle_foil(nautilus_saddle);
-        let body_slot_item = || -> Option<&ItemStackSummary> {
-            equipment
-                .as_ref()
-                .and_then(|equipment| {
-                    equipment
-                        .equipment
-                        .iter()
-                        .find(|update| update.slot == ProtocolEquipmentSlot::Body)
-                })
-                .map(|update| &update.item)
-                .filter(|item| item.count > 0)
-        };
+        let nautilus_saddle_type = is_vanilla_abstract_nautilus_type(identity.entity_type_id);
+        let nautilus_saddle_equipment_asset = consumer_saddle_asset(nautilus_saddle_type);
+        let nautilus_saddle = nautilus_saddle_type && saddle_slot_contains_saddle_item();
+        let nautilus_saddle_trim = saddle_trim(
+            nautilus_saddle_equipment_asset,
+            nautilus_saddle,
+            ArmorTrimLayer::NautilusSaddle,
+        );
+        let nautilus_saddle_foil = saddle_foil(nautilus_saddle_equipment_asset, nautilus_saddle);
+        let body_slot_item = || equipment_slot_item(equipment, ProtocolEquipmentSlot::Body);
+        let body_equipment_asset =
+            body_slot_item().and_then(|item| resolved_equipment_asset(item, None));
         let body_slot_item_id =
             || -> Option<i32> { body_slot_item().and_then(|item| item.item_id) };
         let body_slot_armor_dye =
             || -> Option<i32> { body_slot_item().and_then(|item| item.component_patch.dyed_color) };
         let happy_ghast_body_item = identity.entity_type_id == VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID
             && body_slot_item().is_some();
+        let happy_ghast_body_equipment_asset = (identity.entity_type_id
+            == VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID)
+            .then_some(body_equipment_asset)
+            .flatten();
         let happy_ghast_harness = if identity.entity_type_id == VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID {
             body_slot_item_id()
                 .and_then(|item_id| happy_ghast_harness_colors.get(&item_id).copied())
         } else {
             None
         };
-        let happy_ghast_harness_trim = happy_ghast_harness.and_then(|color| {
+        let happy_ghast_harness_asset_name = happy_ghast_body_equipment_asset
+            .and_then(|asset| {
+                equipment_asset_name(equipment_asset_generation, equipment_asset_names, asset)
+            })
+            .or_else(|| {
+                equipment_asset_names
+                    .is_empty()
+                    .then(|| happy_ghast_harness.map(HappyGhastHarnessColor::equipment_asset_id))
+                    .flatten()
+            });
+        let happy_ghast_harness_trim = happy_ghast_harness_asset_name.and_then(|asset_name| {
             armor_trim_sprite(
                 registries,
                 body_slot_item()?,
-                color.equipment_asset_id(),
+                asset_name,
                 ArmorTrimLayer::HappyGhastBody,
             )
         });
-        let happy_ghast_harness_foil = happy_ghast_harness
+        let happy_ghast_harness_foil = happy_ghast_harness_asset_name
             .and_then(|_| body_slot_item())
             .is_some_and(ItemStackSummary::has_foil);
         let happy_ghast_body_item_is_harness = identity.entity_type_id
@@ -4014,15 +4190,29 @@ impl EntityStore {
         } else {
             None
         };
-        let llama_body_decor_trim = llama_body_decor.and_then(|color| {
+        let llama_body_equipment_asset = (is_vanilla_llama_type(identity.entity_type_id)
+            && !vanilla_is_baby(identity.entity_type_id, &metadata.data_values))
+        .then_some(body_equipment_asset)
+        .flatten();
+        let llama_body_asset_name = llama_body_equipment_asset
+            .and_then(|asset| {
+                equipment_asset_name(equipment_asset_generation, equipment_asset_names, asset)
+            })
+            .or_else(|| {
+                equipment_asset_names
+                    .is_empty()
+                    .then(|| llama_body_decor.map(LlamaBodyDecorColor::equipment_asset_id))
+                    .flatten()
+            });
+        let llama_body_decor_trim = llama_body_asset_name.and_then(|asset_name| {
             armor_trim_sprite(
                 registries,
                 body_slot_item()?,
-                color.equipment_asset_id(),
+                asset_name,
                 ArmorTrimLayer::LlamaBody,
             )
         });
-        let llama_body_decor_foil = llama_body_decor
+        let llama_body_decor_foil = llama_body_asset_name
             .and_then(|_| body_slot_item())
             .is_some_and(ItemStackSummary::has_foil);
         let nautilus_body_armor = if is_vanilla_abstract_nautilus_type(identity.entity_type_id)
@@ -4033,15 +4223,30 @@ impl EntityStore {
         } else {
             None
         };
-        let nautilus_body_armor_trim = nautilus_body_armor.and_then(|material| {
+        let nautilus_body_equipment_asset =
+            (is_vanilla_abstract_nautilus_type(identity.entity_type_id)
+                && !vanilla_is_baby(identity.entity_type_id, &metadata.data_values))
+            .then_some(body_equipment_asset)
+            .flatten();
+        let nautilus_body_asset_name = nautilus_body_equipment_asset
+            .and_then(|asset| {
+                equipment_asset_name(equipment_asset_generation, equipment_asset_names, asset)
+            })
+            .or_else(|| {
+                equipment_asset_names
+                    .is_empty()
+                    .then(|| nautilus_body_armor.map(ArmorMaterialKind::equipment_asset_id))
+                    .flatten()
+            });
+        let nautilus_body_armor_trim = nautilus_body_asset_name.and_then(|asset_name| {
             armor_trim_sprite(
                 registries,
                 body_slot_item()?,
-                material.equipment_asset_id(),
+                asset_name,
                 ArmorTrimLayer::NautilusBody,
             )
         });
-        let nautilus_body_armor_foil = nautilus_body_armor
+        let nautilus_body_armor_foil = nautilus_body_asset_name
             .and_then(|_| body_slot_item())
             .is_some_and(ItemStackSummary::has_foil);
         let horse_body_armor = if is_vanilla_can_wear_horse_armor_type(identity.entity_type_id)
@@ -4052,16 +4257,31 @@ impl EntityStore {
         } else {
             None
         };
-        let horse_body_armor_trim = horse_body_armor.and_then(|material| {
+        let horse_body_equipment_asset =
+            (is_vanilla_can_wear_horse_armor_type(identity.entity_type_id)
+                && !vanilla_is_baby(identity.entity_type_id, &metadata.data_values))
+            .then_some(body_equipment_asset)
+            .flatten();
+        let horse_body_asset_name = horse_body_equipment_asset
+            .and_then(|asset| {
+                equipment_asset_name(equipment_asset_generation, equipment_asset_names, asset)
+            })
+            .or_else(|| {
+                equipment_asset_names
+                    .is_empty()
+                    .then(|| horse_body_armor.map(ArmorMaterialKind::equipment_asset_id))
+                    .flatten()
+            });
+        let horse_body_armor_trim = horse_body_asset_name.and_then(|asset_name| {
             armor_trim_sprite(
                 registries,
                 body_slot_item()?,
-                material.equipment_asset_id(),
+                asset_name,
                 ArmorTrimLayer::HorseBody,
             )
         });
-        let horse_body_armor_dye = horse_body_armor.and_then(|_| body_slot_armor_dye());
-        let horse_body_armor_foil = horse_body_armor
+        let horse_body_armor_dye = horse_body_asset_name.and_then(|_| body_slot_armor_dye());
+        let horse_body_armor_foil = horse_body_asset_name
             .and_then(|_| body_slot_item())
             .is_some_and(ItemStackSummary::has_foil);
         let wolf_body_armor = if identity.entity_type_id == VANILLA_ENTITY_TYPE_WOLF_ID
@@ -4071,20 +4291,34 @@ impl EntityStore {
         } else {
             None
         };
-        let wolf_body_armor_trim = wolf_body_armor.and_then(|material| {
+        let wolf_body_equipment_asset = (identity.entity_type_id == VANILLA_ENTITY_TYPE_WOLF_ID
+            && !vanilla_is_baby(identity.entity_type_id, &metadata.data_values))
+        .then_some(body_equipment_asset)
+        .flatten();
+        let wolf_body_asset_name = wolf_body_equipment_asset
+            .and_then(|asset| {
+                equipment_asset_name(equipment_asset_generation, equipment_asset_names, asset)
+            })
+            .or_else(|| {
+                equipment_asset_names
+                    .is_empty()
+                    .then(|| wolf_body_armor.map(ArmorMaterialKind::equipment_asset_id))
+                    .flatten()
+            });
+        let wolf_body_armor_trim = wolf_body_asset_name.and_then(|asset_name| {
             armor_trim_sprite(
                 registries,
                 body_slot_item()?,
-                material.equipment_asset_id(),
+                asset_name,
                 ArmorTrimLayer::WolfBody,
             )
         });
-        let wolf_body_armor_dye = wolf_body_armor.and_then(|_| body_slot_armor_dye());
-        let wolf_body_armor_crackiness = wolf_body_armor
+        let wolf_body_armor_dye = wolf_body_asset_name.and_then(|_| body_slot_armor_dye());
+        let wolf_body_armor_crackiness = wolf_body_asset_name
             .and_then(|_| body_slot_item())
             .map(|item| wolf_armor_crackiness(item, default_item_max_damage))
             .unwrap_or(WolfArmorCrackiness::None);
-        let wolf_body_armor_foil = wolf_body_armor
+        let wolf_body_armor_foil = wolf_body_asset_name
             .and_then(|_| body_slot_item())
             .is_some_and(ItemStackSummary::has_foil);
         // Vanilla `LivingEntityRenderer.isShaking` (base) is `Entity.isFullyFrozen`
@@ -5008,6 +5242,10 @@ impl EntityStore {
             parrot_party: false,
             // Vanilla `HumanoidArmorLayer`: the worn armor item in each armor slot resolved to its
             // equipment-asset material against the item registry map (threaded from the WorldStore).
+            head_equipment_asset: armor_equipment_asset(ProtocolEquipmentSlot::Head),
+            chest_equipment_asset: armor_equipment_asset(ProtocolEquipmentSlot::Chest),
+            legs_equipment_asset: armor_equipment_asset(ProtocolEquipmentSlot::Legs),
+            feet_equipment_asset: armor_equipment_asset(ProtocolEquipmentSlot::Feet),
             head_armor: armor_material(ProtocolEquipmentSlot::Head),
             chest_armor: armor_material(ProtocolEquipmentSlot::Chest),
             legs_armor: armor_material(ProtocolEquipmentSlot::Legs),
@@ -5024,16 +5262,20 @@ impl EntityStore {
             chest_armor_foil: armor_foil(ProtocolEquipmentSlot::Chest),
             legs_armor_foil: armor_foil(ProtocolEquipmentSlot::Legs),
             feet_armor_foil: armor_foil(ProtocolEquipmentSlot::Feet),
+            chest_wings_equipment_asset,
             chest_wings_trim,
             chest_wings_foil,
+            wolf_body_equipment_asset,
             wolf_body_armor,
             wolf_body_armor_trim,
             wolf_body_armor_dye,
             wolf_body_armor_crackiness,
             wolf_body_armor_foil,
+            pig_saddle_equipment_asset,
             pig_saddle,
             pig_saddle_trim,
             pig_saddle_foil,
+            equine_saddle_equipment_asset,
             equine_saddle,
             equine_saddle_trim,
             equine_saddle_foil,
@@ -5048,22 +5290,27 @@ impl EntityStore {
             equine_feeding_animation: client_animations
                 .animations
                 .equine_feeding_animation(partial_ticks),
+            equine_body_equipment_asset: horse_body_equipment_asset,
             equine_body_armor: horse_body_armor,
             equine_body_armor_trim: horse_body_armor_trim,
             equine_body_armor_dye: horse_body_armor_dye,
             equine_body_armor_foil: horse_body_armor_foil,
             strider_ridden,
+            strider_saddle_equipment_asset,
             strider_saddle,
             strider_saddle_trim,
             strider_saddle_foil,
+            camel_saddle_equipment_asset,
             camel_saddle,
             camel_saddle_trim,
             camel_saddle_foil,
             camel_saddle_ridden,
+            nautilus_saddle_equipment_asset,
             nautilus_saddle,
             nautilus_saddle_trim,
             nautilus_saddle_foil,
             happy_ghast_body_item,
+            happy_ghast_body_equipment_asset,
             happy_ghast_harness,
             happy_ghast_harness_trim,
             happy_ghast_harness_foil,
@@ -5099,9 +5346,11 @@ impl EntityStore {
             ender_dragon_animation: client_animations
                 .animations
                 .ender_dragon_animation_source(partial_ticks),
+            llama_body_equipment_asset,
             llama_body_decor,
             llama_body_decor_trim,
             llama_body_decor_foil,
+            nautilus_body_equipment_asset,
             nautilus_body_armor,
             nautilus_body_armor_trim,
             nautilus_body_armor_foil,

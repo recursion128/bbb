@@ -591,6 +591,278 @@ fn entity_model_sources_apply_equippable_asset_and_slot_patches_to_worn_armor() 
 }
 
 #[test]
+fn entity_model_sources_project_effective_equipment_asset_ids_and_exact_trim_names() {
+    use std::collections::BTreeMap;
+
+    const DEFAULT_HEAD_ITEM: i32 = 820;
+    const PATCHED_ITEM: i32 = 821;
+    const SADDLE_ITEM: i32 = 822;
+    const BODY_ITEM: i32 = 823;
+
+    fn equippable(slot_id: i32, asset_id: Option<&str>) -> EquippableSummary {
+        EquippableSummary {
+            slot_id,
+            equip_sound: SoundEventSummary {
+                registry_id: Some(0),
+                sound_id: None,
+                fixed_range_bits: None,
+            },
+            asset_id: asset_id.map(str::to_string),
+            camera_overlay: None,
+            allowed_entities: None,
+            dispensable: true,
+            swappable: true,
+            damage_on_hurt: true,
+            equip_on_interact: false,
+            can_be_sheared: false,
+            shearing_sound: SoundEventSummary {
+                registry_id: Some(1),
+                sound_id: None,
+                fixed_range_bits: None,
+            },
+        }
+    }
+
+    let mut store = WorldStore::new();
+    store.set_default_item_equipment_assets(
+        7,
+        vec![
+            "minecraft:diamond".to_string(),
+            "example:custom".to_string(),
+            "minecraft:saddle".to_string(),
+        ],
+        BTreeMap::from([
+            (DEFAULT_HEAD_ITEM, EquipmentAssetId::new(7, 0)),
+            (SADDLE_ITEM, EquipmentAssetId::new(7, 2)),
+            (BODY_ITEM, EquipmentAssetId::new(7, 1)),
+        ]),
+    );
+    store.set_default_item_equipment_slots(BTreeMap::from([
+        (DEFAULT_HEAD_ITEM, crate::ItemEquipmentSlot::Head),
+        (SADDLE_ITEM, crate::ItemEquipmentSlot::Saddle),
+        (BODY_ITEM, crate::ItemEquipmentSlot::Body),
+    ]));
+    // The compatibility material is deliberately different: compact identity
+    // and trim selection must use the exact equipment asset table.
+    store.set_item_armor_materials(BTreeMap::from([(
+        DEFAULT_HEAD_ITEM,
+        ArmorMaterialKind::Iron,
+    )]));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        54,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        55,
+        VANILLA_ENTITY_TYPE_PIG_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        56,
+        VANILLA_ENTITY_TYPE_WOLF_ID,
+    ));
+
+    let direct_trim = DataComponentPatchSummary {
+        armor_trim_material_direct: Some(Box::new(TrimMaterialSummary {
+            asset_name: "ruby".to_string(),
+            override_armor_assets: BTreeMap::from([(
+                "example:custom".to_string(),
+                "ruby_custom".to_string(),
+            )]),
+            description: String::new(),
+            description_styled: None,
+            description_nbt: None,
+        })),
+        armor_trim_pattern_direct: Some(Box::new(TrimPatternSummary {
+            asset_id: "example:spiral".to_string(),
+            description: String::new(),
+            description_styled: None,
+            description_nbt: None,
+            decal: true,
+        })),
+        ..Default::default()
+    };
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 54,
+        slots: vec![
+            EquipmentSlotUpdate {
+                slot: EquipmentSlot::Head,
+                item: ItemStackSummary {
+                    item_id: Some(PATCHED_ITEM),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary {
+                        added_type_ids: vec![
+                            bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
+                        ],
+                        equippable: Some(equippable(4, Some("example:custom"))),
+                        enchantment_glint_override: Some(true),
+                        dyed_color: Some(0x12_34_56),
+                        ..direct_trim
+                    },
+                },
+            },
+            EquipmentSlotUpdate {
+                slot: EquipmentSlot::Chest,
+                item: ItemStackSummary {
+                    item_id: Some(PATCHED_ITEM),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary {
+                        added_type_ids: vec![
+                            bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
+                        ],
+                        // Wings/SimpleEquipmentLayer do not require this
+                        // component slot to match their source slot.
+                        equippable: Some(equippable(4, Some("example:custom"))),
+                        ..Default::default()
+                    },
+                },
+            },
+        ],
+    }));
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 55,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Saddle,
+            item: ItemStackSummary {
+                item_id: Some(SADDLE_ITEM),
+                count: 1,
+                component_patch: Default::default(),
+            },
+        }],
+    }));
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 56,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Body,
+            item: ItemStackSummary {
+                item_id: Some(BODY_ITEM),
+                count: 1,
+                component_patch: Default::default(),
+            },
+        }],
+    }));
+
+    let zombie = store
+        .entity_model_source_at_partial_tick(54, 1.0)
+        .expect("zombie source");
+    assert_eq!(
+        zombie.head_equipment_asset,
+        Some(EquipmentAssetId::new(7, 1))
+    );
+    assert_eq!(
+        zombie.chest_wings_equipment_asset,
+        Some(EquipmentAssetId::new(7, 1))
+    );
+    assert_eq!(zombie.head_armor, None);
+    assert_eq!(zombie.head_armor_dye, Some(0x12_34_56));
+    assert!(zombie.head_armor_foil);
+    assert_eq!(
+        zombie.head_armor_trim,
+        Some(ArmorTrimSprite {
+            sprite_id: "example:trims/entity/humanoid/spiral_ruby_custom".to_string(),
+            decal: true,
+        })
+    );
+    let pig = store
+        .entity_model_source_at_partial_tick(55, 1.0)
+        .expect("pig source");
+    assert_eq!(
+        pig.pig_saddle_equipment_asset,
+        Some(EquipmentAssetId::new(7, 2))
+    );
+    let wolf = store
+        .entity_model_source_at_partial_tick(56, 1.0)
+        .expect("wolf source");
+    assert_eq!(
+        wolf.wolf_body_equipment_asset,
+        Some(EquipmentAssetId::new(7, 1))
+    );
+
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 54,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Head,
+            item: ItemStackSummary {
+                item_id: Some(DEFAULT_HEAD_ITEM),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    removed_type_ids: vec![
+                        bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
+                    ],
+                    enchantment_glint_override: Some(true),
+                    ..Default::default()
+                },
+            },
+        }],
+    }));
+    let removed = store
+        .entity_model_source_at_partial_tick(54, 1.0)
+        .expect("zombie source after removal");
+    assert_eq!(removed.head_equipment_asset, None);
+    assert_eq!(removed.head_armor_trim, None);
+    assert!(!removed.head_armor_foil);
+
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 54,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Head,
+            item: ItemStackSummary {
+                item_id: Some(DEFAULT_HEAD_ITEM),
+                count: 1,
+                component_patch: Default::default(),
+            },
+        }],
+    }));
+    let defaulted = store
+        .entity_model_source_at_partial_tick(54, 1.0)
+        .expect("zombie source with prototype default");
+    assert_eq!(
+        defaulted.head_equipment_asset,
+        Some(EquipmentAssetId::new(7, 0))
+    );
+    assert_eq!(
+        defaulted.head_armor,
+        Some(ArmorMaterialKind::Iron),
+        "legacy material state remains intact until the renderer consumer migrates"
+    );
+
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 54,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Head,
+            item: ItemStackSummary {
+                item_id: Some(PATCHED_ITEM),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    equippable: Some(equippable(3, Some("example:custom"))),
+                    ..Default::default()
+                },
+            },
+        }],
+    }));
+    assert_eq!(
+        store
+            .entity_model_source_at_partial_tick(54, 1.0)
+            .unwrap()
+            .head_equipment_asset,
+        None,
+        "humanoid armor requires the effective Equippable slot to match"
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 56,
+        values: vec![baby_data(VANILLA_ENTITY_TYPE_WOLF_ID, true)],
+    }));
+    assert_eq!(
+        store
+            .entity_model_source_at_partial_tick(56, 1.0)
+            .unwrap()
+            .wolf_body_equipment_asset,
+        None,
+        "the existing adult-only wolf armor model gate remains authoritative"
+    );
+}
+
+#[test]
 fn entity_model_sources_project_named_and_direct_armor_trim_sprites() {
     use std::collections::BTreeMap;
 

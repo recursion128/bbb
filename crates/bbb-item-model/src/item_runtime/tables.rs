@@ -425,7 +425,7 @@ impl NativeItemRuntime {
     pub fn equipment_asset_id(&self, asset_id: &str) -> Option<EntityEquipmentAssetId> {
         self.equipment_assets
             .asset_index(asset_id)
-            .map(EntityEquipmentAssetId)
+            .map(|index| EntityEquipmentAssetId::new(self.resource_generation, index))
     }
 
     /// Normalized asset names in the same order as compact identities.

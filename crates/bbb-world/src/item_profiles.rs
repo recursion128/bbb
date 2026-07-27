@@ -75,6 +75,17 @@ pub struct ItemProfiles {
     /// `can_be_sheared=true`.
     #[serde(default)]
     pub(crate) default_shearable_equipment_item_ids: PublicationShared<BTreeSet<i32>>,
+    /// Generation-local compact equipment asset ids for prototype
+    /// `Equippable.asset_id` values.
+    #[serde(default)]
+    pub(crate) default_item_equipment_assets:
+        PublicationShared<BTreeMap<i32, crate::entities::EquipmentAssetId>>,
+    #[serde(default)]
+    pub(crate) equipment_asset_generation: u64,
+    /// Normalized equipment asset names indexed by
+    /// [`EquipmentAssetId`](crate::entities::EquipmentAssetId).
+    #[serde(default)]
+    pub(crate) equipment_asset_names: PublicationShared<Vec<String>>,
     /// Item protocol id → humanoid armor material (`HumanoidArmorLayer` equipment asset), for
     /// projecting worn armor onto the entity render source.
     #[serde(default)]
@@ -619,6 +630,26 @@ impl ItemProfiles {
 
     pub(crate) fn set_default_shearable_equipment_item_ids(&mut self, item_ids: BTreeSet<i32>) {
         self.default_shearable_equipment_item_ids = filter_item_ids(item_ids).into();
+    }
+
+    pub(crate) fn set_default_item_equipment_assets(
+        &mut self,
+        generation: u64,
+        asset_names: Vec<String>,
+        item_assets: BTreeMap<i32, crate::entities::EquipmentAssetId>,
+    ) {
+        let asset_count = asset_names.len();
+        self.default_item_equipment_assets = item_assets
+            .into_iter()
+            .filter(|(item_id, asset_id)| {
+                *item_id >= 0
+                    && asset_id.generation == generation
+                    && usize::try_from(asset_id.index).is_ok_and(|id| id < asset_count)
+            })
+            .collect::<BTreeMap<_, _>>()
+            .into();
+        self.equipment_asset_generation = generation;
+        self.equipment_asset_names = asset_names.into();
     }
 
     pub(crate) fn set_item_armor_materials(
