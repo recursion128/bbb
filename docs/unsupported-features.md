@@ -73,7 +73,8 @@ Owner: `bbb-protocol`
 - Use `docs/packet-coverage-26.1.json` as the complete 256-entry inventory. Every
   remaining `partial` cell must carry implementation and semantic-test
   evidence through the checked-in sparse overrides; catalog presence, a
-  generic dispatch arm, or an ungated state query alone is not completion.
+  generic dispatch arm, an ungated state query, or one representative action
+  from a multi-action serverbound family is not completion.
 - Use `docs/item-component-coverage-26.1.json` as the complete 110-entry
   ItemStack component semantic inventory. Each `partial` cell must close
   through its sparse evidence override; consuming the right wire length or

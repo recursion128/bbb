@@ -3061,7 +3061,7 @@ mod tests {
     }
 
     #[test]
-    fn play_serverbound_client_command_keeps_ui_and_response_lifecycles_open() {
+    fn play_serverbound_client_command_closes_all_action_lifecycles() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -3070,22 +3070,18 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "SERVERBOUND_CLIENT_COMMAND"
             })
             .expect("play serverbound client command coverage row");
-        let complete: BTreeSet<_> = entry
+        let incomplete: BTreeSet<_> = entry
             .coverage
             .iter()
             .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Complete).then_some(dimension.as_str())
+                (cell.status != PacketCoverageStatus::Complete).then_some(dimension.as_str())
             })
             .collect();
 
-        assert_eq!(complete, BTreeSet::from(["encoder"]));
-        for dimension in ["ack_response", "command_surface", "state_guard", "tests"] {
-            assert_eq!(
-                entry.coverage[dimension].status,
-                PacketCoverageStatus::Partial,
-                "{dimension}"
-            );
-        }
+        assert!(
+            incomplete.is_empty(),
+            "incomplete client-command coverage: {incomplete:?}"
+        );
     }
 
     #[test]
