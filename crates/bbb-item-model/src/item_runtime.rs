@@ -12,15 +12,16 @@ use bbb_pack::{
     BlockModelDisplayTransform, BlockModelDisplayTransforms, ClientItemProperties,
     EquipmentAssetCatalog, EquipmentLayerType, FreezeImmuneWearableCatalog, FurnaceFuelCatalog,
     ItemAttackRange as PackItemAttackRange, ItemConsumable as PackItemConsumable, ItemCuboidModel,
-    ItemCuboidModelCatalog, ItemCuboidModelSet, ItemCuboidTextureImageCatalog,
+    ItemCuboidModelCatalog, ItemCuboidTextureImageCatalog,
     ItemDefaultAttributeModifier as PackItemDefaultAttributeModifier,
     ItemEquipmentSlot as PackItemEquipmentSlot, ItemFoodProperties as PackItemFoodProperties,
     ItemKineticWeaponDefaults as PackItemKineticWeaponDefaults,
     ItemMiningProfile as PackItemMiningProfile, ItemMiningRule as PackItemMiningRule,
     ItemModelCatalog, ItemModelDefinition, ItemMountBodyArmorKind as PackItemMountBodyArmorKind,
-    ItemRegistryCatalog, ItemTintSource, ItemUseAnimation as PackItemUseAnimation,
-    ItemUseEffects as PackItemUseEffects, JukeboxSongRegistry, LanguageCatalog, PackResourceStack,
-    PackRoots, ResourceLocation, SpriteImage, TagCatalog, TerrainColorMaps, DEFAULT_LANGUAGE_CODE,
+    ItemRegistryCatalog, ItemSpecialModel, ItemTintSource,
+    ItemUseAnimation as PackItemUseAnimation, ItemUseEffects as PackItemUseEffects,
+    JukeboxSongRegistry, LanguageCatalog, PackResourceStack, PackRoots, ResourceLocation,
+    SpriteImage, TagCatalog, TerrainColorMaps, DEFAULT_LANGUAGE_CODE,
 };
 use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
@@ -76,9 +77,8 @@ mod item_membership_catalog;
 mod profile_skin;
 
 use icon_model::{
-    contains_runtime_condition, default_item_name_translation_key,
-    item_icon_model_ref_for_definition, CompassTarget, CrossbowChargeType, IconResolveContext,
-    ItemIconModel, ItemIconModelRef, TimeSource,
+    default_item_name_translation_key, item_icon_model_ref_for_definition, CompassTarget,
+    CrossbowChargeType, IconResolveContext, ItemIconModel, ResolvedItemIconModelLayer, TimeSource,
 };
 use profile_skin::ProfileSkinCache;
 pub use profile_skin::{default_player_skin_for_profile, default_player_skin_for_profile_id};
@@ -295,6 +295,50 @@ fn load_local_dynamic_player_texture(
 #[derive(Debug, Clone, PartialEq)]
 pub struct ItemAtlasIcon {
     pub layers: Vec<ItemAtlasIconLayer>,
+}
+
+/// One composed `Transformation` carried by a baked item-model leaf.
+///
+/// Columns use the same column-vector convention as JOML and `glam::Mat4`.
+/// Keeping the value backend-neutral lets native compose it with display and
+/// placement transforms without giving the item runtime any renderer handles.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ItemModelLeafTransformation {
+    pub columns: [[f32; 4]; 4],
+}
+
+impl ItemModelLeafTransformation {
+    pub const IDENTITY: Self = Self {
+        columns: [
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ],
+    };
+}
+
+/// Ordered leaf selected from one client-item model tree.
+///
+/// `Ordinary` retains the resolved sprite layers for the existing generated
+/// geometry path. `Special` deliberately carries no base-model sprite:
+/// Vanilla uses that model only for render properties and submits the special
+/// renderer's geometry instead.
+#[derive(Debug, Clone, PartialEq)]
+pub enum ResolvedItemModelLayer {
+    Ordinary {
+        icon: ItemAtlasIcon,
+        transformation: ItemModelLeafTransformation,
+    },
+    Special {
+        model: ItemSpecialModel,
+        transformation: ItemModelLeafTransformation,
+    },
+}
+
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct ResolvedItemModel {
+    pub layers: Vec<ResolvedItemModelLayer>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -811,20 +855,12 @@ impl NativeItemRuntime {
             }
             texture_ids.extend(models.texture_ids());
             let model_tints = model_tints_for_definition(&definition.model);
-            let icon_model = if contains_runtime_condition(&definition.model) {
-                item_icon_model_ref_for_definition(
-                    &definition.model,
-                    &cuboid_models,
-                    &model_tints,
-                    colormaps.as_ref(),
-                )
-            } else {
-                ItemIconModelRef::Layers(item_icon_texture_layers(
-                    &models,
-                    &model_tints,
-                    colormaps.as_ref(),
-                ))
-            };
+            let icon_model = item_icon_model_ref_for_definition(
+                &definition.model,
+                &cuboid_models,
+                &model_tints,
+                colormaps.as_ref(),
+            );
             if !icon_model.is_empty() {
                 item_icon_model_refs.insert(item_id.clone(), icon_model);
             }

@@ -32,8 +32,10 @@ pub use crate::item_cuboid_models::{
 };
 pub use crate::item_models::{
     ClientItemDefinition, ClientItemProperties, ItemModelCatalog, ItemModelDefinition,
-    ItemModelProperty, ItemModelPropertyKind, ItemModelTransformation, ItemSpecialModel,
-    ItemTintSource, RangeDispatchEntry, SelectCase,
+    ItemModelProperty, ItemModelPropertyKind, ItemModelTransformation, ItemSpecialBedPart,
+    ItemSpecialChestType, ItemSpecialEndCubeEffect, ItemSpecialHangingAttachment, ItemSpecialModel,
+    ItemSpecialSkullKind, ItemSpecialStandingAttachment, ItemTintSource, RangeDispatchEntry,
+    SelectCase,
 };
 pub use crate::item_registry::{
     ItemAttackRange, ItemConsumable, ItemDefaultAttributeModifier, ItemEquipmentSlot,

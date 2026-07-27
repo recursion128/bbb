@@ -2,7 +2,8 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use bbb_pack::{
     ItemCuboidModelCatalog, ItemModelDefinition, ItemModelProperty, ItemModelPropertyKind,
-    ItemTintSource, JukeboxSongRegistry, SelectCase, TagCatalog, TerrainColorMaps,
+    ItemModelTransformation, ItemSpecialModel, ItemTintSource, JukeboxSongRegistry, SelectCase,
+    TagCatalog, TerrainColorMaps,
 };
 use bbb_protocol::attribute_modifier_types::{
     attribute_modifier_display_id, attribute_modifier_operation_id,
@@ -29,12 +30,13 @@ use chrono::{
     Datelike, Duration, FixedOffset, Local, NaiveDate, Offset, TimeZone, Timelike, Utc, Weekday,
 };
 use chrono_tz::{OffsetName, Tz};
+use glam::{Mat4, Quat, Vec3};
 use serde_json::Value;
 
 use super::{
     first_texture_ref, generated_layer_texture_refs, ItemIconTextureLayer, ItemIconTextureRef,
-    ItemModelCompassContext, ItemModelKeybindContext, ItemModelTimeContext, ItemModelUseContext,
-    ItemTextureState,
+    ItemModelCompassContext, ItemModelKeybindContext, ItemModelLeafTransformation,
+    ItemModelTimeContext, ItemModelUseContext, ItemTextureState,
 };
 use bbb_protocol::potion_types::vanilla_potion;
 
@@ -42,6 +44,14 @@ use bbb_protocol::potion_types::vanilla_potion;
 pub(super) enum ItemIconModelRef {
     Empty,
     Layers(Vec<ItemIconTextureRef>),
+    Special {
+        base: Box<ItemIconModelRef>,
+        model: ItemSpecialModel,
+    },
+    Transformed {
+        transformation: ItemModelLeafTransformation,
+        model: Box<ItemIconModelRef>,
+    },
     BundleSelectedItem,
     Condition {
         property: ItemModelProperty,
@@ -1293,6 +1303,8 @@ impl ItemIconModelRef {
         match self {
             Self::Empty => true,
             Self::Layers(layers) => layers.is_empty(),
+            Self::Special { .. } => false,
+            Self::Transformed { model, .. } => model.is_empty(),
             Self::BundleSelectedItem => false,
             Self::Condition {
                 on_true, on_false, ..
@@ -1325,6 +1337,17 @@ impl ItemIconModelRef {
                     })
                     .collect(),
             ),
+            Self::Special { base, model } => ItemIconModel::Special {
+                base: Box::new(base.into_indexed(textures)),
+                model,
+            },
+            Self::Transformed {
+                transformation,
+                model,
+            } => ItemIconModel::Transformed {
+                transformation,
+                model: Box::new(model.into_indexed(textures)),
+            },
             Self::Condition {
                 property,
                 on_true,
@@ -1374,6 +1397,14 @@ impl ItemIconModelRef {
 pub(super) enum ItemIconModel {
     Empty,
     Layers(Vec<ItemIconTextureLayer>),
+    Special {
+        base: Box<ItemIconModel>,
+        model: ItemSpecialModel,
+    },
+    Transformed {
+        transformation: ItemModelLeafTransformation,
+        model: Box<ItemIconModel>,
+    },
     BundleSelectedItem,
     Condition {
         property: ItemModelProperty,
@@ -1392,6 +1423,19 @@ pub(super) enum ItemIconModel {
         fallback: Box<ItemIconModel>,
     },
     Composite(Vec<ItemIconModel>),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(super) enum ResolvedItemIconModelLayer {
+    Ordinary {
+        layers: Vec<ItemIconTextureLayer>,
+        transformation: ItemModelLeafTransformation,
+    },
+    Special {
+        base_layers: Vec<ItemIconTextureLayer>,
+        model: ItemSpecialModel,
+        transformation: ItemModelLeafTransformation,
+    },
 }
 
 /// The per-stack inputs the GUI icon resolver projects from. Constant across one
@@ -2389,6 +2433,110 @@ fn lodestone_target_for_patch(
 }
 
 impl ItemIconModel {
+    fn selected_branch(&self, ctx: IconResolveContext<'_>) -> Option<&ItemIconModel> {
+        match self {
+            Self::Condition {
+                property,
+                on_true,
+                on_false,
+            } => Some(match property.kind() {
+                ItemModelPropertyKind::Broken
+                    if item_stack_next_damage_will_break(
+                        ctx.component_patch,
+                        ctx.default_max_damage,
+                    ) =>
+                {
+                    on_true
+                }
+                ItemModelPropertyKind::Damaged
+                    if item_stack_is_damaged(ctx.component_patch, ctx.default_max_damage) =>
+                {
+                    on_true
+                }
+                ItemModelPropertyKind::HasComponent
+                    if item_stack_has_component(
+                        property,
+                        ctx.component_patch,
+                        ctx.default_component_type_ids,
+                        ctx.default_max_damage,
+                        ctx.default_item_model_id,
+                    ) =>
+                {
+                    on_true
+                }
+                ItemModelPropertyKind::BundleHasSelectedItem
+                    if item_stack_has_selected_bundle_item(
+                        ctx.component_patch,
+                        ctx.bundle_selected_item_index,
+                    ) =>
+                {
+                    on_true
+                }
+                ItemModelPropertyKind::CustomModelData
+                    if item_stack_custom_model_data_flag(property, ctx.component_patch) =>
+                {
+                    on_true
+                }
+                ItemModelPropertyKind::Carried if ctx.carried_item => on_true,
+                ItemModelPropertyKind::Component
+                    if item_stack_matches_component_predicate(property, ctx) =>
+                {
+                    on_true
+                }
+                ItemModelPropertyKind::Selected if ctx.selected_item => on_true,
+                ItemModelPropertyKind::UsingItem if ctx.using_item => on_true,
+                ItemModelPropertyKind::ViewEntity if ctx.view_entity => on_true,
+                ItemModelPropertyKind::ExtendedView
+                    if ctx.display_context == "gui" && ctx.shift_down =>
+                {
+                    on_true
+                }
+                ItemModelPropertyKind::KeybindDown
+                    if item_stack_keybind_condition_is_down(property, &ctx) =>
+                {
+                    on_true
+                }
+                ItemModelPropertyKind::FishingRodCast if ctx.fishing_rod_cast => on_true,
+                _ => on_false,
+            }),
+            Self::RangeDispatch {
+                property,
+                scale,
+                entries,
+                fallback,
+            } => {
+                let value = property.value(ctx) * scale;
+                Some(if value.is_nan() {
+                    fallback
+                } else {
+                    match last_range_entry_at_or_below(entries, value) {
+                        Some(index) => &entries[index].1,
+                        None => fallback,
+                    }
+                })
+            }
+            Self::Select {
+                property,
+                cases,
+                fallback,
+            } => {
+                let selected_when = select_property_value(property, ctx);
+                Some(
+                    cases
+                        .iter()
+                        .find(|(when, _)| {
+                            selected_when.as_ref().is_some_and(|value| {
+                                when.iter().any(|candidate| candidate == value)
+                            })
+                        })
+                        .map(|(_, model)| model.as_ref())
+                        .unwrap_or(fallback),
+                )
+            }
+            _ => None,
+        }
+    }
+
     pub(super) fn icon_layers_with_bundle_resolver(
         &self,
         ctx: IconResolveContext<'_>,
@@ -2398,111 +2546,74 @@ impl ItemIconModel {
             Self::Empty => Vec::new(),
             Self::BundleSelectedItem => resolve_bundle_selected_item(),
             Self::Layers(layers) => layers.clone(),
-            Self::Condition {
-                property,
-                on_true,
-                on_false,
-            } => {
-                let branch = match property.kind() {
-                    ItemModelPropertyKind::Broken
-                        if item_stack_next_damage_will_break(
-                            ctx.component_patch,
-                            ctx.default_max_damage,
-                        ) =>
-                    {
-                        on_true
-                    }
-                    ItemModelPropertyKind::Damaged
-                        if item_stack_is_damaged(ctx.component_patch, ctx.default_max_damage) =>
-                    {
-                        on_true
-                    }
-                    ItemModelPropertyKind::HasComponent
-                        if item_stack_has_component(
-                            property,
-                            ctx.component_patch,
-                            ctx.default_component_type_ids,
-                            ctx.default_max_damage,
-                            ctx.default_item_model_id,
-                        ) =>
-                    {
-                        on_true
-                    }
-                    ItemModelPropertyKind::BundleHasSelectedItem
-                        if item_stack_has_selected_bundle_item(
-                            ctx.component_patch,
-                            ctx.bundle_selected_item_index,
-                        ) =>
-                    {
-                        on_true
-                    }
-                    ItemModelPropertyKind::CustomModelData
-                        if item_stack_custom_model_data_flag(property, ctx.component_patch) =>
-                    {
-                        on_true
-                    }
-                    ItemModelPropertyKind::Carried if ctx.carried_item => on_true,
-                    ItemModelPropertyKind::Component
-                        if item_stack_matches_component_predicate(property, ctx) =>
-                    {
-                        on_true
-                    }
-                    ItemModelPropertyKind::Selected if ctx.selected_item => on_true,
-                    ItemModelPropertyKind::UsingItem if ctx.using_item => on_true,
-                    ItemModelPropertyKind::ViewEntity if ctx.view_entity => on_true,
-                    ItemModelPropertyKind::ExtendedView
-                        if ctx.display_context == "gui" && ctx.shift_down =>
-                    {
-                        on_true
-                    }
-                    ItemModelPropertyKind::KeybindDown
-                        if item_stack_keybind_condition_is_down(property, &ctx) =>
-                    {
-                        on_true
-                    }
-                    ItemModelPropertyKind::FishingRodCast if ctx.fishing_rod_cast => on_true,
-                    _ => on_false,
-                };
-                branch.icon_layers_with_bundle_resolver(ctx, resolve_bundle_selected_item)
+            Self::Special { base, .. } => {
+                base.icon_layers_with_bundle_resolver(ctx, resolve_bundle_selected_item)
             }
-            Self::RangeDispatch {
-                property,
-                scale,
-                entries,
-                fallback,
-            } => {
-                let value = property.value(ctx) * scale;
-                let selected = if value.is_nan() {
-                    fallback.as_ref()
-                } else {
-                    match last_range_entry_at_or_below(entries, value) {
-                        Some(index) => entries[index].1.as_ref(),
-                        None => fallback.as_ref(),
-                    }
-                };
-                selected.icon_layers_with_bundle_resolver(ctx, resolve_bundle_selected_item)
+            Self::Transformed { model, .. } => {
+                model.icon_layers_with_bundle_resolver(ctx, resolve_bundle_selected_item)
             }
-            Self::Select {
-                property,
-                cases,
-                fallback,
-            } => {
-                let selected_when = select_property_value(property, ctx);
-                let selected = cases
-                    .iter()
-                    .find(|(when, _)| {
-                        selected_when
-                            .as_ref()
-                            .is_some_and(|value| when.iter().any(|candidate| candidate == value))
-                    })
-                    .map(|(_, model)| model.as_ref())
-                    .unwrap_or(fallback.as_ref());
-                selected.icon_layers_with_bundle_resolver(ctx, resolve_bundle_selected_item)
-            }
+            Self::Condition { .. } | Self::RangeDispatch { .. } | Self::Select { .. } => self
+                .selected_branch(ctx)
+                .expect("branch model must select a child")
+                .icon_layers_with_bundle_resolver(ctx, resolve_bundle_selected_item),
             Self::Composite(models) => models
                 .iter()
                 .flat_map(|model| {
                     model.icon_layers_with_bundle_resolver(ctx, resolve_bundle_selected_item)
+                })
+                .collect(),
+        }
+    }
+
+    pub(super) fn resolved_layers_with_bundle_resolver(
+        &self,
+        ctx: IconResolveContext<'_>,
+        inherited: Mat4,
+        resolve_bundle_selected_item: &mut impl FnMut() -> Vec<ResolvedItemIconModelLayer>,
+    ) -> Vec<ResolvedItemIconModelLayer> {
+        match self {
+            Self::Empty => Vec::new(),
+            Self::BundleSelectedItem => resolve_bundle_selected_item(),
+            Self::Layers(layers) => vec![ResolvedItemIconModelLayer::Ordinary {
+                layers: layers.clone(),
+                transformation: ItemModelLeafTransformation {
+                    columns: inherited.to_cols_array_2d(),
+                },
+            }],
+            Self::Special { base, model } => {
+                let mut no_bundle_resolver = Vec::new;
+                vec![ResolvedItemIconModelLayer::Special {
+                    base_layers: base
+                        .icon_layers_with_bundle_resolver(ctx, &mut no_bundle_resolver),
+                    model: model.clone(),
+                    transformation: ItemModelLeafTransformation {
+                        columns: inherited.to_cols_array_2d(),
+                    },
+                }]
+            }
+            Self::Transformed {
+                transformation,
+                model,
+            } => {
+                let local = Mat4::from_cols_array_2d(&transformation.columns);
+                model.resolved_layers_with_bundle_resolver(
+                    ctx,
+                    inherited * local,
+                    resolve_bundle_selected_item,
+                )
+            }
+            Self::Condition { .. } | Self::RangeDispatch { .. } | Self::Select { .. } => self
+                .selected_branch(ctx)
+                .expect("branch model must select a child")
+                .resolved_layers_with_bundle_resolver(ctx, inherited, resolve_bundle_selected_item),
+            Self::Composite(models) => models
+                .iter()
+                .flat_map(|model| {
+                    model.resolved_layers_with_bundle_resolver(
+                        ctx,
+                        inherited,
+                        resolve_bundle_selected_item,
+                    )
                 })
                 .collect(),
         }
@@ -2518,55 +2629,6 @@ fn item_stack_keybind_condition_is_down(
         .get("keybind")
         .and_then(Value::as_str)
         .is_some_and(|keybind| ctx.keybind_context.keybind_down(keybind))
-}
-
-pub(super) fn contains_runtime_condition(model: &ItemModelDefinition) -> bool {
-    match model {
-        ItemModelDefinition::Empty
-        | ItemModelDefinition::Model { .. }
-        | ItemModelDefinition::Special { .. } => false,
-        ItemModelDefinition::BundleSelectedItem => true,
-        ItemModelDefinition::Condition {
-            property,
-            on_true,
-            on_false,
-            ..
-        } => {
-            condition_property_is_runtime_resolved(property)
-                || contains_runtime_condition(on_true)
-                || contains_runtime_condition(on_false)
-        }
-        ItemModelDefinition::RangeDispatch {
-            property,
-            entries,
-            fallback,
-            ..
-        } => {
-            let mut ignored_wobble_state = 0;
-            range_dispatch_property_for(property, &mut ignored_wobble_state).is_some()
-                || entries
-                    .iter()
-                    .any(|entry| contains_runtime_condition(&entry.model))
-                || fallback.as_deref().is_some_and(contains_runtime_condition)
-        }
-        ItemModelDefinition::Select {
-            property,
-            cases,
-            fallback,
-            ..
-        } => {
-            select_property_for(property).is_some()
-                || selected_icon_select_model(property, cases, fallback.as_deref())
-                    .is_some_and(contains_runtime_condition)
-                || cases
-                    .iter()
-                    .any(|case| contains_runtime_condition(&case.model))
-                || fallback.as_deref().is_some_and(contains_runtime_condition)
-        }
-        ItemModelDefinition::Composite { models, .. } => {
-            models.iter().any(contains_runtime_condition)
-        }
-    }
 }
 
 fn condition_property_is_runtime_resolved(property: &ItemModelProperty) -> bool {
@@ -2611,15 +2673,21 @@ fn item_icon_model_ref_for_definition_with_state(
     colormaps: Option<&TerrainColorMaps>,
     next_wobble_state: &mut u64,
 ) -> ItemIconModelRef {
-    match model {
+    let resolved = match model {
         ItemModelDefinition::Empty => ItemIconModelRef::Empty,
         ItemModelDefinition::BundleSelectedItem => ItemIconModelRef::BundleSelectedItem,
         ItemModelDefinition::Model { model, .. } => {
             item_icon_model_ref_for_model_id(model, cuboid_models, model_tints, colormaps)
         }
-        ItemModelDefinition::Special { base, .. } => {
-            item_icon_model_ref_for_model_id(base, cuboid_models, model_tints, colormaps)
-        }
+        ItemModelDefinition::Special { base, special, .. } => ItemIconModelRef::Special {
+            base: Box::new(item_icon_model_ref_for_model_id(
+                base,
+                cuboid_models,
+                model_tints,
+                colormaps,
+            )),
+            model: special.clone(),
+        },
         ItemModelDefinition::Condition {
             property,
             on_true,
@@ -2785,6 +2853,97 @@ fn item_icon_model_ref_for_definition_with_state(
                 })
                 .collect(),
         ),
+    };
+    let transformation = match model {
+        ItemModelDefinition::Model { transformation, .. }
+        | ItemModelDefinition::Condition { transformation, .. }
+        | ItemModelDefinition::RangeDispatch { transformation, .. }
+        | ItemModelDefinition::Select { transformation, .. }
+        | ItemModelDefinition::Composite { transformation, .. }
+        | ItemModelDefinition::Special { transformation, .. } => transformation.as_ref(),
+        ItemModelDefinition::Empty | ItemModelDefinition::BundleSelectedItem => None,
+    };
+    resolved.with_transformation(transformation)
+}
+
+impl ItemIconModelRef {
+    fn with_transformation(
+        self,
+        transformation: Option<&ItemModelTransformation>,
+    ) -> ItemIconModelRef {
+        let Some(transformation) = transformation else {
+            return self;
+        };
+        ItemIconModelRef::Transformed {
+            transformation: item_model_leaf_transformation(transformation),
+            model: Box::new(self),
+        }
+    }
+}
+
+fn item_model_leaf_transformation(
+    transformation: &ItemModelTransformation,
+) -> ItemModelLeafTransformation {
+    let raw = transformation.raw();
+    let matrix = if let Some(values) = raw.as_array() {
+        let mut rows = [[0.0_f32; 4]; 4];
+        for (index, value) in values.iter().enumerate() {
+            rows[index / 4][index % 4] =
+                value.as_f64().expect("validated item-model matrix value") as f32;
+        }
+        Mat4::from_cols_array_2d(&[
+            [rows[0][0], rows[1][0], rows[2][0], rows[3][0]],
+            [rows[0][1], rows[1][1], rows[2][1], rows[3][1]],
+            [rows[0][2], rows[1][2], rows[2][2], rows[3][2]],
+            [rows[0][3], rows[1][3], rows[2][3], rows[3][3]],
+        ])
+    } else {
+        let object = raw
+            .as_object()
+            .expect("validated decomposed item-model transformation");
+        let vector = |field: &str| {
+            let values = object[field]
+                .as_array()
+                .expect("validated item-model vector");
+            Vec3::new(
+                values[0].as_f64().expect("validated vector component") as f32,
+                values[1].as_f64().expect("validated vector component") as f32,
+                values[2].as_f64().expect("validated vector component") as f32,
+            )
+        };
+        let quaternion = |field: &str| {
+            let value = &object[field];
+            if let Some(values) = value.as_array() {
+                Quat::from_xyzw(
+                    values[0].as_f64().expect("validated quaternion component") as f32,
+                    values[1].as_f64().expect("validated quaternion component") as f32,
+                    values[2].as_f64().expect("validated quaternion component") as f32,
+                    values[3].as_f64().expect("validated quaternion component") as f32,
+                )
+                .normalize()
+            } else {
+                let value = value.as_object().expect("validated axis-angle quaternion");
+                let axis = value["axis"].as_array().expect("validated quaternion axis");
+                let axis = Vec3::new(
+                    axis[0].as_f64().expect("validated axis component") as f32,
+                    axis[1].as_f64().expect("validated axis component") as f32,
+                    axis[2].as_f64().expect("validated axis component") as f32,
+                );
+                let angle = value["angle"].as_f64().expect("validated axis angle") as f32;
+                if angle == 0.0 {
+                    Quat::IDENTITY
+                } else {
+                    Quat::from_axis_angle(axis.normalize(), angle)
+                }
+            }
+        };
+        Mat4::from_translation(vector("translation"))
+            * Mat4::from_quat(quaternion("left_rotation"))
+            * Mat4::from_scale(vector("scale"))
+            * Mat4::from_quat(quaternion("right_rotation"))
+    };
+    ItemModelLeafTransformation {
+        columns: matrix.to_cols_array_2d(),
     }
 }
 

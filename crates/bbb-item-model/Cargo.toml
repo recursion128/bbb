@@ -23,6 +23,7 @@ bbb-render-types = { path = "../bbb-render-types" }
 bbb-world = { path = "../bbb-world" }
 chrono = { workspace = true }
 chrono-tz = { workspace = true }
+glam = { workspace = true }
 reqwest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

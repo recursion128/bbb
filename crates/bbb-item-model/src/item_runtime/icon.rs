@@ -1,5 +1,10 @@
 use super::*;
 
+struct ResolvedItemModelSelection {
+    model: ResolvedItemModel,
+    compatibility_icon: Option<ItemAtlasIcon>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(super) struct ItemTimeWobblerKey {
     item_model_id: String,
@@ -383,25 +388,6 @@ fn sprite_alpha_mask(atlas: &AtlasImage, sprite: &AtlasSprite) -> SpriteAlphaMas
         }
     }
     SpriteAlphaMask::new(sprite.content.width, sprite.content.height, opaque)
-}
-
-pub(super) fn item_icon_texture_layers(
-    models: &ItemCuboidModelSet,
-    model_tints: &HashMap<String, Vec<ItemTintSource>>,
-    colormaps: Option<&TerrainColorMaps>,
-) -> Vec<ItemIconTextureRef> {
-    models
-        .models
-        .iter()
-        .find_map(|model| generated_layer_texture_refs(model, model_tints, colormaps))
-        .or_else(|| {
-            models
-                .models
-                .iter()
-                .find_map(first_texture_ref)
-                .map(|texture| vec![texture])
-        })
-        .unwrap_or_default()
 }
 
 pub(super) fn generated_layer_texture_refs(
@@ -896,6 +882,59 @@ impl NativeItemRuntime {
 
     pub fn icon_for_stack(&self, stack: &ItemStackSummary) -> Option<ItemAtlasIcon> {
         self.icon_for_stack_with_bundle_selected_item(stack, None)
+    }
+
+    /// Resolves the selected client-item tree without replacing a
+    /// `minecraft:special` leaf with its base model.
+    ///
+    /// This convenience entry point uses Vanilla's GUI display context and no
+    /// living-owner state, matching [`Self::icon_for_stack`]. Context-rich
+    /// producers extend the same internal resolution path rather than adding a
+    /// second selector.
+    pub fn resolved_item_model_for_stack(
+        &self,
+        stack: &ItemStackSummary,
+    ) -> Option<ResolvedItemModel> {
+        self.resolved_item_model_for_stack_with_bundle_selected_item(stack, None)
+    }
+
+    /// GUI-context resolved model with Vanilla bundle selected-item recursion.
+    pub fn resolved_item_model_for_stack_with_bundle_selected_item(
+        &self,
+        stack: &ItemStackSummary,
+        bundle_selected_item_index: Option<i32>,
+    ) -> Option<ResolvedItemModel> {
+        let item_id = self.registry.as_ref()?.resource_id(stack.item_id?)?;
+        let item_model_id = item_model_id_for_stack(item_id, Some(&stack.component_patch))?;
+        self.resolve_item_model_for_resource_id(
+            item_id,
+            item_model_id,
+            stack.count,
+            Some(&stack.component_patch),
+            bundle_selected_item_index,
+            false,
+            ItemModelUseContext::inactive(),
+            BlockModelDisplayContext::Gui,
+            0.0,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            false,
+            false,
+            false,
+            false,
+            ItemModelKeybindContext::default(),
+            false,
+            0,
+        )
+        .map(|selection| selection.model)
     }
 
     /// Vanilla `CuboidItemModelWrapper.hasSpecialAnimatedTexture`: clocks and item-tagged compasses use
@@ -1665,7 +1704,7 @@ impl NativeItemRuntime {
     ) -> Option<ItemAtlasIcon> {
         let item_id = self.registry.as_ref()?.resource_id(stack.item_id?)?;
         let item_model_id = item_model_id_for_stack(item_id, Some(&stack.component_patch))?;
-        self.icon_for_resource_id(
+        self.resolve_item_model_for_resource_id(
             item_id,
             item_model_id,
             stack.count,
@@ -1693,12 +1732,13 @@ impl NativeItemRuntime {
             fishing_rod_cast,
             item_model_seed,
         )
+        .and_then(|selection| selection.compatibility_icon)
     }
 
     #[cfg(test)]
     pub(crate) fn icon_for_protocol_id(&self, protocol_id: i32) -> Option<ItemAtlasIcon> {
         let item_id = self.registry.as_ref()?.resource_id(protocol_id)?;
-        self.icon_for_resource_id(
+        self.resolve_item_model_for_resource_id(
             item_id,
             item_id,
             1,
@@ -1726,9 +1766,10 @@ impl NativeItemRuntime {
             false,
             0,
         )
+        .and_then(|selection| selection.compatibility_icon)
     }
 
-    pub(super) fn icon_for_resource_id(
+    fn resolve_item_model_for_resource_id(
         &self,
         item_id: &str,
         item_model_id: &str,
@@ -1756,7 +1797,7 @@ impl NativeItemRuntime {
         keybind_context: ItemModelKeybindContext,
         fishing_rod_cast: bool,
         item_model_seed: i32,
-    ) -> Option<ItemAtlasIcon> {
+    ) -> Option<ResolvedItemModelSelection> {
         let default_max_damage = self
             .registry
             .as_ref()
@@ -1859,11 +1900,71 @@ impl NativeItemRuntime {
             damage_type_keys,
             attribute_keys,
         };
-        let layers = self
+        let resolved_layers = self
             .item_icon_models
             .get(item_model_id)
-            .map(|model| self.icon_layers_for_model(model, context, 0))
-            .unwrap_or_else(|| self.fallback_icon_texture_layers());
+            .map(|model| self.resolved_layers_for_model(model, context, 0))
+            .unwrap_or_else(|| {
+                vec![ResolvedItemIconModelLayer::Ordinary {
+                    layers: self.fallback_icon_texture_layers(),
+                    transformation: ItemModelLeafTransformation::IDENTITY,
+                }]
+            });
+        let mut model_layers = Vec::with_capacity(resolved_layers.len());
+        let mut compatibility_layers = Vec::new();
+        for layer in resolved_layers {
+            match layer {
+                ResolvedItemIconModelLayer::Ordinary {
+                    layers,
+                    transformation,
+                } => {
+                    let Some(icon) = self.item_atlas_icon_for_layers(layers, component_patch)
+                    else {
+                        continue;
+                    };
+                    compatibility_layers.extend(icon.layers.iter().copied());
+                    model_layers.push(ResolvedItemModelLayer::Ordinary {
+                        icon,
+                        transformation,
+                    });
+                }
+                ResolvedItemIconModelLayer::Special {
+                    base_layers,
+                    model,
+                    transformation,
+                } => {
+                    if let Some(icon) =
+                        self.item_atlas_icon_for_layers(base_layers, component_patch)
+                    {
+                        compatibility_layers.extend(icon.layers);
+                    }
+                    model_layers.push(ResolvedItemModelLayer::Special {
+                        model,
+                        transformation,
+                    });
+                }
+            }
+        }
+        let compatibility_icon = (!compatibility_layers.is_empty()).then_some(ItemAtlasIcon {
+            layers: compatibility_layers,
+        });
+        if model_layers.is_empty() && compatibility_icon.is_none() {
+            None
+        } else {
+            Some(ResolvedItemModelSelection {
+                model: ResolvedItemModel {
+                    layers: model_layers,
+                },
+                compatibility_icon,
+            })
+        }
+    }
+
+    fn item_atlas_icon_for_layers(
+        &self,
+        layers: Vec<ItemIconTextureLayer>,
+        component_patch: Option<&DataComponentPatchSummary>,
+    ) -> Option<ItemAtlasIcon> {
         let layers = layers
             .into_iter()
             .filter_map(|layer| {
@@ -1886,12 +1987,31 @@ impl NativeItemRuntime {
         context: IconResolveContext<'_>,
         depth: usize,
     ) -> Vec<ItemIconTextureLayer> {
+        self.resolved_layers_for_model(model, context, depth)
+            .into_iter()
+            .flat_map(|layer| match layer {
+                ResolvedItemIconModelLayer::Ordinary { layers, .. } => layers,
+                ResolvedItemIconModelLayer::Special { base_layers, .. } => base_layers,
+            })
+            .collect()
+    }
+
+    pub(super) fn resolved_layers_for_model(
+        &self,
+        model: &ItemIconModel,
+        context: IconResolveContext<'_>,
+        depth: usize,
+    ) -> Vec<ResolvedItemIconModelLayer> {
         if depth >= ITEM_ICON_RECURSION_LIMIT {
             return Vec::new();
         }
         let mut resolve_bundle_selected_item =
-            || self.bundle_selected_item_layers(context, depth + 1);
-        model.icon_layers_with_bundle_resolver(context, &mut resolve_bundle_selected_item)
+            || self.bundle_selected_item_resolved_layers(context, depth + 1);
+        model.resolved_layers_with_bundle_resolver(
+            context,
+            glam::Mat4::IDENTITY,
+            &mut resolve_bundle_selected_item,
+        )
     }
 
     /// Vanilla `Charge.get`: `ROCKET` when any charged projectile is a
@@ -2075,11 +2195,11 @@ impl NativeItemRuntime {
         )
     }
 
-    pub(super) fn bundle_selected_item_layers(
+    pub(super) fn bundle_selected_item_resolved_layers(
         &self,
         context: IconResolveContext<'_>,
         depth: usize,
-    ) -> Vec<ItemIconTextureLayer> {
+    ) -> Vec<ResolvedItemIconModelLayer> {
         let Some(selected_item_index) = context
             .bundle_selected_item_index
             .filter(|index| *index >= 0)
@@ -2095,19 +2215,23 @@ impl NativeItemRuntime {
         else {
             return Vec::new();
         };
-        self.item_template_layers(template, context, depth)
+        self.item_template_resolved_layers(template, context, depth)
     }
 
-    pub(super) fn item_template_layers(
+    pub(super) fn item_template_resolved_layers(
         &self,
         template: &ItemStackTemplateSummary,
         parent_context: IconResolveContext<'_>,
         depth: usize,
-    ) -> Vec<ItemIconTextureLayer> {
+    ) -> Vec<ResolvedItemIconModelLayer> {
         let Some(item_id) = self
             .registry
             .as_ref()
             .and_then(|registry| registry.resource_id(template.item_id))
+        else {
+            return Vec::new();
+        };
+        let Some(item_model_id) = item_model_id_for_stack(item_id, Some(&template.component_patch))
         else {
             return Vec::new();
         };
@@ -2154,7 +2278,7 @@ impl NativeItemRuntime {
             context_entity_type: parent_context.context_entity_type,
             local_time_epoch_millis: parent_context.local_time_epoch_millis,
             time_context: parent_context.time_context,
-            stateful_model_id: item_id,
+            stateful_model_id: item_model_id,
             time_wobbler: parent_context.time_wobbler,
             time_random: parent_context.time_random,
             compass_context: parent_context.compass_context,
@@ -2182,10 +2306,41 @@ impl NativeItemRuntime {
         };
         let layers = self
             .item_icon_models
-            .get(item_id)
-            .map(|model| self.icon_layers_for_model(model, context, depth))
-            .unwrap_or_else(|| self.fallback_icon_texture_layers());
-        resolve_item_icon_texture_layer_tints(layers, Some(&template.component_patch))
+            .get(item_model_id)
+            .map(|model| self.resolved_layers_for_model(model, context, depth))
+            .unwrap_or_else(|| {
+                vec![ResolvedItemIconModelLayer::Ordinary {
+                    layers: self.fallback_icon_texture_layers(),
+                    transformation: ItemModelLeafTransformation::IDENTITY,
+                }]
+            });
+        layers
+            .into_iter()
+            .map(|layer| match layer {
+                ResolvedItemIconModelLayer::Ordinary {
+                    layers,
+                    transformation,
+                } => ResolvedItemIconModelLayer::Ordinary {
+                    layers: resolve_item_icon_texture_layer_tints(
+                        layers,
+                        Some(&template.component_patch),
+                    ),
+                    transformation,
+                },
+                ResolvedItemIconModelLayer::Special {
+                    base_layers,
+                    model,
+                    transformation,
+                } => ResolvedItemIconModelLayer::Special {
+                    base_layers: resolve_item_icon_texture_layer_tints(
+                        base_layers,
+                        Some(&template.component_patch),
+                    ),
+                    model,
+                    transformation,
+                },
+            })
+            .collect()
     }
 
     pub(super) fn local_time_epoch_millis(&self) -> Option<i64> {

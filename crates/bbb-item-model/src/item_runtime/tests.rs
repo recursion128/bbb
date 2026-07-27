@@ -9915,6 +9915,156 @@ fn native_item_runtime_uses_item_model_component_as_root_model() {
 }
 
 #[test]
+fn native_item_runtime_preserves_selected_special_leaves_and_composed_transformations() {
+    let root = unique_temp_dir("item-runtime-special-leaf");
+    write_special_item_model_leaf_fixture(&root);
+
+    let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+    let uv = |model_id: &str| {
+        runtime
+            .textures
+            .texture_uv_rect(runtime.texture_index(&format!("minecraft:item/{model_id}")))
+            .unwrap()
+    };
+    let stack = |selected: bool| ItemStackSummary {
+        item_id: Some(0),
+        count: 1,
+        component_patch: DataComponentPatchSummary {
+            custom_model_data_flags: vec![selected].into(),
+            ..DataComponentPatchSummary::default()
+        },
+    };
+
+    let selected_stack = stack(true);
+    let resolved = runtime
+        .resolved_item_model_for_stack(&selected_stack)
+        .unwrap();
+    assert_eq!(resolved.layers.len(), 2);
+    let ResolvedItemModelLayer::Ordinary {
+        icon,
+        transformation,
+    } = &resolved.layers[0]
+    else {
+        panic!("first composite leaf should stay ordinary");
+    };
+    assert_eq!(icon.layers[0].uv, uv("special_ordinary"));
+    assert_eq!(
+        transformation.columns,
+        [
+            [2.0, 0.0, 0.0, 0.0],
+            [0.0, 2.0, 0.0, 0.0],
+            [0.0, 0.0, 2.0, 0.0],
+            [2.0, 3.0, 4.0, 1.0],
+        ]
+    );
+    let ResolvedItemModelLayer::Special {
+        model,
+        transformation,
+    } = &resolved.layers[1]
+    else {
+        panic!("selected condition leaf should stay special");
+    };
+    assert!(matches!(model, ItemSpecialModel::DecoratedPot));
+    assert_eq!(
+        transformation.columns,
+        [
+            [3.0, 0.0, 0.0, 0.0],
+            [0.0, 3.0, 0.0, 0.0],
+            [0.0, 0.0, 3.0, 0.0],
+            [7.0, 3.0, 4.0, 1.0],
+        ]
+    );
+
+    // The legacy icon view is projected from the same selected leaves and may
+    // still use the special wrapper's base material until renderer residency
+    // lands in the next stage.
+    let compatibility = runtime.icon_for_stack(&selected_stack).unwrap();
+    assert_eq!(compatibility.layers.len(), 2);
+    assert_eq!(compatibility.layers[0].uv, uv("special_ordinary"));
+    assert_eq!(compatibility.layers[1].uv, uv("special_base"));
+
+    let fallback = runtime
+        .resolved_item_model_for_stack(&stack(false))
+        .unwrap();
+    assert!(matches!(
+        &fallback.layers[1],
+        ResolvedItemModelLayer::Ordinary { icon, transformation }
+            if icon.layers[0].uv == uv("special_fallback")
+                && transformation.columns[3] == [7.0, 3.0, 4.0, 1.0]
+    ));
+
+    let bundle_stack = ItemStackSummary {
+        item_id: Some(1),
+        count: 1,
+        component_patch: DataComponentPatchSummary {
+            bundle_contents_item_count: Some(1),
+            bundle_contents_items: vec![ItemStackTemplateSummary {
+                item_id: 2,
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            }],
+            ..DataComponentPatchSummary::default()
+        },
+    };
+    let nested = runtime
+        .resolved_item_model_for_stack_with_bundle_selected_item(&bundle_stack, Some(0))
+        .unwrap();
+    assert_eq!(
+        nested.layers,
+        vec![ResolvedItemModelLayer::Special {
+            model: ItemSpecialModel::Trident,
+            transformation: ItemModelLeafTransformation {
+                columns: [
+                    [4.0, 0.0, 0.0, 0.0],
+                    [0.0, 4.0, 0.0, 0.0],
+                    [0.0, 0.0, 4.0, 0.0],
+                    [0.0, 0.0, 0.0, 1.0],
+                ],
+            },
+        }]
+    );
+    assert_eq!(
+        runtime
+            .icon_for_stack_with_bundle_selected_item(&bundle_stack, Some(0))
+            .unwrap()
+            .layers[0]
+            .uv,
+        uv("nested_special_base")
+    );
+
+    let decomposed = runtime
+        .resolved_item_model_for_stack(&ItemStackSummary {
+            item_id: Some(3),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        })
+        .unwrap();
+    let [ResolvedItemModelLayer::Special { transformation, .. }] = decomposed.layers.as_slice()
+    else {
+        panic!("decomposed static special definition should remain a special leaf");
+    };
+    let expected = [
+        [0.0, 2.0, 0.0, 0.0],
+        [0.0, 0.0, 4.0, 0.0],
+        [3.0, 0.0, 0.0, 0.0],
+        [1.0, 2.0, 3.0, 1.0],
+    ];
+    for (actual, expected) in transformation
+        .columns
+        .iter()
+        .flatten()
+        .zip(expected.iter().flatten())
+    {
+        assert!(
+            (actual - expected).abs() <= 1.0e-5,
+            "decomposed T * left * scale * right mismatch: {actual} != {expected}"
+        );
+    }
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn native_item_runtime_resolves_display_context_select() {
     let root = unique_temp_dir("item-runtime-display-context");
     write_display_context_select_fixture(&root);
@@ -16120,6 +16270,126 @@ fn write_item_model_component_fixture(root: &Path) {
     );
     write_flat_item_model_and_texture(&assets, "model_component", &[40, 120, 180, 255]);
     write_flat_item_model_and_texture(&assets, "alternate_model_component", &[180, 80, 40, 255]);
+}
+
+fn write_special_item_model_leaf_fixture(root: &Path) {
+    let assets = assets_dir(root);
+    write_item_atlases(&assets);
+    write_item_registry_fixture(
+        root,
+        &[
+            "special_selector",
+            "bundle",
+            "nested_special",
+            "decomposed_special",
+        ],
+    );
+    write_json(
+        &assets.join("items").join("special_selector.json"),
+        r#"{
+                "model": {
+                    "type": "minecraft:composite",
+                    "transformation": [
+                        1.0, 0.0, 0.0, 2.0,
+                        0.0, 1.0, 0.0, 3.0,
+                        0.0, 0.0, 1.0, 4.0,
+                        0.0, 0.0, 0.0, 1.0
+                    ],
+                    "models": [
+                        {
+                            "type": "minecraft:model",
+                            "model": "minecraft:item/special_ordinary",
+                            "transformation": [
+                                2.0, 0.0, 0.0, 0.0,
+                                0.0, 2.0, 0.0, 0.0,
+                                0.0, 0.0, 2.0, 0.0,
+                                0.0, 0.0, 0.0, 1.0
+                            ]
+                        },
+                        {
+                            "type": "minecraft:condition",
+                            "property": "minecraft:custom_model_data",
+                            "index": 0,
+                            "transformation": [
+                                1.0, 0.0, 0.0, 5.0,
+                                0.0, 1.0, 0.0, 0.0,
+                                0.0, 0.0, 1.0, 0.0,
+                                0.0, 0.0, 0.0, 1.0
+                            ],
+                            "on_true": {
+                                "type": "minecraft:special",
+                                "base": "minecraft:item/special_base",
+                                "transformation": [
+                                    3.0, 0.0, 0.0, 0.0,
+                                    0.0, 3.0, 0.0, 0.0,
+                                    0.0, 0.0, 3.0, 0.0,
+                                    0.0, 0.0, 0.0, 1.0
+                                ],
+                                "model": {
+                                    "type": "minecraft:decorated_pot"
+                                }
+                            },
+                            "on_false": {
+                                "type": "minecraft:model",
+                                "model": "minecraft:item/special_fallback"
+                            }
+                        }
+                    ]
+                }
+            }"#,
+    );
+    write_flat_item_model_and_texture(&assets, "special_ordinary", &[40, 120, 180, 255]);
+    write_flat_item_model_and_texture(&assets, "special_base", &[180, 80, 40, 255]);
+    write_flat_item_model_and_texture(&assets, "special_fallback", &[80, 180, 40, 255]);
+    write_json(
+        &assets.join("items").join("bundle.json"),
+        r#"{
+                "model": {
+                    "type": "minecraft:bundle/selected_item"
+                }
+            }"#,
+    );
+    write_json(
+        &assets.join("items").join("nested_special.json"),
+        r#"{
+                "model": {
+                    "type": "minecraft:special",
+                    "base": "minecraft:item/nested_special_base",
+                    "transformation": [
+                        4.0, 0.0, 0.0, 0.0,
+                        0.0, 4.0, 0.0, 0.0,
+                        0.0, 0.0, 4.0, 0.0,
+                        0.0, 0.0, 0.0, 1.0
+                    ],
+                    "model": {
+                        "type": "minecraft:trident"
+                    }
+                }
+            }"#,
+    );
+    write_flat_item_model_and_texture(&assets, "nested_special_base", &[120, 80, 180, 255]);
+    write_json(
+        &assets.join("items").join("decomposed_special.json"),
+        r#"{
+                "model": {
+                    "type": "minecraft:special",
+                    "base": "minecraft:item/decomposed_special_base",
+                    "transformation": {
+                        "translation": [1.0, 2.0, 3.0],
+                        "left_rotation": [0.0, 0.0, 0.70710677, 0.70710677],
+                        "scale": [2.0, 3.0, 4.0],
+                        "right_rotation": {
+                            "angle": 1.5707964,
+                            "axis": [1.0, 0.0, 0.0]
+                        }
+                    },
+                    "model": {
+                        "type": "minecraft:bell"
+                    }
+                }
+            }"#,
+    );
+    write_flat_item_model_and_texture(&assets, "decomposed_special_base", &[180, 120, 80, 255]);
 }
 
 fn write_display_context_select_fixture(root: &Path) {

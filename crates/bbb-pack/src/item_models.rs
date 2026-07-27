@@ -327,33 +327,167 @@ impl ItemModelProperty {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ItemSpecialModel {
-    pub model_type: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub copper_golem_statue: Option<CopperGolemStatueSpecialModel>,
-    raw: Value,
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum ItemSpecialModel {
+    Bed {
+        texture: String,
+        part: ItemSpecialBedPart,
+    },
+    Bell,
+    Banner {
+        color: String,
+        attachment: ItemSpecialStandingAttachment,
+    },
+    Book {
+        open_angle: f32,
+        page1: f32,
+        page2: f32,
+    },
+    Conduit,
+    Chest {
+        texture: String,
+        openness: f32,
+        chest_type: ItemSpecialChestType,
+    },
+    CopperGolemStatue {
+        pose: CopperGolemStatuePose,
+        texture: String,
+    },
+    Head {
+        kind: ItemSpecialSkullKind,
+        texture: Option<String>,
+        animation: f32,
+    },
+    PlayerHead,
+    ShulkerBox {
+        texture: String,
+        openness: f32,
+    },
+    Shield,
+    Trident,
+    DecoratedPot,
+    StandingSign {
+        wood_type: String,
+        attachment: ItemSpecialStandingAttachment,
+        texture: Option<String>,
+    },
+    HangingSign {
+        wood_type: String,
+        attachment: ItemSpecialHangingAttachment,
+        texture: Option<String>,
+    },
+    EndCube {
+        effect: ItemSpecialEndCubeEffect,
+    },
 }
 
 impl ItemSpecialModel {
-    pub fn raw(&self) -> &Value {
-        &self.raw
-    }
-
-    pub fn into_raw(self) -> Value {
-        self.raw
+    pub fn model_type(&self) -> &'static str {
+        match self {
+            Self::Bed { .. } => "minecraft:bed",
+            Self::Bell => "minecraft:bell",
+            Self::Banner { .. } => "minecraft:banner",
+            Self::Book { .. } => "minecraft:book",
+            Self::Conduit => "minecraft:conduit",
+            Self::Chest { .. } => "minecraft:chest",
+            Self::CopperGolemStatue { .. } => "minecraft:copper_golem_statue",
+            Self::Head { .. } => "minecraft:head",
+            Self::PlayerHead => "minecraft:player_head",
+            Self::ShulkerBox { .. } => "minecraft:shulker_box",
+            Self::Shield => "minecraft:shield",
+            Self::Trident => "minecraft:trident",
+            Self::DecoratedPot => "minecraft:decorated_pot",
+            Self::StandingSign { .. } => "minecraft:standing_sign",
+            Self::HangingSign { .. } => "minecraft:hanging_sign",
+            Self::EndCube { .. } => "minecraft:end_cube",
+        }
     }
 
     fn collect_texture_references(&self, references: &mut BTreeSet<String>) {
-        if let Some(model) = &self.copper_golem_statue {
-            references.insert(model.texture.clone());
+        match self {
+            Self::Bed { texture, .. }
+            | Self::Chest { texture, .. }
+            | Self::CopperGolemStatue { texture, .. }
+            | Self::ShulkerBox { texture, .. } => {
+                references.insert(texture.clone());
+            }
+            Self::Head {
+                texture: Some(texture),
+                ..
+            }
+            | Self::StandingSign {
+                texture: Some(texture),
+                ..
+            }
+            | Self::HangingSign {
+                texture: Some(texture),
+                ..
+            } => {
+                references.insert(texture.clone());
+            }
+            Self::Bell
+            | Self::Banner { .. }
+            | Self::Book { .. }
+            | Self::Conduit
+            | Self::Head { texture: None, .. }
+            | Self::PlayerHead
+            | Self::Shield
+            | Self::Trident
+            | Self::DecoratedPot
+            | Self::StandingSign { texture: None, .. }
+            | Self::HangingSign { texture: None, .. }
+            | Self::EndCube { .. } => {}
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct CopperGolemStatueSpecialModel {
-    pub pose: CopperGolemStatuePose,
-    pub texture: String,
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ItemSpecialBedPart {
+    Head,
+    Foot,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ItemSpecialChestType {
+    Single,
+    Left,
+    Right,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ItemSpecialStandingAttachment {
+    Wall,
+    Ground,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ItemSpecialHangingAttachment {
+    Wall,
+    Ceiling,
+    CeilingMiddle,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ItemSpecialSkullKind {
+    Skeleton,
+    WitherSkeleton,
+    Player,
+    Zombie,
+    Creeper,
+    Piglin,
+    Dragon,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ItemSpecialEndCubeEffect {
+    Portal,
+    Gateway,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -568,7 +702,7 @@ impl ItemModelDefinition {
         match self {
             Self::Empty | Self::BundleSelectedItem | Self::Model { .. } => {}
             Self::Special { special, .. } => {
-                *counts.entry(special.model_type.clone()).or_default() += 1;
+                *counts.entry(special.model_type().to_string()).or_default() += 1;
             }
             Self::Condition {
                 on_true, on_false, ..
@@ -839,25 +973,195 @@ fn parse_item_special_model(value: &Value) -> Result<ItemSpecialModel> {
         .as_object()
         .ok_or_else(|| anyhow::anyhow!("item special model must be a JSON object"))?;
     let model_type = resource_id(required_str(object, "type")?)?;
-    let copper_golem_statue = if model_type == "minecraft:copper_golem_statue" {
-        Some(parse_copper_golem_statue_special_model(object)?)
-    } else {
-        None
-    };
-    Ok(ItemSpecialModel {
-        model_type,
-        copper_golem_statue,
-        raw: value.clone(),
-    })
+    match model_type.as_str() {
+        "minecraft:bed" => Ok(ItemSpecialModel::Bed {
+            texture: resource_id(required_str(object, "texture")?)?,
+            part: parse_bed_part(required_str(object, "part")?)?,
+        }),
+        "minecraft:bell" => Ok(ItemSpecialModel::Bell),
+        "minecraft:banner" => Ok(ItemSpecialModel::Banner {
+            color: parse_dye_color(required_str(object, "color")?)?.to_string(),
+            attachment: object
+                .get("attachment")
+                .map(|value| {
+                    parse_standing_attachment(value.as_str().ok_or_else(|| {
+                        anyhow::anyhow!("item model field \"attachment\" must be a string")
+                    })?)
+                })
+                .transpose()?
+                .unwrap_or(ItemSpecialStandingAttachment::Ground),
+        }),
+        "minecraft:book" => Ok(ItemSpecialModel::Book {
+            open_angle: finite_f32(required_value(object, "open_angle")?, "open_angle")?,
+            page1: finite_f32(required_value(object, "page1")?, "page1")?,
+            page2: finite_f32(required_value(object, "page2")?, "page2")?,
+        }),
+        "minecraft:conduit" => Ok(ItemSpecialModel::Conduit),
+        "minecraft:chest" => Ok(ItemSpecialModel::Chest {
+            texture: resource_id(required_str(object, "texture")?)?,
+            openness: optional_f32(object, "openness", 0.0)?,
+            chest_type: object
+                .get("chest_type")
+                .map(|value| {
+                    parse_chest_type(value.as_str().ok_or_else(|| {
+                        anyhow::anyhow!("item model field \"chest_type\" must be a string")
+                    })?)
+                })
+                .transpose()?
+                .unwrap_or(ItemSpecialChestType::Single),
+        }),
+        "minecraft:copper_golem_statue" => Ok(ItemSpecialModel::CopperGolemStatue {
+            pose: CopperGolemStatuePose::parse(required_str(object, "pose")?)?,
+            texture: resource_id(required_str(object, "texture")?)?,
+        }),
+        "minecraft:head" => Ok(ItemSpecialModel::Head {
+            kind: parse_skull_kind(required_str(object, "kind")?)?,
+            texture: optional_resource_id(object, "texture")?,
+            animation: optional_f32(object, "animation", 0.0)?,
+        }),
+        "minecraft:player_head" => Ok(ItemSpecialModel::PlayerHead),
+        "minecraft:shulker_box" => Ok(ItemSpecialModel::ShulkerBox {
+            texture: resource_id(required_str(object, "texture")?)?,
+            openness: optional_f32(object, "openness", 0.0)?,
+        }),
+        "minecraft:shield" => Ok(ItemSpecialModel::Shield),
+        "minecraft:trident" => Ok(ItemSpecialModel::Trident),
+        "minecraft:decorated_pot" => Ok(ItemSpecialModel::DecoratedPot),
+        "minecraft:standing_sign" => Ok(ItemSpecialModel::StandingSign {
+            wood_type: parse_wood_type(required_str(object, "wood_type")?)?.to_string(),
+            // Vanilla 26.1's codec intentionally exposes this misspelled field.
+            attachment: object
+                .get("attachement")
+                .map(|value| {
+                    parse_standing_attachment(value.as_str().ok_or_else(|| {
+                        anyhow::anyhow!("item model field \"attachement\" must be a string")
+                    })?)
+                })
+                .transpose()?
+                .unwrap_or(ItemSpecialStandingAttachment::Ground),
+            texture: optional_resource_id(object, "texture")?,
+        }),
+        "minecraft:hanging_sign" => Ok(ItemSpecialModel::HangingSign {
+            wood_type: parse_wood_type(required_str(object, "wood_type")?)?.to_string(),
+            attachment: object
+                .get("attachment")
+                .map(|value| {
+                    parse_hanging_attachment(value.as_str().ok_or_else(|| {
+                        anyhow::anyhow!("item model field \"attachment\" must be a string")
+                    })?)
+                })
+                .transpose()?
+                .unwrap_or(ItemSpecialHangingAttachment::CeilingMiddle),
+            texture: optional_resource_id(object, "texture")?,
+        }),
+        "minecraft:end_cube" => Ok(ItemSpecialModel::EndCube {
+            effect: parse_end_cube_effect(required_str(object, "effect")?)?,
+        }),
+        other => bail!("unsupported item special model type {other:?}"),
+    }
 }
 
-fn parse_copper_golem_statue_special_model(
-    object: &Map<String, Value>,
-) -> Result<CopperGolemStatueSpecialModel> {
-    Ok(CopperGolemStatueSpecialModel {
-        pose: CopperGolemStatuePose::parse(required_str(object, "pose")?)?,
-        texture: resource_id(required_str(object, "texture")?)?,
-    })
+fn optional_resource_id(object: &Map<String, Value>, field: &str) -> Result<Option<String>> {
+    object
+        .get(field)
+        .map(|value| {
+            value
+                .as_str()
+                .ok_or_else(|| anyhow::anyhow!("item model field {field:?} must be a string"))
+                .and_then(resource_id)
+        })
+        .transpose()
+}
+
+fn parse_bed_part(value: &str) -> Result<ItemSpecialBedPart> {
+    match value {
+        "head" => Ok(ItemSpecialBedPart::Head),
+        "foot" => Ok(ItemSpecialBedPart::Foot),
+        other => bail!("unsupported bed special-model part {other:?}"),
+    }
+}
+
+fn parse_chest_type(value: &str) -> Result<ItemSpecialChestType> {
+    match value {
+        "single" => Ok(ItemSpecialChestType::Single),
+        "left" => Ok(ItemSpecialChestType::Left),
+        "right" => Ok(ItemSpecialChestType::Right),
+        other => bail!("unsupported chest special-model type {other:?}"),
+    }
+}
+
+fn parse_standing_attachment(value: &str) -> Result<ItemSpecialStandingAttachment> {
+    match value {
+        "wall" => Ok(ItemSpecialStandingAttachment::Wall),
+        "ground" => Ok(ItemSpecialStandingAttachment::Ground),
+        other => bail!("unsupported standing special-model attachment {other:?}"),
+    }
+}
+
+fn parse_hanging_attachment(value: &str) -> Result<ItemSpecialHangingAttachment> {
+    match value {
+        "wall" => Ok(ItemSpecialHangingAttachment::Wall),
+        "ceiling" => Ok(ItemSpecialHangingAttachment::Ceiling),
+        "ceiling_middle" => Ok(ItemSpecialHangingAttachment::CeilingMiddle),
+        other => bail!("unsupported hanging-sign special-model attachment {other:?}"),
+    }
+}
+
+fn parse_skull_kind(value: &str) -> Result<ItemSpecialSkullKind> {
+    match value {
+        "skeleton" => Ok(ItemSpecialSkullKind::Skeleton),
+        "wither_skeleton" => Ok(ItemSpecialSkullKind::WitherSkeleton),
+        "player" => Ok(ItemSpecialSkullKind::Player),
+        "zombie" => Ok(ItemSpecialSkullKind::Zombie),
+        "creeper" => Ok(ItemSpecialSkullKind::Creeper),
+        "piglin" => Ok(ItemSpecialSkullKind::Piglin),
+        "dragon" => Ok(ItemSpecialSkullKind::Dragon),
+        other => bail!("unsupported head special-model kind {other:?}"),
+    }
+}
+
+fn parse_end_cube_effect(value: &str) -> Result<ItemSpecialEndCubeEffect> {
+    match value {
+        "portal" => Ok(ItemSpecialEndCubeEffect::Portal),
+        "gateway" => Ok(ItemSpecialEndCubeEffect::Gateway),
+        other => bail!("unsupported end-cube special-model effect {other:?}"),
+    }
+}
+
+fn parse_dye_color(value: &str) -> Result<&str> {
+    const DYE_COLORS: &[&str] = &[
+        "white",
+        "orange",
+        "magenta",
+        "light_blue",
+        "yellow",
+        "lime",
+        "pink",
+        "gray",
+        "light_gray",
+        "cyan",
+        "purple",
+        "blue",
+        "brown",
+        "green",
+        "red",
+        "black",
+    ];
+    DYE_COLORS
+        .contains(&value)
+        .then_some(value)
+        .ok_or_else(|| anyhow::anyhow!("unsupported banner special-model color {value:?}"))
+}
+
+fn parse_wood_type(value: &str) -> Result<&str> {
+    const WOOD_TYPES: &[&str] = &[
+        "oak", "spruce", "birch", "acacia", "cherry", "jungle", "dark_oak", "pale_oak", "crimson",
+        "warped", "mangrove", "bamboo",
+    ];
+    WOOD_TYPES
+        .contains(&value)
+        .then_some(value)
+        .ok_or_else(|| anyhow::anyhow!("unsupported sign special-model wood type {value:?}"))
 }
 
 fn optional_tints(object: &Map<String, Value>) -> Result<Vec<ItemTintSource>> {
@@ -894,7 +1198,8 @@ fn validate_vector3(value: &Value, field: &str) -> Result<()> {
 
 fn validate_quaternion(value: &Value, field: &str) -> Result<()> {
     if let Some(values) = value.as_array() {
-        return validate_fixed_f32_array(values, field, 4);
+        validate_fixed_f32_array(values, field, 4)?;
+        return validate_normalizable_f32_array(values, field);
     }
 
     let object = value.as_object().ok_or_else(|| {
@@ -902,8 +1207,14 @@ fn validate_quaternion(value: &Value, field: &str) -> Result<()> {
             "item model field {field:?} must be a quaternion array or axis-angle object"
         )
     })?;
-    finite_f32(required_value(object, "angle")?, "angle")?;
-    validate_vector3(required_value(object, "axis")?, "axis")
+    let angle = finite_f32(required_value(object, "angle")?, "angle")?;
+    let axis = required_value(object, "axis")?;
+    validate_vector3(axis, "axis")?;
+    if angle == 0.0 {
+        Ok(())
+    } else {
+        validate_normalizable_f32_array(axis.as_array().expect("validated axis-angle axis"), "axis")
+    }
 }
 
 fn validate_fixed_f32_array(values: &[Value], field: &str, len: usize) -> Result<()> {
@@ -912,6 +1223,17 @@ fn validate_fixed_f32_array(values: &[Value], field: &str, len: usize) -> Result
     }
     for value in values {
         finite_f32(value, field)?;
+    }
+    Ok(())
+}
+
+fn validate_normalizable_f32_array(values: &[Value], field: &str) -> Result<()> {
+    let norm_squared = values
+        .iter()
+        .map(|value| finite_f32(value, field).map(|value| f64::from(value) * f64::from(value)))
+        .sum::<Result<f64>>()?;
+    if !(f64::from(f32::MIN_POSITIVE)..=f64::from(f32::MAX)).contains(&norm_squared) {
+        bail!("item model field {field:?} must have a finite non-zero f32 norm");
     }
     Ok(())
 }
@@ -1161,6 +1483,238 @@ mod tests {
             ClientItemDefinition::from_json_bytes(json.as_bytes())
                 .unwrap_or_else(|err| panic!("{model_type} fixture should parse: {err}"));
         }
+    }
+
+    #[test]
+    fn item_special_model_supported_types_match_vanilla_bootstrap_when_sources_are_available() {
+        let Some(source) = local_vanilla_source(&[
+            "net",
+            "minecraft",
+            "client",
+            "renderer",
+            "special",
+            "SpecialModelRenderers.java",
+        ]) else {
+            return;
+        };
+        let fixtures = BTreeMap::from([
+            (
+                "minecraft:bed",
+                r#"{"type":"minecraft:bed","texture":"minecraft:red","part":"head"}"#,
+            ),
+            ("minecraft:bell", r#"{"type":"minecraft:bell"}"#),
+            (
+                "minecraft:banner",
+                r#"{"type":"minecraft:banner","color":"red","attachment":"wall"}"#,
+            ),
+            (
+                "minecraft:book",
+                r#"{"type":"minecraft:book","open_angle":45.0,"page1":0.2,"page2":0.8}"#,
+            ),
+            ("minecraft:conduit", r#"{"type":"minecraft:conduit"}"#),
+            (
+                "minecraft:chest",
+                r#"{"type":"minecraft:chest","texture":"minecraft:normal","openness":0.5,"chest_type":"left"}"#,
+            ),
+            (
+                "minecraft:copper_golem_statue",
+                r#"{"type":"minecraft:copper_golem_statue","pose":"star","texture":"minecraft:textures/entity/copper_golem/copper_golem.png"}"#,
+            ),
+            (
+                "minecraft:head",
+                r#"{"type":"minecraft:head","kind":"dragon","texture":"minecraft:dragon/custom","animation":0.25}"#,
+            ),
+            (
+                "minecraft:player_head",
+                r#"{"type":"minecraft:player_head"}"#,
+            ),
+            (
+                "minecraft:shulker_box",
+                r#"{"type":"minecraft:shulker_box","texture":"minecraft:shulker_red","openness":0.25}"#,
+            ),
+            ("minecraft:shield", r#"{"type":"minecraft:shield"}"#),
+            ("minecraft:trident", r#"{"type":"minecraft:trident"}"#),
+            (
+                "minecraft:decorated_pot",
+                r#"{"type":"minecraft:decorated_pot"}"#,
+            ),
+            (
+                "minecraft:standing_sign",
+                r#"{"type":"minecraft:standing_sign","wood_type":"oak","attachement":"wall","texture":"minecraft:custom_oak"}"#,
+            ),
+            (
+                "minecraft:hanging_sign",
+                r#"{"type":"minecraft:hanging_sign","wood_type":"bamboo","attachment":"ceiling","texture":"minecraft:custom_bamboo"}"#,
+            ),
+            (
+                "minecraft:end_cube",
+                r#"{"type":"minecraft:end_cube","effect":"gateway"}"#,
+            ),
+        ]);
+
+        assert_eq!(
+            vanilla_bootstrap_ids(&source),
+            fixtures
+                .keys()
+                .map(|model_type| (*model_type).to_string())
+                .collect::<BTreeSet<_>>()
+        );
+        for (model_type, json) in fixtures {
+            let parsed = parse_item_special_model(
+                &serde_json::from_str(json)
+                    .unwrap_or_else(|err| panic!("{model_type} fixture JSON must parse: {err}")),
+            )
+            .unwrap_or_else(|err| panic!("{model_type} fixture should parse: {err}"));
+            assert_eq!(parsed.model_type(), model_type);
+        }
+    }
+
+    #[test]
+    fn item_special_model_rejects_unknown_renderer_and_non_finite_parameters() {
+        let unknown = serde_json::json!({"type": "minecraft:not_registered"});
+        assert!(parse_item_special_model(&unknown)
+            .unwrap_err()
+            .to_string()
+            .contains("unsupported item special model type"));
+
+        let non_finite = serde_json::json!({
+            "type": "minecraft:book",
+            "open_angle": 1e100,
+            "page1": 0.0,
+            "page2": 0.0
+        });
+        assert!(parse_item_special_model(&non_finite)
+            .unwrap_err()
+            .to_string()
+            .contains("must be a finite f32"));
+    }
+
+    #[test]
+    fn item_special_model_defaults_and_standing_sign_typo_follow_vanilla_codecs() {
+        let parse = |value| parse_item_special_model(&value).unwrap();
+        assert_eq!(
+            parse(serde_json::json!({
+                "type": "minecraft:banner",
+                "color": "blue"
+            })),
+            ItemSpecialModel::Banner {
+                color: "blue".to_string(),
+                attachment: ItemSpecialStandingAttachment::Ground,
+            }
+        );
+        assert_eq!(
+            parse(serde_json::json!({
+                "type": "minecraft:chest",
+                "texture": "minecraft:normal"
+            })),
+            ItemSpecialModel::Chest {
+                texture: "minecraft:normal".to_string(),
+                openness: 0.0,
+                chest_type: ItemSpecialChestType::Single,
+            }
+        );
+        assert_eq!(
+            parse(serde_json::json!({
+                "type": "minecraft:head",
+                "kind": "zombie"
+            })),
+            ItemSpecialModel::Head {
+                kind: ItemSpecialSkullKind::Zombie,
+                texture: None,
+                animation: 0.0,
+            }
+        );
+        assert_eq!(
+            parse(serde_json::json!({
+                "type": "minecraft:shulker_box",
+                "texture": "minecraft:shulker"
+            })),
+            ItemSpecialModel::ShulkerBox {
+                texture: "minecraft:shulker".to_string(),
+                openness: 0.0,
+            }
+        );
+        assert_eq!(
+            parse(serde_json::json!({
+                "type": "minecraft:standing_sign",
+                "wood_type": "oak",
+                "attachment": "wall"
+            })),
+            ItemSpecialModel::StandingSign {
+                wood_type: "oak".to_string(),
+                attachment: ItemSpecialStandingAttachment::Ground,
+                texture: None,
+            }
+        );
+        assert_eq!(
+            parse(serde_json::json!({
+                "type": "minecraft:hanging_sign",
+                "wood_type": "spruce"
+            })),
+            ItemSpecialModel::HangingSign {
+                wood_type: "spruce".to_string(),
+                attachment: ItemSpecialHangingAttachment::CeilingMiddle,
+                texture: None,
+            }
+        );
+    }
+
+    #[test]
+    fn item_special_model_collects_direct_texture_fields() {
+        let models = [
+            serde_json::json!({
+                "type": "minecraft:bed",
+                "texture": "minecraft:red",
+                "part": "foot"
+            }),
+            serde_json::json!({
+                "type": "minecraft:chest",
+                "texture": "minecraft:normal"
+            }),
+            serde_json::json!({
+                "type": "minecraft:copper_golem_statue",
+                "pose": "standing",
+                "texture": "minecraft:textures/entity/copper_golem/copper_golem.png"
+            }),
+            serde_json::json!({
+                "type": "minecraft:head",
+                "kind": "dragon",
+                "texture": "minecraft:dragon/custom"
+            }),
+            serde_json::json!({
+                "type": "minecraft:shulker_box",
+                "texture": "minecraft:shulker"
+            }),
+            serde_json::json!({
+                "type": "minecraft:standing_sign",
+                "wood_type": "oak",
+                "texture": "minecraft:custom_oak"
+            }),
+            serde_json::json!({
+                "type": "minecraft:hanging_sign",
+                "wood_type": "spruce",
+                "texture": "minecraft:custom_spruce"
+            }),
+            serde_json::json!({"type": "minecraft:decorated_pot"}),
+        ];
+        let mut references = BTreeSet::new();
+        for model in models {
+            parse_item_special_model(&model)
+                .unwrap()
+                .collect_texture_references(&mut references);
+        }
+        assert_eq!(
+            references,
+            BTreeSet::from([
+                "minecraft:custom_oak".to_string(),
+                "minecraft:custom_spruce".to_string(),
+                "minecraft:dragon/custom".to_string(),
+                "minecraft:normal".to_string(),
+                "minecraft:red".to_string(),
+                "minecraft:shulker".to_string(),
+                "minecraft:textures/entity/copper_golem/copper_golem.png".to_string(),
+            ])
+        );
     }
 
     #[test]
@@ -1582,6 +2136,29 @@ mod tests {
         )
         .unwrap_err();
         assert!(err.to_string().contains("\"right_rotation\""));
+
+        for invalid_rotation in [
+            serde_json::json!([0.0, 0.0, 0.0, 0.0]),
+            serde_json::json!({"angle": 1.0, "axis": [0.0, 0.0, 0.0]}),
+        ] {
+            let definition = serde_json::json!({
+                "model": {
+                    "type": "minecraft:model",
+                    "model": "minecraft:item/test",
+                    "transformation": {
+                        "translation": [0.0, 0.0, 0.0],
+                        "left_rotation": invalid_rotation,
+                        "scale": [1.0, 1.0, 1.0],
+                        "right_rotation": [0.0, 0.0, 0.0, 1.0]
+                    }
+                }
+            });
+            let err = ClientItemDefinition::from_json_bytes(
+                serde_json::to_string(&definition).unwrap().as_bytes(),
+            )
+            .unwrap_err();
+            assert!(err.to_string().contains("finite non-zero f32 norm"));
+        }
     }
 
     #[test]
@@ -2434,9 +3011,14 @@ mod tests {
         else {
             panic!("white banner should parse as a special item model");
         };
-        assert_eq!(special.model_type, "minecraft:banner");
-        assert_eq!(special.copper_golem_statue, None);
-        assert_eq!(special.raw()["color"], serde_json::json!("white"));
+        assert_eq!(special.model_type(), "minecraft:banner");
+        assert_eq!(
+            special,
+            &ItemSpecialModel::Banner {
+                color: "white".to_string(),
+                attachment: ItemSpecialStandingAttachment::Ground,
+            }
+        );
         assert_eq!(
             catalog.model_references("white_banner").unwrap(),
             vec!["minecraft:item/template_banner".to_string()]
@@ -2553,13 +3135,11 @@ mod tests {
                 panic!("copper golem pose arm should be a special model");
             };
             assert_eq!(base, "minecraft:item/template_copper_golem_statue");
-            assert_eq!(special.model_type, "minecraft:copper_golem_statue");
-            let copper = special
-                .copper_golem_statue
-                .as_ref()
-                .expect("copper golem special should be structured");
-            poses.insert(copper.pose);
-            textures.insert(copper.texture.clone());
+            let ItemSpecialModel::CopperGolemStatue { pose, texture } = special else {
+                panic!("copper golem special should be structured");
+            };
+            poses.insert(*pose);
+            textures.insert(texture.clone());
         }
 
         assert_eq!(
