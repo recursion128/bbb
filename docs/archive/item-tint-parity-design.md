@@ -1,5 +1,7 @@
 # Dynamic Item Tint Parity
 
+Status: completed on 2026-07-26.
+
 This document freezes the engineering contract for closing the remaining
 resource-pack item-tint gap. It refines the item ownership boundaries in
 [`native-client-architecture.md`](native-client-architecture.md), the selected

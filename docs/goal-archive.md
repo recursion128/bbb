@@ -591,3 +591,7 @@
 - **2026-07-26（Equipment asset layer rendering 工程闭环）**：资源包声明的 19 类
   layer、有效 `Equippable` 资产、owned atlas、染色/foil/trim 与玩家翅膀覆盖已贯通
   world/native/renderer；合同见 `docs/archive/equipment-asset-layer-rendering-design.md`。
+- **2026-07-26（动态 Item tint 工程闭环）**：八类 `ItemTintSources` 现共享
+  Vanilla `PotionContents` 可见效果加权与活体 scoreboard 队伍色；普通 GUI、
+  fakeItem、手持/头戴、首人称、嵌套 bundle 及非活体路径均保留精确 owner
+  语义，合同见 `docs/archive/item-tint-parity-design.md`。
