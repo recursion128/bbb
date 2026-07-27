@@ -63,6 +63,9 @@ impl<'a> SnbtParser<'a> {
     }
 
     fn parse_value(&mut self, depth: usize) -> Result<NbtSummaryValue> {
+        #[cfg(test)]
+        crate::test_stack_budget::record();
+
         if depth > MAX_NBT_DEPTH {
             return Err(self.error("SNBT exceeded max depth"));
         }
@@ -913,5 +916,57 @@ mod tests {
         ] {
             assert!(parse_snbt_compound(input).is_err(), "accepted {input}");
         }
+    }
+
+    #[test]
+    fn snbt_stack_budget_pins_depth_boundary_and_failure_recovery() {
+        const STACK_SIZE_BYTES: usize = 2 * 1024 * 1024;
+        const STACK_BUDGET_BYTES: usize = 3 * 1024 * 1024 / 2;
+
+        std::thread::Builder::new()
+            .stack_size(STACK_SIZE_BYTES)
+            .spawn(|| {
+                let accepted = nested_snbt_compound(MAX_NBT_DEPTH);
+                let caller_marker = 0u8;
+                crate::test_stack_budget::reset(&caller_marker);
+                parse_snbt_compound(&accepted).unwrap();
+                let used = crate::test_stack_budget::used_bytes();
+                assert!(
+                    used <= STACK_BUDGET_BYTES,
+                    "depth-{MAX_NBT_DEPTH} flattened SNBT parse used {used} bytes of stack, over \
+                     the {STACK_BUDGET_BYTES}-byte budget"
+                );
+
+                let rejected = nested_snbt_compound(MAX_NBT_DEPTH + 1);
+                let error = parse_snbt_compound(&rejected).unwrap_err();
+                assert!(
+                    error.to_string().contains("SNBT exceeded max depth"),
+                    "{error}"
+                );
+
+                assert_eq!(
+                    parse_snbt_compound("{recovered:1}").unwrap(),
+                    NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                        name: "recovered".to_string(),
+                        value: NbtSummaryValue::Int(1),
+                    }])
+                );
+            })
+            .expect("spawn flattened-SNBT stack-budget test thread")
+            .join()
+            .expect("flattened-SNBT stack-budget test thread");
+    }
+
+    fn nested_snbt_compound(depth: usize) -> String {
+        assert!(depth > 0);
+        let mut input = String::with_capacity(depth * 4 + 1);
+        for _ in 0..depth {
+            input.push_str("{a:");
+        }
+        input.push('0');
+        for _ in 0..depth {
+            input.push('}');
+        }
+        input
     }
 }

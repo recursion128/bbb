@@ -1256,16 +1256,60 @@ mod tests {
                     component_with_show_dialog(NbtSummaryValue::String("example:self".to_string())),
                 ),
             ]);
-            super::STACK_PROBE_EXTREMES.with(|cell| cell.set((0, usize::MAX)));
+            let caller_marker = 0u8;
+            reset_dialog_stack_probe(&caller_marker);
             decode_dialog_data(&referencing, Some(store.registries())).unwrap_err();
-            let (top, bottom) = super::STACK_PROBE_EXTREMES.with(std::cell::Cell::get);
-            let used = top - bottom;
+            let used = dialog_stack_used_bytes();
             assert!(
                 used <= STACK_BUDGET_BYTES,
                 "depth-{MAX_DIALOG_SEMANTIC_DEPTH} dialog reference walk used {used} bytes of \
                  stack, over the {STACK_BUDGET_BYTES}-byte budget"
             );
         });
+    }
+
+    #[test]
+    fn dialog_holder_set_stack_budget_pins_direct_recursive_boundary() {
+        const STACK_BUDGET_BYTES: usize = 4 * 1024 * 1024;
+
+        run_with_deep_dialog_stack(|| {
+            let caller_marker = 0u8;
+            let accepted = nested_direct_dialog_holder_set(MAX_DIALOG_SEMANTIC_DEPTH);
+            reset_dialog_stack_probe(&caller_marker);
+            let decoded = decode_test_dialog(&accepted).unwrap();
+            assert!(matches!(decoded, DialogDataState::DialogList { .. }));
+            let used = dialog_stack_used_bytes();
+            assert!(
+                used <= STACK_BUDGET_BYTES,
+                "depth-{MAX_DIALOG_SEMANTIC_DEPTH} direct dialog HolderSet walk used {used} bytes \
+                 of stack, over the {STACK_BUDGET_BYTES}-byte budget"
+            );
+
+            let rejected = nested_direct_dialog_holder_set(MAX_DIALOG_SEMANTIC_DEPTH + 1);
+            let error = decode_test_dialog(&rejected).unwrap_err();
+            assert!(
+                error.contains("dialog semantic nesting exceeds 64"),
+                "{error}"
+            );
+
+            decode_test_dialog(&compound(vec![
+                string_entry("type", "minecraft:notice"),
+                string_entry("title", "Recovered"),
+            ]))
+            .unwrap();
+        });
+    }
+
+    fn reset_dialog_stack_probe(caller_marker: &u8) {
+        let address = std::ptr::from_ref(caller_marker) as usize;
+        super::STACK_PROBE_EXTREMES.with(|cell| cell.set((address, address)));
+    }
+
+    fn dialog_stack_used_bytes() -> usize {
+        super::STACK_PROBE_EXTREMES.with(|cell| {
+            let (top, bottom) = cell.get();
+            top.saturating_sub(bottom)
+        })
     }
 
     fn run_with_deep_dialog_stack(test: impl FnOnce() + Send + 'static) {
@@ -1553,6 +1597,18 @@ mod tests {
             value_entry("title", NbtSummaryValue::String("Menu".to_string())),
             value_entry("dialogs", dialogs),
         ])
+    }
+
+    fn nested_direct_dialog_holder_set(depth: usize) -> NbtSummaryValue {
+        assert!(depth > 0);
+        let mut dialog = compound(vec![
+            string_entry("type", "minecraft:notice"),
+            string_entry("title", "Leaf"),
+        ]);
+        for _ in 0..depth {
+            dialog = dialog_list(NbtSummaryValue::List(vec![dialog]));
+        }
+        dialog
     }
 
     fn component_with_show_dialog(dialog: NbtSummaryValue) -> NbtSummaryValue {
