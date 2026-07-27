@@ -1,18 +1,34 @@
+use bbb_item_model::NativeItemRuntime;
 use bbb_protocol::{
-    packets::{
-        vanilla_particle_command_options, LevelParticles, ParticlePayload,
-        VanillaParticleCommandOptions, Vec3d,
+    packets::{vanilla_particle_command_options, VanillaParticleCommandOptions, Vec3d},
+    particle_types::{
+        vanilla_particle_type_id_for_resource_id, VANILLA_PARTICLE_TYPE_BLOCK_CRUMBLE_ID,
+        VANILLA_PARTICLE_TYPE_BLOCK_ID, VANILLA_PARTICLE_TYPE_BLOCK_MARKER_ID,
+        VANILLA_PARTICLE_TYPE_DRAGON_BREATH_ID, VANILLA_PARTICLE_TYPE_DUST_COLOR_TRANSITION_ID,
+        VANILLA_PARTICLE_TYPE_DUST_ID, VANILLA_PARTICLE_TYPE_DUST_PILLAR_ID,
+        VANILLA_PARTICLE_TYPE_EFFECT_ID, VANILLA_PARTICLE_TYPE_ENTITY_EFFECT_ID,
+        VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, VANILLA_PARTICLE_TYPE_FLASH_ID,
+        VANILLA_PARTICLE_TYPE_INSTANT_EFFECT_ID, VANILLA_PARTICLE_TYPE_ITEM_ID,
+        VANILLA_PARTICLE_TYPE_SCULK_CHARGE_ID, VANILLA_PARTICLE_TYPE_SHRIEK_ID,
+        VANILLA_PARTICLE_TYPE_TINTED_LEAVES_ID, VANILLA_PARTICLE_TYPE_TRAIL_ID,
+        VANILLA_PARTICLE_TYPE_VIBRATION_ID,
     },
-    particle_types::vanilla_particle_type_id_for_resource_id,
-    NbtSummaryValue,
 };
-use bbb_renderer::ParticleSpawnBatch;
-use bbb_world::ClientParticleOptions;
+use bbb_renderer::{ParticleBlockOptionState, ParticleSpawnBatch, ParticleSpawnCommand};
+use bbb_world::{ClientParticleOptionValue, ClientParticleOptions};
 
 use super::{
-    append_particle_batch, EnvironmentParticleSpawn, LevelParticleSpawnContext,
-    ParticleBiomeSampler, ParticleCommandResolver,
+    argb_particle_color, falling_dust_color_for_block_state_id,
+    particle_item_option_state_for_stack, particle_provider_accepts_spawn, rgb_particle_color_u32,
+    EnvironmentParticleSpawn, LevelParticleSpawnContext, ParticleBiomeSampler,
+    ParticleCommandResolver, ParticleOptionRenderState, SimpleParticleTemplate,
 };
+
+struct PreparedEnvironmentParticle {
+    template: SimpleParticleTemplate,
+    option_state: ParticleOptionRenderState,
+    initial_delay_ticks: u32,
+}
 
 impl ParticleCommandResolver {
     pub(super) fn resolve_environment_particles(
@@ -20,70 +36,277 @@ impl ParticleCommandResolver {
         spawns: &[EnvironmentParticleSpawn],
         context: LevelParticleSpawnContext,
         biome_sampler: Option<&dyn ParticleBiomeSampler>,
+        item_runtime: Option<&NativeItemRuntime>,
     ) -> ParticleSpawnBatch {
         let mut batch = ParticleSpawnBatch::default();
         for spawn in spawns {
-            let Some(particle_type_id) =
-                vanilla_particle_type_id_for_resource_id(&spawn.particle.resource_id)
-            else {
-                batch.unknown_particle_type_count += 1;
-                continue;
+            let prepared = match self.prepare_environment_particle(&spawn.particle) {
+                Ok(prepared) => prepared,
+                Err(diagnostic) => {
+                    super::append_particle_batch(&mut batch, diagnostic);
+                    continue;
+                }
             };
-            if !simple_environment_particle_options(&spawn.particle) {
-                batch.unsupported_particle_option_count += 1;
+            batch.missing_sprite_count += prepared.template.missing_sprite_count;
+            let position = Vec3d {
+                x: spawn.position[0],
+                y: spawn.position[1],
+                z: spawn.position[2],
+            };
+            if !self.should_spawn_level_particle(
+                prepared.template.particle_type.override_limiter,
+                false,
+                position,
+                context.camera_position,
+            ) || !particle_provider_accepts_spawn(
+                prepared.template.particle_type.id,
+                &prepared.option_state,
+            ) {
                 continue;
             }
-            append_particle_batch(
-                &mut batch,
-                self.resolve_level_particles_with_context(
-                    &LevelParticles {
-                        override_limiter: false,
-                        always_show: false,
-                        position: Vec3d {
-                            x: spawn.position[0],
-                            y: spawn.position[1],
-                            z: spawn.position[2],
-                        },
-                        offset: Vec3d {
-                            x: 0.0,
-                            y: 0.0,
-                            z: 0.0,
-                        },
-                        max_speed: 0.0,
-                        count: 0,
-                        particle: ParticlePayload {
-                            particle_type_id,
-                            raw_options: Vec::new(),
-                        },
-                    },
-                    context,
-                    biome_sampler,
-                    None,
-                ),
-            );
+            batch.commands.push(self.environment_particle_command(
+                &prepared,
+                position,
+                Vec3d::default(),
+                biome_sampler,
+                item_runtime,
+            ));
         }
         batch
     }
-}
 
-fn simple_environment_particle_options(options: &ClientParticleOptions) -> bool {
-    if vanilla_particle_command_options(&options.resource_id)
-        != Some(VanillaParticleCommandOptions::Empty)
-    {
-        return false;
+    pub(super) fn environment_particle_batch(
+        &self,
+        options: &ClientParticleOptions,
+        position: Vec3d,
+        biome_sampler: Option<&dyn ParticleBiomeSampler>,
+        item_runtime: Option<&NativeItemRuntime>,
+    ) -> ParticleSpawnBatch {
+        let prepared = match self.prepare_environment_particle(options) {
+            Ok(prepared) => prepared,
+            Err(diagnostic) => return diagnostic,
+        };
+        let mut batch = ParticleSpawnBatch {
+            missing_sprite_count: prepared.template.missing_sprite_count,
+            ..ParticleSpawnBatch::default()
+        };
+        if particle_provider_accepts_spawn(
+            prepared.template.particle_type.id,
+            &prepared.option_state,
+        ) {
+            batch.commands.push(self.environment_particle_command(
+                &prepared,
+                position,
+                Vec3d::default(),
+                biome_sampler,
+                item_runtime,
+            ));
+        }
+        batch
     }
-    matches!(
-        options.fields.as_slice(),
-        [field]
-            if field.name == "type"
-                && matches!(
-                    &field.value,
-                    NbtSummaryValue::String(resource_id)
-                        if particle_resource_id_matches(resource_id, &options.resource_id)
-                )
-    )
+
+    fn prepare_environment_particle(
+        &self,
+        options: &ClientParticleOptions,
+    ) -> Result<PreparedEnvironmentParticle, ParticleSpawnBatch> {
+        let Some(particle_type_id) = vanilla_particle_type_id_for_resource_id(&options.resource_id)
+        else {
+            return Err(ParticleSpawnBatch {
+                unknown_particle_type_count: 1,
+                ..ParticleSpawnBatch::default()
+            });
+        };
+        let Some((option_state, initial_delay_ticks)) =
+            environment_particle_option_render_state(particle_type_id, &options.option)
+        else {
+            return Err(ParticleSpawnBatch {
+                unsupported_particle_option_count: 1,
+                ..ParticleSpawnBatch::default()
+            });
+        };
+        Ok(PreparedEnvironmentParticle {
+            template: self.simple_particle_template(particle_type_id)?,
+            option_state,
+            initial_delay_ticks,
+        })
+    }
+
+    fn environment_particle_command(
+        &self,
+        prepared: &PreparedEnvironmentParticle,
+        position: Vec3d,
+        velocity: Vec3d,
+        biome_sampler: Option<&dyn ParticleBiomeSampler>,
+        item_runtime: Option<&NativeItemRuntime>,
+    ) -> ParticleSpawnCommand {
+        self.command_for_type(
+            prepared.template.particle_type,
+            &prepared.template.sprite_ids,
+            position,
+            velocity,
+            prepared.template.particle_type.override_limiter,
+            false,
+            0,
+            prepared.initial_delay_ticks,
+            prepared.option_state.clone(),
+            biome_sampler,
+            item_runtime,
+        )
+    }
 }
 
-fn particle_resource_id_matches(raw: &str, normalized: &str) -> bool {
-    raw == normalized || (!raw.contains(':') && normalized.strip_prefix("minecraft:") == Some(raw))
+pub(crate) fn simple_client_particle_options(resource_id: &str) -> ClientParticleOptions {
+    ClientParticleOptions {
+        resource_id: resource_id.to_string(),
+        fields: vec![bbb_protocol::NbtSummaryEntry {
+            name: "type".to_string(),
+            value: bbb_protocol::NbtSummaryValue::String(resource_id.to_string()),
+        }],
+        option: ClientParticleOptionValue::Empty,
+    }
+}
+
+fn environment_particle_option_render_state(
+    particle_type_id: i32,
+    option: &ClientParticleOptionValue,
+) -> Option<(ParticleOptionRenderState, u32)> {
+    let state = match option {
+        ClientParticleOptionValue::Empty
+            if vanilla_particle_command_options(
+                bbb_protocol::particle_types::vanilla_particle_type(particle_type_id)?.resource_id,
+            ) == Some(VanillaParticleCommandOptions::Empty) =>
+        {
+            ParticleOptionRenderState::default()
+        }
+        ClientParticleOptionValue::Block { block_state_id }
+            if matches!(
+                particle_type_id,
+                VANILLA_PARTICLE_TYPE_BLOCK_ID
+                    | VANILLA_PARTICLE_TYPE_BLOCK_MARKER_ID
+                    | VANILLA_PARTICLE_TYPE_FALLING_DUST_ID
+                    | VANILLA_PARTICLE_TYPE_DUST_PILLAR_ID
+                    | VANILLA_PARTICLE_TYPE_BLOCK_CRUMBLE_ID
+            ) =>
+        {
+            ParticleOptionRenderState {
+                color: if particle_type_id == VANILLA_PARTICLE_TYPE_FALLING_DUST_ID {
+                    falling_dust_color_for_block_state_id(*block_state_id)
+                } else {
+                    None
+                },
+                block: Some(ParticleBlockOptionState {
+                    block_state_id: *block_state_id,
+                }),
+                ..ParticleOptionRenderState::default()
+            }
+        }
+        ClientParticleOptionValue::Power { power_bits }
+            if particle_type_id == VANILLA_PARTICLE_TYPE_DRAGON_BREATH_ID =>
+        {
+            ParticleOptionRenderState {
+                power: Some(f32::from_bits(*power_bits)),
+                ..ParticleOptionRenderState::default()
+            }
+        }
+        ClientParticleOptionValue::Dust { color, scale_bits }
+            if particle_type_id == VANILLA_PARTICLE_TYPE_DUST_ID =>
+        {
+            ParticleOptionRenderState {
+                color: Some(rgb_particle_color_u32(*color)),
+                scale: Some(f32::from_bits(*scale_bits)),
+                ..ParticleOptionRenderState::default()
+            }
+        }
+        ClientParticleOptionValue::DustColorTransition {
+            from_color,
+            to_color,
+            scale_bits,
+        } if particle_type_id == VANILLA_PARTICLE_TYPE_DUST_COLOR_TRANSITION_ID => {
+            ParticleOptionRenderState {
+                color: Some(rgb_particle_color_u32(*from_color)),
+                color_to: Some(rgb_particle_color_u32(*to_color)),
+                scale: Some(f32::from_bits(*scale_bits)),
+                ..ParticleOptionRenderState::default()
+            }
+        }
+        ClientParticleOptionValue::Spell { color, power_bits }
+            if matches!(
+                particle_type_id,
+                VANILLA_PARTICLE_TYPE_EFFECT_ID | VANILLA_PARTICLE_TYPE_INSTANT_EFFECT_ID
+            ) =>
+        {
+            ParticleOptionRenderState {
+                color: Some(rgb_particle_color_u32(*color)),
+                power: Some(f32::from_bits(*power_bits)),
+                ..ParticleOptionRenderState::default()
+            }
+        }
+        ClientParticleOptionValue::Color { argb }
+            if matches!(
+                particle_type_id,
+                VANILLA_PARTICLE_TYPE_ENTITY_EFFECT_ID
+                    | VANILLA_PARTICLE_TYPE_TINTED_LEAVES_ID
+                    | VANILLA_PARTICLE_TYPE_FLASH_ID
+            ) =>
+        {
+            ParticleOptionRenderState {
+                color: Some(argb_particle_color(*argb as i32)),
+                ..ParticleOptionRenderState::default()
+            }
+        }
+        ClientParticleOptionValue::SculkCharge { roll_bits }
+            if particle_type_id == VANILLA_PARTICLE_TYPE_SCULK_CHARGE_ID =>
+        {
+            ParticleOptionRenderState {
+                roll: Some(f32::from_bits(*roll_bits)),
+                ..ParticleOptionRenderState::default()
+            }
+        }
+        ClientParticleOptionValue::Item { stack }
+            if particle_type_id == VANILLA_PARTICLE_TYPE_ITEM_ID =>
+        {
+            ParticleOptionRenderState {
+                item: Some(particle_item_option_state_for_stack(stack)?),
+                item_stack: Some(stack.clone()),
+                item_component_patch_empty: stack.component_patch == Default::default(),
+                ..ParticleOptionRenderState::default()
+            }
+        }
+        ClientParticleOptionValue::Vibration {
+            block_pos,
+            arrival_in_ticks,
+        } if particle_type_id == VANILLA_PARTICLE_TYPE_VIBRATION_ID => ParticleOptionRenderState {
+            target: Some([
+                f64::from(block_pos[0]) + 0.5,
+                f64::from(block_pos[1]) + 0.5,
+                f64::from(block_pos[2]) + 0.5,
+            ]),
+            duration_ticks: u32::try_from(*arrival_in_ticks)
+                .ok()
+                .filter(|duration| *duration > 0),
+            ..ParticleOptionRenderState::default()
+        },
+        ClientParticleOptionValue::Trail {
+            target_bits,
+            color,
+            duration,
+        } if particle_type_id == VANILLA_PARTICLE_TYPE_TRAIL_ID => ParticleOptionRenderState {
+            color: Some(rgb_particle_color_u32(*color)),
+            target: Some(target_bits.map(f64::from_bits)),
+            duration_ticks: u32::try_from(*duration)
+                .ok()
+                .filter(|duration| *duration > 0),
+            ..ParticleOptionRenderState::default()
+        },
+        ClientParticleOptionValue::Shriek { delay }
+            if particle_type_id == VANILLA_PARTICLE_TYPE_SHRIEK_ID =>
+        {
+            return Some((
+                ParticleOptionRenderState::default(),
+                u32::try_from(*delay).unwrap_or(0),
+            ));
+        }
+        _ => return None,
+    };
+    Some((state, 0))
 }

@@ -2717,6 +2717,7 @@ pub(crate) fn advance_simulation(
             .map(|runtime| runtime as &mut dyn ParticleEventSink),
         particle_batches,
         &mut audio_events,
+        item_runtime.as_ref(),
     );
     push_simulation_profile_section(
         &mut profiling_sections,

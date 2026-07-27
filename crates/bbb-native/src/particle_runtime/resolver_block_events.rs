@@ -246,20 +246,17 @@ impl ParticleCommandResolver {
         &self,
         event: &LevelEvent,
         context: LevelEventParticleContext,
+        biome_sampler: Option<&dyn ParticleBiomeSampler>,
+        item_runtime: Option<&NativeItemRuntime>,
     ) -> ParticleSpawnBatch {
-        let particle_type_id = match context.dripstone_drip_particle {
-            Some(LevelEventDripstoneDripParticle::Lava) => {
-                VANILLA_PARTICLE_TYPE_DRIPPING_DRIPSTONE_LAVA_ID
-            }
-            Some(LevelEventDripstoneDripParticle::Water) => {
-                VANILLA_PARTICLE_TYPE_DRIPPING_DRIPSTONE_WATER_ID
-            }
-            Some(LevelEventDripstoneDripParticle::Other(particle_type_id)) => particle_type_id,
-            None => return ParticleSpawnBatch::default(),
+        let Some(options) = context.dripstone_drip_particle.as_ref() else {
+            return ParticleSpawnBatch::default();
         };
-        self.simple_particle_batch(
-            particle_type_id,
-            vec![(pointed_dripstone_drip_position(event), Vec3d::default())],
+        self.environment_particle_batch(
+            options,
+            pointed_dripstone_drip_position(event),
+            biome_sampler,
+            item_runtime,
         )
     }
 

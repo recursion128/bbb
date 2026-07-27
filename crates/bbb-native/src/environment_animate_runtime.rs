@@ -1,20 +1,19 @@
+use bbb_item_model::NativeItemRuntime;
 use bbb_protocol::{
     heightmap_types::VANILLA_HEIGHTMAP_MOTION_BLOCKING_NO_LEAVES_ID,
     packets::{SoundSource, Vec3d as ProtocolVec3d},
-    NbtSummaryEntry, NbtSummaryValue,
 };
 use bbb_world::{
-    block_name_is_pale_oak_log, BlockPos, ClientParticleOptionValue, ClientParticleOptions,
-    ClientSoundEventHolder, EnvironmentBiomeSampling, LevelEventSoundRandomState,
-    LocalPlayerPoseState, SoundEventState, WorldStore,
+    block_name_is_pale_oak_log, BlockPos, ClientSoundEventHolder, EnvironmentBiomeSampling,
+    LevelEventSoundRandomState, LocalPlayerPoseState, SoundEventState, WorldStore,
 };
 
 use crate::{
     audio_runtime::AudioEventSink,
     environment_audio_runtime::sound_holder_state,
     particle_runtime::{
-        EnvironmentParticleSpawn, LevelParticleSpawnContext, ParticleBiomeSampler,
-        ParticleEventSink,
+        simple_client_particle_options, EnvironmentParticleSpawn, LevelParticleSpawnContext,
+        ParticleBiomeSampler, ParticleEventSink,
     },
     simulation::effects::ParticleBatchSink,
 };
@@ -59,6 +58,7 @@ impl EnvironmentAnimateRuntime {
         mut particle_events: Option<&mut dyn ParticleEventSink>,
         particle_batches: &mut dyn ParticleBatchSink,
         audio: &mut Option<&mut dyn AudioEventSink>,
+        item_runtime: Option<&NativeItemRuntime>,
     ) {
         let level_identity = (connection_generation, world.client_level_generation());
         if self.level_identity != Some(level_identity) {
@@ -90,6 +90,7 @@ impl EnvironmentAnimateRuntime {
                     vibration_entity_position: None,
                 },
                 Some(&biome_sampler),
+                item_runtime,
             );
             if !batch.is_empty() {
                 particle_batches.submit_particle_batch(batch);
@@ -289,7 +290,7 @@ fn append_firefly_spawn(
     };
     if brightness <= FIREFLY_SPAWN_MAX_BRIGHTNESS && random.next_double() <= FIREFLY_SPAWN_CHANCE {
         spawns.push(EnvironmentParticleSpawn {
-            particle: simple_particle_options(PARTICLE_FIREFLY),
+            particle: simple_client_particle_options(PARTICLE_FIREFLY),
             position: [
                 f64::from(pos.x) + random.next_double() * FIREFLY_HORIZONTAL_RANGE
                     - FIREFLY_HORIZONTAL_RANGE / 2.0,
@@ -390,17 +391,6 @@ fn local_block_sound(
     }
 }
 
-fn simple_particle_options(resource_id: &str) -> ClientParticleOptions {
-    ClientParticleOptions {
-        resource_id: resource_id.to_string(),
-        fields: vec![NbtSummaryEntry {
-            name: "type".to_string(),
-            value: NbtSummaryValue::String(resource_id.to_string()),
-        }],
-        option: ClientParticleOptionValue::Empty,
-    }
-}
-
 fn block_position(pos: BlockPos) -> [f64; 3] {
     [f64::from(pos.x), f64::from(pos.y), f64::from(pos.z)]
 }
@@ -470,13 +460,13 @@ mod tests {
 
     #[test]
     fn simple_particle_options_preserve_the_canonical_type_field() {
-        let options = simple_particle_options(PARTICLE_FIREFLY);
+        let options = simple_client_particle_options(PARTICLE_FIREFLY);
         assert_eq!(options.resource_id, PARTICLE_FIREFLY);
         assert_eq!(
             options.fields,
-            vec![NbtSummaryEntry {
+            vec![bbb_protocol::NbtSummaryEntry {
                 name: "type".to_string(),
-                value: NbtSummaryValue::String(PARTICLE_FIREFLY.to_string()),
+                value: bbb_protocol::NbtSummaryValue::String(PARTICLE_FIREFLY.to_string()),
             }]
         );
     }
@@ -757,7 +747,7 @@ mod tests {
 
     fn ambient_particle(resource_id: &str, probability: f32) -> ClientAmbientParticle {
         ClientAmbientParticle {
-            particle: simple_particle_options(resource_id),
+            particle: simple_client_particle_options(resource_id),
             probability_bits: probability.to_bits(),
         }
     }

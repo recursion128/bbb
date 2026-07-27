@@ -13,15 +13,15 @@ use bbb_protocol::particle_types::{
 };
 use bbb_world::{
     AllayDuplicationParticleState, AnimalLoveParticleState, ArrowEffectParticleState,
-    BlockPos as WorldBlockPos, ChatDisconnectReason, DolphinHappyParticleState,
-    EntityTamingParticleState, EntityTrackingEmitterParticleKind, ExplosionEventState,
-    FireworkRocketExplosionParticleState, FoxEatParticleState, HoneyBlockParticleState,
-    LevelEventGrowthRandomMode, LevelEventSoundRandomState, LivingEntityDrownParticleState,
-    LivingEntityItemBreakState, LivingEntityPoofParticleState, LivingEntityPortalParticleState,
-    LlamaSpitRecreationParticleState, NoteBlockParticleState, PlayApplyEffects,
-    RabbitSprintParticleState, RavagerRoarParticleState, SnowballHitParticleState,
-    TakeItemEntityPickupParticleState, TerrainFluidKind, ThrownEggHitParticleState,
-    VillagerParticleState, WitchMagicParticleState, WorldStore,
+    BlockPos as WorldBlockPos, ChatDisconnectReason, ClientParticleOptions,
+    DolphinHappyParticleState, EntityTamingParticleState, EntityTrackingEmitterParticleKind,
+    ExplosionEventState, FireworkRocketExplosionParticleState, FoxEatParticleState,
+    HoneyBlockParticleState, LevelEventGrowthRandomMode, LevelEventSoundRandomState,
+    LivingEntityDrownParticleState, LivingEntityItemBreakState, LivingEntityPoofParticleState,
+    LivingEntityPortalParticleState, LlamaSpitRecreationParticleState, NoteBlockParticleState,
+    PlayApplyEffects, RabbitSprintParticleState, RavagerRoarParticleState,
+    SnowballHitParticleState, TakeItemEntityPickupParticleState, TerrainFluidKind,
+    ThrownEggHitParticleState, VillagerParticleState, WitchMagicParticleState, WorldStore,
 };
 use tokio::sync::mpsc;
 
@@ -31,7 +31,7 @@ use crate::input::{
     queue_vehicle_move_command,
 };
 use crate::particle_runtime::{
-    vibration_entity_position_source_from_options, LevelEventDripstoneDripParticle,
+    simple_client_particle_options, vibration_entity_position_source_from_options,
     LevelEventGrowthParticleContext, LevelEventGrowthParticleMode, LevelEventGrowthParticleSupport,
     LevelEventParticleContext, LevelParticleEntityPosition, LevelParticleSpawnContext,
     ParticleBiomeSampler, ParticleEventSink, TrackingEmitterParticleState,
@@ -701,12 +701,15 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
         event: &bbb_protocol::packets::LevelEvent,
         random: &mut LevelEventSoundRandomState,
     ) -> bool {
+        let biome_sampler = WorldParticleBiomeSampler { world };
         emit_level_event_particles(
             self.particle_events,
             self.particle_target,
             event,
             level_event_particle_context(world, event),
             random,
+            Some(&biome_sampler),
+            self.item_runtime,
         )
     }
 
@@ -1316,9 +1319,17 @@ fn emit_level_event_particles(
     event: &bbb_protocol::packets::LevelEvent,
     context: LevelEventParticleContext,
     random: &mut LevelEventSoundRandomState,
+    biome_sampler: Option<&dyn ParticleBiomeSampler>,
+    item_runtime: Option<&NativeItemRuntime>,
 ) -> bool {
     if let Some(particle_events) = particle_events.as_deref_mut() {
-        let batch = particle_events.spawn_level_event_particles(event, context, random);
+        let batch = particle_events.spawn_level_event_particles(
+            event,
+            context,
+            random,
+            biome_sampler,
+            item_runtime,
+        );
         if let Some(renderer) = particle_target.as_deref_mut() {
             renderer.submit_particle_batch(batch);
         }
@@ -1617,7 +1628,7 @@ fn protocol_block_pos_relative_y(pos: ProtocolBlockPos, dy: i32) -> Option<Proto
 fn dripstone_drip_particle_context(
     world: &WorldStore,
     event: &bbb_protocol::packets::LevelEvent,
-) -> Option<LevelEventDripstoneDripParticle> {
+) -> Option<ClientParticleOptions> {
     if event.event_type != DRIPSTONE_DRIP_LEVEL_EVENT {
         return None;
     }
@@ -1637,12 +1648,18 @@ fn dripstone_drip_particle_context(
     if above_root.block_name.as_deref() == Some("minecraft:mud")
         && !level_water_evaporates(world, above_root_pos)
     {
-        return Some(LevelEventDripstoneDripParticle::Water);
+        return Some(simple_client_particle_options(
+            "minecraft:dripping_dripstone_water",
+        ));
     }
 
     match above_root.fluid.map(|fluid| fluid.kind) {
-        Some(TerrainFluidKind::Lava) => Some(LevelEventDripstoneDripParticle::Lava),
-        Some(TerrainFluidKind::Water) => Some(LevelEventDripstoneDripParticle::Water),
+        Some(TerrainFluidKind::Lava) => Some(simple_client_particle_options(
+            "minecraft:dripping_dripstone_lava",
+        )),
+        Some(TerrainFluidKind::Water) => Some(simple_client_particle_options(
+            "minecraft:dripping_dripstone_water",
+        )),
         None => Some(default_dripstone_drip_particle(world, above_root_pos)),
     }
 }
@@ -1698,7 +1715,7 @@ fn block_pos_above(pos: bbb_world::BlockPos) -> Option<bbb_world::BlockPos> {
 fn default_dripstone_drip_particle(
     world: &WorldStore,
     position: bbb_world::BlockPos,
-) -> LevelEventDripstoneDripParticle {
+) -> ClientParticleOptions {
     if let Some(particle) = world
         .sampled_client_environment_attributes_at(
             [
@@ -1711,30 +1728,18 @@ fn default_dripstone_drip_particle(
         .ok()
         .and_then(|attributes| attributes.default_dripstone_particle)
     {
-        if particle.resource_id == "minecraft:dripping_dripstone_lava" {
-            return LevelEventDripstoneDripParticle::Lava;
-        }
-        if particle.resource_id == "minecraft:dripping_dripstone_water" {
-            return LevelEventDripstoneDripParticle::Water;
-        }
-        if let Some(particle_type_id) =
-            bbb_protocol::particle_types::vanilla_particle_type_id_for_resource_id(
-                &particle.resource_id,
-            )
-        {
-            return LevelEventDripstoneDripParticle::Other(particle_type_id);
-        }
+        return particle;
     }
     if world
         .registry_content(bbb_world::DIMENSION_TYPE_REGISTRY)
         .is_some()
     {
-        return LevelEventDripstoneDripParticle::Water;
+        return simple_client_particle_options("minecraft:dripping_dripstone_water");
     }
     if level_water_evaporates(world, position) {
-        LevelEventDripstoneDripParticle::Lava
+        simple_client_particle_options("minecraft:dripping_dripstone_lava")
     } else {
-        LevelEventDripstoneDripParticle::Water
+        simple_client_particle_options("minecraft:dripping_dripstone_water")
     }
 }
 

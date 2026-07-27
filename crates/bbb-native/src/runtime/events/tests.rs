@@ -1,7 +1,7 @@
 use super::*;
 use crate::audio_runtime::resolver::{AudioCommandResolver, AudioResolveError};
 use crate::particle_runtime::{
-    LevelEventDripstoneDripParticle, LevelEventGrowthParticleContext, LevelEventGrowthParticleMode,
+    simple_client_particle_options, LevelEventGrowthParticleContext, LevelEventGrowthParticleMode,
     LevelEventGrowthParticleSupport, LevelEventParticleContext, LevelParticleSpawnContext,
     ParticleEventSink,
 };
@@ -741,6 +741,8 @@ impl ParticleEventSink for RecordingParticleSink {
         event: &LevelEvent,
         context: LevelEventParticleContext,
         random: &mut LevelEventSoundRandomState,
+        _biome_sampler: Option<&dyn crate::particle_runtime::ParticleBiomeSampler>,
+        _item_runtime: Option<&bbb_item_model::NativeItemRuntime>,
     ) -> bbb_renderer::ParticleSpawnBatch {
         if event.event_type == 3018 {
             advance_cobweb_place_particle_randoms(random);

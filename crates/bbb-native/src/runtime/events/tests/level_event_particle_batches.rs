@@ -1140,12 +1140,16 @@ fn dripstone_drip_level_event_context_uses_fluid_and_dimension_default() {
     assert_eq!(
         level_event_particle_context(&world, &level_event_at(1504, 16, -64, -32))
             .dripstone_drip_particle,
-        Some(LevelEventDripstoneDripParticle::Water)
+        Some(simple_client_particle_options(
+            "minecraft:dripping_dripstone_water"
+        ))
     );
     assert_eq!(
         level_event_particle_context(&world, &level_event_at(1504, 17, -64, -32))
             .dripstone_drip_particle,
-        Some(LevelEventDripstoneDripParticle::Lava)
+        Some(simple_client_particle_options(
+            "minecraft:dripping_dripstone_lava"
+        ))
     );
     assert_eq!(
         level_event_particle_context(&world, &level_event_at(1504, 18, -64, -32))
@@ -1162,7 +1166,9 @@ fn dripstone_drip_level_event_context_uses_fluid_and_dimension_default() {
     assert_eq!(
         level_event_particle_context(&default_overworld, &level_event_at(1504, 19, -64, -32))
             .dripstone_drip_particle,
-        Some(LevelEventDripstoneDripParticle::Water)
+        Some(simple_client_particle_options(
+            "minecraft:dripping_dripstone_water"
+        ))
     );
 
     let mut nether = WorldStore::new();
@@ -1181,7 +1187,9 @@ fn dripstone_drip_level_event_context_uses_fluid_and_dimension_default() {
     assert_eq!(
         level_event_particle_context(&nether, &level_event_at(1504, 16, 0, -32))
             .dripstone_drip_particle,
-        Some(LevelEventDripstoneDripParticle::Lava)
+        Some(simple_client_particle_options(
+            "minecraft:dripping_dripstone_lava"
+        ))
     );
 
     let mut custom = WorldStore::new();
@@ -1190,7 +1198,7 @@ fn dripstone_drip_level_event_context_uses_fluid_and_dimension_default() {
         0,
         vec![bbb_world::RegistryPacketEntry::with_raw_data(
             "example:custom",
-            default_dripstone_particle_dimension_nbt("minecraft:heart"),
+            dust_default_dripstone_particle_dimension_nbt(),
         )],
     );
     let mut custom_login = protocol_play_login(1);
@@ -1203,23 +1211,33 @@ fn dripstone_drip_level_event_context_uses_fluid_and_dimension_default() {
         .unwrap();
     set_test_block(&mut custom, block_pos(16, -64, -32), tip_id);
     set_test_block(&mut custom, block_pos(16, -63, -32), stone_id);
+    let particle = level_event_particle_context(&custom, &level_event_at(1504, 16, -64, -32))
+        .dripstone_drip_particle
+        .unwrap();
+    assert_eq!(particle.resource_id, "minecraft:dust");
     assert_eq!(
-        level_event_particle_context(&custom, &level_event_at(1504, 16, -64, -32))
-            .dripstone_drip_particle,
-        Some(LevelEventDripstoneDripParticle::Other(
-            bbb_protocol::particle_types::VANILLA_PARTICLE_TYPE_HEART_ID
-        ))
+        particle.option,
+        bbb_world::ClientParticleOptionValue::Dust {
+            color: 0x12_34_56,
+            scale_bits: 0.75_f32.to_bits(),
+        }
     );
 }
 
-fn default_dripstone_particle_dimension_nbt(resource_id: &str) -> Vec<u8> {
+fn dust_default_dripstone_particle_dimension_nbt() -> Vec<u8> {
     let mut out = vec![10, 10];
     write_test_nbt_string(&mut out, "attributes");
     out.push(10);
     write_test_nbt_string(&mut out, "minecraft:visual/default_dripstone_particle");
     out.push(8);
     write_test_nbt_string(&mut out, "type");
-    write_test_nbt_string(&mut out, resource_id);
+    write_test_nbt_string(&mut out, "minecraft:dust");
+    out.push(3);
+    write_test_nbt_string(&mut out, "color");
+    out.extend_from_slice(&0x12_34_56_i32.to_be_bytes());
+    out.push(5);
+    write_test_nbt_string(&mut out, "scale");
+    out.extend_from_slice(&0.75_f32.to_bits().to_be_bytes());
     out.push(0);
     out.push(0);
     out.push(0);

@@ -92,6 +92,7 @@ pub(crate) trait ParticleEventSink {
         _spawns: &[EnvironmentParticleSpawn],
         _context: LevelParticleSpawnContext,
         _biome_sampler: Option<&dyn ParticleBiomeSampler>,
+        _item_runtime: Option<&NativeItemRuntime>,
     ) -> ParticleSpawnBatch {
         ParticleSpawnBatch::default()
     }
@@ -117,6 +118,8 @@ pub(crate) trait ParticleEventSink {
         event: &LevelEvent,
         context: LevelEventParticleContext,
         random: &mut LevelEventSoundRandomState,
+        biome_sampler: Option<&dyn ParticleBiomeSampler>,
+        item_runtime: Option<&NativeItemRuntime>,
     ) -> ParticleSpawnBatch;
     fn spawn_firework_empty_explosion_particles(
         &mut self,
@@ -242,7 +245,7 @@ pub(crate) struct LevelEventParticleContext {
     pub(crate) biome_id_at_event_pos: Option<i32>,
     pub(crate) vault_block_entity_at_event_pos: bool,
     pub(crate) vault_connection_particles: Option<VaultConnectionParticleState>,
-    pub(crate) dripstone_drip_particle: Option<LevelEventDripstoneDripParticle>,
+    pub(crate) dripstone_drip_particle: Option<ClientParticleOptions>,
     pub(crate) growth_particles: Option<LevelEventGrowthParticleContext>,
     pub(crate) in_block_particle_spread_height: Option<f64>,
     pub(crate) composter_fill_center_shape_max_y: Option<f64>,
@@ -255,13 +258,6 @@ pub(crate) struct TrackingEmitterParticleState {
     pub(crate) width: f32,
     pub(crate) height: f32,
     pub(crate) lifetime_ticks: u32,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum LevelEventDripstoneDripParticle {
-    Water,
-    Lava,
-    Other(i32),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -504,9 +500,10 @@ impl ParticleEventSink for NativeParticleRuntime {
         spawns: &[EnvironmentParticleSpawn],
         context: LevelParticleSpawnContext,
         biome_sampler: Option<&dyn ParticleBiomeSampler>,
+        item_runtime: Option<&NativeItemRuntime>,
     ) -> ParticleSpawnBatch {
         self.resolver
-            .resolve_environment_particles(spawns, context, biome_sampler)
+            .resolve_environment_particles(spawns, context, biome_sampler, item_runtime)
     }
 
     fn spawn_explosion_particles(
@@ -544,9 +541,17 @@ impl ParticleEventSink for NativeParticleRuntime {
         event: &LevelEvent,
         context: LevelEventParticleContext,
         random: &mut LevelEventSoundRandomState,
+        biome_sampler: Option<&dyn ParticleBiomeSampler>,
+        item_runtime: Option<&NativeItemRuntime>,
     ) -> ParticleSpawnBatch {
         self.resolver
-            .resolve_level_event_particles_with_context(event, context, random)
+            .resolve_level_event_particles_with_context_and_resources(
+                event,
+                context,
+                random,
+                biome_sampler,
+                item_runtime,
+            )
     }
 
     fn spawn_firework_empty_explosion_particles(
@@ -1597,6 +1602,7 @@ impl LegacyRandom {
 mod atlas;
 mod block_map_color;
 mod environment;
+pub(crate) use environment::simple_client_particle_options;
 mod explosion;
 mod ids;
 mod resolver_block_events;

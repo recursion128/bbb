@@ -7323,7 +7323,7 @@ fn missing_definition_records_diagnostic_without_spawn_commands() {
 }
 
 #[test]
-fn environment_particle_bridge_preserves_provider_diagnostics_and_rejects_complex_options() {
+fn environment_particle_bridge_preserves_diagnostics_and_rejects_mismatched_typed_options() {
     let mut runtime = test_native_particle_runtime(0, ClientParticleStatus::All);
     let spawns = [
         environment_particle_spawn("minecraft:cloud", Vec::new()),
@@ -7349,8 +7349,12 @@ fn environment_particle_bridge_preserves_provider_diagnostics_and_rejects_comple
         environment_particle_spawn("example:unknown", Vec::new()),
     ];
 
-    let batch =
-        runtime.spawn_environment_particles(&spawns, LevelParticleSpawnContext::default(), None);
+    let batch = runtime.spawn_environment_particles(
+        &spawns,
+        LevelParticleSpawnContext::default(),
+        None,
+        None,
+    );
 
     assert_eq!(batch.commands.len(), 2);
     assert!(batch
@@ -7360,6 +7364,260 @@ fn environment_particle_bridge_preserves_provider_diagnostics_and_rejects_comple
     assert_eq!(batch.missing_definition_count, 1);
     assert_eq!(batch.unsupported_particle_option_count, 1);
     assert_eq!(batch.unknown_particle_type_count, 1);
+}
+
+#[test]
+fn environment_particle_bridge_preserves_every_typed_render_option_family() {
+    let stone = test_block_state_id("minecraft:stone", []);
+    let spawns = [
+        typed_environment_particle_spawn(
+            "minecraft:block",
+            ClientParticleOptionValue::Block {
+                block_state_id: stone,
+            },
+        ),
+        typed_environment_particle_spawn(
+            "minecraft:dragon_breath",
+            ClientParticleOptionValue::Power {
+                power_bits: 0.25_f32.to_bits(),
+            },
+        ),
+        typed_environment_particle_spawn(
+            "minecraft:dust",
+            ClientParticleOptionValue::Dust {
+                color: 0x12_34_56,
+                scale_bits: 2.5_f32.to_bits(),
+            },
+        ),
+        typed_environment_particle_spawn(
+            "minecraft:dust_color_transition",
+            ClientParticleOptionValue::DustColorTransition {
+                from_color: 0x01_02_03,
+                to_color: 0xa0_b0_c0,
+                scale_bits: 1.25_f32.to_bits(),
+            },
+        ),
+        typed_environment_particle_spawn(
+            "minecraft:effect",
+            ClientParticleOptionValue::Spell {
+                color: 0x11_22_33,
+                power_bits: 0.75_f32.to_bits(),
+            },
+        ),
+        typed_environment_particle_spawn(
+            "minecraft:entity_effect",
+            ClientParticleOptionValue::Color {
+                argb: 0x80_44_66_88,
+            },
+        ),
+        typed_environment_particle_spawn(
+            "minecraft:sculk_charge",
+            ClientParticleOptionValue::SculkCharge {
+                roll_bits: (-0.5_f32).to_bits(),
+            },
+        ),
+        typed_environment_particle_spawn(
+            "minecraft:vibration",
+            ClientParticleOptionValue::Vibration {
+                block_pos: [1, 64, -2],
+                arrival_in_ticks: 27,
+            },
+        ),
+        typed_environment_particle_spawn(
+            "minecraft:trail",
+            ClientParticleOptionValue::Trail {
+                target_bits: [
+                    1.5_f64.to_bits(),
+                    65.25_f64.to_bits(),
+                    (-4.75_f64).to_bits(),
+                ],
+                color: 0x56_78_9a,
+                duration: 19,
+            },
+        ),
+        typed_environment_particle_spawn(
+            "minecraft:shriek",
+            ClientParticleOptionValue::Shriek { delay: 17 },
+        ),
+    ];
+    let mut runtime = test_native_particle_runtime(0, ClientParticleStatus::All);
+
+    let batch = runtime.spawn_environment_particles(
+        &spawns,
+        LevelParticleSpawnContext::default(),
+        None,
+        None,
+    );
+
+    assert_eq!(batch.commands.len(), spawns.len());
+    assert_eq!(batch.unsupported_particle_option_count, 0);
+    let command = |particle_id: &str| {
+        batch
+            .commands
+            .iter()
+            .find(|command| command.particle_id == particle_id)
+            .unwrap()
+    };
+    assert_eq!(
+        command("minecraft:block").option_block,
+        Some(ParticleBlockOptionState {
+            block_state_id: stone,
+        })
+    );
+    assert_eq!(command("minecraft:dragon_breath").option_power, Some(0.25));
+    assert_eq!(
+        command("minecraft:dust").option_color,
+        Some(rgb_option(0x12, 0x34, 0x56))
+    );
+    assert_eq!(command("minecraft:dust").option_scale, Some(2.5));
+    assert_eq!(
+        command("minecraft:dust_color_transition").option_color_to,
+        Some(rgb_option(0xa0, 0xb0, 0xc0))
+    );
+    assert_eq!(
+        command("minecraft:effect").option_color,
+        Some(rgb_option(0x11, 0x22, 0x33))
+    );
+    assert_eq!(command("minecraft:effect").option_power, Some(0.75));
+    assert_eq!(
+        command("minecraft:entity_effect").option_color,
+        Some([
+            0x44 as f32 / 255.0,
+            0x66 as f32 / 255.0,
+            0x88 as f32 / 255.0,
+            0x80 as f32 / 255.0,
+        ])
+    );
+    assert_eq!(command("minecraft:sculk_charge").option_roll, Some(-0.5));
+    assert_eq!(
+        command("minecraft:vibration").option_target,
+        Some([1.5, 64.5, -1.5])
+    );
+    assert_eq!(
+        command("minecraft:vibration").option_duration_ticks,
+        Some(27)
+    );
+    assert_eq!(
+        command("minecraft:trail").option_target,
+        Some([1.5, 65.25, -4.75])
+    );
+    assert_eq!(
+        command("minecraft:trail").option_color,
+        Some(rgb_option(0x56, 0x78, 0x9a))
+    );
+    assert_eq!(command("minecraft:trail").option_duration_ticks, Some(19));
+    assert_eq!(command("minecraft:shriek").initial_delay_ticks, 17);
+}
+
+#[test]
+fn environment_particle_bridge_uses_existing_block_provider_acceptance() {
+    let spawn = typed_environment_particle_spawn(
+        "minecraft:block",
+        ClientParticleOptionValue::Block {
+            block_state_id: vanilla_air_block_state_id(),
+        },
+    );
+    let mut runtime = test_native_particle_runtime(0, ClientParticleStatus::All);
+
+    let batch = runtime.spawn_environment_particles(
+        &[spawn],
+        LevelParticleSpawnContext::default(),
+        None,
+        None,
+    );
+
+    assert!(batch.commands.is_empty());
+    assert_eq!(batch.unsupported_particle_option_count, 0);
+    assert_eq!(batch.missing_definition_count, 0);
+}
+
+#[test]
+fn environment_particle_item_uses_item_runtime_for_component_stack_sprite() {
+    let root = unique_temp_dir("environment-particle-item-component-sprite");
+    write_item_particle_item_model_fixture(&root);
+    let items = NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let component_patch = bbb_protocol::packets::DataComponentPatchSummary {
+        added: 1,
+        added_type_ids: vec![
+            bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID,
+        ],
+        item_model: Some("minecraft:alternate_model_component".to_string()),
+        ..bbb_protocol::packets::DataComponentPatchSummary::default()
+    };
+    let spawn = typed_environment_particle_spawn(
+        "minecraft:item",
+        ClientParticleOptionValue::Item {
+            stack: bbb_protocol::packets::ItemStackSummary {
+                item_id: Some(0),
+                count: 2,
+                component_patch,
+            },
+        },
+    );
+    let mut runtime = test_native_particle_runtime(0, ClientParticleStatus::All);
+
+    let batch = runtime.spawn_environment_particles(
+        &[spawn],
+        LevelParticleSpawnContext::default(),
+        None,
+        Some(&items),
+    );
+
+    assert_eq!(batch.len(), 1);
+    assert_eq!(
+        batch.commands[0].sprite_ids,
+        vec!["minecraft:item/alternate_model_component".to_string()]
+    );
+    assert_eq!(
+        batch.commands[0].option_item,
+        Some(ParticleItemOptionState {
+            item_id: 0,
+            count: 2,
+            component_patch_len: 1,
+        })
+    );
+}
+
+#[test]
+fn dripstone_drip_preserves_complex_environment_particle_options() {
+    let resolver = test_resolver(0);
+    let event = LevelEvent {
+        event_type: DRIPSTONE_DRIP_LEVEL_EVENT,
+        ..level_event_packet(DRIPSTONE_DRIP_LEVEL_EVENT)
+    };
+    let context = LevelEventParticleContext {
+        dripstone_drip_particle: Some(
+            typed_environment_particle_spawn(
+                "minecraft:dust",
+                ClientParticleOptionValue::Dust {
+                    color: 0x12_34_56,
+                    scale_bits: 0.75_f32.to_bits(),
+                },
+            )
+            .particle,
+        ),
+        ..LevelEventParticleContext::default()
+    };
+    let mut random = LevelEventSoundRandomState::with_seed(0);
+
+    let batch = resolver.resolve_level_event_particles_with_context_and_resources(
+        &event,
+        context,
+        &mut random,
+        None,
+        None,
+    );
+
+    assert_eq!(batch.len(), 1);
+    assert_eq!(batch.commands[0].particle_id, "minecraft:dust");
+    assert_close(batch.commands[0].position[0], 10.583_333_343_267_44);
+    assert_close(batch.commands[0].position[1], 64.25);
+    assert_close(batch.commands[0].position[2], -2.416_666_656_732_56);
+    assert_eq!(
+        batch.commands[0].option_color,
+        Some(rgb_option(0x12, 0x34, 0x56))
+    );
+    assert_eq!(batch.commands[0].option_scale, Some(0.75));
 }
 
 #[test]
@@ -7388,6 +7646,23 @@ fn environment_particle_spawn(
             resource_id: resource_id.to_string(),
             fields,
             option: ClientParticleOptionValue::Empty,
+        },
+        position: [0.0, 64.0, 0.0],
+    }
+}
+
+fn typed_environment_particle_spawn(
+    resource_id: &str,
+    option: ClientParticleOptionValue,
+) -> EnvironmentParticleSpawn {
+    EnvironmentParticleSpawn {
+        particle: ClientParticleOptions {
+            resource_id: resource_id.to_string(),
+            fields: vec![NbtSummaryEntry {
+                name: "type".to_string(),
+                value: NbtSummaryValue::String(resource_id.to_string()),
+            }],
+            option,
         },
         position: [0.0, 64.0, 0.0],
     }
@@ -7627,7 +7902,9 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     let water_drip = resolver.resolve_level_event_particles_with_context(
         &dripstone_event,
         LevelEventParticleContext {
-            dripstone_drip_particle: Some(LevelEventDripstoneDripParticle::Water),
+            dripstone_drip_particle: Some(simple_client_particle_options(
+                "minecraft:dripping_dripstone_water",
+            )),
             ..LevelEventParticleContext::default()
         },
         &mut water_drip_random,
@@ -7646,7 +7923,9 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     let lava_drip = resolver.resolve_level_event_particles_with_context(
         &dripstone_event,
         LevelEventParticleContext {
-            dripstone_drip_particle: Some(LevelEventDripstoneDripParticle::Lava),
+            dripstone_drip_particle: Some(simple_client_particle_options(
+                "minecraft:dripping_dripstone_lava",
+            )),
             ..LevelEventParticleContext::default()
         },
         &mut lava_drip_random,
@@ -9571,7 +9850,9 @@ fn representative_level_event_particle_context(
 ) -> LevelEventParticleContext {
     match event.event_type {
         DRIPSTONE_DRIP_LEVEL_EVENT => LevelEventParticleContext {
-            dripstone_drip_particle: Some(LevelEventDripstoneDripParticle::Water),
+            dripstone_drip_particle: Some(simple_client_particle_options(
+                "minecraft:dripping_dripstone_water",
+            )),
             ..LevelEventParticleContext::default()
         },
         PLANT_GROWTH_LEVEL_EVENT => LevelEventParticleContext {

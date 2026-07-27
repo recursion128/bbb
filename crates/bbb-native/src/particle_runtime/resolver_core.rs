@@ -277,11 +277,25 @@ impl ParticleCommandResolver {
         )
     }
 
+    #[cfg(test)]
     pub(super) fn resolve_level_event_particles_with_context(
         &self,
         event: &LevelEvent,
         context: LevelEventParticleContext,
         random: &mut LevelEventSoundRandomState,
+    ) -> ParticleSpawnBatch {
+        self.resolve_level_event_particles_with_context_and_resources(
+            event, context, random, None, None,
+        )
+    }
+
+    pub(super) fn resolve_level_event_particles_with_context_and_resources(
+        &self,
+        event: &LevelEvent,
+        context: LevelEventParticleContext,
+        random: &mut LevelEventSoundRandomState,
+        biome_sampler: Option<&dyn ParticleBiomeSampler>,
+        item_runtime: Option<&NativeItemRuntime>,
     ) -> ParticleSpawnBatch {
         match event.event_type {
             COMPOSTER_FILL_LEVEL_EVENT => {
@@ -329,7 +343,9 @@ impl ParticleCommandResolver {
                 }
                 self.simple_particle_batch(VANILLA_PARTICLE_TYPE_SMOKE_ID, spawns)
             }
-            DRIPSTONE_DRIP_LEVEL_EVENT => self.dripstone_drip_particle_batch(event, context),
+            DRIPSTONE_DRIP_LEVEL_EVENT => {
+                self.dripstone_drip_particle_batch(event, context, biome_sampler, item_runtime)
+            }
             PLANT_GROWTH_LEVEL_EVENT => self.growth_particle_batch(event, context, random),
             DISPENSER_SMOKE_LEVEL_EVENT => {
                 self.shoot_particles(event, VANILLA_PARTICLE_TYPE_SMOKE_ID, random)
