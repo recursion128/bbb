@@ -613,3 +613,6 @@
 - **2026-07-26（F5 相机视角生命周期工程闭环）**：第一/后置/前置视角循环、
   镜像与八射线 VISUAL 裁剪、相机实体/首人称可见性、拾取姿态和后处理边界均按
   Vanilla 对齐；合同见 `docs/archive/camera-perspective-lifecycle-design.md`。
+- **2026-07-26（望远镜遮罩工程闭环）**：本地 `isScoping`、GUI 帧级
+  `scopeScale` 插值、selected-pack scope 纹理、四边黑色遮罩与 crosshair 前提交
+  已按 Vanilla 对齐；合同见 `docs/archive/spyglass-scope-overlay-design.md`。

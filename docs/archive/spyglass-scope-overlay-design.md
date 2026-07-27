@@ -1,6 +1,6 @@
 # Spyglass Scope Overlay
 
-Status: active engineering slice.
+Status: completed on 2026-07-26.
 
 ## Goal and completion standard
 

@@ -727,11 +727,6 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 
 - Render the creative inventory-tab player preview through the existing
   entity-in-UI surface.
-- Render the first-person spyglass scope from
-  `textures/misc/spyglass_scope.png`, including the black outside mask and
-  `Gui.scopeScale` interpolation. The interpolation needs a deterministic
-  GUI-frame `getGameTimeDeltaTicks` owner rather than a simulation-tick
-  approximation.
 - Complete remaining player-list presentation parity: encrypted-session player
   heads, narrator visibility announcements, and vanilla ping sprites.
 - `chunk_section_paths`, `chunk_section_octree`, and
