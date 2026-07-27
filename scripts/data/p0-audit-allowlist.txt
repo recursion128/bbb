@@ -120,6 +120,10 @@
 ^crates/bbb-native/src/particle_runtime(/.*)?[.]rs$	fallback
 ^crates/bbb-native/src/(runtime|input|item_frames|banner_scene|debug_entries|main)[.]rs$	fallback
 ^crates/bbb-native/src/input/.*[.]rs$	fallback
+# This atlas test proves GUI special-pattern sprites have a pack-owned texture
+# when no live dynamic atlas handle is available; it exercises the canonical
+# residency upload path and does not introduce a textured submission bypass.
+^crates/bbb-native/src/entity_assets[.]rs$	special_pattern_atlas_sprites_supply_owned_gui_fallbacks
 # Player-head scene tests name the exact Vanilla owner-specific skin fallback
 # and its render-state field; the skull model remains present in every branch.
 ^crates/bbb-native/src/skull_scene[.]rs$	profiled_player_head_projects_owner_fallback_and_ready_dynamic_skin|let fallback = skull_model_instances|fallback\[0\][.]kind|fallback: EntityDefaultPlayerSkin::SlimAlex
