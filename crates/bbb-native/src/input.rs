@@ -534,6 +534,13 @@ pub(crate) enum DebugProfilingToggleRequest {
     Stop,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct CameraPostEffectSelection {
+    client_level_generation: u64,
+    set_camera_updates_applied: usize,
+    effect_id: Option<&'static str>,
+}
+
 /// Focus path owned by the native StatsScreen interaction model. This mirrors the
 /// concrete vanilla widgets without leaking localized labels into input state.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -665,6 +672,8 @@ pub(crate) struct ClientInputState {
     debug_wireframe_enabled: bool,
     /// Vanilla `Options.hideGui`, toggled by the default `key.toggleGui` (F1).
     hide_gui: bool,
+    camera_post_effect_selection: Option<CameraPostEffectSelection>,
+    camera_post_effect_active: bool,
     debug_frustum_requests: Vec<DebugFrustumRequest>,
     debug_feature_count_requests: Vec<DebugFeatureCountRequest>,
     debug_pause_on_lost_focus: bool,
@@ -1271,6 +1280,7 @@ impl ClientInputState {
             debug_fog_enabled: self.debug_fog_enabled,
             debug_smart_cull_enabled: self.debug_smart_cull_enabled,
             debug_wireframe_enabled: self.debug_wireframe_enabled,
+            camera_post_effect_active: self.camera_post_effect_active,
             debug_pause_on_lost_focus: self.debug_pause_on_lost_focus,
             debug_profiling_recording: self.debug_profiling_recording,
             debug_options_screen: self.debug_options_screen.clone(),
@@ -1527,6 +1537,32 @@ impl ClientInputState {
 
     pub(crate) fn hide_gui(&self) -> bool {
         self.hide_gui
+    }
+
+    pub(crate) fn synchronize_camera_post_effect(
+        &mut self,
+        client_level_generation: u64,
+        set_camera_updates_applied: usize,
+        effect_id: Option<&'static str>,
+    ) {
+        let selection = CameraPostEffectSelection {
+            client_level_generation,
+            set_camera_updates_applied,
+            effect_id,
+        };
+        if self.camera_post_effect_selection == Some(selection) {
+            return;
+        }
+        self.camera_post_effect_selection = Some(selection);
+        self.camera_post_effect_active = effect_id.is_some();
+    }
+
+    pub(crate) fn camera_post_effect_active(&self) -> bool {
+        self.camera_post_effect_active
+    }
+
+    fn toggle_camera_post_effect(&mut self) {
+        self.camera_post_effect_active = !self.camera_post_effect_active;
     }
 
     fn set_key_down(&mut self, code: KeyCode, pressed: bool) {
@@ -10950,6 +10986,10 @@ pub(crate) fn handle_key_input_with_item_runtime(
         input.record_debug_profiler_chart_navigation_key(code);
         if just_pressed && code == KeyCode::F1 {
             input.hide_gui = !input.hide_gui;
+            return;
+        }
+        if just_pressed && code == KeyCode::F4 {
+            input.toggle_camera_post_effect();
             return;
         }
         if let Some(slot) = hotbar_slot_for_key(code) {

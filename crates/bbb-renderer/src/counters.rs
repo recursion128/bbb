@@ -81,6 +81,7 @@ pub struct RendererCounters {
     pub item_extraction_scratch_capacity_growths: u64,
     pub hud_draw_calls: u64,
     pub screen_blur_draw_calls: u64,
+    pub post_effect_draw_calls: u64,
     pub pipeline_switches: u64,
     pub screenshots_written: u64,
     pub queued_sections: usize,

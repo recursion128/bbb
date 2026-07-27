@@ -237,6 +237,7 @@ pub struct Renderer {
     pub(super) started_at: Instant,
     pub(super) shader_game_time_ticks: f64,
     pub(super) current_post_effect_id: Option<String>,
+    pub(super) camera_post_effect_active: bool,
     pub(super) menu_background_blurriness: f32,
     pub(super) hide_gui: bool,
     pub(super) hud_screen_blur: bool,
@@ -1630,6 +1631,7 @@ impl Renderer {
             started_at: Instant::now(),
             shader_game_time_ticks: 0.0,
             current_post_effect_id: None,
+            camera_post_effect_active: false,
             menu_background_blurriness: sanitize_menu_background_blurriness(
                 VANILLA_DEFAULT_MENU_BACKGROUND_BLURRINESS,
             ),
@@ -2348,15 +2350,21 @@ impl Renderer {
         self.counters.terrain_mesh_peak_build_sections = counters.peak_build_sections;
     }
 
-    pub fn set_current_post_effect_id(&mut self, id: Option<&str>) {
-        if self.current_post_effect_id.as_deref() == id {
+    pub fn set_camera_post_effect(&mut self, id: Option<&str>, active: bool) {
+        if self.current_post_effect_id.as_deref() == id && self.camera_post_effect_active == active
+        {
             return;
         }
         self.current_post_effect_id = id.map(str::to_owned);
+        self.camera_post_effect_active = active;
     }
 
     pub fn current_post_effect_id(&self) -> Option<&str> {
         self.current_post_effect_id.as_deref()
+    }
+
+    pub fn camera_post_effect_active(&self) -> bool {
+        self.camera_post_effect_active
     }
 
     /// Sets vanilla's startup-only menu background blur option (`0..=10`).
@@ -3390,6 +3398,19 @@ mod tests {
             choose_present_mode(&[wgpu::PresentMode::Fifo], false).unwrap(),
             wgpu::PresentMode::Fifo
         );
+    }
+
+    #[test]
+    fn camera_post_effect_setter_commits_selection_and_active_state_together() {
+        let source = include_str!("renderer.rs");
+        let setter = source
+            .split("pub fn set_camera_post_effect")
+            .nth(1)
+            .and_then(|source| source.split_once("\n    }"))
+            .map(|(body, _)| body)
+            .expect("camera post-effect setter");
+        assert!(setter.contains("self.current_post_effect_id = id.map(str::to_owned);"));
+        assert!(setter.contains("self.camera_post_effect_active = active;"));
     }
 
     #[test]

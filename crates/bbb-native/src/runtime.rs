@@ -2332,6 +2332,11 @@ pub(crate) fn advance_simulation(
     world.poll_queued_light_updates();
     let pump_net_drained_at = Instant::now();
     server_resource_packs.synchronize(world, net_commands, net_counters.connected);
+    input.synchronize_camera_post_effect(
+        world.client_level_generation(),
+        world.counters().set_camera_updates_applied,
+        current_post_effect_id_from_world(world),
+    );
     input.sync_dialog_native_previous_screen(world, net_counters, net_commands);
     input.sync_game_event_screen(world, net_counters, net_commands);
     input.sync_death_screen(world, net_counters, net_commands);
@@ -3809,6 +3814,7 @@ pub(crate) fn update_renderer_from_publication(
             camera_fov_degrees: camera_fov.world_degrees,
             camera_hud_fov_degrees: camera_fov.hud_degrees,
             current_post_effect_id,
+            camera_post_effect_active: input.camera_post_effect_active(),
             shader_game_time_ticks,
             cloud_frame,
             weather_render_state,
@@ -17621,6 +17627,7 @@ pub(crate) fn control_renderer_counters(
         item_extraction_scratch_capacity_growths: counters.item_extraction_scratch_capacity_growths,
         hud_draw_calls: counters.hud_draw_calls,
         screen_blur_draw_calls: counters.screen_blur_draw_calls,
+        post_effect_draw_calls: counters.post_effect_draw_calls,
         pipeline_switches: counters.pipeline_switches,
         screenshots_written: counters.screenshots_written,
         queued_sections: counters.queued_sections,

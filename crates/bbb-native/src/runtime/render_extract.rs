@@ -2240,6 +2240,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) camera_fov_degrees: f32,
     pub(crate) camera_hud_fov_degrees: f32,
     pub(crate) current_post_effect_id: Option<&'a str>,
+    pub(crate) camera_post_effect_active: bool,
     pub(crate) shader_game_time_ticks: f64,
     pub(crate) cloud_frame: CloudFrame,
     pub(crate) weather_render_state: WeatherRenderState,
@@ -2538,7 +2539,10 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_camera_spinning_effect(frame.camera_spinning_effect);
     renderer.set_camera_fov_degrees(frame.camera_fov_degrees, frame.camera_hud_fov_degrees);
     renderer.set_camera_pose(frame.camera_pose);
-    renderer.set_current_post_effect_id(frame.current_post_effect_id);
+    renderer.set_camera_post_effect(
+        frame.current_post_effect_id,
+        frame.camera_post_effect_active,
+    );
     renderer.set_shader_game_time_ticks(frame.shader_game_time_ticks);
     renderer.set_cloud_frame(frame.cloud_frame);
     renderer.set_weather_render_state(frame.weather_render_state);

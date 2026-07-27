@@ -16987,7 +16987,7 @@ fn f3_n_queues_previous_or_creative_game_mode_when_already_spectator() {
 }
 
 #[test]
-fn f3_f4_game_mode_switcher_queues_default_selection_on_f3_release() {
+fn camera_post_effect_f3_f4_game_mode_switcher_does_not_toggle_active_state() {
     for (game_type, previous_game_type, expected_game_mode) in [
         (0, -1, bbb_protocol::packets::GameType::Creative),
         (1, -1, bbb_protocol::packets::GameType::Survival),
@@ -16999,6 +16999,7 @@ fn f3_f4_game_mode_switcher_queues_default_selection_on_f3_release() {
         let mut counters = NetCounters::default();
         let mut world = world_with_debug_player_in_game_mode(false, game_type, previous_game_type);
         grant_debug_recreate_nbt_permission(&mut world);
+        input.synchronize_camera_post_effect(1, 1, Some("minecraft:spider"));
 
         handle_key_input(
             &mut input,
@@ -17020,6 +17021,10 @@ fn f3_f4_game_mode_switcher_queues_default_selection_on_f3_release() {
         assert_eq!(
             input.debug_game_mode_switcher_selected(),
             Some(expected_game_mode)
+        );
+        assert!(
+            input.camera_post_effect_active(),
+            "the consumed F3+F4 chord must not toggle the spectator post effect"
         );
         assert_eq!(counters.change_game_mode_commands_queued, 0);
         assert!(rx.try_recv().is_err());
@@ -25791,6 +25796,75 @@ fn toggle_gui_key_flips_hide_gui_once_per_press_edge() {
         ElementState::Pressed,
     );
     assert!(!input.hide_gui());
+}
+
+#[test]
+fn camera_post_effect_selection_and_f4_edges_preserve_vanilla_active_lifecycle() {
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    input.synchronize_camera_post_effect(7, 1, Some("minecraft:creeper"));
+    assert!(input.camera_post_effect_active());
+
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &None,
+        PhysicalKey::Code(KeyCode::F4),
+        ElementState::Pressed,
+    );
+    assert!(!input.camera_post_effect_active());
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &None,
+        PhysicalKey::Code(KeyCode::F4),
+        ElementState::Pressed,
+    );
+    assert!(
+        !input.camera_post_effect_active(),
+        "a held key must not consume a second click"
+    );
+    input.synchronize_camera_post_effect(7, 1, Some("minecraft:creeper"));
+    assert!(
+        !input.camera_post_effect_active(),
+        "same-selection extraction must preserve the disabled state"
+    );
+    assert!(!input.render_publication().camera_post_effect_active());
+
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &None,
+        PhysicalKey::Code(KeyCode::F4),
+        ElementState::Released,
+    );
+    input.synchronize_camera_post_effect(7, 2, Some("minecraft:creeper"));
+    assert!(
+        input.camera_post_effect_active(),
+        "a repeated applied SetCamera selection reenables its effect"
+    );
+    input.synchronize_camera_post_effect(7, 3, None);
+    assert!(
+        !input.camera_post_effect_active(),
+        "clearing the selected effect clears active state"
+    );
+
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &None,
+        PhysicalKey::Code(KeyCode::F4),
+        ElementState::Pressed,
+    );
+    assert!(
+        input.camera_post_effect_active(),
+        "F4 remains independent even when no effect id is selected"
+    );
+    input.synchronize_camera_post_effect(8, 0, None);
+    assert!(
+        !input.camera_post_effect_active(),
+        "a new level selection token clears an absent effect"
+    );
 }
 
 #[test]

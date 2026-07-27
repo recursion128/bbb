@@ -6515,8 +6515,17 @@ fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
 }
 
 #[test]
-fn renderer_frame_commits_the_same_current_post_effect_used_by_hud() {
+fn camera_post_effect_frame_commits_the_same_selection_and_active_state_used_by_hud() {
     let runtime_source = include_str!("../runtime.rs");
+    let network_drain = runtime_source
+        .find("let pump_net_drained_at = Instant::now();")
+        .expect("network drain completion");
+    let selection_sync = runtime_source
+        .find("input.synchronize_camera_post_effect(")
+        .expect("camera post-effect selection sync");
+    let input_commands = runtime_source
+        .find("input_runtime.apply_commands(")
+        .expect("ordered input command application");
     let extraction = runtime_source
         .find("let current_post_effect_id = current_post_effect_id_from_world(world);")
         .expect("pump should extract the current post effect once per frame");
@@ -6525,13 +6534,25 @@ fn renderer_frame_commits_the_same_current_post_effect_used_by_hud() {
         .expect("HUD should consume the same-frame current post effect");
     let frame_projection = runtime_source
         .find("            current_post_effect_id,\n            shader_game_time_ticks,")
+        .or_else(|| {
+            runtime_source
+                .find("            current_post_effect_id,\n            camera_post_effect_active:")
+        })
         .expect("RendererFrame should carry the same current post effect");
-    assert!(extraction < hud_projection && hud_projection < frame_projection);
+    assert!(
+        network_drain < selection_sync
+            && selection_sync < input_commands
+            && input_commands < extraction
+            && extraction < hud_projection
+            && hud_projection < frame_projection
+    );
 
     let frame_source = include_str!("render_extract.rs");
     assert!(frame_source.contains("pub(crate) current_post_effect_id: Option<&'a str>"));
+    assert!(frame_source.contains("pub(crate) camera_post_effect_active: bool"));
     assert!(
-        frame_source.contains("renderer.set_current_post_effect_id(frame.current_post_effect_id);")
+        frame_source.contains("renderer.set_camera_post_effect(")
+            && frame_source.contains("frame.camera_post_effect_active,")
     );
 }
 
