@@ -630,3 +630,6 @@
   texture、七类 uniform 与 wgpu 图执行现原子接管 blur、三类相机效果、描边和
   transparency 深度合成；合同见
   `docs/archive/selected-pack-post-effect-graph-design.md`。
+- **2026-07-27（同步环境 ParticleOptions 工程闭环）**：完整 MapCodec payload、
+  registry-aware item 组件、ambient 粒子与滴水石事件 1504 已贯通同一原生
+  provider/command 路径；合同见 `docs/archive/environment-particle-options-design.md`。

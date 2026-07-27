@@ -714,13 +714,7 @@ Attachment and spawner presentation:
 - Wire the camel body-anchor passenger/leash attachment consumers. The anchor
   provider `Camel.getBodyAnchorAnimationYOffset` already exists.
 - Implement the ominous-item-spawner about-to-spawn and spawn sounds.
-Environment:
 
-- Preserve complete `ParticleOptions` payloads when a custom dimension selects
-  a complex default dripstone particle. The current level-event bridge carries
-  the synchronized particle type but does not project block/item/color/vibration
-  option state into the provider; item options also still need exact nested
-  `DataComponentPatch.CODEC` value validation.
 ## HUD overlay and screen render surfaces
 
 Owner: `bbb-renderer` + `bbb-native` + `bbb-world`

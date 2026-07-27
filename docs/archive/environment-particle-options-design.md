@@ -1,6 +1,6 @@
 # Synchronized Environment ParticleOptions Closure
 
-Status: active engineering slice
+Status: completed on 2026-07-27.
 
 ## Goal and completion contract
 
