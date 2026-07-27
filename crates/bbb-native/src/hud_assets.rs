@@ -134,6 +134,69 @@ pub(crate) fn try_load_hud_textures(
         "minecraft:textures/gui/container/inventory",
     )?;
     renderer.upload_hud_inventory_background(inventory.width, inventory.height, &inventory.rgba)?;
+    let creative_items = gui_texture(
+        roots,
+        "textures/gui/container/creative_inventory/tab_items.png",
+        "minecraft:textures/gui/container/creative_inventory/tab_items",
+    )?;
+    renderer.upload_hud_creative_items_background(
+        creative_items.width,
+        creative_items.height,
+        &creative_items.rgba,
+    )?;
+    let creative_item_search = gui_texture(
+        roots,
+        "textures/gui/container/creative_inventory/tab_item_search.png",
+        "minecraft:textures/gui/container/creative_inventory/tab_item_search",
+    )?;
+    renderer.upload_hud_creative_item_search_background(
+        creative_item_search.width,
+        creative_item_search.height,
+        &creative_item_search.rgba,
+    )?;
+    let creative_inventory = gui_texture(
+        roots,
+        "textures/gui/container/creative_inventory/tab_inventory.png",
+        "minecraft:textures/gui/container/creative_inventory/tab_inventory",
+    )?;
+    renderer.upload_hud_creative_inventory_background(
+        creative_inventory.width,
+        creative_inventory.height,
+        &creative_inventory.rgba,
+    )?;
+    for disabled in [false, true] {
+        let suffix = if disabled { "_disabled" } else { "" };
+        let scroller = hud_sprite(
+            &sprites,
+            &format!("container/creative_inventory/scroller{suffix}"),
+        )?;
+        renderer.upload_hud_creative_scroller(
+            disabled,
+            scroller.width,
+            scroller.height,
+            &scroller.rgba,
+        )?;
+    }
+    for (row_name, row) in [
+        ("top", bbb_renderer::HudCreativeInventoryTabRow::Top),
+        ("bottom", bbb_renderer::HudCreativeInventoryTabRow::Bottom),
+    ] {
+        for selected in [false, true] {
+            let selection = if selected { "selected" } else { "unselected" };
+            for column in 0_u8..7 {
+                let tab = hud_sprite(
+                    &sprites,
+                    &format!(
+                        "container/creative_inventory/tab_{row_name}_{selection}_{}",
+                        column + 1
+                    ),
+                )?;
+                renderer.upload_hud_creative_tab(
+                    row, selected, column, tab.width, tab.height, &tab.rgba,
+                )?;
+            }
+        }
+    }
     let tooltip_background = hud_sprite(&sprites, "tooltip/background")?;
     let tooltip_background_scaling = hud_nine_slice_scaling(tooltip_background)?;
     renderer.upload_hud_tooltip_background(

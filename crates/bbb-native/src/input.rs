@@ -235,10 +235,15 @@ pub(crate) use commands::{
 };
 use component_patch::{encode_added_component_value_snbt_with_context, PersistentSnbtContext};
 pub(crate) use game_rules::{GameRuleSearchEntry, GameRulesInteractionRow, GameRulesScreenFocus};
+pub(crate) use inventory::creative::{
+    creative_inventory_matching_item_tags, creative_inventory_max_scroll_row,
+    creative_inventory_visible_items, CreativeInventoryHover, CreativeInventoryHudState,
+};
 #[cfg(test)]
 pub(crate) use inventory::handle_inventory_mouse_input;
 pub(crate) use inventory::{
-    anvil_rename_entry_consumes_key, handle_inventory_cursor_moved, handle_inventory_key_input,
+    anvil_rename_entry_consumes_key, creative_inventory_search_entry_consumes_key,
+    handle_inventory_cursor_moved, handle_inventory_key_input,
     handle_inventory_mouse_input_with_item_runtime, handle_inventory_mouse_wheel,
     handle_inventory_text_input, inventory_screen_layout, inventory_screen_layout_for_surface,
     inventory_screen_selected_hotbar_slot_id, maybe_close_narrow_recipe_book,
@@ -578,6 +583,7 @@ pub(crate) struct ClientInputState {
     inventory_last_click_slot: Option<i16>,
     inventory_last_click_button_num: Option<i8>,
     inventory_last_click_at: Option<Instant>,
+    creative_inventory: inventory::creative::CreativeInventoryInputState,
     dialog_last_click_button: Option<MouseButton>,
     dialog_last_click_at: Option<Instant>,
     dialog_last_click_screen_revision: Option<u64>,
@@ -1429,6 +1435,7 @@ impl ClientInputState {
         self.inventory_last_click_slot = None;
         self.inventory_last_click_button_num = None;
         self.inventory_last_click_at = None;
+        self.creative_inventory.cancel_primary_interaction();
         self.dialog_last_click_button = None;
         self.dialog_last_click_at = None;
         self.dialog_last_click_screen_revision = None;
@@ -2281,6 +2288,58 @@ impl ClientInputState {
 
     pub(crate) fn inventory_cursor_position(&self) -> Option<(i32, i32)> {
         self.inventory_cursor_position
+    }
+
+    pub(crate) fn sync_creative_inventory_presentation(
+        &mut self,
+        world: &WorldStore,
+        item_runtime: Option<&NativeItemRuntime>,
+    ) {
+        let resource_generation = item_runtime
+            .map(NativeItemRuntime::resource_generation)
+            .unwrap_or_default();
+        self.creative_inventory.sync(
+            world.creative_inventory_screen(),
+            world.creative_inventory_snapshot(),
+            resource_generation,
+        );
+        if world.creative_inventory_screen().is_none() {
+            self.creative_inventory.set_visible_item_count(0);
+            return;
+        }
+        let Some(snapshot) = world.creative_inventory_snapshot() else {
+            self.creative_inventory.set_visible_item_count(0);
+            return;
+        };
+        let visible_item_count = self
+            .creative_inventory
+            .selected_tab(snapshot)
+            .map(|tab| {
+                if tab.tab_type == bbb_world::CreativeInventoryTabType::Hotbar {
+                    81
+                } else {
+                    inventory::creative::creative_inventory_visible_items(
+                        world,
+                        item_runtime,
+                        tab,
+                        self.creative_inventory.search_text(),
+                    )
+                    .len()
+                }
+            })
+            .unwrap_or_default();
+        self.creative_inventory
+            .set_visible_item_count(visible_item_count);
+    }
+
+    pub(crate) fn creative_inventory_hud_state(
+        &self,
+        world: &WorldStore,
+    ) -> Option<inventory::creative::CreativeInventoryHudState> {
+        world.creative_inventory_screen()?;
+        let snapshot = world.creative_inventory_snapshot()?;
+        self.creative_inventory
+            .hud_state(snapshot, self.creative_inventory.visible_item_count())
     }
 
     pub(crate) fn merchant_focused_trade_row(&self) -> Option<i32> {
@@ -10866,6 +10925,7 @@ pub(crate) fn handle_key_input_with_item_runtime(
         if matches!(code, KeyCode::KeyE)
             && !anvil_rename_entry_consumes_key(world, code)
             && !recipe_book_search_entry_consumes_key(input, world, code)
+            && !creative_inventory_search_entry_consumes_key(input, world, code)
             && queue_container_close_command(counters, world, net_commands)
         {
             return;

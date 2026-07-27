@@ -140,13 +140,13 @@ use crate::{
         stats_screen_done_button_contains, sync_beacon_effect_selection_state,
         sync_loom_pattern_state_for_hud, sync_recipe_book_presentation,
         sync_stonecutter_recipe_scroll_state, ClientInputState, CommandSuggestionHudTooltip,
-        CommandSuggestionNarrationState, DebugOptionsScreenHudRow, DialogImePreeditHudState,
-        InventoryScreenBackground, RecipeBookOverlayHudState, RecipeBookPageHudState,
-        RecipeBookPresentationHudState, RecipeBookSearchHudState, RecipeBookTabSelectionHudState,
-        StatsScreenFocus, LOOM_PATTERN_BUTTON_COLUMNS, LOOM_PATTERN_BUTTON_ROWS,
-        LOOM_PATTERN_BUTTON_SIZE, LOOM_PATTERN_BUTTON_X, LOOM_PATTERN_BUTTON_Y,
-        LOOM_SCROLLER_HEIGHT, LOOM_SCROLLER_MAX_OFFSET, LOOM_SCROLLER_WIDTH, LOOM_SCROLLER_X,
-        LOOM_SCROLLER_Y, LOOM_SELECTED_PATTERN_DATA_ID, RECIPE_BOOK_BUTTON_HEIGHT,
+        CommandSuggestionNarrationState, CreativeInventoryHudState, DebugOptionsScreenHudRow,
+        DialogImePreeditHudState, InventoryScreenBackground, RecipeBookOverlayHudState,
+        RecipeBookPageHudState, RecipeBookPresentationHudState, RecipeBookSearchHudState,
+        RecipeBookTabSelectionHudState, StatsScreenFocus, LOOM_PATTERN_BUTTON_COLUMNS,
+        LOOM_PATTERN_BUTTON_ROWS, LOOM_PATTERN_BUTTON_SIZE, LOOM_PATTERN_BUTTON_X,
+        LOOM_PATTERN_BUTTON_Y, LOOM_SCROLLER_HEIGHT, LOOM_SCROLLER_MAX_OFFSET, LOOM_SCROLLER_WIDTH,
+        LOOM_SCROLLER_X, LOOM_SCROLLER_Y, LOOM_SELECTED_PATTERN_DATA_ID, RECIPE_BOOK_BUTTON_HEIGHT,
         RECIPE_BOOK_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_HEIGHT,
         RECIPE_BOOK_FILTER_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y,
         RECIPE_BOOK_PAGE_BACKWARD_BUTTON_X, RECIPE_BOOK_PAGE_BUTTON_HEIGHT,
@@ -227,6 +227,7 @@ mod book_screen;
 mod toast;
 pub(crate) use book_screen::hud_book_component_click_event;
 mod control_requests;
+mod creative_inventory;
 mod debug_light_sections;
 mod dialog_screen;
 mod game_rules_screen;
@@ -240,6 +241,7 @@ pub(crate) use events::minimal_non_empty_synchronized_registry_data;
 pub(crate) use events::queue_chat_acknowledgement;
 
 use book_screen::hud_book_screen;
+use creative_inventory::{creative_inventory_narration_frame, hud_creative_inventory_screen};
 pub(crate) use debug_light_sections::DebugSkyLightSectionCache;
 pub(crate) use dialog_screen::{
     dialog_ime_cursor_area, handle_dialog_cursor_moved_with_measurer,
@@ -634,6 +636,7 @@ struct BeaconEffectButton {
 
 #[derive(Debug, Clone, Default, PartialEq)]
 struct InventoryHudLocalState {
+    creative_inventory: Option<CreativeInventoryHudState>,
     stonecutter_recipe_scroll_row: Option<i32>,
     beacon_effect_selection: Option<(Option<i32>, Option<i32>)>,
     loom_pattern_scroll_row: Option<i32>,
@@ -2421,6 +2424,7 @@ pub(crate) fn advance_simulation(
     sync_stonecutter_recipe_scroll_state(input, world);
     sync_beacon_effect_selection_state(input, world);
     sync_loom_pattern_state_for_hud(input, world);
+    input.sync_creative_inventory_presentation(world, item_runtime.as_ref());
     let advancement_scroll_delta =
         input.advancement_scroll_delta(world.selected_advancements_tab());
     advancement_hover_fade_for_hud(
@@ -3205,6 +3209,7 @@ pub(crate) fn update_renderer_from_publication(
             terrain_textures,
             input.inventory_hovered_slot(),
             InventoryHudLocalState {
+                creative_inventory: input.creative_inventory_hud_state(world),
                 stonecutter_recipe_scroll_row: Some(input.stonecutter_recipe_scroll_row()),
                 beacon_effect_selection: Some(input.beacon_effect_selection()),
                 loom_pattern_scroll_row: Some(input.loom_pattern_scroll_row()),
@@ -3234,13 +3239,17 @@ pub(crate) fn update_renderer_from_publication(
     hud_render_runtime.recipe_book_narration = hud_inventory_screen
         .is_some()
         .then(|| {
-            recipe_book_narration_frame(
-                input,
-                world,
-                item_runtime,
-                surface_size,
-                entity_partial_tick,
-            )
+            if let Some(state) = input.creative_inventory_hud_state(world) {
+                creative_inventory_narration_frame(world, item_runtime, &state)
+            } else {
+                recipe_book_narration_frame(
+                    input,
+                    world,
+                    item_runtime,
+                    surface_size,
+                    entity_partial_tick,
+                )
+            }
         })
         .flatten();
     // Dialog, in-world game-rules, and demo popup/confirmation screens inherit
@@ -8996,6 +9005,19 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
 
     if world.game_rules_screen().is_some() {
         return None;
+    }
+
+    if world.creative_inventory_screen().is_some() {
+        return hud_creative_inventory_screen(
+            world,
+            item_runtime,
+            terrain_textures,
+            local_state.creative_inventory?,
+            local_state.shift_down,
+            local_state.keybind_context,
+            local_state.advanced_item_tooltips,
+            partial_tick,
+        );
     }
 
     let layout = inventory_screen_layout_for_surface(world, surface_size)?;

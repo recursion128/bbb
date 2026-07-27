@@ -58,6 +58,7 @@ use crate::recipe_book_ui::{
 };
 use bbb_item_model::NativeItemRuntime;
 
+pub(super) mod creative;
 mod layout;
 mod recipe_book_lifecycle;
 
@@ -275,6 +276,27 @@ pub(crate) fn handle_inventory_cursor_moved(
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> bool {
+    if world.creative_inventory_screen().is_some() {
+        if !input.focused {
+            return false;
+        }
+        let Some(snapshot) = world.creative_inventory_snapshot() else {
+            return true;
+        };
+        let visible_item_count = input.creative_inventory.visible_item_count();
+        input.creative_inventory.set_cursor_position(
+            cursor_position,
+            surface_size,
+            snapshot,
+            visible_item_count,
+        );
+        input.inventory_cursor_position = input.creative_inventory.cursor_position();
+        input.inventory_hovered_slot = input
+            .creative_inventory
+            .hovered_slot()
+            .and_then(|slot| i16::try_from(slot.hud_id()).ok());
+        return true;
+    }
     if !input.focused || inventory_screen_layout_for_surface(world, surface_size).is_none() {
         return false;
     }
@@ -348,6 +370,38 @@ pub(crate) fn handle_inventory_mouse_input_with_item_runtime(
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> bool {
+    if world.creative_inventory_screen().is_some() {
+        if !input.focused {
+            return false;
+        }
+        let Some(snapshot) = world.creative_inventory_snapshot() else {
+            return true;
+        };
+        let visible_item_count = input.creative_inventory.visible_item_count();
+        input.creative_inventory.set_cursor_position(
+            cursor_position,
+            surface_size,
+            snapshot,
+            visible_item_count,
+        );
+        input.inventory_cursor_position = input.creative_inventory.cursor_position();
+        input.inventory_hovered_slot = input
+            .creative_inventory
+            .hovered_slot()
+            .and_then(|slot| i16::try_from(slot.hud_id()).ok());
+        match (button, state) {
+            (MouseButton::Left, ElementState::Pressed) => {
+                input
+                    .creative_inventory
+                    .handle_primary_press(snapshot, visible_item_count);
+            }
+            (MouseButton::Left, ElementState::Released) => {
+                input.creative_inventory.handle_primary_release(snapshot);
+            }
+            _ => {}
+        }
+        return true;
+    }
     if !input.focused || inventory_screen_layout_for_surface(world, surface_size).is_none() {
         return false;
     }
@@ -1468,6 +1522,20 @@ pub(crate) fn recipe_book_search_entry_consumes_key(
     matches!(code, KeyCode::KeyE) && recipe_book_search_is_active(input, world)
 }
 
+pub(crate) fn creative_inventory_search_entry_consumes_key(
+    input: &ClientInputState,
+    world: &WorldStore,
+    code: KeyCode,
+) -> bool {
+    let Some(snapshot) = world.creative_inventory_snapshot() else {
+        return false;
+    };
+    world.creative_inventory_screen().is_some()
+        && input
+            .creative_inventory
+            .search_entry_consumes_key(snapshot, code)
+}
+
 pub(crate) fn handle_inventory_text_input(
     input: &mut ClientInputState,
     world: &WorldStore,
@@ -1476,6 +1544,15 @@ pub(crate) fn handle_inventory_text_input(
     item_runtime: Option<&NativeItemRuntime>,
     text: &str,
 ) -> bool {
+    if world.creative_inventory_screen().is_some() {
+        if !input.focused {
+            return false;
+        }
+        let Some(snapshot) = world.creative_inventory_snapshot() else {
+            return true;
+        };
+        return input.creative_inventory.handle_text(snapshot, text);
+    }
     if !input.focused || inventory_screen_layout(world).is_none() {
         return false;
     }
@@ -1509,6 +1586,20 @@ pub(crate) fn handle_inventory_key_input(
     item_runtime: Option<&NativeItemRuntime>,
     code: KeyCode,
 ) -> bool {
+    if world.creative_inventory_screen().is_some() {
+        if !input.focused {
+            return false;
+        }
+        let Some(snapshot) = world.creative_inventory_snapshot() else {
+            return true;
+        };
+        let control_down = input.control_down();
+        let shift_down = input.shift_down();
+        input
+            .creative_inventory
+            .handle_key(snapshot, code, control_down, shift_down);
+        return true;
+    }
     if !input.focused || inventory_screen_layout(world).is_none() {
         return false;
     }
@@ -2166,6 +2257,16 @@ pub(crate) fn handle_inventory_mouse_wheel(
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> bool {
+    if world.creative_inventory_screen().is_some() {
+        if !input.focused {
+            return false;
+        }
+        let visible_item_count = input.creative_inventory.visible_item_count();
+        input
+            .creative_inventory
+            .handle_wheel(delta, visible_item_count);
+        return true;
+    }
     if !input.focused || inventory_screen_layout_for_surface(world, surface_size).is_none() {
         return false;
     }

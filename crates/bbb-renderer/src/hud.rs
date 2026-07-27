@@ -18,6 +18,7 @@ use crate::item_models::{
 use crate::Renderer;
 
 mod book;
+mod creative_inventory;
 mod death_screen;
 mod game_event;
 mod game_rules;
@@ -34,6 +35,18 @@ pub use self::book::{
     HUD_BOOK_PAGE_BUTTON_HEIGHT, HUD_BOOK_PAGE_BUTTON_WIDTH, HUD_BOOK_PAGE_BUTTON_Y,
     HUD_BOOK_PAGE_FORWARD_X, HUD_BOOK_PAGE_INDICATOR_RIGHT, HUD_BOOK_PAGE_INDICATOR_Y,
     HUD_BOOK_TEXT_WIDTH, HUD_BOOK_TEXT_X, HUD_BOOK_TEXT_Y, HUD_BOOK_TOP, HUD_BOOK_WIDTH,
+};
+pub use self::creative_inventory::{
+    hud_creative_inventory_background_layers, hud_creative_inventory_scroller_y,
+    hud_creative_inventory_slot_layouts, hud_creative_inventory_tab_hit_y,
+    hud_creative_inventory_tab_x, HudCreativeInventoryBackground, HudCreativeInventoryChrome,
+    HudCreativeInventorySlot, HudCreativeInventorySlotLayout, HudCreativeInventorySlotLayoutKind,
+    HudCreativeInventoryTab, HudCreativeInventoryTabRow, HUD_CREATIVE_INVENTORY_HEIGHT,
+    HUD_CREATIVE_INVENTORY_WIDTH, HUD_CREATIVE_PICKER_COLUMNS, HUD_CREATIVE_PICKER_ROWS,
+    HUD_CREATIVE_PICKER_SLOT_COUNT, HUD_CREATIVE_SCROLLER_X, HUD_CREATIVE_SCROLLER_Y,
+    HUD_CREATIVE_SEARCH_HEIGHT, HUD_CREATIVE_SEARCH_WIDTH, HUD_CREATIVE_SEARCH_X,
+    HUD_CREATIVE_SEARCH_Y, HUD_CREATIVE_TAB_HEIGHT, HUD_CREATIVE_TAB_WIDTH, HUD_CREATIVE_TRASH_X,
+    HUD_CREATIVE_TRASH_Y,
 };
 pub use self::death_screen::{
     HudDeathLinkConfirmationScreen, HudDeathMainScreen, HudDeathQuitConfirmationScreen,
@@ -1683,6 +1696,16 @@ pub enum HudAdvancementLineTexture {
 pub enum HudInventoryBackgroundTexture {
     InworldMenuBackground,
     Inventory,
+    CreativeItems,
+    CreativeItemSearch,
+    CreativeInventory,
+    CreativeScroller,
+    CreativeScrollerDisabled,
+    CreativeTab {
+        row: HudCreativeInventoryTabRow,
+        selected: bool,
+        column: u8,
+    },
     GenericContainer,
     Dispenser,
     CraftingTable,
@@ -2924,6 +2947,84 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_inventory_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_creative_items_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_creative_items_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_creative_item_search_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_creative_item_search_background =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_creative_inventory_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_creative_inventory_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_creative_scroller(
+        &mut self,
+        disabled: bool,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        let sprite = Some(self.upload_hud_sprite(width, height, rgba)?);
+        if disabled {
+            self.hud_creative_scroller_disabled = sprite;
+        } else {
+            self.hud_creative_scroller = sprite;
+        }
+        Ok(())
+    }
+
+    pub fn upload_hud_creative_tab(
+        &mut self,
+        row: HudCreativeInventoryTabRow,
+        selected: bool,
+        column: u8,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        let index = usize::from(column);
+        if index >= 7 {
+            bail!("creative inventory tab column {column} is outside 0..7");
+        }
+        let sprite = Some(self.upload_hud_sprite(width, height, rgba)?);
+        match (row, selected) {
+            (HudCreativeInventoryTabRow::Top, false) => {
+                self.hud_creative_top_unselected_tabs[index] = sprite;
+            }
+            (HudCreativeInventoryTabRow::Top, true) => {
+                self.hud_creative_top_selected_tabs[index] = sprite;
+            }
+            (HudCreativeInventoryTabRow::Bottom, false) => {
+                self.hud_creative_bottom_unselected_tabs[index] = sprite;
+            }
+            (HudCreativeInventoryTabRow::Bottom, true) => {
+                self.hud_creative_bottom_selected_tabs[index] = sprite;
+            }
+        }
         Ok(())
     }
 
@@ -7144,6 +7245,38 @@ impl Renderer {
                 self.hud_inworld_menu_background.as_ref()
             }
             HudInventoryBackgroundTexture::Inventory => self.hud_inventory_background.as_ref(),
+            HudInventoryBackgroundTexture::CreativeItems => {
+                self.hud_creative_items_background.as_ref()
+            }
+            HudInventoryBackgroundTexture::CreativeItemSearch => {
+                self.hud_creative_item_search_background.as_ref()
+            }
+            HudInventoryBackgroundTexture::CreativeInventory => {
+                self.hud_creative_inventory_background.as_ref()
+            }
+            HudInventoryBackgroundTexture::CreativeScroller => self.hud_creative_scroller.as_ref(),
+            HudInventoryBackgroundTexture::CreativeScrollerDisabled => {
+                self.hud_creative_scroller_disabled.as_ref()
+            }
+            HudInventoryBackgroundTexture::CreativeTab {
+                row,
+                selected,
+                column,
+            } => {
+                let tabs = match (row, selected) {
+                    (HudCreativeInventoryTabRow::Top, false) => {
+                        &self.hud_creative_top_unselected_tabs
+                    }
+                    (HudCreativeInventoryTabRow::Top, true) => &self.hud_creative_top_selected_tabs,
+                    (HudCreativeInventoryTabRow::Bottom, false) => {
+                        &self.hud_creative_bottom_unselected_tabs
+                    }
+                    (HudCreativeInventoryTabRow::Bottom, true) => {
+                        &self.hud_creative_bottom_selected_tabs
+                    }
+                };
+                tabs.get(usize::from(column)).and_then(Option::as_ref)
+            }
             HudInventoryBackgroundTexture::GenericContainer => {
                 self.hud_generic_container_background.as_ref()
             }

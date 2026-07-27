@@ -231,6 +231,15 @@ macro_rules! take_hud_resource_owners {
         $take_owner!(hud_chat_modified_icon);
         $take_owner!(hud_inworld_menu_background);
         $take_owner!(hud_inventory_background);
+        $take_owner!(hud_creative_items_background);
+        $take_owner!(hud_creative_item_search_background);
+        $take_owner!(hud_creative_inventory_background);
+        $take_owner!(hud_creative_scroller);
+        $take_owner!(hud_creative_scroller_disabled);
+        $take_owner!(hud_creative_top_unselected_tabs);
+        $take_owner!(hud_creative_top_selected_tabs);
+        $take_owner!(hud_creative_bottom_unselected_tabs);
+        $take_owner!(hud_creative_bottom_selected_tabs);
         $take_owner!(hud_tooltip_background);
         $take_owner!(hud_tooltip_frame);
         $take_owner!(hud_tooltip_styles);
