@@ -20,9 +20,9 @@ use bbb_protocol::{
     },
     packets::{
         AdvancementFrameType, CommandBlockMode, GameType, ItemCostSummary, ItemStackSummary,
-        JigsawJoint, MapPostProcessingSummary, RemoteDebugSampleType, StructureBlockMirror,
-        StructureBlockMode, StructureBlockRotation, TestBlockMode, TestInstanceBlockRotation,
-        Vec3d,
+        JigsawJoint, MapPostProcessingSummary, RecipeBookType, RemoteDebugSampleType,
+        StructureBlockMirror, StructureBlockMode, StructureBlockRotation, TestBlockMode,
+        TestInstanceBlockRotation, Vec3d,
     },
     particle_types::{
         VANILLA_PARTICLE_TYPE_CRIT_ID, VANILLA_PARTICLE_TYPE_ENTITY_EFFECT_ID,
@@ -138,10 +138,11 @@ use crate::{
         recipe_book_tab_count_for_background, recipe_book_type_for_background,
         recipe_book_type_settings, recipe_book_visible_tab_indices, release_active_input,
         stats_screen_done_button_contains, sync_beacon_effect_selection_state,
-        sync_loom_pattern_state_for_hud, sync_stonecutter_recipe_scroll_state, ClientInputState,
-        CommandSuggestionHudTooltip, CommandSuggestionNarrationState, DebugOptionsScreenHudRow,
-        DialogImePreeditHudState, InventoryScreenBackground, RecipeBookOverlayHudState,
-        RecipeBookPageHudState, RecipeBookSearchHudState, RecipeBookTabSelectionHudState,
+        sync_loom_pattern_state_for_hud, sync_recipe_book_presentation,
+        sync_stonecutter_recipe_scroll_state, ClientInputState, CommandSuggestionHudTooltip,
+        CommandSuggestionNarrationState, DebugOptionsScreenHudRow, DialogImePreeditHudState,
+        InventoryScreenBackground, RecipeBookOverlayHudState, RecipeBookPageHudState,
+        RecipeBookPresentationHudState, RecipeBookSearchHudState, RecipeBookTabSelectionHudState,
         StatsScreenFocus, LOOM_PATTERN_BUTTON_COLUMNS, LOOM_PATTERN_BUTTON_ROWS,
         LOOM_PATTERN_BUTTON_SIZE, LOOM_PATTERN_BUTTON_X, LOOM_PATTERN_BUTTON_Y,
         LOOM_SCROLLER_HEIGHT, LOOM_SCROLLER_MAX_OFFSET, LOOM_SCROLLER_WIDTH, LOOM_SCROLLER_X,
@@ -182,8 +183,7 @@ use crate::{
     particle_runtime::{LocalPlayerActionParticleState, NativeParticleRuntime, ParticleEventSink},
     recipe_book_ui::{
         clamped_recipe_book_page, crafting_recipe_book_collections,
-        crafting_recipe_book_tab_has_highlighted_recipe, furnace_recipe_book_collections,
-        furnace_recipe_book_tab_has_highlighted_recipe, recipe_book_overlay_entry_position,
+        furnace_recipe_book_collections, recipe_book_overlay_entry_position,
         recipe_book_overlay_max_row, recipe_book_overlay_rows, recipe_book_page_count,
         recipe_book_slot_select_index, RecipeBookCraftingGrid, RecipeBookFurnaceFamily,
         RecipeBookOverlayEntry, RecipeBookUiCollection, RECIPE_BOOK_ITEMS_PER_PAGE,
@@ -642,6 +642,7 @@ struct InventoryHudLocalState {
     recipe_book_search: RecipeBookSearchHudState,
     recipe_book_tabs: RecipeBookTabSelectionHudState,
     recipe_book_pages: RecipeBookPageHudState,
+    recipe_book_presentation: RecipeBookPresentationHudState,
     recipe_book_overlay: Option<RecipeBookOverlayHudState>,
     advancement_scroll_delta: Option<(f64, f64)>,
     advancement_hover_fade: f32,
@@ -702,6 +703,7 @@ pub(crate) struct HudRenderRuntime {
     low_disk_space_toast: SystemToastAnimationState,
     client_toasts: ClientToastRuntime,
     stats_screen_narration: Option<ScreenNarrationFrame>,
+    recipe_book_narration: Option<ScreenNarrationFrame>,
     social_interactions_narration: Option<ScreenNarrationFrame>,
     death_screen_narration: Option<ScreenNarrationFrame>,
     game_event_screen_narration: Option<ScreenNarrationFrame>,
@@ -742,6 +744,10 @@ impl ClientAnimationTickState {
 impl HudRenderRuntime {
     pub(crate) fn stats_screen_narration(&self) -> Option<&ScreenNarrationFrame> {
         self.stats_screen_narration.as_ref()
+    }
+
+    pub(crate) fn recipe_book_narration(&self) -> Option<&ScreenNarrationFrame> {
+        self.recipe_book_narration.as_ref()
     }
 
     pub(crate) fn social_interactions_narration(&self) -> Option<&ScreenNarrationFrame> {
@@ -2445,6 +2451,14 @@ pub(crate) fn advance_simulation(
     hud_debug_tps_sampler.sync_subscriptions_and_tick(input, world, net_counters, net_commands);
     let entity_tick_started_at = Instant::now();
     let advanced_ticks = advance_entity_client_animations(world, client_animation_ticks, now);
+    sync_recipe_book_presentation(
+        input,
+        world,
+        net_counters,
+        net_commands,
+        item_runtime.as_ref(),
+        advanced_ticks,
+    );
     if advanced_ticks > 0 {
         record_entity_client_tick_observation(
             net_counters,
@@ -3199,6 +3213,7 @@ pub(crate) fn update_renderer_from_publication(
                 recipe_book_search: input.recipe_book_search_hud_state(),
                 recipe_book_tabs: input.recipe_book_tab_selection_hud_state(),
                 recipe_book_pages: input.recipe_book_page_hud_state(),
+                recipe_book_presentation: input.recipe_book_presentation_hud_state(),
                 recipe_book_overlay: input.recipe_book_overlay_hud_state(),
                 advancement_scroll_delta,
                 advancement_hover_fade,
@@ -3216,6 +3231,18 @@ pub(crate) fn update_renderer_from_publication(
             entity_partial_tick,
         )
     };
+    hud_render_runtime.recipe_book_narration = hud_inventory_screen
+        .is_some()
+        .then(|| {
+            recipe_book_narration_frame(
+                input,
+                world,
+                item_runtime,
+                surface_size,
+                entity_partial_tick,
+            )
+        })
+        .flatten();
     // Dialog, in-world game-rules, and demo popup/confirmation screens inherit
     // `Screen.extractBlurredBackground`; container/book/advancement/stats screens
     // remain vanilla in-game UI, while poem `WinScreen` owns its portal background.
@@ -9047,6 +9074,7 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
         world,
         layout.background,
         &local_state.recipe_book_tabs,
+        &local_state.recipe_book_presentation,
         partial_tick,
     );
     offset_hud_inventory_background_layers(&mut recipe_book_tab_layers, recipe_book_x);
@@ -9065,6 +9093,8 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
         &local_state.recipe_book_tabs,
         &local_state.recipe_book_pages,
         &local_state.recipe_book_search,
+        &local_state.recipe_book_presentation,
+        partial_tick,
     );
     offset_hud_inventory_background_layers(&mut recipe_book_button_layers, recipe_book_x);
     background_layers.extend(recipe_book_button_layers);
@@ -9126,6 +9156,7 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
         terrain_textures,
         layout.background,
         &local_state.recipe_book_tabs,
+        &local_state.recipe_book_presentation,
         local_state.keybind_context,
         partial_tick,
     );
@@ -9139,6 +9170,7 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
         &local_state.recipe_book_tabs,
         &local_state.recipe_book_pages,
         &local_state.recipe_book_search,
+        &local_state.recipe_book_presentation,
         local_state.keybind_context,
         partial_tick,
     );
@@ -9206,16 +9238,32 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
         Vec::new()
     };
     let creative = world.gameplay().game_type == GameType::Creative.id();
-    let inventory_tooltip = hud_recipe_book_ghost_tooltip(
+    let inventory_tooltip = hud_recipe_book_tooltip(
         world,
         item_runtime,
         layout.background,
-        hovered_slot_id,
-        &layout.slots,
+        &local_state.recipe_book_tabs,
+        &local_state.recipe_book_pages,
+        &local_state.recipe_book_search,
+        local_state.recipe_book_overlay,
+        recipe_book_cursor_position,
+        recipe_book_x,
         local_state.advanced_item_tooltips,
         creative,
         partial_tick,
     )
+    .or_else(|| {
+        hud_recipe_book_ghost_tooltip(
+            world,
+            item_runtime,
+            layout.background,
+            hovered_slot_id,
+            &layout.slots,
+            local_state.advanced_item_tooltips,
+            creative,
+            partial_tick,
+        )
+    })
     .or_else(|| {
         hud_inventory_tooltip(
             world,
@@ -9368,11 +9416,14 @@ const SMOKER_RECIPE_BOOK_TAB_ICONS: [RecipeBookTabIconSpec; 2] = [
 ];
 const RECIPE_BOOK_TAB_ANIMATION_TIME: f32 = 15.0;
 const RECIPE_BOOK_TAB_ANIMATION_PIVOT_Y: f32 = 12.0;
+const RECIPE_BOOK_BUTTON_ANIMATION_PIVOT_X: f32 = 8.0;
+const RECIPE_BOOK_BUTTON_ANIMATION_PIVOT_Y: f32 = 12.0;
 
 fn hud_recipe_book_tab_layers(
     world: &WorldStore,
     background: InventoryScreenBackground,
     tabs: &RecipeBookTabSelectionHudState,
+    presentation: &RecipeBookPresentationHudState,
     partial_tick: f32,
 ) -> Vec<HudInventoryBackgroundLayer> {
     if recipe_book_main_gui_offset(world, background) == 0 {
@@ -9388,8 +9439,14 @@ fn hud_recipe_book_tab_layers(
         .enumerate()
         .map(|(visible_index, tab_index)| {
             let selected = tab_index == selected_index;
-            let scale_y =
-                recipe_book_tab_animation_scale_y(world, background, tab_index, partial_tick);
+            let scale_y = recipe_book_animation_scale(
+                presentation
+                    .tab_animation_ticks
+                    .get(tab_index)
+                    .copied()
+                    .unwrap_or_default(),
+                partial_tick,
+            );
             let y = RECIPE_BOOK_TAB_Y + RECIPE_BOOK_TAB_STRIDE_Y * visible_index as i32;
             let (y, height) =
                 scaled_recipe_book_tab_y_and_height(y, RECIPE_BOOK_TAB_HEIGHT, scale_y);
@@ -9415,16 +9472,7 @@ fn hud_recipe_book_tab_layers(
         .collect()
 }
 
-fn recipe_book_tab_animation_scale_y(
-    world: &WorldStore,
-    background: InventoryScreenBackground,
-    tab_index: usize,
-    partial_tick: f32,
-) -> f32 {
-    if !recipe_book_tab_has_highlight_animation(world, background, tab_index) {
-        return 1.0;
-    }
-    let remaining = world.recipe_book().tab_animation_ticks_remaining;
+fn recipe_book_animation_scale(remaining: u8, partial_tick: f32) -> f32 {
     if remaining == 0 {
         return 1.0;
     }
@@ -9433,34 +9481,6 @@ fn recipe_book_tab_animation_scale_y(
         return 1.0;
     }
     1.0 + 0.1 * (animation_time / RECIPE_BOOK_TAB_ANIMATION_TIME * std::f32::consts::PI).sin()
-}
-
-fn recipe_book_tab_has_highlight_animation(
-    world: &WorldStore,
-    background: InventoryScreenBackground,
-    tab_index: usize,
-) -> bool {
-    let Some(book_type) = recipe_book_type_for_background(background) else {
-        return false;
-    };
-    let only_craftable = recipe_book_type_settings(world, book_type).filtering;
-    if let Some(grid) = recipe_book_crafting_grid_for_background(background) {
-        return crafting_recipe_book_tab_has_highlighted_recipe(
-            world,
-            grid,
-            tab_index,
-            only_craftable,
-        );
-    }
-    if let Some(family) = recipe_book_furnace_family_for_background(background) {
-        return furnace_recipe_book_tab_has_highlighted_recipe(
-            world,
-            family,
-            tab_index,
-            only_craftable,
-        );
-    }
-    false
 }
 
 fn scaled_recipe_book_tab_y_and_height(y: i32, height: i32, scale_y: f32) -> (i32, u32) {
@@ -9489,6 +9509,7 @@ fn hud_recipe_book_tab_icon_items(
     terrain_textures: &TerrainTextureState,
     background: InventoryScreenBackground,
     tabs: &RecipeBookTabSelectionHudState,
+    presentation: &RecipeBookPresentationHudState,
     keybind_context: ItemModelKeybindContext,
     partial_tick: f32,
 ) -> Vec<HudInventoryItem> {
@@ -9516,7 +9537,14 @@ fn hud_recipe_book_tab_icon_items(
             0
         };
         let tab_y = RECIPE_BOOK_TAB_Y + RECIPE_BOOK_TAB_STRIDE_Y * visible_index as i32;
-        let scale_y = recipe_book_tab_animation_scale_y(world, background, tab_index, partial_tick);
+        let scale_y = recipe_book_animation_scale(
+            presentation
+                .tab_animation_ticks
+                .get(tab_index)
+                .copied()
+                .unwrap_or_default(),
+            partial_tick,
+        );
         let y = scaled_recipe_book_tab_child_y(tab_y, tab_y + 5, scale_y);
         if let Some(secondary) = icon.secondary {
             push_recipe_book_tab_icon_item(
@@ -9665,12 +9693,29 @@ fn hud_recipe_book_recipe_button_layers(
     tabs: &RecipeBookTabSelectionHudState,
     pages: &RecipeBookPageHudState,
     search: &RecipeBookSearchHudState,
+    presentation: &RecipeBookPresentationHudState,
+    partial_tick: f32,
 ) -> Vec<HudInventoryBackgroundLayer> {
     hud_recipe_book_visible_collections(world, item_runtime, background, tabs, pages, search)
         .into_iter()
         .enumerate()
         .map(|(index, collection)| {
             let (x, y) = recipe_book_recipe_button_position(index);
+            let scale = recipe_book_animation_scale(
+                presentation
+                    .button_animation_ticks
+                    .get(index)
+                    .copied()
+                    .unwrap_or_default(),
+                partial_tick,
+            );
+            let (x, y, width, height) = scaled_recipe_book_button_rect(
+                x,
+                y,
+                RECIPE_BOOK_RECIPE_BUTTON_SIZE,
+                RECIPE_BOOK_RECIPE_BUTTON_SIZE,
+                scale,
+            );
             hud_inventory_background_layer(
                 match (
                     collection.has_craftable(),
@@ -9683,8 +9728,8 @@ fn hud_recipe_book_recipe_button_layers(
                 },
                 x,
                 y,
-                u32::try_from(RECIPE_BOOK_RECIPE_BUTTON_SIZE).unwrap_or_default(),
-                u32::try_from(RECIPE_BOOK_RECIPE_BUTTON_SIZE).unwrap_or_default(),
+                width,
+                height,
                 [0.0, 0.0],
                 [1.0, 1.0],
             )
@@ -9700,6 +9745,7 @@ fn hud_recipe_book_recipe_button_icon_items(
     tabs: &RecipeBookTabSelectionHudState,
     pages: &RecipeBookPageHudState,
     search: &RecipeBookSearchHudState,
+    presentation: &RecipeBookPresentationHudState,
     keybind_context: ItemModelKeybindContext,
     partial_tick: f32,
 ) -> Vec<HudInventoryItem> {
@@ -9737,23 +9783,45 @@ fn hud_recipe_book_recipe_button_icon_items(
             continue;
         };
         let (button_x, button_y) = recipe_book_recipe_button_position(index);
+        let scale = recipe_book_animation_scale(
+            presentation
+                .button_animation_ticks
+                .get(index)
+                .copied()
+                .unwrap_or_default(),
+            partial_tick,
+        );
         let block_model = block_item_3d_model(stack, Some(item_runtime), terrain_textures);
         if collection.has_multiple_recipes() && collection.all_result_stacks_same() {
+            let (x, y) = scaled_recipe_book_button_child_position(
+                button_x,
+                button_y,
+                button_x + RECIPE_BOOK_RECIPE_ICON_OFFSET + 1,
+                button_y + RECIPE_BOOK_RECIPE_ICON_OFFSET + 1,
+                scale,
+            );
             items.push(HudInventoryItem {
-                x: button_x + RECIPE_BOOK_RECIPE_ICON_OFFSET + 1,
-                y: button_y + RECIPE_BOOK_RECIPE_ICON_OFFSET + 1,
-                scale: 1.0,
-                scale_y: 1.0,
+                x,
+                y,
+                scale,
+                scale_y: scale,
                 icon: icon.clone(),
                 scissor: None,
                 draw_decorations: true,
                 block_model: block_model.clone(),
             });
+            let (x, y) = scaled_recipe_book_button_child_position(
+                button_x,
+                button_y,
+                button_x + RECIPE_BOOK_RECIPE_ICON_OFFSET - 1,
+                button_y + RECIPE_BOOK_RECIPE_ICON_OFFSET - 1,
+                scale,
+            );
             items.push(HudInventoryItem {
-                x: button_x + RECIPE_BOOK_RECIPE_ICON_OFFSET - 1,
-                y: button_y + RECIPE_BOOK_RECIPE_ICON_OFFSET - 1,
-                scale: 1.0,
-                scale_y: 1.0,
+                x,
+                y,
+                scale,
+                scale_y: scale,
                 icon,
                 scissor: None,
                 draw_decorations: true,
@@ -9761,11 +9829,18 @@ fn hud_recipe_book_recipe_button_icon_items(
             });
             continue;
         }
+        let (x, y) = scaled_recipe_book_button_child_position(
+            button_x,
+            button_y,
+            button_x + RECIPE_BOOK_RECIPE_ICON_OFFSET,
+            button_y + RECIPE_BOOK_RECIPE_ICON_OFFSET,
+            scale,
+        );
         items.push(HudInventoryItem {
-            x: button_x + RECIPE_BOOK_RECIPE_ICON_OFFSET,
-            y: button_y + RECIPE_BOOK_RECIPE_ICON_OFFSET,
-            scale: 1.0,
-            scale_y: 1.0,
+            x,
+            y,
+            scale,
+            scale_y: scale,
             icon,
             scissor: None,
             draw_decorations: true,
@@ -9773,6 +9848,42 @@ fn hud_recipe_book_recipe_button_icon_items(
         });
     }
     items
+}
+
+fn scaled_recipe_book_button_rect(
+    x: i32,
+    y: i32,
+    width: i32,
+    height: i32,
+    scale: f32,
+) -> (i32, i32, u32, u32) {
+    let pivot_x = x as f32 + RECIPE_BOOK_BUTTON_ANIMATION_PIVOT_X;
+    let pivot_y = y as f32 + RECIPE_BOOK_BUTTON_ANIMATION_PIVOT_Y;
+    let left = pivot_x + (x as f32 - pivot_x) * scale;
+    let top = pivot_y + (y as f32 - pivot_y) * scale;
+    let right = pivot_x + ((x + width) as f32 - pivot_x) * scale;
+    let bottom = pivot_y + ((y + height) as f32 - pivot_y) * scale;
+    (
+        left.round() as i32,
+        top.round() as i32,
+        (right - left).round().max(1.0) as u32,
+        (bottom - top).round().max(1.0) as u32,
+    )
+}
+
+fn scaled_recipe_book_button_child_position(
+    button_x: i32,
+    button_y: i32,
+    child_x: i32,
+    child_y: i32,
+    scale: f32,
+) -> (i32, i32) {
+    let pivot_x = button_x as f32 + RECIPE_BOOK_BUTTON_ANIMATION_PIVOT_X;
+    let pivot_y = button_y as f32 + RECIPE_BOOK_BUTTON_ANIMATION_PIVOT_Y;
+    (
+        (pivot_x + (child_x as f32 - pivot_x) * scale).round() as i32,
+        (pivot_y + (child_y as f32 - pivot_y) * scale).round() as i32,
+    )
 }
 
 fn hud_recipe_book_overlay_layers(
@@ -12879,6 +12990,367 @@ fn hud_inventory_tooltip(
         style: tooltip.style,
         lines: tooltip.lines,
     })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn hud_recipe_book_tooltip(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    background: InventoryScreenBackground,
+    tabs: &RecipeBookTabSelectionHudState,
+    pages: &RecipeBookPageHudState,
+    search: &RecipeBookSearchHudState,
+    overlay: Option<RecipeBookOverlayHudState>,
+    cursor_position: Option<(i32, i32)>,
+    tooltip_x_offset: i32,
+    advanced: bool,
+    creative: bool,
+    partial_tick: f32,
+) -> Option<HudInventoryTooltip> {
+    if overlay.is_some() {
+        return None;
+    }
+    let book_type = recipe_book_type_for_background(background)?;
+    if !recipe_book_type_settings(world, book_type).open {
+        return None;
+    }
+    let (cursor_x, cursor_y) = cursor_position?;
+    let collections = hud_recipe_book_collections(world, item_runtime, background, tabs, search)?;
+    let page = clamped_recipe_book_page(
+        recipe_book_selected_page_index(background, pages).unwrap_or_default(),
+        collections.len(),
+    );
+    for (index, collection) in collections
+        .iter()
+        .skip(page * RECIPE_BOOK_ITEMS_PER_PAGE)
+        .take(RECIPE_BOOK_ITEMS_PER_PAGE)
+        .enumerate()
+    {
+        let (x, y) = recipe_book_recipe_button_position(index);
+        if cursor_x < x
+            || cursor_x >= x + RECIPE_BOOK_RECIPE_BUTTON_SIZE
+            || cursor_y < y
+            || cursor_y >= y + RECIPE_BOOK_RECIPE_BUTTON_SIZE
+        {
+            continue;
+        }
+        let stack = collection.result_stack_at_slot_select_index(recipe_book_slot_select_index(
+            world,
+            partial_tick,
+        ))?;
+        let mut tooltip = hud_item_tooltip(world, item_runtime, stack, advanced, creative)?;
+        if collection.has_multiple_recipes() {
+            tooltip.lines.push(HudInventoryTooltipLine {
+                text: localized_gui_text(
+                    item_runtime,
+                    "gui.recipebook.moreRecipes",
+                    "Right Click for More",
+                ),
+                tint: [1.0, 1.0, 1.0, 1.0],
+                runs: Vec::new(),
+            });
+        }
+        return Some(HudInventoryTooltip {
+            slot_id: u16::MAX,
+            x: cursor_x + tooltip_x_offset,
+            y: cursor_y,
+            style: tooltip.style,
+            lines: tooltip.lines,
+        });
+    }
+
+    if cursor_x >= RECIPE_BOOK_FILTER_BUTTON_X
+        && cursor_x < RECIPE_BOOK_FILTER_BUTTON_X + RECIPE_BOOK_FILTER_BUTTON_WIDTH
+        && cursor_y >= RECIPE_BOOK_FILTER_BUTTON_Y
+        && cursor_y < RECIPE_BOOK_FILTER_BUTTON_Y + RECIPE_BOOK_FILTER_BUTTON_HEIGHT
+    {
+        let filtering = recipe_book_type_settings(world, book_type).filtering;
+        let (key, fallback) = recipe_book_filter_tooltip_text(book_type, filtering);
+        return Some(hud_recipe_book_control_tooltip(
+            item_runtime,
+            key,
+            fallback,
+            cursor_x + tooltip_x_offset,
+            cursor_y,
+        ));
+    }
+
+    let page_count = recipe_book_page_count(collections.len());
+    if page + 1 < page_count
+        && recipe_book_page_control_contains(cursor_x, cursor_y, RECIPE_BOOK_PAGE_FORWARD_BUTTON_X)
+    {
+        return Some(hud_recipe_book_control_tooltip(
+            item_runtime,
+            "gui.recipebook.next_page",
+            "Next Page",
+            cursor_x + tooltip_x_offset,
+            cursor_y,
+        ));
+    }
+    if page > 0
+        && recipe_book_page_control_contains(cursor_x, cursor_y, RECIPE_BOOK_PAGE_BACKWARD_BUTTON_X)
+    {
+        return Some(hud_recipe_book_control_tooltip(
+            item_runtime,
+            "gui.recipebook.previous_page",
+            "Previous Page",
+            cursor_x + tooltip_x_offset,
+            cursor_y,
+        ));
+    }
+    None
+}
+
+fn recipe_book_page_control_contains(cursor_x: i32, cursor_y: i32, button_x: i32) -> bool {
+    cursor_x >= button_x
+        && cursor_x < button_x + RECIPE_BOOK_PAGE_BUTTON_WIDTH
+        && cursor_y >= RECIPE_BOOK_PAGE_BUTTON_Y
+        && cursor_y < RECIPE_BOOK_PAGE_BUTTON_Y + RECIPE_BOOK_PAGE_BUTTON_HEIGHT
+}
+
+fn hud_recipe_book_control_tooltip(
+    item_runtime: Option<&NativeItemRuntime>,
+    translation_key: &str,
+    fallback: &str,
+    x: i32,
+    y: i32,
+) -> HudInventoryTooltip {
+    HudInventoryTooltip {
+        slot_id: u16::MAX,
+        x,
+        y,
+        style: None,
+        lines: vec![HudInventoryTooltipLine {
+            text: localized_gui_text(item_runtime, translation_key, fallback),
+            tint: [1.0, 1.0, 1.0, 1.0],
+            runs: Vec::new(),
+        }],
+    }
+}
+
+fn recipe_book_narration_frame(
+    input: &ClientInputState,
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    surface_size: winit::dpi::PhysicalSize<u32>,
+    partial_tick: f32,
+) -> Option<ScreenNarrationFrame> {
+    let layout = inventory_screen_layout_for_surface(world, surface_size)?;
+    let book_type = recipe_book_type_for_background(layout.background)?;
+    if !recipe_book_type_settings(world, book_type).open {
+        return None;
+    }
+    let search = input.recipe_book_search_hud_state();
+    let mut frame = ScreenNarrationFrame::default();
+    if search.focused {
+        frame.add(
+            NarratedElementKind::Title,
+            1,
+            localized_gui_text_with_args(
+                item_runtime,
+                "gui.narrate.editBox",
+                "%s edit box: %s",
+                &[
+                    &localized_gui_text(item_runtime, "itemGroup.search", "Search Items"),
+                    &search.text,
+                ],
+            ),
+        );
+        return Some(frame);
+    }
+
+    let recipe_book_x = layout
+        .recipe_book
+        .map(|recipe_book| recipe_book.x)
+        .unwrap_or_default();
+    let cursor = input
+        .inventory_cursor_position()
+        .map(|(x, y)| (x - recipe_book_x, y));
+    let Some((cursor_x, cursor_y)) = cursor else {
+        return Some(frame);
+    };
+    let tabs = input.recipe_book_tab_selection_hud_state();
+    let pages = input.recipe_book_page_hud_state();
+    let collections =
+        hud_recipe_book_collections(world, item_runtime, layout.background, &tabs, &search)?;
+    let page = clamped_recipe_book_page(
+        recipe_book_selected_page_index(layout.background, &pages).unwrap_or_default(),
+        collections.len(),
+    );
+
+    if input.recipe_book_overlay_hud_state().is_none() {
+        for (index, collection) in collections
+            .iter()
+            .skip(page * RECIPE_BOOK_ITEMS_PER_PAGE)
+            .take(RECIPE_BOOK_ITEMS_PER_PAGE)
+            .enumerate()
+        {
+            let (x, y) = recipe_book_recipe_button_position(index);
+            if cursor_x < x
+                || cursor_x >= x + RECIPE_BOOK_RECIPE_BUTTON_SIZE
+                || cursor_y < y
+                || cursor_y >= y + RECIPE_BOOK_RECIPE_BUTTON_SIZE
+            {
+                continue;
+            }
+            let stack = collection.result_stack_at_slot_select_index(
+                recipe_book_slot_select_index(world, partial_tick),
+            )?;
+            let item_name = hud_item_tooltip(world, item_runtime, stack, false, false)?
+                .lines
+                .into_iter()
+                .next()?
+                .text;
+            frame.add(
+                NarratedElementKind::Title,
+                1,
+                localized_gui_text_with_args(
+                    item_runtime,
+                    "narration.recipe",
+                    "Recipe for %s",
+                    &[&item_name],
+                ),
+            );
+            frame.add(
+                NarratedElementKind::Usage,
+                1,
+                localized_gui_text(
+                    item_runtime,
+                    "narration.button.usage.hovered",
+                    "Left click to activate",
+                ),
+            );
+            if collection.has_multiple_recipes() {
+                frame.add(
+                    NarratedElementKind::Usage,
+                    2,
+                    localized_gui_text(
+                        item_runtime,
+                        "narration.recipe.usage.more",
+                        "Right click to show more recipes",
+                    ),
+                );
+            }
+            return Some(frame);
+        }
+    }
+
+    if cursor_x >= RECIPE_BOOK_SEARCH_BOX_X
+        && cursor_x < RECIPE_BOOK_SEARCH_BOX_X + RECIPE_BOOK_SEARCH_BOX_WIDTH
+        && cursor_y >= RECIPE_BOOK_SEARCH_BOX_Y
+        && cursor_y < RECIPE_BOOK_SEARCH_BOX_Y + RECIPE_BOOK_SEARCH_BOX_HEIGHT
+    {
+        frame.add(
+            NarratedElementKind::Title,
+            1,
+            localized_gui_text_with_args(
+                item_runtime,
+                "gui.narrate.editBox",
+                "%s edit box: %s",
+                &[
+                    &localized_gui_text(item_runtime, "itemGroup.search", "Search Items"),
+                    &search.text,
+                ],
+            ),
+        );
+        return Some(frame);
+    }
+
+    if cursor_x >= RECIPE_BOOK_FILTER_BUTTON_X
+        && cursor_x < RECIPE_BOOK_FILTER_BUTTON_X + RECIPE_BOOK_FILTER_BUTTON_WIDTH
+        && cursor_y >= RECIPE_BOOK_FILTER_BUTTON_Y
+        && cursor_y < RECIPE_BOOK_FILTER_BUTTON_Y + RECIPE_BOOK_FILTER_BUTTON_HEIGHT
+    {
+        let filtering = recipe_book_type_settings(world, book_type).filtering;
+        let (key, fallback) = recipe_book_filter_tooltip_text(book_type, filtering);
+        add_recipe_book_button_narration(
+            &mut frame,
+            item_runtime,
+            &localized_gui_text(item_runtime, key, fallback),
+        );
+        return Some(frame);
+    }
+
+    let visible_tabs = recipe_book_visible_tab_indices(world, layout.background);
+    for (visible_index, _tab_index) in visible_tabs.into_iter().enumerate() {
+        let tab_y = RECIPE_BOOK_TAB_Y + RECIPE_BOOK_TAB_STRIDE_Y * visible_index as i32;
+        if cursor_x >= RECIPE_BOOK_TAB_X
+            && cursor_x < RECIPE_BOOK_TAB_X + RECIPE_BOOK_TAB_WIDTH
+            && cursor_y >= tab_y
+            && cursor_y < tab_y + RECIPE_BOOK_TAB_HEIGHT
+        {
+            return Some(frame);
+        }
+    }
+
+    let page_count = recipe_book_page_count(collections.len());
+    if page + 1 < page_count
+        && recipe_book_page_control_contains(cursor_x, cursor_y, RECIPE_BOOK_PAGE_FORWARD_BUTTON_X)
+    {
+        add_recipe_book_button_narration(
+            &mut frame,
+            item_runtime,
+            &localized_gui_text(item_runtime, "gui.recipebook.next_page", "Next Page"),
+        );
+    } else if page > 0
+        && recipe_book_page_control_contains(cursor_x, cursor_y, RECIPE_BOOK_PAGE_BACKWARD_BUTTON_X)
+    {
+        add_recipe_book_button_narration(
+            &mut frame,
+            item_runtime,
+            &localized_gui_text(
+                item_runtime,
+                "gui.recipebook.previous_page",
+                "Previous Page",
+            ),
+        );
+    }
+    Some(frame)
+}
+
+fn recipe_book_filter_tooltip_text(
+    book_type: RecipeBookType,
+    filtering: bool,
+) -> (&'static str, &'static str) {
+    if !filtering {
+        return ("gui.recipebook.toggleRecipes.all", "Showing All");
+    }
+    match book_type {
+        RecipeBookType::Crafting => (
+            "gui.recipebook.toggleRecipes.craftable",
+            "Showing Craftable",
+        ),
+        RecipeBookType::Furnace => (
+            "gui.recipebook.toggleRecipes.smeltable",
+            "Showing Smeltable",
+        ),
+        RecipeBookType::BlastFurnace => (
+            "gui.recipebook.toggleRecipes.blastable",
+            "Showing Blastable",
+        ),
+        RecipeBookType::Smoker => ("gui.recipebook.toggleRecipes.smokable", "Showing Smokable"),
+    }
+}
+
+fn add_recipe_book_button_narration(
+    frame: &mut ScreenNarrationFrame,
+    item_runtime: Option<&NativeItemRuntime>,
+    label: &str,
+) {
+    frame.add(
+        NarratedElementKind::Title,
+        1,
+        localized_gui_text_with_args(item_runtime, "gui.narrate.button", "%s button", &[label]),
+    );
+    frame.add(
+        NarratedElementKind::Usage,
+        1,
+        localized_gui_text(
+            item_runtime,
+            "narration.button.usage.hovered",
+            "Left click to activate",
+        ),
+    );
 }
 
 fn hud_recipe_book_ghost_tooltip(

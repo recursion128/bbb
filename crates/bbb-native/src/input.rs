@@ -246,24 +246,25 @@ pub(crate) use inventory::{
     recipe_book_search_entry_consumes_key, recipe_book_tab_count_for_background,
     recipe_book_type_for_background, recipe_book_type_settings, recipe_book_visible_tab_indices,
     sync_beacon_effect_selection_state, sync_loom_pattern_state_for_hud,
-    sync_stonecutter_recipe_scroll_state, InventoryScreenBackground, InventorySlotLayout,
-    LOOM_PATTERN_BUTTON_COLUMNS, LOOM_PATTERN_BUTTON_ROWS, LOOM_PATTERN_BUTTON_SIZE,
-    LOOM_PATTERN_BUTTON_X, LOOM_PATTERN_BUTTON_Y, LOOM_SCROLLER_HEIGHT, LOOM_SCROLLER_MAX_OFFSET,
-    LOOM_SCROLLER_WIDTH, LOOM_SCROLLER_X, LOOM_SCROLLER_Y, LOOM_SELECTED_PATTERN_DATA_ID,
-    RECIPE_BOOK_BUTTON_HEIGHT, RECIPE_BOOK_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_HEIGHT,
-    RECIPE_BOOK_FILTER_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y,
-    RECIPE_BOOK_PAGE_BACKWARD_BUTTON_X, RECIPE_BOOK_PAGE_BUTTON_HEIGHT,
-    RECIPE_BOOK_PAGE_BUTTON_WIDTH, RECIPE_BOOK_PAGE_BUTTON_Y, RECIPE_BOOK_PAGE_FORWARD_BUTTON_X,
-    RECIPE_BOOK_RECIPE_BUTTON_COLUMNS, RECIPE_BOOK_RECIPE_BUTTON_SIZE, RECIPE_BOOK_RECIPE_BUTTON_X,
-    RECIPE_BOOK_RECIPE_BUTTON_Y, RECIPE_BOOK_SEARCH_BOX_HEIGHT, RECIPE_BOOK_SEARCH_BOX_WIDTH,
-    RECIPE_BOOK_SEARCH_BOX_X, RECIPE_BOOK_SEARCH_BOX_Y, RECIPE_BOOK_SEARCH_TEXT_X_OFFSET,
-    RECIPE_BOOK_SEARCH_TEXT_Y_OFFSET, RECIPE_BOOK_SELECTED_TAB_X_OFFSET, RECIPE_BOOK_TAB_HEIGHT,
-    RECIPE_BOOK_TAB_STRIDE_Y, RECIPE_BOOK_TAB_WIDTH, RECIPE_BOOK_TAB_X, RECIPE_BOOK_TAB_Y,
-    STONECUTTER_RECIPE_BUTTON_COLUMNS, STONECUTTER_RECIPE_BUTTON_HEIGHT,
-    STONECUTTER_RECIPE_BUTTON_ROWS, STONECUTTER_RECIPE_BUTTON_SPRITE_Y,
-    STONECUTTER_RECIPE_BUTTON_WIDTH, STONECUTTER_RECIPE_BUTTON_X, STONECUTTER_RECIPE_ITEM_Y,
-    STONECUTTER_SCROLLER_HEIGHT, STONECUTTER_SCROLLER_MAX_OFFSET, STONECUTTER_SCROLLER_WIDTH,
-    STONECUTTER_SCROLLER_X, STONECUTTER_SCROLLER_Y, STONECUTTER_SELECTED_RECIPE_DATA_ID,
+    sync_recipe_book_presentation, sync_stonecutter_recipe_scroll_state, InventoryScreenBackground,
+    InventorySlotLayout, RecipeBookPresentationHudState, LOOM_PATTERN_BUTTON_COLUMNS,
+    LOOM_PATTERN_BUTTON_ROWS, LOOM_PATTERN_BUTTON_SIZE, LOOM_PATTERN_BUTTON_X,
+    LOOM_PATTERN_BUTTON_Y, LOOM_SCROLLER_HEIGHT, LOOM_SCROLLER_MAX_OFFSET, LOOM_SCROLLER_WIDTH,
+    LOOM_SCROLLER_X, LOOM_SCROLLER_Y, LOOM_SELECTED_PATTERN_DATA_ID, RECIPE_BOOK_BUTTON_HEIGHT,
+    RECIPE_BOOK_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_HEIGHT, RECIPE_BOOK_FILTER_BUTTON_WIDTH,
+    RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y, RECIPE_BOOK_PAGE_BACKWARD_BUTTON_X,
+    RECIPE_BOOK_PAGE_BUTTON_HEIGHT, RECIPE_BOOK_PAGE_BUTTON_WIDTH, RECIPE_BOOK_PAGE_BUTTON_Y,
+    RECIPE_BOOK_PAGE_FORWARD_BUTTON_X, RECIPE_BOOK_RECIPE_BUTTON_COLUMNS,
+    RECIPE_BOOK_RECIPE_BUTTON_SIZE, RECIPE_BOOK_RECIPE_BUTTON_X, RECIPE_BOOK_RECIPE_BUTTON_Y,
+    RECIPE_BOOK_SEARCH_BOX_HEIGHT, RECIPE_BOOK_SEARCH_BOX_WIDTH, RECIPE_BOOK_SEARCH_BOX_X,
+    RECIPE_BOOK_SEARCH_BOX_Y, RECIPE_BOOK_SEARCH_TEXT_X_OFFSET, RECIPE_BOOK_SEARCH_TEXT_Y_OFFSET,
+    RECIPE_BOOK_SELECTED_TAB_X_OFFSET, RECIPE_BOOK_TAB_HEIGHT, RECIPE_BOOK_TAB_STRIDE_Y,
+    RECIPE_BOOK_TAB_WIDTH, RECIPE_BOOK_TAB_X, RECIPE_BOOK_TAB_Y, STONECUTTER_RECIPE_BUTTON_COLUMNS,
+    STONECUTTER_RECIPE_BUTTON_HEIGHT, STONECUTTER_RECIPE_BUTTON_ROWS,
+    STONECUTTER_RECIPE_BUTTON_SPRITE_Y, STONECUTTER_RECIPE_BUTTON_WIDTH,
+    STONECUTTER_RECIPE_BUTTON_X, STONECUTTER_RECIPE_ITEM_Y, STONECUTTER_SCROLLER_HEIGHT,
+    STONECUTTER_SCROLLER_MAX_OFFSET, STONECUTTER_SCROLLER_WIDTH, STONECUTTER_SCROLLER_X,
+    STONECUTTER_SCROLLER_Y, STONECUTTER_SELECTED_RECIPE_DATA_ID,
     STONECUTTER_VISIBLE_RECIPE_BUTTON_COUNT,
 };
 use minecart_command_block::MinecartCommandBlockEditorInputState;
@@ -617,6 +618,7 @@ pub(crate) struct ClientInputState {
     recipe_book_furnace_page: usize,
     recipe_book_blast_furnace_page: usize,
     recipe_book_smoker_page: usize,
+    recipe_book_presentation: inventory::RecipeBookPresentationState,
     recipe_book_overlay: Option<RecipeBookOverlayHudState>,
     recipe_book_last_placed_recipe: Option<(i32, i32)>,
     advancement_scroll_deltas: BTreeMap<String, (f64, f64)>,
@@ -1233,6 +1235,7 @@ impl ClientInputState {
             recipe_book_furnace_page: self.recipe_book_furnace_page,
             recipe_book_blast_furnace_page: self.recipe_book_blast_furnace_page,
             recipe_book_smoker_page: self.recipe_book_smoker_page,
+            recipe_book_presentation: self.recipe_book_presentation.clone(),
             recipe_book_overlay: self.recipe_book_overlay,
             advancement_scroll_deltas: self.advancement_scroll_deltas.clone(),
             advancement_hover_fade: self.advancement_hover_fade,
@@ -9897,6 +9900,10 @@ impl ClientInputState {
             blast_furnace: self.recipe_book_blast_furnace_page,
             smoker: self.recipe_book_smoker_page,
         }
+    }
+
+    pub(crate) fn recipe_book_presentation_hud_state(&self) -> RecipeBookPresentationHudState {
+        self.recipe_book_presentation.hud_state()
     }
 
     pub(crate) fn recipe_book_overlay_hud_state(&self) -> Option<RecipeBookOverlayHudState> {

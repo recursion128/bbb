@@ -36,8 +36,9 @@ use crate::{
         handle_inventory_mouse_input_with_item_runtime, handle_inventory_mouse_wheel,
         handle_key_input_with_item_runtime,
         handle_mouse_input_at_partial_tick_with_effects_and_presentation, handle_mouse_motion,
-        handle_mouse_wheel, handle_text_input_with_item_runtime, queue_chat_command,
-        queue_debug_recreate_server_query_request, release_active_input,
+        handle_mouse_wheel, handle_text_input_with_item_runtime, inventory_screen_layout,
+        queue_chat_command, queue_debug_recreate_server_query_request,
+        recipe_book_type_for_background, recipe_book_type_settings, release_active_input,
         social::SocialInteractionsPlatformRequest, CommandSuggestionTextMeasurer, DebugClipboard,
         DebugFeatureCountRequest, DebugFrustumRequest, DebugOptionsSearchTextMeasurer,
         DebugProfilingToggleRequest, PauseScreenLinkRequest, TerrainReloadRequestSink,
@@ -478,6 +479,11 @@ impl SimulationInputRuntime {
             self.cursor_position,
             self.surface_size,
         );
+        if recipe_book_screen_is_open(context.world) {
+            context.platform.submit(PlatformEffect::RecipeBookInput(
+                ScreenNarrationScheduleInput::MouseMove,
+            ));
+        }
     }
 
     fn apply_key(
@@ -629,6 +635,7 @@ impl SimulationInputRuntime {
         flush_platform_effects(&queued_effects, context.platform);
 
         let container_open = context.world.open_container_id().is_some();
+        let recipe_book_open = recipe_book_screen_is_open(context.world);
         let dialog_open = context.world.dialog_screen_is_open();
         let sign_editor_open = context
             .input
@@ -709,6 +716,11 @@ impl SimulationInputRuntime {
         }
         if stats_open && matches!(state, ElementState::Pressed) {
             context.platform.submit(PlatformEffect::StatsScreenInput(
+                ScreenNarrationScheduleInput::KeyboardAction,
+            ));
+        }
+        if recipe_book_open && matches!(state, ElementState::Pressed) {
+            context.platform.submit(PlatformEffect::RecipeBookInput(
                 ScreenNarrationScheduleInput::KeyboardAction,
             ));
         }
@@ -1024,6 +1036,11 @@ impl SimulationInputRuntime {
             text,
             &self.text_measurements,
         );
+        if recipe_book_screen_is_open(context.world) {
+            context.platform.submit(PlatformEffect::RecipeBookInput(
+                ScreenNarrationScheduleInput::KeyboardAction,
+            ));
+        }
     }
 
     fn apply_mouse_button(
@@ -1401,6 +1418,11 @@ impl SimulationInputRuntime {
         }
         if context.world.open_container_id().is_some() {
             self.request_cursor_capture(false, context.platform);
+            if recipe_book_screen_is_open(context.world) {
+                context.platform.submit(PlatformEffect::RecipeBookInput(
+                    ScreenNarrationScheduleInput::MouseAction,
+                ));
+            }
             handle_inventory_mouse_input_with_item_runtime(
                 context.input,
                 context.world,
@@ -1632,6 +1654,11 @@ impl SimulationInputRuntime {
         }
         if context.world.open_container_id().is_some() {
             self.request_cursor_capture(false, context.platform);
+            if recipe_book_screen_is_open(context.world) {
+                context.platform.submit(PlatformEffect::RecipeBookInput(
+                    ScreenNarrationScheduleInput::MouseAction,
+                ));
+            }
             handle_inventory_mouse_wheel(
                 context.input,
                 context.world,
@@ -1764,6 +1791,12 @@ impl SimulationInputRuntime {
     fn request_shutdown(&mut self, context: &mut SimulationInputContext<'_, '_, '_>) {
         self.request_network_terminal_shutdown(context.net_commands, context.platform);
     }
+}
+
+fn recipe_book_screen_is_open(world: &WorldStore) -> bool {
+    inventory_screen_layout(world)
+        .and_then(|layout| recipe_book_type_for_background(layout.background))
+        .is_some_and(|book_type| recipe_book_type_settings(world, book_type).open)
 }
 
 pub(crate) struct SimulationInputContext<'a, 'audio, 'collector> {

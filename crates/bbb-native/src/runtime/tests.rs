@@ -386,6 +386,7 @@ fn hud_social_interactions_projection_tracks_faces_removed_status_links_and_narr
 }
 use tokio::sync::mpsc;
 use winit::{
+    dpi::{PhysicalPosition, PhysicalSize},
     event::{ElementState, MouseButton},
     keyboard::{KeyCode, PhysicalKey},
 };
@@ -14997,7 +14998,6 @@ fn hud_inventory_screen_animates_highlighted_recipe_book_tab() {
         replace: true,
         entries: vec![entry],
     });
-    world.advance_recipe_book_tab_animation(7);
 
     let screen = hud_inventory_screen_with_local_state(
         &world,
@@ -15008,6 +15008,10 @@ fn hud_inventory_screen_animates_highlighted_recipe_book_tab() {
             recipe_book_tabs: RecipeBookTabSelectionHudState {
                 crafting: 1,
                 ..RecipeBookTabSelectionHudState::default()
+            },
+            recipe_book_presentation: RecipeBookPresentationHudState {
+                tab_animation_ticks: [0, 8, 0, 0, 0],
+                ..RecipeBookPresentationHudState::default()
             },
             ..InventoryHudLocalState::default()
         },
@@ -15123,6 +15127,295 @@ fn hud_inventory_screen_projects_crafting_recipe_book_buttons() {
                 [1.0, 1.0],
             )
     }));
+}
+
+#[test]
+fn hud_inventory_screen_keeps_recipe_button_animation_after_highlight_removal() {
+    let item_runtime = recipe_book_ghost_item_runtime();
+    let mut world = open_recipe_book_crafting_table_world();
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![shapeless_crafting_recipe_book_entry(20, 2, None, 1)],
+    });
+
+    let screen = hud_inventory_screen_with_local_state(
+        &world,
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        None,
+        InventoryHudLocalState {
+            recipe_book_tabs: RecipeBookTabSelectionHudState {
+                crafting: 1,
+                ..RecipeBookTabSelectionHudState::default()
+            },
+            recipe_book_presentation: RecipeBookPresentationHudState {
+                button_animation_ticks: [
+                    8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                ],
+                ..RecipeBookPresentationHudState::default()
+            },
+            ..InventoryHudLocalState::default()
+        },
+        0.5,
+    )
+    .unwrap();
+
+    assert!(world.recipe_book().highlights.is_empty());
+    assert!(screen.background_layers.iter().any(|layer| {
+        *layer
+            == hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::RecipeBookSlotUncraftable,
+                10,
+                30,
+                28,
+                28,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            )
+    }));
+    let item = screen
+        .floating_items
+        .iter()
+        .find(|item| item.x == 15 && item.y == 34)
+        .expect("animated recipe result");
+    assert!((item.scale - 1.1).abs() <= 0.000001);
+    assert!((item.scale_y - 1.1).abs() <= 0.000001);
+}
+
+#[test]
+fn hud_inventory_screen_projects_recipe_button_and_control_tooltips() {
+    let item_runtime = recipe_book_ghost_item_runtime();
+    let mut world = open_recipe_book_crafting_table_world();
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![
+            shapeless_crafting_recipe_book_entry(20, 2, Some(7), 1),
+            shapeless_crafting_recipe_book_entry(21, 2, Some(7), 1),
+        ],
+    });
+    let local_state = InventoryHudLocalState {
+        recipe_book_tabs: RecipeBookTabSelectionHudState {
+            crafting: 1,
+            ..RecipeBookTabSelectionHudState::default()
+        },
+        cursor_position: Some((15, 35)),
+        ..InventoryHudLocalState::default()
+    };
+
+    let recipe = hud_inventory_screen_with_local_state(
+        &world,
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        None,
+        local_state.clone(),
+        0.0,
+    )
+    .unwrap()
+    .tooltip
+    .expect("recipe tooltip");
+    assert_eq!(recipe.slot_id, u16::MAX);
+    assert_eq!(
+        recipe.lines.last().map(|line| line.text.as_str()),
+        Some("Right Click for More")
+    );
+
+    let overlay = hud_inventory_screen_with_local_state(
+        &world,
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        None,
+        InventoryHudLocalState {
+            recipe_book_overlay: Some(RecipeBookOverlayHudState {
+                book_type: RecipeBookType::Crafting,
+                tab_index: 1,
+                page_index: 0,
+                button_index: 0,
+                x: 11,
+                y: 31,
+            }),
+            ..local_state.clone()
+        },
+        0.0,
+    )
+    .unwrap();
+    assert!(overlay.tooltip.is_none());
+
+    let filter = hud_inventory_screen_with_local_state(
+        &world,
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        None,
+        InventoryHudLocalState {
+            cursor_position: Some((
+                RECIPE_BOOK_FILTER_BUTTON_X + 1,
+                RECIPE_BOOK_FILTER_BUTTON_Y + 1,
+            )),
+            ..local_state
+        },
+        0.0,
+    )
+    .unwrap()
+    .tooltip
+    .expect("filter tooltip");
+    assert_eq!(filter.lines[0].text, "Showing All");
+}
+
+#[test]
+fn hud_inventory_screen_projects_recipe_book_page_tooltips() {
+    let mut world = open_recipe_book_crafting_table_world();
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: (0..21)
+            .map(|index| shapeless_crafting_recipe_book_entry(index, 2, None, 1))
+            .collect(),
+    });
+    let base = InventoryHudLocalState {
+        recipe_book_tabs: RecipeBookTabSelectionHudState {
+            crafting: 1,
+            ..RecipeBookTabSelectionHudState::default()
+        },
+        cursor_position: Some((
+            RECIPE_BOOK_PAGE_FORWARD_BUTTON_X + 1,
+            RECIPE_BOOK_PAGE_BUTTON_Y + 1,
+        )),
+        ..InventoryHudLocalState::default()
+    };
+
+    let next = hud_inventory_screen_with_local_state(
+        &world,
+        None,
+        &TerrainTextureState::default(),
+        None,
+        base.clone(),
+        0.0,
+    )
+    .unwrap()
+    .tooltip
+    .expect("next page tooltip");
+    assert_eq!(next.lines[0].text, "Next Page");
+
+    let previous = hud_inventory_screen_with_local_state(
+        &world,
+        None,
+        &TerrainTextureState::default(),
+        None,
+        InventoryHudLocalState {
+            recipe_book_pages: RecipeBookPageHudState {
+                crafting: 1,
+                ..RecipeBookPageHudState::default()
+            },
+            cursor_position: Some((
+                RECIPE_BOOK_PAGE_BACKWARD_BUTTON_X + 1,
+                RECIPE_BOOK_PAGE_BUTTON_Y + 1,
+            )),
+            ..base
+        },
+        0.0,
+    )
+    .unwrap()
+    .tooltip
+    .expect("previous page tooltip");
+    assert_eq!(previous.lines[0].text, "Previous Page");
+}
+
+#[test]
+fn recipe_book_narration_describes_multi_recipe_button_and_usage() {
+    let item_runtime = recipe_book_ghost_item_runtime();
+    let mut world = open_recipe_book_crafting_table_world();
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![
+            shapeless_crafting_recipe_book_entry(20, 2, Some(7), 1),
+            shapeless_crafting_recipe_book_entry(21, 2, Some(7), 1),
+        ],
+    });
+    let mut input = ClientInputState::new(true);
+    input.update_screen_cursor_position(Some(PhysicalPosition::new(15.0, 35.0)));
+
+    let narration = recipe_book_narration_frame(
+        &input,
+        &world,
+        Some(&item_runtime),
+        PhysicalSize::new(1280, 720),
+        0.0,
+    )
+    .unwrap()
+    .all_text_for_test();
+
+    assert_eq!(
+        narration,
+        "Recipe for Stick. Left click to activate. Right click to show more recipes"
+    );
+}
+
+#[test]
+fn focused_recipe_book_search_has_terminal_narration_priority() {
+    let mut world = open_recipe_book_crafting_table_world();
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![shapeless_crafting_recipe_book_entry(20, 2, None, 1)],
+    });
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let commands = None;
+    let surface = PhysicalSize::new(1280, 720);
+    let origin_x = (1280.0 - 320.0) / 2.0;
+    let origin_y = (720.0 - 166.0) / 2.0;
+    assert!(crate::input::handle_inventory_mouse_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(
+            origin_x + f64::from(RECIPE_BOOK_SEARCH_BOX_X + 1),
+            origin_y + f64::from(RECIPE_BOOK_SEARCH_BOX_Y + 1),
+        )),
+        surface,
+    ));
+    input.update_screen_cursor_position(Some(PhysicalPosition::new(15.0, 35.0)));
+
+    let narration = recipe_book_narration_frame(&input, &world, None, surface, 0.0)
+        .unwrap()
+        .all_text_for_test();
+
+    assert!(narration.starts_with("Search Items edit box:"));
+    assert!(!narration.contains("Recipe for"));
+}
+
+#[test]
+fn recipe_book_narration_describes_filter_and_page_controls() {
+    let mut world = open_recipe_book_crafting_table_world();
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: (0..21)
+            .map(|index| shapeless_crafting_recipe_book_entry(index, 2, None, 1))
+            .collect(),
+    });
+    let surface = PhysicalSize::new(1280, 720);
+    let mut input = ClientInputState::new(true);
+    input.update_screen_cursor_position(Some(PhysicalPosition::new(
+        f64::from(RECIPE_BOOK_FILTER_BUTTON_X + 1),
+        f64::from(RECIPE_BOOK_FILTER_BUTTON_Y + 1),
+    )));
+    assert_eq!(
+        recipe_book_narration_frame(&input, &world, None, surface, 0.0)
+            .unwrap()
+            .all_text_for_test(),
+        "Showing All button. Left click to activate"
+    );
+
+    input.update_screen_cursor_position(Some(PhysicalPosition::new(
+        f64::from(RECIPE_BOOK_PAGE_FORWARD_BUTTON_X + 1),
+        f64::from(RECIPE_BOOK_PAGE_BUTTON_Y + 1),
+    )));
+    assert_eq!(
+        recipe_book_narration_frame(&input, &world, None, surface, 0.0)
+            .unwrap()
+            .all_text_for_test(),
+        "Next Page button. Left click to activate"
+    );
 }
 
 #[test]

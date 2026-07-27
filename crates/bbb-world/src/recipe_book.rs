@@ -12,8 +12,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::{recipes::ingredient_holder_set_is_resolved, WorldStore};
 
-const RECIPE_BOOK_TAB_ANIMATION_TICKS: u32 = 15;
-
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ClientRecipeBookState {
     pub known: BTreeMap<i32, ProtocolRecipeDisplayEntry>,
@@ -21,7 +19,7 @@ pub struct ClientRecipeBookState {
     pub settings: ProtocolRecipeBookSettings,
     pub notification_ids: Vec<i32>,
     #[serde(default)]
-    pub tab_animation_ticks_remaining: u32,
+    pub revision: u64,
 }
 
 impl WorldStore {
@@ -45,16 +43,13 @@ impl WorldStore {
             self.counters.recipe_book_replace_packets += 1;
             self.recipe_book.known.clear();
             self.recipe_book.highlights.clear();
-            self.recipe_book.tab_animation_ticks_remaining = 0;
         }
 
         self.recipe_book.notification_ids.clear();
-        let mut highlighted = false;
         for entry in packet.entries {
             let id = entry.contents.id.index;
             if entry.highlight {
                 self.recipe_book.highlights.insert(id);
-                highlighted = true;
             }
             if entry.notification {
                 self.counters.recipe_book_notifications_received += 1;
@@ -83,9 +78,7 @@ impl WorldStore {
             }
             self.recipe_book.known.insert(id, entry.contents);
         }
-        if highlighted {
-            self.recipe_book.tab_animation_ticks_remaining = RECIPE_BOOK_TAB_ANIMATION_TICKS;
-        }
+        self.recipe_book.revision = self.recipe_book.revision.saturating_add(1);
         self.update_recipe_book_counts();
     }
 
@@ -96,17 +89,19 @@ impl WorldStore {
             self.recipe_book.known.remove(&id.index);
             self.recipe_book.highlights.remove(&id.index);
         }
-        if self.recipe_book.highlights.is_empty() {
-            self.recipe_book.tab_animation_ticks_remaining = 0;
-        }
+        self.recipe_book.revision = self.recipe_book.revision.saturating_add(1);
         self.update_recipe_book_counts();
     }
 
-    pub fn advance_recipe_book_tab_animation(&mut self, ticks: u32) {
-        self.recipe_book.tab_animation_ticks_remaining = self
-            .recipe_book
-            .tab_animation_ticks_remaining
-            .saturating_sub(ticks);
+    pub fn remove_recipe_highlight(
+        &mut self,
+        recipe: bbb_protocol::packets::RecipeDisplayId,
+    ) -> bool {
+        if !self.recipe_book.highlights.remove(&recipe.index) {
+            return false;
+        }
+        self.update_recipe_book_counts();
+        true
     }
 
     pub fn apply_recipe_book_settings(&mut self, settings: ProtocolRecipeBookSettings) {
@@ -160,14 +155,7 @@ mod tests {
         assert_eq!(store.recipe_book().known.len(), 2);
         assert!(store.recipe_book().highlights.contains(&7));
         assert_eq!(store.recipe_book().notification_ids, vec![7]);
-        assert_eq!(
-            store.recipe_book().tab_animation_ticks_remaining,
-            RECIPE_BOOK_TAB_ANIMATION_TICKS
-        );
-        store.advance_recipe_book_tab_animation(7);
-        assert_eq!(store.recipe_book().tab_animation_ticks_remaining, 8);
-        store.advance_recipe_book_tab_animation(8);
-        assert_eq!(store.recipe_book().tab_animation_ticks_remaining, 0);
+        assert_eq!(store.recipe_book().revision, 1);
 
         store.apply_recipe_book_add(ProtocolRecipeBookAdd {
             replace: false,
@@ -176,10 +164,7 @@ mod tests {
         assert_eq!(store.recipe_book().known.len(), 3);
         assert!(store.recipe_book().highlights.contains(&9));
         assert_eq!(store.recipe_book().notification_ids, Vec::<i32>::new());
-        assert_eq!(
-            store.recipe_book().tab_animation_ticks_remaining,
-            RECIPE_BOOK_TAB_ANIMATION_TICKS
-        );
+        assert_eq!(store.recipe_book().revision, 2);
 
         store.apply_recipe_book_remove(ProtocolRecipeBookRemove {
             recipe_ids: vec![RecipeDisplayId { index: 7 }, RecipeDisplayId { index: 9 }],
@@ -188,7 +173,7 @@ mod tests {
         assert!(!store.recipe_book().known.contains_key(&9));
         assert!(!store.recipe_book().highlights.contains(&7));
         assert!(!store.recipe_book().highlights.contains(&9));
-        assert_eq!(store.recipe_book().tab_animation_ticks_remaining, 0);
+        assert_eq!(store.recipe_book().revision, 3);
 
         store.apply_recipe_book_settings(ProtocolRecipeBookSettings {
             crafting: RecipeBookTypeSettings {
@@ -221,6 +206,21 @@ mod tests {
         assert_eq!(counters.recipe_book_entries_tracked, 1);
         assert_eq!(counters.recipe_book_highlights_tracked, 0);
         assert_eq!(counters.recipe_book_notifications_received, 1);
+    }
+
+    #[test]
+    fn local_recipe_highlight_removal_is_guarded_and_updates_counts() {
+        let mut store = WorldStore::new();
+        store.apply_recipe_book_add(ProtocolRecipeBookAdd {
+            replace: true,
+            entries: vec![recipe_entry(7, false, true)],
+        });
+
+        assert!(store.remove_recipe_highlight(RecipeDisplayId { index: 7 }));
+        assert!(!store.remove_recipe_highlight(RecipeDisplayId { index: 7 }));
+        assert!(store.recipe_book().highlights.is_empty());
+        assert_eq!(store.counters().recipe_book_highlights_tracked, 0);
+        assert_eq!(store.recipe_book().revision, 1);
     }
 
     #[test]

@@ -206,6 +206,7 @@ struct NativeRenderEffectSink<'a> {
     terrain_upload: &'a mut TerrainUploadState,
     debug_profiler: &'a mut DebugProfiler,
     stats_screen_narration: &'a mut ScreenNarrationRuntime,
+    recipe_book_narration: &'a mut ScreenNarrationRuntime,
     social_interactions_narration: &'a mut ScreenNarrationRuntime,
     death_screen_narration: &'a mut ScreenNarrationRuntime,
     game_event_screen_narration: &'a mut ScreenNarrationRuntime,
@@ -305,6 +306,17 @@ impl PlatformEffectSink for NativeRenderEffectSink<'_> {
                     }
                 };
                 self.stats_screen_narration
+                    .after_input(input, Instant::now());
+            }
+            PlatformEffect::RecipeBookInput(input) => {
+                let input = match input {
+                    ScreenNarrationScheduleInput::MouseMove => ScreenNarrationInput::MouseMove,
+                    ScreenNarrationScheduleInput::MouseAction => ScreenNarrationInput::MouseAction,
+                    ScreenNarrationScheduleInput::KeyboardAction => {
+                        ScreenNarrationInput::KeyboardAction
+                    }
+                };
+                self.recipe_book_narration
                     .after_input(input, Instant::now());
             }
             PlatformEffect::SocialInteractionsInput(input) => {
@@ -676,6 +688,7 @@ fn main() -> Result<()> {
     let mut next_redraw_at = Instant::now();
     let mut last_command_suggestion_narration = None;
     let mut stats_screen_narration = ScreenNarrationRuntime::default();
+    let mut recipe_book_narration = ScreenNarrationRuntime::default();
     let mut social_interactions_narration = ScreenNarrationRuntime::default();
     let mut death_screen_narration = ScreenNarrationRuntime::default();
     let mut game_event_screen_narration = ScreenNarrationRuntime::default();
@@ -789,6 +802,7 @@ fn main() -> Result<()> {
                     terrain_upload: &mut terrain_upload,
                     debug_profiler: &mut debug_profiler,
                     stats_screen_narration: &mut stats_screen_narration,
+                    recipe_book_narration: &mut recipe_book_narration,
                     social_interactions_narration: &mut social_interactions_narration,
                     death_screen_narration: &mut death_screen_narration,
                     game_event_screen_narration: &mut game_event_screen_narration,
@@ -960,6 +974,13 @@ fn main() -> Result<()> {
                             .stats_screen_is_open()
                             .then(|| hud_render_runtime.stats_screen_narration())
                             .flatten(),
+                        Instant::now(),
+                        narrator_runtime
+                            .as_mut()
+                            .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
+                    );
+                    recipe_book_narration.tick(
+                        hud_render_runtime.recipe_book_narration(),
                         Instant::now(),
                         narrator_runtime
                             .as_mut()

@@ -181,15 +181,17 @@ pub(crate) fn queue_recipe_book_seen_recipe_command(
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     command: RecipeBookSeenRecipeCommand,
-) {
+) -> bool {
     if let Some(tx) = net_commands {
         if tx
             .try_send(NetCommand::RecipeBookSeenRecipe(command))
             .is_ok()
         {
             counters.recipe_book_seen_recipe_commands_queued += 1;
+            return true;
         }
     }
+    false
 }
 
 pub(crate) fn queue_edit_book_command(
@@ -1101,13 +1103,13 @@ mod tests {
                 filtering: false,
             },
         );
-        queue_recipe_book_seen_recipe_command(
+        assert!(queue_recipe_book_seen_recipe_command(
             &mut counters,
             &commands,
             RecipeBookSeenRecipeCommand {
                 recipe: RecipeDisplayId { index: 321 },
             },
-        );
+        ));
 
         assert_eq!(counters.recipe_book_change_settings_commands_queued, 1);
         assert_eq!(counters.recipe_book_seen_recipe_commands_queued, 1);
@@ -1123,6 +1125,34 @@ mod tests {
             rx.try_recv().unwrap(),
             NetCommand::RecipeBookSeenRecipe(RecipeBookSeenRecipeCommand {
                 recipe: RecipeDisplayId { index: 321 },
+            })
+        );
+    }
+
+    #[test]
+    fn reports_recipe_book_seen_recipe_queue_saturation() {
+        let (tx, mut rx) = mpsc::channel(1);
+        tx.try_send(NetCommand::RecipeBookSeenRecipe(
+            RecipeBookSeenRecipeCommand {
+                recipe: RecipeDisplayId { index: 1 },
+            },
+        ))
+        .unwrap();
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+
+        assert!(!queue_recipe_book_seen_recipe_command(
+            &mut counters,
+            &commands,
+            RecipeBookSeenRecipeCommand {
+                recipe: RecipeDisplayId { index: 2 },
+            },
+        ));
+        assert_eq!(counters.recipe_book_seen_recipe_commands_queued, 0);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::RecipeBookSeenRecipe(RecipeBookSeenRecipeCommand {
+                recipe: RecipeDisplayId { index: 1 },
             })
         );
     }

@@ -43,7 +43,8 @@ use super::{
         hotbar_slot_for_key, queue_container_button_click_command, queue_container_click_command,
         queue_container_close_command, queue_container_slot_state_changed_command,
         queue_place_recipe_command, queue_recipe_book_change_settings_command,
-        queue_rename_item_command, queue_select_trade_command, queue_set_beacon_command,
+        queue_recipe_book_seen_recipe_command, queue_rename_item_command,
+        queue_select_trade_command, queue_set_beacon_command,
     },
     text_edit, AnvilRenameInputSignature, ClientInputState, RecipeBookOverlayHudState,
 };
@@ -58,6 +59,7 @@ use crate::recipe_book_ui::{
 use bbb_item_model::NativeItemRuntime;
 
 mod layout;
+mod recipe_book_lifecycle;
 
 #[cfg(test)]
 pub(crate) use layout::local_inventory_slot_layouts;
@@ -86,6 +88,9 @@ pub(crate) use layout::{
     STONECUTTER_SCROLLER_CLICK_Y, STONECUTTER_SCROLLER_DRAG_Y, STONECUTTER_SCROLLER_FULL_HEIGHT,
     STONECUTTER_SCROLLER_HEIGHT, STONECUTTER_SCROLLER_MAX_OFFSET, STONECUTTER_SCROLLER_WIDTH,
     STONECUTTER_SCROLLER_X, STONECUTTER_SCROLLER_Y, STONECUTTER_VISIBLE_RECIPE_BUTTON_COUNT,
+};
+pub(crate) use recipe_book_lifecycle::{
+    sync_recipe_book_presentation, RecipeBookPresentationHudState, RecipeBookPresentationState,
 };
 
 pub(crate) fn recipe_book_visible_tab_indices(

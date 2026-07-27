@@ -23783,6 +23783,356 @@ fn recipe_book_page_arrow_click_updates_local_page_state() {
 }
 
 #[test]
+fn visible_recipe_highlights_queue_once_in_button_and_recipe_order() {
+    let (tx, mut rx) = mpsc::channel(4);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.recipe_book_crafting_tab_index = 1;
+    let mut counters = NetCounters::default();
+    let mut world = open_recipe_book_crafting_table_world();
+    let mut first = recipe_book_shapeless_entry_with_group(42, 2, Some(7), 200);
+    first.highlight = true;
+    let mut second = recipe_book_shapeless_entry_with_group(43, 2, Some(7), 201);
+    second.highlight = true;
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![first, second],
+    });
+
+    sync_recipe_book_presentation(&mut input, &mut world, &mut counters, &commands, None, 0);
+
+    assert!(world.recipe_book().highlights.is_empty());
+    assert_eq!(counters.recipe_book_seen_recipe_commands_queued, 2);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::RecipeBookSeenRecipe(bbb_protocol::packets::RecipeBookSeenRecipeCommand {
+            recipe: bbb_protocol::packets::RecipeDisplayId { index: 42 },
+        })
+    );
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::RecipeBookSeenRecipe(bbb_protocol::packets::RecipeBookSeenRecipeCommand {
+            recipe: bbb_protocol::packets::RecipeDisplayId { index: 43 },
+        })
+    );
+    let presentation = input.recipe_book_presentation_hud_state();
+    assert_eq!(presentation.button_animation_ticks[0], 15);
+    assert_eq!(presentation.tab_animation_ticks[1], 15);
+
+    sync_recipe_book_presentation(&mut input, &mut world, &mut counters, &commands, None, 1);
+    assert_eq!(counters.recipe_book_seen_recipe_commands_queued, 2);
+    assert!(rx.try_recv().is_err());
+    assert_eq!(
+        input
+            .recipe_book_presentation_hud_state()
+            .button_animation_ticks[0],
+        14
+    );
+}
+
+#[test]
+fn saturated_seen_recipe_queue_retries_before_local_highlight_removal() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetCommand::RecipeBookSeenRecipe(
+        bbb_protocol::packets::RecipeBookSeenRecipeCommand {
+            recipe: bbb_protocol::packets::RecipeDisplayId { index: 1 },
+        },
+    ))
+    .unwrap();
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.recipe_book_crafting_tab_index = 1;
+    let mut counters = NetCounters::default();
+    let mut world = open_recipe_book_crafting_table_world();
+    let mut entry = recipe_book_shapeless_entry(42, 2, 200);
+    entry.highlight = true;
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![entry],
+    });
+
+    sync_recipe_book_presentation(&mut input, &mut world, &mut counters, &commands, None, 0);
+    assert!(world.recipe_book().highlights.contains(&42));
+    assert_eq!(counters.recipe_book_seen_recipe_commands_queued, 0);
+    let _ = rx.try_recv().unwrap();
+
+    sync_recipe_book_presentation(&mut input, &mut world, &mut counters, &commands, None, 0);
+    assert!(!world.recipe_book().highlights.contains(&42));
+    assert_eq!(counters.recipe_book_seen_recipe_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::RecipeBookSeenRecipe(bbb_protocol::packets::RecipeBookSeenRecipeCommand {
+            recipe: bbb_protocol::packets::RecipeDisplayId { index: 42 },
+        })
+    );
+}
+
+#[test]
+fn closed_recipe_book_defers_seen_command_and_pauses_animation() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.recipe_book_crafting_tab_index = 1;
+    let mut counters = NetCounters::default();
+    let mut world = open_recipe_book_crafting_table_world();
+    let mut entry = recipe_book_shapeless_entry(42, 2, 200);
+    entry.highlight = true;
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![entry],
+    });
+    let mut settings = world.recipe_book().settings;
+    settings.crafting.open = false;
+    world.apply_recipe_book_settings(settings);
+
+    sync_recipe_book_presentation(&mut input, &mut world, &mut counters, &commands, None, 7);
+    assert!(world.recipe_book().highlights.contains(&42));
+    assert!(rx.try_recv().is_err());
+
+    settings.crafting.open = true;
+    world.apply_recipe_book_settings(settings);
+    sync_recipe_book_presentation(&mut input, &mut world, &mut counters, &commands, None, 0);
+    assert!(!world.recipe_book().highlights.contains(&42));
+    assert_eq!(
+        input
+            .recipe_book_presentation_hud_state()
+            .button_animation_ticks[0],
+        15
+    );
+
+    settings.crafting.open = false;
+    world.apply_recipe_book_settings(settings);
+    sync_recipe_book_presentation(&mut input, &mut world, &mut counters, &commands, None, 7);
+    assert_eq!(
+        input
+            .recipe_book_presentation_hud_state()
+            .button_animation_ticks[0],
+        15
+    );
+
+    settings.crafting.open = true;
+    world.apply_recipe_book_settings(settings);
+    sync_recipe_book_presentation(&mut input, &mut world, &mut counters, &commands, None, 7);
+    assert_eq!(
+        input
+            .recipe_book_presentation_hud_state()
+            .button_animation_ticks[0],
+        8
+    );
+}
+
+#[test]
+fn later_recipe_page_retains_highlight_until_selected() {
+    let (tx, mut rx) = mpsc::channel(24);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.recipe_book_crafting_tab_index = 1;
+    let mut counters = NetCounters::default();
+    let mut world = open_recipe_book_crafting_table_world();
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: (0..21)
+            .map(|index| {
+                let mut entry = recipe_book_shapeless_entry(index, 2, 200 + index);
+                entry.highlight = true;
+                entry
+            })
+            .collect(),
+    });
+
+    sync_recipe_book_presentation(&mut input, &mut world, &mut counters, &commands, None, 0);
+    assert_eq!(world.recipe_book().highlights.len(), 1);
+    assert!(world.recipe_book().highlights.contains(&20));
+    for expected in 0..20 {
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::RecipeBookSeenRecipe(bbb_protocol::packets::RecipeBookSeenRecipeCommand {
+                recipe: bbb_protocol::packets::RecipeDisplayId { index: expected },
+            })
+        );
+    }
+
+    input.recipe_book_crafting_page = 1;
+    sync_recipe_book_presentation(&mut input, &mut world, &mut counters, &commands, None, 0);
+    assert!(world.recipe_book().highlights.is_empty());
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::RecipeBookSeenRecipe(bbb_protocol::packets::RecipeBookSeenRecipeCommand {
+            recipe: bbb_protocol::packets::RecipeDisplayId { index: 20 },
+        })
+    );
+}
+
+#[test]
+fn nonselected_tab_retains_highlight_until_selected() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.recipe_book_crafting_tab_index = 2;
+    let mut counters = NetCounters::default();
+    let mut world = open_recipe_book_crafting_table_world();
+    let mut entry = recipe_book_shapeless_entry(42, 2, 200);
+    entry.highlight = true;
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![entry],
+    });
+
+    sync_recipe_book_presentation(&mut input, &mut world, &mut counters, &commands, None, 0);
+    assert!(world.recipe_book().highlights.contains(&42));
+    assert!(rx.try_recv().is_err());
+
+    input.recipe_book_crafting_tab_index = 1;
+    sync_recipe_book_presentation(&mut input, &mut world, &mut counters, &commands, None, 0);
+    assert!(!world.recipe_book().highlights.contains(&42));
+    assert!(matches!(
+        rx.try_recv(),
+        Ok(NetCommand::RecipeBookSeenRecipe(_))
+    ));
+}
+
+#[test]
+fn craftable_filter_defers_highlight_until_filter_is_disabled() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.recipe_book_crafting_tab_index = 1;
+    let mut counters = NetCounters::default();
+    let mut world = open_recipe_book_crafting_table_world();
+    let mut settings = world.recipe_book().settings;
+    settings.crafting.filtering = true;
+    world.apply_recipe_book_settings(settings);
+    let mut entry = recipe_book_shapeless_entry(42, 2, 200);
+    entry.highlight = true;
+    entry.contents.crafting_requirements = Some(vec![bbb_protocol::packets::IngredientSummary {
+        tag: None,
+        item_ids: vec![50],
+    }]);
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![entry],
+    });
+
+    sync_recipe_book_presentation(&mut input, &mut world, &mut counters, &commands, None, 0);
+    assert!(world.recipe_book().highlights.contains(&42));
+    assert_eq!(
+        input
+            .recipe_book_presentation_hud_state()
+            .tab_animation_ticks[1],
+        0
+    );
+    assert!(rx.try_recv().is_err());
+
+    settings.crafting.filtering = false;
+    world.apply_recipe_book_settings(settings);
+    sync_recipe_book_presentation(&mut input, &mut world, &mut counters, &commands, None, 0);
+    assert!(!world.recipe_book().highlights.contains(&42));
+    let presentation = input.recipe_book_presentation_hud_state();
+    assert_eq!(presentation.tab_animation_ticks[1], 15);
+    assert_eq!(presentation.button_animation_ticks[0], 15);
+    assert!(matches!(
+        rx.try_recv(),
+        Ok(NetCommand::RecipeBookSeenRecipe(_))
+    ));
+}
+
+#[test]
+fn search_and_remove_paths_preserve_only_still_visible_highlights() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.recipe_book_crafting_tab_index = 1;
+    input.recipe_book_search_text = "no-match".to_string();
+    let mut counters = NetCounters::default();
+    let mut world = open_recipe_book_crafting_table_world();
+    let mut entry = recipe_book_shapeless_entry(42, 2, 200);
+    entry.highlight = true;
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![entry],
+    });
+
+    sync_recipe_book_presentation(&mut input, &mut world, &mut counters, &commands, None, 0);
+    assert!(world.recipe_book().highlights.contains(&42));
+    assert!(rx.try_recv().is_err());
+
+    world.apply_recipe_book_remove(bbb_protocol::packets::RecipeBookRemove {
+        recipe_ids: vec![bbb_protocol::packets::RecipeDisplayId { index: 42 }],
+    });
+    input.recipe_book_search_text.clear();
+    sync_recipe_book_presentation(&mut input, &mut world, &mut counters, &commands, None, 0);
+    assert!(world.recipe_book().highlights.is_empty());
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn recipe_replace_before_visibility_queues_no_seen_command() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.recipe_book_crafting_tab_index = 1;
+    let mut counters = NetCounters::default();
+    let mut world = open_recipe_book_crafting_table_world();
+    let mut settings = world.recipe_book().settings;
+    settings.crafting.open = false;
+    world.apply_recipe_book_settings(settings);
+    let mut entry = recipe_book_shapeless_entry(42, 2, 200);
+    entry.highlight = true;
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![entry],
+    });
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: Vec::new(),
+    });
+    settings.crafting.open = true;
+    world.apply_recipe_book_settings(settings);
+
+    sync_recipe_book_presentation(&mut input, &mut world, &mut counters, &commands, None, 0);
+
+    assert!(world.recipe_book().known.is_empty());
+    assert!(world.recipe_book().highlights.is_empty());
+    assert_eq!(counters.recipe_book_seen_recipe_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn recipe_book_menu_replacement_resets_button_animation() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.recipe_book_crafting_tab_index = 1;
+    let mut counters = NetCounters::default();
+    let mut world = open_recipe_book_crafting_table_world();
+    let mut entry = recipe_book_shapeless_entry(42, 2, 200);
+    entry.highlight = true;
+    world.apply_recipe_book_add(bbb_protocol::packets::RecipeBookAdd {
+        replace: true,
+        entries: vec![entry],
+    });
+    sync_recipe_book_presentation(&mut input, &mut world, &mut counters, &commands, None, 0);
+    let _ = rx.try_recv().unwrap();
+    assert_eq!(
+        input
+            .recipe_book_presentation_hud_state()
+            .button_animation_ticks[0],
+        15
+    );
+
+    world.apply_open_screen(ProtocolOpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
+        title: bbb_protocol::RichTextComponent::plain("Crafting"),
+    });
+    sync_recipe_book_presentation(&mut input, &mut world, &mut counters, &commands, None, 0);
+    assert_eq!(
+        input.recipe_book_presentation_hud_state(),
+        RecipeBookPresentationHudState::default()
+    );
+}
+
+#[test]
 fn recipe_book_recipe_button_click_queues_place_recipe_command() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);

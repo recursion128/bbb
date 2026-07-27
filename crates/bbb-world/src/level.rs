@@ -569,7 +569,6 @@ impl WorldStore {
                 .saturating_sub(ticks)
                 .max(0);
         }
-        self.advance_recipe_book_tab_animation(ticks);
 
         let default_clock_id = self.current_default_clock_id();
         let Some(time) = self.world_time.as_mut() else {

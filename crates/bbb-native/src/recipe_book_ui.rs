@@ -76,6 +76,10 @@ pub(crate) struct RecipeBookOverlayItem<'a> {
 }
 
 impl<'a> RecipeBookUiCollection<'a> {
+    pub(crate) fn recipe_indices(&self) -> impl Iterator<Item = i32> + '_ {
+        self.entries.iter().map(|entry| entry.id.index)
+    }
+
     pub(crate) fn result_stack(&self) -> Option<&'a ItemStackSummary> {
         self.entries
             .first()
