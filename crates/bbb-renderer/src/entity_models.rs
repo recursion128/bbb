@@ -5,6 +5,7 @@ mod catalog;
 mod colored;
 mod decorated_pot_patterns;
 mod dispatch;
+mod equipment;
 mod features;
 mod geometry;
 mod gpu;
@@ -52,6 +53,10 @@ use colored::{
     wither_skeleton_model_root_transform, HUSK_SCALE,
 };
 pub use decorated_pot_patterns::DecoratedPotPattern;
+pub use equipment::{
+    EntityEquipmentAsset, EntityEquipmentAssetCatalog, EntityEquipmentAssetLayer,
+    EntityEquipmentAssetLayerTexture, EntityEquipmentDyeable, EntityEquipmentLayerType,
+};
 pub(crate) use features::EntityShadowTextureGpu;
 pub use features::{
     bake_entity_flame_surface, bake_entity_shadow_surface, EntityFlameSubmission,

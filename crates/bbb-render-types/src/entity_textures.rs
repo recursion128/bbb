@@ -53,6 +53,12 @@ pub struct EntityDynamicTexture {
     pub handle: u64,
 }
 
+/// Compact selected-resource-generation identity for one `equipment/*.json`
+/// asset. The id is the asset's position in the pack catalog's sorted resource
+/// id order and is invalid across a resource reload.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct EntityEquipmentAssetId(pub u32);
+
 /// One resolved armor-trim atlas sprite. `texture` addresses the shared runtime entity atlas;
 /// `decal` selects vanilla's equal-depth, no-depth-write armor decal pipeline.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

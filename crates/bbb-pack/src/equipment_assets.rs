@@ -30,12 +30,49 @@ impl EquipmentAssetCatalog {
                 .with_context(|| format!("parse equipment asset {}", resource.path.display()))?;
             assets.insert(asset_id, asset);
         }
+        if assets.len() > u32::MAX as usize {
+            bail!("equipment asset catalog exceeds the u32 id address space");
+        }
         Ok(Self { assets })
     }
 
     pub fn asset(&self, asset_id: &str) -> Option<&EquipmentAsset> {
         let asset_id = ResourceLocation::parse(asset_id).ok()?.id();
         self.assets.get(&asset_id)
+    }
+
+    /// Returns the generation-local compact id assigned by sorted resource id.
+    pub fn asset_index(&self, asset_id: &str) -> Option<u32> {
+        let asset_id = ResourceLocation::parse(asset_id).ok()?.id();
+        self.assets
+            .keys()
+            .position(|candidate| candidate == &asset_id)
+            .and_then(|index| u32::try_from(index).ok())
+    }
+
+    /// Resolves a compact id back to the normalized resource id and asset.
+    pub fn indexed_asset(&self, index: u32) -> Option<(&str, &EquipmentAsset)> {
+        self.assets
+            .iter()
+            .nth(index as usize)
+            .map(|(asset_id, asset)| (asset_id.as_str(), asset))
+    }
+
+    /// Iterates assets in the exact order used for compact ids.
+    pub fn indexed_assets(
+        &self,
+    ) -> impl Iterator<Item = (u32, &str, &EquipmentAsset)> + ExactSizeIterator {
+        self.assets
+            .iter()
+            .enumerate()
+            .map(|(index, (asset_id, asset))| {
+                (
+                    u32::try_from(index)
+                        .expect("equipment asset count was admitted below u32::MAX"),
+                    asset_id.as_str(),
+                    asset,
+                )
+            })
     }
 
     pub fn assets(&self) -> &BTreeMap<String, EquipmentAsset> {
@@ -405,6 +442,12 @@ mod tests {
             iron.layers(EquipmentLayerType::HumanoidBaby)[0].texture_location,
             "custom:textures/entity/equipment/humanoid_baby/iron_baby.png"
         );
+        assert_eq!(catalog.asset_index("iron"), Some(0));
+        assert_eq!(
+            catalog.indexed_asset(0).map(|(asset_id, _)| asset_id),
+            Some("minecraft:iron")
+        );
+        assert_eq!(catalog.indexed_asset(1), None);
 
         std::fs::remove_dir_all(root).unwrap();
     }

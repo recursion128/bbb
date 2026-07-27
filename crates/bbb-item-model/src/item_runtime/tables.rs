@@ -415,6 +415,45 @@ impl NativeItemRuntime {
         registry.humanoid_armor_asset(resource_id).is_some()
     }
 
+    /// Pack catalog used to build the generation-matched renderer equipment
+    /// texture catalog during startup and atomic resource reload.
+    pub fn equipment_asset_catalog(&self) -> &EquipmentAssetCatalog {
+        &self.equipment_assets
+    }
+
+    /// Resolves an asset resource id to its generation-local compact identity.
+    pub fn equipment_asset_id(&self, asset_id: &str) -> Option<EntityEquipmentAssetId> {
+        self.equipment_assets
+            .asset_index(asset_id)
+            .map(EntityEquipmentAssetId)
+    }
+
+    /// Normalized asset names in the same order as compact identities.
+    pub fn equipment_asset_names(&self) -> Vec<String> {
+        self.equipment_assets
+            .indexed_assets()
+            .map(|(_index, asset_id, _asset)| asset_id.to_owned())
+            .collect()
+    }
+
+    /// Item protocol id → generation-local equipment asset identity.
+    pub fn item_equipment_asset_ids_by_protocol_id(&self) -> BTreeMap<i32, EntityEquipmentAssetId> {
+        let mut assets = BTreeMap::new();
+        let Some(registry) = &self.registry else {
+            return assets;
+        };
+        for (protocol_id, resource_id) in registry.resource_ids().iter().enumerate() {
+            let Some(asset_id) = registry
+                .equippable_asset(resource_id)
+                .and_then(|asset_id| self.equipment_asset_id(asset_id))
+            else {
+                continue;
+            };
+            assets.insert(protocol_id as i32, asset_id);
+        }
+        assets
+    }
+
     pub fn item_equipment_asset_has_wings_layer(&self, protocol_id: i32) -> bool {
         self.item_equipment_asset_has_layer(protocol_id, EquipmentLayerType::Wings)
     }

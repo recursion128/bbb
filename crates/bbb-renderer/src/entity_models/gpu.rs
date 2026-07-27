@@ -23,6 +23,7 @@ use super::{
     },
     entity_model_colored_runtime_mesh,
     entity_model_textured_meshes_with_dynamic_textures_for_camera, entity_model_water_mask_mesh,
+    equipment::{EntityEquipmentAssetCatalog, ResolvedEntityEquipmentAssetCatalog},
     first_person_player_arm_textured_meshes,
     geometry::{
         EntityModelDissolveMesh, EntityModelDissolveVertex, EntityModelMesh, EntityModelPortalMesh,
@@ -74,6 +75,10 @@ pub(crate) struct EntityModelTextureAtlasGpu {
     pub(crate) layout: EntityModelTextureAtlasLayout,
     #[allow(dead_code)]
     pub(crate) owned_entries: Vec<EntityModelOwnedTextureAtlasEntry>,
+    // Stage 1 keeps the generation-matched catalog resident; the following
+    // renderer migration consumes it directly.
+    #[allow(dead_code)]
+    pub(crate) equipment_assets: ResolvedEntityEquipmentAssetCatalog,
 }
 
 impl EntityModelTextureAtlasGpu {
@@ -2574,6 +2579,21 @@ impl Renderer {
         images: &[EntityModelTextureImage],
         owned_images: &[EntityModelOwnedTextureImage],
     ) -> Result<()> {
+        self.upload_entity_model_textures_with_owned_and_equipment(
+            images,
+            owned_images,
+            &EntityEquipmentAssetCatalog::default(),
+        )
+    }
+
+    /// Replaces the shared entity atlas and its generation-matched equipment
+    /// layer catalog in one atomic renderer mutation.
+    pub fn upload_entity_model_textures_with_owned_and_equipment(
+        &mut self,
+        images: &[EntityModelTextureImage],
+        owned_images: &[EntityModelOwnedTextureImage],
+        equipment_assets: &EntityEquipmentAssetCatalog,
+    ) -> Result<()> {
         let (default_faces, dynamic_faces) =
             self.build_hud_player_face_owners(images, &self.entity_dynamic_player_skin_images)?;
         let atlas = create_entity_model_texture_atlas_gpu(
@@ -2584,6 +2604,7 @@ impl Renderer {
             &self.gui_item_camera_buffer,
             images,
             owned_images,
+            equipment_assets,
         )?;
         self.entity_model_texture_atlas = Some(atlas);
         self.hud_win_portal_mesh = self
@@ -3206,6 +3227,7 @@ fn create_entity_model_texture_atlas_gpu(
     gui_camera_buffer: &wgpu::Buffer,
     images: &[EntityModelTextureImage],
     owned_images: &[EntityModelOwnedTextureImage],
+    equipment_assets: &EntityEquipmentAssetCatalog,
 ) -> Result<EntityModelTextureAtlasGpu> {
     let max_dimension = device.limits().max_texture_dimension_2d;
     let (layout, owned_entries, rgba) = build_entity_model_texture_atlas_with_owned_height_limit(
@@ -3213,6 +3235,7 @@ fn create_entity_model_texture_atlas_gpu(
         owned_images,
         max_dimension,
     )?;
+    let equipment_assets = equipment_assets.resolve(&owned_entries)?;
     if layout.width > max_dimension {
         bail!(
             "entity model texture atlas width {} exceeds device limit {}",
@@ -3290,6 +3313,7 @@ fn create_entity_model_texture_atlas_gpu(
         gui_bind_group,
         layout,
         owned_entries,
+        equipment_assets,
     })
 }
 

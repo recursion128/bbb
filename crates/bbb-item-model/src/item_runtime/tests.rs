@@ -4012,6 +4012,29 @@ fn humanoid_armor_asset_query_excludes_head_equippable_non_armor() {
     assert!(!runtime.item_equipment_asset_has_wings_layer(chestplate_id));
     assert!(runtime.item_equipment_asset_has_wings_layer(elytra_id));
     assert_eq!(
+        runtime.equipment_asset_id("minecraft:diamond"),
+        Some(EntityEquipmentAssetId(0))
+    );
+    assert_eq!(
+        runtime.equipment_asset_id("minecraft:elytra"),
+        Some(EntityEquipmentAssetId(1))
+    );
+    assert_eq!(
+        runtime.equipment_asset_names(),
+        vec![
+            "minecraft:diamond".to_string(),
+            "minecraft:elytra".to_string()
+        ]
+    );
+    assert_eq!(
+        runtime.item_equipment_asset_ids_by_protocol_id(),
+        BTreeMap::from([
+            (helmet_id, EntityEquipmentAssetId(0)),
+            (chestplate_id, EntityEquipmentAssetId(0)),
+            (elytra_id, EntityEquipmentAssetId(1)),
+        ])
+    );
+    assert_eq!(
         runtime.item_wings_equipment_assets_by_protocol_id(),
         BTreeMap::from([(elytra_id, "minecraft:elytra".to_string())])
     );

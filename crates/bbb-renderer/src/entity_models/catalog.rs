@@ -28,8 +28,8 @@ pub(in crate::entity_models) use selection::{
 pub use bbb_render_types::{
     EntityArmorTrim, EntityCustomHeadSkull, EntityDefaultPlayerSkin, EntityDynamicPlayerSkin,
     EntityDynamicPlayerSkinStatus, EntityDynamicPlayerTexture, EntityDynamicPlayerTextureKind,
-    EntityDynamicTexture, EntityEquipmentLayerTexture, EntityModelTextureRef, EntityPlayerSkin,
-    EntityPlayerSkinModel,
+    EntityDynamicTexture, EntityEquipmentAssetId, EntityEquipmentLayerTexture,
+    EntityModelTextureRef, EntityPlayerSkin, EntityPlayerSkinModel,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

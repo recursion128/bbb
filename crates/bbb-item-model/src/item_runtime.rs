@@ -47,10 +47,11 @@ use bbb_protocol::packets::{
 use bbb_render_types::{
     DynamicPlayerSkinImage, DynamicPlayerTextureImage, EntityCustomHeadSkull,
     EntityDefaultPlayerSkin, EntityDynamicPlayerSkin, EntityDynamicPlayerSkinStatus,
-    EntityDynamicPlayerTexture, EntityDynamicPlayerTextureKind, EntityEquipmentLayerTexture,
-    EntityModelTextureRef, EntityPlayerSkin, EntityPlayerSkinModel, FirstPersonMapBackgroundKind,
-    FirstPersonMapBackgroundTexture, HudFontGlyphBook, HudFontGlyphMap, HudStyledTextRun,
-    HudTextStyle, ItemFrameMapDecorationTexture, ItemSpriteRect, SpriteAlphaMask,
+    EntityDynamicPlayerTexture, EntityDynamicPlayerTextureKind, EntityEquipmentAssetId,
+    EntityEquipmentLayerTexture, EntityModelTextureRef, EntityPlayerSkin, EntityPlayerSkinModel,
+    FirstPersonMapBackgroundKind, FirstPersonMapBackgroundTexture, HudFontGlyphBook,
+    HudFontGlyphMap, HudStyledTextRun, HudTextStyle, ItemFrameMapDecorationTexture, ItemSpriteRect,
+    SpriteAlphaMask,
 };
 // Referenced only by test builds and the `test-support` constructors; gate it so
 // the plain library build stays clean.

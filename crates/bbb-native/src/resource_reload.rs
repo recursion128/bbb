@@ -204,8 +204,12 @@ fn apply_native_resource_reload(
                         &renderer.hud_text_measurements(),
                     )
                     .context("prepare win-screen resources during resource reload")?;
-                    try_load_entity_model_textures(renderer, &prepared.roots)
-                        .context("upload entity resources during resource reload")?;
+                    try_load_entity_model_textures(
+                        renderer,
+                        &prepared.roots,
+                        prepared.items.equipment_asset_catalog(),
+                    )
+                    .context("upload entity resources during resource reload")?;
                     try_load_sky_textures(renderer, &prepared.roots)
                         .context("upload sky resources during resource reload")?;
                     match prepared.audio {

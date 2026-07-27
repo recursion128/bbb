@@ -632,7 +632,13 @@ fn main() -> Result<()> {
     simulation_mailbox.enqueue(SimulationCommand::TextMeasurements(
         renderer.hud_text_measurements(),
     ));
-    load_entity_model_textures(&mut renderer, pack_roots.as_ref());
+    load_entity_model_textures(
+        &mut renderer,
+        pack_roots.as_ref(),
+        item_runtime
+            .as_ref()
+            .map(NativeItemRuntime::equipment_asset_catalog),
+    );
     load_sky_textures(&mut renderer, pack_roots.as_ref());
     if let Some(particles) = &particle_render_runtime {
         if let Err(err) = particles.upload_particle_atlas(&mut renderer) {

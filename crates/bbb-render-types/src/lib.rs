@@ -20,8 +20,8 @@ pub use banner_pattern_types::BannerPatternKind;
 pub use entity_textures::{
     EntityArmorTrim, EntityCustomHeadSkull, EntityDefaultPlayerSkin, EntityDynamicPlayerSkin,
     EntityDynamicPlayerSkinStatus, EntityDynamicPlayerTexture, EntityDynamicPlayerTextureKind,
-    EntityDynamicTexture, EntityEquipmentLayerTexture, EntityModelTextureRef, EntityPlayerSkin,
-    EntityPlayerSkinModel,
+    EntityDynamicTexture, EntityEquipmentAssetId, EntityEquipmentLayerTexture,
+    EntityModelTextureRef, EntityPlayerSkin, EntityPlayerSkinModel,
 };
 pub use hud_glyphs::{
     HudAsciiGlyph, HudComponentTextRun, HudDigitGlyph, HudEffectKind, HudEffectRect,
