@@ -810,8 +810,6 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 - Cover the full vanilla profiler section set, and add the profiling metrics
   recorder/output.
 - Finish `DebugOptionsScreen` narration, focus, and widget styling.
-- Implement native pause tick-freeze eligibility and the remaining `PauseScreen`
-  actions and subscreens.
 
 ## Item model range-dispatch and select projection
 

@@ -410,8 +410,6 @@ packet 行为。
 
 - vanilla profiler section 全覆盖 + profiling metrics recorder/output。
 - DebugOptionsScreen narration / focus / 完整 widget styling polish。
-- native pause tick-freeze eligibility 与 PauseScreen 剩余 action/subscreen。
-- creative inventory-tab 的 entity-in-UI 玩家预览。
 
 完成标准：不做临时配置 UI，启动配置从命令行进入；上述开放项及账本归属本
 队列的条目全部完成或有窄 deferred/not-needed 依据；视觉结果有 deterministic

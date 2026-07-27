@@ -619,3 +619,6 @@
 - **2026-07-26（玩家列表呈现工程闭环）**：会话加密状态、打开时系统旁白、玩家
   头像/帽层/倒置规则及 6 档 Vanilla 延迟图标已贯通 net、world、native 与
   renderer；合同见 `docs/archive/player-list-presentation-closure-design.md`。
+- **2026-07-26（PauseScreen 工程闭环）**：远端菜单与 F3+Escape 显式保持
+  client/level tick；动态 dialog 快照、Feedback 子页、可信链接确认及精确父屏恢复
+  已贯通 world/native/renderer，合同见 `docs/archive/pause-screen-closure-design.md`。

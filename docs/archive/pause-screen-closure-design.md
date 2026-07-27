@@ -1,6 +1,6 @@
 # PauseScreen closure
 
-Status: active engineering contract.
+Status: completed at `5a77766a2`.
 
 Pre-start fully gated baseline:
 `f5b29cb7a7f66dd87f20c231566136c5438928d9`.
