@@ -5587,12 +5587,19 @@
       "coverage": {
         "ack_response": {
           "evidence": [
+            "crates/bbb-world/src/client/inventory.rs#set_local_merchant_selected_offer",
             "crates/bbb-world/src/client/inventory.rs#apply_container_set_content",
             "crates/bbb-world/src/client/inventory.rs#apply_container_set_slot",
-            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleSelectTrade"
+            "crates/bbb-world/src/client/inventory/tests.rs#set_local_merchant_selected_offer_autofills_payment_slots_from_offer_costs",
+            "crates/bbb-world/src/client/inventory/tests.rs#set_local_merchant_selected_offer_keeps_component_predicate_cost_server_authoritative",
+            "vanilla:net/minecraft/client/gui/screens/inventory/MerchantScreen.java#postButtonClick",
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleSelectTrade",
+            "vanilla:net/minecraft/world/inventory/MerchantMenu.java#slotsChanged",
+            "vanilla:net/minecraft/world/inventory/MerchantMenu.java#tryMoveItems",
+            "vanilla:net/minecraft/world/inventory/AbstractContainerMenu.java#broadcastChanges"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "command_surface": {
           "evidence": [

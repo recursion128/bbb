@@ -76,7 +76,8 @@ Owner: `bbb-protocol`
   generic dispatch arm, an ungated state query, or one representative action
   from a multi-action serverbound family is not completion. Serverbound
   request coverage must include every distinct success/fallback response
-  branch, including ordinary authoritative state-sync packets.
+  branch, including ordinary authoritative state-sync packets; local
+  prediction alone does not replace accepting a later server correction.
 - Use `docs/item-component-coverage-26.1.json` as the complete 110-entry
   ItemStack component semantic inventory. Each `partial` cell must close
   through its sparse evidence override; consuming the right wire length or

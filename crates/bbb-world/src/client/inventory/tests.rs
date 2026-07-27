@@ -7754,8 +7754,13 @@ fn set_local_merchant_selected_offer_keeps_component_predicate_cost_server_autho
         menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
         title: bbb_protocol::RichTextComponent::plain("Merchant"),
     });
+    let mut matching_payment = item_stack(42, 5);
+    matching_payment.component_patch.added = 1;
+    matching_payment.component_patch.added_type_ids =
+        vec![VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID];
+    matching_payment.component_patch.item_model = Some("minecraft:emerald".to_string());
     let mut items = vec![ProtocolItemStackSummary::empty(); MERCHANT_TOTAL_SLOT_COUNT as usize];
-    items[MERCHANT_PLAYER_MAIN_START as usize] = item_stack(42, 5);
+    items[MERCHANT_PLAYER_MAIN_START as usize] = matching_payment.clone();
     store.apply_container_set_content(ProtocolContainerSetContent {
         container_id: 7,
         state_id: 15,
@@ -7795,7 +7800,38 @@ fn set_local_merchant_selected_offer_keeps_component_predicate_cost_server_autho
     );
     assert_eq!(
         open_container_slot_item(&store, MERCHANT_PLAYER_MAIN_START),
-        item_stack(42, 5)
+        matching_payment
+    );
+    assert!(store.apply_container_set_slot(ProtocolContainerSetSlot {
+        container_id: 7,
+        state_id: 16,
+        slot: MERCHANT_PAYMENT_SLOT_1,
+        item: matching_payment.clone(),
+    }));
+    assert!(store.apply_container_set_slot(ProtocolContainerSetSlot {
+        container_id: 7,
+        state_id: 17,
+        slot: MERCHANT_PLAYER_MAIN_START,
+        item: ProtocolItemStackSummary::empty(),
+    }));
+    assert!(store.apply_container_set_slot(ProtocolContainerSetSlot {
+        container_id: 7,
+        state_id: 18,
+        slot: MERCHANT_RESULT_SLOT,
+        item: item_stack(90, 1),
+    }));
+
+    assert_eq!(
+        open_container_slot_item(&store, MERCHANT_PAYMENT_SLOT_1),
+        matching_payment
+    );
+    assert_eq!(
+        open_container_slot_item(&store, MERCHANT_PLAYER_MAIN_START),
+        ProtocolItemStackSummary::empty()
+    );
+    assert_eq!(
+        open_container_slot_item(&store, MERCHANT_RESULT_SLOT),
+        item_stack(90, 1)
     );
 }
 
