@@ -889,7 +889,6 @@ Owner: `bbb-pack` + `bbb-item-model` + `bbb-native` + `bbb-renderer`
   static sprite use.
 - Apply full item tint parity for dynamic sources across every item rendering
   path.
-- Load equipment asset layers for armor/equipment rendering.
 
 Loader invariants (not todos): keep the local vanilla coverage tests
 (`loads_all_local_vanilla_atlases`, `loads_local_vanilla_item_model_catalog`,

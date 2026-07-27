@@ -598,6 +598,8 @@ fn entity_model_sources_project_effective_equipment_asset_ids_and_exact_trim_nam
     const PATCHED_ITEM: i32 = 821;
     const SADDLE_ITEM: i32 = 822;
     const BODY_ITEM: i32 = 823;
+    const SADDLE_DYE: i32 = 0x12_34_56;
+    const BODY_DYE: i32 = 0x65_43_21;
 
     fn equippable(slot_id: i32, asset_id: Option<&str>) -> EquippableSummary {
         EquippableSummary {
@@ -725,7 +727,10 @@ fn entity_model_sources_project_effective_equipment_asset_ids_and_exact_trim_nam
             item: ItemStackSummary {
                 item_id: Some(SADDLE_ITEM),
                 count: 1,
-                component_patch: Default::default(),
+                component_patch: DataComponentPatchSummary {
+                    dyed_color: Some(SADDLE_DYE),
+                    ..Default::default()
+                },
             },
         }],
     }));
@@ -736,7 +741,10 @@ fn entity_model_sources_project_effective_equipment_asset_ids_and_exact_trim_nam
             item: ItemStackSummary {
                 item_id: Some(BODY_ITEM),
                 count: 1,
-                component_patch: Default::default(),
+                component_patch: DataComponentPatchSummary {
+                    dyed_color: Some(BODY_DYE),
+                    ..Default::default()
+                },
             },
         }],
     }));
@@ -769,6 +777,7 @@ fn entity_model_sources_project_effective_equipment_asset_ids_and_exact_trim_nam
         pig.pig_saddle_equipment_asset,
         Some(EquipmentAssetId::new(7, 2))
     );
+    assert_eq!(pig.pig_saddle_dye, Some(SADDLE_DYE));
     let wolf = store
         .entity_model_source_at_partial_tick(56, 1.0)
         .expect("wolf source");
@@ -776,6 +785,7 @@ fn entity_model_sources_project_effective_equipment_asset_ids_and_exact_trim_nam
         wolf.wolf_body_equipment_asset,
         Some(EquipmentAssetId::new(7, 1))
     );
+    assert_eq!(wolf.wolf_body_armor_dye, Some(BODY_DYE));
 
     assert!(store.apply_set_equipment(ProtocolSetEquipment {
         entity_id: 54,
@@ -859,6 +869,14 @@ fn entity_model_sources_project_effective_equipment_asset_ids_and_exact_trim_nam
             .wolf_body_equipment_asset,
         None,
         "the existing adult-only wolf armor model gate remains authoritative"
+    );
+    assert_eq!(
+        store
+            .entity_model_source_at_partial_tick(56, 1.0)
+            .unwrap()
+            .wolf_body_armor_dye,
+        None,
+        "the adult-only equipment identity gate also suppresses its dye"
     );
 }
 

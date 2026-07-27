@@ -638,6 +638,7 @@ pub(super) fn entity_model_instance(
         .with_pig_saddle_equipment_asset(equipment_asset(
             source.pig_saddle_equipment_asset,
         ))
+        .with_pig_saddle_dye(armor_dye(source.pig_saddle_dye))
         .with_equine_saddle_trim(armor_trim(
             source.equine_saddle_trim.as_ref(),
             variant_registries,
@@ -645,6 +646,7 @@ pub(super) fn entity_model_instance(
         .with_equine_saddle_equipment_asset(equipment_asset(
             source.equine_saddle_equipment_asset,
         ))
+        .with_equine_saddle_dye(armor_dye(source.equine_saddle_dye))
         .with_strider_saddle_trim(armor_trim(
             source.strider_saddle_trim.as_ref(),
             variant_registries,
@@ -652,6 +654,7 @@ pub(super) fn entity_model_instance(
         .with_strider_saddle_equipment_asset(equipment_asset(
             source.strider_saddle_equipment_asset,
         ))
+        .with_strider_saddle_dye(armor_dye(source.strider_saddle_dye))
         .with_camel_saddle_trim(armor_trim(
             source.camel_saddle_trim.as_ref(),
             variant_registries,
@@ -659,6 +662,7 @@ pub(super) fn entity_model_instance(
         .with_camel_saddle_equipment_asset(equipment_asset(
             source.camel_saddle_equipment_asset,
         ))
+        .with_camel_saddle_dye(armor_dye(source.camel_saddle_dye))
         .with_nautilus_saddle_trim(armor_trim(
             source.nautilus_saddle_trim.as_ref(),
             variant_registries,
@@ -666,6 +670,7 @@ pub(super) fn entity_model_instance(
         .with_nautilus_saddle_equipment_asset(equipment_asset(
             source.nautilus_saddle_equipment_asset,
         ))
+        .with_nautilus_saddle_dye(armor_dye(source.nautilus_saddle_dye))
         .with_player_left_shoulder_parrot(
             source
                 .player_left_shoulder_parrot
@@ -736,6 +741,7 @@ pub(super) fn entity_model_instance(
         .with_nautilus_body_equipment_asset(equipment_asset(
             source.nautilus_body_equipment_asset,
         ))
+        .with_nautilus_body_armor_dye(armor_dye(source.nautilus_body_armor_dye))
         .with_nautilus_body_armor(armor_material(source.nautilus_body_armor))
         .with_nautilus_body_armor_trim(armor_trim(
             source.nautilus_body_armor_trim.as_ref(),
@@ -749,11 +755,13 @@ pub(super) fn entity_model_instance(
         .with_happy_ghast_body_equipment_asset(equipment_asset(
             source.happy_ghast_body_equipment_asset,
         ))
+        .with_happy_ghast_harness_dye(armor_dye(source.happy_ghast_harness_dye))
         .with_happy_ghast_body_item_is_harness(source.happy_ghast_body_item_is_harness)
         .with_happy_ghast_is_leash_holder(source.happy_ghast_is_leash_holder)
         .with_llama_body_equipment_asset(equipment_asset(
             source.llama_body_equipment_asset,
         ))
+        .with_llama_body_decor_dye(armor_dye(source.llama_body_decor_dye))
         .with_llama_body_decor(llama_body_decor_color(source.llama_body_decor))
         .with_llama_body_decor_trim(armor_trim(
             source.llama_body_decor_trim.as_ref(),

@@ -1083,6 +1083,7 @@ entity_render_state! {
     /// renders the adult `PigModel.createBodyLayer(CubeDeformation(0.5F))` equipment layer over the
     /// pig body. Babies do not render this layer because vanilla supplies no baby saddle model.
     (with_pig_saddle_equipment_asset) pig_saddle_equipment_asset: Option<EntityEquipmentAssetId> = None;
+    (with_pig_saddle_dye) pig_saddle_dye: Option<u32> = None;
     (with_pig_saddle) pig_saddle: bool = false;
     /// Vanilla armor-trim atlas sprite for the `PIG_SADDLE` equipment model.
     (with_pig_saddle_trim) pig_saddle_trim: Option<EntityArmorTrim> = None;
@@ -1093,6 +1094,7 @@ entity_render_state! {
     /// `EquineSaddleModel` equipment layer; babies do not render it because vanilla supplies no baby
     /// saddle model.
     (with_equine_saddle_equipment_asset) equine_saddle_equipment_asset: Option<EntityEquipmentAssetId> = None;
+    (with_equine_saddle_dye) equine_saddle_dye: Option<u32> = None;
     (with_equine_saddle) equine_saddle: bool = false;
     /// Vanilla armor-trim atlas sprite for the family-specific equine saddle equipment model.
     (with_equine_saddle_trim) equine_saddle_trim: Option<EntityArmorTrim> = None;
@@ -1154,6 +1156,7 @@ entity_render_state! {
     /// renders `AdultStriderModel(ModelLayers.STRIDER_SADDLE)` over the base strider. Babies skip the
     /// layer because vanilla supplies no baby saddle model.
     (with_strider_saddle_equipment_asset) strider_saddle_equipment_asset: Option<EntityEquipmentAssetId> = None;
+    (with_strider_saddle_dye) strider_saddle_dye: Option<u32> = None;
     (with_strider_saddle) strider_saddle: bool = false;
     /// Vanilla armor-trim atlas sprite for the `STRIDER_SADDLE` equipment model.
     (with_strider_saddle_trim) strider_saddle_trim: Option<EntityArmorTrim> = None;
@@ -1163,6 +1166,7 @@ entity_render_state! {
     /// A non-empty saddle item renders `CamelSaddleModel`; baby camels skip it because vanilla supplies
     /// no baby saddle model.
     (with_camel_saddle_equipment_asset) camel_saddle_equipment_asset: Option<EntityEquipmentAssetId> = None;
+    (with_camel_saddle_dye) camel_saddle_dye: Option<u32> = None;
     (with_camel_saddle) camel_saddle: bool = false;
     /// Vanilla armor-trim atlas sprite for the family-specific `CAMEL*_SADDLE` equipment model.
     (with_camel_saddle_trim) camel_saddle_trim: Option<EntityArmorTrim> = None;
@@ -1175,6 +1179,7 @@ entity_render_state! {
     /// and zombie nautilus. A non-empty saddle item renders `NautilusSaddleModel`; baby living
     /// nautilus skip it because vanilla supplies no baby saddle model.
     (with_nautilus_saddle_equipment_asset) nautilus_saddle_equipment_asset: Option<EntityEquipmentAssetId> = None;
+    (with_nautilus_saddle_dye) nautilus_saddle_dye: Option<u32> = None;
     (with_nautilus_saddle) nautilus_saddle: bool = false;
     /// Vanilla armor-trim atlas sprite for the adult `NAUTILUS_SADDLE` equipment model.
     (with_nautilus_saddle_trim) nautilus_saddle_trim: Option<EntityArmorTrim> = None;
@@ -1184,6 +1189,7 @@ entity_render_state! {
     /// equipment item whose equipment asset provides a `NAUTILUS_BODY` layer. Baby living nautilus
     /// skip it because vanilla supplies no baby armor model.
     (with_nautilus_body_equipment_asset) nautilus_body_equipment_asset: Option<EntityEquipmentAssetId> = None;
+    (with_nautilus_body_armor_dye) nautilus_body_armor_dye: Option<u32> = None;
     (with_nautilus_body_armor) nautilus_body_armor: Option<EntityArmorMaterial> = None;
     /// Vanilla armor trim over the adult `NAUTILUS_BODY` equipment model, resolved through the
     /// shared runtime trim atlas.
@@ -1196,6 +1202,7 @@ entity_render_state! {
     (with_happy_ghast_body_item) happy_ghast_body_item: bool = false;
     /// Effective BODY-stack equipment asset consumed by `HAPPY_GHAST_BODY`.
     (with_happy_ghast_body_equipment_asset) happy_ghast_body_equipment_asset: Option<EntityEquipmentAssetId> = None;
+    (with_happy_ghast_harness_dye) happy_ghast_harness_dye: Option<u32> = None;
     /// Recognized vanilla happy-ghast harness color.
     (with_happy_ghast_harness) happy_ghast_harness: Option<EntityDyeColor> = None;
     /// Armor trim rendered over the happy-ghast harness model.
@@ -1217,6 +1224,7 @@ entity_render_state! {
     /// equipment asset is one of the 16 carpet colors. Baby llamas ignore body items for the decor
     /// layer; trader llamas render their built-in decor when this is `None`.
     (with_llama_body_equipment_asset) llama_body_equipment_asset: Option<EntityEquipmentAssetId> = None;
+    (with_llama_body_decor_dye) llama_body_decor_dye: Option<u32> = None;
     (with_llama_body_decor) llama_body_decor: Option<EntityDyeColor> = None;
     /// Vanilla armor trim over an adult carpet item's `LLAMA_BODY` equipment model.
     (with_llama_body_decor_trim) llama_body_decor_trim: Option<EntityArmorTrim> = None;
@@ -3264,10 +3272,12 @@ mod tests {
                 legs_armor_foil: false,
                 feet_armor_foil: false,
                 pig_saddle_equipment_asset: None,
+                pig_saddle_dye: None,
                 pig_saddle: false,
                 pig_saddle_trim: None,
                 pig_saddle_foil: false,
                 equine_saddle_equipment_asset: None,
+                equine_saddle_dye: None,
                 equine_saddle: false,
                 equine_saddle_trim: None,
                 equine_saddle_foil: false,
@@ -3289,24 +3299,29 @@ mod tests {
                 wolf_body_armor_foil: false,
                 strider_ridden: false,
                 strider_saddle_equipment_asset: None,
+                strider_saddle_dye: None,
                 strider_saddle: false,
                 strider_saddle_trim: None,
                 strider_saddle_foil: false,
                 camel_saddle_equipment_asset: None,
+                camel_saddle_dye: None,
                 camel_saddle: false,
                 camel_saddle_trim: None,
                 camel_saddle_foil: false,
                 camel_saddle_ridden: false,
                 nautilus_saddle_equipment_asset: None,
+                nautilus_saddle_dye: None,
                 nautilus_saddle: false,
                 nautilus_saddle_trim: None,
                 nautilus_saddle_foil: false,
                 nautilus_body_equipment_asset: None,
+                nautilus_body_armor_dye: None,
                 nautilus_body_armor: None,
                 nautilus_body_armor_trim: None,
                 nautilus_body_armor_foil: false,
                 happy_ghast_body_item: false,
                 happy_ghast_body_equipment_asset: None,
+                happy_ghast_harness_dye: None,
                 happy_ghast_harness: None,
                 happy_ghast_harness_trim: None,
                 happy_ghast_harness_foil: false,
@@ -3315,6 +3330,7 @@ mod tests {
                 happy_ghast_ridden: false,
                 snow_golem_pumpkin: false,
                 llama_body_equipment_asset: None,
+                llama_body_decor_dye: None,
                 llama_body_decor: None,
                 llama_body_decor_trim: None,
                 llama_body_decor_foil: false,

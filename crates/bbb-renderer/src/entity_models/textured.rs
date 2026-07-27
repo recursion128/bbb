@@ -1178,7 +1178,7 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures_for_camera(
     sort_camera_position: Option<[f32; 3]>,
     camera_pose: Option<crate::CameraPose>,
 ) -> EntityModelTexturedMeshes {
-    let equipment_assets = ResolvedEntityEquipmentAssetCatalog::default();
+    let equipment_assets = ResolvedEntityEquipmentAssetCatalog::legacy_static_fallback();
     entity_model_textured_meshes_with_equipment_for_camera(
         instances,
         atlas,
@@ -4293,6 +4293,50 @@ fn resolved_equipment_layer_texture(
     }
 }
 
+fn resolved_equipment_asset_layers(
+    equipment_assets: &ResolvedEntityEquipmentAssetCatalog,
+    asset_id: Option<bbb_render_types::EntityEquipmentAssetId>,
+    layer_type: EntityEquipmentLayerType,
+) -> Option<&[ResolvedEntityEquipmentAssetLayer]> {
+    asset_id
+        .and_then(|asset_id| equipment_assets.asset(asset_id))
+        .map(|asset| asset.layers(layer_type))
+}
+
+#[derive(Clone, Copy)]
+struct EquipmentLayerSubmitSequence {
+    next: u32,
+    increment: bool,
+}
+
+impl EquipmentLayerSubmitSequence {
+    const fn fixed(sequence: u32) -> Self {
+        Self {
+            next: sequence,
+            increment: false,
+        }
+    }
+
+    const fn incrementing(first: u32) -> Self {
+        Self {
+            next: first,
+            increment: true,
+        }
+    }
+
+    fn current(self) -> u32 {
+        self.next
+    }
+
+    fn advance(&mut self) {
+        self.next += u32::from(self.increment);
+    }
+
+    fn next(self) -> u32 {
+        self.next
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 fn emit_equipment_asset_layers(
     meshes: &mut EntityModelTexturedMeshes,
@@ -4305,7 +4349,7 @@ fn emit_equipment_asset_layers(
     trim: Option<EntityArmorTrim>,
     trim_visible: bool,
     starting_order: i32,
-    submit_sequence: u32,
+    mut submit_sequence: EquipmentLayerSubmitSequence,
     atlas: &EntityModelTextureAtlasLayout,
     owned_entries: &[EntityModelOwnedTextureAtlasEntry],
     dynamic_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
@@ -4316,9 +4360,9 @@ fn emit_equipment_asset_layers(
         EntityModelUvRect,
         [f32; 4],
     ),
-) {
+) -> u32 {
     if layers.is_empty() {
-        return;
+        return submit_sequence.next();
     }
     let mut next_order = starting_order;
     let mut foil_pending = foil;
@@ -4343,7 +4387,7 @@ fn emit_equipment_asset_layers(
             pass_texture,
             tint,
             next_order,
-            submit_sequence,
+            submit_sequence.current(),
         );
         let mut submit = textured_layer_submission(meshes, pass, transform);
         if let Some(profile_texture) = profile_texture {
@@ -4375,6 +4419,7 @@ fn emit_equipment_asset_layers(
             );
         }
         next_order += 1;
+        submit_sequence.advance();
 
         if foil_pending {
             let pass = equipment_layer_pass(
@@ -4384,19 +4429,20 @@ fn emit_equipment_asset_layers(
                 ENCHANTED_GLINT_ARMOR_TEXTURE_REF,
                 tint,
                 next_order,
-                submit_sequence,
+                submit_sequence.current(),
             );
             let submit = no_overlay_layer_submission(pass, transform);
             render_textured_submission(meshes, submit, atlas, |mesh, entry| {
                 emit(mesh, submit.texture, entry.uv, submit.tint);
             });
             next_order += 1;
+            submit_sequence.advance();
             foil_pending = false;
         }
     }
 
     let Some(trim) = trim.filter(|_| trim_visible) else {
-        return;
+        return submit_sequence.next();
     };
     let render_type = if trim.decal {
         EntityModelLayerRenderType::ArmorTrimDecalCutoutNoCull
@@ -4410,7 +4456,7 @@ fn emit_equipment_asset_layers(
         trim_base_texture,
         [1.0; 4],
         next_order,
-        submit_sequence,
+        submit_sequence.current(),
     );
     let submit = no_overlay_layer_submission(pass, transform).with_dynamic_texture(trim.texture);
     if let Some(entry) = dynamic_texture_atlas_entry(dynamic_texture_atlas, trim.texture) {
@@ -4420,6 +4466,8 @@ fn emit_equipment_asset_layers(
     } else {
         meshes.record_submission(submit);
     }
+    submit_sequence.advance();
+    submit_sequence.next()
 }
 
 /// The `HumanoidArmorLayer` worn-armor overlay (vanilla `HumanoidArmorLayer.submit`): for each filled
@@ -4502,7 +4550,7 @@ fn emit_humanoid_armor(
         } else {
             tree.copy_child_poses_from(host_root, slot.part_names());
         }
-        if !equipment_assets.is_empty() {
+        if !equipment_assets.uses_legacy_static_fallback() {
             let layer_type = if baby_kind.is_some() {
                 EntityEquipmentLayerType::HumanoidBaby
             } else if slot == HumanoidArmorSlot::Legs {
@@ -4527,7 +4575,7 @@ fn emit_humanoid_armor(
                 trim,
                 trim_visible,
                 1,
-                submit_sequence,
+                EquipmentLayerSubmitSequence::fixed(submit_sequence),
                 atlas,
                 owned_entries,
                 dynamic_texture_atlas,
@@ -4672,8 +4720,8 @@ fn emit_worn_armor_stand_armor(
         && render_state.chest_armor.is_none()
         && render_state.legs_armor.is_none()
         && render_state.feet_armor.is_none();
-    if (!equipment_assets.is_empty() && no_asset)
-        || (equipment_assets.is_empty() && no_legacy_armor)
+    if (!equipment_assets.uses_legacy_static_fallback() && no_asset)
+        || (equipment_assets.uses_legacy_static_fallback() && no_legacy_armor)
     {
         return;
     }
@@ -4727,7 +4775,7 @@ fn emit_worn_armor_stand_armor(
         };
         let mut tree = slot.build_armor_stand_tree(small, STANDARD_OUTER_ARMOR_DEFORMATION);
         tree.copy_child_poses_from(host.root(), slot.part_names());
-        if !equipment_assets.is_empty() {
+        if !equipment_assets.uses_legacy_static_fallback() {
             let layer_type = if slot == HumanoidArmorSlot::Legs {
                 EntityEquipmentLayerType::HumanoidLeggings
             } else {
@@ -4750,7 +4798,7 @@ fn emit_worn_armor_stand_armor(
                 trim,
                 true,
                 1,
-                submit_sequence,
+                EquipmentLayerSubmitSequence::fixed(submit_sequence),
                 atlas,
                 owned_entries,
                 dynamic_texture_atlas,
@@ -4850,8 +4898,8 @@ pub(in crate::entity_models) fn render_worn_humanoid_armor(
         && render_state.chest_armor.is_none()
         && render_state.legs_armor.is_none()
         && render_state.feet_armor.is_none();
-    if (!equipment_assets.is_empty() && no_asset)
-        || (equipment_assets.is_empty() && no_legacy_armor)
+    if (!equipment_assets.uses_legacy_static_fallback() && no_asset)
+        || (equipment_assets.uses_legacy_static_fallback() && no_legacy_armor)
     {
         return;
     }
@@ -5387,12 +5435,11 @@ pub(in crate::entity_models) fn render_happy_ghast_harness_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
+    owned_entries: &[EntityModelOwnedTextureAtlasEntry],
+    equipment_assets: &ResolvedEntityEquipmentAssetCatalog,
     dynamic_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
     first_submit_sequence: u32,
 ) -> u32 {
-    let Some(color) = instance.render_state.happy_ghast_harness else {
-        return first_submit_sequence;
-    };
     let EntityModelKind::HappyGhast { baby } = instance.kind else {
         return first_submit_sequence;
     };
@@ -5403,9 +5450,44 @@ pub(in crate::entity_models) fn render_happy_ghast_harness_layer(
     } else {
         MODEL_LAYER_HAPPY_GHAST_HARNESS
     };
-    let texture = happy_ghast_harness_texture_ref(color);
     let mut model = HappyGhastHarnessModel::new();
     model.prepare(&instance);
+    if !equipment_assets.uses_legacy_static_fallback() {
+        let Some(layers) = resolved_equipment_asset_layers(
+            equipment_assets,
+            instance.render_state.happy_ghast_body_equipment_asset,
+            EntityEquipmentLayerType::HappyGhastBody,
+        ) else {
+            return first_submit_sequence;
+        };
+        return emit_equipment_asset_layers(
+            meshes,
+            layers,
+            EntityModelLayerKind::HappyGhastHarness,
+            model_layer,
+            transform,
+            instance.render_state.happy_ghast_harness_dye,
+            instance.render_state.happy_ghast_harness_foil,
+            instance.render_state.happy_ghast_harness_trim,
+            true,
+            0,
+            EquipmentLayerSubmitSequence::incrementing(first_submit_sequence),
+            atlas,
+            owned_entries,
+            dynamic_texture_atlas,
+            None,
+            |mesh, texture, uv, tint| {
+                model
+                    .root()
+                    .render_textured(mesh, transform, texture, uv, tint);
+            },
+        );
+    }
+
+    let Some(color) = instance.render_state.happy_ghast_harness else {
+        return first_submit_sequence;
+    };
+    let texture = happy_ghast_harness_texture_ref(color);
     let pass = equipment_layer_pass(
         EntityModelLayerKind::HappyGhastHarness,
         EntityModelLayerRenderType::ArmorCutoutNoCull,
@@ -5522,9 +5604,14 @@ pub(in crate::entity_models) fn render_pig_saddle_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
+    owned_entries: &[EntityModelOwnedTextureAtlasEntry],
+    equipment_assets: &ResolvedEntityEquipmentAssetCatalog,
     dynamic_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
 ) {
-    if !instance.render_state.pig_saddle {
+    if (equipment_assets.uses_legacy_static_fallback() && !instance.render_state.pig_saddle)
+        || (!equipment_assets.uses_legacy_static_fallback()
+            && instance.render_state.pig_saddle_equipment_asset.is_none())
+    {
         return;
     }
     if !matches!(instance.kind, EntityModelKind::Pig { baby: false, .. }) {
@@ -5537,6 +5624,39 @@ pub(in crate::entity_models) fn render_pig_saddle_layer(
     let transform = entity_model_root_transform(instance);
     let mut model = PigModel::new_saddle();
     model.prepare(&instance);
+    if !equipment_assets.uses_legacy_static_fallback() {
+        let Some(layers) = resolved_equipment_asset_layers(
+            equipment_assets,
+            instance.render_state.pig_saddle_equipment_asset,
+            EntityEquipmentLayerType::PigSaddle,
+        ) else {
+            return;
+        };
+        emit_equipment_asset_layers(
+            meshes,
+            layers,
+            EntityModelLayerKind::PigSaddle,
+            MODEL_LAYER_PIG_SADDLE,
+            transform,
+            instance.render_state.pig_saddle_dye,
+            instance.render_state.pig_saddle_foil,
+            instance.render_state.pig_saddle_trim,
+            true,
+            0,
+            EquipmentLayerSubmitSequence::incrementing(1),
+            atlas,
+            owned_entries,
+            dynamic_texture_atlas,
+            None,
+            |mesh, texture, uv, tint| {
+                model
+                    .root()
+                    .render_textured(mesh, transform, texture, uv, tint);
+            },
+        );
+        return;
+    }
+
     let pass = equipment_layer_pass(
         EntityModelLayerKind::PigSaddle,
         EntityModelLayerRenderType::ArmorCutoutNoCull,
@@ -5609,22 +5729,63 @@ pub(in crate::entity_models) fn render_wolf_body_armor_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
+    owned_entries: &[EntityModelOwnedTextureAtlasEntry],
+    equipment_assets: &ResolvedEntityEquipmentAssetCatalog,
     dynamic_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
     first_submit_sequence: u32,
 ) -> u32 {
-    let Some(material) = instance.render_state.wolf_body_armor else {
-        return first_submit_sequence;
-    };
     if !matches!(instance.kind, EntityModelKind::Wolf { baby: false, .. }) {
         return first_submit_sequence;
     }
-    let Some(layers) = wolf_body_armor_texture_layers(material) else {
-        return first_submit_sequence;
-    };
-
     let transform = entity_model_root_transform(instance);
     let mut model = WolfModel::armor(wolf_is_angry(instance.kind));
     model.prepare(&instance);
+    if !equipment_assets.uses_legacy_static_fallback() {
+        let Some(layers) = resolved_equipment_asset_layers(
+            equipment_assets,
+            instance.render_state.wolf_body_equipment_asset,
+            EntityEquipmentLayerType::WolfBody,
+        ) else {
+            return first_submit_sequence;
+        };
+        let next_submit_sequence = emit_equipment_asset_layers(
+            meshes,
+            layers,
+            EntityModelLayerKind::WolfBodyArmor,
+            MODEL_LAYER_WOLF_ARMOR,
+            transform,
+            instance.render_state.wolf_body_armor_dye,
+            instance.render_state.wolf_body_armor_foil,
+            instance.render_state.wolf_body_armor_trim,
+            true,
+            1,
+            EquipmentLayerSubmitSequence::incrementing(first_submit_sequence),
+            atlas,
+            owned_entries,
+            dynamic_texture_atlas,
+            None,
+            |mesh, texture, uv, tint| {
+                model
+                    .root()
+                    .render_textured(mesh, transform, texture, uv, tint);
+            },
+        );
+        return emit_wolf_body_armor_crack(
+            meshes,
+            instance,
+            &model,
+            transform,
+            atlas,
+            next_submit_sequence,
+        );
+    }
+
+    let Some(material) = instance.render_state.wolf_body_armor else {
+        return first_submit_sequence;
+    };
+    let Some(layers) = wolf_body_armor_texture_layers(material) else {
+        return first_submit_sequence;
+    };
     let mut submit_sequence = first_submit_sequence;
     let mut next_order = 1;
     let mut foil_pending = instance.render_state.wolf_body_armor_foil;
@@ -5701,20 +5862,31 @@ pub(in crate::entity_models) fn render_wolf_body_armor_layer(
         }
     }
 
-    if let Some(crackiness) = instance.render_state.wolf_body_armor_crackiness {
-        let pass = equipment_layer_pass(
-            EntityModelLayerKind::WolfBodyArmorCrack,
-            EntityModelLayerRenderType::ArmorTranslucent,
-            MODEL_LAYER_WOLF_ARMOR,
-            wolf_armor_crackiness_texture_ref(crackiness),
-            [1.0, 1.0, 1.0, 1.0],
-            0,
-            submit_sequence,
-        );
-        render_textured_no_overlay_layer_pass(meshes, &model, transform, pass, atlas);
-        submit_sequence += 1;
-    }
-    submit_sequence
+    emit_wolf_body_armor_crack(meshes, instance, &model, transform, atlas, submit_sequence)
+}
+
+fn emit_wolf_body_armor_crack(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    model: &WolfModel,
+    transform: Mat4,
+    atlas: &EntityModelTextureAtlasLayout,
+    submit_sequence: u32,
+) -> u32 {
+    let Some(crackiness) = instance.render_state.wolf_body_armor_crackiness else {
+        return submit_sequence;
+    };
+    let pass = equipment_layer_pass(
+        EntityModelLayerKind::WolfBodyArmorCrack,
+        EntityModelLayerRenderType::ArmorTranslucent,
+        MODEL_LAYER_WOLF_ARMOR,
+        wolf_armor_crackiness_texture_ref(crackiness),
+        [1.0, 1.0, 1.0, 1.0],
+        0,
+        submit_sequence,
+    );
+    render_textured_no_overlay_layer_pass(meshes, model, transform, pass, atlas);
+    submit_sequence + 1
 }
 
 fn wolf_body_armor_layer_tint(dyeable: bool, dye: Option<u32>) -> Option<[f32; 4]> {
@@ -5745,10 +5917,18 @@ pub(in crate::entity_models) fn render_equine_saddle_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
+    owned_entries: &[EntityModelOwnedTextureAtlasEntry],
+    equipment_assets: &ResolvedEntityEquipmentAssetCatalog,
     dynamic_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
     submit_sequence: u32,
 ) {
-    if !instance.render_state.equine_saddle {
+    if (equipment_assets.uses_legacy_static_fallback() && !instance.render_state.equine_saddle)
+        || (!equipment_assets.uses_legacy_static_fallback()
+            && instance
+                .render_state
+                .equine_saddle_equipment_asset
+                .is_none())
+    {
         return;
     }
     if meshes.current_force_transparent || meshes.current_outline_only {
@@ -5756,10 +5936,11 @@ pub(in crate::entity_models) fn render_equine_saddle_layer(
     }
 
     let ridden = instance.render_state.equine_saddle_ridden;
-    let (parts, transform, model_layer, texture, order, submit_sequence): (
+    let (parts, transform, model_layer, layer_type, texture, order, submit_sequence): (
         &[TexturedModelPartDesc],
         Mat4,
         &'static str,
+        EntityEquipmentLayerType,
         EntityModelTextureRef,
         i32,
         u32,
@@ -5772,6 +5953,7 @@ pub(in crate::entity_models) fn render_equine_saddle_layer(
             },
             mesh_transformer_scaled_model_root_transform(instance, HORSE_SCALE),
             MODEL_LAYER_HORSE_SADDLE,
+            EntityEquipmentLayerType::HorseSaddle,
             HORSE_SADDLE_TEXTURE_REF,
             2,
             submit_sequence,
@@ -5793,6 +5975,10 @@ pub(in crate::entity_models) fn render_equine_saddle_layer(
                 DonkeyModelFamily::Donkey => MODEL_LAYER_DONKEY_SADDLE,
                 DonkeyModelFamily::Mule => MODEL_LAYER_MULE_SADDLE,
             };
+            let layer_type = match family {
+                DonkeyModelFamily::Donkey => EntityEquipmentLayerType::DonkeySaddle,
+                DonkeyModelFamily::Mule => EntityEquipmentLayerType::MuleSaddle,
+            };
             (
                 if ridden {
                     &ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED
@@ -5801,6 +5987,7 @@ pub(in crate::entity_models) fn render_equine_saddle_layer(
                 },
                 mesh_transformer_scaled_model_root_transform(instance, scale),
                 model_layer,
+                layer_type,
                 texture,
                 0,
                 1,
@@ -5818,6 +6005,10 @@ pub(in crate::entity_models) fn render_equine_saddle_layer(
                 UndeadHorseModelFamily::Skeleton => MODEL_LAYER_SKELETON_HORSE_SADDLE,
                 UndeadHorseModelFamily::Zombie => MODEL_LAYER_ZOMBIE_HORSE_SADDLE,
             };
+            let layer_type = match family {
+                UndeadHorseModelFamily::Skeleton => EntityEquipmentLayerType::SkeletonHorseSaddle,
+                UndeadHorseModelFamily::Zombie => EntityEquipmentLayerType::ZombieHorseSaddle,
+            };
             (
                 if ridden {
                     &ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED
@@ -5826,6 +6017,7 @@ pub(in crate::entity_models) fn render_equine_saddle_layer(
                 },
                 entity_model_root_transform(instance),
                 model_layer,
+                layer_type,
                 texture,
                 0,
                 submit_sequence,
@@ -5833,6 +6025,49 @@ pub(in crate::entity_models) fn render_equine_saddle_layer(
         }
         _ => return,
     };
+
+    if !equipment_assets.uses_legacy_static_fallback() {
+        let Some(layers) = resolved_equipment_asset_layers(
+            equipment_assets,
+            instance.render_state.equine_saddle_equipment_asset,
+            layer_type,
+        ) else {
+            return;
+        };
+        emit_equipment_asset_layers(
+            meshes,
+            layers,
+            EntityModelLayerKind::EquineSaddle,
+            model_layer,
+            transform,
+            instance.render_state.equine_saddle_dye,
+            instance.render_state.equine_saddle_foil,
+            instance.render_state.equine_saddle_trim,
+            true,
+            order,
+            EquipmentLayerSubmitSequence::incrementing(submit_sequence),
+            atlas,
+            owned_entries,
+            dynamic_texture_atlas,
+            None,
+            |mesh, texture, uv, tint| {
+                emit_equine_textured_posed(
+                    mesh,
+                    parts,
+                    [2, 3, 4, 5],
+                    1,
+                    0.0,
+                    1.0,
+                    transform,
+                    texture,
+                    uv,
+                    tint,
+                    instance,
+                );
+            },
+        );
+        return;
+    }
 
     let pass = equipment_layer_pass(
         EntityModelLayerKind::EquineSaddle,
@@ -5935,6 +6170,8 @@ pub(in crate::entity_models) fn render_equine_body_armor_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
+    owned_entries: &[EntityModelOwnedTextureAtlasEntry],
+    equipment_assets: &ResolvedEntityEquipmentAssetCatalog,
     dynamic_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
 ) -> u32 {
     let (transform, model_layer, order, first_submit_sequence) = match instance.kind {
@@ -5959,6 +6196,47 @@ pub(in crate::entity_models) fn render_equine_body_armor_layer(
     };
     if meshes.current_force_transparent || meshes.current_outline_only {
         return first_submit_sequence;
+    }
+    if !equipment_assets.uses_legacy_static_fallback() {
+        let Some(layers) = resolved_equipment_asset_layers(
+            equipment_assets,
+            instance.render_state.equine_body_equipment_asset,
+            EntityEquipmentLayerType::HorseBody,
+        ) else {
+            return first_submit_sequence;
+        };
+        return emit_equipment_asset_layers(
+            meshes,
+            layers,
+            EntityModelLayerKind::EquineBodyArmor,
+            model_layer,
+            transform,
+            instance.render_state.equine_body_armor_dye,
+            instance.render_state.equine_body_armor_foil,
+            instance.render_state.equine_body_armor_trim,
+            true,
+            order,
+            EquipmentLayerSubmitSequence::incrementing(first_submit_sequence),
+            atlas,
+            owned_entries,
+            dynamic_texture_atlas,
+            None,
+            |mesh, texture, uv, tint| {
+                emit_equine_textured_posed(
+                    mesh,
+                    &ADULT_HORSE_ARMOR_PARTS_TEXTURED,
+                    [2, 3, 4, 5],
+                    1,
+                    0.0,
+                    1.0,
+                    transform,
+                    texture,
+                    uv,
+                    tint,
+                    instance,
+                );
+            },
+        );
     }
     let Some(material) = instance.render_state.equine_body_armor else {
         return first_submit_sequence;
@@ -6081,9 +6359,17 @@ pub(in crate::entity_models) fn render_strider_saddle_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
+    owned_entries: &[EntityModelOwnedTextureAtlasEntry],
+    equipment_assets: &ResolvedEntityEquipmentAssetCatalog,
     dynamic_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
 ) {
-    if !instance.render_state.strider_saddle {
+    if (equipment_assets.uses_legacy_static_fallback() && !instance.render_state.strider_saddle)
+        || (!equipment_assets.uses_legacy_static_fallback()
+            && instance
+                .render_state
+                .strider_saddle_equipment_asset
+                .is_none())
+    {
         return;
     }
     if !matches!(instance.kind, EntityModelKind::Strider { baby: false, .. }) {
@@ -6096,6 +6382,38 @@ pub(in crate::entity_models) fn render_strider_saddle_layer(
     let transform = entity_model_root_transform(instance);
     let mut model = StriderModel::new(false);
     model.prepare(&instance);
+    if !equipment_assets.uses_legacy_static_fallback() {
+        let Some(layers) = resolved_equipment_asset_layers(
+            equipment_assets,
+            instance.render_state.strider_saddle_equipment_asset,
+            EntityEquipmentLayerType::StriderSaddle,
+        ) else {
+            return;
+        };
+        emit_equipment_asset_layers(
+            meshes,
+            layers,
+            EntityModelLayerKind::StriderSaddle,
+            MODEL_LAYER_STRIDER_SADDLE,
+            transform,
+            instance.render_state.strider_saddle_dye,
+            instance.render_state.strider_saddle_foil,
+            instance.render_state.strider_saddle_trim,
+            true,
+            0,
+            EquipmentLayerSubmitSequence::incrementing(1),
+            atlas,
+            owned_entries,
+            dynamic_texture_atlas,
+            None,
+            |mesh, texture, uv, tint| {
+                model
+                    .root()
+                    .render_textured(mesh, transform, texture, uv, tint);
+            },
+        );
+        return;
+    }
     let pass = equipment_layer_pass(
         EntityModelLayerKind::StriderSaddle,
         EntityModelLayerRenderType::ArmorCutoutNoCull,
@@ -6167,21 +6485,34 @@ pub(in crate::entity_models) fn render_camel_saddle_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
+    owned_entries: &[EntityModelOwnedTextureAtlasEntry],
+    equipment_assets: &ResolvedEntityEquipmentAssetCatalog,
     dynamic_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
 ) {
-    if !instance.render_state.camel_saddle {
+    if (equipment_assets.uses_legacy_static_fallback() && !instance.render_state.camel_saddle)
+        || (!equipment_assets.uses_legacy_static_fallback()
+            && instance.render_state.camel_saddle_equipment_asset.is_none())
+    {
         return;
     }
 
-    let (model_layer, texture) = match instance.kind {
+    let (model_layer, layer_type, texture) = match instance.kind {
         EntityModelKind::Camel {
             family: CamelModelFamily::Camel,
             baby: false,
-        } => (MODEL_LAYER_CAMEL_SADDLE, CAMEL_SADDLE_TEXTURE_REF),
+        } => (
+            MODEL_LAYER_CAMEL_SADDLE,
+            EntityEquipmentLayerType::CamelSaddle,
+            CAMEL_SADDLE_TEXTURE_REF,
+        ),
         EntityModelKind::Camel {
             family: CamelModelFamily::CamelHusk,
             ..
-        } => (MODEL_LAYER_CAMEL_HUSK_SADDLE, CAMEL_HUSK_SADDLE_TEXTURE_REF),
+        } => (
+            MODEL_LAYER_CAMEL_HUSK_SADDLE,
+            EntityEquipmentLayerType::CamelHuskSaddle,
+            CAMEL_HUSK_SADDLE_TEXTURE_REF,
+        ),
         _ => return,
     };
     if meshes.current_force_transparent || meshes.current_outline_only {
@@ -6191,6 +6522,38 @@ pub(in crate::entity_models) fn render_camel_saddle_layer(
     let transform = entity_model_root_transform(instance);
     let mut model = CamelModel::new_saddle();
     model.prepare(&instance);
+    if !equipment_assets.uses_legacy_static_fallback() {
+        let Some(layers) = resolved_equipment_asset_layers(
+            equipment_assets,
+            instance.render_state.camel_saddle_equipment_asset,
+            layer_type,
+        ) else {
+            return;
+        };
+        emit_equipment_asset_layers(
+            meshes,
+            layers,
+            EntityModelLayerKind::CamelSaddle,
+            model_layer,
+            transform,
+            instance.render_state.camel_saddle_dye,
+            instance.render_state.camel_saddle_foil,
+            instance.render_state.camel_saddle_trim,
+            true,
+            0,
+            EquipmentLayerSubmitSequence::incrementing(1),
+            atlas,
+            owned_entries,
+            dynamic_texture_atlas,
+            None,
+            |mesh, texture, uv, tint| {
+                model
+                    .root()
+                    .render_textured(mesh, transform, texture, uv, tint);
+            },
+        );
+        return;
+    }
     let pass = equipment_layer_pass(
         EntityModelLayerKind::CamelSaddle,
         EntityModelLayerRenderType::ArmorCutoutNoCull,
@@ -6261,10 +6624,18 @@ pub(in crate::entity_models) fn render_nautilus_saddle_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
+    owned_entries: &[EntityModelOwnedTextureAtlasEntry],
+    equipment_assets: &ResolvedEntityEquipmentAssetCatalog,
     dynamic_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
     submit_sequence: u32,
 ) {
-    if !instance.render_state.nautilus_saddle {
+    if (equipment_assets.uses_legacy_static_fallback() && !instance.render_state.nautilus_saddle)
+        || (!equipment_assets.uses_legacy_static_fallback()
+            && instance
+                .render_state
+                .nautilus_saddle_equipment_asset
+                .is_none())
+    {
         return;
     }
     if meshes.current_force_transparent || meshes.current_outline_only {
@@ -6280,6 +6651,38 @@ pub(in crate::entity_models) fn render_nautilus_saddle_layer(
     let transform = entity_model_root_transform(instance);
     let mut model = NautilusModel::new_saddle();
     model.prepare(&instance);
+    if !equipment_assets.uses_legacy_static_fallback() {
+        let Some(layers) = resolved_equipment_asset_layers(
+            equipment_assets,
+            instance.render_state.nautilus_saddle_equipment_asset,
+            EntityEquipmentLayerType::NautilusSaddle,
+        ) else {
+            return;
+        };
+        emit_equipment_asset_layers(
+            meshes,
+            layers,
+            EntityModelLayerKind::NautilusSaddle,
+            MODEL_LAYER_NAUTILUS_SADDLE,
+            transform,
+            instance.render_state.nautilus_saddle_dye,
+            instance.render_state.nautilus_saddle_foil,
+            instance.render_state.nautilus_saddle_trim,
+            true,
+            0,
+            EquipmentLayerSubmitSequence::incrementing(submit_sequence),
+            atlas,
+            owned_entries,
+            dynamic_texture_atlas,
+            None,
+            |mesh, texture, uv, tint| {
+                model
+                    .root()
+                    .render_textured(mesh, transform, texture, uv, tint);
+            },
+        );
+        return;
+    }
     let pass = equipment_layer_pass(
         EntityModelLayerKind::NautilusSaddle,
         EntityModelLayerRenderType::ArmorCutoutNoCull,
@@ -6353,27 +6756,60 @@ pub(in crate::entity_models) fn render_nautilus_body_armor_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
+    owned_entries: &[EntityModelOwnedTextureAtlasEntry],
+    equipment_assets: &ResolvedEntityEquipmentAssetCatalog,
     dynamic_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
 ) -> u32 {
     if meshes.current_force_transparent || meshes.current_outline_only {
         return 1;
     }
-    let Some(material) = instance.render_state.nautilus_body_armor else {
-        return 1;
-    };
     if !matches!(
         instance.kind,
         EntityModelKind::Nautilus { baby: false } | EntityModelKind::ZombieNautilus { .. }
     ) {
         return 1;
     }
-    let Some(texture) = nautilus_body_armor_texture_ref(material) else {
-        return 1;
-    };
-
     let transform = entity_model_root_transform(instance);
     let mut model = NautilusModel::new_armor();
     model.prepare(&instance);
+    if !equipment_assets.uses_legacy_static_fallback() {
+        let Some(layers) = resolved_equipment_asset_layers(
+            equipment_assets,
+            instance.render_state.nautilus_body_equipment_asset,
+            EntityEquipmentLayerType::NautilusBody,
+        ) else {
+            return 1;
+        };
+        return emit_equipment_asset_layers(
+            meshes,
+            layers,
+            EntityModelLayerKind::NautilusBodyArmor,
+            MODEL_LAYER_NAUTILUS_ARMOR,
+            transform,
+            instance.render_state.nautilus_body_armor_dye,
+            instance.render_state.nautilus_body_armor_foil,
+            instance.render_state.nautilus_body_armor_trim,
+            true,
+            0,
+            EquipmentLayerSubmitSequence::incrementing(1),
+            atlas,
+            owned_entries,
+            dynamic_texture_atlas,
+            None,
+            |mesh, texture, uv, tint| {
+                model
+                    .root()
+                    .render_textured(mesh, transform, texture, uv, tint);
+            },
+        );
+    }
+
+    let Some(material) = instance.render_state.nautilus_body_armor else {
+        return 1;
+    };
+    let Some(texture) = nautilus_body_armor_texture_ref(material) else {
+        return 1;
+    };
     let pass = equipment_layer_pass(
         EntityModelLayerKind::NautilusBodyArmor,
         EntityModelLayerRenderType::ArmorCutoutNoCull,
@@ -6445,6 +6881,8 @@ pub(in crate::entity_models) fn render_llama_decor_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
+    owned_entries: &[EntityModelOwnedTextureAtlasEntry],
+    equipment_assets: &ResolvedEntityEquipmentAssetCatalog,
     dynamic_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
 ) {
     if meshes.current_force_transparent || meshes.current_outline_only {
@@ -6459,44 +6897,75 @@ pub(in crate::entity_models) fn render_llama_decor_layer(
     else {
         return;
     };
+    let mut model = LlamaModel::new_decor(baby, has_chest);
+    model.prepare(&instance);
+    let transform = entity_model_root_transform(instance);
+    let model_layer = if baby {
+        MODEL_LAYER_LLAMA_BABY_DECOR
+    } else {
+        MODEL_LAYER_LLAMA_DECOR
+    };
+    if !equipment_assets.uses_legacy_static_fallback() && !baby {
+        if let Some(asset_id) = instance.render_state.llama_body_equipment_asset {
+            let Some(layers) = resolved_equipment_asset_layers(
+                equipment_assets,
+                Some(asset_id),
+                EntityEquipmentLayerType::LlamaBody,
+            ) else {
+                return;
+            };
+            emit_equipment_asset_layers(
+                meshes,
+                layers,
+                EntityModelLayerKind::LlamaDecor,
+                model_layer,
+                transform,
+                instance.render_state.llama_body_decor_dye,
+                instance.render_state.llama_body_decor_foil,
+                instance.render_state.llama_body_decor_trim,
+                true,
+                1,
+                EquipmentLayerSubmitSequence::incrementing(1),
+                atlas,
+                owned_entries,
+                dynamic_texture_atlas,
+                None,
+                |mesh, texture, uv, tint| {
+                    model
+                        .root()
+                        .render_textured(mesh, transform, texture, uv, tint);
+                },
+            );
+            return;
+        }
+    }
     let texture = match (baby, instance.render_state.llama_body_decor, family) {
-        (false, Some(color), _) => llama_body_decor_texture_ref(color),
+        (false, Some(color), _) if equipment_assets.uses_legacy_static_fallback() => {
+            llama_body_decor_texture_ref(color)
+        }
         (_, _, LlamaModelFamily::TraderLlama) if baby => LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
         (_, _, LlamaModelFamily::TraderLlama) => LLAMA_BODY_TRADER_TEXTURE_REF,
         _ => return,
     };
 
-    let mut model = LlamaModel::new_decor(baby, has_chest);
-    model.prepare(&instance);
     // Vanilla `EquipmentLayerRenderer.renderLayers(..., order = 1)` renders LLAMA_BODY with
     // `RenderTypes.armorCutoutNoCull`, even though the current backend folds it into the cutout mesh.
     let pass = equipment_layer_pass(
         EntityModelLayerKind::LlamaDecor,
         EntityModelLayerRenderType::ArmorCutoutNoCull,
-        if baby {
-            MODEL_LAYER_LLAMA_BABY_DECOR
-        } else {
-            MODEL_LAYER_LLAMA_DECOR
-        },
+        model_layer,
         texture,
         [1.0, 1.0, 1.0, 1.0],
         1,
         1,
     );
-    render_textured_no_overlay_layer_pass(
-        meshes,
-        &model,
-        entity_model_root_transform(instance),
-        pass,
-        atlas,
-    );
+    render_textured_no_overlay_layer_pass(meshes, &model, transform, pass, atlas);
 
     // The trader fallback above supplies `ItemStack.EMPTY`; only an adult carpet item can carry
     // foil or trim components through `EquipmentLayerRenderer`.
     if baby || instance.render_state.llama_body_decor.is_none() {
         return;
     }
-    let transform = entity_model_root_transform(instance);
     let mut next_order = 2;
     let mut next_submit_sequence = 2;
     if instance.render_state.llama_body_decor_foil {
@@ -6981,7 +7450,7 @@ pub(in crate::entity_models) fn render_wings_layer(
     equipment_assets: &ResolvedEntityEquipmentAssetCatalog,
     dynamic_player_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
 ) {
-    if !equipment_assets.is_empty() {
+    if !equipment_assets.uses_legacy_static_fallback() {
         let Some(layers) = instance
             .render_state
             .chest_wings_equipment_asset
@@ -7012,7 +7481,7 @@ pub(in crate::entity_models) fn render_wings_layer(
             instance.render_state.chest_wings_trim,
             true,
             0,
-            submit_sequence,
+            EquipmentLayerSubmitSequence::fixed(submit_sequence),
             atlas,
             owned_entries,
             dynamic_player_texture_atlas,

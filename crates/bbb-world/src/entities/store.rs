@@ -4043,8 +4043,14 @@ impl EntityStore {
             (asset.is_some() || (equipment_asset_names.is_empty() && legacy_enabled))
                 && saddle_equipment_item().is_some_and(ItemStackSummary::has_foil)
         };
+        let saddle_dye = |asset: Option<EquipmentAssetId>| {
+            asset
+                .and_then(|_| saddle_equipment_item())
+                .and_then(|item| item.component_patch.dyed_color)
+        };
         let pig_saddle_type = identity.entity_type_id == VANILLA_ENTITY_TYPE_PIG_ID;
         let pig_saddle_equipment_asset = consumer_saddle_asset(pig_saddle_type);
+        let pig_saddle_dye = saddle_dye(pig_saddle_equipment_asset);
         let pig_saddle = pig_saddle_type && saddle_slot_contains_saddle_item();
         let pig_saddle_trim = saddle_trim(
             pig_saddle_equipment_asset,
@@ -4060,6 +4066,7 @@ impl EntityStore {
         let equine_saddle_equipment_asset = consumer_saddle_asset(
             vanilla_entity_renderer_uses_abstract_horse_renderer(identity.entity_type_id),
         );
+        let equine_saddle_dye = saddle_dye(equine_saddle_equipment_asset);
         let equine_saddle_trim_layer = match identity.entity_type_id {
             VANILLA_ENTITY_TYPE_HORSE_ID => Some(ArmorTrimLayer::HorseSaddle),
             VANILLA_ENTITY_TYPE_DONKEY_ID => Some(ArmorTrimLayer::DonkeySaddle),
@@ -4081,6 +4088,7 @@ impl EntityStore {
                 .is_some_and(|mount| !mount.passengers.is_empty());
         let strider_saddle_type = identity.entity_type_id == VANILLA_ENTITY_TYPE_STRIDER_ID;
         let strider_saddle_equipment_asset = consumer_saddle_asset(strider_saddle_type);
+        let strider_saddle_dye = saddle_dye(strider_saddle_equipment_asset);
         let strider_saddle = strider_saddle_type && saddle_slot_contains_saddle_item();
         let strider_saddle_trim = saddle_trim(
             strider_saddle_equipment_asset,
@@ -4090,6 +4098,7 @@ impl EntityStore {
         let strider_saddle_foil = saddle_foil(strider_saddle_equipment_asset, strider_saddle);
         let camel_saddle_type = vanilla_camel_saddle_type(identity.entity_type_id);
         let camel_saddle_equipment_asset = consumer_saddle_asset(camel_saddle_type);
+        let camel_saddle_dye = saddle_dye(camel_saddle_equipment_asset);
         let camel_saddle = camel_saddle_type && saddle_slot_contains_saddle_item();
         let camel_saddle_trim_layer =
             if identity.entity_type_id == VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID {
@@ -4109,6 +4118,7 @@ impl EntityStore {
                 .is_some_and(|mount| !mount.passengers.is_empty());
         let nautilus_saddle_type = is_vanilla_abstract_nautilus_type(identity.entity_type_id);
         let nautilus_saddle_equipment_asset = consumer_saddle_asset(nautilus_saddle_type);
+        let nautilus_saddle_dye = saddle_dye(nautilus_saddle_equipment_asset);
         let nautilus_saddle = nautilus_saddle_type && saddle_slot_contains_saddle_item();
         let nautilus_saddle_trim = saddle_trim(
             nautilus_saddle_equipment_asset,
@@ -4129,6 +4139,8 @@ impl EntityStore {
             == VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID)
             .then_some(body_equipment_asset)
             .flatten();
+        let happy_ghast_harness_dye =
+            happy_ghast_body_equipment_asset.and_then(|_| body_slot_armor_dye());
         let happy_ghast_harness = if identity.entity_type_id == VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID {
             body_slot_item_id()
                 .and_then(|item_id| happy_ghast_harness_colors.get(&item_id).copied())
@@ -4194,6 +4206,7 @@ impl EntityStore {
             && !vanilla_is_baby(identity.entity_type_id, &metadata.data_values))
         .then_some(body_equipment_asset)
         .flatten();
+        let llama_body_decor_dye = llama_body_equipment_asset.and_then(|_| body_slot_armor_dye());
         let llama_body_asset_name = llama_body_equipment_asset
             .and_then(|asset| {
                 equipment_asset_name(equipment_asset_generation, equipment_asset_names, asset)
@@ -4228,6 +4241,8 @@ impl EntityStore {
                 && !vanilla_is_baby(identity.entity_type_id, &metadata.data_values))
             .then_some(body_equipment_asset)
             .flatten();
+        let nautilus_body_armor_dye =
+            nautilus_body_equipment_asset.and_then(|_| body_slot_armor_dye());
         let nautilus_body_asset_name = nautilus_body_equipment_asset
             .and_then(|asset| {
                 equipment_asset_name(equipment_asset_generation, equipment_asset_names, asset)
@@ -5272,10 +5287,12 @@ impl EntityStore {
             wolf_body_armor_crackiness,
             wolf_body_armor_foil,
             pig_saddle_equipment_asset,
+            pig_saddle_dye,
             pig_saddle,
             pig_saddle_trim,
             pig_saddle_foil,
             equine_saddle_equipment_asset,
+            equine_saddle_dye,
             equine_saddle,
             equine_saddle_trim,
             equine_saddle_foil,
@@ -5297,20 +5314,24 @@ impl EntityStore {
             equine_body_armor_foil: horse_body_armor_foil,
             strider_ridden,
             strider_saddle_equipment_asset,
+            strider_saddle_dye,
             strider_saddle,
             strider_saddle_trim,
             strider_saddle_foil,
             camel_saddle_equipment_asset,
+            camel_saddle_dye,
             camel_saddle,
             camel_saddle_trim,
             camel_saddle_foil,
             camel_saddle_ridden,
             nautilus_saddle_equipment_asset,
+            nautilus_saddle_dye,
             nautilus_saddle,
             nautilus_saddle_trim,
             nautilus_saddle_foil,
             happy_ghast_body_item,
             happy_ghast_body_equipment_asset,
+            happy_ghast_harness_dye,
             happy_ghast_harness,
             happy_ghast_harness_trim,
             happy_ghast_harness_foil,
@@ -5347,10 +5368,12 @@ impl EntityStore {
                 .animations
                 .ender_dragon_animation_source(partial_ticks),
             llama_body_equipment_asset,
+            llama_body_decor_dye,
             llama_body_decor,
             llama_body_decor_trim,
             llama_body_decor_foil,
             nautilus_body_equipment_asset,
+            nautilus_body_armor_dye,
             nautilus_body_armor,
             nautilus_body_armor_trim,
             nautilus_body_armor_foil,

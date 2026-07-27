@@ -775,6 +775,8 @@ impl EntityModelSink for TexturedSink<'_> {
             self.meshes,
             *instance,
             self.atlas,
+            self.owned_entries,
+            self.equipment_assets,
             self.dynamic_player_texture_atlas,
         );
     }
@@ -790,6 +792,8 @@ impl EntityModelSink for TexturedSink<'_> {
             self.meshes,
             *instance,
             self.atlas,
+            self.owned_entries,
+            self.equipment_assets,
             self.dynamic_player_texture_atlas,
         );
     }
@@ -817,6 +821,8 @@ impl EntityModelSink for TexturedSink<'_> {
             self.meshes,
             *instance,
             self.atlas,
+            self.owned_entries,
+            self.equipment_assets,
             self.dynamic_player_texture_atlas,
         );
     }
@@ -840,6 +846,8 @@ impl EntityModelSink for TexturedSink<'_> {
             self.meshes,
             *instance,
             self.atlas,
+            self.owned_entries,
+            self.equipment_assets,
             self.dynamic_player_texture_atlas,
         );
     }
@@ -855,12 +863,16 @@ impl EntityModelSink for TexturedSink<'_> {
             self.meshes,
             *instance,
             self.atlas,
+            self.owned_entries,
+            self.equipment_assets,
             self.dynamic_player_texture_atlas,
         );
         render_nautilus_saddle_layer(
             self.meshes,
             *instance,
             self.atlas,
+            self.owned_entries,
+            self.equipment_assets,
             self.dynamic_player_texture_atlas,
             next_submit_sequence,
         );
@@ -880,6 +892,8 @@ impl EntityModelSink for TexturedSink<'_> {
             self.meshes,
             *instance,
             self.atlas,
+            self.owned_entries,
+            self.equipment_assets,
             self.dynamic_player_texture_atlas,
             first_submit_sequence,
         );
@@ -904,12 +918,16 @@ impl EntityModelSink for TexturedSink<'_> {
             self.meshes,
             *instance,
             self.atlas,
+            self.owned_entries,
+            self.equipment_assets,
             self.dynamic_player_texture_atlas,
         );
         render_nautilus_saddle_layer(
             self.meshes,
             *instance,
             self.atlas,
+            self.owned_entries,
+            self.equipment_assets,
             self.dynamic_player_texture_atlas,
             next_submit_sequence,
         );
@@ -945,6 +963,8 @@ impl EntityModelSink for TexturedSink<'_> {
             self.meshes,
             *instance,
             self.atlas,
+            self.owned_entries,
+            self.equipment_assets,
             self.dynamic_player_texture_atlas,
             1,
         );
@@ -1002,6 +1022,8 @@ impl EntityModelSink for TexturedSink<'_> {
             self.meshes,
             *instance,
             self.atlas,
+            self.owned_entries,
+            self.equipment_assets,
             self.dynamic_player_texture_atlas,
             submit_sequence_start,
         )
@@ -1092,12 +1114,16 @@ impl EntityModelSink for TexturedSink<'_> {
             self.meshes,
             *instance,
             self.atlas,
+            self.owned_entries,
+            self.equipment_assets,
             self.dynamic_player_texture_atlas,
         );
         render_equine_saddle_layer(
             self.meshes,
             *instance,
             self.atlas,
+            self.owned_entries,
+            self.equipment_assets,
             self.dynamic_player_texture_atlas,
             next_submit_sequence,
         );
@@ -1115,6 +1141,8 @@ impl EntityModelSink for TexturedSink<'_> {
             self.meshes,
             *instance,
             self.atlas,
+            self.owned_entries,
+            self.equipment_assets,
             self.dynamic_player_texture_atlas,
             1,
         );
@@ -1131,12 +1159,16 @@ impl EntityModelSink for TexturedSink<'_> {
             self.meshes,
             *instance,
             self.atlas,
+            self.owned_entries,
+            self.equipment_assets,
             self.dynamic_player_texture_atlas,
         );
         render_equine_saddle_layer(
             self.meshes,
             *instance,
             self.atlas,
+            self.owned_entries,
+            self.equipment_assets,
             self.dynamic_player_texture_atlas,
             next_submit_sequence,
         );

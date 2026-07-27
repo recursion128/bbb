@@ -180,6 +180,7 @@ impl EntityEquipmentAssetCatalog {
         Ok(ResolvedEntityEquipmentAssetCatalog {
             generation: self.generation,
             assets,
+            legacy_static_fallback: false,
         })
     }
 }
@@ -215,9 +216,21 @@ impl ResolvedEntityEquipmentAsset {
 pub(crate) struct ResolvedEntityEquipmentAssetCatalog {
     generation: u64,
     assets: Vec<ResolvedEntityEquipmentAsset>,
+    legacy_static_fallback: bool,
 }
 
 impl ResolvedEntityEquipmentAssetCatalog {
+    #[cfg(test)]
+    pub(crate) fn legacy_static_fallback() -> Self {
+        Self {
+            generation: 0,
+            assets: Vec::new(),
+            // The no-catalog mesh helpers predate resource equipment assets and remain a
+            // compatibility surface for focused renderer unit tests.
+            legacy_static_fallback: true,
+        }
+    }
+
     pub(crate) fn asset(
         &self,
         id: EntityEquipmentAssetId,
@@ -227,8 +240,8 @@ impl ResolvedEntityEquipmentAssetCatalog {
             .and_then(|index| self.assets.get(index as usize))
     }
 
-    pub(crate) fn is_empty(&self) -> bool {
-        self.assets.is_empty()
+    pub(crate) fn uses_legacy_static_fallback(&self) -> bool {
+        self.legacy_static_fallback
     }
 }
 

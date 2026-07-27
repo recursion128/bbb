@@ -1816,6 +1816,38 @@ fn entity_model_instances_project_ender_dragon_death_time() {
 }
 
 #[test]
+fn entity_model_instance_projects_simple_equipment_dyes_from_source() {
+    let source: EntityModelSourceState = serde_json::from_value(serde_json::json!({
+        "entity_id": 84,
+        "entity_type_id": VANILLA_ENTITY_TYPE_PIG_ID,
+        "position": { "x": 1.0, "y": 64.0, "z": -2.0 },
+        "y_rot": 0.0,
+        "pig_saddle_dye": 0x01_02_03,
+        "equine_saddle_dye": 0x11_12_13,
+        "strider_saddle_dye": 0x21_22_23,
+        "camel_saddle_dye": 0x31_32_33,
+        "nautilus_saddle_dye": 0x41_42_43,
+        "nautilus_body_armor_dye": 0x51_52_53,
+        "happy_ghast_harness_dye": 0x61_62_63,
+        "llama_body_decor_dye": 0x71_72_73,
+        "data_values": []
+    }))
+    .unwrap();
+
+    let instance = entity_model_instance(source, &WorldStore::new(), None, 0, 0.0, None).unwrap();
+    let state = instance.render_state;
+
+    assert_eq!(state.pig_saddle_dye, Some(0x01_02_03));
+    assert_eq!(state.equine_saddle_dye, Some(0x11_12_13));
+    assert_eq!(state.strider_saddle_dye, Some(0x21_22_23));
+    assert_eq!(state.camel_saddle_dye, Some(0x31_32_33));
+    assert_eq!(state.nautilus_saddle_dye, Some(0x41_42_43));
+    assert_eq!(state.nautilus_body_armor_dye, Some(0x51_52_53));
+    assert_eq!(state.happy_ghast_harness_dye, Some(0x61_62_63));
+    assert_eq!(state.llama_body_decor_dye, Some(0x71_72_73));
+}
+
+#[test]
 fn entity_model_instances_fold_freeze_shake_into_body_rot() {
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(

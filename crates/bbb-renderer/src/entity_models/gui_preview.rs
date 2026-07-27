@@ -230,7 +230,7 @@ pub(crate) fn bake_hud_entity_preview_pip_geometry(
     dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
     dynamic_player_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
 ) -> HudEntityPreviewPipGeometry {
-    let equipment_assets = ResolvedEntityEquipmentAssetCatalog::default();
+    let equipment_assets = ResolvedEntityEquipmentAssetCatalog::legacy_static_fallback();
     bake_hud_entity_preview_pip_geometry_with_equipment(
         instance,
         atlas,

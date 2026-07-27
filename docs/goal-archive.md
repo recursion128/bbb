@@ -588,3 +588,6 @@
   composite 叶现与 flat icon 共用 bundle、live state、registry、time/compass 和 seed
   selector；浮动物品与 stats 行的逐 item 物理像素 scissor 贯通 residency batching
   与 GPU draw，并在下一无裁剪 draw 前恢复完整 attachment。
+- **2026-07-26（Equipment asset layer rendering 工程闭环）**：资源包声明的 19 类
+  layer、有效 `Equippable` 资产、owned atlas、染色/foil/trim 与玩家翅膀覆盖已贯通
+  world/native/renderer；合同见 `docs/archive/equipment-asset-layer-rendering-design.md`。

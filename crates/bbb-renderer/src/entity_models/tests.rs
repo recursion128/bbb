@@ -48,6 +48,7 @@ mod ender_dragon;
 mod enderman;
 mod endermite;
 mod equine;
+mod equipment_assets;
 mod evoker_fangs;
 mod experience_orb;
 mod feline;

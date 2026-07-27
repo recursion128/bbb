@@ -2568,6 +2568,10 @@ entity_model_source_state! {
     /// `EquipmentSlot.SADDLE`. The renderer consumes this to draw the `PIG_SADDLE` equipment layer.
     #[serde(default)]
     pub pig_saddle_equipment_asset: Option<EquipmentAssetId>,
+    /// Packed `DyedItemColor` on the saddle stack, consumed only by dyeable
+    /// `PIG_SADDLE` asset layers.
+    #[serde(default)]
+    pub pig_saddle_dye: Option<i32>,
     #[serde(default)]
     pub pig_saddle: bool,
     /// Vanilla `ArmorTrim.layerAssetId` for an adult pig's `PIG_SADDLE` equipment layer.
@@ -2581,6 +2585,10 @@ entity_model_source_state! {
     /// zombie-horse carries a non-empty saddle item in `EquipmentSlot.SADDLE`.
     #[serde(default)]
     pub equine_saddle_equipment_asset: Option<EquipmentAssetId>,
+    /// Packed `DyedItemColor` on the saddle stack, consumed only by dyeable
+    /// family-specific equine saddle asset layers.
+    #[serde(default)]
+    pub equine_saddle_dye: Option<i32>,
     #[serde(default)]
     pub equine_saddle: bool,
     /// Vanilla armor-trim sprite for the family-specific equine saddle equipment layer.
@@ -2639,6 +2647,10 @@ entity_model_source_state! {
     /// layer on adult striders.
     #[serde(default)]
     pub strider_saddle_equipment_asset: Option<EquipmentAssetId>,
+    /// Packed `DyedItemColor` on the saddle stack, consumed only by dyeable
+    /// `STRIDER_SADDLE` asset layers.
+    #[serde(default)]
+    pub strider_saddle_dye: Option<i32>,
     #[serde(default)]
     pub strider_saddle: bool,
     /// Vanilla `ArmorTrim.layerAssetId` for an adult strider's `STRIDER_SADDLE` equipment layer.
@@ -2652,6 +2664,10 @@ entity_model_source_state! {
     /// equipment layer.
     #[serde(default)]
     pub camel_saddle_equipment_asset: Option<EquipmentAssetId>,
+    /// Packed `DyedItemColor` on the saddle stack, consumed only by dyeable
+    /// `CAMEL_SADDLE` / `CAMEL_HUSK_SADDLE` asset layers.
+    #[serde(default)]
+    pub camel_saddle_dye: Option<i32>,
     #[serde(default)]
     pub camel_saddle: bool,
     /// Vanilla armor-trim sprite for a camel's family-specific `CAMEL*_SADDLE` equipment layer.
@@ -2669,6 +2685,10 @@ entity_model_source_state! {
     /// `NautilusSaddleModel` equipment layer.
     #[serde(default)]
     pub nautilus_saddle_equipment_asset: Option<EquipmentAssetId>,
+    /// Packed `DyedItemColor` on the saddle stack, consumed only by dyeable
+    /// `NAUTILUS_SADDLE` asset layers.
+    #[serde(default)]
+    pub nautilus_saddle_dye: Option<i32>,
     #[serde(default)]
     pub nautilus_saddle: bool,
     /// Vanilla armor-trim sprite for the adult `NAUTILUS_SADDLE` equipment layer.
@@ -2685,6 +2705,10 @@ entity_model_source_state! {
     /// vanilla harness-color classification.
     #[serde(default)]
     pub happy_ghast_body_equipment_asset: Option<EquipmentAssetId>,
+    /// Packed `DyedItemColor` on the BODY stack, consumed only by dyeable
+    /// `HAPPY_GHAST_BODY` asset layers.
+    #[serde(default)]
+    pub happy_ghast_harness_dye: Option<i32>,
     /// Recognized vanilla happy-ghast harness color derived from the BODY item's equipment asset.
     #[serde(default)]
     pub happy_ghast_harness: Option<HappyGhastHarnessColor>,
@@ -2740,6 +2764,10 @@ entity_model_source_state! {
     /// built-in trader decor in the renderer when this is `None`.
     #[serde(default)]
     pub llama_body_equipment_asset: Option<EquipmentAssetId>,
+    /// Packed `DyedItemColor` on the BODY stack, consumed only by dyeable
+    /// `LLAMA_BODY` asset layers.
+    #[serde(default)]
+    pub llama_body_decor_dye: Option<i32>,
     #[serde(default)]
     pub llama_body_decor: Option<LlamaBodyDecorColor>,
     /// Vanilla `ArmorTrim.layerAssetId` for an adult carpet item's `LLAMA_BODY` equipment layer.
@@ -2755,6 +2783,10 @@ entity_model_source_state! {
     /// because `SimpleEquipmentLayer` supplies no baby armor model.
     #[serde(default)]
     pub nautilus_body_equipment_asset: Option<EquipmentAssetId>,
+    /// Packed `DyedItemColor` on the BODY stack, consumed only by dyeable
+    /// `NAUTILUS_BODY` asset layers.
+    #[serde(default)]
+    pub nautilus_body_armor_dye: Option<i32>,
     #[serde(default)]
     pub nautilus_body_armor: Option<ArmorMaterialKind>,
     /// Vanilla `ArmorTrim.layerAssetId` for the `NAUTILUS_BODY` equipment layer. Native resolves
