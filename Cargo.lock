@@ -425,6 +425,7 @@ name = "bbb-renderer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bbb-pack",
  "bbb-protocol",
  "bbb-render-types",
  "bytemuck",
@@ -432,6 +433,7 @@ dependencies = [
  "glam 0.29.3",
  "image",
  "pollster",
+ "regex",
  "serde",
  "wgpu",
  "winit",
@@ -2084,6 +2086,7 @@ dependencies = [
  "indexmap",
  "log",
  "num-traits",
+ "pp-rs",
  "rustc-hash 1.1.0",
  "spirv",
  "termcolor",
@@ -2687,6 +2690,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0103b1cef7ec0cf76490e969665504990193874ea05c85ff9bab8b911d0a0564"
 dependencies = [
  "zerovec",
+]
+
+[[package]]
+name = "pp-rs"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bb458bb7f6e250e6eb79d5026badc10a3ebb8f9a15d1fff0f13d17c71f4d6dee"
+dependencies = [
+ "unicode-xid",
 ]
 
 [[package]]
