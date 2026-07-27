@@ -1,5 +1,6 @@
 mod block_destroy;
 mod camera;
+mod camera_post_effect;
 mod clouds;
 mod counters;
 mod debug_filled_boxes;

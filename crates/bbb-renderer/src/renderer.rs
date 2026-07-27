@@ -20,6 +20,7 @@ use crate::{
         CameraPose, CameraSpinningEffect, CameraUniform, ClearColor, FogEnvironment,
         LightmapEnvironment, TerrainBounds, VANILLA_DEFAULT_GLINT_SPEED,
     },
+    camera_post_effect::CameraPostEffectGpu,
     clouds::{
         cloud_mesh_key, create_cloud_bind_group, create_cloud_bind_group_layout, create_cloud_gpu,
         create_cloud_pipeline, create_cloud_target, create_cloud_texture_data,
@@ -178,11 +179,26 @@ impl RenderSurface {
         }
     }
 
-    pub(super) fn configure(&self, device: &wgpu::Device, config: &wgpu::SurfaceConfiguration) {
+    pub(super) fn configure(&mut self, device: &wgpu::Device, config: &wgpu::SurfaceConfiguration) {
         match self {
             Self::Window(surface) => surface.configure(device, config),
             #[cfg(test)]
-            Self::Offscreen(_) => {}
+            Self::Offscreen(texture) => {
+                *texture = std::sync::Arc::new(device.create_texture(&wgpu::TextureDescriptor {
+                    label: Some("bbb-offscreen-frame-target"),
+                    size: wgpu::Extent3d {
+                        width: config.width,
+                        height: config.height,
+                        depth_or_array_layers: 1,
+                    },
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format: config.format,
+                    usage: config.usage,
+                    view_formats: &[],
+                }));
+            }
         }
     }
 }
@@ -238,6 +254,7 @@ pub struct Renderer {
     pub(super) shader_game_time_ticks: f64,
     pub(super) current_post_effect_id: Option<String>,
     pub(super) camera_post_effect_active: bool,
+    pub(super) camera_post_effect: CameraPostEffectGpu,
     pub(super) menu_background_blurriness: f32,
     pub(super) hide_gui: bool,
     pub(super) hud_screen_blur: bool,
@@ -1116,6 +1133,13 @@ impl Renderer {
             config.width,
             config.height,
         );
+        let camera_post_effect = CameraPostEffectGpu::new(
+            &device,
+            format,
+            config.width,
+            config.height,
+            &screen_blur_bind_group_layout,
+        );
         let main_target = create_main_target(&device, config.format, config.width, config.height);
         let depth = create_depth_target(&device, config.width, config.height);
         let translucent_target =
@@ -1632,6 +1656,7 @@ impl Renderer {
             shader_game_time_ticks: 0.0,
             current_post_effect_id: None,
             camera_post_effect_active: false,
+            camera_post_effect,
             menu_background_blurriness: sanitize_menu_background_blurriness(
                 VANILLA_DEFAULT_MENU_BACKGROUND_BLURRINESS,
             ),
@@ -2262,6 +2287,12 @@ impl Renderer {
             self.config.format,
             self.config.width,
             self.config.height,
+        );
+        self.camera_post_effect.resize(
+            &self.device,
+            self.config.width,
+            self.config.height,
+            &self.screen_blur_bind_group_layout,
         );
         self.main_target = create_main_target(
             &self.device,

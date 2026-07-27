@@ -112,6 +112,8 @@ impl Renderer {
 mod tests {
     use std::sync::Arc;
 
+    use winit::dpi::PhysicalSize;
+
     use crate::{
         ClearColor, EntityDefaultPlayerSkin, EntityModelTextureImage, EntityModelTextureRef,
         EntityPlayerSkin, HudAsciiGlyph, HudComponentTextRun, HudDeathLinkConfirmationScreen,
@@ -177,6 +179,161 @@ mod tests {
             renderer.counters.draw_calls
         );
         assert_eq!(renderer.counters.screenshots_written, 0);
+    }
+
+    #[test]
+    fn camera_post_effect_inactive_and_unknown_ids_leave_the_frame_untouched() {
+        let Some(mut renderer) = Renderer::new_offscreen(24, 20) else {
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer.set_camera_post_effect(Some("minecraft:invert"), false);
+
+        let inactive = renderer
+            .render_offscreen_frame()
+            .expect("inactive camera post-effect frame");
+        let inactive_corner = inactive.pixel(2, 2);
+        assert!(
+            inactive_corner[2] > 240 && inactive_corner[0] < 8 && inactive_corner[1] < 8,
+            "inactive effect must preserve the blue frame, got {inactive_corner:?}"
+        );
+        assert_eq!(renderer.counters.post_effect_draw_calls, 0);
+        let baseline_draw_calls = renderer.counters.draw_calls;
+        let baseline_pipeline_switches = renderer.counters.pipeline_switches;
+
+        renderer.set_camera_post_effect(Some("minecraft:unknown"), true);
+        let unknown = renderer
+            .render_offscreen_frame()
+            .expect("unknown camera post-effect frame");
+        let unknown_corner = unknown.pixel(2, 2);
+        assert!(
+            unknown_corner[2] > 240 && unknown_corner[0] < 8 && unknown_corner[1] < 8,
+            "unknown effect must preserve the blue frame, got {unknown_corner:?}"
+        );
+        assert_eq!(renderer.counters.post_effect_draw_calls, 0);
+        assert_eq!(renderer.counters.draw_calls, baseline_draw_calls);
+        assert_eq!(
+            renderer.counters.pipeline_switches,
+            baseline_pipeline_switches
+        );
+
+        renderer.set_camera_post_effect(Some("minecraft:invert"), true);
+        renderer
+            .render_offscreen_frame()
+            .expect("active camera post-effect frame");
+        assert_eq!(renderer.counters.post_effect_draw_calls, 2);
+        assert_eq!(renderer.counters.draw_calls, baseline_draw_calls + 2);
+        assert_eq!(
+            renderer.counters.pipeline_switches,
+            baseline_pipeline_switches + 2
+        );
+    }
+
+    #[test]
+    fn camera_post_effect_invert_runs_before_ordinary_hud() {
+        let Some(mut renderer) = Renderer::new_offscreen(32, 32) else {
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer.set_camera_post_effect(Some("minecraft:invert"), true);
+        renderer
+            .upload_hud_crosshair(4, 4, &[255, 0, 0, 255].repeat(16))
+            .expect("ordinary HUD sentinel");
+
+        let pixels = renderer
+            .render_offscreen_frame()
+            .expect("invert camera post-effect frame");
+        let corner = pixels.pixel(3, 3);
+        let center = pixels.pixel(16, 16);
+        assert!(
+            corner[0] > corner[2].saturating_add(50) && corner[1] > corner[2].saturating_add(50),
+            "0.8 inverse of blue should be yellow-dominant, got {corner:?}"
+        );
+        assert!(
+            center[0] > 200 && center[1] < 32 && center[2] < 32,
+            "the later ordinary HUD crosshair must remain red, got {center:?}"
+        );
+        assert_eq!(renderer.counters.post_effect_draw_calls, 2);
+    }
+
+    #[test]
+    fn camera_post_effect_creeper_and_spider_execute_exact_graphs() {
+        let Some(mut renderer) = Renderer::new_offscreen(32, 24) else {
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 1.0,
+            b: 0.0,
+            a: 1.0,
+        });
+        renderer.set_camera_post_effect(Some("minecraft:creeper"), true);
+
+        let creeper = renderer
+            .render_offscreen_frame()
+            .expect("creeper camera post-effect frame");
+        let creeper_corner = creeper.pixel(4, 4);
+        assert!(
+            creeper_corner[1] > 180 && creeper_corner[0] < 64 && creeper_corner[2] < 64,
+            "creeper color matrix and bits pass should retain green only, got {creeper_corner:?}"
+        );
+        assert_eq!(renderer.counters.post_effect_draw_calls, 2);
+
+        renderer.set_clear_color(ClearColor {
+            r: 1.0,
+            g: 1.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer.set_camera_post_effect(Some("minecraft:spider"), true);
+        let spider = renderer
+            .render_offscreen_frame()
+            .expect("spider camera post-effect frame");
+        let spider_corner = spider.pixel(4, 4);
+        assert!(
+            spider_corner[0] > spider_corner[1].saturating_add(10)
+                && spider_corner[1].abs_diff(spider_corner[2]) < 5,
+            "spider's final [1, 0.8, 0.8, 1] blit should red-tint white, got {spider_corner:?}"
+        );
+        assert_eq!(renderer.counters.post_effect_draw_calls, 10);
+    }
+
+    #[test]
+    fn camera_post_effect_resize_recreates_targets_and_preserves_selection() {
+        let Some(mut renderer) = Renderer::new_offscreen(16, 12) else {
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer.set_camera_post_effect(Some("minecraft:invert"), true);
+        renderer.resize(PhysicalSize::new(24, 20));
+
+        let pixels = renderer
+            .render_offscreen_frame()
+            .expect("resized camera post-effect frame");
+        assert_eq!((pixels.width, pixels.height), (24, 20));
+        let corner = pixels.pixel(2, 2);
+        assert!(
+            corner[0] > corner[2].saturating_add(50) && corner[1] > corner[2].saturating_add(50),
+            "resized targets should still execute the selected invert graph, got {corner:?}"
+        );
+        assert_eq!(renderer.current_post_effect_id(), Some("minecraft:invert"));
+        assert!(renderer.camera_post_effect_active());
+        assert_eq!(renderer.counters.post_effect_draw_calls, 2);
     }
 
     #[test]

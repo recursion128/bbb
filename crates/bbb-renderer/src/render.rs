@@ -115,6 +115,7 @@ struct FrameDrawStats {
     entity_target_draw_calls: u64,
     hud_draw_calls: u64,
     screen_blur_draw_calls: u64,
+    post_effect_draw_calls: u64,
     lightmap_draw_calls: u64,
     pipeline_switches: u64,
 }
@@ -155,6 +156,7 @@ impl Renderer {
         self.debug_always_on_top_text_pass(&mut encoder, &mut stats);
         self.transparency_blit_pass(&frame, &mut encoder, &mut stats);
         self.first_person_item_pass(&frame, &mut encoder, &mut stats);
+        self.camera_post_effect_pass(&frame, &mut encoder, &mut stats);
         self.entity_preview_pip_passes(&mut encoder, &mut stats);
         self.vignette_pass(&frame, &mut encoder, &mut stats);
         self.win_screen_portal_pass(&frame, &mut encoder, &mut stats);
@@ -2700,6 +2702,28 @@ impl Renderer {
         );
     }
 
+    fn camera_post_effect_pass(
+        &self,
+        frame: &FrameTarget,
+        encoder: &mut wgpu::CommandEncoder,
+        stats: &mut FrameDrawStats,
+    ) {
+        let frame_view = frame
+            .texture()
+            .create_view(&wgpu::TextureViewDescriptor::default());
+        let draw_calls = self.camera_post_effect.render(
+            self.current_post_effect_id.as_deref(),
+            self.camera_post_effect_active,
+            frame.texture(),
+            &frame_view,
+            encoder,
+            &self.screen_blur_horizontal_pipeline,
+            &self.screen_blur_vertical_pipeline,
+        );
+        stats.post_effect_draw_calls += draw_calls;
+        stats.pipeline_switches += draw_calls;
+    }
+
     /// GUI entity picture-in-picture targets (vanilla `GuiRenderer.preparePictureInPicture` →
     /// `PictureInPictureRenderer.prepare` + `GuiEntityRenderer`): before the GUI draws, each
     /// sanitized `HudEntityPreview` renders through the entity model pipelines into its own
@@ -3301,6 +3325,7 @@ impl Renderer {
         self.counters.entity_target_draw_calls = stats.entity_target_draw_calls;
         self.counters.hud_draw_calls = stats.hud_draw_calls;
         self.counters.screen_blur_draw_calls = stats.screen_blur_draw_calls;
+        self.counters.post_effect_draw_calls = stats.post_effect_draw_calls;
         self.counters.draw_calls = stats.opaque_draw_calls
             + stats.cutout_draw_calls
             + stats.translucent_draw_calls
@@ -3323,6 +3348,7 @@ impl Renderer {
             + stats.entity_target_draw_calls
             + stats.hud_draw_calls
             + stats.screen_blur_draw_calls
+            + stats.post_effect_draw_calls
             + stats.lightmap_draw_calls;
         self.counters.pipeline_switches = stats.pipeline_switches;
         Ok(())
@@ -4712,6 +4738,7 @@ mod tests {
         "debug_always_on_top_text_pass",
         "transparency_blit_pass",
         "first_person_item_pass",
+        "camera_post_effect_pass",
         "entity_preview_pip_passes",
         "vignette_pass",
         "win_screen_portal_pass",
@@ -4990,6 +5017,36 @@ mod tests {
 
         assert!(blit < first_person && first_person < vignette && vignette < hud);
         assert!(first_person < pass && pass < depth_clear);
+    }
+
+    #[test]
+    fn camera_post_effect_pass_runs_after_first_person_before_pip_vignette_and_hud() {
+        let source = include_str!("render.rs");
+        let first_person = source
+            .find("self.first_person_item_pass(&frame, &mut encoder, &mut stats);")
+            .expect("first-person item pass is scheduled");
+        let post_effect = source
+            .find("self.camera_post_effect_pass(&frame, &mut encoder, &mut stats);")
+            .expect("camera post-effect pass is scheduled");
+        let entity_preview = source
+            .find("self.entity_preview_pip_passes(&mut encoder, &mut stats);")
+            .expect("entity preview PIP is scheduled");
+        let vignette = source
+            .find("self.vignette_pass(&frame, &mut encoder, &mut stats);")
+            .expect("vignette pass is scheduled");
+        let hud = source
+            .find("self.hud_passes(&frame, &mut encoder, &mut stats);")
+            .expect("HUD pass is scheduled");
+
+        assert!(
+            first_person < post_effect
+                && post_effect < entity_preview
+                && entity_preview < vignette
+                && vignette < hud
+        );
+        assert!(FRAME_STEPS
+            .windows(2)
+            .any(|steps| steps == ["first_person_item_pass", "camera_post_effect_pass"]));
     }
 
     #[test]
