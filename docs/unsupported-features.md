@@ -657,11 +657,16 @@ Commands:
   owner becomes client-visible on the wire.
 Inventory:
 
-- Implement the creative-inventory screen item-add/item-drop interactions that
-  drive `SetCreativeModeSlot`, including its local infinite-material,
-  enabled-feature, slot, count, open-container, and drop-throttler gates. The server
-  remains authoritative for reach, creative/game-master data access, hotbar
-  selection and inventory mutation.
+- Implement the generated Vanilla creative-tab/item catalog, native creative
+  inventory screen, and item-add/item-drop interactions that drive
+  `SetCreativeModeSlot`, including local infinite-material, enabled-feature,
+  slot, count, open-container, and drop-throttler gates. Complete the creative
+  `ContainerSetSlot` remote-slot/hotbar-pop and `SetCursorItem` suppression
+  branches. The server remains authoritative for reach, creative/game-master
+  data access, hotbar selection and inventory mutation.
+- Persist Vanilla creative hotbar presets in `hotbar.nbt` and implement their
+  save/load activator-key lifecycle. Restart after the core creative screen and
+  item-picker interaction state exists.
 - Implement the rich-tooltip `space` font provider, the remaining text styles,
   italic/complex component styles, and component-specific detail lines from
   `font/default.json`.
