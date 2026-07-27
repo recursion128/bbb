@@ -15,6 +15,9 @@
 # goal.md unsupported category: explicit renderer defensive failures.
 ^crates/bbb-renderer/src/screenshot[.]rs$	unsupported screenshot surface format
 ^crates/bbb-renderer/src/entity_models/textured[.]rs$	unsupported dynamic player (skin|texture) render type
+# The selected post-effect GLSL adapter rejects declarations outside its frozen
+# WebGPU binding/std140 surface before installing a resource generation.
+^crates/bbb-renderer/src/post_effect_graph/glsl[.]rs$	unsupported
 # Pack/catalog/font parsers reject unsupported source shapes with bounded errors.
 ^crates/bbb-pack/src/.*[.]rs$	unsupported
 ^crates/bbb-item-model/src/font(/.*)?[.]rs$	unsupported
@@ -108,6 +111,9 @@
 ^crates/bbb-control/src/types/renderer[.]rs$	(item_model|map_texture)_fallbacks
 ^crates/bbb-renderer/src/particles/descriptors[.]rs$	fallback
 ^crates/bbb-renderer/src/renderer[.]rs$	force_fallback_adapter
+# This adapter option appears only in the scalar depth-copy GPU test harness;
+# false requests the normal primary adapter rather than a runtime fallback.
+^crates/bbb-renderer/src/post_effect_graph/depth[.]rs$	force_fallback_adapter
 ^crates/bbb-render-types/src/(entity_textures|hud_glyphs)[.]rs$	fallback
 # Item profile, icon, tooltip and font fallback behavior.
 ^crates/bbb-item-model/src/item_runtime(/.*)?[.]rs$	fallback
