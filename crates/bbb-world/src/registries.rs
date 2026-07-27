@@ -10,6 +10,7 @@ mod element_value;
 mod enchantments;
 mod environment_attribute_catalog;
 mod environment_attributes;
+mod environment_particle_options;
 mod environment_sampling;
 mod game_tests;
 mod instrument_values;
@@ -69,13 +70,16 @@ pub use enchantments::{
     VanillaEnchantmentIdentity, VANILLA_ENCHANTMENT_TOOLTIP_ORDER,
 };
 pub(crate) use environment_attributes::{
-    decode_client_environment_attributes, validate_command_particle_fields,
-    EnvironmentAttributeProjectionError,
+    decode_client_environment_attributes, EnvironmentAttributeProjectionError,
 };
 pub use environment_attributes::{
-    AmbientLoopSoundState, ClientAmbientAddition, ClientAmbientMood, ClientAmbientParticle,
-    ClientAmbientSounds, ClientBackgroundMusic, ClientEnvironmentAttributes, ClientMoonPhase,
-    ClientMusic, ClientParticleOptions, ClientSoundEventHolder,
+    AmbientLoopSoundState, ClientAmbientAddition, ClientAmbientMood, ClientAmbientSounds,
+    ClientBackgroundMusic, ClientEnvironmentAttributes, ClientMoonPhase, ClientMusic,
+    ClientSoundEventHolder,
+};
+pub(crate) use environment_particle_options::validate_command_particle_fields;
+pub use environment_particle_options::{
+    ClientAmbientParticle, ClientParticleOptionValue, ClientParticleOptions,
 };
 pub use environment_sampling::EnvironmentBiomeSampling;
 pub use game_tests::{

@@ -190,7 +190,7 @@ fn dimension_type_client_projection(
     };
     let (environment_attributes, environment_error) = match field(fields, "attributes") {
         Some(NbtSummaryValue::Compound(entries)) => {
-            match decode_client_environment_attributes(entries) {
+            match decode_client_environment_attributes(entries, registry_access) {
                 Ok(attributes) => (attributes, None),
                 Err(err) => (ClientEnvironmentAttributes::default(), Some(err)),
             }

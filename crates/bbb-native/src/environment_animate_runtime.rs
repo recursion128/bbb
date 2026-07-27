@@ -4,9 +4,9 @@ use bbb_protocol::{
     NbtSummaryEntry, NbtSummaryValue,
 };
 use bbb_world::{
-    block_name_is_pale_oak_log, BlockPos, ClientParticleOptions, ClientSoundEventHolder,
-    EnvironmentBiomeSampling, LevelEventSoundRandomState, LocalPlayerPoseState, SoundEventState,
-    WorldStore,
+    block_name_is_pale_oak_log, BlockPos, ClientParticleOptionValue, ClientParticleOptions,
+    ClientSoundEventHolder, EnvironmentBiomeSampling, LevelEventSoundRandomState,
+    LocalPlayerPoseState, SoundEventState, WorldStore,
 };
 
 use crate::{
@@ -397,6 +397,7 @@ fn simple_particle_options(resource_id: &str) -> ClientParticleOptions {
             name: "type".to_string(),
             value: NbtSummaryValue::String(resource_id.to_string()),
         }],
+        option: ClientParticleOptionValue::Empty,
     }
 }
 

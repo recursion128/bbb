@@ -5,6 +5,7 @@ use super::environment_attributes::{
     ClientEnvironmentAttributes,
 };
 use super::RegistryPacketEntry;
+use crate::FrozenRegistryAccess;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BiomeTemperatureModifier {
@@ -41,15 +42,17 @@ pub struct BiomeProjectionError {
 
 pub(super) fn decode_biome_client_projection(
     entry: &RegistryPacketEntry,
+    registry_access: FrozenRegistryAccess<'_>,
 ) -> Result<Option<BiomeClientProjection>, BiomeProjectionError> {
     let Some(data) = entry.element_data() else {
         return Ok(None);
     };
-    decode_biome_client_projection_value(&data.value).map(Some)
+    decode_biome_client_projection_value(&data.value, registry_access).map(Some)
 }
 
 fn decode_biome_client_projection_value(
     value: &NbtSummaryValue,
+    registry_access: FrozenRegistryAccess<'_>,
 ) -> Result<BiomeClientProjection, BiomeProjectionError> {
     let NbtSummaryValue::Compound(fields) = value else {
         return Err(error("<root>", "expected compound"));
@@ -75,7 +78,7 @@ fn decode_biome_client_projection_value(
     };
     let environment_attribute_modifiers = optional_compound(fields, "attributes")?
         .map(|entries| {
-            decode_client_environment_attribute_map(entries, true)
+            decode_client_environment_attribute_map(entries, true, registry_access)
                 .map_err(|err| error(format!("attributes.{}", err.field), err.reason))
         })
         .transpose()?
@@ -236,11 +239,15 @@ pub(crate) fn test_biome_element_nbt(temperature: f32, has_precipitation: bool) 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::RegistrySet;
 
     #[test]
     fn decodes_network_biome_client_projection() {
+        let registries = RegistrySet::vanilla_26_1();
         let entry = RegistryPacketEntry::with_raw_data("example:custom", biome_nbt(false));
-        let projection = decode_biome_client_projection(&entry).unwrap().unwrap();
+        let projection = decode_biome_client_projection(&entry, registries.frozen_access())
+            .unwrap()
+            .unwrap();
 
         assert!(projection.has_precipitation);
         assert_eq!(projection.temperature, 0.35);
@@ -269,6 +276,7 @@ mod tests {
 
     #[test]
     fn decodes_known_pack_json_through_the_same_biome_projection() {
+        let registries = RegistrySet::vanilla_26_1();
         let data = super::super::element_value::decode_known_pack_element(
             br##"{
                 "has_precipitation": true,
@@ -286,7 +294,8 @@ mod tests {
         )
         .unwrap();
 
-        let projection = decode_biome_client_projection_value(&data.value).unwrap();
+        let projection =
+            decode_biome_client_projection_value(&data.value, registries.frozen_access()).unwrap();
         assert!(projection.has_precipitation);
         assert_eq!(projection.water_color, [0x11, 0x22, 0x33]);
         let mut dimension_attributes = ClientEnvironmentAttributes {
@@ -302,8 +311,11 @@ mod tests {
 
     #[test]
     fn decodes_relevant_attribute_modifier_through_the_shared_codec() {
+        let registries = RegistrySet::vanilla_26_1();
         let entry = RegistryPacketEntry::with_raw_data("example:custom", biome_nbt(true));
-        let projection = decode_biome_client_projection(&entry).unwrap().unwrap();
+        let projection = decode_biome_client_projection(&entry, registries.frozen_access())
+            .unwrap()
+            .unwrap();
         let mut attributes = ClientEnvironmentAttributes::default();
         projection
             .environment_attribute_modifiers
@@ -311,7 +323,11 @@ mod tests {
             .unwrap();
         assert!((attributes.water_fog_end_distance.unwrap() - 81.6).abs() < 0.0001);
         assert_eq!(
-            decode_biome_client_projection(&RegistryPacketEntry::stub("example:stub")).unwrap(),
+            decode_biome_client_projection(
+                &RegistryPacketEntry::stub("example:stub"),
+                registries.frozen_access()
+            )
+            .unwrap(),
             None
         );
     }

@@ -412,7 +412,7 @@ impl RegistrySet {
         if let Some(projection) = self.typed.biomes.get(&entry.id) {
             return Ok(Some(projection.clone()));
         }
-        decode_biome_client_projection(entry)
+        decode_biome_client_projection(entry, self.frozen_access())
     }
 
     pub(crate) fn dimension_type_client_projection(

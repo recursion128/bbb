@@ -262,7 +262,7 @@ fn build_registered_typed_projections(
         "minecraft:worldgen/biome",
         "Biome.NETWORK_CODEC",
         |entry, _, access| {
-            let projection = decode_biome_client_projection(entry)
+            let projection = decode_biome_client_projection(entry, access)
                 .map_err(|error| format!("{}: {}", error.field, error.reason))?
                 .ok_or_else(|| "<root>: typed payload unavailable".to_string())?;
             projection

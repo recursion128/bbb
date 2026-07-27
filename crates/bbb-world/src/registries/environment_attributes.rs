@@ -9,6 +9,9 @@ use super::environment_attribute_catalog::{
     vanilla_environment_attribute, VanillaEnvironmentAttribute, VanillaEnvironmentAttributeRange,
     VanillaEnvironmentAttributeType,
 };
+use super::environment_particle_options::{
+    parse_ambient_particles, parse_particle, ClientAmbientParticle, ClientParticleOptions,
+};
 use super::{decode_persistent_sound_event, normalize_codec_identifier, PersistentSoundEvent};
 use crate::FrozenRegistryAccess;
 
@@ -23,18 +26,6 @@ pub enum ClientMoonPhase {
     WaxingCrescent,
     FirstQuarter,
     WaxingGibbous,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ClientParticleOptions {
-    pub resource_id: String,
-    pub fields: Vec<NbtSummaryEntry>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ClientAmbientParticle {
-    pub particle: ClientParticleOptions,
-    pub probability_bits: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -355,8 +346,9 @@ enum FloatRange {
 
 pub(crate) fn decode_client_environment_attributes(
     entries: &[NbtSummaryEntry],
+    registry_access: FrozenRegistryAccess<'_>,
 ) -> Result<ClientEnvironmentAttributes, EnvironmentAttributeProjectionError> {
-    let attribute_map = decode_client_environment_attribute_map(entries, false)?;
+    let attribute_map = decode_client_environment_attribute_map(entries, false, registry_access)?;
     let mut attributes = ClientEnvironmentAttributes::default();
     attribute_map.apply_to(&mut attributes)?;
     Ok(attributes)
@@ -365,6 +357,7 @@ pub(crate) fn decode_client_environment_attributes(
 pub(crate) fn decode_client_environment_attribute_map(
     entries: &[NbtSummaryEntry],
     positional_only: bool,
+    registry_access: FrozenRegistryAccess<'_>,
 ) -> Result<ClientEnvironmentAttributeMap, EnvironmentAttributeProjectionError> {
     let mut decoded = Vec::with_capacity(entries.len());
     let mut seen = BTreeSet::new();
@@ -391,6 +384,7 @@ pub(crate) fn decode_client_environment_attribute_map(
             descriptor.resource_id,
             attribute_kind(descriptor),
             &entry.value,
+            registry_access,
         )?;
         if descriptor.syncable {
             decoded.push(ClientEnvironmentAttributeMapEntry {
@@ -409,11 +403,12 @@ pub(super) fn decode_timeline_argument(
     attribute: &str,
     modifier: EnvironmentModifier,
     value: &NbtSummaryValue,
+    registry_access: FrozenRegistryAccess<'_>,
 ) -> Result<EnvironmentTrackArgument, EnvironmentAttributeProjectionError> {
     let Some((field, kind, _)) = known_attribute(attribute) else {
         return Err(error("tracks", "unknown environment attribute"));
     };
-    decode_modifier_argument(field, kind, modifier, value)
+    decode_modifier_argument(field, kind, modifier, value, registry_access)
 }
 
 pub(super) fn is_syncable_environment_attribute(attribute: &str) -> bool {
@@ -562,6 +557,7 @@ fn decode_map_entry(
     field: &'static str,
     kind: AttributeKind,
     value: &NbtSummaryValue,
+    registry_access: FrozenRegistryAccess<'_>,
 ) -> Result<(EnvironmentModifier, EnvironmentTrackArgument), EnvironmentAttributeProjectionError> {
     if let NbtSummaryValue::Compound(fields) = value {
         if let Some(modifier_value) = field_value(fields, "modifier") {
@@ -572,12 +568,18 @@ fn decode_map_entry(
                 .ok_or_else(|| error(field, "unknown attribute modifier"))?;
             let argument = field_value(fields, "argument")
                 .ok_or_else(|| error(field, "modifier entry is missing argument"))?;
-            return decode_modifier_argument(field, kind, modifier, argument)
+            return decode_modifier_argument(field, kind, modifier, argument, registry_access)
                 .map(|argument| (modifier, argument));
         }
     }
-    decode_modifier_argument(field, kind, EnvironmentModifier::Override, value)
-        .map(|argument| (EnvironmentModifier::Override, argument))
+    decode_modifier_argument(
+        field,
+        kind,
+        EnvironmentModifier::Override,
+        value,
+        registry_access,
+    )
+    .map(|argument| (EnvironmentModifier::Override, argument))
 }
 
 fn decode_modifier_argument(
@@ -585,6 +587,7 @@ fn decode_modifier_argument(
     kind: AttributeKind,
     modifier: EnvironmentModifier,
     value: &NbtSummaryValue,
+    registry_access: FrozenRegistryAccess<'_>,
 ) -> Result<EnvironmentTrackArgument, EnvironmentAttributeProjectionError> {
     use EnvironmentModifier as M;
     match (kind, modifier) {
@@ -631,12 +634,14 @@ fn decode_modifier_argument(
         (AttributeKind::MoonPhase, M::Override) => parse_moon_phase(value)
             .map(EnvironmentTrackArgument::MoonPhase)
             .ok_or_else(|| error(field, "unknown moon phase")),
-        (AttributeKind::Particle, M::Override) => parse_particle(value)
+        (AttributeKind::Particle, M::Override) => parse_particle(value, registry_access)
             .map(EnvironmentTrackArgument::Particle)
             .ok_or_else(|| error(field, "invalid particle options")),
-        (AttributeKind::AmbientParticles, M::Override) => parse_ambient_particles(value)
-            .map(EnvironmentTrackArgument::AmbientParticles)
-            .ok_or_else(|| error(field, "invalid ambient particle list")),
+        (AttributeKind::AmbientParticles, M::Override) => {
+            parse_ambient_particles(value, registry_access)
+                .map(EnvironmentTrackArgument::AmbientParticles)
+                .ok_or_else(|| error(field, "invalid ambient particle list"))
+        }
         (AttributeKind::BackgroundMusic, M::Override) => parse_background_music(value)
             .map(EnvironmentTrackArgument::BackgroundMusic)
             .ok_or_else(|| error(field, "invalid background music")),
@@ -1140,7 +1145,7 @@ fn parse_argb_or_rgb_u32(value: &NbtSummaryValue) -> Option<u32> {
     }
 }
 
-fn parse_rgb_codec_u32(value: &NbtSummaryValue) -> Option<u32> {
+pub(super) fn parse_rgb_codec_u32(value: &NbtSummaryValue) -> Option<u32> {
     let rgb = match value {
         NbtSummaryValue::List(values) if values.len() == 3 => color(
             255,
@@ -1153,7 +1158,7 @@ fn parse_rgb_codec_u32(value: &NbtSummaryValue) -> Option<u32> {
     Some(rgb)
 }
 
-fn parse_argb_codec_u32(value: &NbtSummaryValue) -> Option<u32> {
+pub(super) fn parse_argb_codec_u32(value: &NbtSummaryValue) -> Option<u32> {
     match value {
         NbtSummaryValue::List(values) if values.len() == 4 => Some(color(
             float_color_channel(&values[3])?,
@@ -1286,189 +1291,6 @@ fn parse_moon_phase(value: &NbtSummaryValue) -> Option<ClientMoonPhase> {
         "waxing_gibbous" => ClientMoonPhase::WaxingGibbous,
         _ => return None,
     })
-}
-
-fn parse_particle(value: &NbtSummaryValue) -> Option<ClientParticleOptions> {
-    let NbtSummaryValue::Compound(fields) = value else {
-        return None;
-    };
-    let NbtSummaryValue::String(resource_id) = field_value(fields, "type")? else {
-        return None;
-    };
-    let resource_id = normalize_codec_identifier(resource_id)?;
-    bbb_protocol::particle_types::vanilla_particle_type_id_for_resource_id(&resource_id)?;
-    validate_particle_fields(&resource_id, fields)?;
-    Some(ClientParticleOptions {
-        resource_id,
-        fields: fields.clone(),
-    })
-}
-
-fn validate_particle_fields(resource_id: &str, fields: &[NbtSummaryEntry]) -> Option<()> {
-    let numeric = |name| numeric_f32(field_value(fields, name)?).map(drop);
-    let color = |name| parse_rgb_codec_u32(field_value(fields, name)?).map(drop);
-    let argb = |name| parse_argb_codec_u32(field_value(fields, name)?).map(drop);
-    match resource_id {
-        "minecraft:block"
-        | "minecraft:block_marker"
-        | "minecraft:falling_dust"
-        | "minecraft:dust_pillar"
-        | "minecraft:block_crumble" => {
-            validate_particle_block_state(field_value(fields, "block_state")?)
-        }
-        "minecraft:dragon_breath" => field_value(fields, "power")
-            .map(numeric_f32)
-            .transpose_option()
-            .map(drop),
-        "minecraft:dust" => {
-            color("color")?;
-            validate_particle_scale(field_value(fields, "scale")?)
-        }
-        "minecraft:dust_color_transition" => {
-            color("from_color")?;
-            color("to_color")?;
-            validate_particle_scale(field_value(fields, "scale")?)
-        }
-        "minecraft:effect" | "minecraft:instant_effect" => {
-            if field_value(fields, "color").is_some() {
-                color("color")?;
-            }
-            if field_value(fields, "power").is_some() {
-                numeric("power")?;
-            }
-            Some(())
-        }
-        "minecraft:entity_effect" | "minecraft:tinted_leaves" | "minecraft:flash" => argb("color"),
-        "minecraft:sculk_charge" => numeric("roll"),
-        "minecraft:item" => validate_particle_item(field_value(fields, "item")?),
-        "minecraft:vibration" => validate_particle_vibration(fields),
-        "minecraft:trail" => validate_particle_trail(fields),
-        "minecraft:shriek" => numeric_i32(field_value(fields, "delay")?).map(drop),
-        _ => Some(()),
-    }
-}
-
-pub(crate) fn validate_command_particle_fields(
-    resource_id: &str,
-    fields: &[NbtSummaryEntry],
-) -> bool {
-    validate_particle_fields(resource_id, fields).is_some()
-}
-
-fn validate_particle_scale(value: &NbtSummaryValue) -> Option<()> {
-    numeric_f32(value)
-        .filter(|value| (0.01..=4.0).contains(value))
-        .map(drop)
-}
-
-fn validate_particle_block_state(value: &NbtSummaryValue) -> Option<()> {
-    use std::collections::BTreeMap;
-
-    let (name, properties) = match value {
-        NbtSummaryValue::String(name) => (normalize_codec_identifier(name)?, BTreeMap::new()),
-        NbtSummaryValue::Compound(fields) => {
-            let NbtSummaryValue::String(name) = field_value(fields, "Name")? else {
-                return None;
-            };
-            let mut properties = BTreeMap::new();
-            if let Some(NbtSummaryValue::Compound(entries)) = field_value(fields, "Properties") {
-                for entry in entries {
-                    let NbtSummaryValue::String(value) = &entry.value else {
-                        return None;
-                    };
-                    properties.insert(entry.name.clone(), value.clone());
-                }
-            } else if field_value(fields, "Properties").is_some() {
-                return None;
-            }
-            (normalize_codec_identifier(name)?, properties)
-        }
-        _ => return None,
-    };
-    crate::vanilla_block_state_id(&name, &properties).map(drop)
-}
-
-fn validate_particle_item(value: &NbtSummaryValue) -> Option<()> {
-    let item_exists = |resource_id: &str| {
-        let resource_id = normalize_codec_identifier(resource_id)?;
-        bbb_protocol::item_types::vanilla_item_type_for_resource_id(&resource_id)
-            .filter(|item| item.id != bbb_protocol::item_types::VANILLA_ITEM_AIR_ID)
-            .map(drop)
-    };
-    match value {
-        NbtSummaryValue::String(resource_id) => item_exists(resource_id),
-        NbtSummaryValue::Compound(fields) => {
-            let NbtSummaryValue::String(resource_id) = field_value(fields, "id")? else {
-                return None;
-            };
-            item_exists(resource_id)?;
-            if let Some(count) = field_value(fields, "count") {
-                numeric_i32(count).filter(|count| (1..=99).contains(count))?;
-            }
-            if field_value(fields, "components")
-                .is_some_and(|value| !matches!(value, NbtSummaryValue::Compound(_)))
-            {
-                return None;
-            }
-            Some(())
-        }
-        _ => None,
-    }
-}
-
-fn validate_particle_vibration(fields: &[NbtSummaryEntry]) -> Option<()> {
-    numeric_i32(field_value(fields, "arrival_in_ticks")?)?;
-    let NbtSummaryValue::Compound(destination) = field_value(fields, "destination")? else {
-        return None;
-    };
-    let NbtSummaryValue::String(kind) = field_value(destination, "type")? else {
-        return None;
-    };
-    if normalize_codec_identifier(kind)? != "minecraft:block" {
-        return None;
-    }
-    match field_value(destination, "pos")? {
-        NbtSummaryValue::IntArray(values) if values.len() == 3 => Some(()),
-        NbtSummaryValue::List(values)
-            if values.len() == 3 && values.iter().all(|value| numeric_i32(value).is_some()) =>
-        {
-            Some(())
-        }
-        _ => None,
-    }
-}
-
-fn validate_particle_trail(fields: &[NbtSummaryEntry]) -> Option<()> {
-    let NbtSummaryValue::List(target) = field_value(fields, "target")? else {
-        return None;
-    };
-    if target.len() != 3 || !target.iter().all(|value| numeric_f64(value).is_some()) {
-        return None;
-    }
-    parse_rgb_codec_u32(field_value(fields, "color")?)?;
-    numeric_i32(field_value(fields, "duration")?)
-        .filter(|duration| *duration > 0)
-        .map(drop)
-}
-
-fn parse_ambient_particles(value: &NbtSummaryValue) -> Option<Vec<ClientAmbientParticle>> {
-    let NbtSummaryValue::List(values) = value else {
-        return None;
-    };
-    values
-        .iter()
-        .map(|value| {
-            let NbtSummaryValue::Compound(fields) = value else {
-                return None;
-            };
-            let particle = parse_particle(field_value(fields, "particle")?)?;
-            let probability = parse_float(field_value(fields, "probability")?, FloatRange::Unit)?;
-            Some(ClientAmbientParticle {
-                particle,
-                probability_bits: probability.to_bits(),
-            })
-        })
-        .collect()
 }
 
 fn parse_background_music(value: &NbtSummaryValue) -> Option<ClientBackgroundMusic> {
@@ -1710,7 +1532,10 @@ fn float_range_reason(range: FloatRange) -> &'static str {
     }
 }
 
-fn field_value<'a>(entries: &'a [NbtSummaryEntry], name: &str) -> Option<&'a NbtSummaryValue> {
+pub(super) fn field_value<'a>(
+    entries: &'a [NbtSummaryEntry],
+    name: &str,
+) -> Option<&'a NbtSummaryValue> {
     entries
         .iter()
         .find(|entry| entry.name == name)
@@ -1727,7 +1552,7 @@ fn bool_value(value: &NbtSummaryValue) -> Option<bool> {
     })
 }
 
-fn numeric_i32(value: &NbtSummaryValue) -> Option<i32> {
+pub(super) fn numeric_i32(value: &NbtSummaryValue) -> Option<i32> {
     match value {
         NbtSummaryValue::Byte(value) => Some(i32::from(*value)),
         NbtSummaryValue::Short(value) => Some(i32::from(*value)),
@@ -1747,7 +1572,7 @@ fn numeric_i64(value: &NbtSummaryValue) -> Option<i64> {
     }
 }
 
-fn numeric_f32(value: &NbtSummaryValue) -> Option<f32> {
+pub(super) fn numeric_f32(value: &NbtSummaryValue) -> Option<f32> {
     Some(match value {
         NbtSummaryValue::Byte(value) => f32::from(*value),
         NbtSummaryValue::Short(value) => f32::from(*value),
@@ -1759,7 +1584,7 @@ fn numeric_f32(value: &NbtSummaryValue) -> Option<f32> {
     })
 }
 
-fn numeric_f64(value: &NbtSummaryValue) -> Option<f64> {
+pub(super) fn numeric_f64(value: &NbtSummaryValue) -> Option<f64> {
     Some(match value {
         NbtSummaryValue::Byte(value) => f64::from(*value),
         NbtSummaryValue::Short(value) => f64::from(*value),
@@ -1902,9 +1727,28 @@ fn argb_to_rgba_bytes(value: u32) -> [u8; 4] {
 
 #[cfg(test)]
 mod tests {
-    use crate::{RegistryPacketEntry, WorldStore};
+    use crate::{RegistryPacketEntry, RegistrySet, WorldStore};
 
     use super::*;
+
+    fn decode_attributes(
+        entries: &[NbtSummaryEntry],
+    ) -> Result<ClientEnvironmentAttributes, EnvironmentAttributeProjectionError> {
+        let registries = RegistrySet::vanilla_26_1();
+        decode_client_environment_attributes(entries, registries.frozen_access())
+    }
+
+    fn decode_attribute_map(
+        entries: &[NbtSummaryEntry],
+        positional_only: bool,
+    ) -> Result<ClientEnvironmentAttributeMap, EnvironmentAttributeProjectionError> {
+        let registries = RegistrySet::vanilla_26_1();
+        decode_client_environment_attribute_map(
+            entries,
+            positional_only,
+            registries.frozen_access(),
+        )
+    }
 
     #[test]
     fn decodes_direct_visual_environment_attributes() {
@@ -1948,7 +1792,7 @@ mod tests {
             ),
         ];
 
-        let projection = decode_client_environment_attributes(&entries).unwrap();
+        let projection = decode_attributes(&entries).unwrap();
         assert_eq!(projection.fog_color, Some([0x12, 0x34, 0x56]));
         assert_eq!(projection.fog_start_distance, Some(-4.0));
         assert_eq!(projection.fog_end_distance, Some(192.0));
@@ -1983,7 +1827,7 @@ mod tests {
             ),
         ];
 
-        let projection = decode_client_environment_attributes(&entries).unwrap();
+        let projection = decode_attributes(&entries).unwrap();
         assert_eq!(projection.fog_end_distance, Some(256.0));
         assert_eq!(projection.fog_color, Some([0x10, 0x20, 0x30]));
         assert_eq!(projection.piglins_zombify, Some(false));
@@ -2016,7 +1860,7 @@ mod tests {
             ),
         ];
 
-        let projection = decode_client_environment_attributes(&entries).unwrap();
+        let projection = decode_attributes(&entries).unwrap();
         assert_eq!(
             projection
                 .default_dripstone_particle
@@ -2043,7 +1887,7 @@ mod tests {
                 NbtSummaryValue::String("example:ambient_loop".to_string()),
             )]),
         )];
-        let projection = decode_client_environment_attributes(&entries).unwrap();
+        let projection = decode_attributes(&entries).unwrap();
         assert_eq!(
             projection
                 .ambient_sounds
@@ -2079,7 +1923,7 @@ mod tests {
             NbtSummaryValue::String("full_moon".to_string()),
         )];
         assert_eq!(
-            decode_client_environment_attributes(&invalid_modifier).unwrap_err(),
+            decode_attributes(&invalid_modifier).unwrap_err(),
             EnvironmentAttributeProjectionError {
                 field: "minecraft:visual/moon_phase",
                 reason: "modifier is not allowed for attribute type",
@@ -2091,7 +1935,7 @@ mod tests {
             NbtSummaryValue::Double(1.5_f64.to_bits()),
         )];
         assert_eq!(
-            decode_client_environment_attributes(&invalid).unwrap_err(),
+            decode_attributes(&invalid).unwrap_err(),
             EnvironmentAttributeProjectionError {
                 field: "minecraft:visual/sky_light_factor",
                 reason: "float must be within 0..=1",
@@ -2103,7 +1947,7 @@ mod tests {
             "add",
             NbtSummaryValue::String("#123456".to_string()),
         )];
-        assert!(decode_client_environment_attributes(&rgb_string_for_argb_modifier).is_err());
+        assert!(decode_attributes(&rgb_string_for_argb_modifier).is_err());
     }
 
     #[test]
@@ -2119,7 +1963,7 @@ mod tests {
                 NbtSummaryValue::Float(0.5_f32.to_bits()),
             ),
         ];
-        let projection = decode_client_environment_attributes(&valid).unwrap();
+        let projection = decode_attributes(&valid).unwrap();
         assert_eq!(projection.sky_light_factor, Some(0.5));
 
         let invalid = vec![entry(
@@ -2127,7 +1971,7 @@ mod tests {
             NbtSummaryValue::String("example:unknown".to_string()),
         )];
         assert_eq!(
-            decode_client_environment_attributes(&invalid).unwrap_err(),
+            decode_attributes(&invalid).unwrap_err(),
             EnvironmentAttributeProjectionError {
                 field: "minecraft:gameplay/villager_activity",
                 reason: "unknown activity",
@@ -2142,7 +1986,7 @@ mod tests {
             "multiply",
             NbtSummaryValue::Float(0.85_f32.to_bits()),
         )];
-        let attribute_map = decode_client_environment_attribute_map(&entries, true).unwrap();
+        let attribute_map = decode_attribute_map(&entries, true).unwrap();
         let mut attributes = ClientEnvironmentAttributes {
             water_fog_end_distance: Some(200.0),
             ..ClientEnvironmentAttributes::default()
@@ -2162,7 +2006,7 @@ mod tests {
                 NbtSummaryValue::Float(0.5_f32.to_bits()),
             ),
         ];
-        let attribute_map = decode_client_environment_attribute_map(&entries, true).unwrap();
+        let attribute_map = decode_attribute_map(&entries, true).unwrap();
         assert_eq!(attribute_map.entries.len(), 1);
 
         let non_positional = vec![entry(
@@ -2170,7 +2014,7 @@ mod tests {
             NbtSummaryValue::Float(12.0_f32.to_bits()),
         )];
         assert_eq!(
-            decode_client_environment_attribute_map(&non_positional, true).unwrap_err(),
+            decode_attribute_map(&non_positional, true).unwrap_err(),
             EnvironmentAttributeProjectionError {
                 field: "minecraft:gameplay/sky_light_level",
                 reason: "attribute is not positional",
@@ -2182,7 +2026,7 @@ mod tests {
             NbtSummaryValue::String("example:unknown".to_string()),
         )];
         assert_eq!(
-            decode_client_environment_attribute_map(&malformed_filtered, true).unwrap_err(),
+            decode_attribute_map(&malformed_filtered, true).unwrap_err(),
             EnvironmentAttributeProjectionError {
                 field: "minecraft:gameplay/villager_activity",
                 reason: "unknown activity",
@@ -2203,7 +2047,7 @@ mod tests {
             ),
         ];
         assert_eq!(
-            decode_client_environment_attributes(&duplicate).unwrap_err(),
+            decode_attributes(&duplicate).unwrap_err(),
             EnvironmentAttributeProjectionError {
                 field: "attributes",
                 reason: "duplicate environment attribute",
@@ -2224,7 +2068,7 @@ mod tests {
                 entry("scale", NbtSummaryValue::Float(0.5_f32.to_bits())),
             ]),
         )];
-        let projection = decode_client_environment_attributes(&dust).unwrap();
+        let projection = decode_attributes(&dust).unwrap();
         assert_eq!(
             projection.default_dripstone_particle.unwrap().resource_id,
             "minecraft:dust"
@@ -2240,7 +2084,7 @@ mod tests {
                 entry("color", NbtSummaryValue::Int(0x12_34_56)),
             ]),
         )];
-        assert!(decode_client_environment_attributes(&missing_scale).is_err());
+        assert!(decode_attributes(&missing_scale).is_err());
 
         let air_item = vec![entry(
             "minecraft:visual/default_dripstone_particle",
@@ -2252,7 +2096,7 @@ mod tests {
                 entry("item", NbtSummaryValue::String("minecraft:air".to_string())),
             ]),
         )];
-        assert!(decode_client_environment_attributes(&air_item).is_err());
+        assert!(decode_attributes(&air_item).is_err());
     }
 
     #[test]

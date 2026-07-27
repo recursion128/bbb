@@ -4,6 +4,7 @@ use bbb_pack::{
     SpriteAnimation, SpriteAnimationFrame,
 };
 use bbb_protocol::{packets::ParticlePayload, NbtSummaryEntry, NbtSummaryValue};
+use bbb_world::ClientParticleOptionValue;
 use std::{
     path::{Path, PathBuf},
     sync::atomic::{AtomicU64, Ordering},
@@ -7333,6 +7334,7 @@ fn environment_particle_bridge_preserves_provider_diagnostics_and_rejects_comple
                     name: "type".to_string(),
                     value: NbtSummaryValue::String("cloud".to_string()),
                 }],
+                option: ClientParticleOptionValue::Empty,
             },
             position: [1.0, 64.0, 0.0],
         },
@@ -7385,6 +7387,7 @@ fn environment_particle_spawn(
         particle: ClientParticleOptions {
             resource_id: resource_id.to_string(),
             fields,
+            option: ClientParticleOptionValue::Empty,
         },
         position: [0.0, 64.0, 0.0],
     }

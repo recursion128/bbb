@@ -605,7 +605,7 @@ pub(super) fn decode_timeline_definition(
         .persistent_holder_from_nbt(WORLD_CLOCK_REGISTRY, clock)
         .map_err(|resolution| error(resource_id, "clock", resolution.to_string()))?;
     let period_ticks = optional_positive_int(resource_id, fields, "period_ticks")?;
-    let tracks = decode_tracks(resource_id, fields, period_ticks)?;
+    let tracks = decode_tracks(resource_id, fields, period_ticks, registry_access)?;
     for track in &tracks {
         for (index, keyframe) in track.keyframes.iter().enumerate() {
             validate_timeline_argument_references(&keyframe.argument, registry_access).map_err(
@@ -638,6 +638,7 @@ fn decode_tracks(
     resource_id: &str,
     fields: &[NbtSummaryEntry],
     period_ticks: Option<i32>,
+    registry_access: crate::FrozenRegistryAccess<'_>,
 ) -> Result<Vec<TimelineTrackDefinition>, TimelineProjectionError> {
     let Some(value) = field(fields, "tracks") else {
         return Ok(Vec::new());
@@ -648,7 +649,7 @@ fn decode_tracks(
     let mut decoded = Vec::with_capacity(tracks.len());
     let mut seen = BTreeSet::new();
     for track in tracks {
-        let track = decode_track(resource_id, track, period_ticks)?;
+        let track = decode_track(resource_id, track, period_ticks, registry_access)?;
         if !seen.insert(track.attribute.clone()) {
             return Err(error(
                 resource_id,
@@ -667,6 +668,7 @@ fn decode_track(
     resource_id: &str,
     track: &NbtSummaryEntry,
     period_ticks: Option<i32>,
+    registry_access: crate::FrozenRegistryAccess<'_>,
 ) -> Result<TimelineTrackDefinition, TimelineProjectionError> {
     let attribute = normalize_codec_identifier(&track.name).ok_or_else(|| {
         error(
@@ -761,15 +763,19 @@ fn decode_track(
                 "missing required field",
             )
         })?;
-        let argument =
-            decode_timeline_argument(&attribute, modifier.environment_modifier(), keyframe_value)
-                .map_err(|projection_error| {
-                error(
-                    resource_id,
-                    format!("{keyframe_path}.value"),
-                    projection_error.to_string(),
-                )
-            })?;
+        let argument = decode_timeline_argument(
+            &attribute,
+            modifier.environment_modifier(),
+            keyframe_value,
+            registry_access,
+        )
+        .map_err(|projection_error| {
+            error(
+                resource_id,
+                format!("{keyframe_path}.value"),
+                projection_error.to_string(),
+            )
+        })?;
         keyframes.push(TimelineKeyframe {
             ticks,
             value: keyframe_value.clone(),

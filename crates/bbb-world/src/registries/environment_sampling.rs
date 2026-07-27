@@ -497,7 +497,8 @@ mod tests {
     fn environment_map<const N: usize>(
         entries: [NbtSummaryEntry; N],
     ) -> ClientEnvironmentAttributeMap {
-        decode_client_environment_attribute_map(&entries, true).unwrap()
+        let registries = crate::RegistrySet::vanilla_26_1();
+        decode_client_environment_attribute_map(&entries, true, registries.frozen_access()).unwrap()
     }
 
     fn biome_projection(

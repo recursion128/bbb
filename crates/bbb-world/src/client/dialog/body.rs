@@ -81,6 +81,21 @@ pub(crate) fn validate_command_item_stack_template(
     .map(|_| ())
 }
 
+pub(crate) fn decode_command_item_stack_template_summary(
+    value: &NbtSummaryValue,
+    registry_access: FrozenRegistryAccess<'_>,
+) -> Result<ItemStackSummary, String> {
+    let decoded = decode_item_stack_template(
+        value,
+        DialogDecodeContext::with_registry_access(Some(registry_access), 0),
+    )?;
+    let item = vanilla_item_type_for_resource_id(&decoded.resource_id)
+        .ok_or_else(|| format!("unknown item {}", decoded.resource_id))?;
+    decoded
+        .item_stack_summary_for_protocol_id(item.id)
+        .ok_or_else(|| "item stack template component patch is not fully projectable".to_string())
+}
+
 pub(crate) fn decode_persistent_data_component_patch_entry(
     type_id: i32,
     value: &NbtSummaryValue,
