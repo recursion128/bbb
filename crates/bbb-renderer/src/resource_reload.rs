@@ -216,6 +216,7 @@ macro_rules! take_hud_resource_owners {
         $take_owner!(hud_spectator_teleport_to_team);
         $take_owner!(hud_default_player_faces);
         $take_owner!(hud_dynamic_player_faces);
+        $take_owner!(hud_player_list_ping_sprites);
         $take_owner!(hud_social_interactions_background);
         $take_owner!(hud_social_interactions_search);
         $take_owner!(hud_social_interactions_mute);
@@ -615,6 +616,39 @@ mod tests {
     }
 
     #[test]
+    fn failed_player_list_ping_reload_restores_the_previous_owner() {
+        let Some(mut renderer) = Renderer::new_offscreen(16, 16) else {
+            return;
+        };
+        renderer
+            .upload_hud_player_list_ping_sprite(
+                crate::HudPlayerListPingSprite::Unknown,
+                10,
+                8,
+                &[255, 0, 0, 255].repeat(80),
+            )
+            .expect("old ping sprite");
+
+        renderer
+            .transactional_resource_reload(|renderer| -> Result<()> {
+                renderer.upload_hud_player_list_ping_sprite(
+                    crate::HudPlayerListPingSprite::Unknown,
+                    2,
+                    2,
+                    &[0, 0, 255, 255].repeat(4),
+                )?;
+                Err(anyhow!("injected player-list ping failure"))
+            })
+            .expect_err("player-list ping reload should fail");
+
+        let restored = renderer.hud_player_list_ping_sprites
+            [crate::HudPlayerListPingSprite::Unknown as usize]
+            .as_ref()
+            .expect("restored ping sprite");
+        assert_eq!((restored.width, restored.height), (10, 8));
+    }
+
+    #[test]
     fn failed_hud_font_reload_restores_exact_book_and_wrapped_chat_cache() {
         let Some(mut renderer) = Renderer::new_offscreen(32, 32) else {
             return;
@@ -790,10 +824,14 @@ mod tests {
                 "reloadable HUD owner {owner} is missing from the transaction checkpoint"
             );
         }
-        for owner in ["hud_default_player_faces", "hud_dynamic_player_faces"] {
+        for owner in [
+            "hud_default_player_faces",
+            "hud_dynamic_player_faces",
+            "hud_player_list_ping_sprites",
+        ] {
             assert!(
                 checkpoint_source.contains(&format!("take_owner!({owner})")),
-                "derived spectator face owner {owner} is missing from the transaction checkpoint"
+                "derived HUD owner {owner} is missing from the transaction checkpoint"
             );
         }
     }

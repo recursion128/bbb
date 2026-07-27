@@ -69,8 +69,9 @@ use crate::{
         create_hud_sprite_gpu, HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite,
         HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite, HudChatContext, HudChatLine,
         HudChatMessage, HudDigitGlyph, HudFontGlyphBook, HudFontGlyphMap, HudHotbarMode,
-        HudInventoryScreen, HudItemIcon, HudNineSliceSprite, HudObfuscatedGlyphPool, HudSpriteGpu,
-        HudStatsScrollbarSprite, HudStatsSprite, HUD_HOTBAR_SLOTS,
+        HudInventoryScreen, HudItemIcon, HudNineSliceSprite, HudObfuscatedGlyphPool,
+        HudPlayerListPingSprite, HudSpriteGpu, HudStatsScrollbarSprite, HudStatsSprite,
+        HUD_HOTBAR_SLOTS,
     },
     item_entities::{create_item_entity_pipeline, ItemEntityAtlasGpu, ItemEntityBillboard},
     item_models::{
@@ -578,6 +579,8 @@ pub struct Renderer {
     pub(super) hud_default_player_faces:
         HashMap<EntityDefaultPlayerSkin, crate::hud::HudPlayerFaceGpu>,
     pub(super) hud_dynamic_player_faces: HashMap<u64, crate::hud::HudPlayerFaceGpu>,
+    pub(super) hud_player_list_ping_sprites:
+        [Option<HudSpriteGpu>; HudPlayerListPingSprite::ALL.len()],
     pub(super) hud_social_interactions_background: Option<HudNineSliceSprite>,
     pub(super) hud_social_interactions_search: Option<HudSpriteGpu>,
     pub(super) hud_social_interactions_mute: Option<HudSpriteGpu>,
@@ -2001,6 +2004,7 @@ impl Renderer {
             hud_spectator_teleport_to_team: None,
             hud_default_player_faces: HashMap::new(),
             hud_dynamic_player_faces: HashMap::new(),
+            hud_player_list_ping_sprites: std::array::from_fn(|_| None),
             hud_social_interactions_background: None,
             hud_social_interactions_search: None,
             hud_social_interactions_mute: None,

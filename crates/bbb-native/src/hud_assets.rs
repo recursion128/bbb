@@ -6,8 +6,8 @@ use bbb_protocol::mob_effect_types::VANILLA_MOB_EFFECT_TYPES;
 use bbb_renderer::{
     HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite, HudAdvancementTabSprite,
     HudAdvancementWidgetFrameSprite, HudBossBarColor, HudBossBarOverlay, HudGuiSpriteScaling,
-    HudHeartKind, HudLocatorStyle, HudNineSliceScaling, HudStatsScrollbarSprite, HudStatsSprite,
-    VIGNETTE_TEXTURE_PATH,
+    HudHeartKind, HudLocatorStyle, HudNineSliceScaling, HudPlayerListPingSprite,
+    HudStatsScrollbarSprite, HudStatsSprite, VIGNETTE_TEXTURE_PATH,
 };
 use bbb_world::vanilla_sign_wood_kinds;
 
@@ -128,6 +128,10 @@ pub(crate) fn try_load_hud_textures(
         chat_modified.height,
         &chat_modified.rgba,
     )?;
+    for kind in HudPlayerListPingSprite::ALL {
+        let ping = hud_sprite(&sprites, kind.sprite_path())?;
+        renderer.upload_hud_player_list_ping_sprite(kind, ping.width, ping.height, &ping.rgba)?;
+    }
     let demo_popup_background = hud_sprite(&sprites, "popup/background")?;
     let demo_popup_scaling = hud_nine_slice_scaling(demo_popup_background)?;
     renderer.upload_hud_demo_popup_background(
@@ -1876,6 +1880,15 @@ mod tests {
         let chat_modified = hud_sprite(&sprites, "icon/chat_modified").unwrap();
         assert_eq!(chat_modified.id, "minecraft:icon/chat_modified");
         assert_eq!((chat_modified.width, chat_modified.height), (9, 9));
+
+        for kind in HudPlayerListPingSprite::ALL {
+            let id = format!("minecraft:{}", kind.sprite_path());
+            let image = SpriteImage::new(id.clone(), 10, 8, vec![255; 10 * 8 * 4]).unwrap();
+            sprites.insert(image.id.clone(), image);
+            let ping = hud_sprite(&sprites, kind.sprite_path()).unwrap();
+            assert_eq!(ping.id, id);
+            assert_eq!((ping.width, ping.height), (10, 8));
+        }
 
         for id in [
             "dialog/warning_button",

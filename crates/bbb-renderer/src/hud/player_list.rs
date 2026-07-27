@@ -40,6 +40,50 @@ pub struct HudPlayerListEntry {
     pub score: Option<HudPlayerListScore>,
 }
 
+#[repr(usize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HudPlayerListPingSprite {
+    Unknown,
+    One,
+    Two,
+    Three,
+    Four,
+    Five,
+}
+
+impl HudPlayerListPingSprite {
+    pub const ALL: [Self; 6] = [
+        Self::Unknown,
+        Self::One,
+        Self::Two,
+        Self::Three,
+        Self::Four,
+        Self::Five,
+    ];
+
+    pub const fn sprite_path(self) -> &'static str {
+        match self {
+            Self::Unknown => "icon/ping_unknown",
+            Self::One => "icon/ping_1",
+            Self::Two => "icon/ping_2",
+            Self::Three => "icon/ping_3",
+            Self::Four => "icon/ping_4",
+            Self::Five => "icon/ping_5",
+        }
+    }
+
+    pub const fn from_latency(latency: i32) -> Self {
+        match latency {
+            latency if latency < 0 => Self::Unknown,
+            latency if latency < 150 => Self::Five,
+            latency if latency < 300 => Self::Four,
+            latency if latency < 600 => Self::Three,
+            latency if latency < 1000 => Self::Two,
+            _ => Self::One,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum HudPlayerListScore {
     Integer(Vec<HudStyledTextRun>),
@@ -164,6 +208,25 @@ impl HudPlayerListRuntime {
 pub(super) fn sanitize_hud_player_list(mut list: HudPlayerList) -> HudPlayerList {
     list.entries.truncate(80);
     list
+}
+
+impl Renderer {
+    pub fn upload_hud_player_list_ping_sprite(
+        &mut self,
+        kind: HudPlayerListPingSprite,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> anyhow::Result<()> {
+        let sprite = self.upload_hud_sprite(width, height, rgba)?;
+        self.hud_player_list_ping_sprites[kind as usize] = Some(sprite);
+        Ok(())
+    }
+
+    fn hud_player_list_ping_sprite(&self, latency: i32) -> Option<&HudSpriteGpu> {
+        self.hud_player_list_ping_sprites[HudPlayerListPingSprite::from_latency(latency) as usize]
+            .as_ref()
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -365,18 +428,18 @@ pub(super) fn push_hud_player_list<'a>(
             }
         }
 
-        let bars = hud_player_list_ping_bars(entry.latency);
-        for bar in 0..bars {
-            push_hud_debug_tinted_rect(
+        if let Some(sprite) = renderer.hud_player_list_ping_sprite(entry.latency) {
+            push_hud_draw(
                 vertices,
                 commands,
-                white_pixel,
+                sprite,
                 surface_size,
-                x + slot_width as i32 - 10 + bar * 2,
-                row_y + 7 - bar,
-                1,
-                (bar + 1) as u32,
-                HUD_TINT_WHITE,
+                absolute_hud_rect(
+                    hud_player_list_ping_x(x, slot_width) as f32,
+                    row_y as f32,
+                    10,
+                    8,
+                ),
             );
         }
     }
@@ -678,15 +741,8 @@ fn hud_player_list_face_uv(upside_down: bool) -> HudUvRect {
     }
 }
 
-fn hud_player_list_ping_bars(latency: i32) -> i32 {
-    match latency {
-        latency if latency < 0 => 0,
-        latency if latency < 150 => 5,
-        latency if latency < 300 => 4,
-        latency if latency < 600 => 3,
-        latency if latency < 1000 => 2,
-        _ => 1,
-    }
+fn hud_player_list_ping_x(slot_x: i32, slot_width: u32) -> i32 {
+    slot_x + slot_width as i32 - 11
 }
 
 #[cfg(test)]
@@ -735,8 +791,32 @@ mod tests {
         assert_eq!(hud_player_list_grid(21), (2, 11));
         assert_eq!(hud_player_list_grid(80), (4, 20));
         assert_eq!(
-            [-1, 0, 149, 150, 299, 300, 599, 600, 999, 1000].map(hud_player_list_ping_bars),
-            [0, 5, 5, 4, 4, 3, 3, 2, 2, 1]
+            [-1, 0, 149, 150, 299, 300, 599, 600, 999, 1000]
+                .map(HudPlayerListPingSprite::from_latency),
+            [
+                HudPlayerListPingSprite::Unknown,
+                HudPlayerListPingSprite::Five,
+                HudPlayerListPingSprite::Five,
+                HudPlayerListPingSprite::Four,
+                HudPlayerListPingSprite::Four,
+                HudPlayerListPingSprite::Three,
+                HudPlayerListPingSprite::Three,
+                HudPlayerListPingSprite::Two,
+                HudPlayerListPingSprite::Two,
+                HudPlayerListPingSprite::One,
+            ]
+        );
+        assert_eq!(hud_player_list_ping_x(17, 52), 58);
+        assert_eq!(
+            HudPlayerListPingSprite::ALL.map(HudPlayerListPingSprite::sprite_path),
+            [
+                "icon/ping_unknown",
+                "icon/ping_1",
+                "icon/ping_2",
+                "icon/ping_3",
+                "icon/ping_4",
+                "icon/ping_5",
+            ]
         );
     }
 

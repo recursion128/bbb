@@ -90,7 +90,9 @@ use self::layout::{
     HUD_SINGLE_HEALTH_ROW_HEIGHT, HUD_SUBTITLE_TEXT_SCALE, HUD_TITLE_TEXT_SCALE,
     HUD_VEHICLE_HEARTS_PER_ROW,
 };
-pub use self::player_list::{HudPlayerList, HudPlayerListEntry, HudPlayerListScore};
+pub use self::player_list::{
+    HudPlayerList, HudPlayerListEntry, HudPlayerListPingSprite, HudPlayerListScore,
+};
 pub(crate) use self::player_list::{HudPlayerListHeartSprites, HudPlayerListRuntime};
 pub use self::scoreboard::{HudScoreboardSidebar, HudScoreboardSidebarEntry};
 pub use self::social::{
