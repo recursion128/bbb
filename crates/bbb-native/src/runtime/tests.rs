@@ -1977,7 +1977,7 @@ fn renderer_frame_sky_flash_environment_extracts_after_client_level_tick() {
         .find("let fog_environment = if input.debug_fog_enabled()")
         .expect("pump should extract the fog environment");
     let sky_extract = source
-        .find("let sky_environment = sky_environment_for_world_at_camera(")
+        .find("let sky_environment =")
         .expect("pump should extract the sky environment");
     let cloud_extract = source
         .find("let cloud_environment = cloud_environment_for_world(world);")
@@ -6467,9 +6467,7 @@ fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
         .find("world.advance_conduit_ticks(running_ticks);")
         .expect("pump should advance conduit ticks");
     let camera_pose = source
-        .find(
-            "let camera_pose = camera_pose_from_world_at_partial_tick(world, entity_partial_tick);",
-        )
+        .find("let camera_pose = render_camera_pose_from_world_at_partial_tick(")
         .expect("pump should extract the frame camera pose");
     let conduit_instances = source
         .find("entity_instances.extend(conduit_model_instances_from_world_at_partial_tick(")
@@ -6646,9 +6644,9 @@ fn renderer_frame_outlines_extract_after_input_camera_and_partial_tick() {
         .expect("pump should compute partial tick before outline extraction");
     let camera_pose = source
         .find(
-            "let camera_pose = camera_pose_from_world_at_partial_tick(world, entity_partial_tick);",
+            "let camera_entity_pose = camera_pose_from_world_at_partial_tick(world, entity_partial_tick);",
         )
-        .expect("pump should extract camera pose before outlines");
+        .expect("pump should extract the interaction camera pose before outlines");
     let selection_outline = source
         .find("let selection_outline = (!input.hide_gui())")
         .expect("pump should F1-gate the normal selection outline");
@@ -6681,9 +6679,7 @@ fn renderer_frame_outlines_extract_after_input_camera_and_partial_tick() {
 fn renderer_frame_commits_debug_gizmos_from_one_water_sample_snapshot() {
     let runtime_source = include_str!("../runtime.rs");
     let camera_pose = runtime_source
-        .find(
-            "let camera_pose = camera_pose_from_world_at_partial_tick(world, entity_partial_tick);",
-        )
+        .find("let camera_pose = render_camera_pose_from_world_at_partial_tick(")
         .expect("pump should extract one camera pose");
     let samples = runtime_source
         .find("let debug_water_samples = debug_water_samples(input, world);")
@@ -6780,9 +6776,7 @@ fn renderer_frame_cloud_frame_extracts_after_client_time_camera_and_partial_tick
         .find("let running_ticks = client_animation_ticks.last_running_level_ticks;")
         .expect("pump should complete the client-level tick before cloud frame extraction");
     let camera_pose = source
-        .find(
-            "let camera_pose = camera_pose_from_world_at_partial_tick(world, entity_partial_tick);",
-        )
+        .find("let camera_pose = render_camera_pose_from_world_at_partial_tick(")
         .expect("pump should extract camera pose before cloud frame");
     let cloud_frame = source
         .find("let cloud_frame = cloud_frame_for_world(")
@@ -6813,9 +6807,7 @@ fn renderer_frame_weather_extracts_after_client_time_camera_and_partial_tick() {
         .find("let running_ticks = client_animation_ticks.last_running_level_ticks;")
         .expect("pump should complete the client-level tick before weather extraction");
     let camera_pose = source
-        .find(
-            "let camera_pose = camera_pose_from_world_at_partial_tick(world, entity_partial_tick);",
-        )
+        .find("let camera_pose = render_camera_pose_from_world_at_partial_tick(")
         .expect("pump should extract camera pose before weather");
     let weather = source
         .find("let weather_render_state =")
@@ -6852,9 +6844,7 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
         .find("advance_local_using_item_ticks_with_effects(")
         .expect("pump should advance local use-item ticks before particle tick");
     let particle_camera_pose = source
-        .find(
-            "let particle_camera_pose = camera_pose_from_world_at_partial_tick(world, entity_partial_tick);",
-        )
+        .find("let particle_camera_pose = render_camera_pose;")
         .expect("pump should sample particle sound camera before particle tick");
     let particle_scope_context = source
         .find("let particle_scope_context =")
@@ -6892,9 +6882,7 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
         .find("emit_particle_sound_events(&mut audio_events, particle_sound_events);")
         .expect("pump should emit particle sound events");
     let camera_pose = source
-        .find(
-            "let camera_pose = camera_pose_from_world_at_partial_tick(world, entity_partial_tick);",
-        )
+        .find("let camera_pose = render_camera_pose_from_world_at_partial_tick(")
         .expect("pump should bind frame camera pose before particle light refresh");
     let block_destroy_extract = source
         .find("RendererFrameUpdate::Replace(block_destroy_overlays_from_stages(")
