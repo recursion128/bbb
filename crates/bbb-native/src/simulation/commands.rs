@@ -2,8 +2,9 @@
 
 use std::{
     collections::VecDeque,
+    path::PathBuf,
     sync::{Arc, Condvar, Mutex, PoisonError},
-    time::Instant,
+    time::{Duration, Instant},
 };
 
 use bbb_control::{AudioCounters, ControlRequestSink, ControlWriteRequest, RendererCounters};
@@ -18,6 +19,22 @@ use winit::{
 };
 
 const DEFAULT_COALESCING_THRESHOLD: usize = 256;
+
+#[derive(Debug)]
+pub(crate) enum DebugProfilingLifecycle {
+    Started,
+    Stopped {
+        duration: Duration,
+        ticks: usize,
+        ticks_per_second: f64,
+    },
+    ReportSaved {
+        path: PathBuf,
+    },
+    ReportFailed {
+        error: String,
+    },
+}
 
 /// One platform or control value applied by [`super::SimulationCore`].
 #[derive(Debug)]
@@ -77,6 +94,7 @@ pub(crate) enum SimulationCommand {
         level_generation: u64,
         player_section_compiled_and_visible: bool,
     },
+    DebugProfilingLifecycle(DebugProfilingLifecycle),
     Control(ControlWriteRequest),
     Shutdown,
 }

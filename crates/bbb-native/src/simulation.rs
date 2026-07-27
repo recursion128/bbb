@@ -294,7 +294,7 @@ impl SimulationCore {
 pub(crate) fn update_renderer_from_publication(
     publication: &SimulationPublication,
     context: SimulationRenderContext<'_>,
-) {
+) -> crate::runtime::NativeRenderProfile {
     update_renderer(publication, context)
 }
 

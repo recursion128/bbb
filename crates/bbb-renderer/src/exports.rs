@@ -211,7 +211,7 @@ pub use crate::player_skin::{
     decode_dynamic_player_skin_png, decode_dynamic_player_texture_png, DynamicEntityTextureImage,
     DynamicPlayerSkinImage, DynamicPlayerTextureImage,
 };
-pub use crate::renderer::{Renderer, TerrainChunkMeshOwner};
+pub use crate::renderer::{Renderer, RendererFrameProfile, TerrainChunkMeshOwner};
 pub use crate::screen_blur::{
     VANILLA_DEFAULT_MENU_BACKGROUND_BLURRINESS, VANILLA_MAX_MENU_BACKGROUND_BLURRINESS,
 };

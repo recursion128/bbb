@@ -72,7 +72,7 @@ use bbb_item_model::NativeItemRuntime;
 use camera_fov::CameraFovTickState;
 use code_of_conduct::{default_code_of_conduct_store_path, CodeOfConductAcceptance};
 use code_of_conduct_overlay::CodeOfConductOverlayRenderer;
-use debug_entries::DebugScreenEntryList;
+use debug_entries::{DebugScreenEntryId, DebugScreenEntryList};
 use debug_profiler::{
     DebugProfiler, DebugProfilerEvent, DebugProfilerFrameMetrics, DebugProfilerSectionSample,
 };
@@ -105,7 +105,7 @@ use runtime::{
     LightmapTickState,
 };
 use simulation::{
-    commands::{SimulationCommand, SimulationMailbox},
+    commands::{DebugProfilingLifecycle, SimulationCommand, SimulationMailbox},
     effects::{
         ParticleBatchSink, PlatformEffect, PlatformEffectSink, RenderEffectConsumer,
         ScreenNarrationScheduleInput,
@@ -705,6 +705,8 @@ fn main() -> Result<()> {
         input::DEBUG_PROFILING_RESULTS_RELATIVE_DIR,
         args.server.clone(),
     );
+    let mut last_profiled_simulation_generation = None;
+    let mut latest_simulation_profile_sections = Vec::<runtime::SimulationProfileSection>::new();
     let lightmap_ticks = LightmapTickState::with_brightness_factor_and_hide_lightning_flash(
         args.client_gamma,
         args.hide_lightning_flash,
@@ -942,6 +944,20 @@ fn main() -> Result<()> {
                     ) => {}
                 WindowEvent::RedrawRequested => {
                     let profiler_frame_started_at = Instant::now();
+                    let profiler_enabled = debug_profiler.is_recording()
+                        || render_publication.input.debug_profiler_chart_visible();
+                    if !profiler_enabled {
+                        last_profiled_simulation_generation = None;
+                        latest_simulation_profile_sections.clear();
+                    }
+                    let gpu_timing_enabled = debug_profiler.is_recording()
+                        || render_publication.input.debug_screen_entry_enabled(
+                            DebugScreenEntryId::GpuUtilization,
+                            render_publication
+                                .world
+                                .local_player_has_reduced_debug_info(),
+                        );
+                    renderer.set_gpu_timing_enabled(gpu_timing_enabled);
                     let dynamic_texture_resource_generation = item_runtime
                         .as_ref()
                         .map_or(0, NativeItemRuntime::dynamic_texture_resource_generation);
@@ -965,7 +981,7 @@ fn main() -> Result<()> {
                         window.request_redraw();
                         return;
                     }
-                    update_renderer_from_publication(
+                    let native_render_profile = update_renderer_from_publication(
                         &render_publication,
                         SimulationRenderContext {
                             audio_events: audio_runtime
@@ -1069,7 +1085,10 @@ fn main() -> Result<()> {
                     if let Some((position, size)) = sign_preedit_area.or_else(dialog_preedit_area) {
                         window.set_ime_cursor_area(position, size);
                     }
-                    let profiler_update_duration = profiler_update_started_at.elapsed();
+                    let profiler_update_duration = profiler_update_started_at
+                        .elapsed()
+                        .saturating_sub(native_render_profile.extract)
+                        .saturating_sub(native_render_profile.toasts);
                     code_of_conduct_overlay_renderer.update_renderer(
                         &mut renderer,
                         &render_publication.world,
@@ -1097,6 +1116,7 @@ fn main() -> Result<()> {
                         return;
                     }
                     let profiler_render_duration = profiler_render_started_at.elapsed();
+                    let renderer_frame_profile = renderer.last_frame_profile();
 
                     if wrote_cli_screenshot {
                         screenshot = None;
@@ -1162,12 +1182,14 @@ fn main() -> Result<()> {
                     renderer_counters.non_entity_rebuilt_owners =
                         non_entity_observation.rebuilt_owners;
                     project_dynamic_texture_counters(&mut renderer_counters, item_runtime.as_ref());
-                    let mut profiler_frame_metrics = DebugProfilerFrameMetrics::from_renderer(
-                        std::time::Duration::ZERO,
-                        &renderer_counters,
-                        args.render_distance_chunks,
-                        None,
-                    );
+                    let profiler_frame_metrics = profiler_enabled.then(|| {
+                        DebugProfilerFrameMetrics::from_renderer(
+                            std::time::Duration::ZERO,
+                            &renderer_counters,
+                            args.render_distance_chunks,
+                            renderer.gpu_utilization(),
+                        )
+                    });
                     simulation_mailbox.update_backend_telemetry(
                         renderer_counters,
                         audio_counters,
@@ -1177,9 +1199,12 @@ fn main() -> Result<()> {
                         output_backlog.peak as u64,
                     );
                     let profiler_publish_duration = profiler_publish_started_at.elapsed();
-                    let profiler_frame_duration = profiler_frame_started_at.elapsed();
-                    profiler_frame_metrics.tick_time_nanos =
-                        profiler_frame_duration.as_nanos() as f64;
+                    let profiler_frame_work_duration = profiler_frame_started_at.elapsed();
+                    let profiler_frame_duration = renderer_frame_profile
+                        .frame_interval
+                        .max(profiler_frame_work_duration);
+                    let profiler_frame_limiter_duration =
+                        profiler_frame_duration.saturating_sub(profiler_frame_work_duration);
                     let newest_publication = shared_publication.load();
                     let publication_generation_lag = newest_publication
                         .generation
@@ -1191,9 +1216,9 @@ fn main() -> Result<()> {
                     // localizes render-owner latency and the measured output,
                     // publication, and ordered-effect backlogs
                     // without implying that canonical input or ticks stalled.
-                    if profiler_frame_duration > std::time::Duration::from_secs(1) {
+                    if profiler_frame_work_duration > std::time::Duration::from_secs(1) {
                         tracing::warn!(
-                            frame_millis = profiler_frame_duration.as_millis() as u64,
+                            frame_millis = profiler_frame_work_duration.as_millis() as u64,
                             update_millis = profiler_update_duration.as_millis() as u64,
                             render_millis = profiler_render_duration.as_millis() as u64,
                             publish_millis = profiler_publish_duration.as_millis() as u64,
@@ -1207,48 +1232,130 @@ fn main() -> Result<()> {
                             "slow frame"
                         );
                     }
-                    debug_profiler.record_frame(
-                        Instant::now(),
-                        profiler_frame_duration,
-                        &[
+                    if let Some(mut profiler_frame_metrics) = profiler_frame_metrics {
+                        profiler_frame_metrics.tick_time_nanos =
+                            profiler_frame_duration.as_nanos() as f64;
+                        let simulation_generation_changed = last_profiled_simulation_generation
+                            != Some(render_publication.generation);
+                        if simulation_generation_changed {
+                            latest_simulation_profile_sections = render_publication
+                                .frame
+                                .as_ref()
+                                .map(|frame| frame.profiling_sections().to_vec())
+                                .unwrap_or_default();
+                            last_profiled_simulation_generation =
+                                Some(render_publication.generation);
+                        }
+                        let mut sections =
+                            Vec::with_capacity(latest_simulation_profile_sections.len() + 10);
+                        sections.extend(latest_simulation_profile_sections.iter().map(|section| {
                             DebugProfilerSectionSample {
-                                path: &["update"],
+                                path: section.path,
+                                duration: section.duration,
+                                record_in_report: simulation_generation_changed,
+                            }
+                        }));
+                        sections.extend([
+                            DebugProfilerSectionSample {
+                                path: &["toasts"],
+                                duration: native_render_profile.toasts,
+                                record_in_report: true,
+                            },
+                            DebugProfilerSectionSample {
+                                path: &["frame"],
+                                duration: profiler_frame_duration
+                                    .saturating_sub(native_render_profile.toasts),
+                                record_in_report: true,
+                            },
+                            DebugProfilerSectionSample {
+                                path: &["frame", "update"],
                                 duration: profiler_update_duration,
+                                record_in_report: true,
                             },
                             DebugProfilerSectionSample {
-                                path: &["render"],
-                                duration: profiler_render_duration,
+                                path: &["frame", "extract"],
+                                duration: native_render_profile.extract,
+                                record_in_report: true,
                             },
                             DebugProfilerSectionSample {
-                                path: &["publish"],
+                                path: &["frame", "render"],
+                                duration: renderer_frame_profile.render,
+                                record_in_report: true,
+                            },
+                            DebugProfilerSectionSample {
+                                path: &["frame", "present"],
+                                duration: renderer_frame_profile.present,
+                                record_in_report: true,
+                            },
+                            DebugProfilerSectionSample {
+                                path: &["frame", "swapBuffers"],
+                                duration: renderer_frame_profile.swap_buffers,
+                                record_in_report: true,
+                            },
+                            DebugProfilerSectionSample {
+                                path: &["frame", "fpsUpdate"],
                                 duration: profiler_publish_duration,
+                                record_in_report: true,
                             },
-                        ],
-                        profiler_frame_metrics,
-                    );
+                        ]);
+                        if !renderer_frame_profile.gpu_async.is_zero() {
+                            sections.push(DebugProfilerSectionSample {
+                                path: &["frame", "gpuAsync"],
+                                duration: renderer_frame_profile.gpu_async,
+                                record_in_report: true,
+                            });
+                        }
+                        if !profiler_frame_limiter_duration.is_zero() {
+                            sections.push(DebugProfilerSectionSample {
+                                path: &["frame", "frameLimiter"],
+                                duration: profiler_frame_limiter_duration,
+                                record_in_report: true,
+                            });
+                        }
+                        debug_profiler.record_frame(
+                            Instant::now(),
+                            profiler_frame_duration,
+                            &sections,
+                            profiler_frame_metrics,
+                        );
+                    }
                     for event in debug_profiler.take_events() {
-                        match event {
+                        let lifecycle = match event {
                             DebugProfilerEvent::RecordingStarted => {
                                 tracing::info!("native profiling started");
+                                DebugProfilingLifecycle::Started
                             }
                             DebugProfilerEvent::RecordingStopped {
                                 duration,
                                 ticks,
                                 ticks_per_second,
-                            } => tracing::info!(
-                                duration_seconds = duration.as_secs_f64(),
-                                ticks,
-                                ticks_per_second,
-                                "native profiling stopped"
-                            ),
-                            DebugProfilerEvent::ReportSaved { path } => tracing::info!(
-                                path = %path.display(),
-                                "native profiling report saved"
-                            ),
-                            DebugProfilerEvent::ReportFailed { error } => {
-                                tracing::warn!(error, "native profiling report failed")
+                            } => {
+                                tracing::info!(
+                                    duration_seconds = duration.as_secs_f64(),
+                                    ticks,
+                                    ticks_per_second,
+                                    "native profiling stopped"
+                                );
+                                DebugProfilingLifecycle::Stopped {
+                                    duration,
+                                    ticks,
+                                    ticks_per_second,
+                                }
                             }
-                        }
+                            DebugProfilerEvent::ReportSaved { path } => {
+                                tracing::info!(
+                                    path = %path.display(),
+                                    "native profiling report saved"
+                                );
+                                DebugProfilingLifecycle::ReportSaved { path }
+                            }
+                            DebugProfilerEvent::ReportFailed { error } => {
+                                tracing::warn!(error, "native profiling report failed");
+                                DebugProfilingLifecycle::ReportFailed { error }
+                            }
+                        };
+                        simulation_mailbox
+                            .enqueue(SimulationCommand::DebugProfilingLifecycle(lifecycle));
                     }
                     if let Some(interval) = frame_interval {
                         next_redraw_at = Instant::now() + interval;

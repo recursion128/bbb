@@ -2306,6 +2306,18 @@ fn queue_client_tick_end_commands(
 }
 
 #[derive(Debug, Clone)]
+pub(crate) struct SimulationProfileSection {
+    pub(crate) path: &'static [&'static str],
+    pub(crate) duration: Duration,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct NativeRenderProfile {
+    pub(crate) extract: Duration,
+    pub(crate) toasts: Duration,
+}
+
+#[derive(Debug, Clone)]
 pub(crate) struct SimulationFrameState {
     pump_started_at: Instant,
     pump_net_drained_at: Instant,
@@ -2324,6 +2336,7 @@ pub(crate) struct SimulationFrameState {
     particle_entity_target_contexts: Vec<ParticleEntityTargetContext>,
     particle_sound_camera_position: Option<[f64; 3]>,
     terrain_textures_changed: bool,
+    profiling_sections: Vec<SimulationProfileSection>,
 }
 
 impl SimulationFrameState {
@@ -2333,6 +2346,38 @@ impl SimulationFrameState {
 
     pub(crate) fn advanced_ticks(&self) -> u32 {
         self.advanced_ticks
+    }
+
+    pub(crate) fn profiling_sections(&self) -> &[SimulationProfileSection] {
+        &self.profiling_sections
+    }
+}
+
+fn optional_profile_elapsed(started_at: Option<Instant>) -> Duration {
+    started_at.map_or(Duration::ZERO, |started_at| started_at.elapsed())
+}
+
+fn push_simulation_profile_section(
+    sections: &mut Vec<SimulationProfileSection>,
+    path: &'static [&'static str],
+    started_at: Option<Instant>,
+) {
+    if let Some(started_at) = started_at {
+        sections.push(SimulationProfileSection {
+            path,
+            duration: started_at.elapsed(),
+        });
+    }
+}
+
+fn push_simulation_profile_duration(
+    sections: &mut Vec<SimulationProfileSection>,
+    path: &'static [&'static str],
+    duration: Duration,
+    enabled: bool,
+) {
+    if enabled {
+        sections.push(SimulationProfileSection { path, duration });
     }
 }
 
@@ -2437,7 +2482,9 @@ pub(crate) fn advance_simulation(
         net_counters,
         net_commands,
     );
-    input_runtime.apply_commands(
+    let input_profiling_enabled =
+        input.debug_profiler_chart_visible() || input.debug_profiling_recording();
+    let input_profile = input_runtime.apply_commands(
         commands,
         &mut crate::simulation::input_commands::SimulationInputContext {
             input,
@@ -2456,6 +2503,7 @@ pub(crate) fn advance_simulation(
             audio_events: &mut audio_events,
             platform: platform_effects,
         },
+        input_profiling_enabled,
     );
     if network_terminated {
         input_runtime.request_network_terminal_shutdown(net_commands, platform_effects);
@@ -2482,6 +2530,10 @@ pub(crate) fn advance_simulation(
         input_runtime.surface_size(),
     );
     let pump_control_synced_at = Instant::now();
+    let profiling_enabled =
+        input.debug_profiler_chart_visible() || input.debug_profiling_recording();
+    let mut profiling_sections = Vec::new();
+    let level_services_started_at = profiling_enabled.then(Instant::now);
     let player_section_ready = input_runtime.player_section_ready(world.client_level_generation());
     level_load_runtime.tick(now, world, net_commands, player_section_ready);
     hud_debug_network_sampler.advance_tick(
@@ -2492,8 +2544,16 @@ pub(crate) fn advance_simulation(
         wall_clock_millis_i64(),
     );
     hud_debug_tps_sampler.sync_subscriptions_and_tick(input, world, net_counters, net_commands);
+    let mut level_profile_duration = optional_profile_elapsed(level_services_started_at);
+    let entities_profile_started_at = profiling_enabled.then(Instant::now);
     let entity_tick_started_at = Instant::now();
     let advanced_ticks = advance_native_client_ticks(input, world, client_animation_ticks, now);
+    push_simulation_profile_section(
+        &mut profiling_sections,
+        &["tick", "entities"],
+        entities_profile_started_at,
+    );
+    let gui_profile_started_at = profiling_enabled.then(Instant::now);
     sync_recipe_book_presentation(
         input,
         world,
@@ -2523,6 +2583,12 @@ pub(crate) fn advance_simulation(
         }
     }
     world.advance_dialog_waiting_ticks(advanced_ticks);
+    push_simulation_profile_section(
+        &mut profiling_sections,
+        &["tick", "gui"],
+        gui_profile_started_at,
+    );
+    let level_environment_started_at = profiling_enabled.then(Instant::now);
     lightmap_ticks.advance_for_world(advanced_ticks, world);
     lightmap_ticks.advance_rain_fog_for_world(advanced_ticks, world, terrain_textures);
     let water_vision = lightmap_ticks.water_vision(world);
@@ -2560,6 +2626,15 @@ pub(crate) fn advance_simulation(
         sky_environment_for_world_at_camera(world, render_camera_pose, hide_lightning_flash);
     let cloud_environment = cloud_environment_for_world(world);
     advance_block_destruction_render_ticks(world, running_ticks);
+    level_profile_duration = level_profile_duration
+        .saturating_add(optional_profile_elapsed(level_environment_started_at));
+    push_simulation_profile_duration(
+        &mut profiling_sections,
+        &["tick", "level"],
+        level_profile_duration,
+        profiling_enabled,
+    );
+    let block_entities_profile_started_at = profiling_enabled.then(Instant::now);
     // Vanilla `ChestBlockEntity.lidAnimateTick` is a client block-entity ticker
     // (`ClientLevel.tickBlockEntities`), gated by the tick-rate manager like the
     // rest of the level tick, so the lids advance on running ticks.
@@ -2594,9 +2669,21 @@ pub(crate) fn advance_simulation(
     // advances only with running level ticks, before scene extraction samples
     // the previous/current progress pair at the frame partial tick.
     world.advance_moving_piston_ticks(running_ticks);
+    push_simulation_profile_section(
+        &mut profiling_sections,
+        &["tick", "blockEntities"],
+        block_entities_profile_started_at,
+    );
+    let screen_profile_started_at = profiling_enabled.then(Instant::now);
     world.advance_item_cooldowns(advanced_ticks);
     input.advance_death_screen_ticks(advanced_ticks);
     advance_creative_inventory_commands(input, world, net_counters, net_commands, advanced_ticks);
+    push_simulation_profile_section(
+        &mut profiling_sections,
+        &["tick", "screen"],
+        screen_profile_started_at,
+    );
+    let keybindings_profile_started_at = profiling_enabled.then(Instant::now);
     advance_player_input_for_client_ticks(
         input,
         world,
@@ -2605,6 +2692,12 @@ pub(crate) fn advance_simulation(
         now,
         advanced_ticks,
     );
+    push_simulation_profile_section(
+        &mut profiling_sections,
+        &["tick", "Keybindings"],
+        keybindings_profile_started_at,
+    );
+    let animate_tick_profile_started_at = profiling_enabled.then(Instant::now);
     if let Some(audio_events) = audio_events.as_deref_mut() {
         // `LocalPlayer.tick` advances biome ambient handlers after player
         // movement. The local handler follows running player ticks.
@@ -2625,6 +2718,12 @@ pub(crate) fn advance_simulation(
         particle_batches,
         &mut audio_events,
     );
+    push_simulation_profile_section(
+        &mut profiling_sections,
+        &["tick", "animateTick"],
+        animate_tick_profile_started_at,
+    );
+    let music_profile_started_at = profiling_enabled.then(Instant::now);
     if let Some(audio_events) = audio_events.as_deref_mut() {
         // `Minecraft.tick` advances `MusicManager` on every raw client tick
         // after the running-level animate loop.
@@ -2635,6 +2734,8 @@ pub(crate) fn advance_simulation(
             audio_events,
         );
     }
+    let mut sound_profile_duration = optional_profile_elapsed(music_profile_started_at);
+    let game_renderer_profile_started_at = profiling_enabled.then(Instant::now);
     // Vanilla Minecraft.tick handles keybinds before GameRenderer.tick, whose
     // Camera.tickFov eases the current camera's target once per client tick.
     camera_fov_ticks.advance_for_world(
@@ -2643,6 +2744,12 @@ pub(crate) fn advance_simulation(
         input.camera_type().is_first_person(),
     );
     camera_spinning_ticks.advance_for_world(advanced_ticks, world);
+    push_simulation_profile_section(
+        &mut profiling_sections,
+        &["tick", "gameRenderer"],
+        game_renderer_profile_started_at,
+    );
+    let game_mode_profile_started_at = profiling_enabled.then(Instant::now);
     let audio_events_for_destroy = audio_events
         .as_mut()
         .map(|audio_events| &mut **audio_events as &mut dyn AudioEventSink);
@@ -2675,6 +2782,12 @@ pub(crate) fn advance_simulation(
         level_event_sound_random,
         &mut audio_events,
     );
+    push_simulation_profile_section(
+        &mut profiling_sections,
+        &["tick", "gameMode"],
+        game_mode_profile_started_at,
+    );
+    let particles_profile_started_at = profiling_enabled.then(Instant::now);
     first_person_hand_presentation.advance_for_ticks(
         world,
         item_runtime.as_ref(),
@@ -2712,12 +2825,26 @@ pub(crate) fn advance_simulation(
         &mut audio_events,
     );
     submit_ominous_item_spawner_particles(particle_batches, world, &mut particle_events);
+    push_simulation_profile_section(
+        &mut profiling_sections,
+        &["tick", "particles"],
+        particles_profile_started_at,
+    );
+    let sound_profile_started_at = profiling_enabled.then(Instant::now);
     if let Some(audio_events) = audio_events.as_deref_mut() {
         audio_events.tick_entity_sound_positions(
             audio_scene_command_from_world(world),
             &world.tickable_entity_sounds(),
         );
     }
+    sound_profile_duration =
+        sound_profile_duration.saturating_add(optional_profile_elapsed(sound_profile_started_at));
+    push_simulation_profile_duration(
+        &mut profiling_sections,
+        &["sound"],
+        sound_profile_duration,
+        profiling_enabled,
+    );
     // Vanilla sends the marker after logical particle spawning. Backend
     // particle execution consumes the owned batches on the render side and
     // must not delay the connection command.
@@ -2733,6 +2860,37 @@ pub(crate) fn advance_simulation(
         });
     }
     let pump_client_ticked_at = Instant::now();
+    if profiling_enabled {
+        if !input_profile.keyboard.is_zero() {
+            profiling_sections.push(SimulationProfileSection {
+                path: &["tick", "keyboard"],
+                duration: input_profile.keyboard,
+            });
+        }
+        if !input_profile.mouse.is_zero() {
+            profiling_sections.push(SimulationProfileSection {
+                path: &["mouse"],
+                duration: input_profile.mouse,
+            });
+        }
+        profiling_sections.extend([
+            SimulationProfileSection {
+                path: &["scheduledPacketProcessing"],
+                duration: pump_net_drained_at - pump_started_at,
+            },
+            SimulationProfileSection {
+                path: &["scheduledExecutables"],
+                duration: (pump_control_synced_at - pump_net_drained_at)
+                    .saturating_sub(input_profile.keyboard)
+                    .saturating_sub(input_profile.mouse),
+            },
+            SimulationProfileSection {
+                path: &["tick"],
+                duration: (pump_client_ticked_at - pump_control_synced_at)
+                    .saturating_sub(sound_profile_duration),
+            },
+        ]);
+    }
     SimulationFrameState {
         pump_started_at,
         pump_net_drained_at,
@@ -2751,13 +2909,15 @@ pub(crate) fn advance_simulation(
         particle_entity_target_contexts,
         particle_sound_camera_position,
         terrain_textures_changed,
+        profiling_sections,
     }
 }
 
 pub(crate) fn update_renderer_from_publication(
     publication: &SimulationPublication,
     context: SimulationRenderContext<'_>,
-) {
+) -> NativeRenderProfile {
+    let profile_started_at = Instant::now();
     let SimulationRenderContext {
         audio_events,
         renderer,
@@ -2803,6 +2963,8 @@ pub(crate) fn update_renderer_from_publication(
     let particle_sound_camera_position = state.particle_sound_camera_position;
     let terrain_textures_changed = state.terrain_textures_changed;
     let input = publication.input.as_state();
+    let profiling_enabled =
+        input.debug_profiler_chart_visible() || input.debug_profiling_recording();
     let world = publication.world.as_ref();
     let stable_world_unchanged =
         non_entity_render_extraction.begin_stable_world_frame(&publication.world);
@@ -3128,6 +3290,7 @@ pub(crate) fn update_renderer_from_publication(
     hud_render_runtime.stats_screen_narration = hud_stats_screen
         .as_ref()
         .map(|screen| stats_screen_narration_frame(input, screen, item_runtime, surface_size));
+    let toasts_started_at = profiling_enabled.then(Instant::now);
     let (hud_system_toast, hud_system_toast_sound) =
         hud_system_toast(hud_render_runtime, world, item_runtime, now);
     if let (Some(audio_events), Some(sound)) =
@@ -3155,6 +3318,7 @@ pub(crate) fn update_renderer_from_publication(
         item_model_keybind_context,
         entity_partial_tick,
     );
+    let toasts_duration = optional_profile_elapsed(toasts_started_at);
     let hud_sign_editor_screen = if exclusive_game_screen_present
         || hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
@@ -3389,6 +3553,7 @@ pub(crate) fn update_renderer_from_publication(
     // a later SetCamera refresh may select again even in third person.
     let current_post_effect_id = input.camera_post_effect_id();
     let renderer_counters = renderer.counters();
+    let gpu_utilization = renderer.gpu_utilization();
     let hud_audio_counters = audio_events
         .as_deref()
         .map(AudioEventSink::counters)
@@ -3403,6 +3568,7 @@ pub(crate) fn update_renderer_from_publication(
             item_runtime,
             terrain_textures,
             &renderer_counters,
+            gpu_utilization,
             render_distance_chunks,
             surface_size,
             hud_debug_fps_sampler,
@@ -3985,6 +4151,10 @@ pub(crate) fn update_renderer_from_publication(
                 (pump_elapsed - (pump_scene_extracted_at - pump_started_at)).as_millis() as u64,
             "slow pump sections"
         );
+    }
+    NativeRenderProfile {
+        extract: profile_started_at.elapsed().saturating_sub(toasts_duration),
+        toasts: toasts_duration,
     }
 }
 
@@ -7478,6 +7648,7 @@ fn hud_debug_overlay(
         None,
         &terrain_textures,
         &bbb_renderer::RendererCounters::default(),
+        None,
         VANILLA_MAX_RENDER_DISTANCE_CHUNKS,
         surface_size,
         fps_sampler,
@@ -7500,6 +7671,7 @@ fn hud_debug_overlay_at_partial_tick(
     item_runtime: Option<&NativeItemRuntime>,
     terrain_textures: &TerrainTextureState,
     renderer_counters: &bbb_renderer::RendererCounters,
+    gpu_utilization: Option<f64>,
     render_distance_chunks: u32,
     surface_size: winit::dpi::PhysicalSize<u32>,
     fps_sampler: &HudDebugFpsSampler,
@@ -7520,6 +7692,7 @@ fn hud_debug_overlay_at_partial_tick(
         item_runtime,
         terrain_textures,
         renderer_counters,
+        gpu_utilization,
         render_distance_chunks,
         surface_size,
         fps_sampler,
@@ -7542,6 +7715,7 @@ fn hud_debug_overlay_at_partial_tick_with_camera_poses(
     item_runtime: Option<&NativeItemRuntime>,
     terrain_textures: &TerrainTextureState,
     renderer_counters: &bbb_renderer::RendererCounters,
+    gpu_utilization: Option<f64>,
     render_distance_chunks: u32,
     surface_size: winit::dpi::PhysicalSize<u32>,
     fps_sampler: &HudDebugFpsSampler,
@@ -7753,7 +7927,7 @@ fn hud_debug_overlay_at_partial_tick_with_camera_poses(
         if !right_lines.is_empty() {
             right_lines.push("".to_string());
         }
-        right_lines.push(hud_debug_gpu_utilization_line(0.0));
+        right_lines.push(hud_debug_gpu_utilization_line(gpu_utilization));
     }
     if entry_enabled(DebugScreenEntryId::SimplePerformanceImpactors) {
         if !right_lines.is_empty() {
@@ -9211,13 +9385,11 @@ fn hud_debug_system_lines(surface_size: winit::dpi::PhysicalSize<u32>) -> Vec<St
     ]
 }
 
-fn hud_debug_gpu_utilization_line(gpu_utilization: f64) -> String {
-    let utilization = if gpu_utilization.is_finite() {
-        gpu_utilization.clamp(0.0, 100.0).round()
-    } else {
-        0.0
+fn hud_debug_gpu_utilization_line(gpu_utilization: Option<f64>) -> String {
+    let Some(utilization) = gpu_utilization.filter(|value| value.is_finite()) else {
+        return "GPU: N/A".to_string();
     };
-    format!("GPU: {utilization:.0}%")
+    format!("GPU: {:.0}%", utilization.clamp(0.0, 100.0))
 }
 
 fn hud_debug_simple_performance_impactor_lines() -> Vec<String> {

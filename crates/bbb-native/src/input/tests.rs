@@ -15259,7 +15259,7 @@ fn debug_block_state_description_matches_vanilla_recreate_property_format() {
 }
 
 #[test]
-fn f3_l_toggles_profiling_feedback_without_toggling_overlay() {
+fn f3_l_toggles_profiling_and_lifecycle_feedback_uses_real_results() {
     let mut input = ClientInputState::new(true);
     let mut world = WorldStore::new();
 
@@ -15290,8 +15290,16 @@ fn f3_l_toggles_profiling_feedback_without_toggling_overlay() {
         vec![DebugProfilingToggleRequest::Stop]
     );
     assert!(input.take_debug_profiling_toggle_requests().is_empty());
+    assert!(world.client_chat().messages.is_empty());
+
+    input.apply_debug_profiling_started(&mut world);
+    input.apply_debug_profiling_stopped(&mut world, Duration::from_millis(2_500), 50, 20.0);
+    input.apply_debug_profiling_report_saved(
+        &mut world,
+        std::path::Path::new("debug/profiling/result.zip"),
+    );
     let messages = &world.client_chat().messages;
-    assert_eq!(messages.len(), 2);
+    assert_eq!(messages.len(), 3);
     assert_eq!(messages[0].kind, ChatMessageKind::ClientSystem);
     assert_eq!(
         messages[0].content,
@@ -15300,29 +15308,34 @@ fn f3_l_toggles_profiling_feedback_without_toggling_overlay() {
     assert_eq!(messages[1].kind, ChatMessageKind::ClientSystem);
     assert_eq!(
         messages[1].content,
-        "[Debug]: Profiling ended. Results folder debug/profiling"
+        "[Debug]: Stopped tick profiling after 2.50 seconds and 50 ticks (20.00 ticks per second)"
     );
-    assert_eq!(messages[1].styled_content.len(), 4);
+    assert_eq!(messages[2].kind, ChatMessageKind::ClientSystem);
     assert_eq!(
-        messages[1].styled_content[2].text,
-        "Profiling ended. Results folder "
+        messages[2].content,
+        "[Debug]: Profiling ended. Saved results to debug/profiling/result.zip"
+    );
+    assert_eq!(messages[2].styled_content.len(), 4);
+    assert_eq!(
+        messages[2].styled_content[2].text,
+        "Profiling ended. Saved results to "
     );
     assert_eq!(
-        messages[1].styled_content[2].style,
+        messages[2].styled_content[2].style,
         ComponentStyle::default()
     );
     assert_eq!(
-        messages[1].styled_content[3].text,
-        DEBUG_PROFILING_RESULTS_RELATIVE_DIR
+        messages[2].styled_content[3].text,
+        "debug/profiling/result.zip"
     );
-    assert_eq!(messages[1].styled_content[3].style.underlined, Some(true));
+    assert_eq!(messages[2].styled_content[3].style.underlined, Some(true));
     assert_eq!(
-        messages[1].styled_content[3].style.click_event,
+        messages[2].styled_content[3].style.click_event,
         Some(ComponentClickEvent::OpenFile {
-            path: DEBUG_PROFILING_RESULTS_RELATIVE_DIR.to_string(),
+            path: "debug/profiling/result.zip".to_string(),
         })
     );
-    assert_eq!(world.counters().chat_messages_tracked, 2);
+    assert_eq!(world.counters().chat_messages_tracked, 3);
     assert!(input.handle_debug_overlay_key(
         PhysicalKey::Code(KeyCode::F3),
         ElementState::Released,
@@ -15330,6 +15343,19 @@ fn f3_l_toggles_profiling_feedback_without_toggling_overlay() {
         None
     ));
     assert!(!input.debug_overlay_visible());
+}
+
+#[test]
+fn profiling_report_failure_does_not_cancel_a_newer_recording() {
+    let mut input = ClientInputState::new(true);
+    let mut world = WorldStore::new();
+    input.apply_debug_profiling_started(&mut world);
+    input.apply_debug_profiling_report_failed(&mut world, "writer unavailable");
+    assert!(input.debug_profiling_recording());
+    assert_eq!(
+        world.client_chat().messages[1].content,
+        "[Debug]: Profiling failed: writer unavailable"
+    );
 }
 
 #[test]

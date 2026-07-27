@@ -11,6 +11,7 @@ mod exports;
 mod frame_buffers;
 mod generated_item;
 mod gpu;
+mod gpu_timing;
 mod hud;
 mod item_entities;
 mod item_models;

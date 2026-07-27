@@ -3127,7 +3127,8 @@ fn hud_debug_overlay_projects_performance_profile_gpu_utilization_when_overlay_v
     .expect("performance profile overlay should include enabled entries");
 
     assert!(overlay.left_lines.contains(&"144 fps T: inf".to_string()));
-    assert!(overlay.right_lines.contains(&"GPU: 0%".to_string()));
+    assert!(overlay.right_lines.contains(&"GPU: N/A".to_string()));
+    assert_eq!(hud_debug_gpu_utilization_line(Some(42.6)), "GPU: 43%");
 }
 
 #[test]
@@ -3742,6 +3743,7 @@ fn hud_debug_overlay_projects_custom_chunk_render_stats_under_reduced_debug_info
         None,
         &TerrainTextureState::default(),
         &renderer_counters,
+        None,
         12,
         winit::dpi::PhysicalSize::new(320, 240),
         &HudDebugFpsSampler::default(),
@@ -3854,6 +3856,7 @@ fn hud_debug_overlay_projects_custom_particle_render_stats() {
         None,
         &TerrainTextureState::default(),
         &renderer_counters,
+        None,
         VANILLA_MAX_RENDER_DISTANCE_CHUNKS,
         winit::dpi::PhysicalSize::new(320, 240),
         &HudDebugFpsSampler::default(),
@@ -3947,6 +3950,7 @@ fn hud_debug_overlay_projects_custom_sound_cache_under_reduced_debug_info() {
         None,
         &TerrainTextureState::default(),
         &bbb_renderer::RendererCounters::default(),
+        None,
         VANILLA_MAX_RENDER_DISTANCE_CHUNKS,
         winit::dpi::PhysicalSize::new(320, 240),
         &HudDebugFpsSampler::default(),
@@ -3997,6 +4001,7 @@ fn hud_debug_overlay_projects_custom_sound_mood() {
         None,
         &TerrainTextureState::default(),
         &bbb_renderer::RendererCounters::default(),
+        None,
         VANILLA_MAX_RENDER_DISTANCE_CHUNKS,
         winit::dpi::PhysicalSize::new(320, 240),
         &HudDebugFpsSampler::default(),
@@ -4937,6 +4942,50 @@ fn hud_debug_overlay_merges_native_profiler_chart() {
 }
 
 #[test]
+fn native_profiler_sections_cover_applicable_vanilla_run_tick_and_render_frame_paths() {
+    let runtime = include_str!("../runtime.rs");
+    for path in [
+        "&[\"scheduledPacketProcessing\"]",
+        "&[\"scheduledExecutables\"]",
+        "&[\"tick\"]",
+        "&[\"sound\"]",
+        "&[\"mouse\"]",
+        "&[\"tick\", \"gui\"]",
+        "&[\"tick\", \"gameMode\"]",
+        "&[\"tick\", \"screen\"]",
+        "&[\"tick\", \"Keybindings\"]",
+        "&[\"tick\", \"gameRenderer\"]",
+        "&[\"tick\", \"entities\"]",
+        "&[\"tick\", \"blockEntities\"]",
+        "&[\"tick\", \"level\"]",
+        "&[\"tick\", \"animateTick\"]",
+        "&[\"tick\", \"particles\"]",
+        "&[\"tick\", \"keyboard\"]",
+    ] {
+        assert!(
+            runtime.contains(path),
+            "missing simulation profiler path {path}"
+        );
+    }
+
+    let main = include_str!("../main.rs");
+    for path in [
+        "&[\"toasts\"]",
+        "&[\"frame\"]",
+        "&[\"frame\", \"update\"]",
+        "&[\"frame\", \"extract\"]",
+        "&[\"frame\", \"gpuAsync\"]",
+        "&[\"frame\", \"render\"]",
+        "&[\"frame\", \"present\"]",
+        "&[\"frame\", \"swapBuffers\"]",
+        "&[\"frame\", \"frameLimiter\"]",
+        "&[\"frame\", \"fpsUpdate\"]",
+    ] {
+        assert!(main.contains(path), "missing render profiler path {path}");
+    }
+}
+
+#[test]
 fn hud_debug_overlay_projects_game_mode_switcher_state() {
     let mut world = world_with_dimension_height(0, "minecraft:overworld", 384);
     let player_id = world
@@ -5031,6 +5080,7 @@ fn hud_debug_overlay_projects_game_mode_switcher_item_icons() {
         Some(&item_runtime),
         &terrain_textures,
         &bbb_renderer::RendererCounters::default(),
+        None,
         VANILLA_MAX_RENDER_DISTANCE_CHUNKS,
         winit::dpi::PhysicalSize::new(320, 240),
         &HudDebugFpsSampler::default(),

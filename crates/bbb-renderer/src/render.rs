@@ -122,14 +122,34 @@ struct FrameDrawStats {
 
 impl Renderer {
     pub fn render(&mut self, screenshot: Option<&Path>) -> Result<()> {
+        let render_started_at = std::time::Instant::now();
+        let frame_interval =
+            render_started_at.saturating_duration_since(self.last_frame_started_at);
+        self.last_frame_started_at = render_started_at;
+        let gpu_async = self
+            .gpu_timing
+            .as_mut()
+            .map_or(std::time::Duration::ZERO, |timing| {
+                timing.poll(&self.device)
+            });
+        self.last_frame_profile = crate::renderer::RendererFrameProfile {
+            frame_interval,
+            gpu_async,
+            ..crate::renderer::RendererFrameProfile::default()
+        };
         let Some(frame) = self.surface.acquire_frame(&self.device, &self.config)? else {
             return Ok(());
         };
+        let render_encoding_started_at = std::time::Instant::now();
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("bbb-native-clear"),
             });
+        let gpu_frame = self
+            .gpu_timing
+            .as_mut()
+            .and_then(|timing| timing.begin_frame(&mut encoder));
         let mut stats = FrameDrawStats::default();
         write_lightmap_uniform(
             &self.queue,
@@ -162,7 +182,19 @@ impl Renderer {
         self.win_screen_portal_pass(&frame, &mut encoder, &mut stats);
         self.hud_passes(&frame, &mut encoder, &mut stats);
         self.win_screen_vignette_pass(&frame, &mut encoder, &mut stats);
-        self.finish_frame(encoder, frame, screenshot, stats)
+        if let (Some(timing), Some(token)) = (self.gpu_timing.as_mut(), gpu_frame) {
+            timing.finish_encoding(&mut encoder, token);
+        }
+        let render_duration = render_encoding_started_at.elapsed();
+        self.finish_frame(
+            encoder,
+            frame,
+            screenshot,
+            stats,
+            gpu_frame,
+            frame_interval,
+            render_duration,
+        )
     }
 
     fn lightmap_pass(&self, encoder: &mut wgpu::CommandEncoder, stats: &mut FrameDrawStats) {
@@ -3279,17 +3311,35 @@ impl Renderer {
         frame: FrameTarget,
         screenshot: Option<&Path>,
         stats: FrameDrawStats,
+        gpu_frame: Option<crate::gpu_timing::GpuFrameToken>,
+        frame_interval: std::time::Duration,
+        render_duration: std::time::Duration,
     ) -> Result<()> {
         let readback = match screenshot {
-            Some(path) => Some((
-                self.prepare_screenshot_copy(&mut encoder, frame.texture())?,
-                path,
-            )),
+            Some(path) => match self.prepare_screenshot_copy(&mut encoder, frame.texture()) {
+                Ok(readback) => Some((readback, path)),
+                Err(error) => {
+                    if let (Some(timing), Some(token)) = (self.gpu_timing.as_mut(), gpu_frame) {
+                        timing.cancel(token);
+                    }
+                    return Err(error);
+                }
+            },
             None => None,
         };
 
+        let present_started_at = std::time::Instant::now();
         self.queue.submit(Some(encoder.finish()));
+        let present_duration = present_started_at.elapsed();
+        let swap_buffers_started_at = std::time::Instant::now();
         frame.present();
+        let swap_buffers_duration = swap_buffers_started_at.elapsed();
+        self.last_frame_profile.render = render_duration;
+        self.last_frame_profile.present = present_duration;
+        self.last_frame_profile.swap_buffers = swap_buffers_duration;
+        if let (Some(timing), Some(token)) = (self.gpu_timing.as_mut(), gpu_frame) {
+            timing.after_submit(token, frame_interval);
+        }
 
         if let Some((readback, path)) = readback {
             self.finish_screenshot(readback, path)?;

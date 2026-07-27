@@ -446,6 +446,7 @@ mod tests {
         DebugProfilerSectionSample {
             path,
             duration: Duration::from_nanos(nanos),
+            record_in_report: true,
         }
     }
 

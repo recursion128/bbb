@@ -1,6 +1,6 @@
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap},
-    time::Instant,
+    time::{Duration, Instant},
 };
 
 use anyhow::{anyhow, Result};
@@ -64,6 +64,7 @@ use crate::{
         create_terrain_pipeline, create_terrain_translucent_pipeline, write_terrain_atlas_gpu,
         write_terrain_atlas_mips_gpu, DepthTarget, TerrainAtlasGpu,
     },
+    gpu_timing::{optional_gpu_timing_features, GpuFrameTiming},
     hud::{
         create_hud_bind_group_layout, create_hud_item_glint_pipeline, create_hud_pipeline,
         create_hud_sprite_gpu, HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite,
@@ -230,6 +231,15 @@ impl FrameTarget {
     }
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct RendererFrameProfile {
+    pub frame_interval: Duration,
+    pub gpu_async: Duration,
+    pub render: Duration,
+    pub present: Duration,
+    pub swap_buffers: Duration,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TerrainChunkMeshOwner {
     pub level_generation: u64,
@@ -252,6 +262,9 @@ pub struct Renderer {
     pub(super) clear: ClearColor,
     pub(super) counters: RendererCounters,
     pub(super) started_at: Instant,
+    pub(super) gpu_timing: Option<GpuFrameTiming>,
+    pub(super) last_frame_profile: RendererFrameProfile,
+    pub(super) last_frame_started_at: Instant,
     pub(super) shader_game_time_ticks: f64,
     pub(super) current_post_effect_id: Option<String>,
     pub(super) camera_post_effect_active: bool,
@@ -1080,11 +1093,12 @@ impl Renderer {
             .await
             .ok_or_else(|| anyhow!("no suitable GPU adapter"))?;
 
+        let required_features = optional_gpu_timing_features(adapter.features());
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
                     label: Some("bbb-native-device"),
-                    required_features: wgpu::Features::empty(),
+                    required_features,
                     required_limits: wgpu::Limits::downlevel_defaults()
                         .using_resolution(adapter.limits()),
                 },
@@ -1645,6 +1659,7 @@ impl Renderer {
             1,
             &[0, 0, 0, 255],
         )?;
+        let gpu_timing = GpuFrameTiming::new(&device, &queue);
 
         Ok(Self {
             surface,
@@ -1659,6 +1674,9 @@ impl Renderer {
                 ..RendererCounters::default()
             },
             started_at: Instant::now(),
+            gpu_timing,
+            last_frame_profile: RendererFrameProfile::default(),
+            last_frame_started_at: Instant::now(),
             shader_game_time_ticks: 0.0,
             current_post_effect_id: None,
             camera_post_effect_active: false,
@@ -2372,6 +2390,22 @@ impl Renderer {
 
     pub fn counters(&self) -> RendererCounters {
         self.counters.clone()
+    }
+
+    pub fn set_gpu_timing_enabled(&mut self, enabled: bool) {
+        if let Some(timing) = self.gpu_timing.as_mut() {
+            timing.set_enabled(enabled);
+        }
+    }
+
+    pub fn gpu_utilization(&self) -> Option<f64> {
+        self.gpu_timing
+            .as_ref()
+            .and_then(GpuFrameTiming::latest_utilization)
+    }
+
+    pub fn last_frame_profile(&self) -> RendererFrameProfile {
+        self.last_frame_profile
     }
 
     pub fn set_terrain_mesh_worker_counters(&mut self, counters: TerrainMeshWorkerCounters) {

@@ -29,6 +29,9 @@ pub(crate) struct DebugProfilerSectionSample {
     /// Path below `root`, in parent-to-child order.
     pub(crate) path: &'static [&'static str],
     pub(crate) duration: Duration,
+    /// False keeps a last-published parallel-owner section visible in F3+1
+    /// without counting it again in a higher-rate render recording.
+    pub(crate) record_in_report: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -159,7 +162,15 @@ impl DebugProfiler {
             return;
         };
         metrics.cpu_load_percent = self.cpu_sampler.sample().unwrap_or_default();
-        recording.record_frame(now, &self.latest, metrics);
+        let recording_profile = sections
+            .iter()
+            .any(|section| !section.record_in_report)
+            .then(|| ProfileTree::from_recorded_frame(total, sections));
+        recording.record_frame(
+            now,
+            recording_profile.as_ref().unwrap_or(&self.latest),
+            metrics,
+        );
         if recording.should_finish(now) {
             self.finish_recording(now);
         }
@@ -288,6 +299,18 @@ struct ProfileTree {
 
 impl ProfileTree {
     fn from_frame(total: Duration, sections: &[DebugProfilerSectionSample]) -> Self {
+        Self::from_frame_filter(total, sections, |_| true)
+    }
+
+    fn from_recorded_frame(total: Duration, sections: &[DebugProfilerSectionSample]) -> Self {
+        Self::from_frame_filter(total, sections, |section| section.record_in_report)
+    }
+
+    fn from_frame_filter(
+        total: Duration,
+        sections: &[DebugProfilerSectionSample],
+        include: impl Fn(&DebugProfilerSectionSample) -> bool,
+    ) -> Self {
         let mut tree = Self::default();
         let total_nanos = duration_nanos(total);
         tree.entries.insert(
@@ -298,7 +321,11 @@ impl ProfileTree {
                 max_duration_nanos: total_nanos,
             },
         );
-        for section in sections.iter().take(MAX_SECTIONS_PER_FRAME) {
+        for section in sections
+            .iter()
+            .filter(|section| include(section))
+            .take(MAX_SECTIONS_PER_FRAME)
+        {
             let Some(path) = profiler_path(section.path) else {
                 continue;
             };
@@ -656,6 +683,7 @@ mod tests {
         DebugProfilerSectionSample {
             path,
             duration: Duration::from_nanos(nanos),
+            record_in_report: true,
         }
     }
 
@@ -841,6 +869,44 @@ mod tests {
         assert!(tree
             .profiling_text(Duration::from_nanos(100), 2)
             .contains("tick(1/1) - 40.00%/40.00%"));
+    }
+
+    #[test]
+    fn parallel_simulation_sections_stay_visible_without_repeating_in_report() {
+        let start = Instant::now();
+        let mut profiler = DebugProfiler::default();
+        assert!(profiler.start_recording(start));
+        profiler.record_frame(
+            start,
+            Duration::from_nanos(100),
+            &[sample(&["tick"], 30), sample(&["frame"], 60)],
+            DebugProfilerFrameMetrics::default(),
+        );
+        profiler.record_frame(
+            start + Duration::from_millis(10),
+            Duration::from_nanos(100),
+            &[
+                DebugProfilerSectionSample {
+                    path: &["tick"],
+                    duration: Duration::from_nanos(30),
+                    record_in_report: false,
+                },
+                sample(&["frame"], 60),
+            ],
+            DebugProfilerFrameMetrics::default(),
+        );
+
+        assert_eq!(profiler.latest.entry("root\u{001e}tick").duration_nanos, 30);
+        let aggregate = &profiler.recording.as_ref().expect("recording").aggregate;
+        assert_eq!(
+            aggregate.entry("root\u{001e}tick"),
+            DebugProfilerEntry {
+                duration_nanos: 30,
+                count: 1,
+                max_duration_nanos: 30,
+            }
+        );
+        assert_eq!(aggregate.entry("root\u{001e}frame").count, 2);
     }
 
     #[test]

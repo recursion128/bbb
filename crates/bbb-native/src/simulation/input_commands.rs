@@ -1,6 +1,9 @@
 //! Canonical application of typed winit and control commands.
 
-use std::cell::RefCell;
+use std::{
+    cell::RefCell,
+    time::{Duration, Instant},
+};
 
 use bbb_control::{
     CodeOfConductControlRequest, ControlWriteRequest, InputControlRequest, SharedControlRequests,
@@ -21,7 +24,7 @@ use winit::{
 };
 
 use super::{
-    commands::{SequencedSimulationCommand, SimulationCommand},
+    commands::{DebugProfilingLifecycle, SequencedSimulationCommand, SimulationCommand},
     effects::{
         DebugProfilingCommand, PlatformEffect, PlatformEffectCollector,
         ScreenNarrationScheduleInput,
@@ -79,6 +82,19 @@ pub(crate) struct SimulationInputPublication {
     pub(crate) code_of_conduct_overlay: CodeOfConductOverlayProjection,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct SimulationInputProfile {
+    pub(crate) keyboard: Duration,
+    pub(crate) mouse: Duration,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SimulationCommandProfileKind {
+    Keyboard,
+    Mouse,
+    Other,
+}
+
 impl SimulationInputRuntime {
     pub(crate) fn new(surface_size: PhysicalSize<u32>, cursor_captured: bool) -> Self {
         Self {
@@ -133,17 +149,34 @@ impl SimulationInputRuntime {
         &mut self,
         commands: Vec<SequencedSimulationCommand>,
         context: &mut SimulationInputContext<'_, '_, '_>,
-    ) {
+        profiling_enabled: bool,
+    ) -> SimulationInputProfile {
+        let mut profile = SimulationInputProfile::default();
         for command in commands {
             if self.shutdown_requested {
                 break;
             }
             debug_assert!(command.sequence > self.last_applied_sequence);
             self.last_applied_sequence = command.sequence;
+            let profile_kind = simulation_command_profile_kind(&command.command);
+            let profile_started_at = profiling_enabled.then(Instant::now);
             self.apply_command(command.command, context);
+            let Some(profile_started_at) = profile_started_at else {
+                continue;
+            };
+            let elapsed = profile_started_at.elapsed();
+            match profile_kind {
+                SimulationCommandProfileKind::Keyboard => {
+                    profile.keyboard = profile.keyboard.saturating_add(elapsed);
+                }
+                SimulationCommandProfileKind::Mouse => {
+                    profile.mouse = profile.mouse.saturating_add(elapsed);
+                }
+                SimulationCommandProfileKind::Other => {}
+            }
         }
         if self.shutdown_requested {
-            return;
+            return profile;
         }
         let queued_effects = RefCell::new(Vec::new());
         let mut clipboard = SimulationClipboard {
@@ -172,6 +205,7 @@ impl SimulationInputRuntime {
         } else if context.input.command_entry_is_active() {
             self.request_cursor_capture(false, context.platform);
         }
+        profile
     }
 
     fn apply_command(
@@ -295,6 +329,31 @@ impl SimulationInputRuntime {
                 self.terrain_readiness =
                     Some((level_generation, player_section_compiled_and_visible));
             }
+            SimulationCommand::DebugProfilingLifecycle(event) => match event {
+                DebugProfilingLifecycle::Started => {
+                    context.input.apply_debug_profiling_started(context.world);
+                }
+                DebugProfilingLifecycle::Stopped {
+                    duration,
+                    ticks,
+                    ticks_per_second,
+                } => context.input.apply_debug_profiling_stopped(
+                    context.world,
+                    duration,
+                    ticks,
+                    ticks_per_second,
+                ),
+                DebugProfilingLifecycle::ReportSaved { path } => {
+                    context
+                        .input
+                        .apply_debug_profiling_report_saved(context.world, &path);
+                }
+                DebugProfilingLifecycle::ReportFailed { error } => {
+                    context
+                        .input
+                        .apply_debug_profiling_report_failed(context.world, &error);
+                }
+            },
             SimulationCommand::Control(request) => self.apply_control(request, context),
             SimulationCommand::Shutdown => self.request_shutdown(context),
         }
@@ -1788,6 +1847,21 @@ impl SimulationInputRuntime {
 
     fn request_shutdown(&mut self, context: &mut SimulationInputContext<'_, '_, '_>) {
         self.request_network_terminal_shutdown(context.net_commands, context.platform);
+    }
+}
+
+fn simulation_command_profile_kind(command: &SimulationCommand) -> SimulationCommandProfileKind {
+    match command {
+        SimulationCommand::Key { .. }
+        | SimulationCommand::ImePreedit { .. }
+        | SimulationCommand::ImeCommit(_)
+        | SimulationCommand::ImeDisabled => SimulationCommandProfileKind::Keyboard,
+        SimulationCommand::MouseButton { .. }
+        | SimulationCommand::MouseMotion { .. }
+        | SimulationCommand::MouseWheel { .. }
+        | SimulationCommand::CursorMoved { .. }
+        | SimulationCommand::CursorLeft => SimulationCommandProfileKind::Mouse,
+        _ => SimulationCommandProfileKind::Other,
     }
 }
 

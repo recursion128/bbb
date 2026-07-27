@@ -1,6 +1,6 @@
 use std::{
     collections::{BTreeMap, BTreeSet, HashSet},
-    path::PathBuf,
+    path::{Path, PathBuf},
     time::{Duration, Instant},
 };
 
@@ -2453,6 +2453,70 @@ impl ClientInputState {
         self.debug_overlay_visible() && self.debug_profiler_chart_visible
     }
 
+    pub(crate) fn debug_profiling_recording(&self) -> bool {
+        self.debug_profiling_recording
+    }
+
+    pub(crate) fn apply_debug_profiling_started(&mut self, world: &mut WorldStore) {
+        self.debug_profiling_recording = true;
+        push_debug_feedback_chat_message(
+            Some(world),
+            "Profiling started for 10 seconds. Use F3 + L to stop early",
+        );
+    }
+
+    pub(crate) fn apply_debug_profiling_stopped(
+        &mut self,
+        world: &mut WorldStore,
+        duration: Duration,
+        ticks: usize,
+        ticks_per_second: f64,
+    ) {
+        self.debug_profiling_recording = false;
+        push_debug_feedback_chat_message(
+            Some(world),
+            &format!(
+                "Stopped tick profiling after {:.2} seconds and {} ticks ({:.2} ticks per second)",
+                duration.as_secs_f64(),
+                ticks,
+                ticks_per_second
+            ),
+        );
+    }
+
+    pub(crate) fn apply_debug_profiling_report_saved(
+        &mut self,
+        world: &mut WorldStore,
+        path: &Path,
+    ) {
+        let path = path.display().to_string();
+        push_debug_feedback_chat_runs(
+            Some(world),
+            vec![
+                StyledTextRun {
+                    text: "Profiling ended. Saved results to ".to_string(),
+                    style: ComponentStyle::default(),
+                },
+                StyledTextRun {
+                    text: path.clone(),
+                    style: ComponentStyle {
+                        underlined: Some(true),
+                        click_event: Some(ComponentClickEvent::OpenFile { path }),
+                        ..ComponentStyle::default()
+                    },
+                },
+            ],
+        );
+    }
+
+    pub(crate) fn apply_debug_profiling_report_failed(
+        &mut self,
+        world: &mut WorldStore,
+        error: &str,
+    ) {
+        push_debug_feedback_chat_message(Some(world), &format!("Profiling failed: {error}"));
+    }
+
     pub(crate) fn debug_fps_charts_visible(&self) -> bool {
         self.debug_overlay_visible() && self.debug_fps_charts_visible
     }
@@ -3907,15 +3971,10 @@ impl ClientInputState {
                     self.debug_profiling_recording = false;
                     self.debug_profiling_toggle_requests
                         .push(DebugProfilingToggleRequest::Stop);
-                    push_debug_profiling_stop_feedback(world.as_deref_mut());
                 } else {
                     self.debug_profiling_recording = true;
                     self.debug_profiling_toggle_requests
                         .push(DebugProfilingToggleRequest::Start);
-                    push_debug_feedback_chat_message(
-                        world.as_deref_mut(),
-                        "Profiling started for 10 seconds. Use F3 + L to stop early",
-                    );
                 }
                 true
             }
@@ -4939,28 +4998,6 @@ fn push_debug_dynamic_texture_dump_feedback(world: Option<&mut WorldStore>) {
                     underlined: Some(true),
                     click_event: Some(ComponentClickEvent::OpenFile {
                         path: DEBUG_DYNAMIC_TEXTURE_DUMP_RELATIVE_PATH.to_string(),
-                    }),
-                    ..ComponentStyle::default()
-                },
-            },
-        ],
-    );
-}
-
-fn push_debug_profiling_stop_feedback(world: Option<&mut WorldStore>) {
-    push_debug_feedback_chat_runs(
-        world,
-        vec![
-            StyledTextRun {
-                text: "Profiling ended. Results folder ".to_string(),
-                style: ComponentStyle::default(),
-            },
-            StyledTextRun {
-                text: DEBUG_PROFILING_RESULTS_RELATIVE_DIR.to_string(),
-                style: ComponentStyle {
-                    underlined: Some(true),
-                    click_event: Some(ComponentClickEvent::OpenFile {
-                        path: DEBUG_PROFILING_RESULTS_RELATIVE_DIR.to_string(),
                     }),
                     ..ComponentStyle::default()
                 },
