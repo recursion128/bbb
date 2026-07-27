@@ -76,6 +76,7 @@ pub(crate) struct ItemEntityAtlasGpu {
     width: u32,
     height: u32,
     pub(crate) bind_group: wgpu::BindGroup,
+    pub(crate) hud3d_bind_group: wgpu::BindGroup,
     pub(crate) gui_bind_group: wgpu::BindGroup,
 }
 
@@ -219,6 +220,7 @@ pub(crate) fn create_item_entity_atlas_gpu(
     queue: &wgpu::Queue,
     layout: &wgpu::BindGroupLayout,
     camera_buffer: &wgpu::Buffer,
+    hud3d_camera_buffer: &wgpu::Buffer,
     gui_camera_buffer: &wgpu::Buffer,
     width: u32,
     height: u32,
@@ -305,6 +307,24 @@ pub(crate) fn create_item_entity_atlas_gpu(
             },
         ],
     });
+    let hud3d_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("bbb-item-entity-atlas-hud3d-bind-group"),
+        layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: hud3d_camera_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::TextureView(&view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: wgpu::BindingResource::Sampler(&sampler),
+            },
+        ],
+    });
 
     Ok(ItemEntityAtlasGpu {
         texture,
@@ -313,6 +333,7 @@ pub(crate) fn create_item_entity_atlas_gpu(
         width,
         height,
         bind_group,
+        hud3d_bind_group,
         gui_bind_group,
     })
 }
@@ -352,6 +373,7 @@ impl Renderer {
             &self.queue,
             &self.terrain_bind_group_layout,
             &self.camera_buffer,
+            &self.hud3d_camera_buffer,
             &self.gui_item_camera_buffer,
             width,
             height,

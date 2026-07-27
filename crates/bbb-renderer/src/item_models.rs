@@ -253,6 +253,7 @@ pub(crate) struct ItemGlintTextureGpu {
     _view: wgpu::TextureView,
     _sampler: wgpu::Sampler,
     pub(crate) main_bind_group: wgpu::BindGroup,
+    pub(crate) hud3d_bind_group: wgpu::BindGroup,
     pub(crate) gui_bind_group: wgpu::BindGroup,
 }
 
@@ -745,9 +746,9 @@ impl Renderer {
         self.first_person_item_model_glint_translucent_meshes = meshes;
     }
 
-    /// Uploads vanilla `textures/misc/enchanted_glint_item.png` for item foil draws. The same texture
-    /// is bound with both the world camera and the GUI-item ortho camera because `RenderTypes.glint`
-    /// is used in scene item features, 3D inventory icons, and flat HUD/inventory sprite overlays.
+    /// Uploads vanilla `textures/misc/enchanted_glint_item.png` for item foil draws. The same
+    /// texture is bound with the world, first-person HUD-3D, and GUI-item cameras because
+    /// `RenderTypes.glint` is used in scene item features, held items, and inventory icons.
     pub fn upload_item_glint_texture(
         &mut self,
         width: u32,
@@ -759,6 +760,7 @@ impl Renderer {
             &self.queue,
             &self.terrain_bind_group_layout,
             &self.camera_buffer,
+            &self.hud3d_camera_buffer,
             &self.gui_item_camera_buffer,
             width,
             height,
@@ -1382,6 +1384,7 @@ fn create_item_glint_texture_gpu(
     queue: &wgpu::Queue,
     layout: &wgpu::BindGroupLayout,
     main_camera_buffer: &wgpu::Buffer,
+    hud3d_camera_buffer: &wgpu::Buffer,
     gui_camera_buffer: &wgpu::Buffer,
     width: u32,
     height: u32,
@@ -1448,11 +1451,20 @@ fn create_item_glint_texture_gpu(
         &sampler,
         "bbb-item-glint-gui-bind-group",
     );
+    let hud3d_bind_group = create_item_glint_bind_group(
+        device,
+        layout,
+        hud3d_camera_buffer,
+        &view,
+        &sampler,
+        "bbb-item-glint-hud3d-bind-group",
+    );
     Ok(ItemGlintTextureGpu {
         _texture: texture,
         _view: view,
         _sampler: sampler,
         main_bind_group,
+        hud3d_bind_group,
         gui_bind_group,
     })
 }

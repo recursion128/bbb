@@ -375,9 +375,11 @@ pub struct Renderer {
     pub(super) hud_black_pixel: HudSpriteGpu,
     pub(super) terrain_bind_group_layout: wgpu::BindGroupLayout,
     pub(super) camera_buffer: wgpu::Buffer,
+    pub(super) hud3d_camera_buffer: wgpu::Buffer,
     pub(super) gui_item_camera_buffer: wgpu::Buffer,
     pub(super) terrain_atlas: TerrainAtlasGpu,
     pub(super) terrain_bind_group: wgpu::BindGroup,
+    pub(super) hud3d_terrain_bind_group: wgpu::BindGroup,
     pub(super) gui_item_bind_group: wgpu::BindGroup,
     pub(super) hud_hotbar_block_item_models: Vec<Option<crate::item_models::HudBlockItemModel>>,
     pub(super) terrain_opaque: Vec<ResidentTerrainMesh>,
@@ -1160,12 +1162,19 @@ impl Renderer {
             ],
         });
         let camera_buffer = create_camera_buffer(&device);
+        let hud3d_camera_buffer = create_camera_buffer(&device);
         let gui_item_camera_buffer = create_camera_buffer(&device);
         let terrain_atlas = create_terrain_atlas_gpu(&device, &queue, 1, 1, &[255, 255, 255, 255])?;
         let terrain_bind_group = create_terrain_bind_group(
             &device,
             &terrain_bind_group_layout,
             &camera_buffer,
+            &terrain_atlas,
+        );
+        let hud3d_terrain_bind_group = create_terrain_bind_group(
+            &device,
+            &terrain_bind_group_layout,
+            &hud3d_camera_buffer,
             &terrain_atlas,
         );
         // The GUI item pass reuses the item-model pipeline + blocks atlas but with its own ortho camera.
@@ -1795,9 +1804,11 @@ impl Renderer {
             hud_black_pixel,
             terrain_bind_group_layout,
             camera_buffer,
+            hud3d_camera_buffer,
             gui_item_camera_buffer,
             terrain_atlas,
             terrain_bind_group,
+            hud3d_terrain_bind_group,
             gui_item_bind_group,
             hud_hotbar_block_item_models: Vec::new(),
             terrain_opaque: Vec::new(),
@@ -2739,6 +2750,12 @@ impl Renderer {
             &self.camera_buffer,
             &terrain_atlas,
         );
+        let hud3d_terrain_bind_group = create_terrain_bind_group(
+            &self.device,
+            &self.terrain_bind_group_layout,
+            &self.hud3d_camera_buffer,
+            &terrain_atlas,
+        );
         let gui_item_bind_group = create_terrain_bind_group(
             &self.device,
             &self.terrain_bind_group_layout,
@@ -2754,6 +2771,11 @@ impl Renderer {
             self.register_resource_owner_restore(Box::new(move |renderer| {
                 renderer.terrain_bind_group = previous;
             }));
+            let previous =
+                std::mem::replace(&mut self.hud3d_terrain_bind_group, hud3d_terrain_bind_group);
+            self.register_resource_owner_restore(Box::new(move |renderer| {
+                renderer.hud3d_terrain_bind_group = previous;
+            }));
             let previous = std::mem::replace(&mut self.gui_item_bind_group, gui_item_bind_group);
             self.register_resource_owner_restore(Box::new(move |renderer| {
                 renderer.gui_item_bind_group = previous;
@@ -2761,6 +2783,7 @@ impl Renderer {
         } else {
             self.terrain_atlas = terrain_atlas;
             self.terrain_bind_group = terrain_bind_group;
+            self.hud3d_terrain_bind_group = hud3d_terrain_bind_group;
             self.gui_item_bind_group = gui_item_bind_group;
         }
         self.counters.atlas_pages = 1;
@@ -2999,6 +3022,25 @@ impl Renderer {
         self.update_sky_model_view_dynamics(uniform.sky_model_view_transform());
         self.queue
             .write_buffer(&self.camera_buffer, 0, bytemuck::bytes_of(&uniform));
+        let hud3d = if let Some(pose) = self.camera_pose {
+            CameraUniform::from_hud_pose(
+                pose,
+                aspect,
+                self.camera_hud_fov_degrees,
+                self.camera_hurt_effect,
+            )
+        } else {
+            self.scene_bounds()
+                .map(|bounds| CameraUniform::from_bounds(bounds, aspect))
+                .unwrap_or_else(CameraUniform::identity)
+        }
+        .with_lightmap_environment(self.lightmap_environment)
+        .with_fog_environment(self.fog_environment)
+        .with_glint_texture_time(glint_elapsed_millis, VANILLA_DEFAULT_GLINT_SPEED)
+        .with_shader_game_time_ticks(self.shader_game_time_ticks)
+        .with_viewport_size(self.config.width as f32, self.config.height as f32);
+        self.queue
+            .write_buffer(&self.hud3d_camera_buffer, 0, bytemuck::bytes_of(&hud3d));
         // The GUI item pass projects 3D inventory icons with a screen-space ortho (separate buffer so it
         // does not clobber the world camera, which earlier passes in the same submit still read).
         let gui = CameraUniform::gui_ortho(self.config.width as f32, self.config.height as f32)

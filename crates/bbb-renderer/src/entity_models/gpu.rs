@@ -71,6 +71,7 @@ pub(crate) struct EntityModelTextureAtlasGpu {
     _view: wgpu::TextureView,
     _sampler: wgpu::Sampler,
     pub(crate) bind_group: wgpu::BindGroup,
+    pub(crate) hud3d_bind_group: wgpu::BindGroup,
     pub(crate) gui_bind_group: wgpu::BindGroup,
     pub(crate) layout: EntityModelTextureAtlasLayout,
     #[allow(dead_code)]
@@ -83,7 +84,7 @@ pub(crate) struct EntityModelTextureAtlasGpu {
 
 impl EntityModelTextureAtlasGpu {
     /// The atlas texture view + sampler, for bind groups that pair the atlas with a camera other
-    /// than the world camera (the GUI entity PIP targets).
+    /// than the world camera (the first-person HUD-3D and GUI entity PIP targets).
     pub(in crate::entity_models) fn view_and_sampler(
         &self,
     ) -> (&wgpu::TextureView, &wgpu::Sampler) {
@@ -110,6 +111,7 @@ pub(crate) struct EntityDynamicPlayerSkinAtlasGpu {
     _view: wgpu::TextureView,
     _sampler: wgpu::Sampler,
     pub(crate) bind_group: wgpu::BindGroup,
+    pub(crate) hud3d_bind_group: wgpu::BindGroup,
     pub(crate) gui_bind_group: wgpu::BindGroup,
     pub(crate) layout: EntityDynamicPlayerSkinAtlasLayout,
 }
@@ -127,6 +129,7 @@ pub(crate) struct EntityDynamicPlayerTextureAtlasGpu {
     _view: wgpu::TextureView,
     _sampler: wgpu::Sampler,
     pub(crate) bind_group: wgpu::BindGroup,
+    pub(crate) hud3d_bind_group: wgpu::BindGroup,
     pub(crate) gui_bind_group: wgpu::BindGroup,
     pub(crate) layout: EntityDynamicPlayerTextureAtlasLayout,
 }
@@ -2601,6 +2604,7 @@ impl Renderer {
             &self.queue,
             &self.terrain_bind_group_layout,
             &self.camera_buffer,
+            &self.hud3d_camera_buffer,
             &self.gui_item_camera_buffer,
             images,
             owned_images,
@@ -2634,6 +2638,7 @@ impl Renderer {
             &self.queue,
             &self.terrain_bind_group_layout,
             &self.camera_buffer,
+            &self.hud3d_camera_buffer,
             &self.gui_item_camera_buffer,
             &images,
         )?;
@@ -2690,6 +2695,7 @@ impl Renderer {
             &self.queue,
             &self.terrain_bind_group_layout,
             &self.camera_buffer,
+            &self.hud3d_camera_buffer,
             &self.gui_item_camera_buffer,
             &self.entity_dynamic_player_texture_images,
         )?);
@@ -3226,6 +3232,7 @@ fn create_entity_model_texture_atlas_gpu(
     queue: &wgpu::Queue,
     bind_group_layout: &wgpu::BindGroupLayout,
     camera_buffer: &wgpu::Buffer,
+    hud3d_camera_buffer: &wgpu::Buffer,
     gui_camera_buffer: &wgpu::Buffer,
     images: &[EntityModelTextureImage],
     owned_images: &[EntityModelOwnedTextureImage],
@@ -3306,12 +3313,21 @@ fn create_entity_model_texture_atlas_gpu(
         &sampler,
         "bbb-entity-model-texture-gui-bind-group",
     );
+    let hud3d_bind_group = create_entity_model_texture_bind_group(
+        device,
+        bind_group_layout,
+        hud3d_camera_buffer,
+        &view,
+        &sampler,
+        "bbb-entity-model-texture-hud3d-bind-group",
+    );
 
     Ok(EntityModelTextureAtlasGpu {
         _texture: texture,
         _view: view,
         _sampler: sampler,
         bind_group,
+        hud3d_bind_group,
         gui_bind_group,
         layout,
         owned_entries,
@@ -3324,6 +3340,7 @@ fn create_dynamic_player_skin_atlas_gpu(
     queue: &wgpu::Queue,
     bind_group_layout: &wgpu::BindGroupLayout,
     camera_buffer: &wgpu::Buffer,
+    hud3d_camera_buffer: &wgpu::Buffer,
     gui_camera_buffer: &wgpu::Buffer,
     images: &[DynamicPlayerSkinImage],
 ) -> Result<EntityDynamicPlayerSkinAtlasGpu> {
@@ -3389,12 +3406,21 @@ fn create_dynamic_player_skin_atlas_gpu(
         &sampler,
         "bbb-dynamic-player-skin-gui-bind-group",
     );
+    let hud3d_bind_group = create_entity_model_texture_bind_group(
+        device,
+        bind_group_layout,
+        hud3d_camera_buffer,
+        &view,
+        &sampler,
+        "bbb-dynamic-player-skin-hud3d-bind-group",
+    );
 
     Ok(EntityDynamicPlayerSkinAtlasGpu {
         _texture: texture,
         _view: view,
         _sampler: sampler,
         bind_group,
+        hud3d_bind_group,
         gui_bind_group,
         layout,
     })
@@ -3405,6 +3431,7 @@ fn create_dynamic_player_texture_atlas_gpu(
     queue: &wgpu::Queue,
     bind_group_layout: &wgpu::BindGroupLayout,
     camera_buffer: &wgpu::Buffer,
+    hud3d_camera_buffer: &wgpu::Buffer,
     gui_camera_buffer: &wgpu::Buffer,
     images: &[DynamicPlayerTextureImage],
 ) -> Result<EntityDynamicPlayerTextureAtlasGpu> {
@@ -3479,12 +3506,21 @@ fn create_dynamic_player_texture_atlas_gpu(
         &sampler,
         "bbb-dynamic-player-texture-gui-bind-group",
     );
+    let hud3d_bind_group = create_entity_model_texture_bind_group(
+        device,
+        bind_group_layout,
+        hud3d_camera_buffer,
+        &view,
+        &sampler,
+        "bbb-dynamic-player-texture-hud3d-bind-group",
+    );
 
     Ok(EntityDynamicPlayerTextureAtlasGpu {
         _texture: texture,
         _view: view,
         _sampler: sampler,
         bind_group,
+        hud3d_bind_group,
         gui_bind_group,
         layout,
     })

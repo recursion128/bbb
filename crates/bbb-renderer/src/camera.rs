@@ -351,11 +351,7 @@ impl CameraFrustum {
             } else {
                 Vec3::Z
             };
-        let fov_degrees = if fov_degrees.is_finite() {
-            fov_degrees.clamp(7.0, 105.0)
-        } else {
-            70.0
-        };
+        let fov_degrees = sanitize_perspective_fov_degrees(fov_degrees);
         let projection =
             Mat4::perspective_rh(fov_degrees.to_radians(), aspect.max(0.1), 0.05, 2048.0);
         let view = Mat4::look_at_rh(eye, target, Vec3::Y);
@@ -610,6 +606,26 @@ impl CameraUniform {
         hurt: Option<CameraHurtEffect>,
         spinning: Option<CameraSpinningEffect>,
     ) -> Self {
+        Self::from_pose_with_effects_and_far(pose, aspect, fov_degrees, hurt, spinning, 2048.0)
+    }
+
+    pub(crate) fn from_hud_pose(
+        pose: CameraPose,
+        aspect: f32,
+        fov_degrees: f32,
+        hurt: Option<CameraHurtEffect>,
+    ) -> Self {
+        Self::from_pose_with_effects_and_far(pose, aspect, fov_degrees, hurt, None, 100.0)
+    }
+
+    fn from_pose_with_effects_and_far(
+        pose: CameraPose,
+        aspect: f32,
+        fov_degrees: f32,
+        hurt: Option<CameraHurtEffect>,
+        spinning: Option<CameraSpinningEffect>,
+        z_far: f32,
+    ) -> Self {
         let eye = Vec3::from_array(pose.position) + Vec3::Y * pose.eye_height;
         let yaw = pose.y_rot.to_radians();
         let pitch = pose.x_rot.to_radians();
@@ -622,13 +638,9 @@ impl CameraUniform {
             } else {
                 Vec3::Z
             };
-        let fov_degrees = if fov_degrees.is_finite() {
-            fov_degrees.clamp(7.0, 105.0)
-        } else {
-            70.0
-        };
+        let fov_degrees = sanitize_perspective_fov_degrees(fov_degrees);
         let projection =
-            Mat4::perspective_rh(fov_degrees.to_radians(), aspect.max(0.1), 0.05, 2048.0);
+            Mat4::perspective_rh(fov_degrees.to_radians(), aspect.max(0.1), 0.05, z_far);
         // Vanilla `GameRenderer.renderLevel`: `projectionMatrix.mul(bobStack.last().pose())`.
         // `bobHurt` is therefore camera-space presentation state on the projection side of
         // the view matrix, not part of `CameraRenderState.viewRotationMatrix`.
@@ -865,6 +877,14 @@ impl CameraUniform {
             shader_game_time: [0.0, 0.0, 0.0, 0.0],
             viewport_size: [1.0, 1.0, 0.0, 0.0],
         }
+    }
+}
+
+fn sanitize_perspective_fov_degrees(fov_degrees: f32) -> f32 {
+    if fov_degrees.is_finite() {
+        fov_degrees.clamp(0.1, 179.0)
+    } else {
+        70.0
     }
 }
 
@@ -1535,6 +1555,27 @@ mod tests {
         let uniform = CameraUniform::from_pose_with_fov(pose, 16.0 / 9.0, 35.0);
         let expected = Mat4::perspective_rh(35.0_f32.to_radians(), 16.0 / 9.0, 0.05, 2048.0);
         assert_mat4_close(uniform.projection(), expected);
+    }
+
+    #[test]
+    fn camera_fov_projection_admits_vanilla_max_modifier_and_separate_hud_far_plane() {
+        let pose = CameraPose {
+            position: [0.0, 0.0, 0.0],
+            eye_height: 1.62,
+            y_rot: 0.0,
+            x_rot: 0.0,
+        };
+        let world = CameraUniform::from_pose_with_fov(pose, 16.0 / 9.0, 165.0);
+        let expected_world = Mat4::perspective_rh(165.0_f32.to_radians(), 16.0 / 9.0, 0.05, 2048.0);
+        assert_mat4_close(world.projection(), expected_world);
+        let eye = Vec3::new(0.0, 1.62, 0.0);
+        let expected_view = Mat4::look_at_rh(eye, eye + Vec3::Z, Vec3::Y);
+        let frustum = CameraFrustum::from_pose(pose, 16.0 / 9.0, 165.0);
+        assert_mat4_close(frustum.view_projection, expected_world * expected_view);
+
+        let hud = CameraUniform::from_hud_pose(pose, 16.0 / 9.0, 60.0, None);
+        let expected_hud = Mat4::perspective_rh(60.0_f32.to_radians(), 16.0 / 9.0, 0.05, 100.0);
+        assert_mat4_close(hud.projection(), expected_hud);
     }
 
     #[test]

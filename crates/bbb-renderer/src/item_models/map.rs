@@ -309,6 +309,7 @@ pub(crate) struct ItemFrameMapAtlasPageGpu {
     _view: wgpu::TextureView,
     _sampler: wgpu::Sampler,
     pub(crate) bind_group: wgpu::BindGroup,
+    pub(crate) hud3d_bind_group: wgpu::BindGroup,
     free_slots: Vec<u32>,
 }
 
@@ -329,14 +330,24 @@ struct OverflowMapTexture {
 }
 
 impl ItemFrameMapAtlasGpu {
-    pub(crate) fn page_bind_group(&self, page: usize) -> Option<&wgpu::BindGroup> {
+    pub(crate) fn page_bind_group(
+        &self,
+        page: usize,
+        target: MapSurfaceTarget,
+    ) -> Option<&wgpu::BindGroup> {
         self.pages
             .get(page)
             .or_else(|| {
                 self.overflow_pages
                     .get(page.saturating_sub(self.pages.len()))
             })
-            .map(|page| &page.bind_group)
+            .map(|page| {
+                if target == MapSurfaceTarget::FirstPerson {
+                    &page.hud3d_bind_group
+                } else {
+                    &page.bind_group
+                }
+            })
     }
 
     fn map_page(&self, map_id: i32) -> Option<usize> {
@@ -374,6 +385,7 @@ pub(crate) struct ItemFrameMapDecorationAtlasGpu {
     _view: wgpu::TextureView,
     _sampler: wgpu::Sampler,
     pub(crate) bind_group: wgpu::BindGroup,
+    pub(crate) hud3d_bind_group: wgpu::BindGroup,
     pub(crate) layout: ItemFrameMapDecorationAtlasLayout,
 }
 
@@ -382,6 +394,7 @@ pub(crate) struct ItemFrameMapTextFontAtlasGpu {
     _view: wgpu::TextureView,
     _sampler: wgpu::Sampler,
     pub(crate) bind_group: wgpu::BindGroup,
+    pub(crate) hud3d_bind_group: wgpu::BindGroup,
 }
 
 #[repr(C)]
@@ -1398,7 +1411,7 @@ impl Renderer {
                         &self.device,
                         &self.queue,
                         &self.terrain_bind_group_layout,
-                        &self.camera_buffer,
+                        &self.hud3d_camera_buffer,
                         layout,
                         &rgba,
                     )
@@ -1599,6 +1612,7 @@ impl Renderer {
             &self.device,
             &self.terrain_bind_group_layout,
             &self.camera_buffer,
+            &self.hud3d_camera_buffer,
         ) else {
             return Some(texture);
         };
@@ -1638,6 +1652,7 @@ impl Renderer {
                         &self.device,
                         &self.terrain_bind_group_layout,
                         &self.camera_buffer,
+                        &self.hud3d_camera_buffer,
                     ));
             }
             let local_page = atlas.overflow_pages.len() - 1;
@@ -1754,6 +1769,7 @@ impl Renderer {
                     &self.queue,
                     &self.terrain_bind_group_layout,
                     &self.camera_buffer,
+                    &self.hud3d_camera_buffer,
                     layout,
                     &rgba,
                 )
@@ -1777,6 +1793,7 @@ impl Renderer {
             &self.queue,
             &self.terrain_bind_group_layout,
             &self.camera_buffer,
+            &self.hud3d_camera_buffer,
             width,
             height,
             rgba,
@@ -2026,6 +2043,7 @@ fn create_item_frame_map_atlas_page_gpu(
     device: &wgpu::Device,
     bind_group_layout: &wgpu::BindGroupLayout,
     camera_buffer: &wgpu::Buffer,
+    hud3d_camera_buffer: &wgpu::Buffer,
 ) -> ItemFrameMapAtlasPageGpu {
     let atlas_size = MAP_ATLAS_PAGE_SIDE_SLOTS * ITEM_FRAME_MAP_SIZE;
     let texture = device.create_texture(&wgpu::TextureDescriptor {
@@ -2071,11 +2089,30 @@ fn create_item_frame_map_atlas_page_gpu(
             },
         ],
     });
+    let hud3d_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("bbb-item-frame-map-atlas-hud3d-bind-group"),
+        layout: bind_group_layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: hud3d_camera_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::TextureView(&view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: wgpu::BindingResource::Sampler(&sampler),
+            },
+        ],
+    });
     ItemFrameMapAtlasPageGpu {
         texture,
         _view: view,
         _sampler: sampler,
         bind_group,
+        hud3d_bind_group,
         free_slots: (0..MAP_ATLAS_PAGE_SIDE_SLOTS * MAP_ATLAS_PAGE_SIDE_SLOTS)
             .rev()
             .collect(),
@@ -2087,6 +2124,7 @@ fn allocate_resident_map_slot(
     device: &wgpu::Device,
     bind_group_layout: &wgpu::BindGroupLayout,
     camera_buffer: &wgpu::Buffer,
+    hud3d_camera_buffer: &wgpu::Buffer,
 ) -> Option<(usize, u32)> {
     if let Some((page_index, slot)) = atlas
         .pages
@@ -2103,6 +2141,7 @@ fn allocate_resident_map_slot(
         device,
         bind_group_layout,
         camera_buffer,
+        hud3d_camera_buffer,
     ));
     let page_index = atlas.pages.len() - 1;
     let slot = atlas.pages[page_index]
@@ -2266,6 +2305,7 @@ fn create_item_frame_map_decoration_atlas_gpu(
     queue: &wgpu::Queue,
     bind_group_layout: &wgpu::BindGroupLayout,
     camera_buffer: &wgpu::Buffer,
+    hud3d_camera_buffer: &wgpu::Buffer,
     layout: ItemFrameMapDecorationAtlasLayout,
     rgba: &[u8],
 ) -> ItemFrameMapDecorationAtlasGpu {
@@ -2331,11 +2371,30 @@ fn create_item_frame_map_decoration_atlas_gpu(
             },
         ],
     });
+    let hud3d_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("bbb-item-frame-map-decoration-atlas-hud3d-bind-group"),
+        layout: bind_group_layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: hud3d_camera_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::TextureView(&view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: wgpu::BindingResource::Sampler(&sampler),
+            },
+        ],
+    });
     ItemFrameMapDecorationAtlasGpu {
         _texture: texture,
         _view: view,
         _sampler: sampler,
         bind_group,
+        hud3d_bind_group,
         layout,
     }
 }
@@ -2345,6 +2404,7 @@ fn create_item_frame_map_text_font_atlas_gpu(
     queue: &wgpu::Queue,
     bind_group_layout: &wgpu::BindGroupLayout,
     camera_buffer: &wgpu::Buffer,
+    hud3d_camera_buffer: &wgpu::Buffer,
     width: u32,
     height: u32,
     rgba: &[u8],
@@ -2418,11 +2478,30 @@ fn create_item_frame_map_text_font_atlas_gpu(
             },
         ],
     });
+    let hud3d_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("bbb-item-frame-map-text-font-atlas-hud3d-bind-group"),
+        layout: bind_group_layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: hud3d_camera_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::TextureView(&view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: wgpu::BindingResource::Sampler(&sampler),
+            },
+        ],
+    });
     Some(ItemFrameMapTextFontAtlasGpu {
         _texture: texture,
         _view: view,
         _sampler: sampler,
         bind_group,
+        hud3d_bind_group,
     })
 }
 

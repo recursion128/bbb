@@ -2544,7 +2544,7 @@ impl Renderer {
         ) {
             pass.set_pipeline(&self.entity_model_translucent_pipeline);
             stats.pipeline_switches += 1;
-            pass.set_bind_group(0, &atlas.bind_group, &[]);
+            pass.set_bind_group(0, &atlas.hud3d_bind_group, &[]);
             pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
             pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
             pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
@@ -2557,7 +2557,7 @@ impl Renderer {
         ) {
             pass.set_pipeline(&self.entity_model_translucent_pipeline);
             stats.pipeline_switches += 1;
-            pass.set_bind_group(0, &atlas.bind_group, &[]);
+            pass.set_bind_group(0, &atlas.hud3d_bind_group, &[]);
             pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
             pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
             pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
@@ -2570,7 +2570,7 @@ impl Renderer {
                 &mut pass,
                 &self.item_model_pipeline,
                 buffers,
-                &self.terrain_bind_group,
+                &self.hud3d_terrain_bind_group,
             );
             stats.pipeline_switches += 1;
             stats.item_model_draw_calls += 1;
@@ -2587,7 +2587,7 @@ impl Renderer {
                 &mut pass,
                 &self.item_model_pipeline,
                 buffers,
-                &atlas.bind_group,
+                &atlas.hud3d_bind_group,
             );
             stats.pipeline_switches += 1;
             stats.item_model_draw_calls += 1;
@@ -2630,7 +2630,7 @@ impl Renderer {
             stats,
         );
         if let (Some(glint), Some(buffers)) = (&self.item_glint_texture, &glint_buffers) {
-            self.draw_item_model_glint_frame_buffers(&mut pass, buffers, &glint.main_bind_group);
+            self.draw_item_model_glint_frame_buffers(&mut pass, buffers, &glint.hud3d_bind_group);
             stats.pipeline_switches += 1;
             stats.item_model_draw_calls += 1;
         }
@@ -2646,7 +2646,7 @@ impl Renderer {
                 &mut pass,
                 &self.item_model_translucent_pipeline,
                 buffers,
-                &self.terrain_bind_group,
+                &self.hud3d_terrain_bind_group,
             );
             stats.pipeline_switches += 1;
             stats.item_model_draw_calls += 1;
@@ -2663,7 +2663,7 @@ impl Renderer {
                 &mut pass,
                 &self.item_model_translucent_pipeline,
                 buffers,
-                &atlas.bind_group,
+                &atlas.hud3d_bind_group,
             );
             stats.pipeline_switches += 1;
             stats.item_model_draw_calls += 1;
@@ -2687,7 +2687,7 @@ impl Renderer {
         );
         if let (Some(glint), Some(buffers)) = (&self.item_glint_texture, &glint_translucent_buffers)
         {
-            self.draw_item_model_glint_frame_buffers(&mut pass, buffers, &glint.main_bind_group);
+            self.draw_item_model_glint_frame_buffers(&mut pass, buffers, &glint.hud3d_bind_group);
             stats.pipeline_switches += 1;
             stats.item_model_draw_calls += 1;
         }
@@ -3465,7 +3465,7 @@ impl Renderer {
             if draw.target != target {
                 continue;
             }
-            let Some(bind_group) = atlas.page_bind_group(draw.page) else {
+            let Some(bind_group) = atlas.page_bind_group(draw.page, target) else {
                 continue;
             };
             pass.set_bind_group(0, bind_group, &[]);
@@ -3511,7 +3511,12 @@ impl Renderer {
         ) else {
             return;
         };
-        self.bind_resident_map_surface(pass, &atlas.bind_group, instance_buffer);
+        let bind_group = if target == crate::item_models::MapSurfaceTarget::FirstPerson {
+            &atlas.hud3d_bind_group
+        } else {
+            &atlas.bind_group
+        };
+        self.bind_resident_map_surface(pass, bind_group, instance_buffer);
         stats.pipeline_switches = stats.pipeline_switches.saturating_add(1);
         for draw in &self.map_surface_residency.decoration_draws {
             if draw.target != target {
@@ -3547,7 +3552,12 @@ impl Renderer {
         ) else {
             return;
         };
-        self.bind_resident_map_surface(pass, &atlas.bind_group, instance_buffer);
+        let bind_group = if target == crate::item_models::MapSurfaceTarget::FirstPerson {
+            &atlas.hud3d_bind_group
+        } else {
+            &atlas.bind_group
+        };
+        self.bind_resident_map_surface(pass, bind_group, instance_buffer);
         stats.pipeline_switches = stats.pipeline_switches.saturating_add(1);
         for draw in &self.map_surface_residency.text_draws {
             if draw.target != target {
@@ -3710,54 +3720,75 @@ impl Renderer {
                 };
                 let bind_group = if target.is_gui() {
                     &glint.gui_bind_group
+                } else if target == crate::item_models::ItemModelDrawTarget::FirstPerson {
+                    &glint.hud3d_bind_group
                 } else {
                     &glint.main_bind_group
                 };
                 pass.set_bind_group(0, bind_group, &[]);
             } else {
-                let bind_group = match (draw.asset.atlas(), target.is_gui()) {
-                    (crate::item_models::ItemModelAtlasKind::Blocks, false) => {
+                let bind_group = match (
+                    draw.asset.atlas(),
+                    target.is_gui(),
+                    target == crate::item_models::ItemModelDrawTarget::FirstPerson,
+                ) {
+                    (crate::item_models::ItemModelAtlasKind::Blocks, false, false) => {
                         &self.terrain_bind_group
                     }
-                    (crate::item_models::ItemModelAtlasKind::Blocks, true) => {
+                    (crate::item_models::ItemModelAtlasKind::Blocks, false, true) => {
+                        &self.hud3d_terrain_bind_group
+                    }
+                    (crate::item_models::ItemModelAtlasKind::Blocks, true, _) => {
                         &self.gui_item_bind_group
                     }
-                    (crate::item_models::ItemModelAtlasKind::Items, gui) => {
+                    (crate::item_models::ItemModelAtlasKind::Items, gui, first_person) => {
                         let Some(atlas) = &self.item_entity_atlas else {
                             continue;
                         };
                         if gui {
                             &atlas.gui_bind_group
+                        } else if first_person {
+                            &atlas.hud3d_bind_group
                         } else {
                             &atlas.bind_group
                         }
                     }
-                    (crate::item_models::ItemModelAtlasKind::Entity, gui) => {
+                    (crate::item_models::ItemModelAtlasKind::Entity, gui, first_person) => {
                         let Some(atlas) = &self.entity_model_texture_atlas else {
                             continue;
                         };
                         if gui {
                             &atlas.gui_bind_group
+                        } else if first_person {
+                            &atlas.hud3d_bind_group
                         } else {
                             &atlas.bind_group
                         }
                     }
-                    (crate::item_models::ItemModelAtlasKind::DynamicPlayerSkin, gui) => {
+                    (
+                        crate::item_models::ItemModelAtlasKind::DynamicPlayerSkin,
+                        gui,
+                        first_person,
+                    ) => {
                         let Some(atlas) = &self.entity_dynamic_player_skin_atlas else {
                             continue;
                         };
                         if gui {
                             &atlas.gui_bind_group
+                        } else if first_person {
+                            &atlas.hud3d_bind_group
                         } else {
                             &atlas.bind_group
                         }
                     }
-                    (crate::item_models::ItemModelAtlasKind::DynamicEntity, gui) => {
+                    (crate::item_models::ItemModelAtlasKind::DynamicEntity, gui, first_person) => {
                         let Some(atlas) = &self.entity_dynamic_player_texture_atlas else {
                             continue;
                         };
                         if gui {
                             &atlas.gui_bind_group
+                        } else if first_person {
+                            &atlas.hud3d_bind_group
                         } else {
                             &atlas.bind_group
                         }
@@ -4959,6 +4990,68 @@ mod tests {
 
         assert!(blit < first_person && first_person < vignette && vignette < hud);
         assert!(first_person < pass && pass < depth_clear);
+    }
+
+    #[test]
+    fn camera_fov_first_person_pass_uses_hud3d_camera_bindings() {
+        let source = include_str!("render.rs");
+        let pass_start = source
+            .find("fn first_person_item_pass(")
+            .expect("first-person item pass");
+        let pass_end = source[pass_start..]
+            .find("\n    /// GUI entity picture-in-picture")
+            .map(|index| pass_start + index)
+            .expect("first-person item pass end");
+        let pass = &source[pass_start..pass_end];
+
+        for required in [
+            "&atlas.hud3d_bind_group",
+            "&self.hud3d_terrain_bind_group",
+            "&glint.hud3d_bind_group",
+            "ItemModelDrawTarget::FirstPerson",
+            "MapSurfaceTarget::FirstPerson",
+        ] {
+            assert!(
+                pass.contains(required),
+                "first-person item pass must route {required} through the HUD-3D projection"
+            );
+        }
+        assert!(
+            !pass.contains("&self.terrain_bind_group"),
+            "transient first-person blocks must not reuse the world projection"
+        );
+        assert!(
+            !pass.contains("&glint.main_bind_group"),
+            "transient first-person glint must not reuse the world projection"
+        );
+
+        let resident_start = source
+            .find("fn draw_resident_item_models")
+            .expect("resident item draw helper");
+        let resident_end = source[resident_start..]
+            .find("\n    fn draw_item_model_geometry_with_pipeline(")
+            .map(|index| resident_start + index)
+            .expect("resident item draw helper end");
+        let resident = &source[resident_start..resident_end];
+        for required in [
+            "ItemModelDrawTarget::FirstPerson",
+            "&self.hud3d_terrain_bind_group",
+            "&glint.hud3d_bind_group",
+            "&atlas.hud3d_bind_group",
+        ] {
+            assert!(
+                resident.contains(required),
+                "resident first-person branch must select {required}"
+            );
+        }
+
+        let map_source = include_str!("item_models/map.rs");
+        assert!(
+            map_source.contains("target == MapSurfaceTarget::FirstPerson")
+                && map_source.contains("&page.hud3d_bind_group")
+                && map_source.contains("&self.hud3d_camera_buffer"),
+            "first-person map pages, layers, and backgrounds must use the HUD-3D camera"
+        );
     }
 
     #[test]
