@@ -936,6 +936,14 @@ impl NativeItemRuntime {
         self.textures.atlas_rgba()
     }
 
+    pub fn has_texture_animation(&self) -> bool {
+        self.textures.has_animation()
+    }
+
+    pub fn texture_animation_atlas_rgba(&self, tick: u64) -> Result<Option<Vec<u8>>> {
+        self.textures.animation_atlas_rgba(tick)
+    }
+
     pub fn atlas_sprite_uvs(&self) -> Vec<ItemAtlasSpriteUv> {
         self.textures.sprite_uvs()
     }

@@ -277,6 +277,31 @@ pub(super) struct ItemTextureState {
     pub(super) texture_ids: Vec<Arc<str>>,
     pub(super) alpha_masks: Vec<SpriteAlphaMask>,
     pub(super) fallback_index: u32,
+    animation: Option<ItemTextureAnimation>,
+}
+
+#[derive(Debug, Clone)]
+struct ItemTextureAnimation {
+    packer: AtlasPacker,
+    images: Vec<SpriteImage>,
+}
+
+impl ItemTextureAnimation {
+    fn new(packer: AtlasPacker, images: Vec<SpriteImage>) -> Option<Self> {
+        images
+            .iter()
+            .any(|image| {
+                image
+                    .animation
+                    .as_ref()
+                    .is_some_and(|animation| animation.frames.len() > 1)
+            })
+            .then_some(Self { packer, images })
+    }
+
+    fn atlas_rgba_at_tick(&self, tick: u64) -> Result<Vec<u8>> {
+        Ok(self.packer.stitch_animation_frame(&self.images, tick)?.rgba)
+    }
 }
 
 impl ItemTextureState {
@@ -301,14 +326,17 @@ impl ItemTextureState {
             .layout
             .sprites
             .iter()
-            .map(|sprite| sprite_alpha_mask(&atlas, sprite))
-            .collect();
+            .zip(&images)
+            .map(|(sprite, image)| sprite_alpha_mask(sprite, image))
+            .collect::<Result<Vec<_>>>()?;
+        let animation = ItemTextureAnimation::new(packer, images);
         Ok(Self {
             atlas,
             texture_indices,
             texture_ids,
             alpha_masks,
             fallback_index,
+            animation,
         })
     }
 
@@ -322,6 +350,17 @@ impl ItemTextureState {
 
     pub(super) fn atlas_rgba(&self) -> &[u8] {
         &self.atlas.rgba
+    }
+
+    pub(super) fn has_animation(&self) -> bool {
+        self.animation.is_some()
+    }
+
+    pub(super) fn animation_atlas_rgba(&self, tick: u64) -> Result<Option<Vec<u8>>> {
+        self.animation
+            .as_ref()
+            .map(|animation| animation.atlas_rgba_at_tick(tick))
+            .transpose()
     }
 
     pub(super) fn sprite_uvs(&self) -> Vec<ItemAtlasSpriteUv> {
@@ -377,17 +416,43 @@ impl ItemTextureState {
     }
 }
 
-fn sprite_alpha_mask(atlas: &AtlasImage, sprite: &AtlasSprite) -> SpriteAlphaMask {
+fn sprite_alpha_mask(sprite: &AtlasSprite, image: &SpriteImage) -> Result<SpriteAlphaMask> {
     let mut opaque = Vec::with_capacity((sprite.content.width * sprite.content.height) as usize);
-    for py in 0..sprite.content.height {
-        for px in 0..sprite.content.width {
-            let ax = sprite.content.x + px;
-            let ay = sprite.content.y + py;
-            let alpha_index = ((ay * atlas.layout.width + ax) * 4 + 3) as usize;
-            opaque.push(atlas.rgba.get(alpha_index).copied().unwrap_or(0) != 0);
+    opaque.resize(
+        (sprite.content.width * sprite.content.height) as usize,
+        false,
+    );
+    let frame_indices = image
+        .animation
+        .as_ref()
+        .map(|animation| {
+            animation
+                .frames
+                .iter()
+                .map(|frame| frame.index)
+                .collect::<BTreeSet<_>>()
+        })
+        .unwrap_or_else(|| BTreeSet::from([0]));
+    for frame_index in frame_indices {
+        let rgba = image.frame_rgba(frame_index).ok_or_else(|| {
+            anyhow::anyhow!(
+                "item texture {} is missing animation frame {}",
+                image.id,
+                frame_index
+            )
+        })?;
+        for (pixel, alpha) in opaque
+            .iter_mut()
+            .zip(rgba.chunks_exact(4).map(|pixel| pixel[3]))
+        {
+            *pixel |= alpha != 0;
         }
     }
-    SpriteAlphaMask::new(sprite.content.width, sprite.content.height, opaque)
+    Ok(SpriteAlphaMask::new(
+        sprite.content.width,
+        sprite.content.height,
+        opaque,
+    ))
 }
 
 pub(super) fn generated_layer_texture_refs(

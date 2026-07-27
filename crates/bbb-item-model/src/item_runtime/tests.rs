@@ -573,6 +573,59 @@ fn item_texture_state_indexes_textures_and_uses_missing_fallback() {
 }
 
 #[test]
+fn item_texture_animation_stitches_the_selected_frame_at_tick() {
+    let missing = SpriteImage::new("minecraft:missingno", 1, 1, vec![0, 0, 0, 255]).unwrap();
+    let mut animated =
+        SpriteImage::new("custom:item/animated", 1, 1, vec![255, 0, 0, 255]).unwrap();
+    animated.animation = Some(bbb_pack::SpriteAnimation {
+        frame_count: 2,
+        default_frame_time: 1,
+        interpolate: false,
+        frames: vec![
+            bbb_pack::SpriteAnimationFrame { index: 0, time: 1 },
+            bbb_pack::SpriteAnimationFrame { index: 1, time: 1 },
+        ],
+    });
+    animated.animation_frames_rgba = vec![vec![255, 0, 0, 255], vec![0, 255, 0, 255]];
+
+    let state = ItemTextureState::from_images(vec![missing, animated]).unwrap();
+    assert!(state.has_animation());
+    let tick_zero = state.animation_atlas_rgba(0).unwrap().unwrap();
+    let tick_one = state.animation_atlas_rgba(1).unwrap().unwrap();
+    let sprite = &state.atlas.layout.sprites[state.texture_index("custom:item/animated") as usize];
+    let offset = ((sprite.content.y * state.atlas.layout.width + sprite.content.x) * 4) as usize;
+    assert_eq!(&tick_zero[offset..offset + 4], &[255, 0, 0, 255]);
+    assert_eq!(&tick_one[offset..offset + 4], &[0, 255, 0, 255]);
+}
+
+#[test]
+fn item_texture_alpha_mask_unions_unique_animation_frames() {
+    let missing = SpriteImage::new("minecraft:missingno", 1, 1, vec![0, 0, 0, 255]).unwrap();
+    let mut animated =
+        SpriteImage::new("custom:item/animated", 2, 1, vec![0, 0, 0, 0, 0, 0, 0, 0]).unwrap();
+    animated.animation = Some(bbb_pack::SpriteAnimation {
+        frame_count: 2,
+        default_frame_time: 1,
+        interpolate: false,
+        frames: vec![
+            bbb_pack::SpriteAnimationFrame { index: 0, time: 1 },
+            bbb_pack::SpriteAnimationFrame { index: 1, time: 1 },
+        ],
+    });
+    animated.animation_frames_rgba = vec![
+        vec![255, 255, 255, 255, 0, 0, 0, 0],
+        vec![0, 0, 0, 0, 255, 255, 255, 255],
+    ];
+
+    let state = ItemTextureState::from_images(vec![missing, animated]).unwrap();
+    let mask = state
+        .alpha_mask(state.texture_index("custom:item/animated"))
+        .unwrap();
+    assert!(!mask.is_transparent(0, 0));
+    assert!(!mask.is_transparent(1, 0));
+}
+
+#[test]
 fn item_tint_sources_use_stack_component_colors_when_available() {
     let patch = DataComponentPatchSummary {
         custom_model_data_colors: vec![0x01_02_03, 0x04_05_06],
