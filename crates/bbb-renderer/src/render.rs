@@ -2467,6 +2467,9 @@ impl Renderer {
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
     ) {
+        if self.hide_gui {
+            return;
+        }
         let (block_vertices, block_indices) = self.collect_first_person_block_item_model_geometry();
         let block_buffers = self.create_item_model_frame_buffers(&block_vertices, &block_indices);
         let (block_translucent_vertices, block_translucent_indices) =
@@ -4956,6 +4959,26 @@ mod tests {
 
         assert!(blit < first_person && first_person < vignette && vignette < hud);
         assert!(first_person < pass && pass < depth_clear);
+    }
+
+    #[test]
+    fn hide_gui_exits_first_person_pass_before_collecting_geometry() {
+        let source = include_str!("render.rs");
+        let pass = source
+            .find("fn first_person_item_pass(")
+            .expect("first-person pass");
+        let hide_gui = source[pass..]
+            .find("if self.hide_gui")
+            .map(|index| pass + index)
+            .expect("F1 gate");
+        let collect = source[pass..]
+            .find("self.collect_first_person_block_item_model_geometry()")
+            .map(|index| pass + index)
+            .expect("first-person geometry collection");
+        assert!(
+            pass < hide_gui && hide_gui < collect,
+            "F1 must skip arms, item meshes, glint, and map surfaces before any pass work"
+        );
     }
 
     #[test]

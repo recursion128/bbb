@@ -2149,6 +2149,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) fog_environment: FogEnvironment,
     pub(crate) sky_environment: SkyEnvironment,
     pub(crate) cloud_environment: CloudEnvironment,
+    pub(crate) hide_gui: bool,
     pub(crate) hud_player_health: Option<HudPlayerHealth>,
     pub(crate) hud_sleep_overlay: Option<HudSleepOverlay>,
     pub(crate) hud_food: Option<i32>,
@@ -2417,6 +2418,7 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_fog_environment(frame.fog_environment);
     renderer.set_sky_environment(frame.sky_environment);
     renderer.set_cloud_environment(frame.cloud_environment);
+    renderer.set_hide_gui(frame.hide_gui);
     renderer.set_hud_player_health(frame.hud_player_health);
     renderer.set_hud_sleep_overlay(frame.hud_sleep_overlay);
     renderer.set_hud_food(frame.hud_food);

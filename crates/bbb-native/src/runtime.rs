@@ -3088,28 +3088,20 @@ pub(crate) fn update_renderer_from_publication(
             audio_events.play_local_sound(sound);
         }
     }
-    let hud_advancement_toasts = if input.hide_gui() {
-        Vec::new()
-    } else {
-        hud_render_runtime.client_toasts.project_advancements(
-            world,
-            item_runtime,
-            terrain_textures,
-            item_model_keybind_context,
-            entity_partial_tick,
-        )
-    };
-    let hud_recipe_toasts = if input.hide_gui() {
-        Vec::new()
-    } else {
-        hud_render_runtime.client_toasts.project_recipes(
-            world,
-            item_runtime,
-            terrain_textures,
-            item_model_keybind_context,
-            entity_partial_tick,
-        )
-    };
+    let hud_advancement_toasts = hud_render_runtime.client_toasts.project_advancements(
+        world,
+        item_runtime,
+        terrain_textures,
+        item_model_keybind_context,
+        entity_partial_tick,
+    );
+    let hud_recipe_toasts = hud_render_runtime.client_toasts.project_recipes(
+        world,
+        item_runtime,
+        terrain_textures,
+        item_model_keybind_context,
+        entity_partial_tick,
+    );
     let hud_sign_editor_screen = if exclusive_game_screen_present
         || hud_debug_options_screen.is_some()
         || hud_pause_screen.is_some()
@@ -3653,7 +3645,9 @@ pub(crate) fn update_renderer_from_publication(
     );
     // Vanilla `Minecraft.renderFrame` calls `pick(partialTicks)` before
     // `GameRenderer.extract`; block/entity outline extraction reads that post-input camera state.
-    let selection_outline = selection_outline_from_camera(world, camera_pose);
+    let selection_outline = (!input.hide_gui())
+        .then(|| selection_outline_from_camera(world, camera_pose))
+        .flatten();
     let chunk_border_outline = debug_chunk_border_outline(input, world, camera_pose);
     let entity_scene_outline = debug_entity_scene_outline(input, world, entity_partial_tick);
     let entity_target_outline =
@@ -3730,6 +3724,7 @@ pub(crate) fn update_renderer_from_publication(
             fog_environment,
             sky_environment,
             cloud_environment,
+            hide_gui: input.hide_gui(),
             hud_player_health,
             hud_sleep_overlay,
             hud_food,

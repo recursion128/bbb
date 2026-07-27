@@ -2154,8 +2154,8 @@ fn animate_player_wake_sleep_overlay_frame_wiring_is_hide_gui_independent() {
         .find("let hud_sleep_overlay = hud_sleep_overlay_from_world(world);")
         .expect("runtime extracts canonical sleep overlay");
     let hide_gui = runtime
-        .find("let hud_advancement_toasts = if input.hide_gui()")
-        .expect("ordinary hide-GUI branch remains later");
+        .find("hide_gui: input.hide_gui(),")
+        .expect("renderer frame carries the post-input F1 state");
     let frame = extraction
         + runtime[extraction..]
             .find("hud_sleep_overlay,")
@@ -2173,6 +2173,37 @@ fn animate_player_wake_sleep_overlay_frame_wiring_is_hide_gui_independent() {
         .find("renderer.set_hud_sleep_overlay(frame.hud_sleep_overlay);")
         .expect("frame apply forwards the overlay");
     assert!(field < setter);
+}
+
+#[test]
+fn hide_gui_frame_policy_precedes_residency_and_keeps_toasts_independent() {
+    let frame_source = include_str!("render_extract.rs");
+    let field = frame_source
+        .find("pub(crate) hide_gui: bool")
+        .expect("renderer frame snapshots F1");
+    let setter = frame_source
+        .find("renderer.set_hide_gui(frame.hide_gui);")
+        .expect("frame applies F1 visibility");
+    let residency = frame_source
+        .find(".set_item_model_residency_frame(frame.item_model_residency)")
+        .expect("frame resolves item residency");
+    assert!(field < setter && setter < residency);
+
+    let runtime = include_str!("../runtime.rs");
+    let advancement = runtime
+        .find("let hud_advancement_toasts = hud_render_runtime.client_toasts.project_advancements(")
+        .expect("advancement Toast projection");
+    let recipe = runtime
+        .find("let hud_recipe_toasts = hud_render_runtime.client_toasts.project_recipes(")
+        .expect("recipe Toast projection");
+    let screens = runtime
+        .find("let hud_sign_editor_screen =")
+        .expect("following Screen projection");
+    assert!(advancement < recipe && recipe < screens);
+    assert!(
+        !runtime[advancement..screens].contains("input.hide_gui()"),
+        "Vanilla ToastManager is outside Gui.extractRenderState's F1 branch"
+    );
 }
 
 #[test]
@@ -6398,8 +6429,8 @@ fn renderer_frame_outlines_extract_after_input_camera_and_partial_tick() {
         )
         .expect("pump should extract camera pose before outlines");
     let selection_outline = source
-        .find("let selection_outline = selection_outline_from_camera(")
-        .expect("pump should extract selection outline");
+        .find("let selection_outline = (!input.hide_gui())")
+        .expect("pump should F1-gate the normal selection outline");
     let entity_scene_outline = source
         .find("let entity_scene_outline =")
         .expect("pump should extract entity scene outline");

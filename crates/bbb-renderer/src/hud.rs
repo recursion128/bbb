@@ -5114,6 +5114,15 @@ impl Renderer {
         self.hud_sleep_overlay = sanitize_hud_sleep_overlay(overlay);
     }
 
+    /// Applies Vanilla's transient F1 `Options.hideGui` presentation policy.
+    ///
+    /// The renderer retains every latest HUD, screen, toast, and first-person
+    /// owner while hidden so toggling the GUI back on restores unchanged state
+    /// immediately.
+    pub fn set_hide_gui(&mut self, hide_gui: bool) {
+        self.hide_gui = hide_gui;
+    }
+
     pub fn set_hud_food(&mut self, food: Option<i32>) {
         self.hud_food = food;
     }
@@ -5562,6 +5571,7 @@ impl Renderer {
                 visit(model, placement, scissor);
             };
         if stratum != HudScreenStratum::AfterBlur
+            && !self.hide_gui
             && matches!(&self.hud_hotbar_mode, HudHotbarMode::Ordinary)
         {
             for (slot, model) in self.hud_hotbar_block_item_models.iter().enumerate() {
@@ -5712,10 +5722,13 @@ impl Renderer {
                 screen_blur: None,
             };
         }
-        let debug_crosshair = self
-            .hud_debug_overlay
-            .as_ref()
-            .and_then(|overlay| overlay.debug_crosshair);
+        let debug_crosshair = (!self.hide_gui)
+            .then(|| {
+                self.hud_debug_overlay
+                    .as_ref()
+                    .and_then(|overlay| overlay.debug_crosshair)
+            })
+            .flatten();
 
         if let Some(debug_crosshair) = debug_crosshair {
             push_hud_debug_crosshair(
@@ -5725,7 +5738,7 @@ impl Renderer {
                 surface_size,
                 debug_crosshair,
             );
-        } else if let Some(crosshair) = &self.hud_crosshair {
+        } else if let Some(crosshair) = self.hud_crosshair.as_ref().filter(|_| !self.hide_gui) {
             push_hud_draw(
                 &mut vertices,
                 &mut commands,
@@ -5735,16 +5748,18 @@ impl Renderer {
             );
         }
 
-        self.push_hud_hotbar_draws(
-            &mut vertices,
-            &mut commands,
-            &mut post_gui_item_commands,
-            surface_size,
-        );
+        if !self.hide_gui {
+            self.push_hud_hotbar_draws(
+                &mut vertices,
+                &mut commands,
+                &mut post_gui_item_commands,
+                surface_size,
+            );
+        }
 
-        match &self.hud_contextual_bar {
-            HudContextualBar::Empty => {}
-            HudContextualBar::Jump(jump_bar) => {
+        match (!self.hide_gui).then_some(&self.hud_contextual_bar) {
+            None | Some(HudContextualBar::Empty) => {}
+            Some(HudContextualBar::Jump(jump_bar)) => {
                 if let Some(background) = &self.hud_jump_bar_background {
                     push_hud_draw(
                         &mut vertices,
@@ -5792,7 +5807,7 @@ impl Renderer {
                     }
                 }
             }
-            HudContextualBar::Experience { progress } => {
+            Some(HudContextualBar::Experience { progress }) => {
                 if let Some(background) = &self.hud_experience_background {
                     push_hud_draw(
                         &mut vertices,
@@ -5829,7 +5844,7 @@ impl Renderer {
                     }
                 }
             }
-            HudContextualBar::Locator(locator) => {
+            Some(HudContextualBar::Locator(locator)) => {
                 if let Some(background) = &self.hud_locator_background {
                     push_hud_draw(
                         &mut vertices,
@@ -5891,7 +5906,11 @@ impl Renderer {
         // `(numHealthRows - 1) * healthRowHeight + 10` above the heart baseline
         // (Gui.java:801), so multi-row health pushes it up; with no projected
         // health it falls back to a single row (the fixed 10px gap).
-        if let Some(armor) = self.hud_armor.filter(|&armor| armor > 0) {
+        if let Some(armor) = self
+            .hud_armor
+            .filter(|&armor| armor > 0)
+            .filter(|_| !self.hide_gui)
+        {
             let (num_health_rows, health_row_height) = self
                 .hud_player_health
                 .map(hud_health_row_geometry)
@@ -5925,7 +5944,7 @@ impl Renderer {
         // ordered container / absorption / fill sprites for the player's
         // health + absorption, stacked into `numHealthRows` and carrying the
         // regen lift and low-health shake (`hud_player_heart_instances`).
-        if let Some(health) = self.hud_player_health {
+        if let Some(health) = self.hud_player_health.filter(|_| !self.hide_gui) {
             for instance in hud_player_heart_instances(surface_size, health) {
                 if let Some(sprite) =
                     self.hud_heart_sprite(instance.kind, health.hardcore, instance.half, false)
@@ -5944,12 +5963,13 @@ impl Renderer {
         // Vanilla `Gui.extractPlayerHealth` resolves the living vehicle's heart
         // count once (Gui.java:782-783): a non-zero count replaces the food row
         // (Gui.java:784-788) and shifts the air row (`getAirBubbleYLine`).
-        let vehicle_hearts = self
-            .hud_vehicle_health
+        let vehicle_hearts = (!self.hide_gui)
+            .then_some(self.hud_vehicle_health)
+            .flatten()
             .map(|vehicle| hud_vehicle_max_hearts(vehicle.max_health))
             .unwrap_or(0);
 
-        if let (0, Some(food)) = (vehicle_hearts, self.hud_food) {
+        if let (0, Some(food)) = (vehicle_hearts, self.hud_food.filter(|_| !self.hide_gui)) {
             let effect = self.hud_food_effect;
             // Vanilla `Gui.extractFood` reseeds/advances `this.random` every
             // frame; bbb reseeds the identical LCG from the render frame counter
@@ -6013,6 +6033,7 @@ impl Renderer {
         // delayed empty shells (with the all-empty drowning wobble).
         if let Some(air) = self
             .hud_air
+            .filter(|_| !self.hide_gui)
             .filter(|air| hud_air_bubbles_visible(air.air, air.max_air, air.eye_in_water))
         {
             let icons = hud_air_bubble_icons(air.air, air.max_air, air.eye_in_water);
@@ -6109,7 +6130,10 @@ impl Renderer {
         // `experienceLevel > 0` (independent of which contextual bar — jump /
         // locator / experience — occupies the slot), so no suppression is
         // needed. It needs the font atlas.
-        if let (Some(level), Some(font_atlas)) = (self.hud_experience_level, &self.hud_font_atlas) {
+        if let (Some(level), Some(font_atlas)) = (
+            self.hud_experience_level.filter(|_| !self.hide_gui),
+            &self.hud_font_atlas,
+        ) {
             push_hud_experience_level_text(
                 &mut vertices,
                 &mut commands,
@@ -6122,13 +6146,15 @@ impl Renderer {
                 level,
             );
         }
-        self.push_hud_spectator_action_draws(&mut vertices, &mut commands, surface_size);
+        if !self.hide_gui {
+            self.push_hud_spectator_action_draws(&mut vertices, &mut commands, surface_size);
+        }
 
         let inventory_effect_panel_visible = self.hud_inventory_shows_mob_effects
             && self.hud_inventory_screen.as_ref().is_some_and(|screen| {
                 hud_inventory_mob_effect_panel_width(surface_size, screen).is_some()
             });
-        if !inventory_effect_panel_visible {
+        if !self.hide_gui && !inventory_effect_panel_visible {
             push_hud_mob_effect_overlay(
                 &mut vertices,
                 &mut commands,
@@ -6145,7 +6171,12 @@ impl Renderer {
         // / title strata (Gui.java:203-217). Per bar: the sprite layers, then
         // the name line — opaque white with the default drop shadow
         // (`graphics.text(..., -1)`, BossHealthOverlay.java:71-73).
-        for draw in hud_boss_bar_draws(&self.hud_boss_bars, &self.hud_font_glyphs, surface_size) {
+        let hud_boss_bars = if self.hide_gui {
+            &[][..]
+        } else {
+            self.hud_boss_bars.as_slice()
+        };
+        for draw in hud_boss_bar_draws(hud_boss_bars, &self.hud_font_glyphs, surface_size) {
             for layer in &draw.layers {
                 if let Some(sprite) = self.hud_boss_bar_sheet_sprite(layer.sheet) {
                     push_hud_draw_with_uv(
@@ -6189,7 +6220,7 @@ impl Renderer {
         // Vanilla `Gui.extractRenderState` submits the overlay message and the
         // title/subtitle after the hotbar decorations (Gui.java:215-217); open
         // screens render in a later pass, so their draws stay above these.
-        if let Some(font_atlas) = &self.hud_font_atlas {
+        if let Some(font_atlas) = self.hud_font_atlas.as_ref().filter(|_| !self.hide_gui) {
             if let Some(sidebar) = &self.hud_scoreboard_sidebar {
                 scoreboard::push_hud_scoreboard_sidebar(
                     &mut vertices,
@@ -19374,6 +19405,147 @@ mod tests {
 
     fn test_hud_block_item_identity() -> crate::item_models::ItemModelAssetIdentity {
         crate::item_models::ItemModelAssetIdentity::new("minecraft:test_block", "default", 0)
+    }
+
+    fn test_hud_block_item_model() -> HudBlockItemModel {
+        HudBlockItemModel {
+            resident_layers: Arc::from([]),
+            identity: test_hud_block_item_identity(),
+            quads: vec![crate::item_models::ItemModelQuad {
+                corners: [
+                    [0.0, 0.0, 8.0],
+                    [16.0, 0.0, 8.0],
+                    [16.0, 16.0, 8.0],
+                    [0.0, 16.0, 8.0],
+                ],
+                uvs: [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
+                tint: [1.0, 1.0, 1.0, 1.0],
+                normal: [0.0, 0.0, 1.0],
+                shade: 1.0,
+                translucent: false,
+            }]
+            .into(),
+            gui_display: glam::Mat4::IDENTITY,
+            lighting: GuiItemLightingEntry::Items3d,
+            foil: false,
+        }
+    }
+
+    #[test]
+    fn hide_gui_suppresses_ingame_draws_but_keeps_sleep_debug_and_toasts() {
+        let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+            return;
+        };
+        renderer
+            .upload_hud_crosshair(2, 2, &[255, 0, 0, 255].repeat(4))
+            .expect("crosshair");
+        assert_eq!(renderer.collect_hud_draws().commands.len(), 1);
+
+        renderer.set_hide_gui(true);
+        assert!(renderer.collect_hud_draws().commands.is_empty());
+        assert!(
+            renderer.hud_crosshair.is_some(),
+            "F1 must retain the latest ordinary HUD state"
+        );
+
+        renderer.set_hud_sleep_overlay(Some(HudSleepOverlay { alpha: 22 }));
+        let sleep_commands = renderer.collect_hud_draws().commands.len();
+        assert_eq!(sleep_commands, 1, "sleep fade remains visible under F1");
+
+        let glyph = HudAsciiGlyph {
+            uv: HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+            width: 1,
+            height: 1,
+            advance: 1,
+            ascent: HUD_FONT_BASELINE,
+        };
+        let mut glyphs = HudFontGlyphMap::new();
+        glyphs.insert_first_wins('A', glyph);
+        renderer
+            .upload_hud_font_atlas(1, 1, &[255, 255, 255, 255], glyphs)
+            .expect("font");
+        renderer.set_hud_debug_overlay(Some(HudDebugOverlay {
+            left_lines: vec!["A".to_string()],
+            ..HudDebugOverlay::default()
+        }));
+        let debug_commands = renderer.collect_hud_draws().commands.len();
+        assert!(
+            debug_commands > sleep_commands,
+            "F3 debug overlay remains visible under F1"
+        );
+
+        renderer.set_hud_system_toast(Some(HudSystemToast {
+            title: "A".to_string(),
+            message: "A".to_string(),
+            multiline: false,
+            visible_portion: 1.0,
+        }));
+        let toast_commands = renderer.collect_hud_draws().commands.len();
+        assert!(
+            toast_commands > debug_commands,
+            "ToastManager presentation remains visible under F1"
+        );
+
+        renderer.set_hide_gui(false);
+        assert!(
+            renderer.collect_hud_draws().commands.len() > toast_commands,
+            "unchanged crosshair state returns immediately when F1 is disabled"
+        );
+    }
+
+    #[test]
+    fn hide_gui_drops_hotbar_item_residency_but_keeps_screen_and_toast_items() {
+        let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+            return;
+        };
+        let model = test_hud_block_item_model();
+        renderer.set_hud_hotbar_block_item_models(vec![Some(model.clone())]);
+        let mut screen = hud_inventory_screen_with_entity_previews(Vec::new());
+        screen.slots.push(HudInventorySlot {
+            slot_id: 0,
+            x: 8,
+            y: 8,
+            icon: None,
+            block_model: Some(model.clone()),
+        });
+        renderer.set_hud_inventory_screen(Some(screen));
+        renderer.set_hud_advancement_toasts(vec![HudAdvancementToast {
+            frame_label: "Advancement Made!".to_string(),
+            frame_label_color: 0xFF_FF_00,
+            title_runs: vec![HudStyledTextRun::plain("A")],
+            icon: HudItemIcon::single(HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            }),
+            block_model: Some(model),
+            slot: 0,
+            visible_portion: 1.0,
+            fully_visible_ms: 0,
+        }]);
+
+        let count = |renderer: &Renderer| {
+            let mut count = 0;
+            renderer.visit_hud_block_item_models_for_stratum(HudScreenStratum::All, |_, _, _| {
+                count += 1
+            });
+            count
+        };
+        assert_eq!(count(&renderer), 3);
+        renderer.set_hide_gui(true);
+        assert_eq!(
+            count(&renderer),
+            2,
+            "only the ordinary hotbar item is hidden; Screen and Toast items remain"
+        );
+        renderer.set_hide_gui(false);
+        assert_eq!(
+            count(&renderer),
+            3,
+            "retained hotbar item returns without another setter"
+        );
     }
 
     #[test]

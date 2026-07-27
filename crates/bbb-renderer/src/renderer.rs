@@ -238,6 +238,7 @@ pub struct Renderer {
     pub(super) shader_game_time_ticks: f64,
     pub(super) current_post_effect_id: Option<String>,
     pub(super) menu_background_blurriness: f32,
+    pub(super) hide_gui: bool,
     pub(super) hud_screen_blur: bool,
     pub(super) screen_blur_bind_group_layout: wgpu::BindGroupLayout,
     pub(super) screen_blur_horizontal_pipeline: wgpu::RenderPipeline,
@@ -1622,6 +1623,7 @@ impl Renderer {
             menu_background_blurriness: sanitize_menu_background_blurriness(
                 VANILLA_DEFAULT_MENU_BACKGROUND_BLURRINESS,
             ),
+            hide_gui: false,
             hud_screen_blur: false,
             screen_blur_bind_group_layout,
             screen_blur_horizontal_pipeline,
