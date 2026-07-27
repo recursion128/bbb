@@ -67,12 +67,12 @@ pub(crate) use components::{
     EntityMobEffects, EntityMount, EntityPlayerSleep, EntityProjectileLifecycle,
     EntitySupportingBlock, EntityTransform, EntityTransientEvents, LivingDeathWakeTransition,
 };
+pub(crate) use dimensions::vanilla_bounds_for_type;
 pub use dimensions::EntityPickBoundsState;
 pub(crate) use dimensions::{
     hanging_facing, prospective_item_frame_geometry, prospective_painting_geometry,
     vanilla_animal_entity_type, vanilla_living_entity_type, vanilla_pick_bounds_for_type,
 };
-pub(crate) use dimensions::{vanilla_bounds_for_type, vanilla_render_scale};
 pub use display::{
     DisplayBillboardConstraints, DisplayEntityCullingState, DisplayEntityRenderContent,
     DisplayEntityRenderSourceState, DisplayItemContext, DisplayTransformation,
@@ -3314,8 +3314,7 @@ impl WorldStore {
         if !vanilla_living_entity_type(entity_type_id) {
             return None;
         }
-        let attributes = self.entities.attributes(entity_id)?;
-        let scale = vanilla_render_scale(entity_type_id, &attributes.attributes);
+        let scale = self.entities.render_scale(entity_id)?;
         let distance = self
             .entities
             .attribute_value(entity_id, VANILLA_ATTRIBUTE_CAMERA_DISTANCE_ID)?

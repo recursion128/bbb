@@ -3532,6 +3532,16 @@ impl EntityStore {
             .or_else(|| vanilla_default_attribute_base(identity.entity_type_id, attribute_id))
     }
 
+    pub(crate) fn render_scale(&self, id: i32) -> Option<f32> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        let attributes = self.ecs.get::<&EntityAttributes>(entity).ok()?;
+        Some(vanilla_render_scale(
+            identity.entity_type_id,
+            &attributes.attributes,
+        ))
+    }
+
     pub(crate) fn attribute_base_value(&self, id: i32, attribute_id: i32) -> Option<f64> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
