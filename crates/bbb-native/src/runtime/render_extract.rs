@@ -2238,6 +2238,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) camera_hurt_effect: Option<bbb_renderer::CameraHurtEffect>,
     pub(crate) camera_spinning_effect: Option<bbb_renderer::CameraSpinningEffect>,
     pub(crate) camera_fov_degrees: f32,
+    pub(crate) camera_hud_fov_degrees: f32,
     pub(crate) current_post_effect_id: Option<&'a str>,
     pub(crate) shader_game_time_ticks: f64,
     pub(crate) cloud_frame: CloudFrame,
@@ -2535,7 +2536,7 @@ pub(crate) fn apply_renderer_frame(
     entity_render_extraction.recycle_instances(recycled_instances);
     renderer.set_camera_hurt_effect(frame.camera_hurt_effect);
     renderer.set_camera_spinning_effect(frame.camera_spinning_effect);
-    renderer.set_camera_fov_degrees(frame.camera_fov_degrees);
+    renderer.set_camera_fov_degrees(frame.camera_fov_degrees, frame.camera_hud_fov_degrees);
     renderer.set_camera_pose(frame.camera_pose);
     renderer.set_current_post_effect_id(frame.current_post_effect_id);
     renderer.set_shader_game_time_ticks(frame.shader_game_time_ticks);

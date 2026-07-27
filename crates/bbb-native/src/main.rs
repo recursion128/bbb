@@ -15,6 +15,7 @@ mod bed_scene;
 mod bell_scene;
 mod biome_tint;
 mod block_outline;
+mod camera_fov;
 mod camera_pose;
 mod chest_scene;
 mod code_of_conduct;
@@ -68,6 +69,7 @@ mod win_screen_resources;
 use audio_runtime::{AudioEventSink, NativeAudioRuntime};
 use bbb_item_model::default_player_skin_cache_dir;
 use bbb_item_model::NativeItemRuntime;
+use camera_fov::CameraFovTickState;
 use code_of_conduct::{default_code_of_conduct_store_path, CodeOfConductAcceptance};
 use code_of_conduct_overlay::CodeOfConductOverlayRenderer;
 use debug_entries::DebugScreenEntryList;
@@ -93,10 +95,10 @@ use resource_reload::{
 };
 use runtime::{
     control_renderer_counters, dialog_ime_cursor_area, narrate_command_suggestion_change,
-    project_dynamic_texture_counters, world_client_tick_interval, CameraFovTickState,
-    ClientAnimationTickState, DebugCollisionCache, DebugSkyLightSectionCache,
-    DebugSupportingBlockCache, HudDebugFpsSampler, HudDebugNetworkSampler, HudDebugTpsSampler,
-    HudRenderRuntime, LevelEventSoundRandomState, LightmapTickState,
+    project_dynamic_texture_counters, world_client_tick_interval, ClientAnimationTickState,
+    DebugCollisionCache, DebugSkyLightSectionCache, DebugSupportingBlockCache, HudDebugFpsSampler,
+    HudDebugNetworkSampler, HudDebugTpsSampler, HudRenderRuntime, LevelEventSoundRandomState,
+    LightmapTickState,
 };
 use simulation::{
     commands::{SimulationCommand, SimulationMailbox},
@@ -680,7 +682,8 @@ fn main() -> Result<()> {
     let mut terrain_upload = TerrainUploadState::default();
     let mut item_texture_animation = ItemTextureAnimationState::default();
     let client_animation_ticks = ClientAnimationTickState::default();
-    let camera_fov_ticks = CameraFovTickState::default();
+    let camera_fov_ticks =
+        CameraFovTickState::new(f32::from(args.client_fov), args.client_fov_effect_scale);
     let camera_spinning_ticks = runtime::CameraSpinningEffectTickState::default();
     let mut hud_debug_fps_sampler = HudDebugFpsSampler::default();
     let hud_debug_network_sampler = HudDebugNetworkSampler::default();

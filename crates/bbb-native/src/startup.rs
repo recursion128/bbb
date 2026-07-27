@@ -19,6 +19,11 @@ use clap::{ArgAction, Parser, ValueEnum};
 use serde::{Deserialize, Serialize};
 use tokio::{runtime::Runtime, sync::mpsc};
 use uuid::Uuid;
+
+use crate::camera_fov::{
+    VANILLA_DEFAULT_CAMERA_FOV_DEGREES, VANILLA_DEFAULT_FOV_EFFECT_SCALE,
+    VANILLA_MAX_CAMERA_FOV_DEGREES, VANILLA_MIN_CAMERA_FOV_DEGREES,
+};
 use winit::{
     dpi::PhysicalSize,
     event_loop::EventLoop,
@@ -160,6 +165,18 @@ pub(crate) struct Args {
         value_parser = parse_client_gamma
     )]
     pub(crate) client_gamma: f32,
+    #[arg(
+        long = "client-fov",
+        default_value_t = VANILLA_DEFAULT_CAMERA_FOV_DEGREES as u16,
+        value_parser = parse_client_fov
+    )]
+    pub(crate) client_fov: u16,
+    #[arg(
+        long = "client-fov-effect-scale",
+        default_value_t = VANILLA_DEFAULT_FOV_EFFECT_SCALE,
+        value_parser = parse_client_fov_effect_scale
+    )]
+    pub(crate) client_fov_effect_scale: f32,
     #[arg(
         long = "menu-background-blurriness",
         default_value_t = VANILLA_DEFAULT_MENU_BACKGROUND_BLURRINESS,
@@ -483,6 +500,33 @@ fn parse_client_gamma(value: &str) -> std::result::Result<f32, String> {
         return Err("client gamma must be between 0.0 and 1.0".to_string());
     }
     Ok(gamma)
+}
+
+fn parse_client_fov(value: &str) -> std::result::Result<u16, String> {
+    let degrees = value
+        .parse::<u16>()
+        .map_err(|_| format!("client FOV must be an integer degree count: {value}"))?;
+    if (VANILLA_MIN_CAMERA_FOV_DEGREES..=VANILLA_MAX_CAMERA_FOV_DEGREES).contains(&degrees) {
+        Ok(degrees)
+    } else {
+        Err(format!(
+            "client FOV must be between {VANILLA_MIN_CAMERA_FOV_DEGREES} and \
+             {VANILLA_MAX_CAMERA_FOV_DEGREES} degrees"
+        ))
+    }
+}
+
+fn parse_client_fov_effect_scale(value: &str) -> std::result::Result<f32, String> {
+    let scale = value
+        .parse::<f32>()
+        .map_err(|err| format!("client FOV effect scale must be a number: {err}"))?;
+    if !scale.is_finite() {
+        return Err("client FOV effect scale must be finite".to_string());
+    }
+    if !(0.0..=1.0).contains(&scale) {
+        return Err("client FOV effect scale must be between 0.0 and 1.0".to_string());
+    }
+    Ok(scale)
 }
 
 fn parse_client_chat_delay(value: &str) -> std::result::Result<f64, String> {
@@ -984,6 +1028,41 @@ mod tests {
         assert!(err.to_string().contains("between 0.0 and 1.0"));
 
         let err = Args::try_parse_from(["bbb-native", "--client-gamma", "NaN"]).unwrap_err();
+        assert!(err.to_string().contains("must be finite"));
+    }
+
+    #[test]
+    fn args_accept_fov_startup_options() {
+        let default_args = Args::try_parse_from(["bbb-native"]).unwrap();
+        assert_eq!(default_args.client_fov, 70);
+        assert_eq!(default_args.client_fov_effect_scale, 1.0);
+
+        let args = Args::try_parse_from([
+            "bbb-native",
+            "--client-fov",
+            "95",
+            "--client-fov-effect-scale",
+            "0.25",
+        ])
+        .unwrap();
+        assert_eq!(args.client_fov, 95);
+        assert_eq!(args.client_fov_effect_scale, 0.25);
+    }
+
+    #[test]
+    fn args_reject_fov_startup_options_outside_vanilla_ranges() {
+        let err = Args::try_parse_from(["bbb-native", "--client-fov", "29"]).unwrap_err();
+        assert!(err.to_string().contains("between 30 and 110"));
+
+        let err = Args::try_parse_from(["bbb-native", "--client-fov", "111"]).unwrap_err();
+        assert!(err.to_string().contains("between 30 and 110"));
+
+        let err =
+            Args::try_parse_from(["bbb-native", "--client-fov-effect-scale", "1.25"]).unwrap_err();
+        assert!(err.to_string().contains("between 0.0 and 1.0"));
+
+        let err =
+            Args::try_parse_from(["bbb-native", "--client-fov-effect-scale", "NaN"]).unwrap_err();
         assert!(err.to_string().contains("must be finite"));
     }
 

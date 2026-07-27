@@ -2237,18 +2237,18 @@ fn camera_fov_tick_state_eases_player_abilities_modifier_like_vanilla() {
     });
     let mut fov = CameraFovTickState::default();
 
-    assert!((fov.fov_degrees(1.0) - 70.0).abs() < 1.0e-6);
+    assert!((fov.unmodified_fov_degrees(1.0) - 70.0).abs() < 1.0e-6);
     fov.advance_for_world(1, &world);
-    assert!((fov.fov_degrees(0.0) - 70.0).abs() < 1.0e-6);
-    assert!((fov.fov_degrees(1.0) - 61.25).abs() < 1.0e-6);
+    assert!((fov.unmodified_fov_degrees(0.0) - 70.0).abs() < 1.0e-6);
+    assert!((fov.unmodified_fov_degrees(1.0) - 61.25).abs() < 1.0e-6);
 
     fov.advance_for_world(1, &world);
-    assert!((fov.fov_degrees(1.0) - 56.875).abs() < 1.0e-6);
+    assert!((fov.unmodified_fov_degrees(1.0) - 56.875).abs() < 1.0e-6);
 
     world.apply_add_entity(test_add_entity(100, VANILLA_ENTITY_TYPE_CREEPER_ID));
     assert!(world.apply_set_camera(bbb_protocol::packets::SetCamera { camera_id: 100 }));
     fov.advance_for_world(1, &world);
-    assert!((fov.fov_degrees(1.0) - 63.4375).abs() < 1.0e-6);
+    assert!((fov.unmodified_fov_degrees(1.0) - 63.4375).abs() < 1.0e-6);
 
     assert!(world.apply_set_camera(bbb_protocol::packets::SetCamera { camera_id: 42 }));
     world.apply_player_abilities(bbb_protocol::packets::PlayerAbilities {
@@ -2267,7 +2267,7 @@ fn camera_fov_tick_state_eases_player_abilities_modifier_like_vanilla() {
     world.advance_local_using_item_ticks(10);
     let mut bow_fov = CameraFovTickState::default();
     bow_fov.advance_for_world(1, &world);
-    assert!((bow_fov.fov_degrees(1.0) - 68.6875).abs() < 1.0e-6);
+    assert!((bow_fov.unmodified_fov_degrees(1.0) - 68.6875).abs() < 1.0e-6);
 
     world.take_local_using_item();
     world.apply_set_player_inventory(ProtocolSetPlayerInventory {
@@ -2277,7 +2277,101 @@ fn camera_fov_tick_state_eases_player_abilities_modifier_like_vanilla() {
     world.set_local_using_item_with_hand(true, InteractionHand::MainHand);
     let mut spyglass_fov = CameraFovTickState::default();
     spyglass_fov.advance_for_world(1, &world);
-    assert!((spyglass_fov.fov_degrees(1.0) - 38.5).abs() < 1.0e-6);
+    assert!((spyglass_fov.unmodified_fov_degrees(1.0) - 38.5).abs() < 1.0e-6);
+}
+
+#[test]
+fn camera_fov_frame_separates_configured_world_culling_and_hud_angles() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.apply_player_abilities(bbb_protocol::packets::PlayerAbilities {
+        invulnerable: false,
+        flying: false,
+        can_fly: false,
+        instabuild: false,
+        flying_speed: 0.05,
+        walking_speed: 0.2,
+    });
+    let mut fov = CameraFovTickState::new(90.0, 1.0);
+    fov.advance_for_world(1, &world);
+
+    let frame = fov.frame_for_world(&world, None, None, [1920, 1080], 1.0);
+
+    assert!((frame.world_degrees - 78.75).abs() < 1.0e-6);
+    assert_eq!(frame.culling_degrees, 90.0);
+    assert_eq!(frame.hud_degrees, 70.0);
+
+    let mut disabled_effects = CameraFovTickState::new(90.0, 0.0);
+    disabled_effects.advance_for_world(1, &world);
+    let frame = disabled_effects.frame_for_world(&world, None, None, [1920, 1080], 1.0);
+    assert_eq!(frame.world_degrees, 90.0);
+    assert_eq!(frame.culling_degrees, 90.0);
+    assert_eq!(frame.hud_degrees, 70.0);
+}
+
+#[test]
+fn camera_fov_frame_applies_death_to_world_and_fixed_base_hud() {
+    let world = world_with_dimension(0, "minecraft:overworld");
+    let fov = CameraFovTickState::new(90.0, 1.0);
+    let death = bbb_renderer::CameraHurtEffect {
+        hurt_time: 0.0,
+        hurt_duration: 0.0,
+        hurt_dir: 0.0,
+        death_time: 20.0,
+        is_dead_or_dying: true,
+        damage_tilt_strength: 1.0,
+    };
+
+    let frame = fov.frame_for_world(&world, None, Some(death), [1920, 1080], 1.0);
+
+    assert!((frame.world_degrees - 83.571_43).abs() < 1.0e-5);
+    assert_eq!(frame.culling_degrees, 90.0);
+    assert!((frame.hud_degrees - 65.0).abs() < 1.0e-5);
+}
+
+#[test]
+fn camera_fov_frame_samples_water_at_eye_and_lava_on_base_fov_near_plane() {
+    let mut water_world = world_with_dimension(0, "minecraft:overworld");
+    water_world.set_local_player_pose(local_player_pose([0.5, 0.0, 0.5], 0.0, 0.0));
+    water_world.insert_decoded_chunk(empty_lightmap_test_chunk(water_world.dimension()));
+    set_lightmap_test_block(
+        &mut water_world,
+        BlockPos { x: 0, y: 1, z: 0 },
+        SOURCE_WATER_BLOCK_STATE_ID,
+    );
+    let water_pose = camera_pose_from_world(&water_world).unwrap();
+    let water_frame = CameraFovTickState::default().frame_for_world(
+        &water_world,
+        Some(water_pose),
+        None,
+        [1920, 1080],
+        1.0,
+    );
+    assert!((water_frame.world_degrees - 60.0).abs() < 1.0e-5);
+    assert_eq!(water_frame.culling_degrees, 70.0);
+    assert!((water_frame.hud_degrees - 60.0).abs() < 1.0e-5);
+
+    let mut lava_world = world_with_dimension(0, "minecraft:overworld");
+    lava_world.set_local_player_pose(local_player_pose([0.5, 0.0, 0.97], 0.0, 0.0));
+    lava_world.insert_decoded_chunk(empty_lightmap_test_chunk(lava_world.dimension()));
+    let source_lava = lava_world
+        .registries()
+        .block_state_id_by_name_and_properties(
+            "minecraft:lava",
+            &BTreeMap::from([("level".to_string(), "0".to_string())]),
+        )
+        .expect("vanilla source lava state");
+    set_lightmap_test_block(&mut lava_world, BlockPos { x: 0, y: 1, z: 1 }, source_lava);
+    let lava_pose = camera_pose_from_world(&lava_world).unwrap();
+    let lava_frame = CameraFovTickState::default().frame_for_world(
+        &lava_world,
+        Some(lava_pose),
+        None,
+        [1920, 1080],
+        1.0,
+    );
+    assert!((lava_frame.world_degrees - 60.0).abs() < 1.0e-5);
+    assert_eq!(lava_frame.culling_degrees, 70.0);
+    assert!((lava_frame.hud_degrees - 60.0).abs() < 1.0e-5);
 }
 
 #[test]

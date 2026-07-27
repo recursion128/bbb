@@ -13624,6 +13624,7 @@ fn fishing_hook_first_person_hand_offset_uses_camera_near_plane() {
             fishing_hook_render_source(),
             pose,
             [1920, 1080],
+            70.0,
         ),
         [1.5518672, 1.7019858, 4.6857147],
     );
@@ -13631,7 +13632,7 @@ fn fishing_hook_first_person_hand_offset_uses_camera_near_plane() {
     let mut source = fishing_hook_render_source();
     source.holding_arm_left = true;
     assert_selection_box_close(
-        fishing_hook_first_person_line_origin_offset(source, pose, [1920, 1080]),
+        fishing_hook_first_person_line_origin_offset(source, pose, [1920, 1080], 70.0),
         [2.4481325, 1.7019858, 4.6857147],
     );
 }

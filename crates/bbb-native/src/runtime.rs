@@ -93,6 +93,7 @@ use crate::{
     bed_scene::bed_model_instances_from_world,
     bell_scene::bell_model_instances_from_world_at_partial_tick,
     biome_tint::biome_height_adjusted_temperature,
+    camera_fov::{camera_eye_in_water, CameraFovTickState},
     camera_pose::{
         camera_hurt_effect_from_world, camera_pose_from_world,
         camera_pose_from_world_at_partial_tick,
@@ -1319,44 +1320,6 @@ impl HudDebugTpsSampler {
 
     fn reset(&mut self) {
         self.samples.clear();
-    }
-}
-
-pub(crate) const VANILLA_BASE_CAMERA_FOV_DEGREES: f32 = 70.0;
-
-#[derive(Debug, Clone, Copy)]
-pub(crate) struct CameraFovTickState {
-    old_modifier: f32,
-    modifier: f32,
-}
-
-impl Default for CameraFovTickState {
-    fn default() -> Self {
-        Self {
-            old_modifier: 1.0,
-            modifier: 1.0,
-        }
-    }
-}
-
-impl CameraFovTickState {
-    fn advance_for_world(&mut self, ticks: u32, world: &WorldStore) {
-        for _ in 0..ticks {
-            let target = if world.local_player().camera.follows_player {
-                world.local_player_camera_fov_modifier(true, 1.0)
-            } else {
-                1.0
-            };
-            self.old_modifier = self.modifier;
-            self.modifier += (target - self.modifier) * 0.5;
-            self.modifier = self.modifier.clamp(0.1, 1.5);
-        }
-    }
-
-    fn fov_degrees(self, partial_tick: f32) -> f32 {
-        let partial_tick = partial_tick.clamp(0.0, 1.0);
-        let modifier = self.old_modifier + (self.modifier - self.old_modifier) * partial_tick;
-        VANILLA_BASE_CAMERA_FOV_DEGREES * modifier
     }
 }
 
@@ -3293,9 +3256,19 @@ pub(crate) fn update_renderer_from_publication(
     let camera_hurt_effect =
         camera_hurt_effect_from_world(world, entity_partial_tick, damage_tilt_strength);
     let camera_spinning_effect = camera_spinning_ticks.effect_for_world(world, entity_partial_tick);
-    let camera_fov_degrees = camera_fov_ticks.fov_degrees(entity_partial_tick);
-    let hud_locator_bar =
-        hud_locator_bar_from_world(world, camera_pose, camera_fov_degrees, entity_partial_tick);
+    let camera_fov = camera_fov_ticks.frame_for_world(
+        world,
+        camera_pose,
+        camera_hurt_effect,
+        [surface_size.width, surface_size.height],
+        entity_partial_tick,
+    );
+    let hud_locator_bar = hud_locator_bar_from_world(
+        world,
+        camera_pose,
+        camera_fov.world_degrees,
+        entity_partial_tick,
+    );
     let hud_contextual_bar = hud_render_runtime.contextual.select(
         world,
         world.client_level_generation(),
@@ -3390,7 +3363,8 @@ pub(crate) fn update_renderer_from_publication(
             EntityRenderVisibilityContext {
                 camera_pose,
                 surface_size: [surface_size.width, surface_size.height],
-                camera_fov_degrees,
+                camera_fov_degrees: camera_fov.culling_degrees,
+                base_camera_fov_degrees: camera_fov_ticks.base_degrees(),
                 render_distance_chunks,
                 terrain_upload,
                 entity_shadows,
@@ -3832,7 +3806,8 @@ pub(crate) fn update_renderer_from_publication(
             camera_pose,
             camera_hurt_effect,
             camera_spinning_effect,
-            camera_fov_degrees,
+            camera_fov_degrees: camera_fov.world_degrees,
+            camera_hud_fov_degrees: camera_fov.hud_degrees,
             current_post_effect_id,
             shader_game_time_ticks,
             cloud_frame,
@@ -17500,40 +17475,6 @@ fn camera_biome_has_precipitation(
     terrain_textures
         .biome_has_precipitation(biome_id)
         .unwrap_or(true)
-}
-
-fn camera_eye_in_water(world: &WorldStore, eye: [f32; 3]) -> bool {
-    if !eye.into_iter().all(f32::is_finite) {
-        return false;
-    }
-    let pos = BlockPos {
-        x: eye[0].floor() as i32,
-        y: eye[1].floor() as i32,
-        z: eye[2].floor() as i32,
-    };
-    let Some(fluid) = world.probe_block(pos).and_then(|block| block.fluid) else {
-        return false;
-    };
-    fluid.kind == TerrainFluidKind::Water
-        && f64::from(eye[1]) < f64::from(pos.y) + camera_fluid_height_at(world, pos, fluid)
-}
-
-fn camera_fluid_height_at(world: &WorldStore, pos: BlockPos, fluid: TerrainFluidState) -> f64 {
-    let same_fluid_above = pos.y.checked_add(1).is_some_and(|above_y| {
-        world
-            .probe_block(BlockPos {
-                x: pos.x,
-                y: above_y,
-                z: pos.z,
-            })
-            .and_then(|block| block.fluid)
-            .is_some_and(|above| above.kind == fluid.kind)
-    });
-    if same_fluid_above {
-        1.0
-    } else {
-        fluid.own_height()
-    }
 }
 
 fn rgb_u8_to_argb(color: [u8; 3]) -> i32 {

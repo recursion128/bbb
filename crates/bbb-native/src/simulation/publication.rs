@@ -14,11 +14,10 @@ use bbb_world::WorldStore;
 
 use super::input_commands::SimulationInputPublication;
 use crate::{
+    camera_fov::CameraFovTickState,
     input::{ClientInputState, RenderInputPublication},
     item_models::FirstPersonHandPresentation,
-    runtime::{
-        CameraFovTickState, HudDebugNetworkSampler, HudDebugTpsSampler, SimulationFrameState,
-    },
+    runtime::{HudDebugNetworkSampler, HudDebugTpsSampler, SimulationFrameState},
 };
 
 pub(crate) type SharedSimulationPublication = Arc<ArcSwap<SimulationPublication>>;
@@ -263,7 +262,8 @@ fn publish_control_views(
 mod tests {
     use super::*;
     use crate::{
-        runtime::{CameraFovTickState, HudDebugNetworkSampler, HudDebugTpsSampler},
+        camera_fov::CameraFovTickState,
+        runtime::{HudDebugNetworkSampler, HudDebugTpsSampler},
         simulation::input_commands::SimulationInputRuntime,
     };
     use winit::dpi::PhysicalSize;

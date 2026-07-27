@@ -398,6 +398,7 @@ pub struct Renderer {
     pub(super) camera_hurt_effect: Option<CameraHurtEffect>,
     pub(super) camera_spinning_effect: Option<CameraSpinningEffect>,
     pub(super) camera_fov_degrees: f32,
+    pub(super) camera_hud_fov_degrees: f32,
     pub(super) lightmap_environment: LightmapEnvironment,
     pub(super) fog_environment: FogEnvironment,
     pub(super) sky_environment: SkyEnvironment,
@@ -1811,6 +1812,7 @@ impl Renderer {
             camera_hurt_effect: None,
             camera_spinning_effect: None,
             camera_fov_degrees: 70.0,
+            camera_hud_fov_degrees: 70.0,
             lightmap_environment: LightmapEnvironment::default(),
             fog_environment: FogEnvironment::default(),
             sky_environment: SkyEnvironment::default(),
@@ -2385,16 +2387,23 @@ impl Renderer {
         self.update_camera();
     }
 
-    pub fn set_camera_fov_degrees(&mut self, fov_degrees: f32) {
+    pub fn set_camera_fov_degrees(&mut self, fov_degrees: f32, hud_fov_degrees: f32) {
         let fov_degrees = if fov_degrees.is_finite() {
-            fov_degrees.clamp(7.0, 105.0)
+            fov_degrees.clamp(0.1, 179.0)
         } else {
             70.0
         };
-        if self.camera_fov_degrees == fov_degrees {
+        let hud_fov_degrees = if hud_fov_degrees.is_finite() {
+            hud_fov_degrees.clamp(0.1, 179.0)
+        } else {
+            70.0
+        };
+        if self.camera_fov_degrees == fov_degrees && self.camera_hud_fov_degrees == hud_fov_degrees
+        {
             return;
         }
         self.camera_fov_degrees = fov_degrees;
+        self.camera_hud_fov_degrees = hud_fov_degrees;
         self.update_camera();
     }
 

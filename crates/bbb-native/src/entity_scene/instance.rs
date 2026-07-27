@@ -1043,6 +1043,7 @@ pub(super) fn fishing_hook_first_person_line_origin_offset(
     source: FishingHookRenderSourceState,
     camera_pose: CameraPose,
     surface_size: [u32; 2],
+    base_camera_fov_degrees: f32,
 ) -> [f32; 3] {
     let arm = if source.holding_arm_left { -1.0 } else { 1.0 };
     let swing = (source.owner_attack_anim.sqrt() * std::f32::consts::PI).sin();
@@ -1065,7 +1066,7 @@ pub(super) fn fishing_hook_first_person_line_origin_offset(
         right[0] * forward[1] - right[1] * forward[0],
     ];
     let aspect = surface_size[0] as f32 / surface_size[1].max(1) as f32;
-    let options_fov = crate::runtime::VANILLA_BASE_CAMERA_FOV_DEGREES;
+    let options_fov = base_camera_fov_degrees;
     let near_height = (options_fov.to_radians() * 0.5).tan() * 0.05;
     let near_width = near_height * aspect;
     let x = arm * 0.525 * near_width;

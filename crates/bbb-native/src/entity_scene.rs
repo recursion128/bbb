@@ -409,6 +409,7 @@ pub(crate) struct EntityRenderVisibilityContext<'a> {
     pub(crate) camera_pose: Option<CameraPose>,
     pub(crate) surface_size: [u32; 2],
     pub(crate) camera_fov_degrees: f32,
+    pub(crate) base_camera_fov_degrees: f32,
     pub(crate) render_distance_chunks: u32,
     pub(crate) terrain_upload: &'a TerrainUploadState,
     pub(crate) entity_shadows: bool,
@@ -548,6 +549,7 @@ pub(crate) fn visible_entity_model_instances_from_world_with_variant_textures_at
                     source,
                     camera_pose,
                     visibility.surface_size,
+                    visibility.base_camera_fov_degrees,
                 ));
         }
     }
