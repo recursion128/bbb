@@ -826,7 +826,19 @@ impl InventoryState {
             .map(|slot| slot.slot + 1)
             .max()
             .unwrap_or(0);
-        if !is_inventory_menu {
+        if is_inventory_menu {
+            if let Some(inventory_slot) = inventory_menu_slot_to_inventory_slot(row.slot) {
+                set_inventory_slot(
+                    &mut self.player_slots,
+                    InventorySlot {
+                        slot: inventory_slot,
+                        item: row.item,
+                        local_selected_bundle_item_index: NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX,
+                    },
+                );
+                self.update_inventory_slot_count(counters);
+            }
+        } else {
             self.write_back_container_player_section(counters, total_slots, &[row]);
         }
         self.update_merchant_offer_count(counters);
@@ -3029,8 +3041,7 @@ impl WorldStore {
     }
 
     pub fn apply_set_cursor_item(&mut self, packet: ProtocolSetCursorItem) {
-        self.inventory
-            .apply_set_cursor_item(&mut self.counters, packet)
+        self.apply_creative_aware_set_cursor_item(packet)
     }
 
     pub fn apply_open_screen(&mut self, packet: ProtocolOpenScreen) {
@@ -3057,8 +3068,7 @@ impl WorldStore {
     }
 
     pub fn apply_container_set_slot(&mut self, packet: ProtocolContainerSetSlot) -> bool {
-        self.inventory
-            .apply_container_set_slot(&mut self.counters, packet)
+        self.apply_creative_aware_container_set_slot(packet)
     }
 
     pub fn apply_container_set_data(&mut self, packet: ProtocolContainerSetData) -> bool {
@@ -3067,13 +3077,23 @@ impl WorldStore {
     }
 
     pub fn apply_container_close(&mut self, packet: ProtocolContainerClose) -> bool {
-        self.inventory
-            .apply_container_close(&mut self.counters, packet)
+        let applied = self
+            .inventory
+            .apply_container_close(&mut self.counters, packet);
+        if applied {
+            self.client_ui.current_creative_inventory = None;
+        }
+        applied
     }
 
     pub fn close_local_container(&mut self, container_id: i32) -> bool {
-        self.inventory
-            .close_local_container(&mut self.counters, container_id)
+        let closed = self
+            .inventory
+            .close_local_container(&mut self.counters, container_id);
+        if closed {
+            self.client_ui.current_creative_inventory = None;
+        }
+        closed
     }
 
     pub(crate) fn close_container_for_respawn(&mut self) -> Option<i32> {
@@ -3081,7 +3101,13 @@ impl WorldStore {
     }
 
     pub fn open_local_inventory(&mut self) -> bool {
-        self.inventory.open_local_inventory(&mut self.client_ui)
+        match self.open_local_inventory_with_operator_tab(false) {
+            Ok(opened) => opened,
+            Err(error) => {
+                self.record_apply_error("creative_inventory", error.to_string());
+                self.inventory.open_local_inventory(&mut self.client_ui)
+            }
+        }
     }
 
     pub fn local_inventory_is_open(&self) -> bool {

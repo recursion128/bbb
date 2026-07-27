@@ -1,14 +1,24 @@
 //! Vanilla creative-inventory catalog facts and canonical state.
 
 mod generated_26_1;
+mod materialize;
+mod state;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub use materialize::{
+    CreativeInventoryBuildError, CreativeInventoryMaterializationRevision,
+    CreativeInventorySnapshot, CreativeInventoryTabSnapshot,
+};
+pub use state::{CreativeInventoryScreenState, CreativeInventoryState};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum CreativeInventoryTabRow {
     Top,
     Bottom,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum CreativeInventoryTabType {
     Category,
     Hotbar,
@@ -16,7 +26,8 @@ pub enum CreativeInventoryTabType {
     Inventory,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum CreativeInventoryBackground {
     Items,
     ItemSearch,
@@ -91,3 +102,6 @@ pub struct CreativeInventoryTab {
 pub const fn vanilla_creative_inventory_tabs() -> &'static [CreativeInventoryTab] {
     generated_26_1::VANILLA_CREATIVE_INVENTORY_TABS
 }
+
+#[cfg(test)]
+mod tests;

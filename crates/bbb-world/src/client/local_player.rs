@@ -332,6 +332,7 @@ impl WorldStore {
             flying_speed: packet.flying_speed,
             walking_speed: packet.walking_speed,
         });
+        self.reconcile_creative_inventory_abilities();
     }
 
     pub fn set_local_flying(&mut self, flying: bool) -> bool {
@@ -372,6 +373,7 @@ impl WorldStore {
         if !permission_level.has_gamemaster_permission() {
             self.close_game_rules_screen();
         }
+        self.refresh_open_creative_inventory();
         true
     }
 

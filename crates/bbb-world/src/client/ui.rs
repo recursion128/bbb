@@ -27,6 +27,8 @@ const MAX_GHOST_RECIPE_CANDIDATES: usize = 65_536;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ClientUiState {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub current_creative_inventory: Option<crate::CreativeInventoryScreenState>,
     #[serde(default)]
     pub low_disk_space_warning_count: usize,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -442,6 +444,7 @@ impl ClientUiState {
     }
 
     pub(crate) fn replace_screen(&mut self) {
+        self.current_creative_inventory = None;
         self.replace_dialog();
         self.last_ghost_recipe = None;
         self.current_book = None;

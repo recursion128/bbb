@@ -27,6 +27,7 @@ impl WorldStore {
     /// two entry paths distinct so a transfer cannot inherit the previous
     /// server's holder order when the next server sends no registry contents.
     pub fn reset_registry_session(&mut self) {
+        self.reset_creative_inventory_for_new_level();
         self.clear_requested_debug_subscriptions();
         self.clear_debug_subscriber_values();
         let next_session = self.registries.revision.session.saturating_add(1);
@@ -74,6 +75,7 @@ impl WorldStore {
         self.sync_registry_counters();
         self.sync_registry_tag_counters();
         self.items.refresh_furnace_fuel_item_ids(&self.registries);
+        self.refresh_open_creative_inventory();
         Ok(())
     }
 
@@ -382,6 +384,7 @@ impl WorldStore {
             }
             self.sync_registry_tag_counters();
             self.items.refresh_furnace_fuel_item_ids(&self.registries);
+            self.refresh_open_creative_inventory();
         }
     }
 

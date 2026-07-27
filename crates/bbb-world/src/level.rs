@@ -392,6 +392,7 @@ impl WorldStore {
             .as_ref()
             .is_some_and(|level| level.dimension != respawn.common_spawn_info.dimension);
         let closed_server_container_id = self.close_container_for_respawn();
+        self.reset_creative_inventory_for_new_level();
         self.reset_local_player_for_respawn(
             respawn.data_to_keep,
             i32::from(respawn.common_spawn_info.game_type),
@@ -561,6 +562,8 @@ impl WorldStore {
             return;
         }
 
+        self.advance_creative_hotbar_pop_times(ticks);
+
         if self.local_player.portal_cooldown > 0 {
             let ticks = i32::try_from(ticks).unwrap_or(i32::MAX);
             self.local_player.portal_cooldown = self
@@ -632,6 +635,7 @@ impl WorldStore {
         self.local_player_vehicle_id = None;
         self.removed_player_vehicle_id = None;
         self.last_projectile_power = None;
+        self.reset_creative_inventory_for_new_level();
         self.clear_active_player_info();
         // A configuration re-entry constructs a new ClientPacketListener. Its
         // Scoreboard and ClientWaypointManager are fresh final fields and are

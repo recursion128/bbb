@@ -200,6 +200,8 @@ pub struct WorldStore {
     pub(crate) removed_player_vehicle_id: Option<i32>,
     #[serde(default)]
     pub(crate) last_projectile_power: Option<ProjectilePowerUpdateState>,
+    #[serde(default)]
+    pub(crate) creative_inventory: crate::CreativeInventoryState,
     pub(crate) inventory: InventoryState,
     /// Vanilla item/block default profiles synced from the asset registry at
     /// startup; flattened for serialized-snapshot compatibility.

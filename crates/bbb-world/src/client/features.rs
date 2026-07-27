@@ -61,6 +61,7 @@ impl WorldStore {
         }
         self.features.enabled = enabled;
         self.counters.enabled_features_tracked = self.features.enabled.len();
+        self.refresh_open_creative_inventory();
     }
 
     pub fn enabled_features(&self) -> &BTreeSet<String> {
