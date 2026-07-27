@@ -520,7 +520,8 @@ mod tests {
                             "type": "minecraft:special",
                             "base": "minecraft:item/test_sword",
                             "model": {
-                                "type": "minecraft:chest"
+                                "type": "minecraft:chest",
+                                "texture": "minecraft:normal"
                             }
                         }
                     ]
