@@ -3881,6 +3881,11 @@ fn hud_debug_overlay_projects_custom_sound_mood() {
 fn hud_debug_overlay_suppresses_post_effect_without_current_effect() {
     let world = world_with_dimension_height(0, "minecraft:overworld", 384);
     let mut input = ClientInputState::new(true);
+    input.synchronize_camera_post_effect(
+        world.client_level_generation(),
+        world.counters().set_camera_updates_applied,
+        current_post_effect_id_from_world(&world),
+    );
     input.set_debug_screen_entry_status(
         DebugScreenEntryId::PostEffect,
         crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
@@ -3926,6 +3931,11 @@ fn hud_debug_post_effect_tracks_vanilla_camera_entity_families() {
     }
 
     let mut input = ClientInputState::new(true);
+    input.synchronize_camera_post_effect(
+        world.client_level_generation(),
+        world.counters().set_camera_updates_applied,
+        current_post_effect_id_from_world(&world),
+    );
     input.set_debug_screen_entry_status(
         DebugScreenEntryId::PostEffect,
         crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
@@ -3947,7 +3957,13 @@ fn hud_debug_post_effect_tracks_vanilla_camera_entity_families() {
 
     world.apply_add_entity(test_add_entity(104, VANILLA_ENTITY_TYPE_PLAYER_ID));
     assert!(world.apply_set_camera(bbb_protocol::packets::SetCamera { camera_id: 104 }));
+    input.synchronize_camera_post_effect(
+        world.client_level_generation(),
+        world.counters().set_camera_updates_applied,
+        current_post_effect_id_from_world(&world),
+    );
     assert_eq!(current_post_effect_id_from_world(&world), None);
+    assert_eq!(input.camera_post_effect_id(), None);
 }
 
 #[test]
