@@ -640,10 +640,6 @@ Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
 Owner: `bbb-native` + `bbb-net` + `bbb-protocol` + `bbb-world`
 
 Movement:
-- Apply the F1-backed `hideGui` state to the remaining HUD, crosshair, overlays,
-  and first-person presentation. Generic entity-name visibility consumes it;
-  the rest of the GUI still renders.
-
 - Complete the remaining camera-FOV inputs beyond synchronized player abilities:
   configurable base FOV/effect scale and death/fluid modifiers. Vanilla keeps
   `walkingSpeed` as the FOV ratio denominator; it does not replace the separately

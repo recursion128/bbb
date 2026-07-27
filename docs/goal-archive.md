@@ -599,3 +599,7 @@
   Vanilla 帧时长/插值逐 client tick 原地更新 HUD 与模型/实体/粒子共用 atlas；
   generated-item 侧面轮廓合并全部唯一帧，合同见
   `docs/archive/item-atlas-animation-design.md`。
+- **2026-07-26（F1 hideGui 呈现工程闭环）**：单一 post-input 可见性快照现覆盖
+  普通 HUD、crosshair、方块选择框与完整首人称 pass，同时保留 sleep、Screen、F3
+  和 Toast；隐藏态不清空 owner，恢复无需新事件，合同见
+  `docs/archive/hide-gui-presentation-design.md`。

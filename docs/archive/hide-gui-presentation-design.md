@@ -1,6 +1,6 @@
 # F1 Hide-GUI Presentation Parity
 
-Status: active engineering contract.
+Status: completed on 2026-07-26.
 
 ## Goal and completion standard
 
