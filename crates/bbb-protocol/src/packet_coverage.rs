@@ -3461,7 +3461,7 @@ mod tests {
     }
 
     #[test]
-    fn play_serverbound_place_recipe_keeps_response_semantics_open() {
+    fn play_serverbound_place_recipe_closes_authoritative_response_branches() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -3470,16 +3470,12 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "SERVERBOUND_PLACE_RECIPE"
             })
             .expect("play serverbound place recipe coverage row");
-        for dimension in ["command_surface", "encoder", "state_guard", "tests"] {
-            assert_eq!(
-                entry.coverage[dimension].status,
-                PacketCoverageStatus::Complete,
-                "{dimension}"
-            );
-        }
-        assert_eq!(
-            entry.coverage["ack_response"].status,
-            PacketCoverageStatus::Partial
+        assert!(
+            entry
+                .coverage
+                .values()
+                .all(|cell| cell.status == PacketCoverageStatus::Complete),
+            "place recipe must cover both authoritative slot sync and ghost fallback"
         );
     }
 

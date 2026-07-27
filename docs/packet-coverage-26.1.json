@@ -4846,18 +4846,25 @@
       "coverage": {
         "ack_response": {
           "evidence": [
+            "crates/bbb-native/src/input/inventory.rs#maybe_queue_recipe_book_place_recipe",
+            "crates/bbb-native/src/input/tests.rs#recipe_book_uncraftable_recipe_button_retry_is_guarded",
             "crates/bbb-protocol/src/packets/client_features/recipes.rs#decode_place_ghost_recipe",
             "crates/bbb-world/src/client/ui.rs#apply_place_ghost_recipe",
+            "crates/bbb-world/src/client/ui.rs#ghost_recipe_places_inputs_in_the_active_crafting_grid",
+            "crates/bbb-world/src/client/ui.rs#ghost_recipe_ignores_inactive_container_without_caching_for_later",
             "crates/bbb-world/src/client/inventory.rs#apply_container_set_content",
             "crates/bbb-world/src/client/inventory.rs#apply_container_set_slot",
-            "crates/bbb-world/src/client/inventory/tests.rs#inventory_menu_crafting_result_remains_server_owned_after_input_click",
+            "crates/bbb-world/src/client/inventory/tests.rs#container_content_only_updates_the_matching_active_menu",
+            "crates/bbb-world/src/client/inventory/tests.rs#container_set_slot_only_updates_inventory_or_the_matching_active_menu",
             "crates/bbb-world/src/client/inventory/tests.rs#crafting_result_server_correction_replaces_default_client_prediction",
+            "vanilla:net/minecraft/client/gui/screens/recipebook/RecipeBookComponent.java#tryPlaceRecipe",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handlePlaceRecipe",
+            "vanilla:net/minecraft/recipebook/ServerPlaceRecipe.java#tryPlaceRecipe",
             "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handlePlaceRecipe",
-            "vanilla:net/minecraft/world/inventory/InventoryMenu.java#slotsChanged",
-            "vanilla:net/minecraft/world/inventory/CraftingMenu.java#slotChangedCraftingGrid"
+            "vanilla:net/minecraft/world/inventory/AbstractContainerMenu.java#broadcastChanges"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "command_surface": {
           "evidence": [
