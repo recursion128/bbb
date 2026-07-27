@@ -81,7 +81,10 @@ Owner: `bbb-protocol`
   exact item components and associated menu data. Conversely, do not invent a
   native command producer for an enum action that the Vanilla client never
   sends; pin that exception with a reverse client-callsite audit plus the
-  server handler and encoder evidence.
+  server handler and encoder evidence. A serverbound family marked as having
+  no acknowledgement must likewise pin the Vanilla broadcast target and any
+  required local-first prediction, rather than infer no response from the
+  absence of a dedicated packet type.
 - Use `docs/item-component-coverage-26.1.json` as the complete 110-entry
   ItemStack component semantic inventory. Each `partial` cell must close
   through its sparse evidence override; consuming the right wire length or

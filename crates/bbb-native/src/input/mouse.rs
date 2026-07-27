@@ -3186,7 +3186,7 @@ mod tests {
         let (tx, mut rx) = mpsc::channel(2);
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
-        let mut world = world_with_crosshair_entity(123);
+        let mut world = local_attack_world_with_player_and_target(123);
         let mut counters = NetCounters::default();
 
         handle_mouse_input(
@@ -3211,6 +3211,13 @@ mod tests {
         assert_eq!(
             rx.try_recv().unwrap(),
             NetCommand::Swing(InteractionHand::MainHand)
+        );
+        world.advance_entity_client_animations(2);
+        let swing = world.local_player_attack_swing(1.0).unwrap();
+        assert!(!swing.off_hand);
+        assert!(
+            swing.attack_anim > 0.0,
+            "LocalPlayer.swing arms the local animation before the server omits its sender echo"
         );
     }
 

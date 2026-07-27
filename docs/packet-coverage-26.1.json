@@ -6436,8 +6436,11 @@
       "coverage": {
         "ack_response": {
           "evidence": [
+            "crates/bbb-native/src/input/commands.rs#queue_swing_command",
+            "crates/bbb-world/src/client/inventory.rs#trigger_local_player_swing",
             "vanilla:net/minecraft/client/player/LocalPlayer.java#swing",
-            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleAnimate"
+            "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleAnimate",
+            "vanilla:net/minecraft/world/entity/LivingEntity.java#swing"
           ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
           "status": "not-applicable"
@@ -6445,8 +6448,13 @@
         "command_surface": {
           "evidence": [
             "crates/bbb-native/src/input/mouse.rs#handle_mouse_input",
+            "crates/bbb-native/src/input/mouse.rs#apply_local_interaction_success",
+            "crates/bbb-native/src/input.rs#handle_key_input",
             "crates/bbb-native/src/input/commands.rs#queue_swing_command",
-            "crates/bbb-net/src/driver/commands.rs#send_swing_command"
+            "crates/bbb-net/src/driver/commands.rs#send_swing_command",
+            "vanilla:net/minecraft/client/Minecraft.java#startAttack",
+            "vanilla:net/minecraft/client/Minecraft.java#startUseItem",
+            "vanilla:net/minecraft/client/Minecraft.java#handleKeybinds"
           ],
           "gap": null,
           "status": "complete"
@@ -6462,25 +6470,42 @@
         },
         "state_guard": {
           "evidence": [
+            "crates/bbb-native/src/input/mouse.rs#handle_mouse_input",
             "crates/bbb-native/src/input/mouse.rs#local_player_attack_is_blocked",
-            "crates/bbb-world/src/entities/updates.rs#apply_entity_animation",
-            "crates/bbb-world/src/entities/animations.rs#trigger_swing",
-            "vanilla:net/minecraft/client/player/LocalPlayer.java#swing"
+            "crates/bbb-native/src/input/mouse.rs#local_player_hands_are_busy",
+            "crates/bbb-native/src/input/mouse.rs#apply_local_interaction_success",
+            "crates/bbb-world/src/client/inventory/use_prediction.rs#LocalInteractionSwingSource",
+            "crates/bbb-native/src/input/commands.rs#queue_swing_command",
+            "crates/bbb-world/src/client/inventory.rs#trigger_local_player_swing",
+            "vanilla:net/minecraft/client/Minecraft.java#startAttack",
+            "vanilla:net/minecraft/client/Minecraft.java#startUseItem",
+            "vanilla:net/minecraft/client/Minecraft.java#handleKeybinds",
+            "vanilla:net/minecraft/client/player/LocalPlayer.java#swing",
+            "vanilla:net/minecraft/world/entity/LivingEntity.java#swing"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/tests.rs#encodes_swing_hand",
             "crates/bbb-net/src/driver/commands/tests.rs#send_swing_command_encodes_swing_packet",
             "crates/bbb-net/src/driver.rs#drive_connection_sends_interaction_net_commands_in_play",
-            "crates/bbb-native/src/input/mouse.rs#left_mouse_press_queues_main_hand_swing",
+            "crates/bbb-native/src/input/mouse.rs#left_mouse_press_on_entity_queues_attack_and_swing",
+            "crates/bbb-native/src/input/mouse.rs#left_mouse_press_on_entity_outside_selected_attack_range_swings_without_attack",
+            "crates/bbb-native/src/input/mouse.rs#left_mouse_press_on_block_outside_world_border_swings_without_destroying",
+            "crates/bbb-native/src/input/mouse.rs#spectator_left_mouse_press_on_entity_queues_spectate_only",
             "crates/bbb-native/src/input/mouse.rs#unfocused_mouse_press_does_not_queue_swing",
+            "crates/bbb-native/src/input/mouse.rs#left_mouse_press_while_using_item_does_not_attack_or_swing",
+            "crates/bbb-native/src/input/mouse.rs#right_click_lever_queues_vanilla_client_particle_and_swing",
+            "crates/bbb-native/src/input/mouse.rs#right_mouse_press_on_default_interaction_entity_consumes_without_swing",
+            "crates/bbb-native/src/input/tests.rs#drop_key_predicts_one_selected_item_and_swings_when_non_empty",
+            "crates/bbb-native/src/input/tests.rs#spectator_drop_key_does_not_drop_or_swing",
+            "crates/bbb-world/src/client/inventory/use_prediction/mob_interact/tests.rs#local_mob_interact_panda_and_zombie_villager_preserve_server_swing_results",
             "crates/bbb-world/src/entities/tests/movement_combat_and_swing_projection.rs#local_player_attack_swing_samples_local_entity"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",

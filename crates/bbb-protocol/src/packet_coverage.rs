@@ -3965,7 +3965,7 @@ mod tests {
     }
 
     #[test]
-    fn play_serverbound_swing_keeps_local_prediction_parity_open() {
+    fn play_serverbound_swing_closes_local_first_animation_and_input_guards() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -3976,20 +3976,33 @@ mod tests {
             entry.coverage["ack_response"].status,
             PacketCoverageStatus::NotApplicable
         );
-        for dimension in ["command_surface", "encoder"] {
+        for dimension in ["command_surface", "encoder", "state_guard", "tests"] {
             assert_eq!(
                 entry.coverage[dimension].status,
                 PacketCoverageStatus::Complete,
                 "{dimension}"
             );
         }
-        for dimension in ["state_guard", "tests"] {
-            assert_eq!(
-                entry.coverage[dimension].status,
-                PacketCoverageStatus::Partial,
-                "{dimension}"
+        for local_first in ["queue_swing_command", "trigger_local_player_swing"] {
+            assert!(
+                entry.coverage["ack_response"]
+                    .evidence
+                    .iter()
+                    .any(|evidence| evidence.contains(local_first)),
+                "missing local-first no-echo evidence for {local_first}"
             );
         }
+        assert!(entry.coverage["ack_response"]
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("LivingEntity.java#swing")));
+        assert!(entry.coverage["state_guard"]
+            .evidence
+            .iter()
+            .any(|evidence| evidence.contains("LocalInteractionSwingSource")));
+        assert!(entry.coverage["tests"].evidence.iter().any(
+            |evidence| evidence.contains("left_mouse_press_on_entity_queues_attack_and_swing")
+        ));
     }
 
     #[test]
