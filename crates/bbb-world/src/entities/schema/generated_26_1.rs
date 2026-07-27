@@ -29724,7 +29724,7 @@ mod generated_catalog_guards {
 
     #[test]
     fn production_camera_post_effect_does_not_restore_entity_type_dispatch() {
-        let source = include_str!("../../../../bbb-native/src/runtime.rs");
+        let source = include_str!("../../../../bbb-native/src/camera_pose.rs");
         let body = source
             .split("fn current_post_effect_id_from_world")
             .nth(1)
