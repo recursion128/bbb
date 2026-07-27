@@ -390,6 +390,7 @@ pub(crate) fn first_person_item_models_with_map_cache(
             arm_left,
             Some(owner_main_hand_left),
             Some("minecraft:player"),
+            world.local_player_team_color_rgb(),
             using_this_hand,
             world.local_player().interaction.using_item_ticks as f32,
             enchantment_keys.as_deref(),

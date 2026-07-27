@@ -262,6 +262,7 @@ fn entity_model_sources_project_same_team_friendly_invisible_visibility() {
             minecart_uuid.to_string(),
         ],
     }));
+    assert_eq!(store.local_player_team_color_rgb(), Some(0x55ff55));
 
     let hidden = store.entity_model_sources_at_partial_tick(1.0);
     assert!(
@@ -380,6 +381,9 @@ fn entity_model_sources_project_team_outline_color() {
     assert_eq!(chicken.outline_color, 0xff55_ff55);
     assert!(player.appears_glowing);
     assert_eq!(player.outline_color, 0xff55_ff55);
+    assert_eq!(store.entity_team_color_rgb(37), Some(0x55ff55));
+    assert_eq!(store.entity_team_color_rgb(38), Some(0x55ff55));
+    assert_eq!(store.entity_team_color_rgb(999), None);
 }
 
 #[test]

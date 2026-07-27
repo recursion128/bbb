@@ -1510,6 +1510,9 @@ pub(super) struct IconResolveContext<'a> {
     /// Vanilla `ContextEntityType.get`: `None` means this native call site has
     /// no owner entity, so select cases do not match.
     pub context_entity_type: Option<&'a str>,
+    /// Vanilla item tint `TeamColor.calculate`: the living owner's scoreboard
+    /// team formatting RGB. Non-living and ownerless paths leave this absent.
+    pub owner_team_color_rgb: Option<u32>,
     /// Vanilla `LocalTime.get`: wall-clock millis used for the formatted date.
     pub local_time_epoch_millis: Option<i64>,
     /// Vanilla `Time.get`: world clock values. `None` means this native call

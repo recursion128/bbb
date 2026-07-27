@@ -538,22 +538,30 @@ pub(super) fn item_tint_source(
 pub(super) fn item_icon_tint_color(
     tint: &ItemIconTint,
     component_patch: Option<&DataComponentPatchSummary>,
+    owner_team_color_rgb: Option<u32>,
 ) -> [f32; 4] {
     match tint {
         ItemIconTint::Static(color) => *color,
-        ItemIconTint::Source(source) => item_tint_source_color(source, component_patch),
+        ItemIconTint::Source(source) => {
+            item_tint_source_color(source, component_patch, owner_team_color_rgb)
+        }
     }
 }
 
 pub(super) fn resolve_item_icon_texture_layer_tints(
     layers: Vec<ItemIconTextureLayer>,
     component_patch: Option<&DataComponentPatchSummary>,
+    owner_team_color_rgb: Option<u32>,
 ) -> Vec<ItemIconTextureLayer> {
     layers
         .into_iter()
         .map(|layer| ItemIconTextureLayer {
             texture_index: layer.texture_index,
-            tint: ItemIconTint::Static(item_icon_tint_color(&layer.tint, component_patch)),
+            tint: ItemIconTint::Static(item_icon_tint_color(
+                &layer.tint,
+                component_patch,
+                owner_team_color_rgb,
+            )),
             translucent: layer.translucent,
         })
         .collect()
@@ -562,6 +570,7 @@ pub(super) fn resolve_item_icon_texture_layer_tints(
 pub(super) fn item_tint_source_color(
     tint: &ItemTintSource,
     component_patch: Option<&DataComponentPatchSummary>,
+    owner_team_color_rgb: Option<u32>,
 ) -> [f32; 4] {
     match tint {
         ItemTintSource::CustomModelData {
@@ -588,7 +597,7 @@ pub(super) fn item_tint_source_color(
         }
         ItemTintSource::Potion { default_color } => {
             let color = component_patch
-                .and_then(|patch| patch.potion_custom_color)
+                .and_then(potion_contents_tint_color)
                 .unwrap_or(*default_color);
             rgb_i32_tint(color)
         }
@@ -599,10 +608,56 @@ pub(super) fn item_tint_source_color(
             rgb_i32_tint(color)
         }
         ItemTintSource::Constant { value } => rgb_i32_tint(*value),
-        ItemTintSource::Grass { .. } | ItemTintSource::Team { .. } => {
-            item_tint_source_default_color(tint, None)
+        ItemTintSource::Grass { .. } => item_tint_source_default_color(tint, None),
+        ItemTintSource::Team { default_color } => {
+            rgb_i32_tint(owner_team_color_rgb.map_or(*default_color, |color| color as i32))
         }
     }
+}
+
+fn potion_contents_tint_color(component_patch: &DataComponentPatchSummary) -> Option<i32> {
+    if let Some(custom_color) = component_patch.potion_custom_color {
+        return Some(custom_color);
+    }
+
+    let mut red = 0u32;
+    let mut green = 0u32;
+    let mut blue = 0u32;
+    let mut total_weight = 0u32;
+    let mut add_effect = |effect_id: i32, amplifier: i32, visible: bool| {
+        if !visible {
+            return;
+        }
+        let Some(effect) = bbb_protocol::mob_effect_types::vanilla_mob_effect_type(effect_id)
+        else {
+            return;
+        };
+        let weight = u32::try_from(amplifier.saturating_add(1)).unwrap_or(0);
+        let color = effect.color;
+        red += weight * ((color >> 16) & 0xff);
+        green += weight * ((color >> 8) & 0xff);
+        blue += weight * (color & 0xff);
+        total_weight += weight;
+    };
+
+    if let Some(potion) = component_patch
+        .potion_id
+        .and_then(bbb_protocol::potion_types::vanilla_potion)
+    {
+        for effect in potion.effects {
+            add_effect(effect.effect_id, effect.amplifier, true);
+        }
+    }
+    for effect in &component_patch.potion_custom_effects {
+        add_effect(effect.effect_id, effect.amplifier, effect.show_particles);
+    }
+
+    (total_weight != 0).then(|| {
+        let red = red / total_weight;
+        let green = green / total_weight;
+        let blue = blue / total_weight;
+        ((red << 16) | (green << 8) | blue) as i32
+    })
 }
 
 pub(super) fn firework_explosion_tint_color(colors: &[i32]) -> Option<i32> {
@@ -684,6 +739,7 @@ impl NativeItemRuntime {
             main_hand_left: None,
             context_dimension: None,
             context_entity_type: None,
+            owner_team_color_rgb: None,
             local_time_epoch_millis: self.local_time_epoch_millis(),
             time_context: None,
             stateful_model_id: item_id,
@@ -783,6 +839,7 @@ impl NativeItemRuntime {
             main_hand_left: None,
             context_dimension: None,
             context_entity_type: None,
+            owner_team_color_rgb: None,
             local_time_epoch_millis: self.local_time_epoch_millis(),
             time_context: None,
             stateful_model_id: item_model_id,
@@ -918,6 +975,7 @@ impl NativeItemRuntime {
             ItemModelUseContext::inactive(),
             BlockModelDisplayContext::Gui,
             0.0,
+            None,
             None,
             None,
             None,
@@ -1102,6 +1160,7 @@ impl NativeItemRuntime {
             ItemModelUseContext::inactive(),
             None,
             None,
+            None,
             trim_material_keys,
             trim_pattern_keys,
             enchantment_keys,
@@ -1136,6 +1195,7 @@ impl NativeItemRuntime {
             enchantment_keys,
             damage_type_keys,
             attribute_keys,
+            None,
             None,
             None,
             None,
@@ -1178,6 +1238,7 @@ impl NativeItemRuntime {
             display_context,
             owner_main_hand_left,
             context_entity_type,
+            None,
             context_dimension,
             trim_material_keys,
             None,
@@ -1195,6 +1256,7 @@ impl NativeItemRuntime {
         display_context: BlockModelDisplayContext,
         owner_main_hand_left: Option<bool>,
         context_entity_type: Option<&str>,
+        owner_team_color_rgb: Option<u32>,
         context_dimension: Option<&str>,
         trim_material_keys: Option<&[String]>,
         trim_pattern_keys: Option<&[String]>,
@@ -1211,6 +1273,7 @@ impl NativeItemRuntime {
             using_item,
             use_context,
             context_entity_type,
+            owner_team_color_rgb,
             context_dimension,
             trim_material_keys,
             trim_pattern_keys,
@@ -1228,6 +1291,7 @@ impl NativeItemRuntime {
         display_context: BlockModelDisplayContext,
         owner_main_hand_left: Option<bool>,
         context_entity_type: Option<&str>,
+        owner_team_color_rgb: Option<u32>,
         context_dimension: Option<&str>,
         trim_material_keys: Option<&[String]>,
         trim_pattern_keys: Option<&[String]>,
@@ -1251,6 +1315,7 @@ impl NativeItemRuntime {
             attribute_keys,
             owner_main_hand_left,
             context_entity_type,
+            owner_team_color_rgb,
             context_dimension,
             None,
             None,
@@ -1272,6 +1337,7 @@ impl NativeItemRuntime {
         using_item: bool,
         use_context: ItemModelUseContext,
         context_entity_type: Option<&str>,
+        owner_team_color_rgb: Option<u32>,
         context_dimension: Option<&str>,
         trim_material_keys: Option<&[String]>,
         trim_pattern_keys: Option<&[String]>,
@@ -1279,7 +1345,7 @@ impl NativeItemRuntime {
         damage_type_keys: Option<&[String]>,
         attribute_keys: Option<&[String]>,
     ) -> Vec<GeneratedItemLayer> {
-        let Some(icon) = self.icon_for_stack_with_model_registry_context(
+        let Some(icon) = self.icon_for_stack_with_model_registry_context_and_seed(
             stack,
             None,
             using_item,
@@ -1293,6 +1359,7 @@ impl NativeItemRuntime {
             attribute_keys,
             owner_main_hand_left,
             context_entity_type,
+            owner_team_color_rgb,
             context_dimension,
             None,
             None,
@@ -1302,6 +1369,7 @@ impl NativeItemRuntime {
             false,
             ItemModelKeybindContext::default(),
             false,
+            0,
         ) else {
             return Vec::new();
         };
@@ -1565,6 +1633,7 @@ impl NativeItemRuntime {
             None,
             owner_main_hand_left,
             context_entity_type,
+            None,
             context_dimension,
             time_context,
             compass_context,
@@ -1594,6 +1663,7 @@ impl NativeItemRuntime {
         attribute_keys: Option<&[String]>,
         owner_main_hand_left: Option<bool>,
         context_entity_type: Option<&str>,
+        owner_team_color_rgb: Option<u32>,
         context_dimension: Option<&str>,
         time_context: Option<ItemModelTimeContext>,
         compass_context: Option<ItemModelCompassContext<'_>>,
@@ -1619,6 +1689,7 @@ impl NativeItemRuntime {
             attribute_keys,
             owner_main_hand_left,
             context_entity_type,
+            owner_team_color_rgb,
             context_dimension,
             time_context,
             compass_context,
@@ -1755,6 +1826,7 @@ impl NativeItemRuntime {
             attribute_keys,
             owner_main_hand_left,
             context_entity_type,
+            None,
             context_dimension,
             time_context,
             compass_context,
@@ -1784,6 +1856,7 @@ impl NativeItemRuntime {
         attribute_keys: Option<&[String]>,
         owner_main_hand_left: Option<bool>,
         context_entity_type: Option<&str>,
+        owner_team_color_rgb: Option<u32>,
         context_dimension: Option<&str>,
         time_context: Option<ItemModelTimeContext>,
         compass_context: Option<ItemModelCompassContext<'_>>,
@@ -1809,6 +1882,7 @@ impl NativeItemRuntime {
             attribute_keys,
             owner_main_hand_left,
             context_entity_type,
+            owner_team_color_rgb,
             context_dimension,
             time_context,
             compass_context,
@@ -1846,6 +1920,7 @@ impl NativeItemRuntime {
         attribute_keys: Option<&[String]>,
         owner_main_hand_left: Option<bool>,
         context_entity_type: Option<&str>,
+        owner_team_color_rgb: Option<u32>,
         context_dimension: Option<&str>,
         time_context: Option<ItemModelTimeContext>,
         compass_context: Option<ItemModelCompassContext<'_>>,
@@ -1871,6 +1946,7 @@ impl NativeItemRuntime {
             attribute_keys,
             owner_main_hand_left,
             context_entity_type,
+            owner_team_color_rgb,
             context_dimension,
             time_context,
             compass_context,
@@ -1900,6 +1976,7 @@ impl NativeItemRuntime {
         attribute_keys: Option<&[String]>,
         owner_main_hand_left: Option<bool>,
         context_entity_type: Option<&str>,
+        owner_team_color_rgb: Option<u32>,
         context_dimension: Option<&str>,
         time_context: Option<ItemModelTimeContext>,
         compass_context: Option<ItemModelCompassContext<'_>>,
@@ -1925,6 +2002,7 @@ impl NativeItemRuntime {
             attribute_keys,
             owner_main_hand_left,
             context_entity_type,
+            owner_team_color_rgb,
             context_dimension,
             time_context,
             compass_context,
@@ -1955,6 +2033,7 @@ impl NativeItemRuntime {
         attribute_keys: Option<&[String]>,
         owner_main_hand_left: Option<bool>,
         context_entity_type: Option<&str>,
+        owner_team_color_rgb: Option<u32>,
         context_dimension: Option<&str>,
         time_context: Option<ItemModelTimeContext>,
         compass_context: Option<ItemModelCompassContext<'_>>,
@@ -1985,6 +2064,7 @@ impl NativeItemRuntime {
             attribute_keys,
             owner_main_hand_left,
             context_entity_type,
+            owner_team_color_rgb,
             context_dimension,
             time_context,
             compass_context,
@@ -2011,6 +2091,7 @@ impl NativeItemRuntime {
             ItemModelUseContext::inactive(),
             BlockModelDisplayContext::Gui,
             0.0,
+            None,
             None,
             None,
             None,
@@ -2050,6 +2131,7 @@ impl NativeItemRuntime {
         attribute_keys: Option<&[String]>,
         owner_main_hand_left: Option<bool>,
         context_entity_type: Option<&str>,
+        owner_team_color_rgb: Option<u32>,
         context_dimension: Option<&str>,
         time_context: Option<ItemModelTimeContext>,
         compass_context: Option<ItemModelCompassContext<'_>>,
@@ -2134,6 +2216,7 @@ impl NativeItemRuntime {
             main_hand_left: owner_main_hand_left,
             context_dimension,
             context_entity_type,
+            owner_team_color_rgb,
             local_time_epoch_millis: self.local_time_epoch_millis(),
             time_context,
             stateful_model_id: item_model_id,
@@ -2184,8 +2267,11 @@ impl NativeItemRuntime {
                     transformation,
                     display_transform,
                 } => {
-                    let Some(icon) = self.item_atlas_icon_for_layers(layers, component_patch)
-                    else {
+                    let Some(icon) = self.item_atlas_icon_for_layers(
+                        layers,
+                        component_patch,
+                        owner_team_color_rgb,
+                    ) else {
                         continue;
                     };
                     compatibility_layers.extend(icon.layers.iter().copied());
@@ -2201,9 +2287,11 @@ impl NativeItemRuntime {
                     transformation,
                     display_transform,
                 } => {
-                    if let Some(icon) =
-                        self.item_atlas_icon_for_layers(base_layers, component_patch)
-                    {
+                    if let Some(icon) = self.item_atlas_icon_for_layers(
+                        base_layers,
+                        component_patch,
+                        owner_team_color_rgb,
+                    ) {
                         compatibility_layers.extend(icon.layers);
                     }
                     model_layers.push(ResolvedItemModelLayer::Special {
@@ -2233,6 +2321,7 @@ impl NativeItemRuntime {
         &self,
         layers: Vec<ItemIconTextureLayer>,
         component_patch: Option<&DataComponentPatchSummary>,
+        owner_team_color_rgb: Option<u32>,
     ) -> Option<ItemAtlasIcon> {
         let layers = layers
             .into_iter()
@@ -2242,7 +2331,11 @@ impl NativeItemRuntime {
                     .map(|uv| ItemAtlasIconLayer {
                         texture_index: layer.texture_index,
                         uv,
-                        tint: item_icon_tint_color(&layer.tint, component_patch),
+                        tint: item_icon_tint_color(
+                            &layer.tint,
+                            component_patch,
+                            owner_team_color_rgb,
+                        ),
                         translucent: layer.translucent,
                     })
             })
@@ -2546,6 +2639,7 @@ impl NativeItemRuntime {
             main_hand_left: parent_context.main_hand_left,
             context_dimension: parent_context.context_dimension,
             context_entity_type: parent_context.context_entity_type,
+            owner_team_color_rgb: parent_context.owner_team_color_rgb,
             local_time_epoch_millis: parent_context.local_time_epoch_millis,
             time_context: parent_context.time_context,
             stateful_model_id: item_model_id,
@@ -2596,6 +2690,7 @@ impl NativeItemRuntime {
                     layers: resolve_item_icon_texture_layer_tints(
                         layers,
                         Some(&template.component_patch),
+                        parent_context.owner_team_color_rgb,
                     ),
                     transformation,
                     display_transform,
@@ -2609,6 +2704,7 @@ impl NativeItemRuntime {
                     base_layers: resolve_item_icon_texture_layer_tints(
                         base_layers,
                         Some(&template.component_patch),
+                        parent_context.owner_team_color_rgb,
                     ),
                     model,
                     transformation,

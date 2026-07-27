@@ -4534,6 +4534,26 @@ impl WorldStore {
         Some(self.scoreboard_name_for_identity(identity.entity_type_id, identity.uuid))
     }
 
+    /// Returns the RGB color supplied by the entity's scoreboard team formatting.
+    ///
+    /// The caller decides whether the entity is a living item-model owner. Vanilla's
+    /// team item tint receives no owner for non-living entities.
+    pub fn entity_team_color_rgb(&self, entity_id: i32) -> Option<u32> {
+        let identity = self.entities.identity(entity_id)?;
+        let scoreboard_name =
+            self.scoreboard_name_for_identity(identity.entity_type_id, identity.uuid);
+        self.scoreboard
+            .team_color_rgb_for_scoreboard_name(&scoreboard_name)
+    }
+
+    /// Returns the local player's scoreboard team formatting RGB, when both the
+    /// player identity and a color-bearing team formatting are present.
+    pub fn local_player_team_color_rgb(&self) -> Option<u32> {
+        let scoreboard_name = self.local_player_scoreboard_name()?;
+        self.scoreboard
+            .team_color_rgb_for_scoreboard_name(&scoreboard_name)
+    }
+
     fn entity_scoreboard_name(&self, source: &EntityModelSourceState) -> String {
         self.scoreboard_name_for_identity(source.entity_type_id, source.uuid)
     }

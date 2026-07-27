@@ -4364,6 +4364,71 @@ fn block_item_3d_model(
     keybind_context: ItemModelKeybindContext,
     item_model_seed: i32,
 ) -> Option<HudBlockItemModel> {
+    block_item_3d_model_with_owner_team_color(
+        world,
+        item,
+        item_runtime,
+        terrain_textures,
+        local_selected_bundle_item_index,
+        using_item,
+        selected_item,
+        carried_item,
+        fishing_rod_cast,
+        shift_down,
+        keybind_context,
+        item_model_seed,
+        world.local_player_team_color_rgb(),
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn fake_block_item_3d_model(
+    world: &WorldStore,
+    item: &bbb_protocol::packets::ItemStackSummary,
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
+    local_selected_bundle_item_index: Option<i32>,
+    using_item: bool,
+    selected_item: bool,
+    carried_item: bool,
+    fishing_rod_cast: bool,
+    shift_down: bool,
+    keybind_context: ItemModelKeybindContext,
+    item_model_seed: i32,
+) -> Option<HudBlockItemModel> {
+    block_item_3d_model_with_owner_team_color(
+        world,
+        item,
+        item_runtime,
+        terrain_textures,
+        local_selected_bundle_item_index,
+        using_item,
+        selected_item,
+        carried_item,
+        fishing_rod_cast,
+        shift_down,
+        keybind_context,
+        item_model_seed,
+        None,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn block_item_3d_model_with_owner_team_color(
+    world: &WorldStore,
+    item: &bbb_protocol::packets::ItemStackSummary,
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
+    local_selected_bundle_item_index: Option<i32>,
+    using_item: bool,
+    selected_item: bool,
+    carried_item: bool,
+    fishing_rod_cast: bool,
+    shift_down: bool,
+    keybind_context: ItemModelKeybindContext,
+    item_model_seed: i32,
+    owner_team_color_rgb: Option<u32>,
+) -> Option<HudBlockItemModel> {
     let item_runtime = item_runtime?;
     let item_id = item.item_id?;
     let resolved = hud_resolved_item_model_for_stack(
@@ -4378,6 +4443,7 @@ fn block_item_3d_model(
         shift_down,
         keybind_context,
         item_model_seed,
+        owner_team_color_rgb,
     );
     if resolved.as_ref().is_some_and(|resolved| {
         resolved
@@ -9171,6 +9237,7 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
         .map(|(x, y)| (x - recipe_book_x, y));
 
     let selected_hotbar_slot_id = inventory_screen_selected_hotbar_slot_id(world);
+    let background = layout.background;
     let slots = layout
         .slots
         .iter()
@@ -9180,12 +9247,18 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
                 .slots
                 .iter()
                 .find(|slot| slot.slot == layout.slot_id);
+            let owner_team_color_rgb =
+                if inventory_screen_slot_uses_fake_item(background, layout.slot_id) {
+                    None
+                } else {
+                    world.local_player_team_color_rgb()
+                };
             HudInventorySlot {
                 slot_id: u16::try_from(layout.slot_id).unwrap_or_default(),
                 x: layout.x,
                 y: layout.y,
                 icon: inventory_slot.and_then(|slot| {
-                    hud_item_icon_for_stack(
+                    hud_item_icon_for_stack_with_owner_team_color(
                         world,
                         item_runtime,
                         &slot.item,
@@ -9199,10 +9272,11 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
                         local_state.keybind_context,
                         0,
                         partial_tick,
+                        owner_team_color_rgb,
                     )
                 }),
                 block_model: inventory_slot.and_then(|slot| {
-                    block_item_3d_model(
+                    block_item_3d_model_with_owner_team_color(
                         world,
                         &slot.item,
                         item_runtime,
@@ -9216,6 +9290,7 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
                         local_state.shift_down,
                         local_state.keybind_context,
                         0,
+                        owner_team_color_rgb,
                     )
                 }),
             }
@@ -9483,6 +9558,19 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
         hovered_slot_id: hovered_slot_id.and_then(|slot| u16::try_from(slot).ok()),
         tooltip,
     })
+}
+
+fn inventory_screen_slot_uses_fake_item(
+    background: InventoryScreenBackground,
+    slot_id: i16,
+) -> bool {
+    matches!(
+        (background, slot_id),
+        (
+            InventoryScreenBackground::LocalInventory | InventoryScreenBackground::CraftingTable,
+            0
+        ) | (InventoryScreenBackground::Crafter, 45)
+    )
 }
 
 pub(crate) fn hud_screen_blur_for_world(world: &WorldStore, screen_present: bool) -> bool {
@@ -9777,7 +9865,7 @@ fn push_recipe_book_tab_icon_item(
         count: 1,
         component_patch: Default::default(),
     };
-    let Some(icon) = hud_item_icon_for_stack(
+    let Some(icon) = hud_fake_item_icon_for_stack(
         world,
         Some(item_runtime),
         &stack,
@@ -9801,7 +9889,7 @@ fn push_recipe_book_tab_icon_item(
         icon,
         scissor: None,
         draw_decorations: true,
-        block_model: block_item_3d_model(
+        block_model: fake_block_item_3d_model(
             world,
             &stack,
             Some(item_runtime),
@@ -9947,7 +10035,7 @@ fn hud_recipe_book_recipe_button_icon_items(
         let Some(stack) = collection.result_stack_at_slot_select_index(slot_select_index) else {
             continue;
         };
-        let Some(icon) = hud_item_icon_for_stack(
+        let Some(icon) = hud_fake_item_icon_for_stack(
             world,
             Some(item_runtime),
             stack,
@@ -9972,7 +10060,7 @@ fn hud_recipe_book_recipe_button_icon_items(
                 .unwrap_or_default(),
             partial_tick,
         );
-        let block_model = block_item_3d_model(
+        let block_model = fake_block_item_3d_model(
             world,
             stack,
             Some(item_runtime),
@@ -10178,7 +10266,7 @@ fn hud_recipe_book_overlay_icon_items(
         let (button_x, button_y) =
             recipe_book_overlay_entry_position(overlay.x, overlay.y, index, entries.len());
         for overlay_item in &entry.items {
-            let Some(icon) = hud_item_icon_for_stack(
+            let Some(icon) = hud_fake_item_icon_for_stack(
                 world,
                 Some(item_runtime),
                 &overlay_item.stack,
@@ -10202,7 +10290,7 @@ fn hud_recipe_book_overlay_icon_items(
                 icon,
                 scissor: None,
                 draw_decorations: false,
-                block_model: block_item_3d_model(
+                block_model: fake_block_item_3d_model(
                     world,
                     &overlay_item.stack,
                     Some(item_runtime),
@@ -10310,7 +10398,7 @@ fn hud_recipe_book_ghost_layers_and_items(
         else {
             continue;
         };
-        let Some(mut icon) = hud_item_icon_for_stack(
+        let Some(mut icon) = hud_fake_item_icon_for_stack(
             world,
             Some(item_runtime),
             stack,
@@ -11721,7 +11809,7 @@ fn advancements_tab_icon_items(
             count: tab.icon.count,
             component_patch: tab.icon.component_patch.clone(),
         };
-        let Some(icon) = hud_item_icon_for_stack(
+        let Some(icon) = hud_fake_item_icon_for_stack(
             world,
             Some(item_runtime),
             &stack,
@@ -11746,7 +11834,7 @@ fn advancements_tab_icon_items(
             icon,
             scissor: None,
             draw_decorations: false,
-            block_model: block_item_3d_model(
+            block_model: fake_block_item_3d_model(
                 world,
                 &stack,
                 Some(item_runtime),
@@ -11868,7 +11956,7 @@ fn advancements_widget_icon_items(
             count: widget.icon.count,
             component_patch: widget.icon.component_patch.clone(),
         };
-        let Some(icon) = hud_item_icon_for_stack(
+        let Some(icon) = hud_fake_item_icon_for_stack(
             world,
             Some(item_runtime),
             &stack,
@@ -11892,7 +11980,7 @@ fn advancements_widget_icon_items(
             icon,
             scissor: Some(advancement_widget_content_scissor(window_x, window_y)),
             draw_decorations: false,
-            block_model: block_item_3d_model(
+            block_model: fake_block_item_3d_model(
                 world,
                 &stack,
                 Some(item_runtime),
@@ -12534,7 +12622,7 @@ fn advancement_hover_icon_item(
         count: widget.icon.count,
         component_patch: widget.icon.component_patch.clone(),
     };
-    let icon = hud_item_icon_for_stack(
+    let icon = hud_fake_item_icon_for_stack(
         world,
         Some(item_runtime),
         &stack,
@@ -12557,7 +12645,7 @@ fn advancement_hover_icon_item(
         icon,
         scissor: None,
         draw_decorations: false,
-        block_model: block_item_3d_model(
+        block_model: fake_block_item_3d_model(
             world,
             &stack,
             Some(item_runtime),
@@ -14629,7 +14717,7 @@ fn push_merchant_trade_item(
     item: ItemStackSummary,
     draw_decorations: bool,
 ) {
-    if let Some(icon) = hud_item_icon_for_stack(
+    if let Some(icon) = hud_fake_item_icon_for_stack(
         world,
         item_runtime,
         &item,
@@ -14643,7 +14731,7 @@ fn push_merchant_trade_item(
         0,
         partial_tick,
     ) {
-        let block_model = block_item_3d_model(
+        let block_model = fake_block_item_3d_model(
             world,
             &item,
             item_runtime,
@@ -14732,7 +14820,7 @@ fn push_merchant_trade_decoration(
     y: i32,
     item: &ItemStackSummary,
 ) {
-    let Some(mut icon) = hud_item_icon_for_stack(
+    let Some(mut icon) = hud_fake_item_icon_for_stack(
         world,
         item_runtime,
         item,
@@ -16174,6 +16262,7 @@ fn hud_resolved_item_model_for_stack(
     shift_down: bool,
     keybind_context: ItemModelKeybindContext,
     item_model_seed: i32,
+    owner_team_color_rgb: Option<u32>,
 ) -> Option<ResolvedItemModel> {
     let context = hud_item_world_model_context(world);
     let cooldown_progress =
@@ -16194,6 +16283,7 @@ fn hud_resolved_item_model_for_stack(
             context.attribute_keys.as_deref(),
             context.owner_main_hand_left,
             Some("minecraft:player"),
+            owner_team_color_rgb,
             context.context_dimension,
             context.time_context,
             context.compass_context,
@@ -16221,6 +16311,71 @@ fn hud_item_icon_for_stack(
     item_model_seed: i32,
     partial_tick: f32,
 ) -> Option<HudItemIcon> {
+    hud_item_icon_for_stack_with_owner_team_color(
+        world,
+        item_runtime,
+        item,
+        local_selected_bundle_item_index,
+        using_item,
+        selected_item,
+        carried_item,
+        fishing_rod_cast,
+        shift_down,
+        keybind_context,
+        item_model_seed,
+        partial_tick,
+        world.local_player_team_color_rgb(),
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn hud_fake_item_icon_for_stack(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    item: &bbb_protocol::packets::ItemStackSummary,
+    local_selected_bundle_item_index: Option<i32>,
+    using_item: bool,
+    selected_item: bool,
+    carried_item: bool,
+    fishing_rod_cast: bool,
+    shift_down: bool,
+    keybind_context: ItemModelKeybindContext,
+    item_model_seed: i32,
+    partial_tick: f32,
+) -> Option<HudItemIcon> {
+    hud_item_icon_for_stack_with_owner_team_color(
+        world,
+        item_runtime,
+        item,
+        local_selected_bundle_item_index,
+        using_item,
+        selected_item,
+        carried_item,
+        fishing_rod_cast,
+        shift_down,
+        keybind_context,
+        item_model_seed,
+        partial_tick,
+        None,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn hud_item_icon_for_stack_with_owner_team_color(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    item: &bbb_protocol::packets::ItemStackSummary,
+    local_selected_bundle_item_index: Option<i32>,
+    using_item: bool,
+    selected_item: bool,
+    carried_item: bool,
+    fishing_rod_cast: bool,
+    shift_down: bool,
+    keybind_context: ItemModelKeybindContext,
+    item_model_seed: i32,
+    partial_tick: f32,
+    owner_team_color_rgb: Option<u32>,
+) -> Option<HudItemIcon> {
     let item_runtime = item_runtime?;
     let context = hud_item_world_model_context(world);
     // Vanilla `Cooldown.get` uses `getCooldownPercent(itemStack, 0.0F)` for
@@ -16244,6 +16399,7 @@ fn hud_item_icon_for_stack(
             context.attribute_keys.as_deref(),
             context.owner_main_hand_left,
             Some("minecraft:player"),
+            owner_team_color_rgb,
             context.context_dimension,
             context.time_context,
             context.compass_context,

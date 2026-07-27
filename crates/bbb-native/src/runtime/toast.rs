@@ -13,7 +13,7 @@ use bbb_world::{ClientToastEvent, LocalSoundEventState, SoundHolderState, WorldS
 use crate::terrain_runtime::TerrainTextureState;
 
 use super::{
-    block_item_3d_model, hud_item_icon_for_stack, hud_styled_runs_from_rich_text,
+    fake_block_item_3d_model, hud_fake_item_icon_for_stack, hud_styled_runs_from_rich_text,
     localized_gui_text,
 };
 
@@ -223,7 +223,7 @@ impl ClientToastRuntime {
                     count: display.icon.count,
                     component_patch: display.icon.component_patch.clone(),
                 };
-                let icon = hud_item_icon_for_stack(
+                let icon = hud_fake_item_icon_for_stack(
                     world,
                     Some(item_runtime),
                     &stack,
@@ -255,7 +255,7 @@ impl ClientToastRuntime {
                     frame_label_color,
                     title_runs: hud_styled_runs_from_rich_text(&display.title),
                     icon,
-                    block_model: block_item_3d_model(
+                    block_model: fake_block_item_3d_model(
                         world,
                         &stack,
                         Some(item_runtime),
@@ -292,7 +292,7 @@ impl ClientToastRuntime {
                     return None;
                 };
                 let item = recipe.displayed_item(toast.fully_visible_ms)?;
-                let category_icon = hud_item_icon_for_stack(
+                let category_icon = hud_fake_item_icon_for_stack(
                     world,
                     item_runtime,
                     &item.category_item,
@@ -306,7 +306,7 @@ impl ClientToastRuntime {
                     0,
                     partial_tick,
                 );
-                let unlocked_icon = hud_item_icon_for_stack(
+                let unlocked_icon = hud_fake_item_icon_for_stack(
                     world,
                     item_runtime,
                     &item.unlocked_item,
@@ -332,7 +332,7 @@ impl ClientToastRuntime {
                         "Check your recipe book",
                     ),
                     category_icon,
-                    category_block_model: block_item_3d_model(
+                    category_block_model: fake_block_item_3d_model(
                         world,
                         &item.category_item,
                         item_runtime,
@@ -347,7 +347,7 @@ impl ClientToastRuntime {
                         0,
                     ),
                     unlocked_icon,
-                    unlocked_block_model: block_item_3d_model(
+                    unlocked_block_model: fake_block_item_3d_model(
                         world,
                         &item.unlocked_item,
                         item_runtime,

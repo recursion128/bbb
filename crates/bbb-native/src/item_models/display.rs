@@ -235,6 +235,7 @@ fn bake_item_display(
         left_hand,
         None,
         Some(ITEM_DISPLAY_ENTITY_TYPE),
+        None,
         false,
         0.0,
         enchantment_keys,

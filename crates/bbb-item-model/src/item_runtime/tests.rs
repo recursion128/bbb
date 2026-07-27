@@ -8,8 +8,8 @@ use bbb_protocol::builtin_enum_component_values::{
     VANILLA_DYE_COLOR_ORANGE_ID, VANILLA_DYE_COLOR_RED_ID, VANILLA_DYE_COLOR_WHITE_ID,
 };
 use bbb_protocol::mob_effect_types::{
-    VANILLA_MOB_EFFECT_HASTE_ID, VANILLA_MOB_EFFECT_POISON_ID, VANILLA_MOB_EFFECT_SPEED_ID,
-    VANILLA_MOB_EFFECT_WEAKNESS_ID,
+    VANILLA_MOB_EFFECT_HASTE_ID, VANILLA_MOB_EFFECT_POISON_ID, VANILLA_MOB_EFFECT_SLOWNESS_ID,
+    VANILLA_MOB_EFFECT_SPEED_ID, VANILLA_MOB_EFFECT_WEAKNESS_ID,
 };
 use bbb_protocol::tropical_fish_patterns::{
     VANILLA_TROPICAL_FISH_PATTERN_KOB_PACKED_ID, VANILLA_TROPICAL_FISH_PATTERN_STRIPEY_PACKED_ID,
@@ -590,6 +590,7 @@ fn item_tint_sources_use_stack_component_colors_when_available() {
                 default_color: 0xff_00_ff,
             },
             Some(&patch),
+            None,
         ),
         rgb_i32_tint(0x04_05_06)
     );
@@ -599,6 +600,7 @@ fn item_tint_sources_use_stack_component_colors_when_available() {
                 default_color: 0xff_00_ff,
             },
             Some(&patch),
+            None,
         ),
         rgb_i32_tint(0x07_08_09)
     );
@@ -608,6 +610,7 @@ fn item_tint_sources_use_stack_component_colors_when_available() {
                 default_color: 0xff_00_ff,
             },
             Some(&patch),
+            None,
         ),
         rgb_i32_tint(0x0a_0b_0c)
     );
@@ -617,6 +620,7 @@ fn item_tint_sources_use_stack_component_colors_when_available() {
                 default_color: 0xff_00_ff,
             },
             Some(&patch),
+            None,
         ),
         rgb_i32_tint(0x0d_0e_0f)
     );
@@ -626,6 +630,7 @@ fn item_tint_sources_use_stack_component_colors_when_available() {
                 default_color: 0xff_00_ff,
             },
             Some(&patch),
+            None,
         ),
         rgb_i32_tint(0x18_30_48)
     );
@@ -636,6 +641,7 @@ fn item_tint_sources_use_stack_component_colors_when_available() {
                 default_color: 0xff_00_ff,
             },
             Some(&patch),
+            None,
         ),
         rgb_i32_tint(0xff_00_ff)
     );
@@ -645,8 +651,101 @@ fn item_tint_sources_use_stack_component_colors_when_available() {
                 default_color: 0xff_00_ff,
             },
             Some(&DataComponentPatchSummary::default()),
+            None,
         ),
         rgb_i32_tint(0xff_00_ff)
+    );
+}
+
+#[test]
+fn potion_item_tint_matches_vanilla_visible_effect_weighting_and_fallbacks() {
+    let tint = ItemTintSource::Potion {
+        default_color: 0x12_34_56,
+    };
+    let custom_effect = |effect_id, amplifier, show_particles| MobEffectInstanceSummary {
+        effect_id,
+        amplifier,
+        duration: 200,
+        ambient: false,
+        show_particles,
+        show_icon: true,
+        hidden_effect: None,
+    };
+
+    assert_eq!(
+        item_tint_source_color(
+            &tint,
+            Some(&DataComponentPatchSummary {
+                potion_custom_color: Some(0xab_cd_ef),
+                potion_id: Some(13),
+                potion_custom_effects: vec![
+                    custom_effect(VANILLA_MOB_EFFECT_SLOWNESS_ID, 1, true,)
+                ],
+                ..DataComponentPatchSummary::default()
+            }),
+            None,
+        ),
+        rgb_i32_tint(0xab_cd_ef)
+    );
+    assert_eq!(
+        item_tint_source_color(
+            &tint,
+            Some(&DataComponentPatchSummary {
+                potion_id: Some(13),
+                ..DataComponentPatchSummary::default()
+            }),
+            None,
+        ),
+        rgb_i32_tint(0x33_eb_ff)
+    );
+    assert_eq!(
+        item_tint_source_color(
+            &tint,
+            Some(&DataComponentPatchSummary {
+                potion_id: Some(13),
+                potion_custom_effects: vec![
+                    custom_effect(VANILLA_MOB_EFFECT_SLOWNESS_ID, 1, true,)
+                ],
+                ..DataComponentPatchSummary::default()
+            }),
+            None,
+        ),
+        rgb_i32_tint(0x6d_c3_ea)
+    );
+    assert_eq!(
+        item_tint_source_color(
+            &tint,
+            Some(&DataComponentPatchSummary {
+                potion_custom_effects: vec![custom_effect(
+                    VANILLA_MOB_EFFECT_SLOWNESS_ID,
+                    1,
+                    false,
+                )],
+                ..DataComponentPatchSummary::default()
+            }),
+            None,
+        ),
+        rgb_i32_tint(0x12_34_56)
+    );
+    assert_eq!(
+        item_tint_source_color(&tint, Some(&DataComponentPatchSummary::default()), None),
+        rgb_i32_tint(0x12_34_56)
+    );
+}
+
+#[test]
+fn team_item_tint_uses_living_owner_scoreboard_color_or_default() {
+    let tint = ItemTintSource::Team {
+        default_color: 0x12_34_56,
+    };
+
+    assert_eq!(
+        item_tint_source_color(&tint, None, Some(0xab_cd_ef)),
+        rgb_i32_tint(0xab_cd_ef)
+    );
+    assert_eq!(
+        item_tint_source_color(&tint, None, None),
+        rgb_i32_tint(0x12_34_56)
     );
 }
 
@@ -11674,6 +11773,36 @@ fn native_item_runtime_selects_bundle_icon_from_local_selected_item() {
         vec![open_back_uv, apple_uv, open_front_uv]
     );
 
+    let selected_team_icon = runtime
+        .icon_for_stack_with_context_and_use_context_time_state_and_fishing_rod_cast_with_registry_context(
+            &bundle_stack,
+            Some(0),
+            false,
+            ItemModelUseContext::inactive(),
+            BlockModelDisplayContext::Gui,
+            0.0,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some("minecraft:player"),
+            Some(0xab_cd_ef),
+            None,
+            None,
+            None,
+            false,
+            false,
+            true,
+            false,
+            ItemModelKeybindContext::default(),
+            false,
+            0,
+        )
+        .unwrap();
+    assert_eq!(selected_team_icon.layers[1].tint, rgb_i32_tint(0xab_cd_ef));
+
     let out_of_bounds_icon = runtime
         .icon_for_stack_with_bundle_selected_item(&bundle_stack, Some(1))
         .unwrap();
@@ -17852,6 +17981,18 @@ fn write_bundle_selected_item_fixture(root: &Path) {
                         "type": "minecraft:model",
                         "model": "minecraft:item/bundle"
                     }
+                }
+        }"#,
+    );
+    write_json(
+        &assets.join("items").join("apple.json"),
+        r#"{
+                "model": {
+                    "type": "minecraft:model",
+                    "model": "minecraft:item/apple",
+                    "tints": [
+                        { "type": "minecraft:team", "default": 16777215 }
+                    ]
                 }
             }"#,
     );

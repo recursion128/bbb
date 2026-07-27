@@ -12463,6 +12463,91 @@ fn hotbar_item_icons_use_local_player_main_hand_owner_context() {
 }
 
 #[test]
+fn gui_item_team_tint_distinguishes_local_player_and_fake_item_owners() {
+    use bbb_protocol::packets::{
+        ChatFormatting, PlayerTeamMethod, PlayerTeamParameters, SetPlayerTeam, TeamCollisionRule,
+        TeamVisibility,
+    };
+
+    let root = unique_runtime_temp_dir("gui-item-team-tint");
+    write_runtime_team_tint_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let stack = item_stack(0, 1);
+    let rgb_tint = |rgb: u32| {
+        [
+            ((rgb >> 16) & 0xff) as f32 / 255.0,
+            ((rgb >> 8) & 0xff) as f32 / 255.0,
+            (rgb & 0xff) as f32 / 255.0,
+            1.0,
+        ]
+    };
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    let player = test_add_entity(42, VANILLA_ENTITY_TYPE_PLAYER_ID);
+    let player_uuid = player.uuid;
+    world.apply_add_entity(player);
+    assert!(world.apply_set_player_team(SetPlayerTeam {
+        name: "green".to_string(),
+        method: PlayerTeamMethod::Add.into(),
+        parameters: Some(PlayerTeamParameters {
+            display_name: bbb_protocol::RichTextComponent::plain("Green"),
+            options: 0,
+            nametag_visibility: TeamVisibility::Always,
+            collision_rule: TeamCollisionRule::Always,
+            color: ChatFormatting::Green,
+            player_prefix: bbb_protocol::RichTextComponent::plain(""),
+            player_suffix: bbb_protocol::RichTextComponent::plain(""),
+        }),
+        players: vec![player_uuid.to_string()],
+    }));
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: stack.clone(),
+    });
+
+    let hotbar = hotbar_item_icons(&world, Some(&item_runtime), 0.0);
+    assert_eq!(
+        hotbar[0].as_ref().unwrap().layers[0].tint,
+        rgb_tint(0x55ff55)
+    );
+
+    let fake = hud_fake_item_icon_for_stack(
+        &world,
+        Some(&item_runtime),
+        &stack,
+        None,
+        false,
+        false,
+        false,
+        false,
+        false,
+        ItemModelKeybindContext::default(),
+        0,
+        0.0,
+    )
+    .unwrap();
+    assert_eq!(fake.layers[0].tint, rgb_tint(0x123456));
+    assert!(inventory_screen_slot_uses_fake_item(
+        InventoryScreenBackground::LocalInventory,
+        0
+    ));
+    assert!(inventory_screen_slot_uses_fake_item(
+        InventoryScreenBackground::CraftingTable,
+        0
+    ));
+    assert!(inventory_screen_slot_uses_fake_item(
+        InventoryScreenBackground::Crafter,
+        45
+    ));
+    assert!(!inventory_screen_slot_uses_fake_item(
+        InventoryScreenBackground::LocalInventory,
+        1
+    ));
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn hotbar_item_icons_use_world_dimension_select_context() {
     let root = unique_runtime_temp_dir("hotbar-context-dimension");
     write_runtime_context_dimension_select_item_assets(&root);
@@ -23260,6 +23345,41 @@ fn write_runtime_bow_item_assets(root: &Path) {
     write_flat_runtime_item_model_and_texture(&assets, "bow_pulling_2", &[160, 120, 80, 255]);
     write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
     crate::item_registry_test_fixture::write_item_registry_fixture(root.as_ref(), &["bow"]);
+}
+
+fn write_runtime_team_tint_item_assets(root: &Path) {
+    let assets = runtime_assets_dir(root);
+    write_runtime_json(
+        &assets.join("atlases").join("items.json"),
+        r#"{
+            "sources": [
+                {
+                    "type": "minecraft:directory",
+                    "prefix": "item/",
+                    "source": "item"
+                }
+            ]
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("atlases").join("blocks.json"),
+        r#"{ "sources": [] }"#,
+    );
+    write_runtime_json(
+        &assets.join("items").join("team_tint.json"),
+        r#"{
+            "model": {
+                "type": "minecraft:model",
+                "model": "minecraft:item/team_tint",
+                "tints": [
+                    { "type": "minecraft:team", "default": 1193046 }
+                ]
+            }
+        }"#,
+    );
+    write_flat_runtime_item_model_and_texture(&assets, "team_tint", &[255, 255, 255, 255]);
+    write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
+    crate::item_registry_test_fixture::write_item_registry_fixture(root.as_ref(), &["team_tint"]);
 }
 
 fn write_runtime_crossbow_item_assets(root: &Path) {

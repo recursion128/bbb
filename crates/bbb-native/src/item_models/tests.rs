@@ -1272,6 +1272,55 @@ fn humanoid_item_in_hand_layer_uses_main_arm_for_hand_slot_mapping() {
 }
 
 #[test]
+fn living_held_item_team_tint_uses_owner_scoreboard_color() {
+    use bbb_protocol::packets::{
+        ChatFormatting, PlayerTeamMethod, PlayerTeamParameters, SetPlayerTeam, TeamCollisionRule,
+        TeamVisibility,
+    };
+
+    let root = unique_item_model_temp_dir("held-team-tint");
+    write_team_tint_item_runtime_fixture(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    const ENTITY_ID: i32 = 607;
+    let mut world = WorldStore::new();
+    let entity = protocol_add_entity(ENTITY_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID);
+    let entity_uuid = entity.uuid;
+    world.apply_add_entity(entity);
+    assert!(world.apply_set_equipment(equipment(ENTITY_ID, EquipmentSlot::MainHand, 0)));
+    assert!(world.apply_set_player_team(SetPlayerTeam {
+        name: "green".to_string(),
+        method: PlayerTeamMethod::Add.into(),
+        parameters: Some(PlayerTeamParameters {
+            display_name: bbb_protocol::RichTextComponent::plain("Green"),
+            options: 0,
+            nametag_visibility: TeamVisibility::Always,
+            collision_rule: TeamCollisionRule::Always,
+            color: ChatFormatting::Green,
+            player_prefix: bbb_protocol::RichTextComponent::plain(""),
+            player_suffix: bbb_protocol::RichTextComponent::plain(""),
+        }),
+        players: vec![entity_uuid.to_string()],
+    }));
+
+    let instance = EntityModelInstance::zombie(ENTITY_ID, [0.0, 64.0, 0.0], 0.0, false);
+    let models = held_item_models(
+        &[instance],
+        &world,
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+    );
+    assert!(!models.residency.instances.is_empty());
+    assert!(models
+        .residency
+        .instances
+        .iter()
+        .all(|instance| instance.tint == [0x55 as f32 / 255.0, 1.0, 0x55 as f32 / 255.0, 1.0]));
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn first_person_item_models_bake_ordinary_local_hand_stack() {
     let root = unique_item_model_temp_dir("first-person-basic-item");
     write_flat_item_runtime_fixture(&root, &["hand_item"]);
@@ -3589,6 +3638,7 @@ fn held_generated_item_main_hand_select_uses_owner_main_arm_context() {
             false,
             owner_main_hand_left,
             None,
+            None,
             false,
             0.0,
             None,
@@ -3668,6 +3718,7 @@ fn held_generated_item_context_entity_type_select_uses_owner_kind() {
             false,
             Some(false),
             context_entity_type,
+            None,
             false,
             0.0,
             None,
@@ -4422,6 +4473,7 @@ fn shared_hand_item_bake_submits_selected_special_geometry() {
         false,
         Some(false),
         Some("minecraft:player"),
+        None,
         false,
         0.0,
         None,
@@ -4844,6 +4896,25 @@ fn write_flat_item_runtime_fixture(root: &Path, item_ids: &[&str]) {
             &[(64 + index * 40) as u8, 80, 120, 255],
         );
     }
+}
+
+fn write_team_tint_item_runtime_fixture(root: &Path) {
+    let assets = item_model_assets_dir(root);
+    write_item_atlases(&assets);
+    write_item_registry_source(root, &["team_tint"]);
+    write_json(
+        &assets.join("items").join("team_tint.json"),
+        r#"{
+            "model": {
+                "type": "minecraft:model",
+                "model": "minecraft:item/team_tint",
+                "tints": [
+                    { "type": "minecraft:team", "default": 1193046 }
+                ]
+            }
+        }"#,
+    );
+    write_flat_item_model_and_texture(&assets, "team_tint", &[255, 255, 255, 255]);
 }
 
 fn write_special_item_runtime_fixture(root: &Path) {
