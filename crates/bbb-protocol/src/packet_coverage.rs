@@ -3633,24 +3633,17 @@ mod tests {
     }
 
     #[test]
-    fn play_serverbound_rename_item_keeps_component_response_open() {
+    fn play_serverbound_rename_item_closes_result_and_cost_response() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
             .iter()
             .find(|entry| entry.state == "play" && entry.constant_name == "SERVERBOUND_RENAME_ITEM")
             .expect("play serverbound rename item coverage row");
-        for dimension in ["command_surface", "encoder", "state_guard", "tests"] {
-            assert_eq!(
-                entry.coverage[dimension].status,
-                PacketCoverageStatus::Complete,
-                "{dimension}"
-            );
-        }
-        assert_eq!(
-            entry.coverage["ack_response"].status,
-            PacketCoverageStatus::Partial
-        );
+        assert!(entry
+            .coverage
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]

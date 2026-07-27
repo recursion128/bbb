@@ -77,7 +77,8 @@ Owner: `bbb-protocol`
   from a multi-action serverbound family is not completion. Serverbound
   request coverage must include every distinct success/fallback response
   branch, including ordinary authoritative state-sync packets; local
-  prediction alone does not replace accepting a later server correction.
+  prediction alone does not replace accepting a later server correction with
+  exact item components and associated menu data.
 - Use `docs/item-component-coverage-26.1.json` as the complete 110-entry
   ItemStack component semantic inventory. Each `partial` cell must close
   through its sparse evidence override; consuming the right wire length or

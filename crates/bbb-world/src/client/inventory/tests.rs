@@ -9,9 +9,10 @@ use bbb_protocol::builtin_enum_component_values::{
     VANILLA_DYE_COLOR_RED_ID, VANILLA_DYE_COLOR_YELLOW_ID,
 };
 use bbb_protocol::data_component_types::{
-    VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_LOCK_TYPE_ID,
-    VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+    VANILLA_DATA_COMPONENT_DYE_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID,
+    VANILLA_DATA_COMPONENT_LOCK_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
 };
 use bbb_protocol::item_types::VANILLA_ITEM_ELYTRA_ID;
@@ -5710,6 +5711,56 @@ fn apply_local_anvil_input_quick_move_moves_input_slots_to_player_forward() {
     assert_eq!(
         open_container_slot_item(&store, ANVIL_PLAYER_MAIN_START + 1),
         item_stack(43, 2)
+    );
+}
+
+#[test]
+fn anvil_rename_response_replaces_result_components_and_cost() {
+    let mut store = WorldStore::new();
+    store.apply_open_screen(ProtocolOpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_ANVIL_ID,
+        title: bbb_protocol::RichTextComponent::plain("Anvil"),
+    });
+    let mut items = vec![ProtocolItemStackSummary::empty(); ANVIL_TOTAL_SLOT_COUNT as usize];
+    items[ANVIL_INPUT_SLOT as usize] = item_stack(42, 1);
+    items[ANVIL_RESULT_SLOT as usize] = item_stack(42, 1);
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: 7,
+        state_id: 13,
+        items,
+        carried_item: ProtocolItemStackSummary::empty(),
+    });
+
+    let mut renamed_result = item_stack(42, 1);
+    renamed_result.component_patch.added = 1;
+    renamed_result.component_patch.added_type_ids =
+        vec![VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID];
+    renamed_result.component_patch.custom_name = Some("Sharp Pick".to_string());
+    assert!(store.apply_container_set_slot(ProtocolContainerSetSlot {
+        container_id: 7,
+        state_id: 14,
+        slot: ANVIL_RESULT_SLOT,
+        item: renamed_result.clone(),
+    }));
+    assert!(store.apply_container_set_data(ProtocolContainerSetData {
+        container_id: 7,
+        id: ANVIL_COST_DATA_ID,
+        value: 3,
+    }));
+
+    assert_eq!(
+        open_container_slot_item(&store, ANVIL_RESULT_SLOT),
+        renamed_result
+    );
+    assert_eq!(store.open_container_data_value(ANVIL_COST_DATA_ID), Some(3));
+    assert_eq!(
+        store
+            .inventory()
+            .open_container
+            .as_ref()
+            .map(|container| container.state_id),
+        Some(14)
     );
 }
 
