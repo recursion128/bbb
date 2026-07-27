@@ -2865,6 +2865,13 @@ impl Renderer {
         Ok(())
     }
 
+    pub fn update_hud_item_atlas(&mut self, rgba: &[u8]) -> Result<()> {
+        let Some(atlas) = self.hud_item_atlas.as_ref() else {
+            return Ok(());
+        };
+        gpu::update_hud_sprite_gpu(&self.queue, atlas, rgba)
+    }
+
     pub fn upload_hud_digit_atlas(
         &mut self,
         width: u32,

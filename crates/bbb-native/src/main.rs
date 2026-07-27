@@ -42,6 +42,7 @@ mod item_frames;
 mod item_models;
 #[cfg(test)]
 mod item_registry_test_fixture;
+mod item_texture_animation;
 mod lectern_book_scene;
 mod level_load_runtime;
 mod map_textures;
@@ -76,6 +77,7 @@ use entity_scene::EntityRenderExtractionScratch;
 use entity_variant_textures::NativeEntityVariantTextureRuntime;
 use hud_assets::load_hud_textures;
 use input::{ClientInputState, DebugClipboard};
+use item_texture_animation::{maybe_upload_item_texture_animation, ItemTextureAnimationState};
 use level_load_runtime::LevelLoadRuntime;
 use music_runtime::MusicRuntime;
 use narrator_runtime::{
@@ -676,6 +678,7 @@ fn main() -> Result<()> {
     let screenshot_after_terrain = args.connect_server;
     let exit_after_screenshot = args.exit_after_screenshot;
     let mut terrain_upload = TerrainUploadState::default();
+    let mut item_texture_animation = ItemTextureAnimationState::default();
     let client_animation_ticks = ClientAnimationTickState::default();
     let camera_fov_ticks = CameraFovTickState::default();
     let camera_spinning_ticks = runtime::CameraSpinningEffectTickState::default();
@@ -962,6 +965,13 @@ fn main() -> Result<()> {
                             hud_debug_profiler_chart: debug_profiler.chart(),
                         },
                     );
+                    if let Some(items) = item_runtime.as_ref() {
+                        maybe_upload_item_texture_animation(
+                            &mut renderer,
+                            &mut item_texture_animation,
+                            items,
+                        );
+                    }
                     if let Some(particles) = particle_render_runtime.as_mut() {
                         particles.maybe_upload_particle_atlas_animation(&mut renderer);
                     }

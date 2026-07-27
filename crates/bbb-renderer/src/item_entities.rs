@@ -70,9 +70,11 @@ impl ItemEntityBillboard {
 }
 
 pub(crate) struct ItemEntityAtlasGpu {
-    _texture: wgpu::Texture,
+    texture: wgpu::Texture,
     _view: wgpu::TextureView,
     _sampler: wgpu::Sampler,
+    width: u32,
+    height: u32,
     pub(crate) bind_group: wgpu::BindGroup,
     pub(crate) gui_bind_group: wgpu::BindGroup,
 }
@@ -305,12 +307,42 @@ pub(crate) fn create_item_entity_atlas_gpu(
     });
 
     Ok(ItemEntityAtlasGpu {
-        _texture: texture,
+        texture,
         _view: view,
         _sampler: sampler,
+        width,
+        height,
         bind_group,
         gui_bind_group,
     })
+}
+
+fn update_item_entity_atlas_gpu(
+    queue: &wgpu::Queue,
+    atlas: &ItemEntityAtlasGpu,
+    rgba: &[u8],
+) -> Result<()> {
+    validate_item_entity_atlas_rgba(atlas.width, atlas.height, rgba)?;
+    queue.write_texture(
+        wgpu::ImageCopyTexture {
+            texture: &atlas.texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        rgba,
+        wgpu::ImageDataLayout {
+            offset: 0,
+            bytes_per_row: Some(atlas.width * 4),
+            rows_per_image: Some(atlas.height),
+        },
+        wgpu::Extent3d {
+            width: atlas.width,
+            height: atlas.height,
+            depth_or_array_layers: 1,
+        },
+    );
+    Ok(())
 }
 
 impl Renderer {
@@ -328,6 +360,13 @@ impl Renderer {
         self.item_entity_atlas = Some(atlas);
         self.invalidate_item_model_atlas(crate::item_models::ItemModelAtlasKind::Items);
         Ok(())
+    }
+
+    pub fn update_item_entity_atlas(&mut self, rgba: &[u8]) -> Result<()> {
+        let Some(atlas) = self.item_entity_atlas.as_ref() else {
+            return Ok(());
+        };
+        update_item_entity_atlas_gpu(&self.queue, atlas, rgba)
     }
 
     pub fn set_item_entity_billboards(&mut self, billboards: Vec<ItemEntityBillboard>) {
@@ -534,6 +573,12 @@ fn item_entity_vertex(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn item_atlas_update_validation_requires_the_original_rgba_extent() {
+        assert!(validate_item_entity_atlas_rgba(2, 1, &[0; 8]).is_ok());
+        assert!(validate_item_entity_atlas_rgba(2, 1, &[0; 4]).is_err());
+    }
 
     #[test]
     fn sanitize_item_entity_billboard_discards_invalid_position() {

@@ -149,7 +149,7 @@ const HUD_ITEM_GLINT_BLEND: wgpu::BlendState = wgpu::BlendState {
 };
 
 pub(crate) struct HudSpriteGpu {
-    pub(crate) _texture: wgpu::Texture,
+    pub(crate) texture: wgpu::Texture,
     pub(crate) _view: wgpu::TextureView,
     pub(crate) _sampler: wgpu::Sampler,
     pub(crate) bind_group: wgpu::BindGroup,
@@ -258,27 +258,7 @@ fn create_hud_sprite_gpu_with_address_mode(
     rgba: &[u8],
     address_mode: wgpu::AddressMode,
 ) -> Result<HudSpriteGpu> {
-    if width == 0 || height == 0 {
-        bail!("hud sprite dimensions must be non-zero");
-    }
-    let expected_len = usize::try_from(width)
-        .ok()
-        .and_then(|width| {
-            usize::try_from(height)
-                .ok()
-                .and_then(|height| width.checked_mul(height))
-        })
-        .and_then(|pixels| pixels.checked_mul(4))
-        .ok_or_else(|| anyhow!("hud sprite size overflow"))?;
-    if rgba.len() != expected_len {
-        bail!(
-            "hud sprite has {} RGBA bytes, expected {} for {}x{}",
-            rgba.len(),
-            expected_len,
-            width,
-            height
-        );
-    }
+    validate_hud_sprite_rgba(width, height, rgba)?;
 
     let texture = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("bbb-hud-sprite-texture"),
@@ -340,13 +320,66 @@ fn create_hud_sprite_gpu_with_address_mode(
     });
 
     Ok(HudSpriteGpu {
-        _texture: texture,
+        texture,
         _view: view,
         _sampler: sampler,
         bind_group,
         width,
         height,
     })
+}
+
+pub(crate) fn update_hud_sprite_gpu(
+    queue: &wgpu::Queue,
+    sprite: &HudSpriteGpu,
+    rgba: &[u8],
+) -> Result<()> {
+    validate_hud_sprite_rgba(sprite.width, sprite.height, rgba)?;
+    queue.write_texture(
+        wgpu::ImageCopyTexture {
+            texture: &sprite.texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        rgba,
+        wgpu::ImageDataLayout {
+            offset: 0,
+            bytes_per_row: Some(sprite.width * 4),
+            rows_per_image: Some(sprite.height),
+        },
+        wgpu::Extent3d {
+            width: sprite.width,
+            height: sprite.height,
+            depth_or_array_layers: 1,
+        },
+    );
+    Ok(())
+}
+
+fn validate_hud_sprite_rgba(width: u32, height: u32, rgba: &[u8]) -> Result<()> {
+    if width == 0 || height == 0 {
+        bail!("hud sprite dimensions must be non-zero");
+    }
+    let expected_len = usize::try_from(width)
+        .ok()
+        .and_then(|width| {
+            usize::try_from(height)
+                .ok()
+                .and_then(|height| width.checked_mul(height))
+        })
+        .and_then(|pixels| pixels.checked_mul(4))
+        .ok_or_else(|| anyhow!("hud sprite size overflow"))?;
+    if rgba.len() != expected_len {
+        bail!(
+            "hud sprite has {} RGBA bytes, expected {} for {}x{}",
+            rgba.len(),
+            expected_len,
+            width,
+            height
+        );
+    }
+    Ok(())
 }
 
 fn hud_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
@@ -392,5 +425,11 @@ mod tests {
         assert!(HUD_ITEM_GLINT_SHADER.contains("mask.a * input.mask_alpha <= 0.01"));
         assert!(HUD_ITEM_GLINT_SHADER.contains("textureSample(item_glint_texture"));
         assert!(HUD_ITEM_GLINT_SHADER.contains("fract(input.glint_uv)"));
+    }
+
+    #[test]
+    fn item_atlas_update_validation_requires_the_original_rgba_extent() {
+        assert!(validate_hud_sprite_rgba(2, 1, &[0; 8]).is_ok());
+        assert!(validate_hud_sprite_rgba(2, 1, &[0; 4]).is_err());
     }
 }
