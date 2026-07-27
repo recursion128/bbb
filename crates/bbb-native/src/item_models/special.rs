@@ -12,6 +12,7 @@ use bbb_pack::{
     ItemSpecialHangingAttachment, ItemSpecialModel, ItemSpecialSkullKind,
     ItemSpecialStandingAttachment, ResourceLocation,
 };
+use bbb_protocol::builtin_enum_component_values::vanilla_dye_color_name;
 use bbb_protocol::packets::{BannerPatternLayerSummary, ItemStackSummary};
 use bbb_renderer::{
     entity_model_texture_refs, BannerPatternKind, BedModelPart, ChestModelHalf,
@@ -566,25 +567,7 @@ fn dye_color_name(name: &str) -> Option<EntityDyeColor> {
 }
 
 fn dye_color_id(id: i32) -> Option<EntityDyeColor> {
-    match id {
-        0 => Some(EntityDyeColor::White),
-        1 => Some(EntityDyeColor::Orange),
-        2 => Some(EntityDyeColor::Magenta),
-        3 => Some(EntityDyeColor::LightBlue),
-        4 => Some(EntityDyeColor::Yellow),
-        5 => Some(EntityDyeColor::Lime),
-        6 => Some(EntityDyeColor::Pink),
-        7 => Some(EntityDyeColor::Gray),
-        8 => Some(EntityDyeColor::LightGray),
-        9 => Some(EntityDyeColor::Cyan),
-        10 => Some(EntityDyeColor::Purple),
-        11 => Some(EntityDyeColor::Blue),
-        12 => Some(EntityDyeColor::Brown),
-        13 => Some(EntityDyeColor::Green),
-        14 => Some(EntityDyeColor::Red),
-        15 => Some(EntityDyeColor::Black),
-        _ => None,
-    }
+    dye_color_name(vanilla_dye_color_name(id))
 }
 
 #[cfg(test)]
@@ -671,7 +654,7 @@ mod tests {
             registry_id: None,
             asset_id: Some("minecraft:stripe_top".to_string()),
             translation_key: None,
-            color_id: 14,
+            color_id: bbb_protocol::builtin_enum_component_values::VANILLA_DYE_COLOR_RED_ID,
         }];
 
         let banner = project_banner_patterns(&component, false, None, None);
