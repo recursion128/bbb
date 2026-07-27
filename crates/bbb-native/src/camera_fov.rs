@@ -50,10 +50,10 @@ impl CameraFovTickState {
         }
     }
 
-    pub(crate) fn advance_for_world(&mut self, ticks: u32, world: &WorldStore) {
+    pub(crate) fn advance_for_world(&mut self, ticks: u32, world: &WorldStore, first_person: bool) {
         for _ in 0..ticks {
             let target = if world.local_player().camera.follows_player {
-                world.local_player_camera_fov_modifier(true, self.effect_scale)
+                world.local_player_camera_fov_modifier(first_person, self.effect_scale)
             } else {
                 1.0
             };

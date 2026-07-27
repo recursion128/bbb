@@ -901,6 +901,15 @@ fn particle_scope_context_tracks_local_spyglass_use() {
     );
     assert!(context.first_person);
     assert!(context.scoping);
+    let detached_context = particle_local_player_scope_context(
+        &world,
+        Some(&runtime),
+        camera_pose_from_world(&world),
+        false,
+    )
+    .unwrap();
+    assert!(!detached_context.first_person);
+    assert!(detached_context.scoping);
 
     world.apply_set_player_inventory(ProtocolSetPlayerInventory {
         slot: 0,
@@ -2247,16 +2256,16 @@ fn camera_fov_tick_state_eases_player_abilities_modifier_like_vanilla() {
     let mut fov = CameraFovTickState::default();
 
     assert!((fov.unmodified_fov_degrees(1.0) - 70.0).abs() < 1.0e-6);
-    fov.advance_for_world(1, &world);
+    fov.advance_for_world(1, &world, true);
     assert!((fov.unmodified_fov_degrees(0.0) - 70.0).abs() < 1.0e-6);
     assert!((fov.unmodified_fov_degrees(1.0) - 61.25).abs() < 1.0e-6);
 
-    fov.advance_for_world(1, &world);
+    fov.advance_for_world(1, &world, true);
     assert!((fov.unmodified_fov_degrees(1.0) - 56.875).abs() < 1.0e-6);
 
     world.apply_add_entity(test_add_entity(100, VANILLA_ENTITY_TYPE_CREEPER_ID));
     assert!(world.apply_set_camera(bbb_protocol::packets::SetCamera { camera_id: 100 }));
-    fov.advance_for_world(1, &world);
+    fov.advance_for_world(1, &world, true);
     assert!((fov.unmodified_fov_degrees(1.0) - 63.4375).abs() < 1.0e-6);
 
     assert!(world.apply_set_camera(bbb_protocol::packets::SetCamera { camera_id: 42 }));
@@ -2275,7 +2284,7 @@ fn camera_fov_tick_state_eases_player_abilities_modifier_like_vanilla() {
     world.set_local_using_item_with_hand(true, InteractionHand::MainHand);
     world.advance_local_using_item_ticks(10);
     let mut bow_fov = CameraFovTickState::default();
-    bow_fov.advance_for_world(1, &world);
+    bow_fov.advance_for_world(1, &world, true);
     assert!((bow_fov.unmodified_fov_degrees(1.0) - 68.6875).abs() < 1.0e-6);
 
     world.take_local_using_item();
@@ -2285,8 +2294,23 @@ fn camera_fov_tick_state_eases_player_abilities_modifier_like_vanilla() {
     });
     world.set_local_using_item_with_hand(true, InteractionHand::MainHand);
     let mut spyglass_fov = CameraFovTickState::default();
-    spyglass_fov.advance_for_world(1, &world);
+    spyglass_fov.advance_for_world(1, &world, true);
     assert!((spyglass_fov.unmodified_fov_degrees(1.0) - 38.5).abs() < 1.0e-6);
+}
+
+#[test]
+fn camera_perspective_third_person_suppresses_first_person_item_fov() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: item_stack(VANILLA_ITEM_SPYGLASS_ID, 1),
+    });
+    world.set_local_using_item_with_hand(true, InteractionHand::MainHand);
+    let mut fov = CameraFovTickState::default();
+
+    fov.advance_for_world(1, &world, false);
+
+    assert!((fov.unmodified_fov_degrees(1.0) - 70.0).abs() < 1.0e-6);
 }
 
 #[test]
@@ -2301,7 +2325,7 @@ fn camera_fov_frame_separates_configured_world_culling_and_hud_angles() {
         walking_speed: 0.2,
     });
     let mut fov = CameraFovTickState::new(90.0, 1.0);
-    fov.advance_for_world(1, &world);
+    fov.advance_for_world(1, &world, true);
 
     let frame = fov.frame_for_world(&world, None, None, [1920, 1080], 1.0);
 
@@ -2310,7 +2334,7 @@ fn camera_fov_frame_separates_configured_world_culling_and_hud_angles() {
     assert_eq!(frame.hud_degrees, 70.0);
 
     let mut disabled_effects = CameraFovTickState::new(90.0, 0.0);
-    disabled_effects.advance_for_world(1, &world);
+    disabled_effects.advance_for_world(1, &world, true);
     let frame = disabled_effects.frame_for_world(&world, None, None, [1920, 1080], 1.0);
     assert_eq!(frame.world_degrees, 90.0);
     assert_eq!(frame.culling_degrees, 90.0);
@@ -2387,8 +2411,8 @@ fn camera_fov_frame_samples_water_at_eye_and_lava_on_base_fov_near_plane() {
 fn camera_fov_frame_wiring_routes_one_snapshot_to_each_projection_owner() {
     let runtime = include_str!("../runtime.rs");
     let camera_pose = runtime
-        .find("let camera_pose = camera_pose_from_world_at_partial_tick(")
-        .expect("interpolated camera pose");
+        .find("let camera_pose = render_camera_pose_from_world_at_partial_tick(")
+        .expect("interpolated render-camera pose");
     let hurt = runtime
         .find("let camera_hurt_effect =")
         .expect("camera living-state projection");
@@ -11596,6 +11620,42 @@ fn renderer_camera_pose_follows_active_camera_entity() {
             eye_height: CameraPose::STANDING_EYE_HEIGHT,
         })
     );
+}
+
+#[test]
+fn camera_perspective_render_extraction_separates_view_and_interaction_poses() {
+    let source = include_str!("../runtime.rs");
+    let camera_entity = source
+        .find("let camera_entity_pose = camera_pose_from_world_at_partial_tick(")
+        .expect("camera-entity pose owner");
+    let render_camera = source
+        .find("let camera_pose = render_camera_pose_from_world_at_partial_tick(")
+        .expect("detached render-camera pose owner");
+    let first_person = source
+        .find("let first_person_camera_pose = input")
+        .expect("first-person presentation gate");
+    let crosshair = source
+        .find(
+            "crosshair_target_from_camera_at_partial_tick(\n        world,\n        camera_entity_pose,",
+        )
+        .expect("entity picking stays on the camera entity");
+    let selection = source
+        .find("selection_outline_from_camera(world, camera_entity_pose)")
+        .expect("block picking stays on the camera entity");
+    let frame = source
+        .find("camera_pose,\n            camera_hurt_effect,")
+        .expect("renderer frame consumes the detached pose");
+
+    assert!(
+        camera_entity < render_camera
+            && render_camera < first_person
+            && first_person < crosshair
+            && crosshair < selection
+            && selection < frame
+    );
+    assert!(source.contains(
+        "map_texture_cache,\n        first_person_camera_pose,\n        entity_partial_tick,"
+    ));
 }
 
 #[test]

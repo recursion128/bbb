@@ -95,8 +95,9 @@ use crate::{
     biome_tint::biome_height_adjusted_temperature,
     camera_fov::{camera_eye_in_water, CameraFovTickState},
     camera_pose::{
-        camera_hurt_effect_from_world, camera_pose_from_world,
-        camera_pose_from_world_at_partial_tick, current_post_effect_id_from_world,
+        camera_eye_position, camera_forward_vector, camera_hurt_effect_from_world,
+        camera_pose_from_world, camera_pose_from_world_at_partial_tick,
+        current_post_effect_id_from_world, render_camera_pose_from_world_at_partial_tick,
     },
     chest_scene::chest_model_instances_from_world_at_partial_tick,
     code_of_conduct::CodeOfConductAcceptance,
@@ -2463,9 +2464,14 @@ pub(crate) fn advance_simulation(
     // the resulting EnvironmentAttributes / lightmap state.
     world.advance_sky_flash_time(advanced_ticks);
     let lightmap_environment = lightmap_ticks.environment_for_world(world);
+    let render_camera_pose = render_camera_pose_from_world_at_partial_tick(
+        world,
+        entity_partial_tick,
+        input.camera_type(),
+    );
     let clear_color = clear_color_for_world_at_camera_with_water_vision(
         world,
-        camera_pose_from_world_at_partial_tick(world, entity_partial_tick),
+        render_camera_pose,
         render_distance_chunks,
         water_vision,
         hide_lightning_flash,
@@ -2473,7 +2479,7 @@ pub(crate) fn advance_simulation(
     let fog_environment = if input.debug_fog_enabled() {
         fog_environment_for_world_at_camera(
             world,
-            camera_pose_from_world_at_partial_tick(world, entity_partial_tick),
+            render_camera_pose,
             render_distance_chunks,
             water_vision,
             rain_fog_multiplier,
@@ -2482,11 +2488,8 @@ pub(crate) fn advance_simulation(
     } else {
         FogEnvironment::disabled()
     };
-    let sky_environment = sky_environment_for_world_at_camera(
-        world,
-        camera_pose_from_world_at_partial_tick(world, entity_partial_tick),
-        hide_lightning_flash,
-    );
+    let sky_environment =
+        sky_environment_for_world_at_camera(world, render_camera_pose, hide_lightning_flash);
     let cloud_environment = cloud_environment_for_world(world);
     advance_block_destruction_render_ticks(world, running_ticks);
     // Vanilla `ChestBlockEntity.lidAnimateTick` is a client block-entity ticker
@@ -2566,7 +2569,11 @@ pub(crate) fn advance_simulation(
     }
     // Vanilla Minecraft.tick handles keybinds before GameRenderer.tick, whose
     // Camera.tickFov eases the current camera's target once per client tick.
-    camera_fov_ticks.advance_for_world(advanced_ticks, world);
+    camera_fov_ticks.advance_for_world(
+        advanced_ticks,
+        world,
+        input.camera_type().is_first_person(),
+    );
     camera_spinning_ticks.advance_for_world(advanced_ticks, world);
     let audio_events_for_destroy = audio_events
         .as_mut()
@@ -2606,7 +2613,7 @@ pub(crate) fn advance_simulation(
         local_player_hands_are_busy(input, world),
         advanced_ticks,
     );
-    let particle_camera_pose = camera_pose_from_world_at_partial_tick(world, entity_partial_tick);
+    let particle_camera_pose = render_camera_pose;
     let particle_scope_context = particle_local_player_scope_context(
         world,
         item_runtime.as_ref(),
@@ -3251,11 +3258,22 @@ pub(crate) fn update_renderer_from_publication(
     let enchantment_keys = item_registry_keys.enchantments;
     let damage_type_keys = item_registry_keys.damage_types;
     let attribute_keys = item_registry_keys.attributes;
-    let camera_pose = camera_pose_from_world_at_partial_tick(world, entity_partial_tick);
+    let camera_entity_pose = camera_pose_from_world_at_partial_tick(world, entity_partial_tick);
+    let camera_pose = render_camera_pose_from_world_at_partial_tick(
+        world,
+        entity_partial_tick,
+        input.camera_type(),
+    );
+    let first_person_camera_pose = input
+        .camera_type()
+        .is_first_person()
+        .then_some(camera_entity_pose)
+        .flatten();
     hud_render_runtime.vignette.advance(
         advanced_ticks,
         world,
-        camera_pose_from_world(world).map(camera_eye_position),
+        render_camera_pose_from_world_at_partial_tick(world, 1.0, input.camera_type())
+            .map(camera_eye_position),
     );
     let hud_vignette = hud_render_runtime.vignette.extract(
         world,
@@ -3296,10 +3314,11 @@ pub(crate) fn update_renderer_from_publication(
         .map(AudioEventSink::counters)
         .unwrap_or_else(|| audio_status.clone());
     let hud_debug_overlay = hud_debug_overlay_with_profiler_chart(
-        hud_debug_overlay_at_partial_tick(
+        hud_debug_overlay_at_partial_tick_with_camera_poses(
             input,
             world,
             camera_pose,
+            camera_entity_pose,
             entity_partial_tick,
             item_runtime,
             terrain_textures,
@@ -3371,6 +3390,7 @@ pub(crate) fn update_renderer_from_publication(
             entity_partial_tick,
             EntityRenderVisibilityContext {
                 camera_pose,
+                camera_detached: !input.camera_type().is_first_person(),
                 surface_size: [surface_size.width, surface_size.height],
                 camera_fov_degrees: camera_fov.culling_degrees,
                 base_camera_fov_degrees: camera_fov_ticks.base_degrees(),
@@ -3385,12 +3405,14 @@ pub(crate) fn update_renderer_from_publication(
     // displays from the same culled entity generation immediately after each
     // entity renderer extracts its model state. Camera distance/crosshair and
     // `Options.hideGui` are frame/input facts, so native resolves them here.
-    let targeted_entity_id =
-        match crosshair_target_from_camera_at_partial_tick(world, camera_pose, entity_partial_tick)
-        {
-            Some(CrosshairTarget::Entity(hit)) => Some(hit.entity_id),
-            _ => None,
-        };
+    let targeted_entity_id = match crosshair_target_from_camera_at_partial_tick(
+        world,
+        camera_entity_pose,
+        entity_partial_tick,
+    ) {
+        Some(CrosshairTarget::Entity(hit)) => Some(hit.entity_id),
+        _ => None,
+    };
     let entity_name_tag_surfaces = entity_name_tag_surfaces(
         visible_entity_name_tag_render_sources(entity_render_extraction),
         &entity_instances,
@@ -3517,7 +3539,7 @@ pub(crate) fn update_renderer_from_publication(
         terrain_textures,
         Some(entity_variant_textures),
         map_texture_cache,
-        camera_pose,
+        first_person_camera_pose,
         entity_partial_tick,
     );
     // Vanilla `GameRenderer.renderItemInHand` samples the local player's visible arm state,
@@ -3533,7 +3555,7 @@ pub(crate) fn update_renderer_from_publication(
         &publication.first_person_hand_presentation,
         item_runtime,
         local_player_model_instance,
-        camera_pose,
+        first_person_camera_pose,
         entity_partial_tick,
     );
     // Item frames render their wooden border + framed item into the same two atlas draws.
@@ -3629,12 +3651,15 @@ pub(crate) fn update_renderer_from_publication(
     // Vanilla `Minecraft.renderFrame` calls `pick(partialTicks)` before
     // `GameRenderer.extract`; block/entity outline extraction reads that post-input camera state.
     let selection_outline = (!input.hide_gui())
-        .then(|| selection_outline_from_camera(world, camera_pose))
+        .then(|| selection_outline_from_camera(world, camera_entity_pose))
         .flatten();
     let chunk_border_outline = debug_chunk_border_outline(input, world, camera_pose);
     let entity_scene_outline = debug_entity_scene_outline(input, world, entity_partial_tick);
-    let entity_target_outline =
-        entity_target_outline_from_camera_at_partial_tick(world, camera_pose, entity_partial_tick);
+    let entity_target_outline = entity_target_outline_from_camera_at_partial_tick(
+        world,
+        camera_entity_pose,
+        entity_partial_tick,
+    );
     let remote_debug_selection = input.remote_debug_renderers();
     let selected_remote_debug_entity =
         remote_debug_selection_cache.selected_for_generation(world.client_level_generation());
@@ -3642,9 +3667,13 @@ pub(crate) fn update_renderer_from_publication(
         .contains(crate::remote_debug::RemoteDebugRenderer::Brain)
         && !world.local_player_is_spectator())
     .then(|| {
-        debug_targeted_entity_from_camera_at_partial_tick(world, camera_pose, entity_partial_tick)
-            .and_then(|id| world.probe_entity_transform(id))
-            .map(|entity| entity.uuid)
+        debug_targeted_entity_from_camera_at_partial_tick(
+            world,
+            camera_entity_pose,
+            entity_partial_tick,
+        )
+        .and_then(|id| world.probe_entity_transform(id))
+        .map(|entity| entity.uuid)
     })
     .flatten();
     let remote_debug_gizmos = remote_debug_gizmos(
@@ -7321,10 +7350,53 @@ fn hud_debug_overlay(
     )
 }
 
+#[cfg(test)]
 fn hud_debug_overlay_at_partial_tick(
     input: &ClientInputState,
     world: &WorldStore,
     camera_pose: Option<CameraPose>,
+    entity_partial_tick: f32,
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
+    renderer_counters: &bbb_renderer::RendererCounters,
+    render_distance_chunks: u32,
+    surface_size: winit::dpi::PhysicalSize<u32>,
+    fps_sampler: &HudDebugFpsSampler,
+    client_framerate_limit: u32,
+    client_vsync: bool,
+    network_sampler: &HudDebugNetworkSampler,
+    tps_sampler: &HudDebugTpsSampler,
+    net_counters: &NetCounters,
+    audio_counters: &AudioCounters,
+    current_post_effect_id: Option<&str>,
+) -> Option<HudDebugOverlay> {
+    hud_debug_overlay_at_partial_tick_with_camera_poses(
+        input,
+        world,
+        camera_pose,
+        camera_pose,
+        entity_partial_tick,
+        item_runtime,
+        terrain_textures,
+        renderer_counters,
+        render_distance_chunks,
+        surface_size,
+        fps_sampler,
+        client_framerate_limit,
+        client_vsync,
+        network_sampler,
+        tps_sampler,
+        net_counters,
+        audio_counters,
+        current_post_effect_id,
+    )
+}
+
+fn hud_debug_overlay_at_partial_tick_with_camera_poses(
+    input: &ClientInputState,
+    world: &WorldStore,
+    camera_pose: Option<CameraPose>,
+    interaction_camera_pose: Option<CameraPose>,
     entity_partial_tick: f32,
     item_runtime: Option<&NativeItemRuntime>,
     terrain_textures: &TerrainTextureState,
@@ -7398,36 +7470,46 @@ fn hud_debug_overlay_at_partial_tick(
         }
     }
     if entry_enabled(DebugScreenEntryId::LookingAtBlockState) {
-        if let Some(looking_at_lines) = hud_debug_looking_at_block_state_lines(world, camera_pose) {
+        if let Some(looking_at_lines) =
+            hud_debug_looking_at_block_state_lines(world, interaction_camera_pose)
+        {
             left_lines.extend(looking_at_lines);
         }
     }
     if entry_enabled(DebugScreenEntryId::LookingAtBlockTags) {
-        if let Some(looking_at_lines) = hud_debug_looking_at_block_tag_lines(world, camera_pose) {
+        if let Some(looking_at_lines) =
+            hud_debug_looking_at_block_tag_lines(world, interaction_camera_pose)
+        {
             left_lines.extend(looking_at_lines);
         }
     }
     if entry_enabled(DebugScreenEntryId::LookingAtFluidState) {
-        if let Some(looking_at_lines) = hud_debug_looking_at_fluid_state_lines(world, camera_pose) {
+        if let Some(looking_at_lines) =
+            hud_debug_looking_at_fluid_state_lines(world, interaction_camera_pose)
+        {
             left_lines.extend(looking_at_lines);
         }
     }
     if entry_enabled(DebugScreenEntryId::LookingAtFluidTags) {
-        if let Some(looking_at_lines) = hud_debug_looking_at_fluid_tag_lines(world, camera_pose) {
+        if let Some(looking_at_lines) =
+            hud_debug_looking_at_fluid_tag_lines(world, interaction_camera_pose)
+        {
             left_lines.extend(looking_at_lines);
         }
     }
     if entry_enabled(DebugScreenEntryId::LookingAtEntity) {
         if let Some(looking_at_lines) =
-            hud_debug_looking_at_entity_lines(world, camera_pose, entity_partial_tick)
+            hud_debug_looking_at_entity_lines(world, interaction_camera_pose, entity_partial_tick)
         {
             left_lines.extend(looking_at_lines);
         }
     }
     if entry_enabled(DebugScreenEntryId::LookingAtEntityTags) {
-        if let Some(looking_at_lines) =
-            hud_debug_looking_at_entity_tag_lines(world, camera_pose, entity_partial_tick)
-        {
+        if let Some(looking_at_lines) = hud_debug_looking_at_entity_tag_lines(
+            world,
+            interaction_camera_pose,
+            entity_partial_tick,
+        ) {
             left_lines.extend(looking_at_lines);
         }
     }
@@ -17339,14 +17421,6 @@ fn sampled_environment_attributes_at_camera(
     })
 }
 
-fn camera_eye_position(camera: CameraPose) -> [f32; 3] {
-    [
-        camera.position[0],
-        camera.position[1] + camera.eye_height,
-        camera.position[2],
-    ]
-}
-
 /// Wall-clock milliseconds standing in for vanilla `Util.getMillis()`; render
 /// animations only consume it modulo a fixed period (e.g. the forcefield UV
 /// scroll's `% 3000L`, `WorldBorderRenderer.java:134`), so the epoch is
@@ -17448,13 +17522,6 @@ fn particle_entity_target_contexts(world: &WorldStore) -> Vec<ParticleEntityTarg
             ],
         })
         .collect()
-}
-
-fn camera_forward_vector(camera: CameraPose) -> [f32; 3] {
-    let yaw = camera.y_rot.to_radians();
-    let pitch = camera.x_rot.to_radians();
-    let cos_pitch = pitch.cos();
-    [-yaw.sin() * cos_pitch, -pitch.sin(), yaw.cos() * cos_pitch]
 }
 
 fn camera_block_position(world: &WorldStore) -> Option<BlockPos> {

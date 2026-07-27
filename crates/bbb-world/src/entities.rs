@@ -3317,8 +3317,12 @@ impl WorldStore {
         let scale = self.entities.render_scale(entity_id)?;
         let distance = self
             .entities
-            .attribute_value(entity_id, VANILLA_ATTRIBUTE_CAMERA_DISTANCE_ID)?
-            as f32;
+            .attribute_value(entity_id, VANILLA_ATTRIBUTE_CAMERA_DISTANCE_ID)?;
+        let distance = if distance.is_nan() {
+            0.0
+        } else {
+            distance.clamp(0.0, 32.0) as f32
+        };
         Some(scale * distance)
     }
 

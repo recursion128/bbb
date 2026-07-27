@@ -476,6 +476,23 @@ fn camera_visual_distance_uses_living_attributes_mount_maximum_and_nonliving_def
         ],
     }));
     assert_eq!(store.camera_entity_third_person_distance(), Some(6.0));
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 123,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_CAMERA_DISTANCE_ID,
+            base: 100.0,
+            modifiers: Vec::new(),
+        }],
+    }));
+    assert_eq!(store.camera_entity_third_person_distance(), Some(64.0));
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 123,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_CAMERA_DISTANCE_ID,
+            base: 3.0,
+            modifiers: Vec::new(),
+        }],
+    }));
 
     store.apply_add_entity(protocol_add_entity_with_type(
         124,

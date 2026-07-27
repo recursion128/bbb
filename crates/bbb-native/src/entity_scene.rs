@@ -407,6 +407,7 @@ impl EntityRenderExtractionScratch {
 #[derive(Clone, Copy)]
 pub(crate) struct EntityRenderVisibilityContext<'a> {
     pub(crate) camera_pose: Option<CameraPose>,
+    pub(crate) camera_detached: bool,
     pub(crate) surface_size: [u32; 2],
     pub(crate) camera_fov_degrees: f32,
     pub(crate) base_camera_fov_degrees: f32,
@@ -525,32 +526,35 @@ pub(crate) fn visible_entity_model_instances_from_world_with_variant_textures_at
         entity_partial_tick,
         Some(&context),
         scratch.sources.drain(..),
+        false,
         &mut scratch.instances,
     );
-    // bbb's active camera type is currently first-person; like vanilla's
-    // `owner == Minecraft.player` branch, this is keyed to hook ownership rather
-    // than the entity a server-directed camera happens to follow.
-    if let Some(camera_pose) = visibility.camera_pose {
-        for instance in &mut scratch.instances {
-            if !matches!(instance.kind, EntityModelKind::FishingHook) {
-                continue;
+    // Vanilla's local-owner near-plane origin applies only to an attached
+    // first-person camera. Detached camera types use the ordinary owner-hand
+    // origin already projected into the instance.
+    if !visibility.camera_detached {
+        if let Some(camera_pose) = visibility.camera_pose {
+            for instance in &mut scratch.instances {
+                if !matches!(instance.kind, EntityModelKind::FishingHook) {
+                    continue;
+                }
+                let Some(source) = world.fishing_hook_render_source_at_partial_tick(
+                    instance.entity_id,
+                    entity_partial_tick,
+                ) else {
+                    continue;
+                };
+                if Some(source.owner_id) != world.local_player_id() {
+                    continue;
+                }
+                instance.render_state.fishing_line_origin_offset =
+                    Some(fishing_hook_first_person_line_origin_offset(
+                        source,
+                        camera_pose,
+                        visibility.surface_size,
+                        visibility.base_camera_fov_degrees,
+                    ));
             }
-            let Some(source) = world.fishing_hook_render_source_at_partial_tick(
-                instance.entity_id,
-                entity_partial_tick,
-            ) else {
-                continue;
-            };
-            if Some(source.owner_id) != world.local_player_id() {
-                continue;
-            }
-            instance.render_state.fishing_line_origin_offset =
-                Some(fishing_hook_first_person_line_origin_offset(
-                    source,
-                    camera_pose,
-                    visibility.surface_size,
-                    visibility.base_camera_fov_degrees,
-                ));
         }
     }
     let model_duration = model_started_at.elapsed();
@@ -679,6 +683,7 @@ fn entity_model_instances_from_sources(
         entity_partial_tick,
         variant_registries,
         sources,
+        true,
         &mut instances,
     );
     instances
@@ -690,6 +695,7 @@ fn fill_entity_model_instances_from_sources(
     entity_partial_tick: f32,
     variant_registries: Option<&dyn EntityVariantRegistryLookup>,
     sources: impl IntoIterator<Item = EntityModelSourceState>,
+    hide_local_and_camera_entities: bool,
     instances: &mut Vec<EntityModelInstance>,
 ) {
     let local_player_id = world.local_player_id();
@@ -697,7 +703,10 @@ fn fill_entity_model_instances_from_sources(
     let game_time = world.world_time().map(|time| time.game_time).unwrap_or(0);
     instances.clear();
     for source in sources {
-        if local_player_id == Some(source.entity_id) || camera_entity_id == Some(source.entity_id) {
+        if hide_local_and_camera_entities
+            && (local_player_id == Some(source.entity_id)
+                || camera_entity_id == Some(source.entity_id))
+        {
             continue;
         }
         if let Some(painting_instances) =
@@ -758,9 +767,14 @@ fn entity_render_candidate_is_visible(
     }
 
     let camera_entity_id = world.local_player().camera.entity_id;
-    // bbb currently exposes only vanilla's first-person camera type, so
-    // `Camera.isDetached()` is false. A sleeping living camera remains visible.
-    if camera_entity_id == Some(candidate.entity_id) && !camera_sleeping {
+    // Vanilla hides an awake camera entity only while the camera is attached.
+    // Sleeping living cameras remain visible even in first person.
+    if attached_camera_hides_entity(
+        camera_entity_id,
+        candidate.entity_id,
+        visibility.camera_detached,
+        camera_sleeping,
+    ) {
         return false;
     }
     if world.local_player_id() == Some(candidate.entity_id)
@@ -769,6 +783,15 @@ fn entity_render_candidate_is_visible(
         return false;
     }
     true
+}
+
+fn attached_camera_hides_entity(
+    camera_entity_id: Option<i32>,
+    candidate_entity_id: i32,
+    camera_detached: bool,
+    camera_sleeping: bool,
+) -> bool {
+    camera_entity_id == Some(candidate_entity_id) && !camera_detached && !camera_sleeping
 }
 
 fn entity_renderer_should_render(

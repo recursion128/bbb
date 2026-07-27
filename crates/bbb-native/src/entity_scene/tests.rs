@@ -12839,6 +12839,14 @@ fn entity_model_instances_filter_local_player_and_camera_entity() {
     );
 }
 
+#[test]
+fn camera_perspective_detached_camera_entity_is_visible() {
+    assert!(attached_camera_hides_entity(Some(11), 11, false, false));
+    assert!(!attached_camera_hides_entity(Some(11), 11, true, false));
+    assert!(!attached_camera_hides_entity(Some(11), 11, false, true));
+    assert!(!attached_camera_hides_entity(Some(11), 12, false, false));
+}
+
 fn protocol_add_entity(id: i32, entity_type_id: i32, position: [f64; 3]) -> AddEntity {
     protocol_add_entity_with_rotation(id, entity_type_id, position, 0.0, 0.0, 0.0)
 }
