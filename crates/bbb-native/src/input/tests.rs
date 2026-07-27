@@ -16987,7 +16987,7 @@ fn f3_n_queues_previous_or_creative_game_mode_when_already_spectator() {
 }
 
 #[test]
-fn camera_post_effect_f3_f4_game_mode_switcher_does_not_toggle_active_state() {
+fn f3_f4_game_mode_switcher_queues_default_selection_on_f3_release() {
     for (game_type, previous_game_type, expected_game_mode) in [
         (0, -1, bbb_protocol::packets::GameType::Creative),
         (1, -1, bbb_protocol::packets::GameType::Survival),
@@ -17048,6 +17048,33 @@ fn camera_post_effect_f3_f4_game_mode_switcher_does_not_toggle_active_state() {
             })
         );
     }
+}
+
+#[test]
+fn camera_post_effect_f3_f4_chord_preserves_active_state() {
+    let (tx, _rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_debug_player_in_game_mode(false, 1, -1);
+    grant_debug_recreate_nbt_permission(&mut world);
+    input.synchronize_camera_post_effect(1, 1, Some("minecraft:spider"));
+
+    for code in [KeyCode::F3, KeyCode::F4] {
+        handle_key_input(
+            &mut input,
+            &mut counters,
+            &mut world,
+            &commands,
+            PhysicalKey::Code(code),
+            ElementState::Pressed,
+        );
+    }
+
+    assert!(
+        input.camera_post_effect_active(),
+        "the consumed F3+F4 chord must not toggle the spectator post effect"
+    );
 }
 
 #[test]
