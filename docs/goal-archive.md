@@ -573,3 +573,7 @@
   服务端权威，客户端按 Vanilla `ResultSlot` 仅预测一次定位输入消耗与物品默认
   余留物；RecipeBook 结果合成和配方特定余留物目录已移除，合同见
   `docs/archive/client-crafting-result-prediction-design.md`。
+- **2026-07-26（RecipeBook 生命周期工程闭环）**：RecipeToast 与 AdvancementToast
+  共用有序五槽调度，高亮配方按可见按钮顺序完成自动 SeenRecipe、动画、提示和旁白；
+  双向 packet coverage 适用单元全部关闭，合同见
+  `docs/archive/recipe-book-lifecycle-closure-design.md`。

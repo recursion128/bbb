@@ -5319,13 +5319,14 @@
         },
         "command_surface": {
           "evidence": [
+            "crates/bbb-native/src/input/inventory/recipe_book_lifecycle.rs#sync_recipe_book_presentation",
             "crates/bbb-native/src/input/commands.rs#queue_recipe_book_seen_recipe_command",
             "crates/bbb-native/src/runtime/control_requests.rs#MarkRecipeSeen",
             "crates/bbb-net/src/driver/commands.rs#send_recipe_book_seen_recipe",
             "vanilla:net/minecraft/client/gui/screens/recipebook/RecipeBookComponent.java#recipeShown"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
           "evidence": [
@@ -5337,24 +5338,29 @@
         },
         "state_guard": {
           "evidence": [
-            "crates/bbb-world/src/recipe_book.rs#ClientRecipeBookState",
+            "crates/bbb-world/src/recipe_book.rs#remove_recipe_highlight",
+            "crates/bbb-native/src/input/inventory/recipe_book_lifecycle.rs#sync_recipe_book_presentation",
             "crates/bbb-native/src/recipe_book_ui.rs#crafting_recipe_book_tab_has_highlighted_recipe",
             "vanilla:net/minecraft/client/gui/screens/recipebook/RecipeButton.java#init",
             "vanilla:net/minecraft/client/player/LocalPlayer.java#removeRecipeHighlight"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/tests.rs#encodes_recipe_book_seen_recipe_packet",
             "crates/bbb-net/src/driver/commands/tests.rs#send_recipe_book_commands_encode_packets",
             "crates/bbb-net/src/driver.rs#drive_connection_sends_recipe_book_net_commands_in_play",
-            "crates/bbb-native/src/input/commands.rs#queues_recipe_book_commands",
-            "crates/bbb-native/src/runtime/control_requests.rs#pump_control_net_requests_queues_recipe_book_commands"
+            "crates/bbb-native/src/input/commands.rs#reports_recipe_book_seen_recipe_queue_saturation",
+            "crates/bbb-native/src/input/tests.rs#visible_recipe_highlights_queue_once_in_button_and_recipe_order",
+            "crates/bbb-native/src/input/tests.rs#saturated_seen_recipe_queue_retries_before_local_highlight_removal",
+            "crates/bbb-native/src/input/tests.rs#later_recipe_page_retains_highlight_until_selected",
+            "crates/bbb-native/src/input/tests.rs#nonselected_tab_retains_highlight_until_selected",
+            "crates/bbb-native/src/input/tests.rs#recipe_replace_before_visibility_queues_no_seen_command"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",
@@ -11194,13 +11200,17 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-native/src/input/inventory/recipe_book_lifecycle.rs#sync_recipe_book_presentation",
+            "crates/bbb-native/src/runtime/toast.rs#project_recipes",
             "crates/bbb-native/src/runtime.rs#recipe_book_animation_scale",
             "crates/bbb-native/src/runtime.rs#hud_recipe_book_recipe_button_layers",
+            "crates/bbb-native/src/runtime.rs#hud_recipe_book_tooltip",
+            "crates/bbb-native/src/runtime.rs#recipe_book_narration_frame",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleRecipeBookAdd",
-            "vanilla:net/minecraft/client/gui/components/toasts/RecipeToast.java#addOrUpdate"
+            "vanilla:net/minecraft/client/gui/components/toasts/RecipeToast.java#addOrUpdate",
+            "vanilla:net/minecraft/client/gui/screens/recipebook/RecipeButton.java#init"
           ],
-          "gap": "docs/unsupported-features.md#container-menu-presentation-parity",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -11208,11 +11218,18 @@
             "crates/bbb-net/src/event_stream.rs#play_passive_world_apply_packets_emit_matching_events",
             "crates/bbb-net/src/probe/play.rs#probe_applies_recipe_book_packets_to_world",
             "crates/bbb-world/src/recipe_book.rs#recipe_book_add_remove_and_settings_follow_client_semantics",
+            "crates/bbb-world/src/toasts.rs#advancement_and_recipe_events_share_one_packet_order",
             "crates/bbb-native/src/runtime/events/tests/entity_and_inventory_counters.rs#recipe_book_events_update_world_state_and_world_counters",
-            "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_projects_crafting_recipe_book_buttons"
+            "crates/bbb-native/src/runtime/tests.rs#recipe_toast_runtime_coalesces_resets_lifetime_cycles_and_revives",
+            "crates/bbb-native/src/runtime/tests.rs#recipe_toast_runtime_coalesces_while_queued_and_keeps_global_fifo_order",
+            "crates/bbb-native/src/input/tests.rs#visible_recipe_highlights_queue_once_in_button_and_recipe_order",
+            "crates/bbb-native/src/input/tests.rs#saturated_seen_recipe_queue_retries_before_local_highlight_removal",
+            "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_keeps_recipe_button_animation_after_highlight_removal",
+            "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_projects_recipe_book_page_tooltips",
+            "crates/bbb-native/src/runtime/tests.rs#recipe_book_narration_describes_multi_recipe_button_and_usage"
           ],
-          "gap": "docs/unsupported-features.md#container-menu-presentation-parity",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

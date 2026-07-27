@@ -2678,28 +2678,10 @@ mod tests {
     }
 
     #[test]
-    fn play_recipe_book_family_locks_add_remove_and_settings_boundaries() {
+    fn play_clientbound_recipe_book_family_is_closed() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
-        let add = ledger
-            .entries
-            .iter()
-            .find(|entry| {
-                entry.state == "play" && entry.constant_name == "CLIENTBOUND_RECIPE_BOOK_ADD"
-            })
-            .expect("play recipe book add coverage row");
-        let add_partial: BTreeSet<_> = add
-            .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(
-            add_partial,
-            BTreeSet::from(["runtime_side_effect", "tests"])
-        );
-
         for packet in [
+            "CLIENTBOUND_RECIPE_BOOK_ADD",
             "CLIENTBOUND_RECIPE_BOOK_REMOVE",
             "CLIENTBOUND_RECIPE_BOOK_SETTINGS",
         ] {
@@ -3613,7 +3595,7 @@ mod tests {
     }
 
     #[test]
-    fn play_serverbound_recipe_book_commands_keep_seen_ui_lifecycle_open() {
+    fn play_serverbound_recipe_book_commands_close_seen_ui_lifecycle() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let settings = ledger
             .entries
@@ -3647,16 +3629,24 @@ mod tests {
             seen.coverage["ack_response"].status,
             PacketCoverageStatus::NotApplicable
         );
-        assert_eq!(
-            seen.coverage["encoder"].status,
-            PacketCoverageStatus::Complete
-        );
-        for dimension in ["command_surface", "state_guard", "tests"] {
+        for dimension in ["command_surface", "encoder", "state_guard", "tests"] {
             assert_eq!(
                 seen.coverage[dimension].status,
-                PacketCoverageStatus::Partial,
+                PacketCoverageStatus::Complete,
                 "seen {dimension}"
             );
+        }
+        for required in [
+            "sync_recipe_book_presentation",
+            "remove_recipe_highlight",
+            "visible_recipe_highlights_queue_once_in_button_and_recipe_order",
+            "saturated_seen_recipe_queue_retries_before_local_highlight_removal",
+        ] {
+            assert!(seen
+                .coverage
+                .values()
+                .flat_map(|cell| &cell.evidence)
+                .any(|evidence| evidence.contains(required)));
         }
     }
 

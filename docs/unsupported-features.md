@@ -665,15 +665,7 @@ Inventory:
 - Implement the rich-tooltip `space` font provider, the remaining text styles,
   italic/complex component styles, and component-specific detail lines from
   `font/default.json`.
-- Implement the remaining RecipeBookAdd / RecipeBookRemove presentation variants
-  (including RecipeToast, hover/tooltips, focus, and narration) and creative
-  inventory variants.
-- When a highlighted recipe first becomes visible in a native recipe button,
-  remove its local highlight and send `RecipeBookSeenRecipe` exactly once like
-  vanilla `RecipeButton.init`/`RecipeBookComponent.recipeShown`. The generic
-  encoder and maintenance command exist, but the automatic UI lifecycle does
-  not; do not leave highlights permanently animated or treat manual control as
-  client parity.
+
 ## Particle runtime vanilla parity
 
 Owner: `bbb-renderer` + `bbb-native` + `bbb-pack`
