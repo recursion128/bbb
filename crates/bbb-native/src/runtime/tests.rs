@@ -1085,6 +1085,7 @@ fn hud_player_list_projection_uses_scores_rich_names_and_vanilla_visibility() {
             bbb_protocol::packets::PlayerInfoAction::UpdateGameMode,
             bbb_protocol::packets::PlayerInfoAction::UpdateLatency,
             bbb_protocol::packets::PlayerInfoAction::UpdateListOrder,
+            bbb_protocol::packets::PlayerInfoAction::UpdateHat,
         ],
         entries: entries
             .into_iter()
@@ -1100,7 +1101,7 @@ fn hud_player_list_projection_uses_scores_rich_names_and_vanilla_visibility() {
                     latency,
                     game_mode,
                     display_name: None,
-                    show_hat: false,
+                    show_hat: id == 3,
                     list_order,
                     chat_session: None,
                 }
@@ -1160,6 +1161,7 @@ fn hud_player_list_projection_uses_scores_rich_names_and_vanilla_visibility() {
     );
 
     let list = hud_player_list_from_world(&input, &world, None, 42, false).expect("Tab list");
+    assert!(!list.show_heads);
     let header = list.header.as_deref().expect("styled header");
     assert_eq!(header.len(), 1);
     assert_eq!(header[0].text, "Welcome");
@@ -1186,6 +1188,7 @@ fn hud_player_list_projection_uses_scores_rich_names_and_vanilla_visibility() {
     assert!(list.entries[1].spectator);
     assert_eq!(list.entries[0].latency, 120);
     assert_eq!(list.entries[0].profile_id, 3);
+    assert!(list.entries[0].show_hat);
     assert_eq!(list.entries[0].name_runs[0].color, Some(0x55FFFF));
     assert!(list.entries[1].name_runs.iter().all(|run| run.style.italic));
     let HudPlayerListScore::Integer(score_runs) =
@@ -1204,6 +1207,15 @@ fn hud_player_list_projection_uses_scores_rich_names_and_vanilla_visibility() {
     };
     assert_eq!(missing_score_runs[0].text, "0");
     assert_eq!(list.tick_count, 42);
+    assert_eq!(
+        hud_player_list_narration_from_world(&world, None),
+        "Online players: [beta], Zulu, alpha"
+    );
+    assert!(
+        hud_player_list_from_world(&input, &world, None, 42, true)
+            .expect("encrypted Tab list")
+            .show_heads
+    );
 
     assert!(world.apply_set_objective(SetObjective {
         objective_name: "tab".to_string(),
@@ -1244,6 +1256,74 @@ fn hud_player_list_projection_uses_scores_rich_names_and_vanilla_visibility() {
         hud_player_list_from_world(&input, &world, None, 44, false),
         None
     );
+}
+
+#[test]
+fn hud_player_list_heads_use_hat_skin_and_loaded_upside_down_profile_state() {
+    let mut world = WorldStore::new();
+    world.apply_player_info_update(bbb_protocol::packets::PlayerInfoUpdate {
+        actions: vec![
+            bbb_protocol::packets::PlayerInfoAction::AddPlayer,
+            bbb_protocol::packets::PlayerInfoAction::UpdateListed,
+            bbb_protocol::packets::PlayerInfoAction::UpdateHat,
+        ],
+        entries: [("Dinnerbone", true), ("Grumm", false)]
+            .into_iter()
+            .enumerate()
+            .map(|(offset, (name, show_hat))| {
+                let id = (offset + 10) as u128;
+                bbb_protocol::packets::PlayerInfoEntry {
+                    profile_id: uuid::Uuid::from_u128(id),
+                    profile: Some(bbb_protocol::packets::GameProfile {
+                        uuid: uuid::Uuid::from_u128(id),
+                        name: name.to_string(),
+                        properties: Vec::new(),
+                    }),
+                    listed: true,
+                    latency: 0,
+                    game_mode: bbb_protocol::packets::GameType::Survival,
+                    display_name: None,
+                    show_hat,
+                    list_order: 0,
+                    chat_session: None,
+                }
+            })
+            .collect(),
+    });
+    world.apply_add_entity(test_add_entity(
+        10,
+        bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    let mut input = ClientInputState::new(true);
+    crate::input::handle_key_input(
+        &mut input,
+        &mut NetCounters::default(),
+        &mut world,
+        &None,
+        PhysicalKey::Code(KeyCode::Tab),
+        ElementState::Pressed,
+    );
+
+    let list = hud_player_list_from_world(&input, &world, None, 0, true).expect("Tab list");
+    assert!(list.show_heads);
+    let dinnerbone = list
+        .entries
+        .iter()
+        .find(|entry| entry.profile_id == 10)
+        .unwrap();
+    assert!(dinnerbone.show_hat);
+    assert!(dinnerbone.upside_down);
+    assert!(matches!(
+        dinnerbone.skin,
+        bbb_renderer::EntityPlayerSkin::ProfiledDefault(_)
+    ));
+    let grumm = list
+        .entries
+        .iter()
+        .find(|entry| entry.profile_id == 11)
+        .unwrap();
+    assert!(!grumm.show_hat);
+    assert!(!grumm.upside_down);
 }
 
 #[test]
@@ -10828,6 +10908,50 @@ fn command_suggestion_narration_speaks_once_per_state_change_and_resets() {
             "Selected suggestion 1 out of 2: stone"
         ]
     );
+}
+
+#[test]
+fn player_list_visibility_narration_speaks_only_on_opening_edges() {
+    #[derive(Default)]
+    struct RecordingNarrator(Vec<String>);
+
+    impl SystemNarrator for RecordingNarrator {
+        fn say_system_now(&mut self, message: &str) {
+            self.0.push(message.to_string());
+        }
+
+        fn say_chat_queued(&mut self, _message: &str) {}
+
+        fn say_system_chat_queued(&mut self, _message: &str) {}
+
+        fn say_system_queued(&mut self, _message: &str) {}
+    }
+
+    let mut visible = false;
+    let mut narrator = RecordingNarrator::default();
+    narrate_player_list_visibility_change(false, &mut visible, Some(&mut narrator), || {
+        "not spoken".to_string()
+    });
+    narrate_player_list_visibility_change(true, &mut visible, Some(&mut narrator), || {
+        "Online players: Ada".to_string()
+    });
+    narrate_player_list_visibility_change(true, &mut visible, Some(&mut narrator), || {
+        "not repeated".to_string()
+    });
+    narrate_player_list_visibility_change(false, &mut visible, Some(&mut narrator), || {
+        "not spoken".to_string()
+    });
+    narrate_player_list_visibility_change(true, &mut visible, Some(&mut narrator), || {
+        "Online players: Grace".to_string()
+    });
+    assert_eq!(narrator.0, ["Online players: Ada", "Online players: Grace"]);
+
+    let mut muted_edge = false;
+    narrate_player_list_visibility_change(true, &mut muted_edge, None, || "muted".to_string());
+    narrate_player_list_visibility_change(true, &mut muted_edge, Some(&mut narrator), || {
+        "not late".to_string()
+    });
+    assert_eq!(narrator.0.len(), 2);
 }
 
 #[test]

@@ -3939,6 +3939,15 @@ impl WorldStore {
         self.entities.camera_pose_state(id)
     }
 
+    /// Mirrors `ClientLevel.getPlayerByUUID` for player-list face inversion:
+    /// the profile UUID must resolve to a currently loaded player entity.
+    pub fn has_loaded_player_entity(&self, profile_id: uuid::Uuid) -> bool {
+        let Some(entity_id) = self.entities.protocol_id_for_uuid(profile_id) else {
+            return false;
+        };
+        self.entities.entity_type_id(entity_id) == Some(VANILLA_ENTITY_TYPE_PLAYER_ID)
+    }
+
     pub fn probe_entity_camera_pose_at_partial_tick(
         &self,
         id: i32,

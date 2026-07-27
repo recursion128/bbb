@@ -100,6 +100,7 @@ pub use self::social::{
     HudSocialInteractionsMainScreen, HudSocialInteractionsPage, HudSocialInteractionsPlayer,
     HudSocialInteractionsPlayerAction, HudSocialInteractionsRect, HudSocialInteractionsScreen,
 };
+pub(crate) use self::spectator::HudPlayerFaceGpu;
 pub use self::spectator::{HudHotbarMode, HudSpectatorGui, HudSpectatorGuiSlot, HudSpectatorIcon};
 
 pub use bbb_render_types::{
@@ -6325,6 +6326,7 @@ impl Renderer {
                     &self.hud_obfuscated_glyph_pool,
                     self.counters.frame_index,
                     surface_size,
+                    self,
                     player_list,
                     &self.hud_player_list_runtime,
                     HudPlayerListHeartSprites {

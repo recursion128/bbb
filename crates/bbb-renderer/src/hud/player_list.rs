@@ -5,10 +5,11 @@ use winit::dpi::PhysicalSize;
 use super::layout::absolute_hud_rect;
 use super::{
     hud_font_runs_width, hud_plain_text_width, hud_wrap_chat_runs, push_hud_debug_tinted_rect,
-    push_hud_draw, push_hud_screen_text_draw, HudDrawCommand, HudFontGlyphMap,
-    HudObfuscatedGlyphPool, HudScreenTextDraw, HudSpriteGpu, HudStyledTextRun, HudVertex,
-    HUD_TINT_WHITE,
+    push_hud_draw, push_hud_draw_with_uv, push_hud_screen_text_draw, HudDrawCommand,
+    HudFontGlyphMap, HudObfuscatedGlyphPool, HudScreenTextDraw, HudSpriteGpu, HudStyledTextRun,
+    HudUvRect, HudVertex, HUD_TINT_WHITE,
 };
+use crate::{EntityPlayerSkin, Renderer};
 
 /// One frame's multiplayer player-list overlay. Entries arrive in vanilla
 /// comparator order; the renderer owns font measurement, wrapping, columns,
@@ -31,6 +32,9 @@ pub struct HudPlayerListEntry {
     /// renderer independent of the protocol crate.
     pub profile_id: u128,
     pub name_runs: Vec<HudStyledTextRun>,
+    pub skin: EntityPlayerSkin,
+    pub show_hat: bool,
+    pub upside_down: bool,
     pub latency: i32,
     pub spectator: bool,
     pub score: Option<HudPlayerListScore>,
@@ -172,6 +176,7 @@ pub(super) fn push_hud_player_list<'a>(
     obfuscated_pool: &HudObfuscatedGlyphPool,
     frame_index: u64,
     surface_size: PhysicalSize<u32>,
+    renderer: &'a Renderer,
     list: &HudPlayerList,
     runtime: &HudPlayerListRuntime,
     heart_sprites: HudPlayerListHeartSprites<'a>,
@@ -187,15 +192,13 @@ pub(super) fn push_hud_player_list<'a>(
     let width_for_score = hud_player_list_score_width(entries, glyphs);
     let screen_width = surface_size.width as i32;
     let available = screen_width.saturating_sub(50).max(1) as u32;
-    let slot_width = ((columns as u32)
-        .saturating_mul(
-            max_name_width
-                .saturating_add(width_for_score)
-                .saturating_add(13),
-        )
-        .min(available)
-        / columns as u32)
-        .max(13);
+    let slot_width = hud_player_list_slot_width(
+        columns,
+        max_name_width,
+        width_for_score,
+        available,
+        list.show_heads,
+    );
     let table_width = slot_width
         .saturating_mul(columns as u32)
         .saturating_add(5 * columns.saturating_sub(1) as u32);
@@ -287,11 +290,24 @@ pub(super) fn push_hud_player_list<'a>(
             8,
             [1.0, 1.0, 1.0, 32.0 / 255.0],
         );
+        if list.show_heads {
+            if let Some(sprite) = renderer.hud_player_face_with_hat(entry.skin, entry.show_hat) {
+                push_hud_draw_with_uv(
+                    vertices,
+                    commands,
+                    sprite,
+                    surface_size,
+                    absolute_hud_rect(x as f32, row_y as f32, 8, 8),
+                    hud_player_list_face_uv(entry.upside_down),
+                );
+            }
+        }
+        let name_x = hud_player_list_name_x(x, list.show_heads);
         draw_text(
             vertices,
             commands,
             &entry.name_runs,
-            x,
+            name_x,
             row_y,
             if entry.spectator {
                 [1.0, 1.0, 1.0, 144.0 / 255.0]
@@ -301,7 +317,7 @@ pub(super) fn push_hud_player_list<'a>(
         );
 
         if !entry.spectator {
-            let score_left = x + max_name_width as i32 + 1;
+            let score_left = name_x + max_name_width as i32 + 1;
             let score_right = score_left + width_for_score as i32;
             if score_right - score_left > 5 {
                 match entry.score.as_ref() {
@@ -624,6 +640,44 @@ fn hud_player_list_grid(slots: usize) -> (usize, usize) {
     (columns, rows)
 }
 
+fn hud_player_list_slot_width(
+    columns: usize,
+    max_name_width: u32,
+    width_for_score: u32,
+    available: u32,
+    show_heads: bool,
+) -> u32 {
+    let head_width = if show_heads { 9 } else { 0 };
+    ((columns as u32)
+        .saturating_mul(
+            max_name_width
+                .saturating_add(head_width)
+                .saturating_add(width_for_score)
+                .saturating_add(13),
+        )
+        .min(available)
+        / columns as u32)
+        .max(13 + head_width)
+}
+
+fn hud_player_list_name_x(slot_x: i32, show_heads: bool) -> i32 {
+    slot_x + if show_heads { 9 } else { 0 }
+}
+
+fn hud_player_list_face_uv(upside_down: bool) -> HudUvRect {
+    if upside_down {
+        HudUvRect {
+            min: [0.0, 1.0],
+            max: [1.0, 0.0],
+        }
+    } else {
+        HudUvRect {
+            min: [0.0, 0.0],
+            max: [1.0, 1.0],
+        }
+    }
+}
+
 fn hud_player_list_ping_bars(latency: i32) -> i32 {
     match latency {
         latency if latency < 0 => 0,
@@ -639,6 +693,7 @@ fn hud_player_list_ping_bars(latency: i32) -> i32 {
 mod tests {
     use super::*;
     use crate::hud::{HudAsciiGlyph, HudTextStyle};
+    use crate::EntityDefaultPlayerSkin;
 
     fn test_glyphs() -> HudFontGlyphMap {
         let mut glyphs = HudFontGlyphMap::new();
@@ -660,6 +715,9 @@ mod tests {
         HudPlayerListEntry {
             profile_id,
             name_runs: vec![HudStyledTextRun::plain("player")],
+            skin: EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
+            show_hat: true,
+            upside_down: false,
             latency: 0,
             spectator: false,
             score: Some(HudPlayerListScore::Hearts {
@@ -683,11 +741,36 @@ mod tests {
     }
 
     #[test]
+    fn encrypted_player_head_layout_reserves_nine_pixels_and_flips_v_only() {
+        assert_eq!(hud_player_list_slot_width(1, 30, 0, 270, false), 43);
+        assert_eq!(hud_player_list_slot_width(1, 30, 0, 270, true), 52);
+        assert_eq!(hud_player_list_name_x(17, false), 17);
+        assert_eq!(hud_player_list_name_x(17, true), 26);
+        assert_eq!(
+            hud_player_list_face_uv(false),
+            HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            }
+        );
+        assert_eq!(
+            hud_player_list_face_uv(true),
+            HudUvRect {
+                min: [0.0, 1.0],
+                max: [1.0, 0.0],
+            }
+        );
+    }
+
+    #[test]
     fn score_width_reserves_spacer_or_ninety_heart_pixels() {
         let glyphs = test_glyphs();
         let mut entry = HudPlayerListEntry {
             profile_id: 1,
             name_runs: Vec::new(),
+            skin: EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
+            show_hat: true,
+            upside_down: false,
             latency: 0,
             spectator: false,
             score: Some(HudPlayerListScore::Integer(vec![HudStyledTextRun::plain(

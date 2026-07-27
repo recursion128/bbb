@@ -94,9 +94,11 @@ use resource_reload::{
     client_resource_pack_diagnostics, item_particle_sprite_uvs,
 };
 use runtime::{
-    control_renderer_counters, dialog_ime_cursor_area, narrate_command_suggestion_change,
-    project_dynamic_texture_counters, world_client_tick_interval, ClientAnimationTickState,
-    DebugCollisionCache, DebugSkyLightSectionCache, DebugSupportingBlockCache, HudDebugFpsSampler,
+    control_renderer_counters, dialog_ime_cursor_area, hud_player_list_is_visible,
+    hud_player_list_narration_from_world, narrate_command_suggestion_change,
+    narrate_player_list_visibility_change, project_dynamic_texture_counters,
+    world_client_tick_interval, ClientAnimationTickState, DebugCollisionCache,
+    DebugSkyLightSectionCache, DebugSupportingBlockCache, HudDebugFpsSampler,
     HudDebugNetworkSampler, HudDebugTpsSampler, HudRenderRuntime, LevelEventSoundRandomState,
     LightmapTickState,
 };
@@ -702,6 +704,7 @@ fn main() -> Result<()> {
     let frame_interval = client_framerate_limit_interval(args.client_framerate_limit);
     let mut next_redraw_at = Instant::now();
     let mut last_command_suggestion_narration = None;
+    let mut player_list_narration_visible = false;
     let mut stats_screen_narration = ScreenNarrationRuntime::default();
     let mut recipe_book_narration = ScreenNarrationRuntime::default();
     let mut social_interactions_narration = ScreenNarrationRuntime::default();
@@ -889,6 +892,16 @@ fn main() -> Result<()> {
         if let Some(narrator) = narrator_runtime.as_mut() {
             narrator.tick();
         }
+        let published_input = render_publication.input.as_state();
+        let published_world = render_publication.world.as_ref();
+        narrate_player_list_visibility_change(
+            hud_player_list_is_visible(published_input, published_world),
+            &mut player_list_narration_visible,
+            narrator_runtime
+                .as_mut()
+                .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
+            || hud_player_list_narration_from_world(published_world, item_runtime.as_ref()),
+        );
         narrate_command_suggestion_change(
             render_publication.input.command_suggestion_narration(),
             &mut last_command_suggestion_narration,

@@ -559,13 +559,19 @@ mod tests {
     }
 
     #[test]
-    fn player_entity_without_active_info_does_not_create_seen_entry() {
+    fn player_list_loaded_player_entity_query_tracks_entity_without_active_info() {
         let mut store = WorldStore::new();
         let id = Uuid::from_u128(0x0123456789abcdeffedcba9876543210);
 
+        assert!(!store.has_loaded_player_entity(id));
         store.apply_add_entity(protocol_player_entity(9, id));
 
         assert!(store.seen_players().is_empty());
+        assert!(store.has_loaded_player_entity(id));
+        store.apply_remove_entities(bbb_protocol::packets::RemoveEntities {
+            entity_ids: vec![9],
+        });
+        assert!(!store.has_loaded_player_entity(id));
     }
 
     fn protocol_game_profile(uuid: Uuid, name: &str) -> ProtocolGameProfile {

@@ -575,8 +575,9 @@ pub struct Renderer {
     pub(super) hud_spectator_scroll_right: Option<HudSpriteGpu>,
     pub(super) hud_spectator_teleport_to_player: Option<HudSpriteGpu>,
     pub(super) hud_spectator_teleport_to_team: Option<HudSpriteGpu>,
-    pub(super) hud_default_player_faces: HashMap<EntityDefaultPlayerSkin, HudSpriteGpu>,
-    pub(super) hud_dynamic_player_faces: HashMap<u64, HudSpriteGpu>,
+    pub(super) hud_default_player_faces:
+        HashMap<EntityDefaultPlayerSkin, crate::hud::HudPlayerFaceGpu>,
+    pub(super) hud_dynamic_player_faces: HashMap<u64, crate::hud::HudPlayerFaceGpu>,
     pub(super) hud_social_interactions_background: Option<HudNineSliceSprite>,
     pub(super) hud_social_interactions_search: Option<HudSpriteGpu>,
     pub(super) hud_social_interactions_mute: Option<HudSpriteGpu>,

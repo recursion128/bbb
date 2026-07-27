@@ -1848,9 +1848,61 @@ pub(crate) fn hud_player_list_from_world(
     tick_count: u64,
     show_heads: bool,
 ) -> Option<HudPlayerList> {
-    if input.hide_gui() || !input.player_list_key_down() || input_screen_is_open(input, world) {
+    if !hud_player_list_is_visible(input, world) {
         return None;
     }
+    let entries = hud_player_list_entries_from_world(world, item_runtime, show_heads);
+    let header = world
+        .tab_list()
+        .header
+        .as_ref()
+        .map(|component| hud_tab_list_component_runs(component, item_runtime));
+    let footer = world
+        .tab_list()
+        .footer
+        .as_ref()
+        .map(|component| hud_tab_list_component_runs(component, item_runtime));
+    Some(HudPlayerList {
+        header,
+        footer,
+        entries,
+        show_heads,
+        tick_count,
+    })
+}
+
+pub(crate) fn hud_player_list_is_visible(input: &ClientInputState, world: &WorldStore) -> bool {
+    !input.hide_gui() && input.player_list_key_down() && !input_screen_is_open(input, world)
+}
+
+pub(crate) fn hud_player_list_narration_from_world(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> String {
+    let players = hud_player_list_entries_from_world(world, item_runtime, false)
+        .into_iter()
+        .map(|entry| {
+            entry
+                .name_runs
+                .into_iter()
+                .map(|run| run.text)
+                .collect::<String>()
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    localized_gui_text_with_args(
+        item_runtime,
+        "multiplayer.player.list.narration",
+        "Online players: %s",
+        &[&players],
+    )
+}
+
+fn hud_player_list_entries_from_world(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    resolve_skins: bool,
+) -> Vec<HudPlayerListEntry> {
     let scoreboard = world.scoreboard();
     let mut entries: Vec<_> = world
         .listed_players()
@@ -1878,7 +1930,7 @@ pub(crate) fn hud_player_list_from_world(
                     .cmp(&right.profile.name.to_lowercase())
             })
     });
-    let entries = entries
+    entries
         .into_iter()
         .take(80)
         .map(|entry| {
@@ -1923,29 +1975,24 @@ pub(crate) fn hud_player_list_from_world(
             HudPlayerListEntry {
                 profile_id: entry.profile.uuid.as_u128(),
                 name_runs,
+                skin: if resolve_skins {
+                    spectator_player_skin(&entry.profile, item_runtime)
+                } else {
+                    bbb_renderer::EntityPlayerSkin::ProfiledDefault(
+                        bbb_item_model::default_player_skin_for_profile_id(
+                            entry.profile.uuid.as_u128(),
+                        ),
+                    )
+                },
+                show_hat: entry.show_hat,
+                upside_down: world.has_loaded_player_entity(entry.profile.uuid)
+                    && matches!(entry.profile.name.as_str(), "Dinnerbone" | "Grumm"),
                 latency: entry.latency,
                 spectator: entry.is_spectator(),
                 score,
             }
         })
-        .collect::<Vec<_>>();
-    let header = world
-        .tab_list()
-        .header
-        .as_ref()
-        .map(|component| hud_tab_list_component_runs(component, item_runtime));
-    let footer = world
-        .tab_list()
-        .footer
-        .as_ref()
-        .map(|component| hud_tab_list_component_runs(component, item_runtime));
-    Some(HudPlayerList {
-        header,
-        footer,
-        entries,
-        show_heads,
-        tick_count,
-    })
+        .collect()
 }
 
 fn hud_tab_list_component_runs(

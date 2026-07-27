@@ -6174,6 +6174,20 @@ pub(crate) fn narrate_command_suggestion_change(
     *last_narration = current;
 }
 
+pub(crate) fn narrate_player_list_visibility_change(
+    visible: bool,
+    was_visible: &mut bool,
+    narrator: Option<&mut dyn SystemNarrator>,
+    narration: impl FnOnce() -> String,
+) {
+    if visible && !*was_visible {
+        if let Some(narrator) = narrator {
+            narrator.say_system_now(&narration());
+        }
+    }
+    *was_visible = visible;
+}
+
 fn stat_amount_by_resource_identity(
     world: &WorldStore,
     stat_type_resource_id: &str,

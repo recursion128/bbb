@@ -26,6 +26,21 @@ const SPECTATOR_SELECTION_WIDTH: u32 = 24;
 const SPECTATOR_SELECTION_HEIGHT: u32 = 23;
 const PLAYER_SKIN_LOGICAL_SIZE: u32 = 64;
 
+pub(crate) struct HudPlayerFaceGpu {
+    without_hat: HudSpriteGpu,
+    with_hat: HudSpriteGpu,
+}
+
+impl HudPlayerFaceGpu {
+    fn sprite(&self, show_hat: bool) -> &HudSpriteGpu {
+        if show_hat {
+            &self.with_hat
+        } else {
+            &self.without_hat
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default, PartialEq)]
 pub enum HudHotbarMode {
     #[default]
@@ -457,8 +472,16 @@ impl Renderer {
     }
 
     pub(super) fn hud_player_face(&self, skin: EntityPlayerSkin) -> Option<&HudSpriteGpu> {
+        self.hud_player_face_with_hat(skin, true)
+    }
+
+    pub(super) fn hud_player_face_with_hat(
+        &self,
+        skin: EntityPlayerSkin,
+        show_hat: bool,
+    ) -> Option<&HudSpriteGpu> {
         let default = skin.fallback();
-        match skin {
+        let face = match skin {
             EntityPlayerSkin::Dynamic(dynamic)
                 if dynamic.status == EntityDynamicPlayerSkinStatus::Ready =>
             {
@@ -469,7 +492,8 @@ impl Renderer {
             EntityPlayerSkin::Default(_)
             | EntityPlayerSkin::ProfiledDefault(_)
             | EntityPlayerSkin::Dynamic(_) => self.hud_default_player_faces.get(&default),
-        }
+        }?;
+        Some(face.sprite(show_hat))
     }
 
     pub(crate) fn build_hud_player_face_owners(
@@ -477,8 +501,8 @@ impl Renderer {
         static_images: &[EntityModelTextureImage],
         dynamic_images: &[DynamicPlayerSkinImage],
     ) -> Result<(
-        HashMap<EntityDefaultPlayerSkin, HudSpriteGpu>,
-        HashMap<u64, HudSpriteGpu>,
+        HashMap<EntityDefaultPlayerSkin, HudPlayerFaceGpu>,
+        HashMap<u64, HudPlayerFaceGpu>,
     )> {
         let mut defaults = HashMap::new();
         for skin in EntityDefaultPlayerSkin::ALL {
@@ -488,15 +512,13 @@ impl Renderer {
             else {
                 continue;
             };
-            let face = player_face_rgba(image.size, &image.rgba)?;
-            let gpu = self.upload_hud_sprite(SPECTATOR_FACE_SIZE, SPECTATOR_FACE_SIZE, &face)?;
-            defaults.insert(skin, gpu);
+            let face = self.build_hud_player_face(image.size, &image.rgba)?;
+            defaults.insert(skin, face);
         }
         let mut dynamics = HashMap::new();
         for image in dynamic_images {
-            let face = player_face_rgba(DynamicPlayerSkinImage::SIZE, &image.rgba)?;
-            let gpu = self.upload_hud_sprite(SPECTATOR_FACE_SIZE, SPECTATOR_FACE_SIZE, &face)?;
-            dynamics.insert(image.handle, gpu);
+            let face = self.build_hud_player_face(DynamicPlayerSkinImage::SIZE, &image.rgba)?;
+            dynamics.insert(image.handle, face);
         }
         Ok((defaults, dynamics))
     }
@@ -504,9 +526,25 @@ impl Renderer {
     pub(crate) fn build_hud_dynamic_player_face(
         &self,
         image: &DynamicPlayerSkinImage,
-    ) -> Result<HudSpriteGpu> {
-        let face = player_face_rgba(DynamicPlayerSkinImage::SIZE, &image.rgba)?;
-        self.upload_hud_sprite(SPECTATOR_FACE_SIZE, SPECTATOR_FACE_SIZE, &face)
+    ) -> Result<HudPlayerFaceGpu> {
+        self.build_hud_player_face(DynamicPlayerSkinImage::SIZE, &image.rgba)
+    }
+
+    fn build_hud_player_face(&self, size: [u32; 2], rgba: &[u8]) -> Result<HudPlayerFaceGpu> {
+        let without_hat = player_face_rgba(size, rgba, false)?;
+        let with_hat = player_face_rgba(size, rgba, true)?;
+        Ok(HudPlayerFaceGpu {
+            without_hat: self.upload_hud_sprite(
+                SPECTATOR_FACE_SIZE,
+                SPECTATOR_FACE_SIZE,
+                &without_hat,
+            )?,
+            with_hat: self.upload_hud_sprite(
+                SPECTATOR_FACE_SIZE,
+                SPECTATOR_FACE_SIZE,
+                &with_hat,
+            )?,
+        })
     }
 }
 
@@ -517,7 +555,7 @@ fn full_sprite_uv() -> HudUvRect {
     }
 }
 
-fn player_face_rgba(size: [u32; 2], rgba: &[u8]) -> Result<Vec<u8>> {
+fn player_face_rgba(size: [u32; 2], rgba: &[u8], show_hat: bool) -> Result<Vec<u8>> {
     let [width, height] = size;
     if width == 0 || height == 0 {
         bail!("player skin face source dimensions must be non-zero");
@@ -541,8 +579,12 @@ fn player_face_rgba(size: [u32; 2], rgba: &[u8]) -> Result<Vec<u8>> {
     for y in 0..SPECTATOR_FACE_SIZE {
         for x in 0..SPECTATOR_FACE_SIZE {
             let base = sample_logical_skin_pixel(size, rgba, x + 8, y + 8);
-            let hat = sample_logical_skin_pixel(size, rgba, x + 40, y + 8);
-            let pixel = alpha_over(base, hat);
+            let pixel = if show_hat {
+                let hat = sample_logical_skin_pixel(size, rgba, x + 40, y + 8);
+                alpha_over(base, hat)
+            } else {
+                base
+            };
             let offset = ((y * SPECTATOR_FACE_SIZE + x) * 4) as usize;
             face[offset..offset + 4].copy_from_slice(&pixel);
         }
@@ -588,14 +630,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn hud_spectator_player_face_composites_hat_over_base_at_logical_skin_coordinates() {
+    fn hud_player_face_hat_variants_use_logical_skin_coordinates() {
         let mut rgba = vec![0; 64 * 64 * 4];
         set_pixel(&mut rgba, 64, 8, 8, [20, 40, 60, 255]);
         set_pixel(&mut rgba, 64, 40, 8, [220, 20, 10, 128]);
 
-        let face = player_face_rgba([64, 64], &rgba).unwrap();
+        let face = player_face_rgba([64, 64], &rgba, true).unwrap();
+        let face_without_hat = player_face_rgba([64, 64], &rgba, false).unwrap();
 
         assert_eq!(&face[..4], &[120, 30, 35, 255]);
+        assert_eq!(&face_without_hat[..4], &[20, 40, 60, 255]);
         assert!(face[4..].iter().all(|channel| *channel == 0));
     }
 
