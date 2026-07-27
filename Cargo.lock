@@ -353,6 +353,7 @@ dependencies = [
  "url",
  "uuid",
  "winit",
+ "zip",
 ]
 
 [[package]]

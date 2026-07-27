@@ -19,6 +19,12 @@ pub(crate) trait ParticleBatchSink {
     fn submit_particle_batch(&mut self, batch: ParticleSpawnBatch);
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum DebugProfilingCommand {
+    Start,
+    Stop,
+}
+
 /// Render/winit-owned work requested by the simulation input path.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum PlatformEffect {
@@ -31,9 +37,7 @@ pub(crate) enum PlatformEffect {
         requests: u32,
     },
     ProfilingToggled {
-        requests: usize,
-        starts: usize,
-        stops: usize,
+        commands: Vec<DebugProfilingCommand>,
     },
     NavigateProfiler {
         digits: Vec<u8>,

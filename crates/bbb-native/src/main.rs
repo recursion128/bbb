@@ -73,7 +73,9 @@ use camera_fov::CameraFovTickState;
 use code_of_conduct::{default_code_of_conduct_store_path, CodeOfConductAcceptance};
 use code_of_conduct_overlay::CodeOfConductOverlayRenderer;
 use debug_entries::DebugScreenEntryList;
-use debug_profiler::{DebugProfiler, DebugProfilerSectionSample};
+use debug_profiler::{
+    DebugProfiler, DebugProfilerEvent, DebugProfilerFrameMetrics, DebugProfilerSectionSample,
+};
 use entity_assets::load_entity_model_textures;
 use entity_scene::EntityRenderExtractionScratch;
 use entity_variant_textures::NativeEntityVariantTextureRuntime;
@@ -270,22 +272,27 @@ impl PlatformEffectSink for NativeRenderEffectSink<'_> {
                     ),
                 }
             }
-            PlatformEffect::ProfilingToggled {
-                requests,
-                starts,
-                stops,
-            } => {
-                if stops > 0 {
-                    let path = std::path::Path::new(input::DEBUG_PROFILING_RESULTS_RELATIVE_DIR);
-                    if let Err(err) = std::fs::create_dir_all(path) {
-                        tracing::warn!(?err, path = %path.display(), "failed to create profiling feedback directory");
+            PlatformEffect::ProfilingToggled { commands } => {
+                let requests = commands.len();
+                let mut starts = 0;
+                let mut stops = 0;
+                for command in commands {
+                    match command {
+                        simulation::effects::DebugProfilingCommand::Start => {
+                            starts +=
+                                usize::from(self.debug_profiler.start_recording(Instant::now()));
+                        }
+                        simulation::effects::DebugProfilingCommand::Stop => {
+                            stops += usize::from(self.debug_profiler.stop_recording());
+                        }
                     }
                 }
                 tracing::info!(
                     requests,
                     starts,
                     stops,
-                    "profiling toggled by debug hotkey; native profiler output is not implemented"
+                    recording = self.debug_profiler.is_recording(),
+                    "profiling toggled by debug hotkey"
                 );
             }
             PlatformEffect::NavigateProfiler { digits } => {
@@ -694,7 +701,10 @@ fn main() -> Result<()> {
     let mut debug_supporting_block_cache = DebugSupportingBlockCache::default();
     let mut debug_sky_light_section_cache = DebugSkyLightSectionCache::default();
     let mut remote_debug_selection_cache = RemoteDebugSelectionCache::default();
-    let mut debug_profiler = DebugProfiler::default();
+    let mut debug_profiler = DebugProfiler::with_report_writer(
+        input::DEBUG_PROFILING_RESULTS_RELATIVE_DIR,
+        args.server.clone(),
+    );
     let lightmap_ticks = LightmapTickState::with_brightness_factor_and_hide_lightning_flash(
         args.client_gamma,
         args.hide_lightning_flash,
@@ -1152,6 +1162,12 @@ fn main() -> Result<()> {
                     renderer_counters.non_entity_rebuilt_owners =
                         non_entity_observation.rebuilt_owners;
                     project_dynamic_texture_counters(&mut renderer_counters, item_runtime.as_ref());
+                    let mut profiler_frame_metrics = DebugProfilerFrameMetrics::from_renderer(
+                        std::time::Duration::ZERO,
+                        &renderer_counters,
+                        args.render_distance_chunks,
+                        None,
+                    );
                     simulation_mailbox.update_backend_telemetry(
                         renderer_counters,
                         audio_counters,
@@ -1162,6 +1178,8 @@ fn main() -> Result<()> {
                     );
                     let profiler_publish_duration = profiler_publish_started_at.elapsed();
                     let profiler_frame_duration = profiler_frame_started_at.elapsed();
+                    profiler_frame_metrics.tick_time_nanos =
+                        profiler_frame_duration.as_nanos() as f64;
                     let newest_publication = shared_publication.load();
                     let publication_generation_lag = newest_publication
                         .generation
@@ -1190,22 +1208,48 @@ fn main() -> Result<()> {
                         );
                     }
                     debug_profiler.record_frame(
+                        Instant::now(),
                         profiler_frame_duration,
                         &[
                             DebugProfilerSectionSample {
-                                name: "update",
+                                path: &["update"],
                                 duration: profiler_update_duration,
                             },
                             DebugProfilerSectionSample {
-                                name: "render",
+                                path: &["render"],
                                 duration: profiler_render_duration,
                             },
                             DebugProfilerSectionSample {
-                                name: "publish",
+                                path: &["publish"],
                                 duration: profiler_publish_duration,
                             },
                         ],
+                        profiler_frame_metrics,
                     );
+                    for event in debug_profiler.take_events() {
+                        match event {
+                            DebugProfilerEvent::RecordingStarted => {
+                                tracing::info!("native profiling started");
+                            }
+                            DebugProfilerEvent::RecordingStopped {
+                                duration,
+                                ticks,
+                                ticks_per_second,
+                            } => tracing::info!(
+                                duration_seconds = duration.as_secs_f64(),
+                                ticks,
+                                ticks_per_second,
+                                "native profiling stopped"
+                            ),
+                            DebugProfilerEvent::ReportSaved { path } => tracing::info!(
+                                path = %path.display(),
+                                "native profiling report saved"
+                            ),
+                            DebugProfilerEvent::ReportFailed { error } => {
+                                tracing::warn!(error, "native profiling report failed")
+                            }
+                        }
+                    }
                     if let Some(interval) = frame_interval {
                         next_redraw_at = Instant::now() + interval;
                     }

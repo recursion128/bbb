@@ -22,7 +22,10 @@ use winit::{
 
 use super::{
     commands::{SequencedSimulationCommand, SimulationCommand},
-    effects::{PlatformEffect, PlatformEffectCollector, ScreenNarrationScheduleInput},
+    effects::{
+        DebugProfilingCommand, PlatformEffect, PlatformEffectCollector,
+        ScreenNarrationScheduleInput,
+    },
 };
 use crate::{
     audio_runtime::AudioEventSink,
@@ -806,18 +809,8 @@ impl SimulationInputRuntime {
         }
         let profiling_toggle_requests = context.input.take_debug_profiling_toggle_requests();
         if !profiling_toggle_requests.is_empty() {
-            let starts = profiling_toggle_requests
-                .iter()
-                .filter(|request| matches!(request, DebugProfilingToggleRequest::Start))
-                .count();
-            let stops = profiling_toggle_requests
-                .iter()
-                .filter(|request| matches!(request, DebugProfilingToggleRequest::Stop))
-                .count();
             context.platform.submit(PlatformEffect::ProfilingToggled {
-                requests: profiling_toggle_requests.len(),
-                starts,
-                stops,
+                commands: debug_profiling_commands(profiling_toggle_requests),
             });
         }
         let profiler_navigation = context
@@ -1798,6 +1791,18 @@ impl SimulationInputRuntime {
     }
 }
 
+fn debug_profiling_commands(
+    requests: Vec<DebugProfilingToggleRequest>,
+) -> Vec<DebugProfilingCommand> {
+    requests
+        .into_iter()
+        .map(|request| match request {
+            DebugProfilingToggleRequest::Start => DebugProfilingCommand::Start,
+            DebugProfilingToggleRequest::Stop => DebugProfilingCommand::Stop,
+        })
+        .collect()
+}
+
 fn recipe_book_screen_is_open(world: &WorldStore) -> bool {
     inventory_screen_layout(world)
         .and_then(|layout| recipe_book_type_for_background(layout.background))
@@ -2148,6 +2153,22 @@ mod tests {
         fn apply_platform_effect(&mut self, effect: PlatformEffect) {
             self.0.push(effect);
         }
+    }
+
+    #[test]
+    fn profiling_toggle_requests_preserve_start_stop_order() {
+        assert_eq!(
+            debug_profiling_commands(vec![
+                DebugProfilingToggleRequest::Start,
+                DebugProfilingToggleRequest::Stop,
+                DebugProfilingToggleRequest::Start,
+            ]),
+            vec![
+                DebugProfilingCommand::Start,
+                DebugProfilingCommand::Stop,
+                DebugProfilingCommand::Start,
+            ]
+        );
     }
 
     #[test]

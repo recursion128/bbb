@@ -40,6 +40,7 @@ tracing-subscriber = { workspace = true }
 uuid = { workspace = true }
 url = { workspace = true }
 winit = { workspace = true }
+zip = { workspace = true }
 
 [dev-dependencies]
 bbb-item-model = { path = "../bbb-item-model", features = ["test-support"] }
