@@ -1,6 +1,6 @@
 # Spectator Camera Post-Effect Execution
 
-Status: active.
+Status: completed on 2026-07-26.
 
 ## Goal and completion standard
 

@@ -606,3 +606,7 @@
 - **2026-07-26（相机 FOV 输入工程闭环）**：启动配置、同步玩家 modifier、死亡/
   流体采样与插值现汇入单一 frame owner，分别驱动 world、culling、locator 和
   独立 HUD-3D 投影；合同见 `docs/archive/camera-fov-inputs-design.md`。
+- **2026-07-26（旁观者镜头后处理工程闭环）**：SetCamera 选择刷新与 F4 active
+  生命周期现原子交接至 renderer；Creeper/Spider/Invert 的 2/10/2 pass 图在
+  world/hand 后、HUD 前执行，合同见
+  `docs/archive/camera-post-effect-execution-design.md`。

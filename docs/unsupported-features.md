@@ -281,8 +281,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   or apply the Painting holder projection to another entity family that reuses slot 9.
   Spectator camera post-effect selection must remain generated from
   `GameRenderer.checkEntityPostEffect` pattern arms plus the entity class hierarchy; native debug
-  projection must not restore a Creeper/Spider/Enderman type switch or resource-id literals. This
-  only owns selection metadata; executing the post chains remains in the renderer queue below.
+  and `RendererFrame` projection must not restore a Creeper/Spider/Enderman type switch or
+  resource-id literals. Renderer graph dispatch consumes the generated id and keeps unknown ids
+  as no-effect.
   AbstractMinecart custom-display-block/display-offset membership and wire indices must remain
   derived together from generated `DATA_ID_CUSTOM_DISPLAY_BLOCK` and `DATA_ID_DISPLAY_OFFSET`;
   per-minecart offset defaults must remain generated from the nearest `getDefaultDisplayOffset`
@@ -720,9 +721,11 @@ Environment:
   the synchronized particle type but does not project block/item/color/vibration
   option state into the provider; item options also still need exact nested
   `DataComponentPatch.CODEC` value validation.
-- Implement the creeper/spider/invert spectator post chains, the independent
-  F4 `effectActive` toggle, and the perspective-change clear lifecycle. The
-  renderer-owned current id currently drives only the debug entry mirror.
+- Implement F5 first-person / third-person-back / third-person-front camera switching and apply
+  `Minecraft.handleKeybinds`'s `CameraType.isFirstPerson` transition: leaving
+  first person clears the spectator post-effect selection, while returning
+  reselects the current camera entity through
+  `GameRenderer.checkEntityPostEffect`.
 
 ## HUD overlay and screen render surfaces
 
@@ -883,6 +886,14 @@ Loader invariants (not todos): keep the local vanilla coverage tests
 `loads_local_vanilla_equipment_asset_catalog`) green when changing pack loaders;
 add parser support only when an official asset or a focused resource-pack
 fixture fails them; keep precedence/filter tests next to the loaders.
+
+- Load selected-pack `post_effect/*.json` graphs and their referenced
+  `shaders/core` / `shaders/post` overrides into executable renderer graphs,
+  following `ShaderManager.prepare`, `PostChainConfig.CODEC`, and
+  `PostChain.load` target, input, uniform, and bilinear semantics. Resource
+  reload must publish a whole compiled graph generation atomically and route
+  malformed or uncompilable overrides through the existing pack failure
+  policy.
 
 ## Playable live coverage beyond the session-lifecycle closure
 
