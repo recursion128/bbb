@@ -1,5 +1,7 @@
 mod component;
 mod nbt_summary;
+#[cfg(test)]
+mod test_stack_budget;
 
 pub use component::{
     canonical_component_codec_value, canonical_component_json_utf16_len,

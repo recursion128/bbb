@@ -63,6 +63,9 @@ fn read_nbt_payload(
     tag_id: u8,
     depth: usize,
 ) -> Result<NbtSummaryValue> {
+    #[cfg(test)]
+    crate::test_stack_budget::record();
+
     if depth > MAX_NBT_DEPTH {
         return Err(ProtocolError::InvalidData(
             "network nbt exceeded max depth".to_string(),

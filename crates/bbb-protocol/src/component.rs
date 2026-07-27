@@ -569,6 +569,9 @@ fn append_component_runs(
     inherited: &ComponentStyle,
     out: &mut RunCollector,
 ) {
+    #[cfg(test)]
+    crate::test_stack_budget::record();
+
     match value {
         NbtSummaryValue::String(text) => out.push(text, inherited.clone()),
         NbtSummaryValue::List(items) => {
@@ -1212,6 +1215,91 @@ mod tests {
     fn nbt_string_root(value: &str) -> Vec<u8> {
         let mut payload = vec![8];
         write_mutf8(&mut payload, value);
+        payload
+    }
+
+    #[test]
+    fn component_stack_budget_pins_every_recursive_decode_phase() {
+        const STACK_SIZE_BYTES: usize = 2 * 1024 * 1024;
+        const STACK_BUDGET_BYTES: usize = 3 * 1024 * 1024 / 2;
+
+        std::thread::Builder::new()
+            .stack_size(STACK_SIZE_BYTES)
+            .spawn(|| {
+                let accepted_depth = codec::MAX_COMPONENT_DEPTH;
+                let accepted_wire = nested_component_list_wire(accepted_depth);
+                let caller_marker = 0u8;
+                crate::test_stack_budget::reset(&caller_marker);
+                let rich =
+                    decode_rich_text_component_from_decoder(&mut Decoder::new(&accepted_wire))
+                        .unwrap();
+                assert_eq!(rich.text(), "deep");
+                assert_stack_budget("network decode and styled projection", STACK_BUDGET_BYTES);
+
+                let component = rich.component();
+                crate::test_stack_budget::reset(&caller_marker);
+                visit_component_payloads(component, "component", |_, _| Ok(())).unwrap();
+                assert_stack_budget("owner-payload traversal", STACK_BUDGET_BYTES);
+
+                crate::test_stack_budget::reset(&caller_marker);
+                assert_eq!(
+                    canonical_component_json_utf16_len(component).unwrap(),
+                    Some(6)
+                );
+                assert_stack_budget("canonical JsonOps projection", STACK_BUDGET_BYTES);
+
+                let rejected_wire = nested_component_list_wire(accepted_depth + 1);
+                let error =
+                    decode_rich_text_component_from_decoder(&mut Decoder::new(&rejected_wire))
+                        .unwrap_err();
+                assert_eq!(error.to_string(), "network nbt exceeded max depth");
+
+                let rejected_value = nested_component_list_value(accepted_depth + 1);
+                let error = validate_component_nbt(&rejected_value, "component").unwrap_err();
+                assert!(
+                    error.ends_with(&format!(
+                        "component nesting exceeds {}",
+                        codec::MAX_COMPONENT_DEPTH
+                    )),
+                    "{error}"
+                );
+
+                assert_eq!(
+                    decode_component_summary(&nbt_string_root("recovered")).unwrap(),
+                    "recovered"
+                );
+            })
+            .expect("spawn component stack-budget test thread")
+            .join()
+            .expect("component stack-budget test thread");
+    }
+
+    fn assert_stack_budget(phase: &str, budget: usize) {
+        let used = crate::test_stack_budget::used_bytes();
+        assert!(
+            used <= budget,
+            "depth-{} Component {phase} used {used} bytes of stack, over the {budget}-byte budget",
+            codec::MAX_COMPONENT_DEPTH
+        );
+    }
+
+    fn nested_component_list_value(depth: usize) -> NbtSummaryValue {
+        let mut value = NbtSummaryValue::String("deep".to_string());
+        for _ in 0..depth {
+            value = NbtSummaryValue::List(vec![value]);
+        }
+        value
+    }
+
+    fn nested_component_list_wire(depth: usize) -> Vec<u8> {
+        assert!(depth > 0);
+        let mut payload = Vec::with_capacity(depth * 6 + 6);
+        payload.push(9);
+        for level in 0..depth {
+            payload.push(if level + 1 == depth { 8 } else { 9 });
+            payload.extend_from_slice(&1i32.to_be_bytes());
+        }
+        write_mutf8(&mut payload, "deep");
         payload
     }
 

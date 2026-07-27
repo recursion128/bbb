@@ -16,7 +16,7 @@ use super::{
     parse_text_color, ComponentClickEvent,
 };
 
-const MAX_COMPONENT_DEPTH: usize = 64;
+pub(super) const MAX_COMPONENT_DEPTH: usize = 64;
 const CONTENT_TYPES: [&str; 7] = [
     "text",
     "translatable",
@@ -75,6 +75,9 @@ pub(super) fn validate_component(
     what: &str,
     depth: usize,
 ) -> Result<(), String> {
+    #[cfg(test)]
+    crate::test_stack_budget::record();
+
     if depth > MAX_COMPONENT_DEPTH {
         return Err(format!(
             "{what} component nesting exceeds {MAX_COMPONENT_DEPTH}"
@@ -102,6 +105,9 @@ fn visit_component_payloads_inner<'a>(
     depth: usize,
     visitor: &mut impl FnMut(ComponentPayload<'a>, &str) -> Result<(), String>,
 ) -> Result<(), String> {
+    #[cfg(test)]
+    crate::test_stack_budget::record();
+
     match value {
         NbtSummaryValue::String(_) => Ok(()),
         NbtSummaryValue::List(values) => {

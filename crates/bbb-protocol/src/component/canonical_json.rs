@@ -272,6 +272,9 @@ fn canonical_component_with_siblings<'a>(
     depth: usize,
     appended_siblings: Vec<ComponentRef<'a>>,
 ) -> Option<CanonicalComponentCodecValue> {
+    #[cfg(test)]
+    crate::test_stack_budget::record();
+
     match value {
         NbtSummaryValue::String(text) => {
             if appended_siblings.is_empty() {
