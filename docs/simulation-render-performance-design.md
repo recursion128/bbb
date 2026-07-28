@@ -682,6 +682,94 @@ localizes before renderer integration; a failed native cache test localizes
 before the full gate. The safe stop is the last clean phase commit, but the
 ledger item remains open until all three phases and the checkpoint gate pass.
 
+## Stable block-entity and debug extraction contract (2026-07-28)
+
+This bounded high-risk engineering continuation removes the remaining
+unconditional heap rebuilds for the block-entity and world-debug projections
+whose complete semantic inputs can be revision-keyed. Work starts from the
+clean, fully gated `756dabdd1`.
+
+Completion requires all of the following:
+
+- Bed, sign board/text, and lectern-book projection is rebuilt only when the
+  exact client-level, terrain/light/block-state, block-entity-data, resource,
+  or text-filter input changes. Their base instances may be retained, but
+  block-destruction crumbling is applied from the current frame after reuse.
+- GameTest highlight boxes and labels are rebuilt only when the canonical
+  marker set changes. Renderer-owned static highlight values remain separate
+  from camera/entity/time-dependent debug values while preserving their final
+  Vanilla insertion order.
+- Dynamic chest, bell, shulker-box, decorated-pot, banner, enchanting-table,
+  conduit, end-portal, skull, and spawner projections remain frame-local
+  because they consume partial tick, camera, client tick, animation, profile,
+  or entity state. Remote subscription gizmos, water/height/light/solid-face
+  debug, selection outlines, and the existing interval-based collision,
+  supporting-block, and sky-light caches likewise keep their current dynamic
+  owners.
+- The four dynamic debug submission vectors are returned from the renderer,
+  cleared, and reused by render extraction. Capacity-growth telemetry advances
+  only when a reused vector must exceed its retained capacity; invalid input
+  sanitization and exact draw ordering remain unchanged.
+- Level replacement and resource reload cannot select an old derived value,
+  unrelated HUD/entity/inventory mutations do not invalidate either stable
+  owner, and an unchanged projection does not call its renderer replacement.
+
+This work changes no protocol, canonical serialized snapshot shape, block
+entity visibility, renderer phase order, crumbling stage, text filtering,
+debug expiry, camera culling, animation, or resource fallback. It introduces no
+wall clock in `bbb-world`, shared mutable renderer state, second world owner,
+hash-only cache hit, `unsafe`, background worker, or configuration UI.
+
+Ownership is frozen as follows:
+
+- `bbb-world` owns runtime-only monotonic block-entity-data and GameTest-marker
+  revisions. The stable block-entity key combines the existing terrain
+  revision with the data revision and client-level generation; ignored or
+  invalid updates do not advance it. GameTest replacement, strict expiry, and
+  non-empty clear advance only the marker revision. Publication cloning keeps
+  the exact revision values, while snapshot restore starts behind a fresh
+  level-generation boundary.
+- `bbb-native::runtime::render_extract` owns the exact keys, retained static
+  bed/sign/lectern base instances, cache hit/miss/rebuild observations, and
+  cleared dynamic debug-vector allocations. Resource reload explicitly
+  invalidates the block-entity cache; text filtering is part of its exact key.
+- `bbb-renderer` owns the last accepted sign-text and GameTest highlight
+  values, plus the current dynamic debug values. A frame-level `Unchanged`
+  update leaves a stable owner intact. Filled boxes and text are concatenated
+  in the existing dynamic-then-GameTest order before one mesh build, retaining
+  the shared translucent sorting and always-on-top split.
+
+Vanilla 26.1 fixes the boundary. `LevelRenderer.extractLevel` extracts visible
+block entities before block breaking and emits `DebugRenderer` then
+`GameTestBlockHighlightRenderer`; `LevelRenderState.reset` clears and retains
+its entity/block-entity/debug-facing lists after frame execution.
+`BlockEntityRenderDispatcher.tryExtractRenderState` performs validity,
+distance, and renderer checks every extraction. `BedRenderer`,
+`AbstractSignRenderer`, and `LecternRenderer` derive their retained fields from
+block/entity data, light, resources, and text filtering; the other supported
+renderers consume dynamic animation/camera inputs and therefore stay
+uncached. `GameTestBlockHighlightRenderer` derives its immutable geometry and
+label from the active marker map; marker expiry remains a client-tick world
+mutation.
+
+Serial stages and failure-localizing checks are:
+
+1. Add the world revision surfaces and mutation/ignored-update/clone/reset
+   tests. Focused `bbb-world` tests, format, diff, and docs checks precede the
+   normal commit.
+2. Add the native exact caches, renderer stable lanes, debug allocation
+   recycling, equality/order/invalidation/capacity tests, and source guards.
+   Run focused `bbb-native` and `bbb-renderer` tests plus the per-commit checks
+   before the normal commit.
+3. Delete the closed ledger clause, append the engineering result to the goal
+   archive, review the integrated diff, commit, and run the full workspace
+   gate at that committed checkpoint.
+
+There is no safe stop inside stage 2's native/renderer owner handoff. A failure
+stops at the preceding clean stage commit and is fixed forward. The final safe
+stop is the clean stage-3 commit after its full gate; the next slice does not
+start earlier.
+
 ## Official Comparison Protocol
 
 Both clients use the same machine/GPU, resolution, view and simulation

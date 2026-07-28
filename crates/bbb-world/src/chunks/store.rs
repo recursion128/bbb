@@ -184,6 +184,7 @@ impl WorldStore {
             }
         };
         self.chunks[chunk_index].block_entities[record_index] = record;
+        self.advance_block_entity_render_revision();
         self.counters.block_entity_updates_applied += 1;
         self.refresh_command_block_editor_from_authoritative_data(pos);
         self.refresh_structure_block_editor_from_authoritative_data(pos);

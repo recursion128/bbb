@@ -19,6 +19,20 @@ use crate::{
     WorldDimension, WorldGameplayState, WorldLevelInfo, WorldLevelLoadState,
 };
 
+/// Exact runtime-only invalidation key for the block-entity projections whose
+/// complete inputs are stable between render frames.
+///
+/// Terrain covers loaded block states and light. `block_entity_data` covers
+/// accepted incremental NBT updates that do not otherwise dirty terrain.
+/// Client-level identity prevents a numerically equal fresh level from
+/// selecting an owner retained for the previous level.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct StableBlockEntityRenderRevision {
+    pub client_level_generation: u64,
+    pub terrain: u64,
+    pub block_entity_data: u64,
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct WorldStore {
     pub(crate) dimension: WorldDimension,
@@ -79,6 +93,11 @@ pub struct WorldStore {
     #[serde(skip)]
     pub(crate) terrain_chunk_mesh_revisions:
         BTreeMap<ChunkPos, PublicationShared<TerrainChunkRenderRevisions>>,
+    /// Runtime-only edge for accepted incremental block-entity data updates.
+    /// Full chunk/block/light changes are already represented by
+    /// `terrain_revision`.
+    #[serde(skip)]
+    pub(crate) block_entity_render_revision: u64,
     #[serde(default)]
     pub(crate) first_chunk: Option<ChunkPos>,
     #[serde(default)]
@@ -235,6 +254,18 @@ impl WorldStore {
 
     pub(crate) fn advance_player_list_display_revision(&mut self) {
         self.player_list_display_revision = self.player_list_display_revision.saturating_add(1);
+    }
+
+    pub(crate) fn advance_block_entity_render_revision(&mut self) {
+        self.block_entity_render_revision = self.block_entity_render_revision.saturating_add(1);
+    }
+
+    pub fn stable_block_entity_render_revision(&self) -> StableBlockEntityRenderRevision {
+        StableBlockEntityRenderRevision {
+            client_level_generation: self.client_level_generation,
+            terrain: self.terrain_revision,
+            block_entity_data: self.block_entity_render_revision,
+        }
     }
 
     /// `Level.isRaining()` (`canHaveWeather && getRainLevel(1.0F) > 0.2`) plus

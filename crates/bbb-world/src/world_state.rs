@@ -18,4 +18,4 @@ pub use crate::registries::{
     ClientMusic, ClientParticleOptionValue, ClientParticleOptions, ClientSoundEventHolder,
     EnvironmentBiomeSampling, WorldIntProvider, WorldWeightedIntProvider,
 };
-pub use crate::store::WorldStore;
+pub use crate::store::{StableBlockEntityRenderRevision, WorldStore};

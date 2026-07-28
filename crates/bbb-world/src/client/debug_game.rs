@@ -58,6 +58,10 @@ pub struct ClientDebugGameState {
     pub last_game_test_highlight_pos: Option<GameTestHighlightPosState>,
     #[serde(default)]
     pub game_test_highlight_markers: DebugValueMap<BlockPos, GameTestHighlightMarkerState>,
+    /// Runtime-only exact invalidation edge for the renderer's stable
+    /// GameTest marker geometry and label owner.
+    #[serde(skip)]
+    pub(crate) game_test_highlight_render_revision: u64,
     #[serde(default)]
     pub last_test_instance_block_status: Option<TestInstanceBlockStatusState>,
 }
@@ -443,21 +447,33 @@ impl WorldStore {
                     .saturating_add(GAME_TEST_HIGHLIGHT_DURATION_MILLIS),
             },
         );
+        self.advance_game_test_highlight_render_revision();
         self.counters.game_test_highlights_tracked =
             self.client_debug_game.game_test_highlight_markers.len();
     }
 
     pub fn expire_game_test_highlight_markers_at(&mut self, now_monotonic_millis: u64) {
+        let previous_len = self.client_debug_game.game_test_highlight_markers.len();
         self.client_debug_game
             .game_test_highlight_markers
             .retain(|_, marker| now_monotonic_millis <= marker.remove_at_monotonic_millis);
+        if self.client_debug_game.game_test_highlight_markers.len() != previous_len {
+            self.advance_game_test_highlight_render_revision();
+        }
         self.counters.game_test_highlights_tracked =
             self.client_debug_game.game_test_highlight_markers.len();
     }
 
     pub(crate) fn clear_game_test_highlight_markers(&mut self) {
+        let had_markers = !self
+            .client_debug_game
+            .game_test_highlight_markers
+            .is_empty();
         self.client_debug_game.game_test_highlight_markers.clear();
         self.client_debug_game.last_game_test_highlight_pos = None;
+        if had_markers {
+            self.advance_game_test_highlight_render_revision();
+        }
         self.counters.game_test_highlights_tracked = 0;
     }
 
@@ -506,6 +522,10 @@ impl WorldStore {
         &self,
     ) -> &DebugValueMap<BlockPos, GameTestHighlightMarkerState> {
         &self.client_debug_game.game_test_highlight_markers
+    }
+
+    pub fn game_test_highlight_render_revision(&self) -> u64 {
+        self.client_debug_game.game_test_highlight_render_revision
     }
 
     pub fn last_test_instance_block_status(&self) -> Option<&TestInstanceBlockStatusState> {
@@ -569,6 +589,13 @@ impl WorldStore {
                 values.entity_values.remove(&key);
             }
         }
+    }
+
+    fn advance_game_test_highlight_render_revision(&mut self) {
+        self.client_debug_game.game_test_highlight_render_revision = self
+            .client_debug_game
+            .game_test_highlight_render_revision
+            .saturating_add(1);
     }
 
     fn canonical_debug_subscription_value(
@@ -943,6 +970,7 @@ mod tests {
         let mut store = WorldStore::new();
         let absolute_a = ProtocolBlockPos { x: 1, y: 2, z: 3 };
         let absolute_b = ProtocolBlockPos { x: -4, y: 5, z: -6 };
+        assert_eq!(store.game_test_highlight_render_revision(), 0);
 
         store.apply_game_test_highlight_pos_at(
             GameTestHighlightPos {
@@ -977,6 +1005,11 @@ mod tests {
         assert_eq!(store.game_test_highlight_markers().len(), 2);
         assert_eq!(store.counters().game_test_highlight_pos_packets, 3);
         assert_eq!(store.counters().game_test_highlights_tracked, 2);
+        assert_eq!(store.game_test_highlight_render_revision(), 3);
+        assert_eq!(
+            store.clone().game_test_highlight_render_revision(),
+            store.game_test_highlight_render_revision()
+        );
         assert_eq!(
             store.game_test_highlight_markers()[&BlockPos { x: 1, y: 2, z: 3 }],
             GameTestHighlightMarkerState {
@@ -991,12 +1024,16 @@ mod tests {
 
         store.expire_game_test_highlight_markers_at(10_200);
         assert_eq!(store.game_test_highlight_markers().len(), 2);
+        assert_eq!(store.game_test_highlight_render_revision(), 3);
         store.expire_game_test_highlight_markers_at(10_201);
         assert_eq!(store.game_test_highlight_markers().len(), 1);
+        assert_eq!(store.game_test_highlight_render_revision(), 4);
         store.expire_game_test_highlight_markers_at(10_300);
         assert_eq!(store.game_test_highlight_markers().len(), 1);
+        assert_eq!(store.game_test_highlight_render_revision(), 4);
         store.expire_game_test_highlight_markers_at(10_301);
         assert!(store.game_test_highlight_markers().is_empty());
+        assert_eq!(store.game_test_highlight_render_revision(), 5);
 
         store.apply_game_test_highlight_pos_at(
             GameTestHighlightPos {
@@ -1005,10 +1042,14 @@ mod tests {
             },
             20_000,
         );
+        assert_eq!(store.game_test_highlight_render_revision(), 6);
         store.clear_client_level();
         assert!(store.game_test_highlight_markers().is_empty());
         assert!(store.last_game_test_highlight_pos().is_none());
         assert_eq!(store.counters().game_test_highlights_tracked, 0);
+        assert_eq!(store.game_test_highlight_render_revision(), 7);
+        store.clear_client_level();
+        assert_eq!(store.game_test_highlight_render_revision(), 7);
     }
 
     #[test]

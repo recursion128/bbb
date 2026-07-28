@@ -2397,6 +2397,7 @@ fn applies_block_entity_data_update() {
         min_y: 0,
         height: 16,
     });
+    let empty_revision = store.stable_block_entity_render_revision();
     store
         .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
         .unwrap();
@@ -2409,6 +2410,12 @@ fn applies_block_entity_data_update() {
         pos,
         block_state_id: test_block_state_id("minecraft:spawner", &[]),
     }));
+    let before_data = store.stable_block_entity_render_revision();
+    assert!(before_data.terrain > empty_revision.terrain);
+    assert_eq!(
+        store.clone().stable_block_entity_render_revision(),
+        before_data
+    );
 
     let raw_nbt = nbt_compound_with_string("id", "minecraft:chest");
     let applied = store
@@ -2421,6 +2428,12 @@ fn applies_block_entity_data_update() {
         .unwrap();
 
     assert!(applied);
+    let after_data = store.stable_block_entity_render_revision();
+    assert_eq!(after_data.terrain, before_data.terrain);
+    assert_eq!(
+        after_data.block_entity_data,
+        before_data.block_entity_data + 1
+    );
     assert_eq!(store.counters().block_entity_updates_received, 1);
     assert_eq!(store.counters().block_entity_updates_applied, 1);
     assert_eq!(store.counters().block_entity_updates_ignored, 0);
@@ -2510,6 +2523,7 @@ fn applies_block_entity_data_update() {
         }),
         Some(bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID)
     );
+    assert_eq!(store.stable_block_entity_render_revision(), after_data);
 
     let missing_chunk_applied = store
         .apply_block_entity_data(ProtocolBlockEntityData {
@@ -2527,6 +2541,7 @@ fn applies_block_entity_data_update() {
     assert_eq!(store.counters().block_entity_updates_received, 3);
     assert_eq!(store.counters().block_entity_updates_applied, 1);
     assert_eq!(store.counters().block_entity_updates_ignored, 2);
+    assert_eq!(store.stable_block_entity_render_revision(), after_data);
 }
 
 #[test]
