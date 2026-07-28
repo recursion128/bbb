@@ -1,14 +1,16 @@
 /// Resolves the exact character-name surface used by OpenJDK 26
 /// `Character.codePointOf`. The Unicode table is only a candidate index:
 /// `unicode_names2::character` deliberately implements loose UAX44 matching,
-/// while Java accepts only a trimmed, case-insensitive exact name.
-pub(super) fn character_by_name(raw_name: &str) -> Option<char> {
+/// while Java accepts only a trimmed, case-insensitive exact name. This returns
+/// a codepoint rather than a Rust `char` because Java's generated block names
+/// include surrogate codepoints.
+pub(super) fn codepoint_by_name(raw_name: &str) -> Option<u32> {
     let name = raw_name.trim().to_ascii_uppercase();
-    if let Some(character) = constructed_character(&name) {
-        return Some(character);
+    if let Some(codepoint) = constructed_codepoint(&name) {
+        return Some(codepoint);
     }
-    if let Some(character) = openjdk_control_character(&name) {
-        return Some(character);
+    if let Some(codepoint) = openjdk_control_codepoint(&name) {
+        return Some(codepoint);
     }
     let character = unicode_names2::character(&name)?;
     let codepoint = character as u32;
@@ -16,25 +18,21 @@ pub(super) fn character_by_name(raw_name: &str) -> Option<char> {
         return None;
     }
     if character.is_control() {
-        return (openjdk_control_name(codepoint) == Some(name.as_str())).then_some(character);
+        return (openjdk_control_name(codepoint) == Some(name.as_str())).then_some(codepoint);
     }
     let canonical_name = unicode_names2::name(character)?.to_string();
-    (canonical_name == name).then_some(character)
+    (canonical_name == name).then_some(codepoint)
 }
 
-fn constructed_character(name: &str) -> Option<char> {
+fn constructed_codepoint(name: &str) -> Option<u32> {
     let (_, raw_codepoint) = name.rsplit_once(' ')?;
     let codepoint = u32::from_str_radix(raw_codepoint, 16).ok()?;
     let expected_prefix = constructed_block_name(codepoint)?;
-    (name == format!("{expected_prefix} {codepoint:X}"))
-        .then(|| char::from_u32(codepoint))
-        .flatten()
+    (name == format!("{expected_prefix} {codepoint:X}")).then_some(codepoint)
 }
 
-fn openjdk_control_character(name: &str) -> Option<char> {
-    (0..=0x009f)
-        .find(|&codepoint| openjdk_control_name(codepoint) == Some(name))
-        .and_then(char::from_u32)
+fn openjdk_control_codepoint(name: &str) -> Option<u32> {
+    (0..=0x009f).find(|&codepoint| openjdk_control_name(codepoint) == Some(name))
 }
 
 fn constructed_block_name(codepoint: u32) -> Option<&'static str> {
@@ -139,31 +137,44 @@ mod tests {
 
     #[test]
     fn exact_unicode_names_are_case_insensitive_but_not_loosely_matched() {
-        assert_eq!(character_by_name("LATIN CAPITAL LETTER A"), Some('A'));
-        assert_eq!(character_by_name(" latin capital letter a "), Some('A'));
-        assert_eq!(character_by_name("LATINCAPITALLETTERA"), None);
-        assert_eq!(character_by_name("LATIN-CAPITAL LETTER A"), None);
+        assert_eq!(
+            codepoint_by_name("LATIN CAPITAL LETTER A"),
+            Some('A' as u32)
+        );
+        assert_eq!(
+            codepoint_by_name(" latin capital letter a "),
+            Some('A' as u32)
+        );
+        assert_eq!(codepoint_by_name("LATINCAPITALLETTERA"), None);
+        assert_eq!(codepoint_by_name("LATIN-CAPITAL LETTER A"), None);
     }
 
     #[test]
     fn openjdk_control_names_exclude_other_unicode_aliases() {
-        assert_eq!(character_by_name("BEL"), Some('\u{0007}'));
-        assert_eq!(character_by_name("BACKSPACE"), Some('\u{0008}'));
-        assert_eq!(character_by_name("PADDING CHARACTER"), Some('\u{0080}'));
-        assert_eq!(character_by_name("BELL"), Some('🔔'));
-        assert_eq!(character_by_name("BS"), None);
-        assert_eq!(character_by_name("INDEX"), None);
+        assert_eq!(codepoint_by_name("BEL"), Some(0x0007));
+        assert_eq!(codepoint_by_name("BACKSPACE"), Some(0x0008));
+        assert_eq!(codepoint_by_name("PADDING CHARACTER"), Some(0x0080));
+        assert_eq!(codepoint_by_name("BELL"), Some('🔔' as u32));
+        assert_eq!(codepoint_by_name("BS"), None);
+        assert_eq!(codepoint_by_name("INDEX"), None);
     }
 
     #[test]
     fn openjdk_constructed_names_use_block_and_uppercase_hex() {
-        assert_eq!(character_by_name("HANGUL SYLLABLES AC00"), Some('가'));
-        assert_eq!(character_by_name("CJK UNIFIED IDEOGRAPHS 4E00"), Some('一'));
-        assert_eq!(character_by_name("TANGUT 17000"), Some('\u{17000}'));
-        assert_eq!(character_by_name("PRIVATE USE AREA E000"), Some('\u{e000}'));
-        assert_eq!(character_by_name("HANGUL SYLLABLE GA"), None);
-        assert_eq!(character_by_name("CJK UNIFIED IDEOGRAPH-4E00"), None);
-        assert_eq!(character_by_name("PRIVATE USE AREA 0E000"), None);
-        assert_eq!(character_by_name("HIGH SURROGATES D800"), None);
+        assert_eq!(
+            codepoint_by_name("HANGUL SYLLABLES AC00"),
+            Some('가' as u32)
+        );
+        assert_eq!(
+            codepoint_by_name("CJK UNIFIED IDEOGRAPHS 4E00"),
+            Some('一' as u32)
+        );
+        assert_eq!(codepoint_by_name("TANGUT 17000"), Some(0x17000));
+        assert_eq!(codepoint_by_name("PRIVATE USE AREA E000"), Some(0xe000));
+        assert_eq!(codepoint_by_name("HIGH SURROGATES D800"), Some(0xd800));
+        assert_eq!(codepoint_by_name("LOW SURROGATES DFFF"), Some(0xdfff));
+        assert_eq!(codepoint_by_name("HANGUL SYLLABLE GA"), None);
+        assert_eq!(codepoint_by_name("CJK UNIFIED IDEOGRAPH-4E00"), None);
+        assert_eq!(codepoint_by_name("PRIVATE USE AREA 0E000"), None);
     }
 }

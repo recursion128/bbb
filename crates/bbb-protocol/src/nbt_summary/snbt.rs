@@ -9,7 +9,7 @@ use super::{
 
 mod openjdk_character_names;
 
-use openjdk_character_names::character_by_name;
+use openjdk_character_names::codepoint_by_name;
 
 /// Parses the compound-only flattened SNBT surface used by vanilla
 /// `TagParser.FLATTENED_CODEC`.
@@ -310,42 +310,44 @@ impl<'a> SnbtParser<'a> {
         self.skip_whitespace();
         let quote = self.bump().unwrap();
         debug_assert!(matches!(quote, '\'' | '"'));
-        let mut output = String::new();
+        let mut output = Vec::new();
         loop {
             let Some(next) = self.bump() else {
                 return Err(self.error("unterminated quoted SNBT string"));
             };
             if next == quote {
-                return Ok(output);
+                return String::from_utf16(&output)
+                    .map_err(|_| self.error("SNBT string contains an unpaired UTF-16 surrogate"));
             }
             if next != '\\' {
-                output.push(next);
+                append_java_codepoint(&mut output, next as u32);
                 continue;
             }
             self.skip_whitespace();
             let Some(escape) = self.bump() else {
                 return Err(self.error("unterminated SNBT string escape"));
             };
-            match escape {
-                'b' => output.push('\u{0008}'),
-                's' => output.push(' '),
-                't' => output.push('\t'),
-                'n' => output.push('\n'),
-                'f' => output.push('\u{000c}'),
-                'r' => output.push('\r'),
-                '\\' => output.push('\\'),
-                '\'' => output.push('\''),
-                '"' => output.push('"'),
-                'x' => output.push(self.parse_hex_escape(2)?),
-                'u' => output.push(self.parse_hex_escape(4)?),
-                'U' => output.push(self.parse_hex_escape(8)?),
-                'N' => output.push(self.parse_named_unicode_escape()?),
+            let codepoint = match escape {
+                'b' => '\u{0008}' as u32,
+                's' => ' ' as u32,
+                't' => '\t' as u32,
+                'n' => '\n' as u32,
+                'f' => '\u{000c}' as u32,
+                'r' => '\r' as u32,
+                '\\' => '\\' as u32,
+                '\'' => '\'' as u32,
+                '"' => '"' as u32,
+                'x' => self.parse_hex_escape(2)?,
+                'u' => self.parse_hex_escape(4)?,
+                'U' => self.parse_hex_escape(8)?,
+                'N' => self.parse_named_unicode_escape()?,
                 _ => return Err(self.error(format!("unknown SNBT string escape \\{escape}"))),
-            }
+            };
+            append_java_codepoint(&mut output, codepoint);
         }
     }
 
-    fn parse_named_unicode_escape(&mut self) -> Result<char> {
+    fn parse_named_unicode_escape(&mut self) -> Result<u32> {
         self.expect('{')?;
         let start = self.cursor;
         while self.peek().is_some_and(is_unicode_name_character) {
@@ -356,11 +358,11 @@ impl<'a> SnbtParser<'a> {
             return Err(self.error("SNBT named Unicode escape has an empty name"));
         }
         self.expect('}')?;
-        character_by_name(&name)
+        codepoint_by_name(&name)
             .ok_or_else(|| self.error(format!("unknown SNBT Unicode character name {name}")))
     }
 
-    fn parse_hex_escape(&mut self, digits: usize) -> Result<char> {
+    fn parse_hex_escape(&mut self, digits: usize) -> Result<u32> {
         let start = self.cursor;
         for _ in 0..digits {
             let Some(value) = self.bump() else {
@@ -376,8 +378,11 @@ impl<'a> SnbtParser<'a> {
         }
         let raw = &self.input[start..self.cursor];
         let codepoint = u32::from_str_radix(raw, 16).unwrap();
-        char::from_u32(codepoint)
-            .ok_or_else(|| self.error(format!("invalid SNBT Unicode codepoint U+{codepoint:08X}")))
+        if codepoint <= 0x10ffff {
+            Ok(codepoint)
+        } else {
+            Err(self.error(format!("invalid SNBT Unicode codepoint U+{codepoint:08X}")))
+        }
     }
 
     fn expect(&mut self, expected: char) -> Result<()> {
@@ -760,6 +765,20 @@ fn is_unicode_name_character(value: char) -> bool {
     value.is_ascii_alphanumeric() || matches!(value, '-' | ' ')
 }
 
+/// Appends `Character.toString(codePoint)`'s UTF-16 representation. BMP
+/// surrogate codepoints remain code units until the completed string validates
+/// whether they form pairs.
+fn append_java_codepoint(output: &mut Vec<u16>, codepoint: u32) {
+    debug_assert!(codepoint <= 0x10ffff);
+    if codepoint <= u16::MAX as u32 {
+        output.push(codepoint as u16);
+    } else {
+        let supplementary = codepoint - 0x10000;
+        output.push(0xd800 | (supplementary >> 10) as u16);
+        output.push(0xdc00 | (supplementary & 0x03ff) as u16);
+    }
+}
+
 fn can_start_number(value: char) -> bool {
     matches!(value, '+' | '-' | '.' | '0'..='9')
 }
@@ -848,13 +867,14 @@ mod tests {
     #[test]
     fn parses_vanilla_string_escapes_and_builtins() {
         let value = parse_snbt_compound(
-            r#"{text:"line\n\x41\u0042\U00000043",truth:bool(-0.0f),uuid:uuid("00112233-4455-6677-8899-aabbccddeeff")}"#,
+            r#"{text:"line\n\x41\u0042\U00000043",face:"\U0001F600",truth:bool(-0.0f),uuid:uuid("00112233-4455-6677-8899-aabbccddeeff")}"#,
         )
         .unwrap();
         assert_eq!(
             entry(&value, "text"),
             &NbtSummaryValue::String("line\nABC".into())
         );
+        assert_eq!(entry(&value, "face"), &NbtSummaryValue::String("😀".into()));
         assert_eq!(entry(&value, "truth"), &NbtSummaryValue::Byte(0));
         assert_eq!(
             entry(&value, "uuid"),
@@ -865,6 +885,51 @@ mod tests {
                 0xccdd_eeffu32 as i32,
             ])
         );
+    }
+
+    #[test]
+    fn joins_utf16_surrogate_pairs_from_unicode_escapes() {
+        let value = parse_snbt_compound(
+            r#"{short:"\uD83D\uDE00",long:"\U0000D83D\U0000DE00",named:"\N{HIGH SURROGATES D83D}\N{LOW SURROGATES DE00}",mixed:"\uD83D\U0000DE00"}"#,
+        )
+        .unwrap();
+        for name in ["short", "long", "named", "mixed"] {
+            assert_eq!(
+                entry(&value, name),
+                &NbtSummaryValue::String("😀".into()),
+                "{name}"
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_unpaired_utf16_surrogate_escapes_explicitly() {
+        for input in [
+            r#"{value:"\uD800"}"#,
+            r#"{value:"\uDC00"}"#,
+            r#"{value:"\U0000D800"}"#,
+            r#"{value:"\U0000DC00"}"#,
+            r#"{value:"\N{HIGH SURROGATES D800}"}"#,
+            r#"{value:"\N{LOW SURROGATES DC00}"}"#,
+            r#"{value:"\uD800A"}"#,
+            r#"{value:"A\uDC00"}"#,
+            r#"{value:"\uD800\uD801"}"#,
+            r#"{value:"\uDC00\uD800"}"#,
+        ] {
+            let error = parse_snbt_compound(input).unwrap_err().to_string();
+            assert!(
+                error.contains("unpaired UTF-16 surrogate"),
+                "{input}: {error}"
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_unicode_escapes_outside_the_java_codepoint_range() {
+        for input in [r#"{value:"\U00110000"}"#, r#"{value:"\UFFFFFFFF"}"#] {
+            let error = parse_snbt_compound(input).unwrap_err().to_string();
+            assert!(error.contains("invalid SNBT Unicode codepoint"), "{input}");
+        }
     }
 
     #[test]
@@ -910,7 +975,6 @@ mod tests {
             "{value:'\\N{LATINCAPITALLETTERA}'}",
             "{value:'\\N{LATIN-CAPITAL LETTER A}'}",
             "{value:'\\N{HANGUL SYLLABLE GA}'}",
-            "{value:'\\N{HIGH SURROGATES D800}'}",
             "{value:'\\N{BS}'}",
             "{value:'\\N{BLACK_STAR}'}",
         ] {

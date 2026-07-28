@@ -81,9 +81,6 @@ Owner: `bbb-protocol`
   through its sparse evidence override; consuming the right wire length or
   retaining only a component type id does not establish typed decode,
   canonical retention, re-encoding, persistent projection, or a consumer.
-- Preserve or explicitly reject lone-surrogate `\u`/`\U`/`\N{name}`
-  SNBT escapes instead of passing them through the current UTF-8-backed canonical
-  string state; follow `TagParser` and the Java UTF-16 string model.
 - Then cover the remaining play, movement, inventory, chat and interaction
   families end to end.
 ## Vanilla Java generator frontend migration
