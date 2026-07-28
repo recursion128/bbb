@@ -582,6 +582,10 @@ pub struct Renderer {
     pub(super) debug_filled_rects: Vec<DebugFilledRect>,
     pub(super) debug_text_billboards: Vec<DebugTextBillboard>,
     pub(super) debug_lines: Vec<DebugLine>,
+    /// Revision-keyed GameTest values follow the per-frame debug renderer
+    /// values in Vanilla's gizmo insertion order.
+    pub(super) game_test_highlight_boxes: Vec<DebugFilledBox>,
+    pub(super) game_test_highlight_text_billboards: Vec<DebugTextBillboard>,
     pub(super) hud_spyglass_scope_texture: Option<HudSpriteGpu>,
     pub(super) hud_crosshair: Option<HudSpriteGpu>,
     pub(super) hud_hotbar: Option<HudSpriteGpu>,
@@ -2014,6 +2018,8 @@ impl Renderer {
             debug_filled_rects: Vec::new(),
             debug_text_billboards: Vec::new(),
             debug_lines: Vec::new(),
+            game_test_highlight_boxes: Vec::new(),
+            game_test_highlight_text_billboards: Vec::new(),
             hud_spyglass_scope_texture: None,
             hud_crosshair: None,
             hud_hotbar: None,
@@ -2528,25 +2534,98 @@ impl Renderer {
     /// Reversed bounds are normalized; non-finite and zero-volume boxes are
     /// discarded. Passing an empty vector clears all previous geometry.
     pub fn set_debug_filled_boxes(&mut self, boxes: Vec<DebugFilledBox>) {
-        self.debug_filled_boxes = sanitize_debug_filled_boxes(boxes);
+        let _ = self.replace_debug_filled_boxes(boxes);
+    }
+
+    /// Replaces dynamic debug boxes and returns one cleared allocation for the
+    /// next extraction frame.
+    pub fn replace_debug_filled_boxes(
+        &mut self,
+        boxes: Vec<DebugFilledBox>,
+    ) -> Vec<DebugFilledBox> {
+        let mut boxes = sanitize_debug_filled_boxes(boxes);
+        if self.debug_filled_boxes == boxes {
+            boxes.clear();
+            return boxes;
+        }
+        let mut previous = std::mem::replace(&mut self.debug_filled_boxes, boxes);
+        previous.clear();
+        previous
     }
 
     /// Replaces this frame's filled `RectGizmo` submissions. Invalid or
     /// degenerate quads are discarded; an empty vector clears stale geometry.
     pub fn set_debug_filled_rects(&mut self, rects: Vec<DebugFilledRect>) {
-        self.debug_filled_rects = sanitize_debug_filled_rects(rects);
+        let _ = self.replace_debug_filled_rects(rects);
+    }
+
+    /// Replaces dynamic debug rects and returns one cleared allocation for the
+    /// next extraction frame.
+    pub fn replace_debug_filled_rects(
+        &mut self,
+        rects: Vec<DebugFilledRect>,
+    ) -> Vec<DebugFilledRect> {
+        let mut rects = sanitize_debug_filled_rects(rects);
+        if self.debug_filled_rects == rects {
+            rects.clear();
+            return rects;
+        }
+        let mut previous = std::mem::replace(&mut self.debug_filled_rects, rects);
+        previous.clear();
+        previous
     }
 
     /// Replaces this frame's camera-facing `TextGizmo` submissions. Invalid
     /// entries are discarded; an empty vector clears the previous frame.
     pub fn set_debug_text_billboards(&mut self, billboards: Vec<DebugTextBillboard>) {
-        self.debug_text_billboards = sanitize_debug_text_billboards(billboards);
+        let _ = self.replace_debug_text_billboards(billboards);
+    }
+
+    /// Replaces dynamic debug text and returns one cleared allocation for the
+    /// next extraction frame.
+    pub fn replace_debug_text_billboards(
+        &mut self,
+        billboards: Vec<DebugTextBillboard>,
+    ) -> Vec<DebugTextBillboard> {
+        let mut billboards = sanitize_debug_text_billboards(billboards);
+        if self.debug_text_billboards == billboards {
+            billboards.clear();
+            return billboards;
+        }
+        let mut previous = std::mem::replace(&mut self.debug_text_billboards, billboards);
+        previous.clear();
+        previous
     }
 
     /// Replaces this frame's gizmo line submissions. Opaque and translucent
     /// lines are grouped into their matching vanilla depth-write pipelines.
     pub fn set_debug_lines(&mut self, lines: Vec<DebugLine>) {
-        self.debug_lines = sanitize_debug_lines(lines);
+        let _ = self.replace_debug_lines(lines);
+    }
+
+    /// Replaces dynamic debug lines and returns one cleared allocation for the
+    /// next extraction frame.
+    pub fn replace_debug_lines(&mut self, lines: Vec<DebugLine>) -> Vec<DebugLine> {
+        let mut lines = sanitize_debug_lines(lines);
+        if self.debug_lines == lines {
+            lines.clear();
+            return lines;
+        }
+        let mut previous = std::mem::replace(&mut self.debug_lines, lines);
+        previous.clear();
+        previous
+    }
+
+    /// Replaces the stable GameTest lane atomically. These values are
+    /// concatenated after dynamic `DebugRenderer` values by the shared mesh
+    /// builders, matching `LevelRenderer.extractLevel`.
+    pub fn set_game_test_highlights(
+        &mut self,
+        boxes: Vec<DebugFilledBox>,
+        text_billboards: Vec<DebugTextBillboard>,
+    ) {
+        self.game_test_highlight_boxes = sanitize_debug_filled_boxes(boxes);
+        self.game_test_highlight_text_billboards = sanitize_debug_text_billboards(text_billboards);
     }
 
     pub fn set_selection_outline(&mut self, outline: Option<SelectionOutline>) {

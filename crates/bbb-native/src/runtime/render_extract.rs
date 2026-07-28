@@ -2279,7 +2279,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) item_frame_map_decoration_textures: Vec<ItemFrameMapDecorationTexture>,
     pub(crate) item_frame_map_decoration_surfaces: Vec<ItemFrameMapDecorationSurface>,
     pub(crate) item_frame_map_text_surfaces: Vec<ItemFrameMapTextSurface>,
-    pub(crate) sign_text_surfaces: Vec<SignTextSurface>,
+    pub(crate) sign_text_surfaces: RendererFrameUpdate<Vec<SignTextSurface>>,
     pub(crate) display_text_surfaces: Vec<DisplayTextSurface>,
     pub(crate) entity_name_tag_surfaces: Vec<EntityNameTagSurface>,
     pub(crate) entity_flame_surfaces: Vec<EntityFlameSurface>,
@@ -2304,6 +2304,8 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) debug_filled_rects: Vec<DebugFilledRect>,
     pub(crate) debug_text_billboards: Vec<DebugTextBillboard>,
     pub(crate) debug_lines: Vec<DebugLine>,
+    pub(crate) game_test_highlight_boxes: RendererFrameUpdate<Vec<DebugFilledBox>>,
+    pub(crate) game_test_highlight_text_billboards: RendererFrameUpdate<Vec<DebugTextBillboard>>,
     pub(crate) block_destroy_overlays: RendererFrameUpdate<Vec<BlockDestroyOverlay>>,
 }
 
@@ -2334,9 +2336,66 @@ pub(crate) struct NonEntityRenderExtractionObservation {
 pub(crate) struct NonEntityRenderExtractionScratch {
     observation: NonEntityRenderExtractionObservation,
     stable_world: Option<Arc<WorldStore>>,
+    stable_block_entities: Option<CachedStableBlockEntityProjection>,
+    game_test_highlight_key: Option<(u64, u64)>,
+    debug_buffers: DebugRenderExtractionBuffers,
     item_registry_keys: CachedItemRegistryKeys,
     map_textures: crate::map_textures::MapTextureExtractionCache,
     map_texture_level_generation: Option<u64>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct StableBlockEntityCacheKey {
+    pub(crate) revision: bbb_world::StableBlockEntityRenderRevision,
+    pub(crate) text_filtering_enabled: bool,
+}
+
+#[derive(Debug)]
+struct CachedStableBlockEntityProjection {
+    key: StableBlockEntityCacheKey,
+    sign_instances: Vec<EntityModelInstance>,
+    bed_instances: Vec<EntityModelInstance>,
+    lectern_instances: Vec<EntityModelInstance>,
+}
+
+pub(crate) struct StableBlockEntityFrame<'a> {
+    pub(crate) sign_instances: &'a [EntityModelInstance],
+    pub(crate) bed_instances: &'a [EntityModelInstance],
+    pub(crate) lectern_instances: &'a [EntityModelInstance],
+    pub(crate) sign_text_surfaces: RendererFrameUpdate<Vec<SignTextSurface>>,
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct DebugRenderExtractionBuffers {
+    pub(crate) filled_boxes: Vec<DebugFilledBox>,
+    pub(crate) filled_rects: Vec<DebugFilledRect>,
+    pub(crate) text_billboards: Vec<DebugTextBillboard>,
+    pub(crate) lines: Vec<DebugLine>,
+    pub(crate) initial_capacities: [usize; 4],
+}
+
+impl DebugRenderExtractionBuffers {
+    fn record_initial_capacities(&mut self) {
+        self.initial_capacities = [
+            self.filled_boxes.capacity(),
+            self.filled_rects.capacity(),
+            self.text_billboards.capacity(),
+            self.lines.capacity(),
+        ];
+    }
+
+    fn capacity_growths(&self) -> u64 {
+        [
+            self.filled_boxes.capacity(),
+            self.filled_rects.capacity(),
+            self.text_billboards.capacity(),
+            self.lines.capacity(),
+        ]
+        .into_iter()
+        .zip(self.initial_capacities)
+        .filter(|(current, initial)| current > initial)
+        .count() as u64
+    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -2383,7 +2442,98 @@ impl NonEntityRenderExtractionScratch {
 
     pub(crate) fn invalidate_resources(&mut self) {
         self.stable_world = None;
+        self.stable_block_entities = None;
         self.map_textures.clear();
+    }
+
+    pub(crate) fn stable_block_entity_frame(
+        &mut self,
+        key: StableBlockEntityCacheKey,
+        build: impl FnOnce() -> (
+            Vec<EntityModelInstance>,
+            Vec<SignTextSurface>,
+            Vec<EntityModelInstance>,
+            Vec<EntityModelInstance>,
+        ),
+    ) -> StableBlockEntityFrame<'_> {
+        let sign_text_surfaces = if self
+            .stable_block_entities
+            .as_ref()
+            .is_some_and(|cached| cached.key == key)
+        {
+            self.observation.cache_hits = self.observation.cache_hits.saturating_add(4);
+            RendererFrameUpdate::Unchanged
+        } else {
+            let (sign_instances, sign_text_surfaces, bed_instances, lectern_instances) = build();
+            self.stable_block_entities = Some(CachedStableBlockEntityProjection {
+                key,
+                sign_instances,
+                bed_instances,
+                lectern_instances,
+            });
+            self.observation.cache_misses = self.observation.cache_misses.saturating_add(4);
+            self.observation.rebuilt_owners = self.observation.rebuilt_owners.saturating_add(4);
+            RendererFrameUpdate::Replace(sign_text_surfaces)
+        };
+        let cached = self
+            .stable_block_entities
+            .as_ref()
+            .expect("stable block-entity projection initialized");
+        StableBlockEntityFrame {
+            sign_instances: &cached.sign_instances,
+            bed_instances: &cached.bed_instances,
+            lectern_instances: &cached.lectern_instances,
+            sign_text_surfaces,
+        }
+    }
+
+    pub(crate) fn game_test_highlight_update(
+        &mut self,
+        level_generation: u64,
+        revision: u64,
+        build: impl FnOnce() -> crate::game_test_highlights::GameTestHighlightGizmos,
+    ) -> (
+        RendererFrameUpdate<Vec<DebugFilledBox>>,
+        RendererFrameUpdate<Vec<DebugTextBillboard>>,
+    ) {
+        let key = (level_generation, revision);
+        if self.game_test_highlight_key == Some(key) {
+            self.observation.cache_hits = self.observation.cache_hits.saturating_add(2);
+            return (
+                RendererFrameUpdate::Unchanged,
+                RendererFrameUpdate::Unchanged,
+            );
+        }
+
+        let gizmos = build();
+        self.game_test_highlight_key = Some(key);
+        self.observation.cache_misses = self.observation.cache_misses.saturating_add(2);
+        self.observation.rebuilt_owners = self.observation.rebuilt_owners.saturating_add(2);
+        (
+            RendererFrameUpdate::Replace(gizmos.filled_boxes),
+            RendererFrameUpdate::Replace(gizmos.text_billboards),
+        )
+    }
+
+    pub(crate) fn begin_debug_frame(&mut self) -> DebugRenderExtractionBuffers {
+        let mut buffers = std::mem::take(&mut self.debug_buffers);
+        buffers.record_initial_capacities();
+        buffers
+    }
+
+    pub(crate) fn record_debug_capacity_growths(&mut self, buffers: &DebugRenderExtractionBuffers) {
+        self.observation.capacity_growths = self
+            .observation
+            .capacity_growths
+            .saturating_add(buffers.capacity_growths());
+    }
+
+    pub(crate) fn recycle_debug_buffers(&mut self, buffers: DebugRenderExtractionBuffers) {
+        debug_assert!(buffers.filled_boxes.is_empty());
+        debug_assert!(buffers.filled_rects.is_empty());
+        debug_assert!(buffers.text_billboards.is_empty());
+        debug_assert!(buffers.lines.is_empty());
+        self.debug_buffers = buffers;
     }
 
     /// Invalidates render-thread map pixels when the canonical level owner
@@ -2469,7 +2619,7 @@ pub(crate) fn apply_renderer_frame(
     renderer: &mut Renderer,
     frame: RendererFrame<'_>,
     entity_render_extraction: &mut crate::entity_scene::EntityRenderExtractionScratch,
-) {
+) -> DebugRenderExtractionBuffers {
     renderer.set_lightmap_environment(frame.lightmap_environment);
     renderer.set_clear_color(frame.clear_color);
     renderer.set_fog_environment(frame.fog_environment);
@@ -2593,7 +2743,9 @@ pub(crate) fn apply_renderer_frame(
         frame.item_frame_map_text_surfaces,
         frame.first_person_map_text_surfaces,
     );
-    renderer.set_sign_text_surfaces(frame.sign_text_surfaces);
+    if let RendererFrameUpdate::Replace(surfaces) = frame.sign_text_surfaces {
+        renderer.set_sign_text_surfaces(surfaces);
+    }
     renderer.set_display_text_surfaces(frame.display_text_surfaces);
     renderer.set_entity_name_tag_surfaces(frame.entity_name_tag_surfaces);
     renderer.set_entity_flame_surfaces(frame.entity_flame_surfaces);
@@ -2616,11 +2768,28 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_chunk_border_outline(frame.chunk_border_outline);
     renderer.set_entity_scene_outline(frame.entity_scene_outline);
     renderer.set_entity_target_outline(frame.entity_target_outline);
-    renderer.set_debug_filled_boxes(frame.debug_filled_boxes);
-    renderer.set_debug_filled_rects(frame.debug_filled_rects);
-    renderer.set_debug_text_billboards(frame.debug_text_billboards);
-    renderer.set_debug_lines(frame.debug_lines);
+    let filled_boxes = renderer.replace_debug_filled_boxes(frame.debug_filled_boxes);
+    let filled_rects = renderer.replace_debug_filled_rects(frame.debug_filled_rects);
+    let text_billboards = renderer.replace_debug_text_billboards(frame.debug_text_billboards);
+    let lines = renderer.replace_debug_lines(frame.debug_lines);
+    match (
+        frame.game_test_highlight_boxes,
+        frame.game_test_highlight_text_billboards,
+    ) {
+        (RendererFrameUpdate::Unchanged, RendererFrameUpdate::Unchanged) => {}
+        (RendererFrameUpdate::Replace(boxes), RendererFrameUpdate::Replace(text_billboards)) => {
+            renderer.set_game_test_highlights(boxes, text_billboards)
+        }
+        _ => unreachable!("GameTest boxes and text must replace atomically"),
+    }
     if let RendererFrameUpdate::Replace(overlays) = frame.block_destroy_overlays {
         renderer.set_block_destroy_overlays(overlays);
+    }
+    DebugRenderExtractionBuffers {
+        filled_boxes,
+        filled_rects,
+        text_billboards,
+        lines,
+        initial_capacities: [0; 4],
     }
 }

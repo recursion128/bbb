@@ -1115,7 +1115,9 @@ impl Renderer {
         stats: &mut FrameDrawStats,
     ) {
         let mesh = build_debug_filled_mesh(
-            &self.debug_filled_boxes,
+            self.debug_filled_boxes
+                .iter()
+                .chain(self.game_test_highlight_boxes.iter()),
             &self.debug_filled_rects,
             self.camera_sort_position(),
         );
@@ -1183,7 +1185,9 @@ impl Renderer {
             return;
         };
         let mesh = build_debug_text_mesh_for_layer(
-            &self.debug_text_billboards,
+            self.debug_text_billboards
+                .iter()
+                .chain(self.game_test_highlight_text_billboards.iter()),
             &self.hud_font_glyphs,
             camera_pose,
             false,
@@ -2457,7 +2461,9 @@ impl Renderer {
             return;
         };
         let mesh = build_debug_text_mesh_for_layer(
-            &self.debug_text_billboards,
+            self.debug_text_billboards
+                .iter()
+                .chain(self.game_test_highlight_text_billboards.iter()),
             &self.hud_font_glyphs,
             camera_pose,
             true,

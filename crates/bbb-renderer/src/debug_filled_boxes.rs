@@ -163,42 +163,46 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 }
 "#;
 
-pub(super) fn sanitize_debug_filled_boxes(
-    boxes: impl IntoIterator<Item = DebugFilledBox>,
-) -> Vec<DebugFilledBox> {
+pub(super) fn sanitize_debug_filled_boxes(mut boxes: Vec<DebugFilledBox>) -> Vec<DebugFilledBox> {
+    boxes.retain_mut(|value| match value.sanitized() {
+        Some(sanitized) => {
+            *value = sanitized;
+            true
+        }
+        None => false,
+    });
     boxes
-        .into_iter()
-        .filter_map(DebugFilledBox::sanitized)
-        .collect()
 }
 
-pub(super) fn sanitize_debug_filled_rects(
-    rects: impl IntoIterator<Item = DebugFilledRect>,
-) -> Vec<DebugFilledRect> {
+pub(super) fn sanitize_debug_filled_rects(mut rects: Vec<DebugFilledRect>) -> Vec<DebugFilledRect> {
+    rects.retain_mut(|value| match value.sanitized() {
+        Some(sanitized) => {
+            *value = sanitized;
+            true
+        }
+        None => false,
+    });
     rects
-        .into_iter()
-        .filter_map(DebugFilledRect::sanitized)
-        .collect()
 }
 
 /// Builds vanilla `CuboidGizmo`'s six outward-facing quads. When a camera is
 /// available, indices are sorted far-to-near by quad center, mirroring
 /// `RenderType.sortOnUpload()` / `MeshData.sortQuads`.
-pub(super) fn build_debug_filled_mesh(
-    boxes: &[DebugFilledBox],
+pub(super) fn build_debug_filled_mesh<'a>(
+    boxes: impl Clone + Iterator<Item = &'a DebugFilledBox>,
     rects: &[DebugFilledRect],
     camera_position: Option<[f32; 3]>,
 ) -> DebugFilledBoxMesh {
+    let box_count = boxes.clone().count();
     let mut vertices = Vec::with_capacity(
-        boxes
-            .len()
+        box_count
             .saturating_mul(24)
             .saturating_add(rects.len().saturating_mul(4)),
     );
     let mut quad_centers =
-        Vec::with_capacity(boxes.len().saturating_mul(6).saturating_add(rects.len()));
+        Vec::with_capacity(box_count.saturating_mul(6).saturating_add(rects.len()));
 
-    for debug_box in boxes.iter().copied().filter_map(DebugFilledBox::sanitized) {
+    for debug_box in boxes.copied().filter_map(DebugFilledBox::sanitized) {
         let [x0, y0, z0] = debug_box.min;
         let [x1, y1, z1] = debug_box.max;
         // Vertex order matches vanilla 26.1 `CuboidGizmo.emit`: EAST, WEST,
@@ -265,7 +269,7 @@ fn build_debug_filled_box_mesh(
     boxes: &[DebugFilledBox],
     camera_position: Option<[f32; 3]>,
 ) -> DebugFilledBoxMesh {
-    build_debug_filled_mesh(boxes, &[], camera_position)
+    build_debug_filled_mesh(boxes.iter(), &[], camera_position)
 }
 
 pub(super) fn create_debug_filled_box_pipeline(
@@ -357,7 +361,7 @@ mod tests {
             .sanitized(),
             None
         );
-        let mesh = build_debug_filled_mesh(&[], &[rect], None);
+        let mesh = build_debug_filled_mesh([].iter(), &[rect], None);
         assert_eq!(mesh.vertices.len(), 4);
         assert_eq!(mesh.indices, [0, 1, 2, 2, 3, 0]);
         let a = Vec3::from_array(mesh.vertices[0].position);
@@ -443,6 +447,42 @@ mod tests {
     }
 
     #[test]
+    fn debug_filled_mesh_chains_dynamic_and_game_test_lanes_before_sorting() {
+        let dynamic = [box_from([1.0, 0.0, 0.0], [2.0, 1.0, 1.0], [255, 0, 0, 255])];
+        let game_test = [box_from(
+            [10.0, 0.0, 0.0],
+            [11.0, 1.0, 1.0],
+            [0, 255, 0, 255],
+        )];
+        let mesh =
+            build_debug_filled_mesh(dynamic.iter().chain(game_test.iter()), &[], Some([0.0; 3]));
+
+        assert_eq!(mesh.vertices.len(), 48);
+        assert!(mesh.vertices[..24]
+            .iter()
+            .all(|vertex| vertex.color == [255, 0, 0, 255]));
+        assert!(mesh.vertices[24..]
+            .iter()
+            .all(|vertex| vertex.color == [0, 255, 0, 255]));
+        assert!(
+            mesh.indices[..36].iter().all(|index| *index >= 24),
+            "the farther stable lane must sort ahead of the nearer dynamic lane in one mesh"
+        );
+    }
+
+    #[test]
+    fn debug_filled_sanitizer_preserves_the_input_allocation() {
+        let mut boxes = Vec::with_capacity(16);
+        boxes.push(box_from([1.0; 3], [0.0; 3], [1, 2, 3, 4]));
+        boxes.push(box_from([0.0; 3], [0.0; 3], [5, 6, 7, 8]));
+        let boxes = sanitize_debug_filled_boxes(boxes);
+        assert_eq!(boxes.len(), 1);
+        assert_eq!(boxes[0].min, [0.0; 3]);
+        assert_eq!(boxes[0].max, [1.0; 3]);
+        assert!(boxes.capacity() >= 16);
+    }
+
+    #[test]
     fn debug_filled_box_pipeline_matches_vanilla_render_type_state() {
         assert_eq!(DEBUG_FILLED_BOX_CULL_MODE, Some(wgpu::Face::Back));
         assert!(!DEBUG_FILLED_BOX_DEPTH_WRITE_ENABLED);
@@ -508,6 +548,23 @@ mod tests {
             with_box_draw_calls,
             renderer.counters.draw_calls + 1,
             "the cleared frame omits the debug-filled-box draw"
+        );
+
+        renderer.set_game_test_highlights(
+            vec![box_from([2.0, 2.0, 2.0], [3.0, 3.0, 3.0], [0, 255, 0, 255])],
+            Vec::new(),
+        );
+        renderer.set_debug_filled_boxes(vec![box_from(
+            [-0.5, -0.5, 0.25],
+            [0.5, 0.5, 0.75],
+            [255, 0, 0, 255],
+        )]);
+        renderer.set_debug_filled_boxes(Vec::new());
+        assert!(renderer.debug_filled_boxes.is_empty());
+        assert_eq!(
+            renderer.game_test_highlight_boxes.len(),
+            1,
+            "clearing dynamic geometry must retain the stable GameTest lane"
         );
     }
 }

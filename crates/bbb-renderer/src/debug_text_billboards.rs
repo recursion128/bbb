@@ -46,6 +46,7 @@ impl DebugTextBillboard {
         }
     }
 
+    #[cfg(test)]
     fn sanitized(self) -> Option<Self> {
         self.is_valid().then_some(self)
     }
@@ -183,16 +184,14 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 "#;
 
 pub(super) fn sanitize_debug_text_billboards(
-    billboards: impl IntoIterator<Item = DebugTextBillboard>,
+    mut billboards: Vec<DebugTextBillboard>,
 ) -> Vec<DebugTextBillboard> {
+    billboards.retain(DebugTextBillboard::is_valid);
     billboards
-        .into_iter()
-        .filter_map(DebugTextBillboard::sanitized)
-        .collect()
 }
 
-pub(super) fn build_debug_text_mesh_for_layer(
-    billboards: &[DebugTextBillboard],
+pub(super) fn build_debug_text_mesh_for_layer<'a>(
+    billboards: impl Clone + Iterator<Item = &'a DebugTextBillboard>,
     glyphs: &HudFontGlyphMap,
     camera_pose: CameraPose,
     always_on_top: bool,
@@ -202,13 +201,13 @@ pub(super) fn build_debug_text_mesh_for_layer(
     // DrawableGizmoPrimitives owns separate groups and renders opaque text
     // before translucent text, preserving insertion order inside each group.
     for billboard in billboards
-        .iter()
+        .clone()
         .filter(|billboard| {
             billboard.is_valid()
                 && billboard.color[3] == 255
                 && billboard.always_on_top == always_on_top
         })
-        .chain(billboards.iter().filter(|billboard| {
+        .chain(billboards.filter(|billboard| {
             billboard.is_valid()
                 && billboard.color[3] < 255
                 && billboard.always_on_top == always_on_top
@@ -366,11 +365,12 @@ mod tests {
     #[test]
     fn debug_text_mesh_centers_font_pixels_and_uses_full_bright_rgba() {
         let mesh = build_debug_text_mesh_for_layer(
-            &[DebugTextBillboard::centered(
+            [DebugTextBillboard::centered(
                 [1.0, 2.0, 3.0],
                 "8",
                 [10, 20, 30, 40],
-            )],
+            )]
+            .iter(),
             &test_glyphs(),
             camera(),
             false,
@@ -394,7 +394,8 @@ mod tests {
     fn debug_text_left_adjustment_matches_text_gizmo_formula() {
         let mut billboard = DebugTextBillboard::centered([0.0; 3], "8", [255; 4]);
         billboard.adjust_left = Some(0.5);
-        let mesh = build_debug_text_mesh_for_layer(&[billboard], &test_glyphs(), camera(), false);
+        let mesh =
+            build_debug_text_mesh_for_layer([billboard].iter(), &test_glyphs(), camera(), false);
         // fontX=-0.5/0.32; multiplied by 0.32/16 => -0.5/16.
         // Vanilla yaw 0 maps camera-local +X to world -X.
         assert_eq!(mesh.vertices[0].position[0], 0.5 / 16.0);
@@ -406,7 +407,7 @@ mod tests {
         let opaque = DebugTextBillboard::centered([2.0, 0.0, 0.0], "8", [5, 6, 7, 255]);
         let translucent_later = DebugTextBillboard::centered([3.0, 0.0, 0.0], "8", [8, 9, 10, 11]);
         let mesh = build_debug_text_mesh_for_layer(
-            &[translucent, opaque, translucent_later],
+            [translucent, opaque, translucent_later].iter(),
             &test_glyphs(),
             camera(),
             false,
@@ -424,6 +425,34 @@ mod tests {
     }
 
     #[test]
+    fn debug_text_mesh_groups_dynamic_and_game_test_lanes_together() {
+        let dynamic = [DebugTextBillboard::centered(
+            [1.0, 0.0, 0.0],
+            "8",
+            [1, 2, 3, 4],
+        )];
+        let game_test = [DebugTextBillboard::centered(
+            [2.0, 0.0, 0.0],
+            "8",
+            [5, 6, 7, 255],
+        )];
+        let mesh = build_debug_text_mesh_for_layer(
+            dynamic.iter().chain(game_test.iter()),
+            &test_glyphs(),
+            camera(),
+            false,
+        );
+
+        assert_eq!(mesh.vertices.len(), 8);
+        assert!(mesh.vertices[0..4]
+            .iter()
+            .all(|vertex| vertex.color == [5, 6, 7, 255]));
+        assert!(mesh.vertices[4..8]
+            .iter()
+            .all(|vertex| vertex.color == [1, 2, 3, 4]));
+    }
+
+    #[test]
     fn debug_text_mesh_separates_standard_and_always_on_top_layers() {
         let standard = DebugTextBillboard::centered([1.0, 0.0, 0.0], "8", [1, 2, 3, 255]);
         let mut always_on_top = DebugTextBillboard::centered([2.0, 0.0, 0.0], "8", [4, 5, 6, 255]);
@@ -431,9 +460,9 @@ mod tests {
         let billboards = [standard, always_on_top];
 
         let standard_mesh =
-            build_debug_text_mesh_for_layer(&billboards, &test_glyphs(), camera(), false);
+            build_debug_text_mesh_for_layer(billboards.iter(), &test_glyphs(), camera(), false);
         let always_on_top_mesh =
-            build_debug_text_mesh_for_layer(&billboards, &test_glyphs(), camera(), true);
+            build_debug_text_mesh_for_layer(billboards.iter(), &test_glyphs(), camera(), true);
 
         assert_eq!(standard_mesh.vertices.len(), 4);
         assert!(standard_mesh

@@ -1,5 +1,6 @@
 use super::*;
 use std::{
+    cell::Cell,
     collections::{BTreeMap, BTreeSet},
     path::{Path, PathBuf},
     sync::Arc,
@@ -968,6 +969,168 @@ fn item_registry_key_cache_follows_registry_access_revision() {
     let _ = scratch.item_registry_keys(&world);
     assert_eq!(scratch.observation().cache_misses, 10);
     assert_eq!(scratch.observation().cache_hits, 5);
+}
+
+#[test]
+fn stable_block_entity_cache_uses_exact_revision_filter_and_resource_keys() {
+    let mut scratch = NonEntityRenderExtractionScratch::default();
+    let builds = Cell::new(0);
+    let revision = bbb_world::StableBlockEntityRenderRevision {
+        client_level_generation: 4,
+        terrain: 7,
+        block_entity_data: 9,
+    };
+    let key = StableBlockEntityCacheKey {
+        revision,
+        text_filtering_enabled: false,
+    };
+    let build = || {
+        builds.set(builds.get() + 1);
+        (
+            vec![bbb_renderer::EntityModelInstance::cod(
+                -1,
+                [1.0, 2.0, 3.0],
+                0.0,
+            )],
+            Vec::new(),
+            vec![bbb_renderer::EntityModelInstance::cod(
+                -1,
+                [4.0, 5.0, 6.0],
+                0.0,
+            )],
+            vec![bbb_renderer::EntityModelInstance::cod(
+                -1,
+                [7.0, 8.0, 9.0],
+                0.0,
+            )],
+        )
+    };
+
+    let first = scratch.stable_block_entity_frame(key, build);
+    assert_eq!(first.sign_instances[0].position, [1.0, 2.0, 3.0]);
+    assert_eq!(first.bed_instances[0].position, [4.0, 5.0, 6.0]);
+    assert_eq!(first.lectern_instances[0].position, [7.0, 8.0, 9.0]);
+    assert!(matches!(
+        first.sign_text_surfaces,
+        RendererFrameUpdate::Replace(_)
+    ));
+
+    let second = scratch.stable_block_entity_frame(key, build);
+    assert!(matches!(
+        second.sign_text_surfaces,
+        RendererFrameUpdate::Unchanged
+    ));
+    assert_eq!(builds.get(), 1);
+
+    let changed_revision = scratch.stable_block_entity_frame(
+        StableBlockEntityCacheKey {
+            revision: bbb_world::StableBlockEntityRenderRevision {
+                terrain: 8,
+                ..revision
+            },
+            ..key
+        },
+        build,
+    );
+    assert!(matches!(
+        changed_revision.sign_text_surfaces,
+        RendererFrameUpdate::Replace(_)
+    ));
+    assert_eq!(builds.get(), 2);
+
+    let filtered = scratch.stable_block_entity_frame(
+        StableBlockEntityCacheKey {
+            revision: bbb_world::StableBlockEntityRenderRevision {
+                terrain: 8,
+                ..revision
+            },
+            text_filtering_enabled: true,
+            ..key
+        },
+        build,
+    );
+    assert!(matches!(
+        filtered.sign_text_surfaces,
+        RendererFrameUpdate::Replace(_)
+    ));
+    assert_eq!(builds.get(), 3);
+
+    scratch.invalidate_resources();
+    let reloaded = scratch.stable_block_entity_frame(
+        StableBlockEntityCacheKey {
+            revision: bbb_world::StableBlockEntityRenderRevision {
+                terrain: 8,
+                ..revision
+            },
+            text_filtering_enabled: true,
+            ..key
+        },
+        build,
+    );
+    assert!(matches!(
+        reloaded.sign_text_surfaces,
+        RendererFrameUpdate::Replace(_)
+    ));
+    assert_eq!(builds.get(), 4);
+    assert_eq!(scratch.observation().cache_hits, 4);
+    assert_eq!(scratch.observation().cache_misses, 16);
+    assert_eq!(scratch.observation().rebuilt_owners, 16);
+}
+
+#[test]
+fn game_test_highlight_cache_rebuilds_only_for_level_or_marker_revision() {
+    let mut scratch = NonEntityRenderExtractionScratch::default();
+    let builds = Cell::new(0);
+    let build = || {
+        builds.set(builds.get() + 1);
+        crate::game_test_highlights::GameTestHighlightGizmos {
+            filled_boxes: vec![bbb_renderer::DebugFilledBox {
+                min: [0.0; 3],
+                max: [1.0; 3],
+                color: [1, 2, 3, 4],
+            }],
+            text_billboards: vec![bbb_renderer::DebugTextBillboard::centered(
+                [0.5; 3], "marker", [255; 4],
+            )],
+        }
+    };
+
+    let (boxes, text) = scratch.game_test_highlight_update(3, 5, build);
+    assert!(matches!(boxes, RendererFrameUpdate::Replace(_)));
+    assert!(matches!(text, RendererFrameUpdate::Replace(_)));
+    let (boxes, text) = scratch.game_test_highlight_update(3, 5, build);
+    assert!(matches!(boxes, RendererFrameUpdate::Unchanged));
+    assert!(matches!(text, RendererFrameUpdate::Unchanged));
+    let (boxes, text) = scratch.game_test_highlight_update(3, 6, build);
+    assert!(matches!(boxes, RendererFrameUpdate::Replace(_)));
+    assert!(matches!(text, RendererFrameUpdate::Replace(_)));
+    let (boxes, text) = scratch.game_test_highlight_update(4, 6, build);
+    assert!(matches!(boxes, RendererFrameUpdate::Replace(_)));
+    assert!(matches!(text, RendererFrameUpdate::Replace(_)));
+
+    assert_eq!(builds.get(), 3);
+    assert_eq!(scratch.observation().cache_hits, 2);
+    assert_eq!(scratch.observation().cache_misses, 6);
+    assert_eq!(scratch.observation().rebuilt_owners, 6);
+}
+
+#[test]
+fn dynamic_debug_buffers_retain_capacity_and_count_only_growth_edges() {
+    let mut scratch = NonEntityRenderExtractionScratch::default();
+    let mut buffers = scratch.begin_debug_frame();
+    buffers.filled_boxes.reserve(8);
+    buffers.lines.reserve(4);
+    scratch.record_debug_capacity_growths(&buffers);
+    assert_eq!(scratch.observation().capacity_growths, 2);
+
+    buffers.filled_boxes.clear();
+    buffers.lines.clear();
+    scratch.recycle_debug_buffers(buffers);
+    let buffers = scratch.begin_debug_frame();
+    assert!(buffers.filled_boxes.capacity() >= 8);
+    assert!(buffers.lines.capacity() >= 4);
+    scratch.record_debug_capacity_growths(&buffers);
+    assert_eq!(scratch.observation().capacity_growths, 2);
 }
 
 /// A hover-name tooltip line: rarity colour run, italic when custom-named
@@ -7029,91 +7192,95 @@ fn renderer_frame_outlines_extract_after_input_camera_and_partial_tick() {
 }
 
 #[test]
-fn renderer_frame_commits_debug_gizmos_from_one_water_sample_snapshot() {
+fn renderer_frame_reuses_dynamic_debug_buffers_and_keeps_stable_game_test_lane() {
     let runtime_source = include_str!("../runtime.rs");
     let camera_pose = runtime_source
         .find("let camera_pose = render_camera_pose_from_world_at_partial_tick(")
         .expect("pump should extract one camera pose");
+    let game_test_extract = runtime_source
+        .find("non_entity_render_extraction.game_test_highlight_update(")
+        .expect("GameTest highlights should use the exact stable projection cache");
+    let begin_buffers = runtime_source
+        .find("let mut debug_buffers = non_entity_render_extraction.begin_debug_frame();")
+        .expect("ordinary debug projections should reuse retained vector owners");
     let samples = runtime_source
         .find("let debug_water_samples = debug_water_samples(input, world);")
         .expect("pump should extract water samples once");
     let boxes = runtime_source
-        .find("let mut debug_filled_boxes = debug_water_boxes(&debug_water_samples);")
+        .find(".extend(debug_water_boxes(&debug_water_samples));")
         .expect("pump should project debug water boxes");
     let heightmap_extend = runtime_source
-        .find("debug_filled_boxes.extend(debug_heightmap_boxes(input, world, camera_pose));")
+        .find(".extend(debug_heightmap_boxes(input, world, camera_pose));")
         .expect("heightmap boxes should follow water boxes");
-    let game_test_extract = runtime_source
-        .find("let game_test_highlight_gizmos = game_test_highlight_gizmos(world);")
-        .expect("GameTest highlights should project from canonical marker state");
-    let game_test_boxes = runtime_source
-        .find("debug_filled_boxes.extend(game_test_highlight_gizmos.filled_boxes);")
-        .expect("GameTest boxes should follow ordinary debug boxes");
     let solid_faces = runtime_source
-        .find("let mut debug_filled_rects = debug_solid_face_rects(input, world, camera_pose);")
+        .find(".extend(debug_solid_face_rects(input, world, camera_pose));")
         .expect("pump should project solid-face rectangles");
     let text = runtime_source
-        .find(
-            "let mut debug_text_billboards = debug_water_amount_billboards(&debug_water_samples);",
-        )
+        .find(".extend(debug_water_amount_billboards(&debug_water_samples));")
         .expect("pump should project water amount labels from the same samples");
     let light_text = runtime_source
-        .find("debug_text_billboards.extend(debug_light_level_billboards(input, world, camera_pose));")
+        .find(".extend(debug_light_level_billboards(input, world, camera_pose));")
         .expect("light debug labels should follow water labels");
     let selection_text = runtime_source
-        .find("debug_text_billboards.extend(debug_selection_text_billboards(")
+        .find(".extend(debug_selection_text_billboards(")
         .expect("entity debug labels should use the shared 3D text surface");
-    let game_test_text = runtime_source
-        .find("debug_text_billboards.extend(game_test_highlight_gizmos.text_billboards);")
-        .expect("GameTest labels should follow ordinary debug labels");
     let lines = runtime_source
-        .find("let mut debug_lines = debug_collision_cache.lines(input, world, now);")
+        .find(".extend(debug_collision_cache.lines(input, world, now));")
         .expect("pump should project cached collision debug lines");
     let support_lines = runtime_source
-        .find("debug_lines.extend(debug_supporting_block_cache.lines(input, world, now));")
+        .find(".extend(debug_supporting_block_cache.lines(input, world, now));")
         .expect("supporting-block lines should follow collision lines");
     let sky_light_sections = runtime_source
         .find("debug_sky_light_section_cache.gizmos(input, world, now);")
         .expect("pump should read one cached sky-light-section snapshot");
     let sky_light_rects = runtime_source
-        .find("debug_filled_rects.extend(debug_sky_light_section_rects);")
+        .find(".extend(debug_sky_light_section_rects);")
         .expect("sky-light section faces should follow solid faces");
     let sky_light_lines = runtime_source
-        .find("debug_lines.extend(debug_sky_light_section_lines);")
+        .find("debug_buffers.lines.extend(debug_sky_light_section_lines);")
         .expect("sky-light section edges should follow supporting-block lines");
+    let record_growth = runtime_source
+        .find("non_entity_render_extraction.record_debug_capacity_growths(&debug_buffers);")
+        .expect("capacity telemetry should observe growth before buffers move");
     let frame = runtime_source
-        .find("            debug_filled_boxes,\n")
-        .expect("RendererFrame should carry debug filled boxes");
+        .find("            game_test_highlight_boxes,\n")
+        .expect("RendererFrame should carry the stable GameTest owner separately");
     assert!(
         camera_pose < game_test_extract
-            && game_test_extract < samples
+            && game_test_extract < begin_buffers
+            && begin_buffers < samples
             && samples < boxes
             && boxes < heightmap_extend
-            && heightmap_extend < game_test_boxes
-            && game_test_boxes < solid_faces
+            && heightmap_extend < solid_faces
             && solid_faces < text
             && text < light_text
             && light_text < selection_text
-            && selection_text < game_test_text
-            && game_test_text < lines
+            && selection_text < lines
             && lines < support_lines
             && support_lines < sky_light_sections
             && sky_light_sections < sky_light_rects
             && sky_light_rects < sky_light_lines
-            && sky_light_lines < frame
+            && sky_light_lines < record_growth
+            && record_growth < frame
     );
+    assert!(
+        !runtime_source.contains(".extend(game_test_highlight_gizmos."),
+        "stable GameTest owners must not be folded back into per-frame dynamic vectors"
+    );
+    assert!(runtime_source
+        .contains("non_entity_render_extraction.recycle_debug_buffers(recycled_debug_buffers);"));
 
     let frame_source = include_str!("render_extract.rs");
     assert!(frame_source.contains("pub(crate) debug_filled_boxes: Vec<DebugFilledBox>"));
-    assert!(frame_source.contains("renderer.set_debug_filled_boxes(frame.debug_filled_boxes);"));
+    assert!(frame_source.contains("renderer.replace_debug_filled_boxes(frame.debug_filled_boxes);"));
     assert!(frame_source.contains("pub(crate) debug_filled_rects: Vec<DebugFilledRect>"));
-    assert!(frame_source.contains("renderer.set_debug_filled_rects(frame.debug_filled_rects);"));
+    assert!(frame_source.contains("renderer.replace_debug_filled_rects(frame.debug_filled_rects);"));
     assert!(frame_source.contains("pub(crate) debug_text_billboards: Vec<DebugTextBillboard>"));
-    assert!(
-        frame_source.contains("renderer.set_debug_text_billboards(frame.debug_text_billboards);")
-    );
+    assert!(frame_source
+        .contains("renderer.replace_debug_text_billboards(frame.debug_text_billboards);"));
     assert!(frame_source.contains("pub(crate) debug_lines: Vec<DebugLine>"));
-    assert!(frame_source.contains("renderer.set_debug_lines(frame.debug_lines);"));
+    assert!(frame_source.contains("renderer.replace_debug_lines(frame.debug_lines);"));
+    assert!(frame_source.contains("renderer.set_game_test_highlights(boxes, text_billboards)"));
 }
 
 #[test]

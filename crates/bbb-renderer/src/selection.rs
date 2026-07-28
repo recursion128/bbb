@@ -385,8 +385,9 @@ pub(super) struct DebugLineVertexBatches {
     pub(super) translucent: Vec<SelectionVertex>,
 }
 
-pub(super) fn sanitize_debug_lines(lines: impl IntoIterator<Item = DebugLine>) -> Vec<DebugLine> {
-    lines.into_iter().filter_map(DebugLine::sanitized).collect()
+pub(super) fn sanitize_debug_lines(mut lines: Vec<DebugLine>) -> Vec<DebugLine> {
+    lines.retain(|line| line.sanitized().is_some());
+    lines
 }
 
 pub(super) fn debug_line_vertex_batches(
@@ -740,11 +741,12 @@ mod tests {
     #[test]
     fn debug_line_sanitize_and_renderer_setter_clear_invalid_or_stale_lines() {
         let valid = DebugLine::new([0.0; 3], [1.0, 0.0, 0.0], [255; 4], 2.5);
-        assert_eq!(sanitize_debug_lines([valid]), [valid]);
+        assert_eq!(sanitize_debug_lines(vec![valid]), [valid]);
         assert!(
-            sanitize_debug_lines([DebugLine::new([0.0; 3], [0.0; 3], [255; 4], 2.5,)]).is_empty()
+            sanitize_debug_lines(vec![DebugLine::new([0.0; 3], [0.0; 3], [255; 4], 2.5,)])
+                .is_empty()
         );
-        assert!(sanitize_debug_lines([DebugLine::new(
+        assert!(sanitize_debug_lines(vec![DebugLine::new(
             [f32::NAN, 0.0, 0.0],
             [1.0, 0.0, 0.0],
             [255; 4],

@@ -3818,6 +3818,27 @@ pub(crate) fn update_renderer_from_publication(
     let block_entity_started_at = Instant::now();
     let block_destroy_stages = block_destroy_stages_from_world(world);
     let block_entity_model_start = entity_instances.len();
+    let StableBlockEntityFrame {
+        sign_instances,
+        bed_instances,
+        lectern_instances,
+        sign_text_surfaces,
+    } = non_entity_render_extraction.stable_block_entity_frame(
+        StableBlockEntityCacheKey {
+            revision: world.stable_block_entity_render_revision(),
+            text_filtering_enabled: input.client_text_filtering_enabled(),
+        },
+        || {
+            let sign_scene =
+                sign_scene_from_world(world, item_runtime, input.client_text_filtering_enabled());
+            (
+                sign_scene.instances,
+                sign_scene.text_surfaces,
+                bed_model_instances_from_world(world),
+                lectern_book_model_instances_from_world(world),
+            )
+        },
+    );
     // Chest block-entity models join the same single entity-model submission
     // stream after held-item baking (they have no hands to bake).
     entity_instances.extend(chest_model_instances_from_world_at_partial_tick(
@@ -3826,14 +3847,11 @@ pub(crate) fn update_renderer_from_publication(
     ));
     // Sign block-entity models ride the same stream; their face text bakes
     // into world-space glyph quads drawn with the map-label font atlas.
-    let sign_scene =
-        sign_scene_from_world(world, item_runtime, input.client_text_filtering_enabled());
-    entity_instances.extend(sign_scene.instances);
-    let sign_text_surfaces = sign_scene.text_surfaces;
+    entity_instances.extend_from_slice(sign_instances);
     // Bed and bell block-entity models ride the same stream: beds are static
     // per-half meshes, bells carry the shake ticks for the renderer-side
     // `BellModel.setupAnim` swing.
-    entity_instances.extend(bed_model_instances_from_world(world));
+    entity_instances.extend_from_slice(bed_instances);
     entity_instances.extend(bell_model_instances_from_world_at_partial_tick(
         world,
         entity_partial_tick,
@@ -3864,7 +3882,7 @@ pub(crate) fn update_renderer_from_publication(
             entity_partial_tick,
         ),
     );
-    entity_instances.extend(lectern_book_model_instances_from_world(world));
+    entity_instances.extend_from_slice(lectern_instances);
     entity_instances.extend(conduit_model_instances_from_world_at_partial_tick(
         world,
         camera_pose,
@@ -4046,30 +4064,56 @@ pub(crate) fn update_renderer_from_publication(
         world.local_player_is_spectator(),
         targeted_remote_debug_entity,
     );
-    let game_test_highlight_gizmos = game_test_highlight_gizmos(world);
+    let (game_test_highlight_boxes, game_test_highlight_text_billboards) =
+        non_entity_render_extraction.game_test_highlight_update(
+            world.client_level_generation(),
+            world.game_test_highlight_render_revision(),
+            || game_test_highlight_gizmos(world),
+        );
+    let mut debug_buffers = non_entity_render_extraction.begin_debug_frame();
     // Vanilla `DebugRenderer.refreshRendererList` registers WaterDebugRenderer
     // before HeightMapRenderer, so their shared debugFilledBox submissions keep
     // that renderer order when both custom entries are enabled.
     let debug_water_samples = debug_water_samples(input, world);
-    let mut debug_filled_boxes = debug_water_boxes(&debug_water_samples);
-    debug_filled_boxes.extend(debug_heightmap_boxes(input, world, camera_pose));
-    debug_filled_boxes.extend(remote_debug_gizmos.filled_boxes);
-    debug_filled_boxes.extend(game_test_highlight_gizmos.filled_boxes);
-    let mut debug_filled_rects = debug_solid_face_rects(input, world, camera_pose);
-    let mut debug_text_billboards = debug_water_amount_billboards(&debug_water_samples);
-    debug_text_billboards.extend(debug_light_level_billboards(input, world, camera_pose));
-    debug_text_billboards.extend(debug_selection_text_billboards(
-        entity_scene_outline.as_ref(),
-    ));
-    debug_text_billboards.extend(remote_debug_gizmos.text_billboards);
-    debug_text_billboards.extend(game_test_highlight_gizmos.text_billboards);
-    let mut debug_lines = debug_collision_cache.lines(input, world, now);
-    debug_lines.extend(debug_supporting_block_cache.lines(input, world, now));
+    debug_buffers
+        .filled_boxes
+        .extend(debug_water_boxes(&debug_water_samples));
+    debug_buffers
+        .filled_boxes
+        .extend(debug_heightmap_boxes(input, world, camera_pose));
+    debug_buffers
+        .filled_boxes
+        .extend(remote_debug_gizmos.filled_boxes);
+    debug_buffers
+        .filled_rects
+        .extend(debug_solid_face_rects(input, world, camera_pose));
+    debug_buffers
+        .text_billboards
+        .extend(debug_water_amount_billboards(&debug_water_samples));
+    debug_buffers
+        .text_billboards
+        .extend(debug_light_level_billboards(input, world, camera_pose));
+    debug_buffers
+        .text_billboards
+        .extend(debug_selection_text_billboards(
+            entity_scene_outline.as_ref(),
+        ));
+    debug_buffers
+        .text_billboards
+        .extend(remote_debug_gizmos.text_billboards);
+    debug_buffers
+        .lines
+        .extend(debug_collision_cache.lines(input, world, now));
+    debug_buffers
+        .lines
+        .extend(debug_supporting_block_cache.lines(input, world, now));
     let (debug_sky_light_section_rects, debug_sky_light_section_lines) =
         debug_sky_light_section_cache.gizmos(input, world, now);
-    debug_filled_rects.extend(debug_sky_light_section_rects);
-    debug_lines.extend(debug_sky_light_section_lines);
-    debug_lines.extend(remote_debug_gizmos.lines);
+    debug_buffers
+        .filled_rects
+        .extend(debug_sky_light_section_rects);
+    debug_buffers.lines.extend(debug_sky_light_section_lines);
+    debug_buffers.lines.extend(remote_debug_gizmos.lines);
     // Vanilla `LevelRenderer.extractBlockDestroyAnimation` reads block-breaking state during
     // render extract, after the client tick; local destroy overlay ticks are advanced above.
     let block_destroy_overlays = if stable_world_unchanged {
@@ -4086,8 +4130,16 @@ pub(crate) fn update_renderer_from_publication(
     // during level render extraction; sample world light for the current particle positions before
     // the renderer later collects particle vertices.
     renderer.refresh_particle_lights(|position| particle_light_for_world(world, position));
+    non_entity_render_extraction.record_debug_capacity_growths(&debug_buffers);
+    let DebugRenderExtractionBuffers {
+        filled_boxes: debug_filled_boxes,
+        filled_rects: debug_filled_rects,
+        text_billboards: debug_text_billboards,
+        lines: debug_lines,
+        ..
+    } = debug_buffers;
     let apply_started_at = Instant::now();
-    apply_renderer_frame(
+    let recycled_debug_buffers = apply_renderer_frame(
         renderer,
         RendererFrame {
             lightmap_environment,
@@ -4221,10 +4273,13 @@ pub(crate) fn update_renderer_from_publication(
             debug_filled_rects,
             debug_text_billboards,
             debug_lines,
+            game_test_highlight_boxes,
+            game_test_highlight_text_billboards,
             block_destroy_overlays,
         },
         entity_render_extraction,
     );
+    non_entity_render_extraction.recycle_debug_buffers(recycled_debug_buffers);
     non_entity_render_extraction.record_frame(
         hud_duration,
         item_duration,
