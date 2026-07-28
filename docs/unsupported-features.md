@@ -40,9 +40,6 @@ code, its tests, `docs/goal-archive.md`, and `git log`.
 
 Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
 
-- Reuse heap-heavy non-entity `RendererFrame` extraction owners, add exact
-  revision caches to stable block-entity and debug projections without caching
-  partial-tick or animation-dependent state.
 - Measure and reduce the remaining dynamic item-model property-selection,
   changed-instance upload, draw/pipeline state churn, and driver-deferred
   resident-release tails. Any change must preserve exact phase/translucent

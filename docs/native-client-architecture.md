@@ -431,6 +431,14 @@ reused; the renderer swaps its previous instance allocation back to this owner.
 The latest/peak phase durations, row counts, and capacity-growth count are
 published in the next immutable generation's renderer telemetry.
 
+Heap-heavy non-entity extraction uses a separate render-thread scratch owner.
+Bed, sign board/text, and lectern-book projections are retained behind exact
+level, terrain/light, block-entity-data, resource, and text-filter edges;
+crumbling and every partial-tick/camera/animation-dependent block entity remain
+frame-local. Dynamic debug vectors are cleared and swapped back from the
+renderer, while revision-keyed GameTest boxes/text remain separate until both
+lanes enter the same ordered mesh builders.
+
 Item and map rendering use a second discardable render-owned residency boundary,
 not another gameplay owner. `bbb-item-model` resolves an exact model identity
 and dynamic properties without naming GPU resources; native extraction supplies

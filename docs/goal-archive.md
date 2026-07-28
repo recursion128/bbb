@@ -643,3 +643,6 @@
 - **2026-07-28（稳定 HUD 投影缓存工程闭环）**：scoreboard sidebar 与 player
   list 现按 world、资源、异步 profile/skin 和可见性修订键复用静态负载；心形分数
   的 GUI tick 状态独立逐帧同步，不把动画时间并入缓存键。
+- **2026-07-28（稳定方块实体与调试投影缓存工程闭环）**：Bed、Sign、Lectern
+  与 GameTest 高亮现按精确 world/resource/filter 修订边缘重建；动态方块实体继续
+  逐帧提取，四类调试向量在 native/renderer 间循环复用并保持共享排序。
