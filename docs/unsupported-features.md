@@ -90,9 +90,6 @@ Owner: `bbb-protocol`
   through its sparse evidence override; consuming the right wire length or
   retaining only a component type id does not establish typed decode,
   canonical retention, re-encoding, persistent projection, or a consumer.
-- Thread the world/session owner into generic packet Components whose nested
-  player, dialog-holder, or show-item payloads require registry context, while
-  preserving an explicit unknown result in context-free callers.
 - Preserve or explicitly reject lone-surrogate `\u`/`\U`/`\N{name}`
   SNBT escapes instead of passing them through the current UTF-8-backed canonical
   string state; follow `TagParser` and the Java UTF-16 string model.

@@ -637,3 +637,6 @@
   flattened SNBT 与 direct Dialog HolderSet 的精确深度边界现均由生产尺寸线程上的
   字节预算反向守卫；合同见
   `docs/archive/recursive-untrusted-decode-stack-budget-design.md`。
+- **2026-07-27（通用数据包 Component owner 工程闭环）**：直接 Component/Style
+  载体现保留精确 NBT，并在任何 world mutation 前用当前 session RegistryAccess
+  原子预检；合同见 `docs/archive/generic-packet-component-owner-design.md`。
