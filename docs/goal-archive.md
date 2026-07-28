@@ -680,3 +680,6 @@
 - **2026-07-28（ServerData 表现与持久化工程闭环）**：trusted MOTD Component、
   Vanilla `validateIcon` 与显式启动配置的 `servers.dat` owner 已贯通共享 packet
   apply；合同见 `docs/archive/server-data-persistence-design.md`。
+- **2026-07-28（Vanilla Java 生成器前端迁移闭环）**：所有直接 Java-source
+  consumer 已统一到共享 Tree-sitter 前端，runtime probes 显式隔离，并新增自动
+  source-ownership 防回退测试；合同见 `docs/archive/vanilla-java-frontend-closeout-design.md`。

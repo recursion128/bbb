@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import sys
 import unittest
 from pathlib import Path
@@ -17,6 +18,91 @@ from vanilla_java_source import (  # noqa: E402
 
 
 class VanillaJavaSourceFrontendTests(unittest.TestCase):
+    def test_every_production_java_source_reader_uses_the_shared_frontend(
+        self,
+    ) -> None:
+        scripts_root = Path(__file__).resolve().parents[1]
+        frontend_consumers = set()
+        runtime_probes = set()
+
+        for path in sorted(scripts_root.glob("*.py")):
+            if path.name == "vanilla_java_source.py":
+                continue
+            module = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            strings = {
+                node.value
+                for node in ast.walk(module)
+                if isinstance(node, ast.Constant) and isinstance(node.value, str)
+            }
+            call_names = {
+                node.func.id
+                if isinstance(node.func, ast.Name)
+                else node.func.attr
+                for node in ast.walk(module)
+                if isinstance(node, ast.Call)
+                and isinstance(node.func, (ast.Name, ast.Attribute))
+            }
+            module_imports = {
+                alias.name
+                for node in module.body
+                if isinstance(node, ast.Import)
+                for alias in node.names
+            }
+            declares_java_input = any(".java" in value for value in strings)
+            if not declares_java_input:
+                continue
+
+            if any("vanilla-runtime" in value for value in strings):
+                self.assertIn(
+                    "subprocess",
+                    module_imports,
+                    f"{path.name} declares a runtime Java probe but never executes it",
+                )
+                self.assertIn(
+                    "run",
+                    call_names,
+                    f"{path.name} declares a runtime Java probe but never runs it",
+                )
+                self.assertNotIn(
+                    "read_bytes",
+                    call_names,
+                    f"{path.name} mixes the runtime-probe and source-parser boundaries",
+                )
+                runtime_probes.add(path.name)
+                continue
+            if "read_bytes" not in call_names:
+                continue
+
+            frontend_imports = {
+                alias.name
+                for node in module.body
+                if isinstance(node, ast.ImportFrom)
+                and node.module == "vanilla_java_source"
+                for alias in node.names
+            }
+            self.assertTrue(
+                {"parse_source", "parse_sources"} & frontend_imports,
+                f"{path.name} reads Java source without importing the shared frontend",
+            )
+            self.assertTrue(
+                {"parse_source", "parse_sources"} & call_names,
+                f"{path.name} imports but does not call the shared frontend",
+            )
+            frontend_consumers.add(path.name)
+
+        # Lock the audit scanner itself to representative source and runtime
+        # paths so a future refactor cannot make the test pass vacuously.
+        self.assertIn("generate-packet-catalog.py", frontend_consumers)
+        self.assertIn("generate-entity-renderer-catalog.py", frontend_consumers)
+        self.assertEqual(
+            runtime_probes,
+            {
+                "generate-block-placement-defaults.py",
+                "generate-block-state-fluid-replaceability.py",
+                "generate-block-state-support-facts.py",
+            },
+        )
+
     def test_cst_ignores_fake_calls_and_handles_multiline_generics_nested_types(self) -> None:
         raw = br'''
             package fixture.child;

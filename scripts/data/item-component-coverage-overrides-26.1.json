@@ -280,7 +280,7 @@
         "evidence": [
           "vanilla:net/minecraft/world/item/ItemStack.java#addAttributeTooltips",
           "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_stack_attribute_modifiers_tooltip_lines",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback",
           "crates/bbb-item-model/src/item_runtime/icon_model.rs#attribute_modifiers_exact_match",
           "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_component_condition_predicates"
         ],
@@ -814,7 +814,7 @@
         "evidence": [
           "vanilla:net/minecraft/world/item/component/WrittenBookContent.java#addToTooltip",
           "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_written_book_tooltip_lines",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback",
           "crates/bbb-world/src/client/book.rs#book_screen_view_preserves_exact_raw_and_filtered_components",
           "crates/bbb-native/src/runtime/book_screen.rs#rich_book_projection_preserves_style_interaction_and_filtered_page",
           "crates/bbb-item-model/src/item_runtime/icon_model.rs#written_book_exact_match"
@@ -890,7 +890,7 @@
           "crates/bbb-world/src/entities/tests/visibility_equipment_and_mount_projection.rs#entity_model_sources_project_named_and_direct_armor_trim_sprites",
           "crates/bbb-world/src/recipes/slot_display/tests.rs#smithing_trim_uses_reordered_dynamic_holders_and_stable_sampling",
           "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_component_condition_predicates",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback"
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback"
         ],
         "gap": null,
         "status": "complete"
@@ -1032,7 +1032,7 @@
           "vanilla:net/minecraft/world/item/component/FireworkExplosion.java#addToTooltip",
           "vanilla:net/minecraft/client/color/item/Firework.java#calculate",
           "crates/bbb-item-model/src/item_runtime/tests.rs#item_tint_sources_use_stack_component_colors_when_available",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback",
           "crates/bbb-native/src/particle_runtime/resolver_firework.rs#append_firework_explosion_sparks",
           "crates/bbb-native/src/runtime/events/tests/entity_particle_events.rs#firework_entity_event_with_explosions_emits_firework_particles"
         ],
@@ -1100,7 +1100,7 @@
         "evidence": [
           "vanilla:net/minecraft/world/item/component/Fireworks.java#addToTooltip",
           "vanilla:net/minecraft/world/entity/projectile/FireworkRocketEntity.java#getExplosions",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback",
           "crates/bbb-world/src/entities/tests/item_entity_and_pickup_projection.rs#firework_rocket_explosion_particle_state_projects_event_context",
           "crates/bbb-native/src/runtime/events/tests/entity_particle_events.rs#firework_entity_event_with_explosions_emits_firework_particles",
           "crates/bbb-native/src/particle_runtime/tests.rs#firework_rocket_trail_batch_matches_vanilla_client_tick_particle"
@@ -1170,7 +1170,7 @@
         "evidence": [
           "vanilla:net/minecraft/world/item/component/ResolvableProfile.java#DYNAMIC_TOOLTIP",
           "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_profile_tooltip_lines",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback",
           "crates/bbb-item-model/src/item_runtime/tests.rs#player_skin_for_profile_resolves_dynamic_owner_before_skin_selection",
           "crates/bbb-item-model/src/item_runtime/tests.rs#player_profile_resource_texture_patch_loads_local_body_skin"
         ],
@@ -1588,7 +1588,7 @@
         "evidence": [
           "vanilla:net/minecraft/world/item/component/SeededContainerLoot.java#addToTooltip",
           "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_container_loot_tooltip_lines",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback"
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback"
         ],
         "gap": null,
         "status": "complete"
@@ -1612,7 +1612,7 @@
           "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_resource_key_and_component_catalog_metadata",
           "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#rejects_invalid_resource_key_and_component_catalog_metadata",
           "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback"
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback"
         ],
         "gap": null,
         "status": "complete"
@@ -2034,7 +2034,7 @@
         "evidence": [
           "vanilla:net/minecraft/world/item/ItemStack.java#getStyledHoverName",
           "crates/bbb-item-model/src/item_runtime/tooltip.rs#hover_name_source_runs_for_component_patch",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback",
           "crates/bbb-item-model/src/item_runtime/icon_model.rs#item_exact_component_matches",
           "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_component_condition_predicates"
         ],
@@ -2059,7 +2059,7 @@
           "crates/bbb-protocol/src/packets/data_components.rs#encodes_name_component_patch_with_independent_delimiters",
           "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_name_components",
           "crates/bbb-world/src/client/dialog/body/component_value/text_component/tests.rs#decodes_custom_and_item_name_component_alternatives",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback"
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback"
         ],
         "gap": null,
         "status": "complete"
@@ -2243,7 +2243,7 @@
         "evidence": [
           "vanilla:net/minecraft/world/item/component/ItemLore.java#addToTooltip",
           "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_stack_detail_tooltip_lines",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback",
           "crates/bbb-item-model/src/item_runtime/icon_model.rs#item_exact_component_matches",
           "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_component_condition_predicates"
         ],
@@ -2268,7 +2268,7 @@
           "crates/bbb-protocol/src/packets/data_components.rs#encodes_lore_patch_with_delimited_canonical_components",
           "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_lore_component",
           "crates/bbb-world/src/client/dialog/body/component_value/text_component/tests.rs#decodes_lore_components_in_order_and_at_collection_boundaries",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback"
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback"
         ],
         "gap": null,
         "status": "complete"
@@ -2316,7 +2316,7 @@
           "crates/bbb-item-model/src/item_runtime/tooltip.rs#item_rarity_for_stack",
           "crates/bbb-item-model/src/item_runtime/icon_model.rs#Self::Rarity",
           "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_component_select_values",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback"
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback"
         ],
         "gap": null,
         "status": "complete"
@@ -2338,7 +2338,7 @@
           "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_rarity_component",
           "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#rejects_invalid_primitive_component_value_codecs",
           "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_component_select_values",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback"
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback"
         ],
         "gap": null,
         "status": "complete"
@@ -2432,7 +2432,7 @@
           "crates/bbb-protocol/src/packets/data_components/catalog.rs#decode_intangible_projectile",
           "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values",
           "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_primitive_component_value_codecs",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback"
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback"
         ],
         "gap": null,
         "status": "complete"
@@ -2456,7 +2456,7 @@
           "vanilla:net/minecraft/world/item/ProjectileWeaponItem.java#useAmmo",
           "vanilla:net/minecraft/world/entity/projectile/arrow/AbstractArrow.java#INTANGIBLE_PROJECTILE",
           "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_intangible_projectile_tooltip_line",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback"
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback"
         ],
         "gap": null,
         "status": "complete"
@@ -2479,7 +2479,7 @@
           "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_intangible_projectile_component",
           "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values",
           "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback"
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback"
         ],
         "gap": null,
         "status": "complete"
@@ -2530,7 +2530,7 @@
         "evidence": [
           "vanilla:net/minecraft/world/item/component/InstrumentComponent.java#addToTooltip",
           "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_instrument_tooltip_lines",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback",
           "crates/bbb-world/src/registries/instrument_values.rs#synchronized_instrument_presentation",
           "crates/bbb-world/src/registries/instrument_values.rs#projects_network_and_known_pack_instruments_in_session_order"
         ],
@@ -2558,7 +2558,7 @@
           "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_direct_instrument_component",
           "crates/bbb-protocol/src/packets/data_components.rs#decodes_inline_instrument_direct_sound_and_exact_component",
           "crates/bbb-native/src/input/component_patch.rs#instrument_encoder_uses_session_order_or_fixed_catalog",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback",
           "crates/bbb-world/src/registries/instrument_values.rs#projects_network_and_known_pack_instruments_in_session_order",
           "crates/bbb-world/src/client/dialog/body/component_value/instrument/tests.rs#rejects_malformed_direct_instrument_records_and_positive_floats"
         ],
@@ -2925,7 +2925,7 @@
         "evidence": [
           "vanilla:net/minecraft/world/level/block/entity/BannerPatternLayers.java#addToTooltip",
           "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_banner_pattern_tooltip_lines",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback",
           "crates/bbb-world/src/registries/banner_patterns.rs#synchronized_presentations_follow_server_order_and_direct_codec_fields",
           "crates/bbb-world/src/registries/banner_patterns.rs#named_and_direct_block_entity_holders_share_typed_projection"
         ],
@@ -2954,7 +2954,7 @@
           "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_banner_patterns_component",
           "crates/bbb-protocol/src/packets/data_components.rs#decodes_banner_pattern_layers_component_summary",
           "crates/bbb-native/src/input/component_patch.rs#banner_pattern_encoders_use_session_order_or_fixed_catalog",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback",
           "crates/bbb-world/src/registries/banner_patterns.rs#synchronized_presentations_follow_server_order_and_direct_codec_fields",
           "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_banner_pattern_layers_with_named_holders_and_dye_colors"
         ],
@@ -3079,7 +3079,7 @@
           "vanilla:net/minecraft/world/item/component/BundleContents.java#getWeight",
           "vanilla:net/minecraft/world/level/block/entity/BeehiveBlockEntity.java#applyImplicitComponents",
           "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_bees_tooltip_lines",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback",
           "crates/bbb-item-model/src/item_runtime/icon_model.rs#evaluate_bundle_weight",
           "crates/bbb-item-model/src/item_runtime/icon_model.rs#iterative_bundle_fullness_preserves_recursive_evaluation_order"
         ],
@@ -3107,7 +3107,7 @@
           "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_bees_component",
           "crates/bbb-protocol/src/packets/data_components.rs#bees_typed_entity_data_strips_id_and_rejects_invalid_values",
           "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback",
           "crates/bbb-item-model/src/item_runtime/icon_model.rs#iterative_bundle_fullness_preserves_recursive_evaluation_order",
           "crates/bbb-world/src/client/dialog/body/component_value/bees/tests.rs#decodes_bee_occupants_with_builtin_typed_entity_data"
         ],
@@ -3276,7 +3276,7 @@
           "vanilla:net/minecraft/world/item/alchemy/PotionContents.java#getColor",
           "vanilla:net/minecraft/world/item/alchemy/PotionContents.java#addToTooltip",
           "crates/bbb-item-model/src/item_runtime/tests.rs#item_tint_sources_use_stack_component_colors_when_available",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback",
           "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_component_condition_predicates",
           "crates/bbb-world/src/recipes/slot_display/tests.rs#with_any_potion_uses_potion_outer_order_and_replaces_custom_contents"
         ],
@@ -3418,7 +3418,7 @@
           "vanilla:net/minecraft/world/item/component/SuspiciousStewEffects.java#addToTooltip",
           "vanilla:net/minecraft/world/item/component/SuspiciousStewEffects.java#onConsume",
           "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_suspicious_stew_tooltip_lines",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback",
           "crates/bbb-world/src/entities/status.rs#apply_update_mob_effect"
         ],
         "gap": null,
@@ -3442,7 +3442,7 @@
           "crates/bbb-protocol/src/packets/data_components.rs#encodes_potion_effect_family_patch_with_independent_delimiters",
           "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_potion_effect_family_components",
           "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_suspicious_stew_effects_with_builtin_holders_and_lenient_duration",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback"
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback"
         ],
         "gap": null,
         "status": "complete"
@@ -3862,7 +3862,7 @@
         "evidence": [
           "vanilla:net/minecraft/world/item/component/TooltipDisplay.java#shows",
           "crates/bbb-item-model/src/item_runtime/tooltip.rs#tooltip_display_shows",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback"
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback"
         ],
         "gap": null,
         "status": "complete"
@@ -3884,7 +3884,7 @@
           "crates/bbb-protocol/src/packets/data_components/catalog.rs#tooltip_display_descriptor_rejects_noncanonical_values_atomically",
           "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_tooltip_display_component",
           "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback"
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback"
         ],
         "gap": null,
         "status": "complete"
@@ -4504,7 +4504,7 @@
           "vanilla:net/minecraft/client/renderer/entity/ItemFrameRenderer.java#MapId framedMapId",
           "vanilla:net/minecraft/world/inventory/CartographyTableMenu.java#stack.has(DataComponents.MAP_ID)",
           "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_map_id_tooltip_lines",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback",
           "crates/bbb-native/src/item_models/first_person.rs#if let Some(map_id) = stack.component_patch.map_id",
           "crates/bbb-native/src/item_models/tests.rs#first_person_item_models_render_two_handed_filled_map_surface",
           "crates/bbb-native/src/item_frames.rs#let map = state.map_id.and_then",
@@ -4531,7 +4531,7 @@
           "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_map_id_component",
           "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values",
           "crates/bbb-native/src/input/component_patch.rs#map_id_encoder_preserves_the_full_signed_domain",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback",
           "crates/bbb-native/src/item_models/tests.rs#first_person_item_models_render_two_handed_filled_map_surface",
           "crates/bbb-native/src/item_frames.rs#filled_map_frame_renders_decoded_full_frame_map_when_data_exists",
           "crates/bbb-world/src/client/inventory/tests.rs#apply_local_cartography_table_player_map_id_quick_move_routes_to_map_slot"
@@ -4581,7 +4581,7 @@
           "vanilla:net/minecraft/world/level/saveddata/maps/MapId.java#DataComponents.MAP_POST_PROCESSING",
           "vanilla:net/minecraft/world/inventory/CartographyTableMenu.java#result.set(DataComponents.MAP_POST_PROCESSING",
           "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_map_id_tooltip_lines",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback",
           "crates/bbb-native/src/runtime.rs#fn cartography_result_mode",
           "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_projects_cartography_table_result_modes"
         ],
@@ -4594,7 +4594,7 @@
           "crates/bbb-protocol/src/packets/data_components/catalog.rs#map_post_processing_descriptor_rejects_a_missing_value_atomically",
           "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_map_post_processing_component",
           "crates/bbb-protocol/src/packets/data_components.rs#decodes_map_post_processing_out_of_bounds_as_lock",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback",
           "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_projects_cartography_table_result_modes"
         ],
         "gap": null,
@@ -5013,7 +5013,7 @@
           "vanilla:net/minecraft/world/item/component/OminousBottleAmplifier.java#public void addToTooltip",
           "vanilla:net/minecraft/world/item/ItemStack.java#DataComponents.OMINOUS_BOTTLE_AMPLIFIER",
           "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_ominous_bottle_tooltip_lines",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback"
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback"
         ],
         "gap": null,
         "status": "complete"
@@ -5036,7 +5036,7 @@
           "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_ominous_bottle_amplifier_component",
           "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
           "crates/bbb-native/src/input/tests.rs#item_stack_snbt_omits_components_with_invalid_persistent_integer_ranges",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback"
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback"
         ],
         "gap": null,
         "status": "complete"
@@ -5158,7 +5158,7 @@
           "vanilla:net/minecraft/world/item/HangingEntityItem.java#DataComponents.PAINTING_VARIANT",
           "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_painting_variant_tooltip_lines",
           "crates/bbb-item-model/src/item_runtime/tooltip.rs#push_painting_variant_presentation_tooltip_lines",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback",
           "crates/bbb-world/src/registries/painting_variants.rs#pub struct PaintingVariantPresentation"
         ],
         "gap": null,
@@ -5182,7 +5182,7 @@
           "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_direct_painting_variant_component",
           "crates/bbb-protocol/src/packets/data_components.rs#decodes_supported_data_component_patch_values",
           "crates/bbb-native/src/input/component_patch.rs#painting_variant_encoder_uses_session_order_or_fixed_baseline",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback",
           "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#decodes_painting_variant_named_holder_from_session_registry"
         ],
         "gap": null,
@@ -5230,7 +5230,6 @@
           "vanilla:net/minecraft/world/entity/player/Player.java#public boolean canEat",
           "crates/bbb-world/src/client/inventory.rs#local_item_in_hand_can_start_consuming",
           "crates/bbb-world/src/client/inventory/tests.rs#local_food_consumption_gate_matches_player_can_eat_and_component_precedence",
-          "crates/bbb-native/src/input/mouse.rs#no_target_item_use_hand",
           "crates/bbb-native/src/input/mouse.rs#full_food_consumable_blocks_main_hand_and_falls_through_to_offhand"
         ],
         "gap": null,
@@ -6652,7 +6651,7 @@
           "vanilla:net/minecraft/world/entity/animal/fish/TropicalFish.java#protected void applyImplicitComponents",
           "vanilla:net/minecraft/world/entity/animal/fish/TropicalFish.java#public void addToTooltip",
           "vanilla:net/minecraft/client/renderer/entity/layers/TropicalFishPatternLayer.java#public void submit",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback",
           "crates/bbb-native/src/entity_scene/tests.rs#entity_model_kind_projects_tropical_fish_pattern_and_pattern_color_from_packed_variant",
           "crates/bbb-renderer/src/entity_models/tests/tropical_fish.rs#tropical_fish_textured_layer_passes_match_vanilla_renderer"
         ],
@@ -6677,7 +6676,7 @@
           "crates/bbb-protocol/src/packets/data_components/catalog.rs#tropical_fish_pattern_descriptor_round_trips_sparse_ids_and_rejects_invalid_values_atomically",
           "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_tropical_fish_pattern_component",
           "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback",
           "crates/bbb-native/src/entity_scene/tests.rs#entity_model_kind_projects_tropical_fish_pattern_and_pattern_color_from_packed_variant",
           "crates/bbb-renderer/src/entity_models/tests/tropical_fish.rs#tropical_fish_textured_layer_passes_match_vanilla_renderer"
         ],
@@ -6731,7 +6730,7 @@
           "vanilla:net/minecraft/world/entity/animal/fish/TropicalFish.java#public void addToTooltip",
           "vanilla:net/minecraft/client/renderer/entity/TropicalFishRenderer.java#public void extractRenderState",
           "vanilla:net/minecraft/client/renderer/entity/TropicalFishRenderer.java#protected int getModelTint",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback",
           "crates/bbb-native/src/entity_scene/tests.rs#entity_model_kind_projects_tropical_fish_base_color_from_packed_variant",
           "crates/bbb-renderer/src/entity_models/tests/tropical_fish.rs#tropical_fish_textured_layer_passes_match_vanilla_renderer"
         ],
@@ -6759,7 +6758,7 @@
           "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_tropical_fish_base_color_component",
           "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#tropical_fish_base_color_string_enum_projects_to_owned_patch_field",
           "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback",
           "crates/bbb-native/src/entity_scene/tests.rs#entity_model_kind_projects_tropical_fish_base_color_from_packed_variant",
           "crates/bbb-renderer/src/entity_models/tests/tropical_fish.rs#tropical_fish_textured_layer_passes_match_vanilla_renderer"
         ],
@@ -6815,7 +6814,7 @@
           "vanilla:net/minecraft/world/entity/animal/fish/TropicalFish.java#public void addToTooltip",
           "vanilla:net/minecraft/client/renderer/entity/TropicalFishRenderer.java#public void extractRenderState",
           "vanilla:net/minecraft/client/renderer/entity/layers/TropicalFishPatternLayer.java#public void submit",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback",
           "crates/bbb-native/src/entity_scene/tests.rs#entity_model_kind_projects_tropical_fish_pattern_and_pattern_color_from_packed_variant",
           "crates/bbb-renderer/src/entity_models/tests/tropical_fish.rs#tropical_fish_textured_layer_passes_match_vanilla_renderer"
         ],
@@ -6843,7 +6842,7 @@
           "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_tropical_fish_pattern_color_component",
           "crates/bbb-world/src/client/dialog/body/component_value/tests.rs#tropical_fish_pattern_color_string_enum_projects_to_owned_patch_field",
           "crates/bbb-native/src/input/tests.rs#item_stack_snbt_projects_supported_component_patch_in_wire_order",
-          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_fixture_and_keeps_missingno_fallback",
+          "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback",
           "crates/bbb-native/src/entity_scene/tests.rs#entity_model_kind_projects_tropical_fish_pattern_and_pattern_color_from_packed_variant",
           "crates/bbb-renderer/src/entity_models/tests/tropical_fish.rs#tropical_fish_textured_layer_passes_match_vanilla_renderer"
         ],

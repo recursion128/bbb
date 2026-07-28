@@ -105,7 +105,7 @@
         "crates/bbb-world/src/registries/armor_trims.rs#fn synchronized_presentations_follow_server_order_and_keep_component_trees",
         "crates/bbb-world/src/entities/tests/visibility_equipment_and_mount_projection.rs#fn entity_model_sources_project_synchronized_custom_armor_trim_payloads",
         "crates/bbb-native/src/item_models/tests.rs#fn trim_tooltip_context_keeps_valid_payloads_and_only_known_vanilla_stubs",
-        "crates/bbb-item-model/src/item_runtime/tests.rs#fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback"
+        "crates/bbb-item-model/src/item_runtime/tests.rs#fn native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback"
       ],
       "decision": "Vanilla 26.1 synchronizes TrimMaterial.DIRECT_CODEC and TrimPattern.DIRECT_CODEC and sends named or direct holders in item components. Protocol retains direct Component NBT; world decodes synchronized assets, descriptions, overrides, and decal through current-session holder order with exact field diagnostics; renderer and tooltip consumers share that typed projection. Only known vanilla data-less stubs use resource-identity fallback, while custom stubs, malformed payloads, and unknown holders never fall back by bootstrap ordinal."
     },
@@ -428,7 +428,7 @@
         "vanilla:net/minecraft/world/entity/player/Player.java#protected SoundEvent getHurtSound",
         "crates/bbb-protocol/src/packets/client_state.rs#pub struct DamageEvent",
         "crates/bbb-world/src/registries/damage_types.rs#pub fn damage_type_effects_by_holder_id",
-        "crates/bbb-world/src/play_apply.rs#fn damage_event_resolves_reordered_type_and_forwards_player_hurt_sound",
+        "crates/bbb-world/src/play_apply.rs#fn local_player_damage_event_resolves_reordered_type_and_forwards_hurt_sound",
         "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#fn damage_type_holder_drives_runtime_player_hurt_audio",
         "crates/bbb-world/src/client/dialog/body/component_value/holder_set/tests.rs#fn decodes_damage_type_named_holder_from_session_registry"
       ],
@@ -596,7 +596,7 @@
         ]
       },
       "status": "complete",
-      "consumer": "crates/bbb-native/src/runtime.rs#fn hud_item_tooltip_lines",
+      "consumer": "crates/bbb-native/src/runtime.rs#fn hud_item_tooltip",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryDataLoader.java#new RegistryDataLoader.RegistryData<>(Registries.ENCHANTMENT, Enchantment.DIRECT_CODEC)",
         "vanilla:net/minecraft/world/item/enchantment/Enchantment.java#ByteBufCodecs.holderRegistry(Registries.ENCHANTMENT)",
@@ -678,10 +678,10 @@
         "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
         "crates/bbb-world/src/recipes/slot_display.rs#pub fn resolve_slot_display_first_stack",
         "crates/bbb-native/src/recipe_book_ui.rs#fn push_slot_display_item_stack_candidates",
-        "crates/bbb-native/src/runtime/tests.rs#fn hud_inventory_screen_reads_replaced_and_removed_tag_ghost_members",
+        "crates/bbb-native/src/runtime/tests.rs#fn hud_inventory_screen_keeps_resolved_tag_ghost_recipe_snapshot",
         "crates/bbb-native/src/runtime/tests.rs#fn stonecutter_buttons_and_tooltips_follow_current_tag_and_trim_context"
       ],
-      "decision": "Vanilla TagSlotDisplay.STREAM_CODEC sends one item TagKey through recipe display packets and resolves it against the current item registry lookup. Protocol retains the normalized tag identity. The world-owned UpdateRecipes resolver and the separate ghost-recipe/recipe-book presentation path both read ordered members from the current UpdateTags revision on every presentation. Replacement changes the selected Stonecutter button and tooltip candidate, removal yields no candidate, and no path substitutes a bootstrap item ordinal."
+      "decision": "Vanilla TagSlotDisplay.STREAM_CODEC sends one item TagKey through recipe display packets and resolves it against the current item registry lookup. Protocol retains the normalized tag identity. The world-owned UpdateRecipes resolver reads ordered members from the current UpdateTags revision for live recipe buttons and tooltips; GhostSlots resolves the packet display once during fillGhostRecipe and retains that ordered ItemStack list while it cycles. Replacement changes live Stonecutter candidates but cannot mutate an already-filled ghost snapshot, removal yields no new candidate, and no path substitutes a bootstrap item ordinal."
     },
     {
       "id": "persistent-hashed-tag-server-only",
