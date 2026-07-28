@@ -65,26 +65,44 @@ impl WorldStore {
                 self.counters.entity_data_updates_ignored += 1;
                 return false;
             }
-            let component = match &value.value {
+            let component_validation = match &value.value {
                 EntityDataValueKind::Component(component)
-                | EntityDataValueKind::OptionalComponent(Some(component)) => Some(component),
-                _ => None,
-            };
-            if let Some(component) = component {
-                if let Err(error) = crate::client::validate_rich_component_with_registry(
-                    component.component(),
-                    self.frozen_registry_access(),
-                ) {
-                    self.record_apply_error(
-                        "entity_data_component",
-                        format!(
-                            "invalid entity data component for entity {id} type {entity_type_id} field {} (id {}): {error}",
-                            accessor.java_name, value.data_id
-                        ),
-                    );
-                    self.counters.entity_data_updates_ignored += 1;
-                    return false;
+                | EntityDataValueKind::OptionalComponent(Some(component)) => {
+                    crate::client::validate_rich_component_with_registry(
+                        component.component(),
+                        self.frozen_registry_access(),
+                    )
                 }
+                EntityDataValueKind::PaintingVariant(variant) => {
+                    let Some(direct) = &variant.direct else {
+                        continue;
+                    };
+                    [
+                        ("title", direct.title.as_ref()),
+                        ("author", direct.author.as_ref()),
+                    ]
+                    .into_iter()
+                    .filter_map(|(field, component)| component.map(|component| (field, component)))
+                    .try_for_each(|(field, component)| {
+                        crate::client::validate_rich_component_with_registry(
+                            component.component(),
+                            self.frozen_registry_access(),
+                        )
+                        .map_err(|error| format!("painting variant {field}: {error}"))
+                    })
+                }
+                _ => Ok(()),
+            };
+            if let Err(error) = component_validation {
+                self.record_apply_error(
+                    "entity_data_component",
+                    format!(
+                        "invalid entity data component for entity {id} type {entity_type_id} field {} (id {}): {error}",
+                        accessor.java_name, value.data_id
+                    ),
+                );
+                self.counters.entity_data_updates_ignored += 1;
+                return false;
             }
         }
         if let Err(error) =

@@ -91,6 +91,9 @@ impl From<&ProtocolGameProfile> for PlayerInfoProfileState {
 impl WorldStore {
     pub fn apply_player_info_update(&mut self, packet: ProtocolPlayerInfoUpdate) -> usize {
         self.counters.player_info_update_packets += 1;
+        if !self.preflight_packet_components(&packet, "player info update") {
+            return 0;
+        }
 
         if packet
             .actions

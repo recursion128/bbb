@@ -132,6 +132,10 @@ impl Default for HudTitleState {
 impl WorldStore {
     pub fn apply_boss_event(&mut self, packet: ProtocolBossEvent) -> bool {
         self.counters.boss_event_packets += 1;
+        if !self.preflight_packet_components(&packet, "boss event") {
+            self.counters.boss_events_ignored += 1;
+            return false;
+        }
         let applied = match packet.operation {
             ProtocolBossEventOperation::Add {
                 name,
@@ -242,6 +246,9 @@ impl WorldStore {
 
     pub fn apply_tab_list(&mut self, packet: ProtocolTabList) {
         self.counters.tab_list_packets += 1;
+        if !self.preflight_packet_components(&packet, "tab list") {
+            return;
+        }
         self.client_hud.tab_list.header = non_empty_tab_list_component(packet.header);
         self.client_hud.tab_list.footer = non_empty_tab_list_component(packet.footer);
     }
@@ -264,6 +271,9 @@ impl WorldStore {
         received_epoch_millis: i64,
     ) {
         self.counters.system_chat_packets += 1;
+        if !self.preflight_packet_components(&packet, "system chat") {
+            return;
+        }
         let line = SystemChatLineState {
             content: packet.content.text().to_string(),
             styled_content: packet.content.styled().to_vec(),
@@ -296,17 +306,26 @@ impl WorldStore {
 
     pub fn apply_action_bar_text(&mut self, packet: ProtocolSetActionBarText) {
         self.counters.action_bar_packets += 1;
+        if !self.preflight_packet_components(&packet, "action bar") {
+            return;
+        }
         self.set_overlay_message(packet.content);
     }
 
     pub fn apply_title_text(&mut self, packet: ProtocolSetTitleText) {
         self.counters.title_text_packets += 1;
+        if !self.preflight_packet_components(&packet, "title") {
+            return;
+        }
         self.client_hud.title.title = Some(packet.content);
         self.client_hud.title.title_time = title_total_ticks(&self.client_hud.title);
     }
 
     pub fn apply_subtitle_text(&mut self, packet: ProtocolSetSubtitleText) {
         self.counters.subtitle_text_packets += 1;
+        if !self.preflight_packet_components(&packet, "subtitle") {
+            return;
+        }
         self.client_hud.title.subtitle = Some(packet.content);
     }
 

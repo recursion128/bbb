@@ -131,6 +131,9 @@ impl WorldStore {
         packet: ProtocolCommandSuggestions,
     ) -> Option<&CommandSuggestionsResultState> {
         self.counters.command_suggestion_packets += 1;
+        if !self.preflight_packet_components(&packet, "command suggestions") {
+            return None;
+        }
         let id = packet.id;
         if self.command_suggestions.pending_request_id != Some(id) {
             return None;

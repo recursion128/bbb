@@ -154,6 +154,9 @@ pub struct LastMapColorPatchState {
 impl WorldStore {
     pub fn apply_map_item_data(&mut self, packet: ProtocolMapItemData) -> bool {
         self.counters.map_item_data_packets += 1;
+        if !self.preflight_packet_components(&packet, "map item data") {
+            return false;
+        }
         let map_id = packet.map_id;
 
         let map = self.maps.entry(map_id).or_insert_with(|| MapItemState {

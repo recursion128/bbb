@@ -1631,6 +1631,125 @@ fn set_entity_data_preserves_rich_component_and_rejects_invalid_owner_payload_at
 }
 
 #[test]
+fn direct_painting_components_reject_atomically_and_recover() {
+    let data_id = crate::vanilla_entity_metadata_painting_variant_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_PAINTING_ID,
+    )
+    .expect("generated Painting variant accessor must resolve");
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        124,
+        VANILLA_ENTITY_TYPE_PAINTING_ID,
+    ));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 124,
+        values: vec![ProtocolEntityDataValue {
+            data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_PAINTING_VARIANT_ID,
+            value: EntityDataValueKind::PaintingVariant(
+                bbb_protocol::packets::PaintingVariantData {
+                    registry: None,
+                    direct: Some(bbb_protocol::packets::DirectPaintingVariantData {
+                        width: 1,
+                        height: 1,
+                        asset_id: "example:old".to_string(),
+                        title: Some(bbb_protocol::RichTextComponent::plain("Old")),
+                        author: Some(bbb_protocol::RichTextComponent::plain("Author")),
+                    }),
+                },
+            ),
+        }],
+    }));
+    let expected = store.probe_entity(124).unwrap().data_values;
+
+    let invalid_author = bbb_protocol::RichTextComponent::try_from_component_nbt(
+        bbb_protocol::NbtSummaryValue::Compound(vec![
+            bbb_protocol::NbtSummaryEntry {
+                name: "text".to_string(),
+                value: bbb_protocol::NbtSummaryValue::String("Invalid".to_string()),
+            },
+            bbb_protocol::NbtSummaryEntry {
+                name: "click_event".to_string(),
+                value: bbb_protocol::NbtSummaryValue::Compound(vec![
+                    bbb_protocol::NbtSummaryEntry {
+                        name: "action".to_string(),
+                        value: bbb_protocol::NbtSummaryValue::String("show_dialog".to_string()),
+                    },
+                    bbb_protocol::NbtSummaryEntry {
+                        name: "dialog".to_string(),
+                        value: bbb_protocol::NbtSummaryValue::String("example:missing".to_string()),
+                    },
+                ]),
+            },
+        ]),
+    )
+    .unwrap();
+    assert!(!store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 124,
+        values: vec![
+            entity_invisible_data(),
+            ProtocolEntityDataValue {
+                data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_PAINTING_VARIANT_ID,
+                value: EntityDataValueKind::PaintingVariant(
+                    bbb_protocol::packets::PaintingVariantData {
+                        registry: None,
+                        direct: Some(bbb_protocol::packets::DirectPaintingVariantData {
+                            width: 2,
+                            height: 1,
+                            asset_id: "example:invalid".to_string(),
+                            title: Some(bbb_protocol::RichTextComponent::plain("New")),
+                            author: Some(invalid_author),
+                        }),
+                    },
+                ),
+            },
+        ],
+    }));
+    assert_eq!(store.probe_entity(124).unwrap().data_values, expected);
+    assert!(store
+        .apply_diagnostics()
+        .last_apply_error
+        .as_ref()
+        .is_some_and(|error| error.source == "entity_data_component"
+            && error.message.contains("painting variant author")
+            && error.message.contains("example:missing")));
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 124,
+        values: vec![ProtocolEntityDataValue {
+            data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_PAINTING_VARIANT_ID,
+            value: EntityDataValueKind::PaintingVariant(
+                bbb_protocol::packets::PaintingVariantData {
+                    registry: None,
+                    direct: Some(bbb_protocol::packets::DirectPaintingVariantData {
+                        width: 2,
+                        height: 1,
+                        asset_id: "example:new".to_string(),
+                        title: Some(bbb_protocol::RichTextComponent::plain("New")),
+                        author: Some(bbb_protocol::RichTextComponent::plain("Recovered")),
+                    }),
+                },
+            ),
+        }],
+    }));
+    assert!(store
+        .probe_entity(124)
+        .unwrap()
+        .data_values
+        .iter()
+        .find_map(|value| match &value.value {
+            EntityDataValueKind::PaintingVariant(variant) => variant.direct.as_ref(),
+            _ => None,
+        })
+        .is_some_and(
+            |direct| direct.title.as_ref().map(|title| title.text()) == Some("New")
+                && direct.author.as_ref().map(|author| author.text()) == Some("Recovered")
+        ));
+}
+
+#[test]
 fn set_entity_data_binds_every_top_level_registry_holder_shape_to_one_session_identity() {
     let cow_accessors =
         crate::vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(

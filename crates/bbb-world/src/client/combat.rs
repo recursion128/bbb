@@ -70,6 +70,9 @@ impl WorldStore {
         packet: ProtocolPlayerCombatKill,
     ) -> PlayerCombatKillApplyOutcome {
         self.counters.player_combat_kill_packets += 1;
+        if !self.preflight_packet_components(&packet, "player combat kill") {
+            return PlayerCombatKillApplyOutcome::Ignored;
+        }
         self.client_combat.last_combat = Some(PlayerCombatEventState {
             kind: "kill".to_string(),
             duration: None,

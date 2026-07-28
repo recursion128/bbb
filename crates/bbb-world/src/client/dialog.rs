@@ -31,7 +31,7 @@ pub use input::{
 };
 
 const MAX_DIALOG_SEMANTIC_DEPTH: usize = 64;
-const DIALOG_REGISTRY: &str = "minecraft:dialog";
+pub(super) const DIALOG_REGISTRY: &str = "minecraft:dialog";
 
 pub(crate) fn decode_persistent_dialog_reference_resource_id(
     value: &NbtSummaryValue,

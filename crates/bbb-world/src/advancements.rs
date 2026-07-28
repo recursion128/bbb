@@ -63,6 +63,9 @@ impl WorldStore {
         let reset = packet.reset;
         let show_advancements = packet.show_advancements;
         self.counters.update_advancements_packets += 1;
+        if !self.preflight_packet_components(&packet, "update advancements") {
+            return;
+        }
         if reset {
             self.counters.update_advancements_reset_packets += 1;
             self.advancements.advancements.clear();

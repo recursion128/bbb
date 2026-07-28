@@ -4,6 +4,7 @@ mod book;
 mod chat;
 mod combat;
 mod command_suggestions;
+mod component_owner;
 mod debug_game;
 mod debug_query;
 mod dialog;

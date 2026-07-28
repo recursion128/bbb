@@ -605,9 +605,12 @@ impl WorldStore {
         now_epoch_millis: i64,
         now_monotonic_millis: u64,
     ) -> PlayerChatApplyOutcome {
+        self.counters.player_chat_packets += 1;
+        if !self.preflight_packet_components(&packet, "player chat") {
+            return PlayerChatApplyOutcome::default();
+        }
         let resolved_chat_type =
             resolve_chat_type(self.frozen_registry_access(), &packet.chat_type.chat_type);
-        self.counters.player_chat_packets += 1;
 
         let expected_global_index = self.client_chat.expected_player_chat_global_index;
         self.client_chat.expected_player_chat_global_index = self
@@ -827,9 +830,12 @@ impl WorldStore {
         now_epoch_millis: i64,
         now_monotonic_millis: u64,
     ) {
+        self.counters.disguised_chat_packets += 1;
+        if !self.preflight_packet_components(&packet, "disguised chat") {
+            return;
+        }
         let resolved_chat_type =
             resolve_chat_type(self.frozen_registry_access(), &packet.chat_type.chat_type);
-        self.counters.disguised_chat_packets += 1;
         let styled_content = nonempty_styled_or_plain(&packet.message_styled, &packet.message);
         let content_component = packet
             .message_component

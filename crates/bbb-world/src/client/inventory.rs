@@ -659,7 +659,6 @@ impl InventoryState {
         ui: &mut ClientUiState,
         packet: ProtocolOpenScreen,
     ) {
-        counters.container_open_updates_received += 1;
         ui.replace_screen();
         self.local_inventory_open = false;
         self.local_quick_craft.reset();
@@ -3079,6 +3078,10 @@ impl WorldStore {
     }
 
     pub fn apply_open_screen(&mut self, packet: ProtocolOpenScreen) {
+        self.counters.container_open_updates_received += 1;
+        if !self.preflight_packet_components(&packet, "open screen") {
+            return;
+        }
         self.inventory
             .apply_open_screen(&mut self.counters, &mut self.client_ui, packet)
     }

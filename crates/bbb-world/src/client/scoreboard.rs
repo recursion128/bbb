@@ -374,6 +374,9 @@ impl ScoreboardTeamParameters {
 impl WorldStore {
     pub fn apply_set_objective(&mut self, packet: ProtocolSetObjective) -> bool {
         self.counters.set_objective_packets += 1;
+        if !self.preflight_packet_components(&packet, "set objective") {
+            return self.finish_set_objective_update(false);
+        }
 
         let applied = match packet.method.known() {
             Some(ProtocolSetObjectiveMethod::Add) => {
@@ -429,6 +432,9 @@ impl WorldStore {
 
     pub fn apply_set_score(&mut self, packet: ProtocolSetScore) -> bool {
         self.counters.set_score_packets += 1;
+        if !self.preflight_packet_components(&packet, "set score") {
+            return self.finish_set_score_update(false);
+        }
         if !self
             .scoreboard
             .objectives
@@ -497,6 +503,9 @@ impl WorldStore {
 
     pub fn apply_set_player_team(&mut self, packet: ProtocolSetPlayerTeam) -> bool {
         self.counters.set_player_team_packets += 1;
+        if !self.preflight_packet_components(&packet, "set player team") {
+            return self.finish_set_player_team_update(false);
+        }
 
         let applied = match packet.method.known() {
             Some(ProtocolPlayerTeamMethod::Add) => {

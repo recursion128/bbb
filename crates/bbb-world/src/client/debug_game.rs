@@ -463,6 +463,9 @@ impl WorldStore {
 
     pub fn apply_test_instance_block_status(&mut self, packet: ProtocolTestInstanceBlockStatus) {
         self.counters.test_instance_block_status_packets += 1;
+        if !self.preflight_packet_components(&packet, "test instance block status") {
+            return;
+        }
         self.apply_test_instance_block_status_to_editor(&packet);
         self.client_debug_game.last_test_instance_block_status =
             Some(TestInstanceBlockStatusState {
