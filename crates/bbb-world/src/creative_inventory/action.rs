@@ -88,6 +88,25 @@ impl CreativeInventoryActionPlan {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct CreativeHotbarPresetLoadPlan {
+    client_level_generation: u64,
+    inventory_before: InventoryState,
+    inventory_after: InventoryState,
+    commands: Vec<ProtocolSetCreativeModeSlot>,
+}
+
+impl CreativeHotbarPresetLoadPlan {
+    pub fn commands(&self) -> &[ProtocolSetCreativeModeSlot] {
+        &self.commands
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CreativeHotbarPresetError {
+    NoInfiniteMaterials,
+}
+
 impl WorldStore {
     pub fn plan_creative_inventory_action(
         &self,
@@ -182,6 +201,74 @@ impl WorldStore {
         }
         self.commit_creative_inventory_state(plan.inventory_after);
         true
+    }
+
+    /// The save half of Vanilla
+    /// `CreativeModeInventoryScreen.handleHotbarLoadOrSave`:
+    /// `Hotbar.storeFrom` snapshots the player inventory's selection row.
+    /// The `hasInfiniteMaterials` gate lives in `Minecraft.handleKeybinds`.
+    pub fn creative_hotbar_preset_snapshot(
+        &self,
+    ) -> Result<Vec<ItemStackSummary>, CreativeHotbarPresetError> {
+        self.validate_infinite_materials()?;
+        Ok(self.inventory.hotbar_items().to_vec())
+    }
+
+    /// The load half of `handleHotbarLoadOrSave`: `inventory.setItem(i, ...)`
+    /// plus `handleCreativeModeItemAdd(stack, 36 + i)` per hotbar column,
+    /// with no screen requirement (the keybind path runs without one).
+    pub fn plan_creative_hotbar_preset_load(
+        &self,
+        items: &[ItemStackSummary],
+    ) -> Result<CreativeHotbarPresetLoadPlan, CreativeHotbarPresetError> {
+        self.validate_infinite_materials()?;
+        let mut inventory_after = self.inventory.clone();
+        let mut commands = Vec::with_capacity(usize::from(PLAYER_HOTBAR_SIZE));
+        for (index, item) in items
+            .iter()
+            .take(usize::from(PLAYER_HOTBAR_SIZE))
+            .enumerate()
+        {
+            let slot_num = INVENTORY_MENU_HOTBAR_START + index as i16;
+            set_inventory_menu_slot(&mut inventory_after, slot_num, item.clone());
+            commands.push(ProtocolSetCreativeModeSlot {
+                slot_num,
+                item: item.clone(),
+            });
+        }
+        Ok(CreativeHotbarPresetLoadPlan {
+            client_level_generation: self.client_level_generation,
+            inventory_before: self.inventory.clone(),
+            inventory_after,
+            commands,
+        })
+    }
+
+    pub fn apply_creative_hotbar_preset_load(
+        &mut self,
+        plan: CreativeHotbarPresetLoadPlan,
+    ) -> bool {
+        if self.client_level_generation != plan.client_level_generation
+            || self.validate_infinite_materials().is_err()
+            || self.inventory != plan.inventory_before
+        {
+            return false;
+        }
+        self.commit_creative_inventory_state(plan.inventory_after);
+        true
+    }
+
+    fn validate_infinite_materials(&self) -> Result<(), CreativeHotbarPresetError> {
+        if self
+            .local_player
+            .abilities
+            .as_ref()
+            .is_some_and(|abilities| abilities.instabuild)
+        {
+            Ok(())
+        } else {
+            Err(CreativeHotbarPresetError::NoInfiniteMaterials)
+        }
     }
 
     fn validate_creative_action_owner(&self) -> Result<(), CreativeInventoryActionPlanError> {

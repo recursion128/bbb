@@ -37,6 +37,7 @@ mod entity_variant_textures;
 mod environment_animate_runtime;
 mod environment_audio_runtime;
 mod game_test_highlights;
+mod hotbar_presets;
 mod hud_assets;
 mod input;
 mod item_entities;
@@ -607,6 +608,7 @@ fn main() -> Result<()> {
     window.set_ime_allowed(true);
     let mut input = ClientInputState::new(window.has_focus());
     input.set_client_text_filtering_enabled(args.client_text_filtering);
+    input.set_hotbar_preset_store_path(hotbar_presets::default_hotbar_preset_store_path());
     let startup_debug_profile = args.debug_profile.into();
     if let Some(path) = args.debug_profile_store.clone() {
         input.set_debug_profile_store_path(path.clone());

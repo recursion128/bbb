@@ -27,7 +27,10 @@ use crate::{
     VanillaEnchantmentIdentity, WorldStore, INSTRUMENT_REGISTRY, PAINTING_VARIANT_REGISTRY,
 };
 
-use super::{CreativeInventoryAction, CreativeInventoryActionPlanError, CreativeInventoryTabType};
+use super::{
+    CreativeHotbarPresetError, CreativeInventoryAction, CreativeInventoryActionPlanError,
+    CreativeInventoryTabType,
+};
 
 const REGULAR_GOAT_HORNS: &str = "minecraft:regular_goat_horns";
 const SCREAMING_GOAT_HORNS: &str = "minecraft:screaming_goat_horns";
@@ -1081,4 +1084,52 @@ fn creative_action_gates_and_stale_plan_preserve_server_authority() {
         world.plan_creative_inventory_action(&action, true),
         Err(CreativeInventoryActionPlanError::NoCreativeScreen)
     );
+}
+
+#[test]
+fn hotbar_preset_snapshot_load_and_stale_plan_follow_vanilla_gates() {
+    let mut world = WorldStore::new();
+    assert_eq!(
+        world.creative_hotbar_preset_snapshot(),
+        Err(CreativeHotbarPresetError::NoInfiniteMaterials)
+    );
+    assert_eq!(
+        world.plan_creative_hotbar_preset_load(&[]).err(),
+        Some(CreativeHotbarPresetError::NoInfiniteMaterials)
+    );
+
+    world.local_player.abilities = Some(creative_abilities());
+    let mut items = world.creative_hotbar_preset_snapshot().unwrap();
+    assert_eq!(items.len(), 9);
+    items[0] = item_stack(VANILLA_ITEM_STONE_ID, 64);
+    items[8] = item_stack(VANILLA_ITEM_DIAMOND_ID, 3);
+
+    let plan = world.plan_creative_hotbar_preset_load(&items).unwrap();
+    assert_eq!(
+        plan.commands()
+            .iter()
+            .map(|command| command.slot_num)
+            .collect::<Vec<_>>(),
+        (36..45).collect::<Vec<i16>>()
+    );
+    assert_eq!(
+        plan.commands()[0].item,
+        item_stack(VANILLA_ITEM_STONE_ID, 64)
+    );
+
+    let stale = world.plan_creative_hotbar_preset_load(&items).unwrap();
+    assert!(world.apply_creative_hotbar_preset_load(plan));
+    assert_eq!(
+        world.inventory.hotbar_items()[0],
+        item_stack(VANILLA_ITEM_STONE_ID, 64)
+    );
+    assert_eq!(
+        world.inventory.hotbar_items()[8],
+        item_stack(VANILLA_ITEM_DIAMOND_ID, 3)
+    );
+    assert!(!world.apply_creative_hotbar_preset_load(stale));
+
+    let plan = world.plan_creative_hotbar_preset_load(&items).unwrap();
+    world.local_player.abilities = None;
+    assert!(!world.apply_creative_hotbar_preset_load(plan));
 }

@@ -28302,3 +28302,109 @@ fn mannequin_local_save_hides_description_and_omits_default_label() {
     assert!(!snbt.contains("hide_description"));
     assert!(!snbt.contains("description: \""));
 }
+
+#[test]
+fn hotbar_preset_activators_save_and_load_with_infinite_materials() {
+    let (tx, mut rx) = mpsc::channel(32);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let store_path = std::env::temp_dir().join(format!(
+        "bbb-hotbar-preset-input-{}-{}.json",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    input.set_hotbar_preset_store_path(store_path.clone());
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    set_player_abilities(&mut world, false, true);
+    equip_player_slot(&mut world, 0, 1, 64);
+
+    for code in [KeyCode::KeyC, KeyCode::Digit3] {
+        handle_key_input(
+            &mut input,
+            &mut counters,
+            &mut world,
+            &commands,
+            PhysicalKey::Code(code),
+            ElementState::Pressed,
+        );
+    }
+    assert_eq!(world.local_player().selected_hotbar_slot, 0);
+    assert!(store_path.exists());
+    assert_eq!(
+        world.action_bar().expect("hotbar saved overlay").content,
+        RichTextComponent::plain("Item hotbar saved (restore with X + 3)")
+    );
+    assert!(rx.try_recv().is_err());
+    for code in [KeyCode::KeyC, KeyCode::Digit3] {
+        handle_key_input(
+            &mut input,
+            &mut counters,
+            &mut world,
+            &commands,
+            PhysicalKey::Code(code),
+            ElementState::Released,
+        );
+    }
+
+    equip_player_slot(&mut world, 0, 848, 1);
+    for code in [KeyCode::KeyX, KeyCode::Digit3] {
+        handle_key_input(
+            &mut input,
+            &mut counters,
+            &mut world,
+            &commands,
+            PhysicalKey::Code(code),
+            ElementState::Pressed,
+        );
+    }
+    assert_eq!(world.local_player().selected_hotbar_slot, 0);
+    assert_eq!(world.inventory().hotbar_items()[0].item_id, Some(1));
+    assert_eq!(world.inventory().hotbar_items()[0].count, 64);
+    let mut queued_slots = Vec::new();
+    while let Ok(command) = rx.try_recv() {
+        match command {
+            NetCommand::SetCreativeModeSlot(command) => queued_slots.push(command.slot_num),
+            other => panic!("unexpected command queued for preset load: {other:?}"),
+        }
+    }
+    assert_eq!(queued_slots, (36..45).collect::<Vec<i16>>());
+    let _ = std::fs::remove_file(&store_path);
+}
+
+#[test]
+fn hotbar_preset_activators_fall_through_to_slot_select_without_instabuild() {
+    let (tx, mut rx) = mpsc::channel(8);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let store_path = std::env::temp_dir().join(format!(
+        "bbb-hotbar-preset-fallthrough-{}-{}.json",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    input.set_hotbar_preset_store_path(store_path.clone());
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    set_player_abilities(&mut world, false, false);
+
+    for code in [KeyCode::KeyC, KeyCode::Digit5] {
+        handle_key_input(
+            &mut input,
+            &mut counters,
+            &mut world,
+            &commands,
+            PhysicalKey::Code(code),
+            ElementState::Pressed,
+        );
+    }
+    assert_eq!(world.local_player().selected_hotbar_slot, 4);
+    assert!(world.action_bar().is_none());
+    assert!(!store_path.exists());
+    assert!(matches!(rx.try_recv(), Ok(NetCommand::SetHeldSlot(4))));
+}

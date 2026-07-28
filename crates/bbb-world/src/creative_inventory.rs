@@ -6,7 +6,8 @@ mod materialize;
 mod state;
 
 pub use action::{
-    CreativeInventoryAction, CreativeInventoryActionPlan, CreativeInventoryActionPlanError,
+    CreativeHotbarPresetError, CreativeHotbarPresetLoadPlan, CreativeInventoryAction,
+    CreativeInventoryActionPlan, CreativeInventoryActionPlanError,
 };
 pub use materialize::{
     CreativeInventoryBuildError, CreativeInventoryMaterializationRevision,

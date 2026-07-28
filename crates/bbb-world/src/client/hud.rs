@@ -429,6 +429,27 @@ impl WorldStore {
         );
     }
 
+    /// Vanilla `CreativeModeInventoryScreen.handleHotbarLoadOrSave` save
+    /// branch overlays and interrupt-narrates `inventory.hotbarSaved` built
+    /// from the load-activator and hotbar-slot key names. BBB has fixed
+    /// bindings (`X` + digit keys), so keep the localized English projection
+    /// beside the HUD owner until configurable key bindings/localization
+    /// exist.
+    pub fn set_creative_hotbar_preset_saved_overlay(&mut self, slot_index: usize) {
+        let content = format!(
+            "Item hotbar saved (restore with X + {})",
+            slot_index.saturating_add(1)
+        );
+        self.set_overlay_message(RichTextComponent::plain(content.clone()));
+        self.push_interrupting_system_narration(
+            content.clone(),
+            vec![StyledTextRun {
+                text: content,
+                style: bbb_protocol::ComponentStyle::default(),
+            }],
+        );
+    }
+
     fn set_overlay_message(&mut self, content: RichTextComponent) {
         self.client_hud.action_bar = Some(ActionBarState {
             content,

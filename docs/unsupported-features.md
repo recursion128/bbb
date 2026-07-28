@@ -637,8 +637,18 @@ Commands:
   owner becomes client-visible on the wire.
 Inventory:
 
-- Persist Vanilla creative hotbar presets in `hotbar.nbt` and implement their
-  save/load activator-key lifecycle.
+- Creative hotbar presets (`HotbarManager`) are implemented end to end: the
+  `C`/`X` activator-key lifecycle from `Minecraft.handleKeybinds` and
+  `CreativeModeInventoryScreen.handleHotbarLoadOrSave`, nine persistent
+  nine-slot groups, and the `inventory.hotbarSaved` overlay/narration. The
+  store is a bbb-owned JSON file of `ItemStackSummary` rows
+  (`hotbar-presets.json`) rather than vanilla's registry-coupled `hotbar.nbt`
+  `ItemStack` codec, so preset files do not interchange with a vanilla
+  installation. Reopen the file-format half only if full item NBT codec
+  support with registry context lands.
+- Route the in-screen `CreativeModeInventoryScreen.checkHotbarKeyPressed`
+  preset path (activator + hotbar key while the creative screen is open); the
+  keybind path above only covers the no-screen route.
 - Implement the rich-tooltip `space` font provider, the remaining text styles,
   italic/complex component styles, and component-specific detail lines from
   `font/default.json`.

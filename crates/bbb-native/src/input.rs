@@ -132,6 +132,7 @@ use bbb_world::vanilla_entity_metadata_wither_skull_dangerous_accessor_for_entit
 use bbb_world::vanilla_entity_metadata_wolf_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_zombie_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_zombie_nautilus_variant_accessor_for_entity_type;
+use bbb_world::CreativeHotbarPresetError;
 use bbb_world::{
     vanilla_entity_metadata_baby_accessor_for_entity_type,
     vanilla_entity_metadata_dolphin_accessors_for_entity_type,
@@ -165,6 +166,8 @@ use winit::{
     event::{ElementState, MouseButton, MouseScrollDelta},
     keyboard::{KeyCode, PhysicalKey},
 };
+
+use crate::hotbar_presets::HotbarPresetStore;
 
 use crate::debug_entries::{
     DebugScreenEntryId, DebugScreenEntryList, DebugScreenEntryStatus, DebugScreenProfile,
@@ -670,6 +673,7 @@ pub(crate) struct ClientInputState {
     pause_screen_disconnect_requested: bool,
     debug_entries: DebugScreenEntryList,
     debug_profile_store_path: Option<PathBuf>,
+    hotbar_preset_store: Option<HotbarPresetStore>,
     debug_modifier_down: bool,
     debug_modifier_used: bool,
     debug_profiler_chart_visible: bool,
@@ -2614,6 +2618,10 @@ impl ClientInputState {
 
     pub(crate) fn set_debug_profile_store_path(&mut self, path: PathBuf) {
         self.debug_profile_store_path = Some(path);
+    }
+
+    pub(crate) fn set_hotbar_preset_store_path(&mut self, path: PathBuf) {
+        self.hotbar_preset_store = Some(HotbarPresetStore::new(path));
     }
 
     fn toggle_debug_screen_entry_status(&mut self, entry: DebugScreenEntryId) -> bool {
@@ -11029,6 +11037,62 @@ fn advancements_done_button_contains(
         && cursor.y < y + f64::from(ADVANCEMENTS_DONE_BUTTON_HEIGHT)
 }
 
+/// Vanilla `Minecraft.handleKeybinds` hotbar branch: with infinite materials,
+/// no open screen, and a preset activator held, the hotbar key routes to
+/// `CreativeModeInventoryScreen.handleHotbarLoadOrSave` instead of slot
+/// selection, and load wins when both activators are down. Without infinite
+/// materials the key falls through to normal slot selection. The no-screen
+/// condition is met structurally: this runs after the container/screen early
+/// returns.
+fn handle_creative_hotbar_preset_key(
+    input: &mut ClientInputState,
+    world: &mut WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    slot: u8,
+) -> bool {
+    let load_pressed = input.pressed_keys.contains(&KeyCode::KeyX);
+    let save_pressed = input.pressed_keys.contains(&KeyCode::KeyC);
+    if !load_pressed && !save_pressed {
+        return false;
+    }
+    let Some(store) = input.hotbar_preset_store.as_mut() else {
+        return false;
+    };
+    let index = usize::from(slot);
+    if load_pressed {
+        let items = store.preset(index);
+        let plan = match world.plan_creative_hotbar_preset_load(&items) {
+            Ok(plan) => plan,
+            Err(CreativeHotbarPresetError::NoInfiniteMaterials) => return false,
+        };
+        match queue_set_creative_mode_slot_commands_atomically(
+            counters,
+            net_commands,
+            plan.commands(),
+        ) {
+            Ok(()) => {
+                let applied = world.apply_creative_hotbar_preset_load(plan);
+                debug_assert!(applied, "hotbar preset state changed after queue admission");
+            }
+            Err(err) => {
+                tracing::warn!(?err, "failed to queue hotbar preset load commands");
+            }
+        }
+        true
+    } else {
+        let items = match world.creative_hotbar_preset_snapshot() {
+            Ok(items) => items,
+            Err(CreativeHotbarPresetError::NoInfiniteMaterials) => return false,
+        };
+        if let Err(err) = store.save_preset(index, items) {
+            tracing::warn!(?err, "failed to save hotbar preset");
+        }
+        world.set_creative_hotbar_preset_saved_overlay(index);
+        true
+    }
+}
+
 #[cfg(test)]
 pub(crate) fn handle_key_input(
     input: &mut ClientInputState,
@@ -11263,6 +11327,9 @@ pub(crate) fn handle_key_input_with_item_runtime(
         if let Some(slot) = hotbar_slot_for_key(code) {
             if world.local_player_is_spectator() {
                 input.handle_spectator_hotbar_selected(world, counters, net_commands, slot);
+                return;
+            }
+            if handle_creative_hotbar_preset_key(input, world, counters, net_commands, slot) {
                 return;
             }
             select_hotbar_slot(counters, world, net_commands, slot);
