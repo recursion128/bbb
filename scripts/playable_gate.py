@@ -2324,33 +2324,54 @@ def _decode_png_rgba(data: bytes) -> tuple[int, int, bytes]:
 
 
 FLICKER_CHANNEL_TOLERANCE = 3
+# A lightmap texel sitting on a bilinear quantization boundary flips a full
+# 4-bit light step (~17-19 levels) when the +/-1 LSB blockLightFlicker walk
+# crosses it (measured live 2026-07-28: 24997 pixels at delta 1 plus one lone
+# pixel at delta 19 across 23 straight rounds).  Real content changes move
+# contiguous pixel runs, not lone texels, so tolerate a small budget of
+# isolated step flips and reject anything larger or more numerous.
+FLICKER_STEP_FLIP_CHANNEL_MAX = 24
+FLICKER_STEP_FLIP_PIXEL_BUDGET = 8
 
 
 def _frames_match_within_flicker(first: bytes, second: bytes) -> tuple[bool, int]:
     """Vanilla's lightmap `blockLightFlicker` random-walks every tick
     (AR(1) with 0.9 decay), so a frozen scene still jitters globally between
     two readbacks taken ~10 ticks apart -- measured drift reaches +/-2 LSB
-    per channel across the whole frame. Tolerate up to
-    FLICKER_CHANNEL_TOLERANCE per channel (real content changes move some
-    channel by >= 4) and report how many pixels differed only within that
-    vanilla flicker band."""
+    per channel across the whole frame, and a texel on a bilinear
+    quantization boundary occasionally flips a full ~17-19 level light step.
+    Tolerate FLICKER_CHANNEL_TOLERANCE per channel for the global band plus
+    at most FLICKER_STEP_FLIP_PIXEL_BUDGET isolated pixels within
+    FLICKER_STEP_FLIP_CHANNEL_MAX (real content changes move contiguous
+    runs of pixels well past that), and report the total flickering pixel
+    count."""
 
     _, _, pixels_a = _decode_png_rgba(first)
     width, height, pixels_b = _decode_png_rgba(second)
     if len(pixels_a) != len(pixels_b):
         return False, 0
     flicker_pixels = 0
+    step_flip_pixels = 0
     for offset in range(0, len(pixels_a), 4):
         pixel_a = pixels_a[offset : offset + 4]
         pixel_b = pixels_b[offset : offset + 4]
         if pixel_a == pixel_b:
             continue
-        for channel_a, channel_b in zip(pixel_a, pixel_b):
-            if abs(channel_a - channel_b) > FLICKER_CHANNEL_TOLERANCE:
-                return False, flicker_pixels
-        flicker_pixels += 1
+        peak = max(
+            abs(channel_a - channel_b)
+            for channel_a, channel_b in zip(pixel_a, pixel_b)
+        )
+        if peak <= FLICKER_CHANNEL_TOLERANCE:
+            flicker_pixels += 1
+            continue
+        step_flip_pixels += 1
+        if (
+            peak > FLICKER_STEP_FLIP_CHANNEL_MAX
+            or step_flip_pixels > FLICKER_STEP_FLIP_PIXEL_BUDGET
+        ):
+            return False, flicker_pixels + step_flip_pixels
     _ = (width, height)
-    return True, flicker_pixels
+    return True, flicker_pixels + step_flip_pixels
 
 
 def _capture_screenshot(

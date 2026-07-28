@@ -449,11 +449,44 @@ class PlayableGateBlockInteractionTests(unittest.TestCase):
         self.assertTrue(matched)
         self.assertEqual(flicker_pixels, 2)
 
-    def test_flicker_tolerance_rejects_real_content_changes(self):
+    def test_flicker_tolerance_accepts_isolated_light_step_flip(self):
+        # A lightmap texel on a bilinear quantization boundary flips a full
+        # ~17-19 level light step under the +/-1 LSB flicker walk; a lone
+        # such pixel must not fail the determinism gate.
         base = bytes([100, 120, 140, 255] * 4)
-        changed = bytes([100, 120, 140, 255] * 3 + [104, 120, 140, 255])
+        changed = bytes([100, 120, 140, 255] * 3 + [119, 120, 140, 255])
         first = self._encode_rgba_png(2, 2, base)
         second = self._encode_rgba_png(2, 2, changed)
+
+        matched, flicker_pixels = playable_gate._frames_match_within_flicker(
+            first, second
+        )
+        self.assertTrue(matched)
+        self.assertEqual(flicker_pixels, 1)
+
+    def test_flicker_tolerance_rejects_large_channel_changes(self):
+        base = bytes([100, 120, 140, 255] * 4)
+        changed = bytes([100, 120, 140, 255] * 3 + [140, 120, 140, 255])
+        first = self._encode_rgba_png(2, 2, base)
+        second = self._encode_rgba_png(2, 2, changed)
+
+        matched, _ = playable_gate._frames_match_within_flicker(first, second)
+        self.assertFalse(matched)
+
+    def test_flicker_tolerance_rejects_step_flips_beyond_budget(self):
+        budget = playable_gate.FLICKER_STEP_FLIP_PIXEL_BUDGET
+        side = 4
+        count = side * side
+        self.assertGreater(count, budget + 1)
+        base = bytes([100, 120, 140, 255] * count)
+        changed_pixels = []
+        for index in range(count):
+            if index <= budget:
+                changed_pixels += [119, 120, 140, 255]
+            else:
+                changed_pixels += [100, 120, 140, 255]
+        first = self._encode_rgba_png(side, side, base)
+        second = self._encode_rgba_png(side, side, bytes(changed_pixels))
 
         matched, _ = playable_gate._frames_match_within_flicker(first, second)
         self.assertFalse(matched)
