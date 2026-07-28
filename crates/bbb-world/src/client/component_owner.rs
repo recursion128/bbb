@@ -345,6 +345,7 @@ impl PacketComponentOwner for TestInstanceBlockStatus {
 
 #[cfg(test)]
 mod tests {
+    use bbb_protocol::menu_types::VANILLA_MENU_TYPE_GENERIC_9X3_ID;
     use bbb_protocol::packets::{
         AdvancementDisplaySummary, AdvancementFrameType, AdvancementIconSummary,
         AdvancementSummary, BossBarColor, BossBarOverlay, BossEventFlags, ChatFormatting,
@@ -430,7 +431,7 @@ mod tests {
         assert_invalid(
             &OpenScreen {
                 container_id: 2,
-                menu_type_id: 0,
+                menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X3_ID,
                 title: invalid.clone(),
             },
             registry_access,
