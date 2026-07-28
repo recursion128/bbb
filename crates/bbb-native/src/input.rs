@@ -17,11 +17,11 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_AXOLOTL_ID, VANILLA_ENTITY_TYPE_BAT_ID, VANILLA_ENTITY_TYPE_BEE_ID,
         VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_BLOCK_DISPLAY_ID,
         VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_BREEZE_ID, VANILLA_ENTITY_TYPE_CAT_ID,
-        VANILLA_ENTITY_TYPE_CHICKEN_ID, VANILLA_ENTITY_TYPE_COD_ID,
-        VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID,
-        VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_CREAKING_ID,
-        VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_DOLPHIN_ID,
-        VANILLA_ENTITY_TYPE_DROWNED_ID, VANILLA_ENTITY_TYPE_EGG_ID,
+        VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_CHICKEN_ID,
+        VANILLA_ENTITY_TYPE_COD_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
+        VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID, VANILLA_ENTITY_TYPE_COW_ID,
+        VANILLA_ENTITY_TYPE_CREAKING_ID, VANILLA_ENTITY_TYPE_CREEPER_ID,
+        VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_DROWNED_ID, VANILLA_ENTITY_TYPE_EGG_ID,
         VANILLA_ENTITY_TYPE_ENDERMAN_ID, VANILLA_ENTITY_TYPE_ENDERMITE_ID,
         VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, VANILLA_ENTITY_TYPE_ENDER_PEARL_ID,
         VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID,
@@ -134,6 +134,7 @@ use bbb_world::vanilla_entity_metadata_wither_skull_dangerous_accessor_for_entit
 use bbb_world::vanilla_entity_metadata_wolf_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_zombie_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_zombie_nautilus_variant_accessor_for_entity_type;
+use bbb_world::vanilla_painting_variant_resource_id;
 use bbb_world::CreativeHotbarPresetError;
 use bbb_world::{
     vanilla_entity_metadata_baby_accessor_for_entity_type,
@@ -147,10 +148,6 @@ use bbb_world::{
     LocalBlockAttackEffect, LocalPlayerInputState, LocalPlayerPoseState, SignBlockForm,
     TagQueryResponseState, VanillaArmorStandMetadataAccessors,
     VanillaFireworkRocketMetadataAccessors, WorldStore,
-};
-use bbb_world::{
-    vanilla_painting_variant_resource_id,
-    VANILLA_COMMAND_BLOCK_MINECART_COMMAND_DATA_ID as COMMAND_BLOCK_MINECART_COMMAND_DATA_ID,
 };
 use bbb_world::{
     VANILLA_ARMADILLO_STATE_ROLLING_ID as ARMADILLO_STATE_ROLLING_ID,
@@ -402,6 +399,7 @@ const STATS_SCREEN_ITEM_COLUMN_BUTTON_SIZE: i32 = 18;
 const MINECART_CLIENT_FLIPPED_ROTATION: bool = false;
 /// `MinecartHopper.enabled` changes only from the server-side activator-rail
 /// callback or NBT load and is not synchronized to the client.
+const MINECART_HOPPER_CLIENT_ENABLED: bool = true;
 const TNT_MINECART_DEFAULT_FUSE: i32 = -1;
 const AGEABLE_MOB_CLIENT_ADULT_AGE: i32 = 1;
 const AGEABLE_MOB_CLIENT_BABY_AGE: i32 = -1;
@@ -6143,17 +6141,21 @@ fn debug_push_entity_additional_save_data(
         VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID => {
             debug_push_falling_block_additional_save_data(world, entity, fields);
         }
+        VANILLA_ENTITY_TYPE_CHEST_MINECART_ID => {
+            debug_push_container_minecart_additional_save_data(fields);
+        }
         VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID => {
-            debug_push_command_block_minecart_additional_save_data(entity, fields);
+            debug_push_command_block_minecart_additional_save_data(world, entity, fields);
         }
         VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID => {
             debug_push_furnace_minecart_additional_save_data(fields);
         }
         VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID => {
+            debug_push_container_minecart_additional_save_data(fields);
             debug_push_hopper_minecart_additional_save_data(fields);
         }
         VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID => {
-            debug_push_spawner_minecart_additional_save_data(fields);
+            debug_push_spawner_minecart_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_TNT_MINECART_ID => {
             debug_push_tnt_minecart_additional_save_data(entity, fields);
@@ -8134,21 +8136,76 @@ fn debug_push_minecart_additional_save_data(
 }
 
 fn debug_push_command_block_minecart_additional_save_data(
+    world: &WorldStore,
     entity: &EntityState,
     fields: &mut Vec<String>,
 ) {
-    if let Some(command) =
-        debug_entity_data_string_present(entity, COMMAND_BLOCK_MINECART_COMMAND_DATA_ID)
-    {
-        fields.push(format!("Command: {}", debug_snbt_string(command)));
+    let Some(command_block) = world.minecart_command_block_data(entity.id) else {
+        return;
+    };
+    fields.push(format!(
+        "Command: {}",
+        debug_snbt_string(&command_block.command)
+    ));
+    // `setCommand` resets this server-owned execution result on every synced
+    // command update, and the client never executes the command.
+    fields.push("SuccessCount: 0".to_string());
+    fields.push(format!(
+        "TrackOutput: {}",
+        debug_snbt_bool(command_block.track_output)
+    ));
+    if command_block.track_output {
+        if let Some(last_output) = command_block.last_output {
+            fields.push(format!(
+                "LastOutput: {}",
+                debug_nbt_summary_snbt(last_output.component())
+            ));
+        }
     }
+    // No client path mutates `updateLastExecution`; its default true omits the
+    // default `lastExecution == -1` field while still saving this flag.
+    fields.push("UpdateLastExecution: 1b".to_string());
 }
 
-fn debug_push_furnace_minecart_additional_save_data(_fields: &mut Vec<String>) {}
+fn debug_push_container_minecart_additional_save_data(fields: &mut Vec<String>) {
+    // The menu packet owns its own slot container; packet-created client
+    // minecart entities retain their independent constructor-empty inventory.
+    fields.push("Items: []".to_string());
+}
 
-fn debug_push_hopper_minecart_additional_save_data(_fields: &mut Vec<String>) {}
+fn debug_push_furnace_minecart_additional_save_data(fields: &mut Vec<String>) {
+    // DATA_ID_FUEL is only a visual boolean. Numeric fuel and push are private,
+    // server-owned fields and stay at these constructor defaults on a client.
+    fields.push("PushX: 0.0d".to_string());
+    fields.push("PushZ: 0.0d".to_string());
+    fields.push("Fuel: 0s".to_string());
+}
 
-fn debug_push_spawner_minecart_additional_save_data(_fields: &mut Vec<String>) {}
+fn debug_push_hopper_minecart_additional_save_data(fields: &mut Vec<String>) {
+    fields.push(format!(
+        "Enabled: {}",
+        debug_snbt_bool(MINECART_HOPPER_CLIENT_ENABLED)
+    ));
+}
+
+fn debug_push_spawner_minecart_additional_save_data(
+    entity: &EntityState,
+    fields: &mut Vec<String>,
+) {
+    fields.push(format!(
+        "Delay: {}s",
+        entity.client_animations.minecart_spawner_spawn_delay() as i16
+    ));
+    fields.push("MinSpawnDelay: 200s".to_string());
+    fields.push("MaxSpawnDelay: 800s".to_string());
+    fields.push("SpawnCount: 4s".to_string());
+    fields.push("MaxNearbyEntities: 6s".to_string());
+    fields.push("RequiredPlayerRange: 16s".to_string());
+    fields.push("SpawnRange: 4s".to_string());
+    // A minecart spawner has no block-entity renderer that could call
+    // getOrCreateDisplayEntity, so its client nextSpawnData remains null.
+    fields.push("SpawnPotentials: []".to_string());
+}
 
 fn debug_push_tnt_minecart_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
     let fuse = entity
@@ -10133,17 +10190,6 @@ fn debug_entity_data_item_stack_present(
         .find(|value| value.data_id == data_id)
         .and_then(|value| match &value.value {
             EntityDataValueKind::ItemStack(stack) => Some(stack),
-            _ => None,
-        })
-}
-
-fn debug_entity_data_string_present(entity: &EntityState, data_id: u8) -> Option<&str> {
-    entity
-        .data_values
-        .iter()
-        .find(|value| value.data_id == data_id)
-        .and_then(|value| match &value.value {
-            EntityDataValueKind::String(value) => Some(value.as_str()),
             _ => None,
         })
 }

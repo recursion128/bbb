@@ -12591,7 +12591,7 @@ fn shift_f3_i_with_permission_copies_local_chest_minecart_save_nbt_to_clipboard(
             "/summon minecraft:chest_minecart 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              DisplayOffset: 6, \
-             FlippedRotation: 0b, HasTicked: 1b}"
+             FlippedRotation: 0b, HasTicked: 1b, Items: []}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -12607,7 +12607,7 @@ fn shift_f3_i_with_permission_copies_local_chest_minecart_save_nbt_to_clipboard(
 fn shift_f3_i_with_permission_copies_local_command_block_minecart_save_nbt_to_clipboard() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
-    grant_debug_recreate_nbt_permission(&mut world);
+    grant_gamemaster_block_permission(&mut world);
     world.apply_add_entity(AddEntity {
         id: 63,
         uuid: Uuid::from_u128(63),
@@ -12625,12 +12625,36 @@ fn shift_f3_i_with_permission_copies_local_command_block_minecart_save_nbt_to_cl
     });
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 63,
-        values: vec![ProtocolEntityDataValue {
-            data_id: COMMAND_BLOCK_MINECART_COMMAND_DATA_ID,
-            serializer_id:
-                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_STRING_ID,
-            value: EntityDataValueKind::String("say hi".to_string()),
-        }],
+        values: vec![
+            ProtocolEntityDataValue {
+                data_id: bbb_world::VANILLA_COMMAND_BLOCK_MINECART_COMMAND_DATA_ID,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_STRING_ID,
+                value: EntityDataValueKind::String("say hi".to_string()),
+            },
+            ProtocolEntityDataValue {
+                data_id: bbb_world::VANILLA_COMMAND_BLOCK_MINECART_LAST_OUTPUT_DATA_ID,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_COMPONENT_ID,
+                value: EntityDataValueKind::Component(
+                    RichTextComponent::try_from_component_nbt(NbtSummaryValue::Compound(vec![
+                        NbtSummaryEntry {
+                            name: "text".to_string(),
+                            value: NbtSummaryValue::String("done".to_string()),
+                        },
+                        NbtSummaryEntry {
+                            name: "color".to_string(),
+                            value: NbtSummaryValue::String("red".to_string()),
+                        },
+                        NbtSummaryEntry {
+                            name: "bold".to_string(),
+                            value: NbtSummaryValue::Byte(1),
+                        },
+                    ]))
+                    .unwrap(),
+                ),
+            },
+        ],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {
         position: ProtocolVec3d {
@@ -12665,7 +12689,10 @@ fn shift_f3_i_with_permission_copies_local_command_block_minecart_save_nbt_to_cl
         Some(
             "/summon minecraft:command_block_minecart 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             FlippedRotation: 0b, HasTicked: 1b, Command: \"say hi\"}"
+             FlippedRotation: 0b, HasTicked: 1b, Command: \"say hi\", \
+             SuccessCount: 0, TrackOutput: 1b, \
+             LastOutput: {text: \"done\", color: \"red\", bold: 1b}, \
+             UpdateLastExecution: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -12675,6 +12702,14 @@ fn shift_f3_i_with_permission_copies_local_command_block_minecart_save_nbt_to_cl
         messages[0].content,
         "[Debug]: Copied client-side entity data to clipboard"
     );
+
+    assert!(world.try_open_minecart_command_block_editor(63));
+    assert!(world.set_minecart_command_block_editor_track_output(false));
+    let command = debug_copy_recreate_entity_command(&world, None, 63, true)
+        .expect("command-block minecart recreate command with local track-output disabled")
+        .command;
+    assert!(command.contains("TrackOutput: 0b"));
+    assert!(!command.contains("LastOutput:"));
 }
 
 #[test]
@@ -12730,7 +12765,8 @@ fn shift_f3_i_with_permission_copies_local_furnace_minecart_save_nbt_to_clipboar
         Some(
             "/summon minecraft:furnace_minecart 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             FlippedRotation: 0b, HasTicked: 1b}"
+             FlippedRotation: 0b, HasTicked: 1b, \
+             PushX: 0.0d, PushZ: 0.0d, Fuel: 0s}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -12808,7 +12844,8 @@ fn shift_f3_i_with_permission_copies_local_hopper_minecart_save_nbt_to_clipboard
         Some(
             "/summon minecraft:hopper_minecart 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             DisplayOffset: 6, FlippedRotation: 0b, HasTicked: 1b}"
+             DisplayOffset: 6, FlippedRotation: 0b, HasTicked: 1b, \
+             Items: [], Enabled: 1b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -12840,6 +12877,14 @@ fn shift_f3_i_with_permission_copies_local_spawner_minecart_save_nbt_to_clipboar
         y_head_rot: 0.0,
         data: 0,
     });
+    let initial_command = debug_copy_recreate_entity_command(&world, None, 63, true)
+        .expect("fresh spawner minecart recreate command")
+        .command;
+    assert!(initial_command.contains("Delay: 20s"));
+    assert!(world.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 63,
+        event_id: 1,
+    }));
     world.set_local_player_pose(LocalPlayerPoseState {
         position: ProtocolVec3d {
             x: 0.0,
@@ -12873,7 +12918,10 @@ fn shift_f3_i_with_permission_copies_local_spawner_minecart_save_nbt_to_clipboar
         Some(
             "/summon minecraft:spawner_minecart 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             FlippedRotation: 0b, HasTicked: 1b}"
+             FlippedRotation: 0b, HasTicked: 1b, Delay: 200s, \
+             MinSpawnDelay: 200s, MaxSpawnDelay: 800s, SpawnCount: 4s, \
+             MaxNearbyEntities: 6s, RequiredPlayerRange: 16s, SpawnRange: 4s, \
+             SpawnPotentials: []}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
