@@ -626,9 +626,10 @@ Movement:
   movement cadence.
 - Cover the remaining vanilla voxel collision shapes.
 - Complete the staged travel-ordering contract in
-  `docs/local-player-travel-ordering-design.md`: S2 input scale chain, S3
-  core `travelInAir`/`Entity.move` delta chain, S4 player wrappers, S5
-  closure evidence.
+  `docs/local-player-travel-ordering-design.md`: S4 player wrappers
+  (creative-flight y*0.6 preservation, sprint air-control constant, swimming
+  surface steer verification) and S5 closure evidence, plus aligning the
+  fluid/flying branches' legacy direction input with `modifyInput`.
 - Add sprint-swim camera, animation, and presentation nuance.
 
 Commands:

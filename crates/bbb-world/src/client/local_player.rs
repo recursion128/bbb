@@ -1070,7 +1070,6 @@ fn wrap_degrees_f32(degrees: f32) -> f32 {
 mod tests {
     use std::collections::{BTreeMap, BTreeSet};
 
-    use super::super::local_player_movement::LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND;
     use super::*;
     use bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MAX_HEALTH_ID;
     use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_AXOLOTL_ID;
@@ -1412,18 +1411,15 @@ mod tests {
             )
             .unwrap();
 
+        // Airborne `travelInAir` from rest: 0.98 input scale times the 0.02
+        // air acceleration moves the entity, then friction (1.0 * 0.91)
+        // carries into the delta while gravity builds -0.08 * 0.98.
+        let air_step = 0.98 * 0.02;
         assert_f64_near(pose.position.x, 0.0, 0.000001);
         assert_f64_near(pose.position.y, 64.0, 0.000001);
-        assert_f64_near(
-            pose.position.z,
-            LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * 0.05,
-            0.000001,
-        );
-        assert_f64_near(
-            pose.delta_movement.z,
-            LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND / 20.0,
-            0.000001,
-        );
+        assert_f64_near(pose.position.z, air_step, 0.000001);
+        assert_f64_near(pose.delta_movement.z, air_step * 0.91, 0.000001);
+        assert_f64_near(pose.delta_movement.y, -0.08 * 0.98, 0.000001);
         assert!(!pose.on_ground);
         assert_eq!(store.local_player_pose(), Some(pose));
     }

@@ -193,6 +193,27 @@ const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
 const FLOWING_WATER_LEVEL_3_BLOCK_STATE_ID: i32 = 89;
 const SOURCE_LAVA_BLOCK_STATE_ID: i32 = 102;
 const FLOWING_LAVA_LEVEL_3_BLOCK_STATE_ID: i32 = 105;
+const TEST_DEFAULT_GROUND_FRICTION: f64 = 0.6;
+const TEST_DEFAULT_MOVEMENT_SPEED: f64 = 0.1;
+
+/// First-tick `travelInAir` displacement from rest on ground:
+/// modifyInput scale x getSpeed x (0.21600002 / friction^3).
+fn first_ground_step(speed: f64, input_scale: f64) -> f64 {
+    input_scale
+        * LOCAL_PLAYER_INPUT_SCALE
+        * speed
+        * (LOCAL_PLAYER_GROUND_ACCELERATION_FACTOR
+            / (TEST_DEFAULT_GROUND_FRICTION
+                * TEST_DEFAULT_GROUND_FRICTION
+                * TEST_DEFAULT_GROUND_FRICTION))
+}
+
+/// The carried horizontal delta after an uncollided ground tick: the step
+/// times blockSpeedFactor(1.0) times friction (0.6 * 0.91).
+fn carried_after_ground_step(step: f64) -> f64 {
+    step * TEST_DEFAULT_GROUND_FRICTION * LOCAL_HORIZONTAL_FRICTION
+}
+
 #[test]
 fn local_player_input_stops_at_full_block_wall_and_reports_collision() {
     let mut world = flat_collision_world();
@@ -236,7 +257,9 @@ fn local_player_gravity_lands_on_floor_and_reports_grounded() {
     );
     assert!(pose.on_ground);
     assert!(!pose.horizontal_collision);
-    assert_f64_near(pose.delta_movement.y, 0.0, 0.000001);
+    // Grounded equilibrium: fall-on callback zeroes y, then gravity and
+    // the 0.98 vertical friction rebuild -0.08 * 0.98.
+    assert_f64_near(pose.delta_movement.y, -0.08 * 0.98, 0.000001);
 }
 
 #[test]
@@ -446,7 +469,9 @@ fn local_player_scaffolding_top_supports_player_when_not_descending() {
         .unwrap();
 
     assert_f64_near(pose.position.y, 2.0, 0.000001);
-    assert_f64_near(pose.delta_movement.y, 0.0, 0.000001);
+    // Grounded equilibrium: fall-on callback zeroes y, then gravity and
+    // the 0.98 vertical friction rebuild -0.08 * 0.98.
+    assert_f64_near(pose.delta_movement.y, -0.08 * 0.98, 0.000001);
     assert_f64_near(pose.fall_distance, 0.0, 0.000001);
     assert!(pose.on_ground);
 }
@@ -515,7 +540,9 @@ fn local_player_scaffolding_unstable_bottom_supports_inside_player() {
         .unwrap();
 
     assert_f64_near(pose.position.y, 1.125, 0.000001);
-    assert_f64_near(pose.delta_movement.y, 0.0, 0.000001);
+    // Grounded equilibrium: fall-on callback zeroes y, then gravity and
+    // the 0.98 vertical friction rebuild -0.08 * 0.98.
+    assert_f64_near(pose.delta_movement.y, -0.08 * 0.98, 0.000001);
     assert_f64_near(pose.fall_distance, 0.0, 0.000001);
     assert!(pose.on_ground);
 }
@@ -661,6 +688,9 @@ fn local_player_climbable_clamps_horizontal_velocity() {
     set_test_block(&mut world, 0, 1, 0, LADDER_SOUTH_BLOCK_STATE_ID);
     world.set_local_player_pose(LocalPlayerPoseState {
         position: vec3(0.5, 1.2, 0.5),
+        // Carried momentum above the 0.15 climbable clamp: the clamp, not
+        // the per-tick acceleration, bounds this tick's movement.
+        delta_movement: vec3(0.0, 0.0, 0.4),
         on_ground: false,
         ..LocalPlayerPoseState::default()
     });
@@ -677,7 +707,8 @@ fn local_player_climbable_clamps_horizontal_velocity() {
         .unwrap();
 
     assert_f64_near(pose.position.z, 0.65, 0.000001);
-    assert_f64_near(pose.delta_movement.z, 0.15, 0.000001);
+    // The clamped 0.15 carries through the airborne 0.91 friction multiply.
+    assert_f64_near(pose.delta_movement.z, 0.15 * 0.91, 0.000001);
     assert_f64_near(pose.fall_distance, 0.0, 0.000001);
     assert!(!pose.on_ground);
 }
@@ -712,7 +743,7 @@ fn local_player_levitation_moves_vertical_velocity_toward_effect_target() {
 fn local_player_steps_onto_bottom_slab() {
     let mut world = flat_collision_world();
     set_test_block(&mut world, 0, 1, 2, OAK_BOTTOM_SLAB_BLOCK_STATE_ID);
-    let pose = advance_forward_from_standard_start(&mut world, 0.35);
+    let pose = advance_forward_from_standard_start(&mut world, 0.5);
 
     assert_f64_near(pose.position.y, 1.5, 0.0005);
     assert!(pose.position.z > 1.7, "position was {:?}", pose.position);
@@ -746,7 +777,7 @@ fn local_player_steps_up_bottom_stair_from_low_side() {
         2,
         OAK_BOTTOM_STRAIGHT_SOUTH_STAIR_BLOCK_STATE_ID,
     );
-    let pose = advance_forward_from_standard_start(&mut world, 0.45);
+    let pose = advance_forward_from_standard_start(&mut world, 0.6);
 
     assert_f64_near(pose.position.y, 2.0, 0.0005);
     assert!(pose.position.z > 2.2, "position was {:?}", pose.position);
@@ -942,7 +973,7 @@ fn local_player_steps_over_thin_ground_shapes() {
     for (name, block_state_id, expected_y) in cases {
         let mut world = flat_collision_world();
         set_test_block(&mut world, 0, 1, 1, block_state_id);
-        let pose = advance_forward_from_standard_start(&mut world, 0.2);
+        let pose = advance_forward_from_standard_start(&mut world, 0.3);
 
         assert_f64_near(pose.position.y, expected_y, 0.0005);
         assert!(
@@ -965,7 +996,7 @@ fn local_player_steps_onto_low_campfire_and_lantern_shapes() {
     for (name, block_state_id, expected_y) in cases {
         let mut world = flat_collision_world();
         set_test_block(&mut world, 0, 1, 1, block_state_id);
-        let pose = advance_forward_from_standard_start(&mut world, 0.2);
+        let pose = advance_forward_from_standard_start(&mut world, 0.3);
 
         assert_f64_near(pose.position.y, expected_y, 0.0005);
         assert!(
@@ -1753,7 +1784,7 @@ fn local_player_moves_through_scaffolding_side_instead_of_full_block() {
         1,
         SCAFFOLDING_BOTTOM_DISTANCE_0_BLOCK_STATE_ID,
     );
-    let pose = advance_forward_from_standard_start(&mut world, 0.1);
+    let pose = advance_forward_from_standard_start(&mut world, 0.2);
 
     assert!(pose.position.z > 0.8, "position was {:?}", pose.position);
     assert_f64_near(pose.position.y, 1.0, 0.0005);
@@ -2097,7 +2128,7 @@ fn local_player_steps_onto_common_low_object_shapes() {
     for (name, block_state_id) in cases {
         let mut world = flat_collision_world();
         set_test_block(&mut world, 0, 1, 1, block_state_id);
-        let pose = advance_forward_from_standard_start(&mut world, 0.2);
+        let pose = advance_forward_from_standard_start(&mut world, 0.3);
 
         assert_f64_near(pose.position.y, 1.5625, 0.0005);
         assert!(
@@ -2267,14 +2298,19 @@ fn local_player_low_ceiling_forces_crouching_pose() {
         )
         .unwrap();
 
-    let expected_step = LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND
-        * LOCAL_INPUT_SNEAKING_SPEED_MULTIPLIER
-        * LOCAL_PHYSICS_TICK_SECONDS;
+    let expected_step = first_ground_step(
+        TEST_DEFAULT_MOVEMENT_SPEED,
+        LOCAL_INPUT_SNEAKING_SPEED_MULTIPLIER,
+    );
     assert!(pose.sneaking);
     assert!(!pose.swimming);
     assert!(!pose.horizontal_collision);
     assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
-    assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);
+    assert_f64_near(
+        pose.delta_movement.z,
+        carried_after_ground_step(expected_step),
+        0.000001,
+    );
 }
 
 #[test]
@@ -2299,16 +2335,21 @@ fn local_player_low_tunnel_forces_crawling_swimming_pose() {
         )
         .unwrap();
 
-    let expected_step = LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND
-        * LOCAL_INPUT_SNEAKING_SPEED_MULTIPLIER
-        * LOCAL_PHYSICS_TICK_SECONDS;
+    let expected_step = first_ground_step(
+        TEST_DEFAULT_MOVEMENT_SPEED,
+        LOCAL_INPUT_SNEAKING_SPEED_MULTIPLIER,
+    );
     assert!(!pose.sneaking);
     assert!(pose.swimming);
     assert!(!pose.horizontal_collision);
     assert_f64_near(pose.body_height(), 0.6, 0.000001);
     assert_f64_near(pose.eye_height(), 0.4, 0.000001);
     assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
-    assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);
+    assert_f64_near(
+        pose.delta_movement.z,
+        carried_after_ground_step(expected_step),
+        0.000001,
+    );
 }
 
 #[test]
@@ -2449,9 +2490,10 @@ fn local_player_sneak_edge_backoff_stops_after_step_height_fall_distance() {
         )
         .unwrap();
 
-    let expected_step = LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND
+    // Airborne: the sneak-scaled input drives the 0.02 air acceleration.
+    let expected_step = LOCAL_PLAYER_INPUT_SCALE
         * LOCAL_INPUT_SNEAKING_SPEED_MULTIPLIER
-        * LOCAL_PHYSICS_TICK_SECONDS;
+        * LOCAL_PLAYER_AIR_ACCELERATION;
     assert_f64_near(pose.position.z, 1.25 + expected_step, 0.000001);
     assert_eq!(pose.fall_distance, LOCAL_PLAYER_STEP_HEIGHT);
 }
@@ -3686,9 +3728,19 @@ fn local_player_sneak_moves_over_supported_ground() {
         .unwrap();
 
     assert_f64_near(pose.position.y, 1.0, 0.0005);
-    let expected_step =
-        LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * LOCAL_INPUT_SNEAKING_SPEED_MULTIPLIER * 0.2;
-    assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
+    // Four ticks of the accumulate -> move -> friction chain.
+    let mut carried = 0.0;
+    let mut expected_z = 0.5;
+    for _ in 0..4 {
+        let step = carried
+            + first_ground_step(
+                TEST_DEFAULT_MOVEMENT_SPEED,
+                LOCAL_INPUT_SNEAKING_SPEED_MULTIPLIER,
+            );
+        expected_z += step;
+        carried = carried_after_ground_step(step);
+    }
+    assert_f64_near(pose.position.z, expected_z, 0.000001);
     assert!(pose.on_ground);
 }
 
@@ -3713,11 +3765,16 @@ fn local_player_sneak_uses_default_sneaking_speed_multiplier() {
         )
         .unwrap();
 
-    let expected_step = LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND
-        * LOCAL_INPUT_SNEAKING_SPEED_MULTIPLIER
-        * LOCAL_PHYSICS_TICK_SECONDS;
+    let expected_step = first_ground_step(
+        TEST_DEFAULT_MOVEMENT_SPEED,
+        LOCAL_INPUT_SNEAKING_SPEED_MULTIPLIER,
+    );
     assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
-    assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);
+    assert_f64_near(
+        pose.delta_movement.z,
+        carried_after_ground_step(expected_step),
+        0.000001,
+    );
     assert!(pose.on_ground);
 }
 
@@ -3750,9 +3807,13 @@ fn local_player_movement_speed_attribute_scales_horizontal_movement() {
         )
         .unwrap();
 
-    let expected_step = LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * 2.0 * LOCAL_PHYSICS_TICK_SECONDS;
+    let expected_step = first_ground_step(TEST_DEFAULT_MOVEMENT_SPEED, 2.0);
     assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
-    assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);
+    assert_f64_near(
+        pose.delta_movement.z,
+        carried_after_ground_step(expected_step),
+        0.000001,
+    );
     assert!(pose.on_ground);
 }
 
@@ -3828,13 +3889,19 @@ fn local_player_slow_block_speed_factor_scales_horizontal_movement() {
             )
             .unwrap();
 
-        let expected_step = LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND
-            * f64::from(crate::terrain::vanilla_block_speed_factor(Some(
-                resource_id,
-            )))
-            * LOCAL_PHYSICS_TICK_SECONDS;
-        assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
-        assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);
+        // Vanilla applies `getBlockSpeedFactor` to the carried delta at the
+        // end of `Entity.move`, so the first step from rest is unscaled and
+        // the factor shows up in the carried delta (and the next tick).
+        let speed_factor = f64::from(crate::terrain::vanilla_block_speed_factor(Some(
+            resource_id,
+        )));
+        let first_step = first_ground_step(TEST_DEFAULT_MOVEMENT_SPEED, 1.0);
+        assert_f64_near(pose.position.z, 0.5 + first_step, 0.000001);
+        assert_f64_near(
+            pose.delta_movement.z,
+            carried_after_ground_step(first_step) * speed_factor,
+            0.000001,
+        );
         assert!(pose.on_ground, "{name}");
     }
 }
@@ -3862,7 +3929,7 @@ fn local_player_no_collision_hazards_apply_stuck_speed_multiplier() {
 
         // Vanilla sets the multiplier in `applyEffectsFromBlocks` after the
         // move, so the first step inside the hazard runs un-multiplied.
-        let full_step = LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * LOCAL_PHYSICS_TICK_SECONDS;
+        let full_step = first_ground_step(TEST_DEFAULT_MOVEMENT_SPEED, 1.0);
         let first = world
             .advance_local_player_input(
                 LocalPlayerInputState {
@@ -3887,7 +3954,8 @@ fn local_player_no_collision_hazards_apply_stuck_speed_multiplier() {
                 LOCAL_PHYSICS_TICK_SECONDS,
             )
             .unwrap();
-        let expected_step = full_step * expected_multiplier;
+        let expected_step =
+            (full_step + carried_after_ground_step(full_step)) * expected_multiplier;
         assert_f64_near(
             second.position.z,
             first.position.z + expected_step,
@@ -3931,7 +3999,10 @@ fn local_player_weaving_effect_relaxes_cobweb_stuck_speed_multiplier() {
         )
         .unwrap();
 
-    let expected_step = LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * 0.5 * LOCAL_PHYSICS_TICK_SECONDS;
+    // Weaving relaxes the cobweb stuck multiplier to 0.5; it scales the
+    // carried-momentum request of the second tick.
+    let full_step = first_ground_step(TEST_DEFAULT_MOVEMENT_SPEED, 1.0);
+    let expected_step = (full_step + carried_after_ground_step(full_step)) * 0.5;
     assert_f64_near(
         second.position.z,
         first.position.z + expected_step,
@@ -3971,9 +4042,13 @@ fn local_player_movement_efficiency_offsets_slow_block_speed_factor() {
         )
         .unwrap();
 
-    let expected_step = LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * LOCAL_PHYSICS_TICK_SECONDS;
+    let expected_step = first_ground_step(TEST_DEFAULT_MOVEMENT_SPEED, 1.0);
     assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
-    assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);
+    assert_f64_near(
+        pose.delta_movement.z,
+        carried_after_ground_step(expected_step),
+        0.000001,
+    );
     assert!(pose.on_ground);
 }
 
@@ -4017,8 +4092,7 @@ fn local_player_ticks_frozen_applies_powder_snow_slowdown() {
 
     let half_frozen_pose =
         advance_forward_from_standard_start(&mut half_frozen_world, LOCAL_PHYSICS_TICK_SECONDS);
-    let half_frozen_step =
-        LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * 0.75 * LOCAL_PHYSICS_TICK_SECONDS;
+    let half_frozen_step = first_ground_step(TEST_DEFAULT_MOVEMENT_SPEED, 0.75);
     assert_f64_near(
         half_frozen_pose.position.z,
         0.5 + half_frozen_step,
@@ -4026,7 +4100,7 @@ fn local_player_ticks_frozen_applies_powder_snow_slowdown() {
     );
     assert_f64_near(
         half_frozen_pose.delta_movement.z,
-        half_frozen_step,
+        carried_after_ground_step(half_frozen_step),
         0.000001,
     );
 
@@ -4036,8 +4110,7 @@ fn local_player_ticks_frozen_applies_powder_snow_slowdown() {
 
     let fully_frozen_pose =
         advance_forward_from_standard_start(&mut fully_frozen_world, LOCAL_PHYSICS_TICK_SECONDS);
-    let fully_frozen_step =
-        LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * 0.5 * LOCAL_PHYSICS_TICK_SECONDS;
+    let fully_frozen_step = first_ground_step(TEST_DEFAULT_MOVEMENT_SPEED, 0.5);
     assert_f64_near(
         fully_frozen_pose.position.z,
         0.5 + fully_frozen_step,
@@ -4045,7 +4118,7 @@ fn local_player_ticks_frozen_applies_powder_snow_slowdown() {
     );
     assert_f64_near(
         fully_frozen_pose.delta_movement.z,
-        fully_frozen_step,
+        carried_after_ground_step(fully_frozen_step),
         0.000001,
     );
 }
@@ -4069,10 +4142,13 @@ fn local_player_powder_snow_speed_modifier_does_not_double_apply_synced_attribut
     assert!(apply_ticks_frozen(&mut world, 123, 70));
 
     let pose = advance_forward_from_standard_start(&mut world, LOCAL_PHYSICS_TICK_SECONDS);
-    let expected_step =
-        LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * 0.75 * LOCAL_PHYSICS_TICK_SECONDS;
+    let expected_step = first_ground_step(TEST_DEFAULT_MOVEMENT_SPEED, 0.75);
     assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
-    assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);
+    assert_f64_near(
+        pose.delta_movement.z,
+        carried_after_ground_step(expected_step),
+        0.000001,
+    );
 }
 
 #[test]
@@ -4302,7 +4378,9 @@ fn local_player_leather_boots_stand_on_powder_snow_top_collision() {
     let pose = world.local_player_pose().unwrap();
     assert_f64_near(pose.position.y, 2.0, 0.000001);
     assert!(pose.on_ground);
-    assert_f64_near(pose.delta_movement.y, 0.0, 0.000001);
+    // Grounded equilibrium: fall-on callback zeroes y, then gravity and
+    // the 0.98 vertical friction rebuild -0.08 * 0.98.
+    assert_f64_near(pose.delta_movement.y, -0.08 * 0.98, 0.000001);
 }
 
 #[test]
@@ -4511,6 +4589,8 @@ fn local_player_leather_boots_horizontal_collision_climbs_out_of_powder_snow() {
     equip_powder_snow_walkable_boots(&mut world, 1);
     world.set_local_player_pose(LocalPlayerPoseState {
         position: vec3(0.5, 1.2, 0.5),
+        // Carried momentum so this tick reaches the grass wall face at z=1.
+        delta_movement: vec3(0.0, 0.0, 0.25),
         on_ground: false,
         ..LocalPlayerPoseState::default()
     });
@@ -4577,9 +4657,13 @@ fn local_player_blindness_prevents_sprint_speed() {
         )
         .unwrap();
 
-    let expected_step = LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * LOCAL_PHYSICS_TICK_SECONDS;
+    let expected_step = first_ground_step(TEST_DEFAULT_MOVEMENT_SPEED, 1.0);
     assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
-    assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);
+    assert_f64_near(
+        pose.delta_movement.z,
+        carried_after_ground_step(expected_step),
+        0.000001,
+    );
 }
 
 #[test]
@@ -4603,9 +4687,13 @@ fn local_player_low_food_prevents_sprint_speed_unless_mayfly() {
             LOCAL_PHYSICS_TICK_SECONDS,
         )
         .unwrap();
-    let walk_step = LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * LOCAL_PHYSICS_TICK_SECONDS;
+    let walk_step = first_ground_step(TEST_DEFAULT_MOVEMENT_SPEED, 1.0);
     assert_f64_near(survival_pose.position.z, 0.5 + walk_step, 0.000001);
-    assert_f64_near(survival_pose.delta_movement.z, walk_step, 0.000001);
+    assert_f64_near(
+        survival_pose.delta_movement.z,
+        carried_after_ground_step(walk_step),
+        0.000001,
+    );
 
     let mut creative_world = flat_collision_world();
     apply_player_health(&mut creative_world, 6);
@@ -4634,9 +4722,16 @@ fn local_player_low_food_prevents_sprint_speed_unless_mayfly() {
             LOCAL_PHYSICS_TICK_SECONDS,
         )
         .unwrap();
-    let sprint_step = LOCAL_INPUT_SPRINT_SPEED_BLOCKS_PER_SECOND * LOCAL_PHYSICS_TICK_SECONDS;
+    let sprint_step = first_ground_step(
+        TEST_DEFAULT_MOVEMENT_SPEED * LOCAL_PLAYER_SPRINT_SPEED_MODIFIER,
+        1.0,
+    );
     assert_f64_near(creative_pose.position.z, 0.5 + sprint_step, 0.000001);
-    assert_f64_near(creative_pose.delta_movement.z, sprint_step, 0.000001);
+    assert_f64_near(
+        creative_pose.delta_movement.z,
+        carried_after_ground_step(sprint_step),
+        0.000001,
+    );
 }
 
 #[test]
@@ -4665,9 +4760,13 @@ fn local_player_using_item_applies_default_use_effects_slowdown_and_sprint_suppr
         )
         .unwrap();
 
-    let expected_step = LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * 0.2 * LOCAL_PHYSICS_TICK_SECONDS;
+    let expected_step = first_ground_step(TEST_DEFAULT_MOVEMENT_SPEED, 0.2);
     assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
-    assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);
+    assert_f64_near(
+        pose.delta_movement.z,
+        carried_after_ground_step(expected_step),
+        0.000001,
+    );
 }
 
 #[test]
@@ -4696,9 +4795,16 @@ fn local_player_using_item_can_sprint_override_preserves_sprint_speed() {
         )
         .unwrap();
 
-    let expected_step = LOCAL_INPUT_SPRINT_SPEED_BLOCKS_PER_SECOND * LOCAL_PHYSICS_TICK_SECONDS;
+    let expected_step = first_ground_step(
+        TEST_DEFAULT_MOVEMENT_SPEED * LOCAL_PLAYER_SPRINT_SPEED_MODIFIER,
+        1.0,
+    );
     assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
-    assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);
+    assert_f64_near(
+        pose.delta_movement.z,
+        carried_after_ground_step(expected_step),
+        0.000001,
+    );
 }
 
 #[test]
@@ -4782,9 +4888,13 @@ fn local_player_speed_and_slowness_effects_scale_horizontal_movement() {
     assert!(speed_world.apply_update_mob_effect(mob_effect(123, VANILLA_MOB_EFFECT_SPEED_ID, 1,)));
     let speed_pose =
         advance_forward_from_standard_start(&mut speed_world, LOCAL_PHYSICS_TICK_SECONDS);
-    let speed_step = LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * 1.4 * LOCAL_PHYSICS_TICK_SECONDS;
+    let speed_step = first_ground_step(TEST_DEFAULT_MOVEMENT_SPEED, 1.4);
     assert_f64_near(speed_pose.position.z, 0.5 + speed_step, 0.000001);
-    assert_f64_near(speed_pose.delta_movement.z, speed_step, 0.000001);
+    assert_f64_near(
+        speed_pose.delta_movement.z,
+        carried_after_ground_step(speed_step),
+        0.000001,
+    );
 
     let mut slowness_world = flat_collision_world();
     attach_local_player_entity(&mut slowness_world, 124);
@@ -4795,10 +4905,13 @@ fn local_player_speed_and_slowness_effects_scale_horizontal_movement() {
     )));
     let slowness_pose =
         advance_forward_from_standard_start(&mut slowness_world, LOCAL_PHYSICS_TICK_SECONDS);
-    let slowness_step =
-        LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * 0.85 * LOCAL_PHYSICS_TICK_SECONDS;
+    let slowness_step = first_ground_step(TEST_DEFAULT_MOVEMENT_SPEED, 0.85);
     assert_f64_near(slowness_pose.position.z, 0.5 + slowness_step, 0.000001);
-    assert_f64_near(slowness_pose.delta_movement.z, slowness_step, 0.000001);
+    assert_f64_near(
+        slowness_pose.delta_movement.z,
+        carried_after_ground_step(slowness_step),
+        0.000001,
+    );
 }
 
 #[test]
@@ -4820,9 +4933,13 @@ fn local_player_speed_effect_does_not_double_apply_synced_attribute_modifier() {
     assert!(world.apply_update_mob_effect(mob_effect(123, VANILLA_MOB_EFFECT_SPEED_ID, 1,)));
 
     let pose = advance_forward_from_standard_start(&mut world, LOCAL_PHYSICS_TICK_SECONDS);
-    let expected_step = LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * 1.4 * LOCAL_PHYSICS_TICK_SECONDS;
+    let expected_step = first_ground_step(TEST_DEFAULT_MOVEMENT_SPEED, 1.4);
     assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
-    assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);
+    assert_f64_near(
+        pose.delta_movement.z,
+        carried_after_ground_step(expected_step),
+        0.000001,
+    );
 }
 
 #[test]
@@ -4855,9 +4972,13 @@ fn local_player_sneak_uses_sneaking_speed_attribute_when_present() {
         )
         .unwrap();
 
-    let expected_step = LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * 0.4 * LOCAL_PHYSICS_TICK_SECONDS;
+    let expected_step = first_ground_step(TEST_DEFAULT_MOVEMENT_SPEED, 0.4);
     assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
-    assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);
+    assert_f64_near(
+        pose.delta_movement.z,
+        carried_after_ground_step(expected_step),
+        0.000001,
+    );
     assert!(pose.on_ground);
 }
 
@@ -5076,7 +5197,9 @@ fn local_player_bounces_after_landing_on_slime_block() {
         .unwrap();
 
     assert_f64_near(pose.position.y, 1.0, 0.0001);
-    assert_f64_near(pose.delta_movement.y, 0.5, 0.000001);
+    // Slime reflects the fall, then gravity and the 0.98 vertical friction
+    // shape the rebound: (0.5 - 0.08) * 0.98.
+    assert_f64_near(pose.delta_movement.y, (0.5 - 0.08) * 0.98, 0.000001);
     assert_f64_near(pose.fall_distance, 0.0, 0.000001);
     assert!(pose.on_ground);
 }
@@ -5105,7 +5228,9 @@ fn local_player_sneak_suppresses_slime_block_bounce() {
         .unwrap();
 
     assert_f64_near(pose.position.y, 1.0, 0.0001);
-    assert_f64_near(pose.delta_movement.y, 0.0, 0.000001);
+    // Grounded equilibrium: fall-on callback zeroes y, then gravity and
+    // the 0.98 vertical friction rebuild -0.08 * 0.98.
+    assert_f64_near(pose.delta_movement.y, -0.08 * 0.98, 0.000001);
     assert_f64_near(pose.fall_distance, 0.0, 0.000001);
     assert!(pose.on_ground);
 }
@@ -5132,16 +5257,22 @@ fn local_player_sprint_jump_adds_vanilla_horizontal_impulse() {
         )
         .unwrap();
 
-    let expected_z = 0.5
-        + LOCAL_INPUT_SPRINT_SPEED_BLOCKS_PER_SECOND * LOCAL_PHYSICS_TICK_SECONDS
-        + SPRINT_JUMP_HORIZONTAL_IMPULSE;
+    let expected_z =
+        0.5 + first_ground_step(
+            TEST_DEFAULT_MOVEMENT_SPEED * LOCAL_PLAYER_SPRINT_SPEED_MODIFIER,
+            1.0,
+        ) + SPRINT_JUMP_HORIZONTAL_IMPULSE;
     assert_f64_near(
         pose.position.y,
         1.0 + LOCAL_INPUT_DEFAULT_JUMP_STRENGTH_ATTRIBUTE,
         0.000001,
     );
     assert_f64_near(pose.position.z, expected_z, 0.000001);
-    assert_f64_near(pose.delta_movement.z, expected_z - 0.5, 0.000001);
+    assert_f64_near(
+        pose.delta_movement.z,
+        carried_after_ground_step(expected_z - 0.5),
+        0.000001,
+    );
     assert!(!pose.on_ground);
 }
 
@@ -5168,14 +5299,18 @@ fn local_player_ineligible_sprint_jump_does_not_add_horizontal_impulse() {
         )
         .unwrap();
 
-    let expected_z = 0.5 + LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * LOCAL_PHYSICS_TICK_SECONDS;
+    let expected_z = 0.5 + first_ground_step(TEST_DEFAULT_MOVEMENT_SPEED, 1.0);
     assert_f64_near(
         pose.position.y,
         1.0 + LOCAL_INPUT_DEFAULT_JUMP_STRENGTH_ATTRIBUTE,
         0.000001,
     );
     assert_f64_near(pose.position.z, expected_z, 0.000001);
-    assert_f64_near(pose.delta_movement.z, expected_z - 0.5, 0.000001);
+    assert_f64_near(
+        pose.delta_movement.z,
+        carried_after_ground_step(expected_z - 0.5),
+        0.000001,
+    );
     assert!(!pose.on_ground);
 }
 

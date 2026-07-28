@@ -73,19 +73,22 @@ re-plumbed into the ordering above rather than reimplemented.
 Each stage is independently valuable, lands with focused tests plus a full
 gate (core physics is high-risk), and is a safe stop point.
 
-- **S1 — jump cadence (landed with this contract)**: add the `noJumpDelay`
-  cooldown chain (10-tick held-jump lockout, instant reset on release,
-  decrement-then-gate ordering) to the pose state and ground jump gate.
-- **S2 — input scale chain**: consolidate the `0.98 × item-use ×
-  SNEAKING_SPEED` multiplier ordering into one vanilla-shaped input pipeline
-  and pin each factor with tests.
-- **S3 — core travel chain**: replace the displacement model with the
-  accumulate → clamp → move → impulse → gravity → friction-multiply ordering
-  of `travelInAir`/`Entity.move` above, including the base-block fall-on
-  callback owning the vertical zeroing (slime bounce becomes its override)
-  and the post-move block speed factor multiply. Expected observable changes
-  (ground momentum, ice slide, air control) must land with fixture
-  expectations derived from vanilla formulas, not from the old model.
+- **S1 — jump cadence (landed)**: the `noJumpDelay` cooldown chain (10-tick
+  held-jump lockout, instant reset on release, decrement-then-gate ordering)
+  in the pose state and ground jump gate.
+- **S2 — input scale chain (landed)**: `local_player_modified_input` owns the
+  `0.98 × item-use × SNEAKING_SPEED` ordering plus the unit-square
+  projection; the fluid and creative-flight branches keep the legacy
+  normalized direction input until their own stages align them.
+- **S3 — core travel chain (landed)**: the ground/air path runs the
+  accumulate → climbable clamp → move → fall-on callback (base zeroes the
+  vertical delta, slime reflects) → block speed factor → wall-climb impulse
+  → gravity → friction-multiply ordering. Grounded rest carries the vanilla
+  `-0.08 * 0.98` vertical delta, step-up eligibility follows
+  `Entity.collide` (grounded or landing, not `requested_y == 0`), and the
+  movement fixtures encode first-tick acceleration plus carried momentum
+  derived from the vanilla formulas. Known deviation: collision epsilon
+  stays at the repo's `1.0e-7` instead of `Mth.equal`'s `1.0e-5`.
 - **S4 — player wrappers**: creative-flight y×0.6 preservation and the
   sprint air-control constant; verify the swimming surface steer against the
   fluid branch owner.
