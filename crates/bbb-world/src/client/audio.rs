@@ -83,6 +83,7 @@ const PLAYER_HURT_ON_FIRE_SOUND_EVENT: &str = "minecraft:entity.player.hurt_on_f
 const PLAYER_HURT_SWEET_BERRY_BUSH_SOUND_EVENT: &str =
     "minecraft:entity.player.hurt_sweet_berry_bush";
 const PLAYER_HURT_FREEZE_SOUND_EVENT: &str = "minecraft:entity.player.hurt_freeze";
+const PLAYER_DEATH_SOUND_EVENT: &str = "minecraft:entity.player.death";
 const ITEM_PICKUP_SOUND_EVENT: &str = "minecraft:entity.item.pickup";
 const EXPERIENCE_ORB_PICKUP_SOUND_EVENT: &str = "minecraft:entity.experience_orb.pickup";
 const BLAZE_BURN_SOUND_EVENT: &str = "minecraft:entity.blaze.burn";
@@ -868,6 +869,24 @@ impl WorldStore {
         )
     }
 
+    pub(crate) fn local_player_damage_hurt_sound(
+        &mut self,
+        effects: Option<DamageTypeEffects>,
+        mut next_float: impl FnMut() -> f32,
+    ) -> Option<SoundEventState> {
+        let position = self.local_player_pose()?.position;
+        let state = SoundEventState {
+            sound: direct_sound_holder(player_hurt_sound_event(effects?)),
+            source: SoundSource::Players.as_str().to_string(),
+            position,
+            volume: 1.0,
+            pitch: (next_float().clamp(0.0, 1.0) - next_float().clamp(0.0, 1.0)) * 0.2 + 1.0,
+            seed: 0,
+            distance_delay: false,
+        };
+        Some(self.record_positioned_sound(state))
+    }
+
     pub(crate) fn living_damage_hurt_sound_for_entity_with_optional_effects(
         &mut self,
         entity_id: i32,
@@ -952,14 +971,7 @@ impl WorldStore {
                 }
             }
             VanillaEntityHurtSoundPolicy::PlayerDamageType => {
-                let sound = match effects? {
-                    DamageTypeEffects::Hurt | DamageTypeEffects::Thorns => PLAYER_HURT_SOUND_EVENT,
-                    DamageTypeEffects::Drowning => PLAYER_HURT_DROWN_SOUND_EVENT,
-                    DamageTypeEffects::Burning => PLAYER_HURT_ON_FIRE_SOUND_EVENT,
-                    DamageTypeEffects::Poking => PLAYER_HURT_SWEET_BERRY_BUSH_SOUND_EVENT,
-                    DamageTypeEffects::Freezing => PLAYER_HURT_FREEZE_SOUND_EVENT,
-                };
-                direct_sound_holder(sound)
+                direct_sound_holder(player_hurt_sound_event(effects?))
             }
         };
         let volume = self.living_sound_volume(entity_id, transform.entity_type_id)?;
@@ -1525,6 +1537,23 @@ impl WorldStore {
                 z: transform.position.z,
             },
             volume,
+            pitch: (next_float().clamp(0.0, 1.0) - next_float().clamp(0.0, 1.0)) * 0.2 + 1.0,
+            seed: 0,
+            distance_delay: false,
+        };
+        Some(self.record_positioned_sound(state))
+    }
+
+    pub(crate) fn local_player_death_sound(
+        &mut self,
+        mut next_float: impl FnMut() -> f32,
+    ) -> Option<SoundEventState> {
+        let position = self.local_player_pose()?.position;
+        let state = SoundEventState {
+            sound: direct_sound_holder(PLAYER_DEATH_SOUND_EVENT),
+            source: SoundSource::Players.as_str().to_string(),
+            position,
+            volume: 1.0,
             pitch: (next_float().clamp(0.0, 1.0) - next_float().clamp(0.0, 1.0)) * 0.2 + 1.0,
             seed: 0,
             distance_delay: false,
@@ -3136,6 +3165,16 @@ fn direct_sound_holder(sound: &str) -> SoundHolderState {
         registry_id: None,
         location: Some(sound.to_string()),
         fixed_range: None,
+    }
+}
+
+fn player_hurt_sound_event(effects: DamageTypeEffects) -> &'static str {
+    match effects {
+        DamageTypeEffects::Hurt | DamageTypeEffects::Thorns => PLAYER_HURT_SOUND_EVENT,
+        DamageTypeEffects::Drowning => PLAYER_HURT_DROWN_SOUND_EVENT,
+        DamageTypeEffects::Burning => PLAYER_HURT_ON_FIRE_SOUND_EVENT,
+        DamageTypeEffects::Poking => PLAYER_HURT_SWEET_BERRY_BUSH_SOUND_EVENT,
+        DamageTypeEffects::Freezing => PLAYER_HURT_FREEZE_SOUND_EVENT,
     }
 }
 

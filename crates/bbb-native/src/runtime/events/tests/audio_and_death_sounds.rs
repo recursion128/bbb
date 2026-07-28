@@ -80,11 +80,7 @@ fn respawn_stops_music_only_when_the_dimension_changes() {
 
 #[test]
 fn damage_type_holder_drives_runtime_player_hurt_audio() {
-    let (tx, mut rx) = mpsc::channel(2);
-    let player = protocol_add_entity_with_type(166, VANILLA_ENTITY_TYPE_PLAYER_ID);
-    let player_uuid = player.uuid;
-    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(player)))
-        .unwrap();
+    let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::Play(PlayClientbound::DamageEvent(
         bbb_protocol::packets::DamageEvent {
             entity_id: 166,
@@ -97,28 +93,31 @@ fn damage_type_holder_drives_runtime_player_hurt_audio() {
     .unwrap();
 
     let mut world = WorldStore::new();
+    world.apply_login(&protocol_play_login(166));
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 1.0,
+            y: 64.0,
+            z: -2.0,
+        },
+        ..LocalPlayerPoseState::default()
+    });
     world.record_registry_entries(
         bbb_world::DAMAGE_TYPE_REGISTRY,
         0,
         vec![RegistryPacketEntry::stub("minecraft:freeze")],
     );
-    record_test_player_info(&mut world, player_uuid);
     let mut counters = NetCounters::default();
     let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
 
     assert_eq!(
         drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
-        2
+        1
     );
     assert!(audio.errors.is_empty(), "{:?}", audio.errors);
     assert_eq!(audio.commands.len(), 1);
-    let damage = world.entity_last_damage(166).unwrap();
     assert_eq!(
-        damage.source_type_resource_id.as_deref(),
-        Some("minecraft:freeze")
-    );
-    assert_eq!(
-        damage.source_effects,
+        world.damage_type_effects_by_holder_id(0).unwrap(),
         Some(bbb_world::DamageTypeEffects::Freezing)
     );
     match &audio.commands[0] {
@@ -138,8 +137,8 @@ fn damage_type_holder_drives_runtime_player_hurt_audio() {
 }
 
 #[test]
-fn damage_event_drives_runtime_animal_variant_hurt_audio() {
-    let (tx, mut rx) = mpsc::channel(2);
+fn remote_damage_and_server_sound_entity_emit_one_runtime_command() {
+    let (tx, mut rx) = mpsc::channel(3);
     tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
         protocol_add_entity_with_type(167, VANILLA_ENTITY_TYPE_COW_ID),
     )))
@@ -151,6 +150,20 @@ fn damage_event_drives_runtime_animal_variant_hurt_audio() {
             source_cause_id: -1,
             source_direct_id: -1,
             source_position: None,
+        },
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::SoundEntity(
+        SoundEntityEvent {
+            sound: SoundEventHolder::Direct {
+                location: "minecraft:entity.cow.hurt".to_string(),
+                fixed_range: None,
+            },
+            source: SoundSource::Neutral,
+            entity_id: 167,
+            volume: 0.4,
+            pitch: 1.25,
+            seed: 91,
         },
     )))
     .unwrap();
@@ -166,23 +179,29 @@ fn damage_event_drives_runtime_animal_variant_hurt_audio() {
 
     assert_eq!(
         drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
-        2
+        3
     );
     assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 1);
+    assert_eq!(
+        world.entity_last_damage(167).unwrap().source_effects,
+        Some(bbb_world::DamageTypeEffects::Hurt)
+    );
     match &audio.commands[0] {
-        AudioCommand::PlayPositionedSound(command) => {
+        AudioCommand::PlayEntitySound(command) => {
             assert_eq!(command.category, AudioCategory::Neutral);
             assert_eq!(command.packet_volume, 0.4);
-            assert_eq!(command.seed, 0);
+            assert_eq!(command.packet_pitch, 1.25);
+            assert_eq!(command.seed, 91);
             assert_eq!(command.sound.event_id, "minecraft:entity.cow.hurt");
             assert_eq!(command.sound.sound_name, "minecraft:mob/cow/hurt1");
         }
-        other => panic!("expected positioned sound command, got {other:?}"),
+        other => panic!("expected entity sound command, got {other:?}"),
     }
 }
 
 #[test]
-fn damage_event_mutates_living_state_before_generated_fixed_hurt_audio() {
+fn remote_damage_event_mutates_living_state_without_client_owned_audio() {
     let (tx, mut rx) = mpsc::channel(2);
     tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
         protocol_add_entity_with_type(168, VANILLA_ENTITY_TYPE_ZOMBIE_ID),
@@ -216,18 +235,7 @@ fn damage_event_mutates_living_state_before_generated_fixed_hurt_audio() {
     assert!(animations.has_red_overlay());
 
     assert!(audio.errors.is_empty(), "{:?}", audio.errors);
-    assert_eq!(audio.commands.len(), 1);
-    match &audio.commands[0] {
-        AudioCommand::PlayPositionedSound(command) => {
-            assert_eq!(command.category, AudioCategory::Hostile);
-            assert_eq!(command.position, [1.0, 64.0, -2.0]);
-            assert_eq!(command.packet_volume, 1.0);
-            assert_eq!(command.seed, 0);
-            assert_eq!(command.sound.event_id, "minecraft:entity.zombie.hurt");
-            assert_eq!(command.sound.sound_name, "minecraft:mob/zombie/hurt1");
-        }
-        other => panic!("expected positioned sound command, got {other:?}"),
-    }
+    assert!(audio.commands.is_empty());
 }
 
 #[test]
@@ -743,7 +751,7 @@ fn armor_stand_hit_event_emits_positioned_audio_command() {
 }
 
 #[test]
-fn armor_stand_death_event_emits_positioned_audio_command() {
+fn remote_armor_stand_death_event_waits_for_server_owned_sound_packet() {
     let (tx, mut rx) = mpsc::channel(2);
     tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
         protocol_add_entity_with_type(147, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID),
@@ -758,8 +766,6 @@ fn armor_stand_death_event_emits_positioned_audio_command() {
     let mut world = WorldStore::new();
     let mut counters = NetCounters::default();
     let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
-    let mut expected_random = LevelEventSoundRandomState::with_seed(0);
-    let expected_pitch = (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
 
     assert_eq!(
         drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
@@ -767,25 +773,14 @@ fn armor_stand_death_event_emits_positioned_audio_command() {
     );
 
     assert!(audio.errors.is_empty(), "{:?}", audio.errors);
-    assert_eq!(audio.commands.len(), 1);
-    match &audio.commands[0] {
-        AudioCommand::PlayPositionedSound(command) => {
-            assert_eq!(command.category, AudioCategory::Neutral);
-            assert_eq!(command.position, [1.0, 64.0, -2.0]);
-            assert_eq!(command.packet_volume, 1.0);
-            assert!((command.packet_pitch - expected_pitch).abs() < 1.0e-6);
-            assert_eq!(command.seed, 0);
-            assert_eq!(command.fixed_range, None);
-            assert_eq!(command.sound.event_id, "minecraft:entity.armor_stand.break");
-        }
-        other => panic!("expected armor stand death positioned sound command, got {other:?}"),
-    }
+    assert!(audio.commands.is_empty());
+    assert!(world.probe_entity(147).unwrap().living_dead);
     assert_eq!(world.counters().entity_events_applied, 1);
     assert_eq!(world.counters().entity_events_ignored, 0);
 }
 
 #[test]
-fn all_generated_living_death_sounds_reach_native_audio_commands() {
+fn generated_remote_living_death_events_emit_no_positioned_audio_commands() {
     let mut probe = WorldStore::new();
     let mut event_ids = Vec::new();
     let mut catalog_entries = serde_json::Map::new();
@@ -855,17 +850,9 @@ fn all_generated_living_death_sounds_reach_native_audio_commands() {
             _ => None,
         })
         .collect();
-    assert_eq!(positioned.len(), 92);
+    assert!(positioned.is_empty());
     assert_eq!(event_ids.len(), 92);
-    for (command, (entity_id, entity_type_id, expected_event_id, expected_position)) in
-        positioned.iter().zip(&event_ids)
-    {
-        assert_eq!(
-            command.sound.event_id, *expected_event_id,
-            "entity type {entity_type_id}"
-        );
-        assert_eq!(command.position, *expected_position);
-        assert_eq!(command.seed, 0);
+    for (entity_id, entity_type_id, _, _) in &event_ids {
         let entity = world.probe_entity(*entity_id).unwrap();
         assert_eq!(
             entity.living_dead,
@@ -876,8 +863,49 @@ fn all_generated_living_death_sounds_reach_native_audio_commands() {
 }
 
 #[test]
-fn zombie_death_event_emits_positioned_audio_command() {
-    let (tx, mut rx) = mpsc::channel(2);
+fn local_player_death_event_emits_player_death_audio_command() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 157,
+        event_id: 3,
+    })))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    world.apply_login(&protocol_play_login(157));
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 1.0,
+            y: 64.0,
+            z: -2.0,
+        },
+        ..LocalPlayerPoseState::default()
+    });
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
+        1
+    );
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 1);
+    match &audio.commands[0] {
+        AudioCommand::PlayPositionedSound(command) => {
+            assert_eq!(command.category, AudioCategory::Players);
+            assert_eq!(command.position, [1.0, 64.0, -2.0]);
+            assert_eq!(command.packet_volume, 1.0);
+            assert_eq!(command.seed, 0);
+            assert_eq!(command.fixed_range, None);
+            assert_eq!(command.sound.event_id, "minecraft:entity.player.death");
+        }
+        other => panic!("expected player death positioned sound command, got {other:?}"),
+    }
+}
+
+#[test]
+fn remote_zombie_death_and_server_sound_entity_emit_one_runtime_command() {
+    let (tx, mut rx) = mpsc::channel(3);
     tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
         protocol_add_entity_with_type(148, VANILLA_ENTITY_TYPE_ZOMBIE_ID),
     )))
@@ -887,38 +915,50 @@ fn zombie_death_event_emits_positioned_audio_command() {
         event_id: 3,
     })))
     .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::SoundEntity(
+        SoundEntityEvent {
+            sound: SoundEventHolder::Direct {
+                location: "minecraft:entity.zombie.death".to_string(),
+                fixed_range: None,
+            },
+            source: SoundSource::Hostile,
+            entity_id: 148,
+            volume: 1.0,
+            pitch: 0.75,
+            seed: 92,
+        },
+    )))
+    .unwrap();
 
     let mut world = WorldStore::new();
     let mut counters = NetCounters::default();
     let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
-    let mut expected_random = LevelEventSoundRandomState::with_seed(0);
-    let expected_pitch = (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
 
     assert_eq!(
         drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
-        2
+        3
     );
 
     assert!(audio.errors.is_empty(), "{:?}", audio.errors);
     assert_eq!(audio.commands.len(), 1);
     match &audio.commands[0] {
-        AudioCommand::PlayPositionedSound(command) => {
+        AudioCommand::PlayEntitySound(command) => {
             assert_eq!(command.category, AudioCategory::Hostile);
-            assert_eq!(command.position, [1.0, 64.0, -2.0]);
+            assert_eq!(command.entity_id, 148);
             assert_eq!(command.packet_volume, 1.0);
-            assert!((command.packet_pitch - expected_pitch).abs() < 1.0e-6);
-            assert_eq!(command.seed, 0);
-            assert_eq!(command.fixed_range, None);
+            assert_eq!(command.packet_pitch, 0.75);
+            assert_eq!(command.seed, 92);
             assert_eq!(command.sound.event_id, "minecraft:entity.zombie.death");
         }
-        other => panic!("expected zombie death positioned sound command, got {other:?}"),
+        other => panic!("expected entity sound command, got {other:?}"),
     }
+    assert!(world.probe_entity(148).unwrap().living_dead);
     assert_eq!(world.counters().entity_events_applied, 1);
     assert_eq!(world.counters().entity_events_ignored, 0);
 }
 
 #[test]
-fn zombie_villager_death_event_emits_positioned_audio_command() {
+fn remote_zombie_villager_death_event_waits_for_server_owned_sound_packet() {
     let (tx, mut rx) = mpsc::channel(2);
     tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
         protocol_add_entity_with_type(149, VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID),
@@ -933,8 +973,6 @@ fn zombie_villager_death_event_emits_positioned_audio_command() {
     let mut world = WorldStore::new();
     let mut counters = NetCounters::default();
     let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
-    let mut expected_random = LevelEventSoundRandomState::with_seed(0);
-    let expected_pitch = (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
 
     assert_eq!(
         drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
@@ -942,28 +980,14 @@ fn zombie_villager_death_event_emits_positioned_audio_command() {
     );
 
     assert!(audio.errors.is_empty(), "{:?}", audio.errors);
-    assert_eq!(audio.commands.len(), 1);
-    match &audio.commands[0] {
-        AudioCommand::PlayPositionedSound(command) => {
-            assert_eq!(command.category, AudioCategory::Hostile);
-            assert_eq!(command.position, [1.0, 64.0, -2.0]);
-            assert_eq!(command.packet_volume, 1.0);
-            assert!((command.packet_pitch - expected_pitch).abs() < 1.0e-6);
-            assert_eq!(command.seed, 0);
-            assert_eq!(command.fixed_range, None);
-            assert_eq!(
-                command.sound.event_id,
-                "minecraft:entity.zombie_villager.death"
-            );
-        }
-        other => panic!("expected zombie villager death positioned sound command, got {other:?}"),
-    }
+    assert!(audio.commands.is_empty());
+    assert!(world.probe_entity(149).unwrap().living_dead);
     assert_eq!(world.counters().entity_events_applied, 1);
     assert_eq!(world.counters().entity_events_ignored, 0);
 }
 
 #[test]
-fn attack_entity_death_events_emit_positioned_audio_commands() {
+fn remote_attack_entity_death_events_wait_for_server_owned_sound_packets() {
     let (tx, mut rx) = mpsc::channel(4);
     tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
         protocol_add_entity_with_type(150, VANILLA_ENTITY_TYPE_RAVAGER_ID),
@@ -987,11 +1011,6 @@ fn attack_entity_death_events_emit_positioned_audio_commands() {
     let mut world = WorldStore::new();
     let mut counters = NetCounters::default();
     let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
-    let mut expected_random = LevelEventSoundRandomState::with_seed(0);
-    let expected_ravager_pitch =
-        (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
-    let expected_golem_pitch =
-        (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
 
     assert_eq!(
         drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
@@ -999,37 +1018,15 @@ fn attack_entity_death_events_emit_positioned_audio_commands() {
     );
 
     assert!(audio.errors.is_empty(), "{:?}", audio.errors);
-    assert_eq!(audio.commands.len(), 2);
-    match &audio.commands[0] {
-        AudioCommand::PlayPositionedSound(command) => {
-            assert_eq!(command.category, AudioCategory::Hostile);
-            assert_eq!(command.position, [1.0, 64.0, -2.0]);
-            assert_eq!(command.packet_volume, 1.0);
-            assert!((command.packet_pitch - expected_ravager_pitch).abs() < 1.0e-6);
-            assert_eq!(command.seed, 0);
-            assert_eq!(command.fixed_range, None);
-            assert_eq!(command.sound.event_id, "minecraft:entity.ravager.death");
-        }
-        other => panic!("expected ravager death positioned sound command, got {other:?}"),
-    }
-    match &audio.commands[1] {
-        AudioCommand::PlayPositionedSound(command) => {
-            assert_eq!(command.category, AudioCategory::Neutral);
-            assert_eq!(command.position, [1.0, 64.0, -2.0]);
-            assert_eq!(command.packet_volume, 1.0);
-            assert!((command.packet_pitch - expected_golem_pitch).abs() < 1.0e-6);
-            assert_eq!(command.seed, 0);
-            assert_eq!(command.fixed_range, None);
-            assert_eq!(command.sound.event_id, "minecraft:entity.iron_golem.death");
-        }
-        other => panic!("expected iron golem death positioned sound command, got {other:?}"),
-    }
+    assert!(audio.commands.is_empty());
+    assert!(world.probe_entity(150).unwrap().living_dead);
+    assert!(world.probe_entity(151).unwrap().living_dead);
     assert_eq!(world.counters().entity_events_applied, 2);
     assert_eq!(world.counters().entity_events_ignored, 0);
 }
 
 #[test]
-fn villager_and_witch_death_events_emit_positioned_audio_commands() {
+fn remote_villager_and_witch_death_events_wait_for_server_owned_sound_packets() {
     let (tx, mut rx) = mpsc::channel(4);
     tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
         protocol_add_entity_with_type(152, VANILLA_ENTITY_TYPE_WITCH_ID),
@@ -1053,11 +1050,6 @@ fn villager_and_witch_death_events_emit_positioned_audio_commands() {
     let mut world = WorldStore::new();
     let mut counters = NetCounters::default();
     let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
-    let mut expected_random = LevelEventSoundRandomState::with_seed(0);
-    let expected_witch_pitch =
-        (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
-    let expected_villager_pitch =
-        (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
 
     assert_eq!(
         drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
@@ -1065,37 +1057,15 @@ fn villager_and_witch_death_events_emit_positioned_audio_commands() {
     );
 
     assert!(audio.errors.is_empty(), "{:?}", audio.errors);
-    assert_eq!(audio.commands.len(), 2);
-    match &audio.commands[0] {
-        AudioCommand::PlayPositionedSound(command) => {
-            assert_eq!(command.category, AudioCategory::Hostile);
-            assert_eq!(command.position, [1.0, 64.0, -2.0]);
-            assert_eq!(command.packet_volume, 1.0);
-            assert!((command.packet_pitch - expected_witch_pitch).abs() < 1.0e-6);
-            assert_eq!(command.seed, 0);
-            assert_eq!(command.fixed_range, None);
-            assert_eq!(command.sound.event_id, "minecraft:entity.witch.death");
-        }
-        other => panic!("expected witch death positioned sound command, got {other:?}"),
-    }
-    match &audio.commands[1] {
-        AudioCommand::PlayPositionedSound(command) => {
-            assert_eq!(command.category, AudioCategory::Neutral);
-            assert_eq!(command.position, [1.0, 64.0, -2.0]);
-            assert_eq!(command.packet_volume, 1.0);
-            assert!((command.packet_pitch - expected_villager_pitch).abs() < 1.0e-6);
-            assert_eq!(command.seed, 0);
-            assert_eq!(command.fixed_range, None);
-            assert_eq!(command.sound.event_id, "minecraft:entity.villager.death");
-        }
-        other => panic!("expected villager death positioned sound command, got {other:?}"),
-    }
+    assert!(audio.commands.is_empty());
+    assert!(world.probe_entity(152).unwrap().living_dead);
+    assert!(world.probe_entity(153).unwrap().living_dead);
     assert_eq!(world.counters().entity_events_applied, 2);
     assert_eq!(world.counters().entity_events_ignored, 0);
 }
 
 #[test]
-fn skeleton_family_death_events_emit_positioned_audio_commands() {
+fn remote_skeleton_family_death_events_wait_for_server_owned_sound_packets() {
     let (tx, mut rx) = mpsc::channel(6);
     tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
         protocol_add_entity_with_type(154, VANILLA_ENTITY_TYPE_SKELETON_ID),
@@ -1128,13 +1098,6 @@ fn skeleton_family_death_events_emit_positioned_audio_commands() {
     let mut world = WorldStore::new();
     let mut counters = NetCounters::default();
     let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
-    let mut expected_random = LevelEventSoundRandomState::with_seed(0);
-    let expected_skeleton_pitch =
-        (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
-    let expected_stray_pitch =
-        (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
-    let expected_bogged_pitch =
-        (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
 
     assert_eq!(
         drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
@@ -1142,42 +1105,9 @@ fn skeleton_family_death_events_emit_positioned_audio_commands() {
     );
 
     assert!(audio.errors.is_empty(), "{:?}", audio.errors);
-    assert_eq!(audio.commands.len(), 3);
-    match &audio.commands[0] {
-        AudioCommand::PlayPositionedSound(command) => {
-            assert_eq!(command.category, AudioCategory::Hostile);
-            assert_eq!(command.position, [1.0, 64.0, -2.0]);
-            assert_eq!(command.packet_volume, 1.0);
-            assert!((command.packet_pitch - expected_skeleton_pitch).abs() < 1.0e-6);
-            assert_eq!(command.seed, 0);
-            assert_eq!(command.fixed_range, None);
-            assert_eq!(command.sound.event_id, "minecraft:entity.skeleton.death");
-        }
-        other => panic!("expected skeleton death positioned sound command, got {other:?}"),
-    }
-    match &audio.commands[1] {
-        AudioCommand::PlayPositionedSound(command) => {
-            assert_eq!(command.category, AudioCategory::Hostile);
-            assert_eq!(command.position, [1.0, 64.0, -2.0]);
-            assert_eq!(command.packet_volume, 1.0);
-            assert!((command.packet_pitch - expected_stray_pitch).abs() < 1.0e-6);
-            assert_eq!(command.seed, 0);
-            assert_eq!(command.fixed_range, None);
-            assert_eq!(command.sound.event_id, "minecraft:entity.stray.death");
-        }
-        other => panic!("expected stray death positioned sound command, got {other:?}"),
-    }
-    match &audio.commands[2] {
-        AudioCommand::PlayPositionedSound(command) => {
-            assert_eq!(command.category, AudioCategory::Hostile);
-            assert_eq!(command.position, [1.0, 64.0, -2.0]);
-            assert_eq!(command.packet_volume, 1.0);
-            assert!((command.packet_pitch - expected_bogged_pitch).abs() < 1.0e-6);
-            assert_eq!(command.seed, 0);
-            assert_eq!(command.fixed_range, None);
-            assert_eq!(command.sound.event_id, "minecraft:entity.bogged.death");
-        }
-        other => panic!("expected bogged death positioned sound command, got {other:?}"),
+    assert!(audio.commands.is_empty());
+    for entity_id in 154..=156 {
+        assert!(world.probe_entity(entity_id).unwrap().living_dead);
     }
     assert_eq!(world.counters().entity_events_applied, 3);
     assert_eq!(world.counters().entity_events_ignored, 0);

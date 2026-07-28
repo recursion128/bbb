@@ -807,9 +807,12 @@ resolver by adding a value provider. No new selection machinery is required.
 Owner: `bbb-audio` + `bbb-native` + `bbb-pack` + `bbb-world`
 
 - Validate remaining synthesized/game-event sound mappings against vanilla.
-- Add the client-owned animal ambient/step/eat and cat/wolf state-trigger loops
-  before consuming the remaining already-decoded sound-set fields; do not
-  synthesize those events from registry presence alone.
+- Client-owned animal ambient/step/eat and cat/wolf state-trigger loops are
+  `not-needed`: vanilla `Entity.playSound` delegates through
+  `Level.playSound(null, ...)`, `ClientLevel.playSeededSound` only submits when
+  the excluded entity is its local player, and `ServerLevel` supplies remote
+  listeners with Sound/SoundEntity packets. Reopen only if a target animal path
+  is shown to call `playLocalSound` or stops being server-packet-owned.
 - Clientbound SoundEntity holder/category/entity/volume/pitch/seed handling,
   missing or silent entity gates, fixed range, entity following, and removal stop
   are covered.

@@ -1147,6 +1147,9 @@ fn test_sound_catalog() -> SoundCatalog {
             "entity.player.hurt_freeze": {
                 "sounds": ["damage/freeze"]
             },
+            "entity.player.death": {
+                "sounds": ["damage/hit1"]
+            },
             "entity.item.pickup": {
                 "sounds": ["random/pop"]
             },

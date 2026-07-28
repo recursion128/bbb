@@ -7,6 +7,7 @@
 //! mutation and the deterministic level-event random stream live here.
 
 use bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID;
+use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_PLAYER_ID;
 use bbb_protocol::game_event_types::VANILLA_CLIENT_GAME_EVENT_GUARDIAN_ELDER_EFFECT_ID;
 use bbb_protocol::packets::{
     ChatAcknowledgement, GameEvent as ProtocolGameEvent, LevelEvent as ProtocolLevelEvent,
@@ -322,16 +323,27 @@ impl WorldStore {
             }
             PlayClientbound::DamageEvent(update) => {
                 let entity_id = update.entity_id;
-                if self.apply_damage_event(update) {
-                    let damage = self.entity_last_damage(entity_id);
-                    if let Some(state) = damage.and_then(|damage| {
-                        self.living_damage_hurt_sound_for_entity_with_optional_effects(
-                            entity_id,
-                            damage.source_type_id,
-                            damage.source_effects,
-                            || random.next_float(),
-                        )
-                    }) {
+                let local_player_effects = if self.local_player_id() == Some(entity_id) {
+                    match self.damage_type_effects_by_holder_id(update.source_type_id) {
+                        Ok(effects) => effects,
+                        Err(err) => {
+                            self.record_apply_error("damage_type", err);
+                            None
+                        }
+                    }
+                } else {
+                    None
+                };
+                self.apply_damage_event(update);
+                // Vanilla `LocalPlayer.playSound` submits its own hurt sound, while remote
+                // `LivingEntity.playSound` is rejected by `ClientLevel` and arrives through the
+                // server-owned Sound/SoundEntity packet path.
+                if self.local_player_id() == Some(entity_id) {
+                    if let Some(state) = self
+                        .local_player_damage_hurt_sound(local_player_effects, || {
+                            random.next_float()
+                        })
+                    {
                         effects.positioned_sound(&state);
                     }
                 }
@@ -446,12 +458,13 @@ impl WorldStore {
                 self.apply_explosion_knockback(&state);
             }
             PlayClientbound::EntityEvent(update) => {
-                let event_kind =
-                    self.entities
-                        .entity_type_id(update.entity_id)
-                        .and_then(|entity_type_id| {
-                            vanilla_entity_event_kind(entity_type_id, update.event_id)
-                        });
+                let entity_type_id = self.entities.entity_type_id(update.entity_id).or_else(|| {
+                    (self.local_player_id() == Some(update.entity_id))
+                        .then_some(VANILLA_ENTITY_TYPE_PLAYER_ID)
+                });
+                let event_kind = entity_type_id.and_then(|entity_type_id| {
+                    vanilla_entity_event_kind(entity_type_id, update.event_id)
+                });
                 let firework_explosion_particles =
                     if event_kind == Some(VanillaEntityEventKind::FireworkExplosion) {
                         self.firework_rocket_explosion_particle_state(update.entity_id)
@@ -589,13 +602,13 @@ impl WorldStore {
                 if let Some(state) = rabbit_sprint_particles {
                     effects.rabbit_sprint_particles(self, state);
                 }
-                // `LivingEntity.handleEntityEvent(3)` resolves and submits the death sound before
-                // the non-Player health/die transition. Resolve it against the pre-death state and
-                // consume its two pitch samples before mutating the canonical entity.
-                if event_kind == Some(VanillaEntityEventKind::LivingDeath) {
-                    if let Some(state) =
-                        self.living_death_sound_for_entity(update.entity_id, || random.next_float())
-                    {
+                // `LivingEntity.handleEntityEvent(3)` submits a sound before its death transition.
+                // Only `LocalPlayer.playSound` plays that call locally; remote entities are gated
+                // by `ClientLevel` and use the server-owned Sound/SoundEntity packet path.
+                if event_kind == Some(VanillaEntityEventKind::LivingDeath)
+                    && self.local_player_id() == Some(update.entity_id)
+                {
+                    if let Some(state) = self.local_player_death_sound(|| random.next_float()) {
                         effects.positioned_sound(&state);
                     }
                 }
@@ -2774,7 +2787,7 @@ mod tests {
     }
 
     #[test]
-    fn damage_event_resolves_reordered_type_and_forwards_player_hurt_sound() {
+    fn local_player_damage_event_resolves_reordered_type_and_forwards_hurt_sound() {
         let mut store = WorldStore::new();
         store.record_registry_entries(
             DAMAGE_TYPE_REGISTRY,
@@ -2798,24 +2811,15 @@ mod tests {
             y: 72.0,
             z: -5.0,
         };
-        record_packet_player_info(&mut store, 71);
-        store.apply_play_packet(
-            PlayClientbound::AddEntity(add_entity(71, VANILLA_ENTITY_TYPE_PLAYER_ID, position)),
-            &mut random,
-            &mut effects,
-        );
+        store.local_player_id = Some(71);
+        store.set_local_player_pose(LocalPlayerPoseState {
+            position,
+            ..LocalPlayerPoseState::default()
+        });
 
-        for (source_type_id, expected_effects, expected_sound) in [
-            (
-                0,
-                DamageTypeEffects::Freezing,
-                "minecraft:entity.player.hurt_freeze",
-            ),
-            (
-                1,
-                DamageTypeEffects::Burning,
-                "minecraft:entity.player.hurt_on_fire",
-            ),
+        for (source_type_id, expected_sound) in [
+            (0, "minecraft:entity.player.hurt_freeze"),
+            (1, "minecraft:entity.player.hurt_on_fire"),
         ] {
             let expected_pitch =
                 (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
@@ -2832,16 +2836,6 @@ mod tests {
                     &mut effects,
                 )
                 .is_none());
-            let damage = store.entity_last_damage(71).unwrap();
-            assert_eq!(damage.source_effects, Some(expected_effects));
-            assert_eq!(
-                damage.source_type_resource_id.as_deref(),
-                Some(if source_type_id == 0 {
-                    "example:frozen"
-                } else {
-                    "example:embers"
-                })
-            );
             let sound = effects.positioned_sounds.last().unwrap();
             assert_eq!(sound.sound.location.as_deref(), Some(expected_sound));
             assert_eq!(sound.source, "player");
@@ -2856,7 +2850,7 @@ mod tests {
     }
 
     #[test]
-    fn damage_event_forwards_animal_sound_variant_hurt_sound() {
+    fn remote_damage_event_mutates_state_without_client_owned_hurt_sound() {
         let mut store = WorldStore::new();
         store.record_registry_entries(
             DAMAGE_TYPE_REGISTRY,
@@ -2880,8 +2874,6 @@ mod tests {
             &mut effects,
         );
 
-        let expected_pitch =
-            (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
         assert!(store
             .apply_play_packet(
                 PlayClientbound::DamageEvent(DamageEvent {
@@ -2896,16 +2888,15 @@ mod tests {
             )
             .is_none());
 
-        let sound = effects.positioned_sounds.last().unwrap();
+        let damage = store.entity_last_damage(72).unwrap();
+        assert_eq!(damage.source_effects, Some(DamageTypeEffects::Hurt));
         assert_eq!(
-            sound.sound.location.as_deref(),
-            Some("minecraft:entity.cow.hurt")
+            damage.source_type_resource_id.as_deref(),
+            Some("example:damage")
         );
-        assert_eq!(sound.source, "neutral");
-        assert_eq!(sound.position, position);
-        assert_eq!(sound.volume, 0.4);
-        assert_eq!(sound.pitch, expected_pitch);
-        assert_eq!(sound.seed, 0);
+        assert!(effects.positioned_sounds.is_empty());
+        assert_eq!(store.last_sound(), None);
+        assert_eq!(random.next_float(), expected_random.next_float());
     }
 
     #[test]
@@ -3922,7 +3913,7 @@ mod tests {
     }
 
     #[test]
-    fn armor_stand_and_cow_death_events_forward_randomized_positioned_sounds() {
+    fn remote_death_events_mutate_entities_without_client_owned_sounds() {
         let mut store = WorldStore::new();
         store.record_registry_entries(
             crate::registries::COW_SOUND_VARIANT_REGISTRY,
@@ -3934,10 +3925,6 @@ mod tests {
         );
         let mut random = LevelEventSoundRandomState::with_seed(0);
         let mut expected_random = LevelEventSoundRandomState::with_seed(0);
-        let expected_pitch =
-            (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
-        let expected_cow_pitch =
-            (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
         let mut effects = RecordingEffects::default();
 
         for packet in [
@@ -3997,51 +3984,18 @@ mod tests {
             assert!(leftover.is_none());
         }
 
-        assert_eq!(effects.positioned_sounds.len(), 2);
-        let sound = &effects.positioned_sounds[0];
-        assert_eq!(
-            sound.sound.location.as_deref(),
-            Some("minecraft:entity.armor_stand.break")
-        );
-        assert_eq!(sound.source, "neutral");
-        assert_eq!(
-            sound.position,
-            Vec3d {
-                x: -2.0,
-                y: 61.5,
-                z: 5.75,
-            }
-        );
-        assert_eq!(sound.volume, 1.0);
-        assert!((sound.pitch - expected_pitch).abs() < 1.0e-6);
-        assert_eq!(sound.seed, 0);
-        assert_eq!(sound.distance_delay, false);
-        let cow_sound = &effects.positioned_sounds[1];
-        assert_eq!(
-            cow_sound.sound.location.as_deref(),
-            Some("example:entity.cow.death")
-        );
-        assert_eq!(cow_sound.sound.fixed_range, Some(20.0));
-        assert_eq!(cow_sound.source, "neutral");
-        assert_eq!(
-            cow_sound.position,
-            Vec3d {
-                x: 9.0,
-                y: 64.0,
-                z: -3.0,
-            }
-        );
-        assert_eq!(cow_sound.volume, 0.4);
-        assert!((cow_sound.pitch - expected_cow_pitch).abs() < 1.0e-6);
-        assert_eq!(cow_sound.seed, 0);
-        assert_eq!(cow_sound.distance_delay, false);
-        assert_eq!(store.last_sound(), Some(cow_sound));
+        assert!(effects.positioned_sounds.is_empty());
+        assert_eq!(store.last_sound(), None);
+        assert_eq!(store.entities.living_entity_dead(84), Some(true));
+        assert_eq!(store.entities.living_entity_dead(85), Some(true));
+        assert_eq!(store.entities.living_entity_dead(86), Some(true));
+        assert_eq!(random.next_float(), expected_random.next_float());
         assert_eq!(store.counters().entity_events_applied, 3);
         assert_eq!(store.counters().entity_events_ignored, 1);
     }
 
     #[test]
-    fn all_generated_living_death_policies_cross_the_play_effect_boundary() {
+    fn generated_remote_living_death_events_do_not_cross_the_play_effect_boundary() {
         let mut store = WorldStore::new();
         let mut random = LevelEventSoundRandomState::with_seed(0);
         let mut expected_random = LevelEventSoundRandomState::with_seed(0);
@@ -4072,12 +4026,6 @@ mod tests {
                     &mut effects,
                 )
                 .is_none());
-            let canonical_position = store
-                .probe_entity_transform(entity_id)
-                .unwrap_or_else(|| panic!("{} was not added", entry.resource_id))
-                .position;
-            let expected_pitch =
-                (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
             assert!(store
                 .apply_play_packet(
                     PlayClientbound::EntityEvent(EntityEvent {
@@ -4089,27 +4037,11 @@ mod tests {
                 )
                 .is_none());
 
-            let sound = effects
-                .positioned_sounds
-                .last()
-                .unwrap_or_else(|| panic!("{} emitted no death sound", entry.resource_id));
-            assert_eq!(
-                sound.position,
-                Vec3d {
-                    x: canonical_position.x,
-                    y: canonical_position.y,
-                    z: canonical_position.z,
-                },
-                "{}",
-                entry.resource_id
-            );
             assert!(
-                (sound.pitch - expected_pitch).abs() < 1.0e-6,
+                effects.positioned_sounds.is_empty(),
                 "{}",
                 entry.resource_id
             );
-            assert_eq!(sound.seed, 0, "{}", entry.resource_id);
-            assert!(!sound.distance_delay, "{}", entry.resource_id);
             if entry.id == VANILLA_ENTITY_TYPE_PLAYER_ID {
                 assert_eq!(
                     store.entities.living_entity_health(entity_id),
@@ -4139,9 +4071,8 @@ mod tests {
             }
         }
         assert_eq!(living_count, 92);
-        assert_eq!(effects.positioned_sounds.len(), living_count);
 
-        // Silent, non-living, and missing owners resolve no sound and consume no pitch samples.
+        // Silent, non-living, and missing owners also resolve no sound and consume no samples.
         let silent_id = 31_000;
         for packet in [
             PlayClientbound::AddEntity(add_entity(
@@ -4175,12 +4106,57 @@ mod tests {
                 .apply_play_packet(packet, &mut random, &mut effects)
                 .is_none());
         }
-        assert_eq!(effects.positioned_sounds.len(), living_count);
+        assert!(effects.positioned_sounds.is_empty());
         assert_eq!(random.next_float(), expected_random.next_float());
     }
 
     #[test]
-    fn living_death_sound_uses_the_pre_wake_position() {
+    fn local_player_death_event_forwards_player_death_sound() {
+        let mut store = WorldStore::new();
+        let position = Vec3d {
+            x: 3.0,
+            y: 72.0,
+            z: -5.0,
+        };
+        store.local_player_id = Some(31_050);
+        store.set_local_player_pose(LocalPlayerPoseState {
+            position,
+            ..LocalPlayerPoseState::default()
+        });
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+        let expected_pitch =
+            (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
+        let mut effects = RecordingEffects::default();
+
+        assert!(store
+            .apply_play_packet(
+                PlayClientbound::EntityEvent(EntityEvent {
+                    entity_id: 31_050,
+                    event_id: LIVING_ENTITY_DEATH_EVENT_ID,
+                }),
+                &mut random,
+                &mut effects,
+            )
+            .is_none());
+
+        assert_eq!(effects.positioned_sounds.len(), 1);
+        let sound = &effects.positioned_sounds[0];
+        assert_eq!(
+            sound.sound.location.as_deref(),
+            Some("minecraft:entity.player.death")
+        );
+        assert_eq!(sound.source, "player");
+        assert_eq!(sound.position, position);
+        assert_eq!(sound.volume, 1.0);
+        assert_eq!(sound.pitch, expected_pitch);
+        assert_eq!(sound.seed, 0);
+        assert!(!sound.distance_delay);
+        assert_eq!(random.next_float(), expected_random.next_float());
+    }
+
+    #[test]
+    fn remote_living_death_wakes_entity_without_client_owned_sound() {
         let mut store = WorldStore::with_dimension(crate::WorldDimension {
             min_y: 0,
             height: 16,
@@ -4268,8 +4244,7 @@ mod tests {
             )
             .is_none());
 
-        assert_eq!(effects.positioned_sounds.len(), 1);
-        assert_eq!(effects.positioned_sounds[0].position, old_position);
+        assert!(effects.positioned_sounds.is_empty());
         assert_eq!(
             store.probe_entity(entity_id).unwrap().position,
             crate::EntityVec3 {
@@ -4281,12 +4256,10 @@ mod tests {
     }
 
     #[test]
-    fn zombie_death_event_forwards_randomized_positioned_sound() {
+    fn zombie_death_event_waits_for_server_owned_sound_packet() {
         let mut store = WorldStore::new();
         let mut random = LevelEventSoundRandomState::with_seed(0);
         let mut expected_random = LevelEventSoundRandomState::with_seed(0);
-        let expected_pitch =
-            (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
         let mut effects = RecordingEffects::default();
 
         for packet in [
@@ -4342,37 +4315,21 @@ mod tests {
             assert!(leftover.is_none());
         }
 
-        assert_eq!(effects.positioned_sounds.len(), 2);
-        let sound = &effects.positioned_sounds[0];
-        assert_eq!(
-            sound.sound.location.as_deref(),
-            Some("minecraft:entity.zombie.death")
-        );
-        assert_eq!(sound.source, "hostile");
-        assert_eq!(
-            sound.position,
-            Vec3d {
-                x: -3.0,
-                y: 61.5,
-                z: 5.75,
-            }
-        );
-        assert_eq!(sound.volume, 1.0);
-        assert!((sound.pitch - expected_pitch).abs() < 1.0e-6);
-        assert_eq!(sound.seed, 0);
-        assert_eq!(sound.distance_delay, false);
-        assert_eq!(store.last_sound(), effects.positioned_sounds.last());
+        assert!(effects.positioned_sounds.is_empty());
+        assert_eq!(store.last_sound(), None);
+        assert_eq!(store.entities.living_entity_dead(87), Some(true));
+        assert_eq!(store.entities.living_entity_dead(88), Some(true));
+        assert_eq!(store.entities.living_entity_dead(89), Some(true));
+        assert_eq!(random.next_float(), expected_random.next_float());
         assert_eq!(store.counters().entity_events_applied, 3);
         assert_eq!(store.counters().entity_events_ignored, 1);
     }
 
     #[test]
-    fn zombie_villager_death_event_forwards_randomized_positioned_sound() {
+    fn zombie_villager_death_event_waits_for_server_owned_sound_packet() {
         let mut store = WorldStore::new();
         let mut random = LevelEventSoundRandomState::with_seed(0);
         let mut expected_random = LevelEventSoundRandomState::with_seed(0);
-        let expected_pitch =
-            (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
         let mut effects = RecordingEffects::default();
 
         for packet in [
@@ -4428,39 +4385,21 @@ mod tests {
             assert!(leftover.is_none());
         }
 
-        assert_eq!(effects.positioned_sounds.len(), 2);
-        let sound = &effects.positioned_sounds[0];
-        assert_eq!(
-            sound.sound.location.as_deref(),
-            Some("minecraft:entity.zombie_villager.death")
-        );
-        assert_eq!(sound.source, "hostile");
-        assert_eq!(
-            sound.position,
-            Vec3d {
-                x: -4.0,
-                y: 61.5,
-                z: 5.75,
-            }
-        );
-        assert_eq!(sound.volume, 1.0);
-        assert!((sound.pitch - expected_pitch).abs() < 1.0e-6);
-        assert_eq!(sound.seed, 0);
-        assert_eq!(sound.distance_delay, false);
-        assert_eq!(store.last_sound(), effects.positioned_sounds.last());
+        assert!(effects.positioned_sounds.is_empty());
+        assert_eq!(store.last_sound(), None);
+        assert_eq!(store.entities.living_entity_dead(90), Some(true));
+        assert_eq!(store.entities.living_entity_dead(91), Some(true));
+        assert_eq!(store.entities.living_entity_dead(92), Some(true));
+        assert_eq!(random.next_float(), expected_random.next_float());
         assert_eq!(store.counters().entity_events_applied, 3);
         assert_eq!(store.counters().entity_events_ignored, 1);
     }
 
     #[test]
-    fn attack_entity_death_events_forward_randomized_positioned_sounds() {
+    fn attack_entity_death_events_wait_for_server_owned_sound_packets() {
         let mut store = WorldStore::new();
         let mut random = LevelEventSoundRandomState::with_seed(0);
         let mut expected_random = LevelEventSoundRandomState::with_seed(0);
-        let expected_ravager_pitch =
-            (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
-        let expected_golem_pitch =
-            (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
         let mut effects = RecordingEffects::default();
 
         for packet in [
@@ -4529,58 +4468,21 @@ mod tests {
             assert!(leftover.is_none());
         }
 
-        assert_eq!(effects.positioned_sounds.len(), 3);
-        let ravager = &effects.positioned_sounds[0];
-        assert_eq!(
-            ravager.sound.location.as_deref(),
-            Some("minecraft:entity.ravager.death")
-        );
-        assert_eq!(ravager.source, "hostile");
-        assert_eq!(
-            ravager.position,
-            Vec3d {
-                x: -5.0,
-                y: 61.5,
-                z: 5.75,
-            }
-        );
-        assert_eq!(ravager.volume, 1.0);
-        assert!((ravager.pitch - expected_ravager_pitch).abs() < 1.0e-6);
-
-        let golem = &effects.positioned_sounds[1];
-        assert_eq!(
-            golem.sound.location.as_deref(),
-            Some("minecraft:entity.iron_golem.death")
-        );
-        assert_eq!(golem.source, "neutral");
-        assert_eq!(
-            golem.position,
-            Vec3d {
-                x: 1.0,
-                y: 70.0,
-                z: -8.0,
-            }
-        );
-        assert_eq!(golem.volume, 1.0);
-        assert!((golem.pitch - expected_golem_pitch).abs() < 1.0e-6);
-        for sound in &effects.positioned_sounds {
-            assert_eq!(sound.seed, 0);
-            assert_eq!(sound.distance_delay, false);
+        assert!(effects.positioned_sounds.is_empty());
+        assert_eq!(store.last_sound(), None);
+        for entity_id in 93..=96 {
+            assert_eq!(store.entities.living_entity_dead(entity_id), Some(true));
         }
-        assert_eq!(store.last_sound(), effects.positioned_sounds.last());
+        assert_eq!(random.next_float(), expected_random.next_float());
         assert_eq!(store.counters().entity_events_applied, 4);
         assert_eq!(store.counters().entity_events_ignored, 1);
     }
 
     #[test]
-    fn villager_and_witch_death_events_forward_randomized_positioned_sounds() {
+    fn villager_and_witch_death_events_wait_for_server_owned_sound_packets() {
         let mut store = WorldStore::new();
         let mut random = LevelEventSoundRandomState::with_seed(0);
         let mut expected_random = LevelEventSoundRandomState::with_seed(0);
-        let expected_witch_pitch =
-            (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
-        let expected_villager_pitch =
-            (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
         let mut effects = RecordingEffects::default();
 
         for packet in [
@@ -4649,60 +4551,21 @@ mod tests {
             assert!(leftover.is_none());
         }
 
-        assert_eq!(effects.positioned_sounds.len(), 3);
-        let witch = &effects.positioned_sounds[0];
-        assert_eq!(
-            witch.sound.location.as_deref(),
-            Some("minecraft:entity.witch.death")
-        );
-        assert_eq!(witch.source, "hostile");
-        assert_eq!(
-            witch.position,
-            Vec3d {
-                x: -6.0,
-                y: 61.5,
-                z: 5.75,
-            }
-        );
-        assert_eq!(witch.volume, 1.0);
-        assert!((witch.pitch - expected_witch_pitch).abs() < 1.0e-6);
-
-        let villager = &effects.positioned_sounds[1];
-        assert_eq!(
-            villager.sound.location.as_deref(),
-            Some("minecraft:entity.villager.death")
-        );
-        assert_eq!(villager.source, "neutral");
-        assert_eq!(
-            villager.position,
-            Vec3d {
-                x: 2.0,
-                y: 70.0,
-                z: -8.0,
-            }
-        );
-        assert_eq!(villager.volume, 1.0);
-        assert!((villager.pitch - expected_villager_pitch).abs() < 1.0e-6);
-        for sound in &effects.positioned_sounds {
-            assert_eq!(sound.seed, 0);
-            assert_eq!(sound.distance_delay, false);
+        assert!(effects.positioned_sounds.is_empty());
+        assert_eq!(store.last_sound(), None);
+        for entity_id in 97..=100 {
+            assert_eq!(store.entities.living_entity_dead(entity_id), Some(true));
         }
-        assert_eq!(store.last_sound(), effects.positioned_sounds.last());
+        assert_eq!(random.next_float(), expected_random.next_float());
         assert_eq!(store.counters().entity_events_applied, 4);
         assert_eq!(store.counters().entity_events_ignored, 1);
     }
 
     #[test]
-    fn skeleton_family_death_events_forward_randomized_positioned_sounds() {
+    fn skeleton_family_death_events_wait_for_server_owned_sound_packets() {
         let mut store = WorldStore::new();
         let mut random = LevelEventSoundRandomState::with_seed(0);
         let mut expected_random = LevelEventSoundRandomState::with_seed(0);
-        let expected_skeleton_pitch =
-            (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
-        let expected_stray_pitch =
-            (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
-        let expected_bogged_pitch =
-            (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
         let mut effects = RecordingEffects::default();
 
         for packet in [
@@ -4784,62 +4647,12 @@ mod tests {
             assert!(leftover.is_none());
         }
 
-        assert_eq!(effects.positioned_sounds.len(), 4);
-        let skeleton = &effects.positioned_sounds[0];
-        assert_eq!(
-            skeleton.sound.location.as_deref(),
-            Some("minecraft:entity.skeleton.death")
-        );
-        assert_eq!(skeleton.source, "hostile");
-        assert_eq!(
-            skeleton.position,
-            Vec3d {
-                x: -7.0,
-                y: 61.5,
-                z: 5.75,
-            }
-        );
-        assert_eq!(skeleton.volume, 1.0);
-        assert!((skeleton.pitch - expected_skeleton_pitch).abs() < 1.0e-6);
-
-        let stray = &effects.positioned_sounds[1];
-        assert_eq!(
-            stray.sound.location.as_deref(),
-            Some("minecraft:entity.stray.death")
-        );
-        assert_eq!(stray.source, "hostile");
-        assert_eq!(
-            stray.position,
-            Vec3d {
-                x: 3.0,
-                y: 70.0,
-                z: -8.0,
-            }
-        );
-        assert_eq!(stray.volume, 1.0);
-        assert!((stray.pitch - expected_stray_pitch).abs() < 1.0e-6);
-
-        let bogged = &effects.positioned_sounds[2];
-        assert_eq!(
-            bogged.sound.location.as_deref(),
-            Some("minecraft:entity.bogged.death")
-        );
-        assert_eq!(bogged.source, "hostile");
-        assert_eq!(
-            bogged.position,
-            Vec3d {
-                x: 4.5,
-                y: 65.25,
-                z: -1.0,
-            }
-        );
-        assert_eq!(bogged.volume, 1.0);
-        assert!((bogged.pitch - expected_bogged_pitch).abs() < 1.0e-6);
-        for sound in &effects.positioned_sounds {
-            assert_eq!(sound.seed, 0);
-            assert_eq!(sound.distance_delay, false);
+        assert!(effects.positioned_sounds.is_empty());
+        assert_eq!(store.last_sound(), None);
+        for entity_id in 101..=105 {
+            assert_eq!(store.entities.living_entity_dead(entity_id), Some(true));
         }
-        assert_eq!(store.last_sound(), effects.positioned_sounds.last());
+        assert_eq!(random.next_float(), expected_random.next_float());
         assert_eq!(store.counters().entity_events_applied, 5);
         assert_eq!(store.counters().entity_events_ignored, 1);
     }
