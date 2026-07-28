@@ -104,8 +104,11 @@ gate (core physics is high-risk), and is a safe stop point.
   formula, matching `getFrictionInfluencedSpeed`'s `onGround` key. The
   swimming surface steer stays with the fluid branch owner
   (`isSwimming()` is false while flying).
-- **S5 — closure**: ledger/matrix updates, playable-gate fixture plus live
-  movement evidence, archive this contract.
+- **S5 — closure (landed)**: the unsupported-features movement queue now
+  carries only the fluid-branch `modifyInput` follow-up, the playable-gate
+  fixture smoke and the live gate (whose movement scenario drives the real
+  input path and asserts ≥1 block displacement with zero server position
+  corrections) passed on the rewritten chain, and this contract is archived.
 
 Non-goals: fluid and fall-flying travel branches (separate vanilla methods
 with their own owners), ridden/vehicle travel, and server-authoritative

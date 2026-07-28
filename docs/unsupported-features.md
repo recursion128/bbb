@@ -625,11 +625,9 @@ Movement:
 - Cover the remaining vanilla survival physics beyond the synchronized local
   movement cadence.
 - Cover the remaining vanilla voxel collision shapes.
-- Complete the staged travel-ordering contract in
-  `docs/local-player-travel-ordering-design.md`: S4 player wrappers
-  (creative-flight y*0.6 preservation, sprint air-control constant, swimming
-  surface steer verification) and S5 closure evidence, plus aligning the
-  fluid/flying branches' legacy direction input with `modifyInput`.
+- Align the fluid branch's legacy normalized direction input with
+  `LocalPlayer.modifyInput` (the follow-up left by the closed travel-ordering
+  contract, `docs/archive/local-player-travel-ordering-design.md`).
 - Add sprint-swim camera, animation, and presentation nuance.
 
 Commands:

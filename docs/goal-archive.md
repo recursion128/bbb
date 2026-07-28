@@ -668,3 +668,12 @@
   引用检查与 goal-archive 900 行上限，22 个闭环 design doc 迁 `docs/archive/`；
   RegistryAccess 消费长尾整队列移出开放路线图（07-22 已全量闭环），权威来源
   规则升格为结构不变量。
+- **2026-07-28（本地玩家 travel 顺序对齐工程闭环）**：本地玩家非流体 travel
+  链现按 vanilla 26.1 每 tick `deltaMovement` 顺序运行——held-jump 10-tick
+  锁定、`modifyInput` 0.98×物品使用×潜行属性输入链、moveRelative 累加与
+  blockFriction×0.91 摩擦、`Entity.move` 碰撞尾序（基座回调清零/史莱姆反弹、
+  block speed factor）、爬墙冲量与重力摩擦收尾；creative 飞行并入同一链
+  （垂直输入 ×3 前置、`Player.getFlyingSpeed` 空中加速、行前垂直快照 ×0.6
+  重建、onClimbable/blockSpeedFactor 飞行门），legacy 位移模型删除。已知偏差
+  =碰撞 epsilon 1e-7 与流体分支 legacy 方向输入（后者留在 movement 队列）；
+  合同见 `docs/archive/local-player-travel-ordering-design.md`。
