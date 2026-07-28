@@ -625,7 +625,10 @@ Movement:
 - Cover the remaining vanilla survival physics beyond the synchronized local
   movement cadence.
 - Cover the remaining vanilla voxel collision shapes.
-- Implement full vanilla post-`Entity.move` `deltaMovement` travel ordering.
+- Complete the staged travel-ordering contract in
+  `docs/local-player-travel-ordering-design.md`: S2 input scale chain, S3
+  core `travelInAir`/`Entity.move` delta chain, S4 player wrappers, S5
+  closure evidence.
 - Add sprint-swim camera, animation, and presentation nuance.
 
 Commands:

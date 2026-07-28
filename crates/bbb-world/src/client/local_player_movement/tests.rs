@@ -4897,6 +4897,104 @@ fn local_player_jump_uses_jump_strength_attribute_and_jump_boost_effect() {
 }
 
 #[test]
+fn local_player_held_jump_arms_vanilla_ten_tick_lockout() {
+    let mut world = flat_collision_world();
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: vec3(0.5, 1.0, 0.5),
+        on_ground: true,
+        ..LocalPlayerPoseState::default()
+    });
+    let held_jump = LocalPlayerInputState {
+        focused: true,
+        jump: true,
+        ..LocalPlayerInputState::default()
+    };
+
+    let jumped = world
+        .advance_local_player_input(held_jump, LOCAL_PHYSICS_TICK_SECONDS)
+        .unwrap();
+    assert!(jumped.delta_movement.y > 0.0);
+    assert_eq!(jumped.no_jump_delay_ticks, 10);
+
+    // Landing again while the input is still held stays grounded until the
+    // lockout expires: the gate sees the decremented counter, not a jump.
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: vec3(0.5, 1.0, 0.5),
+        on_ground: true,
+        no_jump_delay_ticks: jumped.no_jump_delay_ticks,
+        ..LocalPlayerPoseState::default()
+    });
+    let locked = world
+        .advance_local_player_input(held_jump, LOCAL_PHYSICS_TICK_SECONDS)
+        .unwrap();
+    assert_f64_near(locked.position.y, 1.0, 0.000001);
+    assert!(locked.on_ground);
+    assert_eq!(locked.no_jump_delay_ticks, 9);
+}
+
+#[test]
+fn local_player_jump_lockout_decrements_then_gates_within_the_same_tick() {
+    let mut world = flat_collision_world();
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: vec3(0.5, 1.0, 0.5),
+        on_ground: true,
+        no_jump_delay_ticks: 1,
+        ..LocalPlayerPoseState::default()
+    });
+
+    // Vanilla decrements `noJumpDelay` at the top of `aiStep`, so a counter
+    // of 1 reaches 0 and re-jumps on this very tick (10-tick auto cadence).
+    let pose = world
+        .advance_local_player_input(
+            LocalPlayerInputState {
+                focused: true,
+                jump: true,
+                ..LocalPlayerInputState::default()
+            },
+            LOCAL_PHYSICS_TICK_SECONDS,
+        )
+        .unwrap();
+
+    assert!(pose.delta_movement.y > 0.0);
+    assert!(!pose.on_ground);
+    assert_eq!(pose.no_jump_delay_ticks, 10);
+}
+
+#[test]
+fn local_player_releasing_jump_clears_the_lockout_immediately() {
+    let mut world = flat_collision_world();
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: vec3(0.5, 1.0, 0.5),
+        on_ground: true,
+        no_jump_delay_ticks: 7,
+        ..LocalPlayerPoseState::default()
+    });
+
+    let released = world
+        .advance_local_player_input(
+            LocalPlayerInputState {
+                focused: true,
+                ..LocalPlayerInputState::default()
+            },
+            LOCAL_PHYSICS_TICK_SECONDS,
+        )
+        .unwrap();
+    assert_eq!(released.no_jump_delay_ticks, 0);
+
+    let pose = world
+        .advance_local_player_input(
+            LocalPlayerInputState {
+                focused: true,
+                jump: true,
+                ..LocalPlayerInputState::default()
+            },
+            LOCAL_PHYSICS_TICK_SECONDS,
+        )
+        .unwrap();
+    assert!(pose.delta_movement.y > 0.0);
+}
+
+#[test]
 fn local_player_honey_block_jump_factor_scales_base_jump() {
     let mut world = flat_collision_world();
     set_test_block(&mut world, 0, 0, 0, HONEY_BLOCK_STATE_ID);

@@ -92,6 +92,8 @@ const DEFAULT_BLOCK_SPEED_FACTOR: f64 = 1.0;
 const HONEY_BLOCK_JUMP_FACTOR: f64 = 0.5;
 const DEFAULT_BLOCK_JUMP_FACTOR: f64 = 1.0;
 const SPRINT_JUMP_HORIZONTAL_IMPULSE: f64 = 0.2;
+// Vanilla `LivingEntity.aiStep` held-jump lockout: `this.noJumpDelay = 10`.
+const LOCAL_PLAYER_JUMP_DELAY_TICKS: u8 = 10;
 const LOCAL_PLAYER_CLIMBABLE_MAX_HORIZONTAL_VELOCITY_PER_TICK: f64 = 0.15;
 const LOCAL_PLAYER_CLIMBABLE_MAX_DOWNWARD_VELOCITY_PER_TICK: f64 = -0.15;
 const LOCAL_PLAYER_CLIMBABLE_UPWARD_VELOCITY_PER_TICK: f64 = 0.2;
@@ -233,6 +235,14 @@ fn advance_local_player_physics_step(
     stuck_multiplier: Option<EntityVec3>,
 ) -> (LocalPlayerPoseState, EntityBlockEffectMovement) {
     let input = local_player_effective_movement_input(world, input);
+    // Vanilla `LivingEntity.aiStep` decrements `noJumpDelay` at the top of
+    // every tick and clears it outright while the jump input is released.
+    if pose.no_jump_delay_ticks > 0 {
+        pose.no_jump_delay_ticks -= 1;
+    }
+    if !(input.focused && input.jump) {
+        pose.no_jump_delay_ticks = 0;
+    }
     let forward_input = if input.focused {
         axis(input.forward, input.backward)
     } else {
@@ -288,7 +298,15 @@ fn advance_local_player_physics_step(
         && local_player_inside_powder_snow(world, pose);
 
     let mut jump_horizontal_impulse = (0.0, 0.0);
-    if flying.is_none() && input.focused && input.jump && pose.on_ground {
+    if flying.is_none()
+        && input.focused
+        && input.jump
+        && pose.on_ground
+        && pose.no_jump_delay_ticks == 0
+    {
+        // Vanilla arms the 10-tick held-jump lockout on the `jumpFromGround`
+        // call itself, before the tiny-jump-power no-op check inside it.
+        pose.no_jump_delay_ticks = LOCAL_PLAYER_JUMP_DELAY_TICKS;
         let jump_velocity = local_player_jump_velocity(world, pose);
         if jump_velocity > 1.0e-5 {
             pose.delta_movement.y = pose.delta_movement.y.max(jump_velocity);

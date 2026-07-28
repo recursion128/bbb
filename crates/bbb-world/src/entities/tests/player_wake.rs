@@ -122,6 +122,7 @@ fn player_wake_uses_safe_bed_position_and_updates_local_pose() {
         fall_distance: 3.0,
         sneaking: true,
         swimming: true,
+        no_jump_delay_ticks: 0,
         y_rot: 20.0,
         x_rot: -10.0,
         last_teleport_id: 91,

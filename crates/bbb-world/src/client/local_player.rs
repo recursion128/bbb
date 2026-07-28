@@ -215,6 +215,8 @@ pub struct LocalPlayerPoseState {
     pub sneaking: bool,
     #[serde(default)]
     pub swimming: bool,
+    #[serde(default)]
+    pub no_jump_delay_ticks: u8,
     pub y_rot: f32,
     pub x_rot: f32,
     pub last_teleport_id: i32,
@@ -273,6 +275,7 @@ impl LocalPlayerPoseState {
             fall_distance: 0.0,
             sneaking: false,
             swimming: false,
+            no_jump_delay_ticks: 0,
             y_rot: state.y_rot,
             x_rot: state.x_rot,
             last_teleport_id,
