@@ -100,6 +100,19 @@ wire-packed metadata, but persistent projection follows
 `TropicalFish.Variant.CODEC`: decode the sparse pattern and both dye ids through
 their Vanilla fallback maps, then repack the normalized value.
 
+Packet-created non-living entities also keep constructor state that Vanilla
+always saves and the client can know exactly:
+
+- FallingBlock keeps `DropItem`, `HurtEntities`, fall-damage, and `CancelDrop`
+  defaults while its client-owned `Time` advances;
+- Item and ExperienceOrb keep health, pickup/count defaults, and client-owned
+  ages; ExperienceOrb skips its complete first client tick before age advances;
+- FireworkRocket keeps zero `LifeTime`, its default rocket stack, and the
+  synchronized `ShotAtAngle`, while `Life` advances locally;
+- EyeOfEnder saves its default eye stack until synchronized item metadata
+  replaces it; OminousItemSpawner saves the packet-constructor's zero delay
+  because only the server factory randomizes that field.
+
 ## Serial stages and focused checks
 
 1. **Persistent value audit.** Mechanically compare all 26.1 persistent data

@@ -9944,10 +9944,10 @@ fn local_firework_save_uses_parent_lifecycle_synced_item_codec_and_client_life()
     });
     let entity = world.probe_entity(91).unwrap();
     let snbt = debug_local_entity_pretty_snbt(&world, Some(&item_runtime), &entity).unwrap();
-    assert!(snbt.contains("Owner: [I; 0, 0, 0, 90], HasBeenShot: 0b, Life: 0"));
-    assert!(!snbt.contains("LifeTime"));
-    assert!(!snbt.contains("FireworksItem"));
-    assert!(!snbt.contains("ShotAtAngle"));
+    assert!(snbt.contains(
+        "Owner: [I; 0, 0, 0, 90], HasBeenShot: 0b, Life: 0, LifeTime: 0, \
+         FireworksItem: {id: \"minecraft:firework_rocket\"}, ShotAtAngle: 0b"
+    ));
 
     let mut component_patch = DataComponentPatchSummary::default();
     component_patch.added = 1;
@@ -9984,7 +9984,7 @@ fn local_firework_save_uses_parent_lifecycle_synced_item_codec_and_client_life()
     let entity = world.probe_entity(91).unwrap();
     let snbt = debug_local_entity_pretty_snbt(&world, Some(&item_runtime), &entity).unwrap();
     assert!(snbt.contains(
-        "Owner: [I; 0, 0, 0, 90], HasBeenShot: 0b, Life: 0, \
+        "Owner: [I; 0, 0, 0, 90], HasBeenShot: 0b, Life: 0, LifeTime: 0, \
          FireworksItem: {id: \"minecraft:firework_rocket\", count: 2, components: \
          {\"minecraft:fireworks\": {flight_duration: 2, explosions: \
          [{shape: \"star\", colors: [1122867, 4478310], fade_colors: [7833753], \
@@ -10018,8 +10018,7 @@ fn local_firework_save_uses_parent_lifecycle_synced_item_codec_and_client_life()
     world.advance_entity_client_animations(1);
     let entity = world.probe_entity(91).unwrap();
     let snbt = debug_local_entity_pretty_snbt(&world, Some(&item_runtime), &entity).unwrap();
-    assert!(snbt.contains("Owner: [I; 0, 0, 0, 90], HasBeenShot: 1b, Life: 1"));
-    assert!(!snbt.contains("LifeTime"));
+    assert!(snbt.contains("Owner: [I; 0, 0, 0, 90], HasBeenShot: 1b, Life: 1, LifeTime: 0"));
 }
 
 #[test]
@@ -12405,7 +12404,8 @@ fn shift_f3_i_with_permission_copies_local_falling_block_save_nbt_to_clipboard()
             "/summon minecraft:falling_block 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              BlockState: {Name: \"minecraft:sand\"}, \
-             Time: 0}"
+             Time: 0, DropItem: 1b, HurtEntities: 0b, \
+             FallHurtAmount: 0.0f, FallHurtMax: 40, CancelDrop: 0b}"
         )
     );
     assert!(input.take_debug_recreate_server_query_requests().is_empty());
@@ -12420,7 +12420,11 @@ fn shift_f3_i_with_permission_copies_local_falling_block_save_nbt_to_clipboard()
     let command = debug_copy_recreate_entity_command(&world, None, 61, true)
         .expect("falling-block recreate command after client ticks")
         .command;
-    assert!(command.contains("BlockState: {Name: \"minecraft:sand\"}, Time: 7"));
+    assert!(command.contains(
+        "BlockState: {Name: \"minecraft:sand\"}, Time: 7, \
+         DropItem: 1b, HurtEntities: 0b, FallHurtAmount: 0.0f, \
+         FallHurtMax: 40, CancelDrop: 0b"
+    ));
 }
 
 #[test]
@@ -13769,6 +13773,7 @@ fn shift_f3_i_skips_unpickable_experience_orb_but_direct_copy_encodes_save_nbt()
         .expect("generated ExperienceOrb value accessor");
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
+    insert_empty_chunk_for_block(&mut world, BlockPos { x: 0, y: 1, z: 2 });
     grant_debug_recreate_nbt_permission(&mut world);
     world.apply_add_entity(AddEntity {
         id: 59,
@@ -13829,7 +13834,23 @@ fn shift_f3_i_skips_unpickable_experience_orb_but_direct_copy_encodes_save_nbt()
         59,
         "/summon minecraft:experience_orb 0.00 1.50 2.00 \
          {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-         Value: 149s}",
+         Health: 5s, Age: 0s, Value: 149s, Count: 1}",
+    );
+
+    world.advance_entity_client_animations(1);
+    let entity = world.probe_entity(59).unwrap();
+    let snbt = debug_local_entity_pretty_snbt(&world, None, &entity).unwrap();
+    assert!(
+        snbt.contains("Health: 5s, Age: 0s, Value: 149s, Count: 1"),
+        "{snbt}"
+    );
+
+    world.advance_entity_client_animations(1);
+    let entity = world.probe_entity(59).unwrap();
+    let snbt = debug_local_entity_pretty_snbt(&world, None, &entity).unwrap();
+    assert!(
+        snbt.contains("Health: 5s, Age: 1s, Value: 149s, Count: 1"),
+        "{snbt}"
     );
 }
 
@@ -28382,9 +28403,10 @@ fn item_entity_local_save_projects_client_age_and_synced_stack() {
 
     let entity = world.probe_entity(305).unwrap();
     let snbt = debug_local_entity_pretty_snbt(&world, Some(&item_runtime), &entity).unwrap();
-    assert!(snbt.contains("Age: 0s, Item: {id: \"minecraft:diamond\", count: 3}"));
-    assert!(!snbt.contains("Health"));
-    assert!(!snbt.contains("PickupDelay"));
+    assert!(snbt.contains(
+        "Health: 5s, Age: 0s, PickupDelay: 0s, \
+         Item: {id: \"minecraft:diamond\", count: 3}"
+    ));
 }
 
 #[test]
@@ -28396,6 +28418,10 @@ fn eye_of_ender_local_save_projects_synced_stack() {
         VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID,
     )
     .expect("eye of ender item accessor");
+    let entity = world.probe_entity(306).unwrap();
+    let snbt = debug_local_entity_pretty_snbt(&world, Some(&item_runtime), &entity).unwrap();
+    assert!(snbt.contains("Item: {id: \"minecraft:ender_eye\"}"));
+
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 306,
         values: vec![synced_item_stack_value(stack_id, 1)],
@@ -28418,11 +28444,9 @@ fn ominous_item_spawner_local_save_projects_lowercase_item_field() {
         .expect("ominous item spawner accessor");
 
     let entity = world.probe_entity(307).unwrap();
-    let snbt = debug_local_entity_pretty_snbt(&world, Some(&item_runtime), &entity);
-    assert!(snbt
-        .as_deref()
-        .map(|text| !text.contains("item:"))
-        .unwrap_or(true));
+    let snbt = debug_local_entity_pretty_snbt(&world, Some(&item_runtime), &entity).unwrap();
+    assert!(!snbt.contains("item:"));
+    assert!(snbt.contains("spawn_item_after_ticks: 0L"));
 
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 307,
@@ -28430,8 +28454,7 @@ fn ominous_item_spawner_local_save_projects_lowercase_item_field() {
     }));
     let entity = world.probe_entity(307).unwrap();
     let snbt = debug_local_entity_pretty_snbt(&world, Some(&item_runtime), &entity).unwrap();
-    assert!(snbt.contains("item: {id: \"minecraft:diamond\"}"));
-    assert!(!snbt.contains("spawn_item_after_ticks"));
+    assert!(snbt.contains("item: {id: \"minecraft:diamond\"}, spawn_item_after_ticks: 0L"));
 }
 
 fn display_data_id(entity_type_id: i32, java_name: &str) -> u8 {

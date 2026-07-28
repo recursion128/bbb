@@ -6705,25 +6705,24 @@ fn debug_push_firework_rocket_additional_save_data(
         "Life: {}",
         entity.client_animations.age_ticks.min(i32::MAX as u32)
     ));
-    if debug_entity_data_item_stack_present(entity, accessors.item_data_id).is_some() {
-        fields.push(format!(
-            "FireworksItem: {}",
-            debug_firework_rocket_item_stack(
-                entity,
-                accessors,
-                PersistentSnbtContext {
-                    item_runtime,
-                    registry_access: Some(world.frozen_registry_access()),
-                    ..Default::default()
-                },
-            )
-        ));
-    }
-    if let Some(shot_at_angle) =
-        debug_entity_data_bool_present(entity, accessors.shot_at_angle_data_id)
-    {
-        fields.push(format!("ShotAtAngle: {}", debug_snbt_bool(shot_at_angle)));
-    }
+    // The packet-created client instance uses the type-only constructor, so
+    // `lifetime` remains zero; only server construction randomizes it.
+    fields.push("LifeTime: 0".to_string());
+    fields.push(format!(
+        "FireworksItem: {}",
+        debug_firework_rocket_item_stack(
+            entity,
+            accessors,
+            PersistentSnbtContext {
+                item_runtime,
+                registry_access: Some(world.frozen_registry_access()),
+                ..Default::default()
+            },
+        )
+    ));
+    let shot_at_angle = debug_entity_data_bool_present(entity, accessors.shot_at_angle_data_id)
+        .unwrap_or(accessors.shot_at_angle_default);
+    fields.push(format!("ShotAtAngle: {}", debug_snbt_bool(shot_at_angle)));
 }
 
 fn debug_firework_rocket_item_stack(
@@ -8084,6 +8083,13 @@ fn debug_push_falling_block_additional_save_data(
         "Time: {}",
         entity.client_animations.age_ticks.min(i32::MAX as u32)
     ));
+    // Packet recreation only replaces `blockState`; these constructor fields
+    // have no client-side mutation path.
+    fields.push("DropItem: 1b".to_string());
+    fields.push("HurtEntities: 0b".to_string());
+    fields.push("FallHurtAmount: 0.0f".to_string());
+    fields.push("FallHurtMax: 40".to_string());
+    fields.push("CancelDrop: 0b".to_string());
 }
 
 fn debug_push_minecart_additional_save_data(
@@ -8311,8 +8317,14 @@ fn debug_push_experience_orb_additional_save_data(entity: &EntityState, fields: 
     else {
         return;
     };
-    let value = debug_entity_data_int_present(entity, data_id).unwrap_or(default);
+    let value = debug_entity_data_int_present(entity, data_id).unwrap_or(default) as i16;
+    // `ExperienceOrb.tick` skips its complete first client tick. Thereafter
+    // the client-owned age advances once per common entity age tick.
+    let age = entity.client_animations.age_ticks.saturating_sub(1) as i16;
+    fields.push("Health: 5s".to_string());
+    fields.push(format!("Age: {age}s"));
     fields.push(format!("Value: {value}s"));
+    fields.push("Count: 1".to_string());
 }
 
 fn debug_push_armor_stand_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
@@ -9593,7 +9605,11 @@ fn debug_push_eye_of_ender_additional_save_data(
     else {
         return;
     };
-    debug_push_item_stack_field(world, entity, item_runtime, stack_id, "Item", fields);
+    if debug_entity_data_item_stack_present(entity, stack_id).is_some() {
+        debug_push_item_stack_field(world, entity, item_runtime, stack_id, "Item", fields);
+    } else {
+        debug_push_item_stack_id(fields, "Item", "minecraft:ender_eye");
+    }
 }
 
 fn debug_push_item_entity_additional_save_data(
@@ -9609,12 +9625,14 @@ fn debug_push_item_entity_additional_save_data(
     else {
         return;
     };
-    // Age mirrors the client-advanced `ItemEntity.age`; Health, PickupDelay
-    // and the thrower/owner references are server-private and stay absent.
+    // Age mirrors the client-advanced `ItemEntity.age`; packet-created client
+    // instances retain exact constructor health and pickup-delay defaults.
+    fields.push("Health: 5s".to_string());
     fields.push(format!(
         "Age: {}s",
         entity.client_animations.age_ticks as i16
     ));
+    fields.push("PickupDelay: 0s".to_string());
     debug_push_item_stack_field(world, entity, item_runtime, stack_id, "Item", fields);
 }
 
@@ -9631,9 +9649,11 @@ fn debug_push_ominous_item_spawner_additional_save_data(
     else {
         return;
     };
-    // Vanilla only stores a non-empty spawner stack, and the spawn delay is
-    // server-private.
+    // Vanilla only stores a non-empty spawner stack. Packet-created clients
+    // keep the type constructor's exact zero delay while the server owns its
+    // randomized 60–120 tick value.
     debug_push_item_stack_field(world, entity, item_runtime, stack_id, "item", fields);
+    fields.push("spawn_item_after_ticks: 0L".to_string());
 }
 
 fn debug_display_int_field(entity: &EntityState, java_name: &str) -> Option<i32> {
