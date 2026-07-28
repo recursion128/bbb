@@ -78,8 +78,6 @@ Movement:
 
 Commands:
 
-- Add focused command-queue and encode tests for inventory, interaction, chat,
-  command, and sign editing.
 - Bottle dragon-breath client prediction is `not-needed`: `AreaEffectCloud.owner`
   is absent from both `ClientboundAddEntityPacket` and synchronized metadata, so
   the remote 26.1 client leaves that branch server-authoritative. Reopen if the
