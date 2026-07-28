@@ -13,6 +13,11 @@ const ITEM_PICKUP_PARTICLE_TYPE_ID: i32 = -1;
 fn particle_spawn_batch_empty_tracks_diagnostics() {
     assert!(ParticleSpawnBatch::default().is_empty());
     assert!(!ParticleSpawnBatch {
+        missing_definition_count: 1,
+        ..ParticleSpawnBatch::default()
+    }
+    .is_empty());
+    assert!(!ParticleSpawnBatch {
         unknown_particle_type_count: 1,
         ..ParticleSpawnBatch::default()
     }
@@ -210,6 +215,25 @@ fn particle_runtime_zero_capacity_counts_drops_without_queueing() {
     assert_eq!(summary.unsupported_particle_option_count, 4);
     assert_eq!(summary.pending_spawns, 0);
     assert!(particles.pending_spawns().is_empty());
+}
+
+#[test]
+fn renderer_particle_submit_records_missing_asset_diagnostics() {
+    let Some(mut renderer) = crate::Renderer::new_offscreen(16, 16) else {
+        return;
+    };
+
+    renderer.submit_particle_spawns(ParticleSpawnBatch {
+        missing_definition_count: 2,
+        missing_sprite_count: 3,
+        ..ParticleSpawnBatch::default()
+    });
+
+    let counters = renderer.counters();
+    assert_eq!(counters.particle_spawn_batches, 1);
+    assert_eq!(counters.particle_spawn_commands, 0);
+    assert_eq!(counters.particle_missing_definitions, 2);
+    assert_eq!(counters.particle_missing_sprites, 3);
 }
 
 #[test]

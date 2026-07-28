@@ -147,20 +147,6 @@ Inventory:
   italic/complex component styles, and component-specific detail lines from
   `font/default.json`.
 
-## Particle runtime vanilla parity
-
-Owner: `bbb-renderer` + `bbb-native` + `bbb-pack`
-
-The fixed vanilla 26.1 particle type id/resource/override-limiter catalog is
-generated, including its named type-id constants; native consumers must not restore
-resource-to-id declaration macros or a second expected registry length. Particle definition JSON and atlas sprites remain resource-pack-owned
-runtime catalogs rather than fixed vanilla snapshots; the remaining items below
-are presentation and diagnostic behavior. New provider gaps enter through the
-per-provider coverage matrix at the end of this file before cutting a slice.
-
-- Keep missing definition/sprite diagnostics: native spawn resolution and
-  renderer counters must record them rather than dropping otherwise valid spawns.
-
 ## Renderer scene parity
 
 Owner: `bbb-renderer` + `bbb-native` + `bbb-pack` + `bbb-world`

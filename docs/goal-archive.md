@@ -695,3 +695,6 @@
   默认值、箭矢/展示框/带箱载具空库存及可交互熔炉矿车 fuel/push；所有空处理器和
   persistent component descriptor 均有机械裁决，合同见
   `docs/archive/f3i-observable-entity-save-closeout-design.md`。
+- **2026-07-28（粒子 runtime Vanilla parity 最终闭环）**：逐 provider 矩阵、
+  dust/terrain 呈现与资源包定义/精灵缺失诊断均已贯通 native resolver、renderer
+  提交计数和 control snapshot；开放账本中的粒子域已清空。
