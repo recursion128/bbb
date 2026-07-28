@@ -401,7 +401,7 @@ mod tests {
             "decode_slot_display_value",
             "decodes_update_recipes_with_tag_slot_display",
             "push_slot_display_item_stack_candidates",
-            "hud_inventory_screen_reads_replaced_and_removed_tag_ghost_members",
+            "hud_inventory_screen_keeps_resolved_tag_ghost_recipe_snapshot",
             "stonecutter_buttons_and_tooltips_follow_current_tag_and_trim_context",
         ] {
             assert!(network[0]
