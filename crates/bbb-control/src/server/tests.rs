@@ -1235,6 +1235,36 @@ fn input_mouse_button_queues_request() {
 }
 
 #[test]
+fn input_mouse_tap_queues_atomic_request() {
+    let state = ControlState::new("test");
+    let response = dispatch(
+        ControlRequest {
+            method: "input.mouse_tap".to_string(),
+            params: json!({"button": "left"}),
+        },
+        &state,
+    );
+
+    assert!(response.ok);
+    assert_eq!(response.result.unwrap()["pending"], 1);
+    assert_eq!(
+        state.requests.lock().unwrap().input_requests,
+        vec![InputControlRequest::MouseTap {
+            button: InputMouseButtonControl::Left,
+        }]
+    );
+
+    let unknown_button = dispatch(
+        ControlRequest {
+            method: "input.mouse_tap".to_string(),
+            params: json!({"button": "back"}),
+        },
+        &state,
+    );
+    assert!(!unknown_button.ok);
+}
+
+#[test]
 fn input_look_delta_queues_request() {
     let state = ControlState::new("test");
     let response = dispatch(

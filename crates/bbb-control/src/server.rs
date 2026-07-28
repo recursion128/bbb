@@ -589,6 +589,34 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
         };
     }
 
+    if request.method == "input.mouse_tap" {
+        let Some(button) =
+            string_param(&request.params, "button").and_then(InputMouseButtonControl::from_name)
+        else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some(
+                    "input.mouse_tap requires param button in left/right/middle".to_string(),
+                ),
+            };
+        };
+        let pending =
+            state
+                .requests
+                .submit(ControlWriteRequest::Input(InputControlRequest::MouseTap {
+                    button,
+                }));
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": pending
+            })),
+            error: None,
+        };
+    }
+
     if request.method == "input.look_delta" {
         let (Some(dx), Some(dy)) = (
             f64_param(&request.params, "dx"),

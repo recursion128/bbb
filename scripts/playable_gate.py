@@ -1015,6 +1015,10 @@ def _press_mouse(address: tuple[str, int], button: str, pressed: bool) -> None:
     _control_request(address, "input.mouse_button", {"button": button, "pressed": pressed})
 
 
+def _tap_mouse(address: tuple[str, int], button: str) -> None:
+    _control_request(address, "input.mouse_tap", {"button": button})
+
+
 def _probe_block(address: tuple[str, int], x: int, y: int, z: int) -> dict[str, Any] | None:
     probe = _control_request(address, "world.probe_block", {"x": x, "y": y, "z": z})
     return probe if isinstance(probe, dict) else None
@@ -1233,8 +1237,7 @@ def drive_block_interaction(
     for _ in range(3):
         _await_input_pipeline(address, deadline)
         picks_before = _net_counter(address, "pick_item_from_block_commands_queued")
-        _press_mouse(address, "middle", True)
-        _press_mouse(address, "middle", False)
+        _tap_mouse(address, "middle")
         consume_deadline = min(deadline, time.monotonic() + 10.0)
         while time.monotonic() < consume_deadline:
             if (
@@ -1265,17 +1268,16 @@ def drive_block_interaction(
         )
 
     # Left-click tap: creative instant destroy, acknowledged by the server
-    # block update flipping the canonical probe to air.  A held button keeps
-    # the vanilla destroy loop digging into the exposed blocks below, so tap
-    # and re-tap instead of holding -- and only after the previous tap was
-    # consumed by the frame loop (the swing counter moves), so a long frame
-    # cannot pile up queued taps that dig a shaft when it ends.
+    # block update flipping the canonical probe to air.  The atomic tap
+    # replays both button edges in one simulation command, matching a vanilla
+    # click completed before the next tick and preventing a slow frame from
+    # turning it into a held creative destroy.  Wait for the swing counter
+    # before retrying so queued taps cannot accumulate.
     destroyed = False
     while not destroyed and time.monotonic() < deadline:
         _await_input_pipeline(address, deadline)
         swings_before = _net_counter(address, "swing_commands_queued")
-        _press_mouse(address, "left", True)
-        _press_mouse(address, "left", False)
+        _tap_mouse(address, "left")
         consume_deadline = min(deadline, time.monotonic() + 10.0)
         while time.monotonic() < consume_deadline:
             if _net_counter(address, "swing_commands_queued") > swings_before:
@@ -1557,8 +1559,7 @@ def drive_entity_interaction(
         _await_input_pipeline(address, deadline)
         attacks_before = _net_counter(address, "attack_entity_commands_queued")
         swings_before = _net_counter(address, "swing_commands_queued")
-        _press_mouse(address, "left", True)
-        _press_mouse(address, "left", False)
+        _tap_mouse(address, "left")
         consume_deadline = min(deadline, time.monotonic() + 10.0)
         while time.monotonic() < consume_deadline:
             if _net_counter(address, "swing_commands_queued") > swings_before:
@@ -1713,8 +1714,7 @@ def drive_container_interaction(
         )
         _await_input_pipeline(address, deadline)
         uses_before = _net_counter(address, "use_item_on_commands_queued")
-        _press_mouse(address, "right", True)
-        _press_mouse(address, "right", False)
+        _tap_mouse(address, "right")
         consume_deadline = min(deadline, time.monotonic() + 10.0)
         while time.monotonic() < consume_deadline:
             if _net_counter(address, "use_item_on_commands_queued") > uses_before:

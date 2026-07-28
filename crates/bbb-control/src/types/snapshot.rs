@@ -151,6 +151,9 @@ pub enum InputControlRequest {
         button: InputMouseButtonControl,
         pressed: bool,
     },
+    MouseTap {
+        button: InputMouseButtonControl,
+    },
 }
 
 /// One ordered control-plane write submitted to the native simulation owner.

@@ -982,7 +982,7 @@ class PlayableGateScriptContractTests(unittest.TestCase):
             movement.index('"input.focus"'), movement.index('"forward", True')
         )
         self.assertLess(
-            interaction.index('"input.focus"'), interaction.index("_press_mouse(")
+            interaction.index('"input.focus"'), interaction.index("_tap_mouse(")
         )
 
     def test_block_interaction_builds_deterministic_support_column(self):
@@ -1000,8 +1000,21 @@ class PlayableGateScriptContractTests(unittest.TestCase):
         self.assertIn("minecraft:smooth_stone", interaction)
         self.assertLess(
             interaction.index("minecraft:smooth_stone"),
-            interaction.index("_press_mouse("),
+            interaction.index("_tap_mouse("),
         )
+
+    def test_instant_gameplay_clicks_use_atomic_control_taps(self):
+        source = MODULE_PATH.read_text(encoding="utf-8")
+
+        self.assertIn(
+            '_control_request(address, "input.mouse_tap", {"button": button})',
+            source,
+        )
+        self.assertIn('_tap_mouse(address, "middle")', source)
+        self.assertGreaterEqual(source.count('_tap_mouse(address, "left")'), 2)
+        self.assertIn('_tap_mouse(address, "right")', source)
+        self.assertIn('_press_mouse(address, "right", True)', source)
+        self.assertIn('_press_mouse(address, "right", False)', source)
 
     def test_block_centering_uses_server_authority_only_for_test_setup(self):
         source = MODULE_PATH.read_text(encoding="utf-8")

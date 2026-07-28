@@ -173,6 +173,31 @@ pub(crate) fn pump_control_input_requests_with_effects(
                     audio_events,
                 );
             }
+            InputControlRequest::MouseTap { button } => {
+                // A tap is one simulation command: both edges are replayed
+                // before tick advancement can interpret the press as a held
+                // button and repeat a creative-mode destroy or use action.
+                if super::input_screen_is_open(input, world)
+                    || input.command_entry_is_active()
+                    || input.debug_game_mode_switcher_is_open()
+                {
+                    continue;
+                }
+                for state in [ElementState::Pressed, ElementState::Released] {
+                    handle_mouse_input_at_partial_tick_with_effects_and_presentation(
+                        input,
+                        first_person_hand_presentation,
+                        world,
+                        counters,
+                        net_commands,
+                        input_mouse_button(button),
+                        state,
+                        entity_partial_tick,
+                        level_random,
+                        audio_events,
+                    );
+                }
+            }
         }
     }
 }
@@ -872,6 +897,42 @@ mod tests {
         // click path queues exactly the vanilla attack swing.
         assert_eq!(counters.swing_commands_queued, 1);
         assert!(matches!(rx.try_recv(), Ok(NetCommand::Swing(_))));
+    }
+
+    #[test]
+    fn pump_control_input_requests_replays_atomic_mouse_tap_before_tick_advancement() {
+        let requests = bbb_control::SharedControlRequests::default();
+        {
+            let mut guard = requests.lock().unwrap();
+            guard
+                .input_requests
+                .push(InputControlRequest::Focus { focused: true });
+            guard.input_requests.push(InputControlRequest::MouseTap {
+                button: InputMouseButtonControl::Left,
+            });
+        }
+        let (tx, mut rx) = tokio::sync::mpsc::channel(8);
+        let mut input = ClientInputState::new(false);
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        pump_control_input_requests(
+            &requests,
+            &mut input,
+            &mut counters,
+            &mut world,
+            &Some(tx),
+            None,
+            false,
+            PhysicalSize::new(1280, 720),
+            1.0,
+        );
+
+        assert_eq!(counters.swing_commands_queued, 1);
+        assert!(matches!(rx.try_recv(), Ok(NetCommand::Swing(_))));
+        assert!(!input
+            .item_model_keybind_context()
+            .keybind_down("key.attack"));
     }
 
     #[test]
