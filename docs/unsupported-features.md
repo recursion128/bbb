@@ -349,9 +349,6 @@ back into a todo. Do not delete these.
   (`HudEntityPreviewItemLayer` / `GuiEntityRenderer`). Hand/head item models need
   a native-side baked item-quad handoff. Restart with GUI surface work.
 - **Entity-in-UI item/entity lighting contexts.** Restart with GUI surface work.
-- **Mount (`MountScreenOpen`) entity preview rendering.** Horse/Nautilus type
-  gating, menu ownership and native inventory layouts are covered; restart with
-  entity-in-UI presentation work for the remaining preview drawing.
 ## Fonts and text
 
 - **`unihex` / CJK.** The consumed assets tree ships no `font/unifont*.zip`

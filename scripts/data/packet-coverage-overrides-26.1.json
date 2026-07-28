@@ -1747,10 +1747,15 @@
         "evidence": [
           "crates/bbb-native/src/input/inventory/tests.rs#mount_horse_layout_matches_vanilla_horse_inventory_menu",
           "crates/bbb-native/src/input/inventory/tests.rs#mount_nautilus_layout_uses_equipment_and_player_slots_only",
-          "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMountScreenOpen"
+          "crates/bbb-native/src/runtime.rs#hud_mount_inventory_entity_preview",
+          "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_projects_mount_entity_preview",
+          "crates/bbb-renderer/src/render.rs#entity_preview_pip_passes",
+          "crates/bbb-renderer/src/hud.rs#hud_entity_preview_pip_renders_and_blits_isolated_entity_pixels",
+          "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMountScreenOpen",
+          "vanilla:net/minecraft/client/gui/screens/inventory/AbstractMountInventoryScreen.java#extractBackground",
+          "vanilla:net/minecraft/client/gui/screens/inventory/InventoryScreen.java#extractEntityInInventoryFollowsMouse"
         ],
-        "gap": "docs/unsupported-features.md#screens-and-presentation",
-        "status": "partial"
+        "status": "complete"
       },
       "tests": {
         "evidence": [
@@ -1758,7 +1763,9 @@
           "crates/bbb-net/src/event_stream.rs#play_server_presentation_packets_emit_matching_events_and_cookie_response",
           "crates/bbb-net/src/probe/play.rs#probe_applies_client_ui_packets_to_world",
           "crates/bbb-world/src/client/ui.rs#mount_screen_open_ignores_missing_and_non_mount_entities",
-          "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#client_ui_events_update_world_and_world_counters"
+          "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#client_ui_events_update_world_and_world_counters",
+          "crates/bbb-native/src/runtime/tests.rs#hud_inventory_screen_projects_mount_entity_preview",
+          "crates/bbb-renderer/src/hud.rs#hud_entity_preview_pip_renders_and_blits_isolated_entity_pixels"
         ],
         "status": "complete"
       }
