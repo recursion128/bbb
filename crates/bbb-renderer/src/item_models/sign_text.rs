@@ -326,15 +326,27 @@ fn rgb_to_color(rgb: u32) -> [f32; 4] {
 
 pub(crate) fn merge_sign_text_surfaces(
     surfaces: &[SignTextSurface],
+    visible_positions: &[[i32; 3]],
 ) -> (Vec<ItemModelVertex>, Vec<u32>) {
     let mut vertices = Vec::new();
     let mut indices = Vec::new();
-    for surface in surfaces {
+    for surface in surfaces.iter().filter(|surface| {
+        visible_positions
+            .binary_search(&sign_text_block_position(surface))
+            .is_ok()
+    }) {
         let base = u32::try_from(vertices.len()).expect("sign text vertex count fits in u32");
         vertices.extend(surface.mesh.vertices.iter().copied());
         indices.extend(surface.mesh.indices.iter().map(|index| index + base));
     }
     (vertices, indices)
+}
+
+fn sign_text_block_position(surface: &SignTextSurface) -> [i32; 3] {
+    surface
+        .submission
+        .position
+        .map(|coordinate| coordinate.floor() as i32)
 }
 
 impl Renderer {
@@ -353,11 +365,19 @@ impl Renderer {
         };
     }
 
+    /// Replaces the per-frame visible sign-block positions while retaining the
+    /// stable baked text surfaces across camera-only changes.
+    pub fn set_visible_sign_text_positions(&mut self, mut positions: Vec<[i32; 3]>) {
+        positions.sort_unstable();
+        positions.dedup();
+        self.visible_sign_text_positions = positions;
+    }
+
     pub(crate) fn collect_sign_text_geometry(&self) -> (Vec<ItemModelVertex>, Vec<u32>) {
         if self.item_frame_map_text_font_atlas.is_none() {
             return (Vec::new(), Vec::new());
         }
-        merge_sign_text_surfaces(&self.sign_text_surfaces)
+        merge_sign_text_surfaces(&self.sign_text_surfaces, &self.visible_sign_text_positions)
     }
 }
 
@@ -651,5 +671,45 @@ mod tests {
         let tl = Vec3::from_array(surface.mesh.vertices[0].position);
         let expected_y = (0.9375 - 0.3125 - 0.32) + 18.0 * 0.014_062_5;
         assert!((tl.y - expected_y).abs() < 1e-5);
+    }
+
+    #[test]
+    fn merged_sign_text_geometry_keeps_only_visible_block_positions() {
+        let glyphs = test_glyphs();
+        let lines = [plain_runs("a"), Vec::new(), Vec::new(), Vec::new()];
+        let hidden = bake_sign_text_surface(
+            [1.0, 2.0, 3.0],
+            SignModelAttachment::Standing,
+            0.0,
+            true,
+            &lines,
+            0,
+            false,
+            [0.0, 1.0],
+            &glyphs,
+        )
+        .unwrap();
+        let visible = bake_sign_text_surface(
+            [4.0, 5.0, 6.0],
+            SignModelAttachment::Standing,
+            0.0,
+            true,
+            &lines,
+            0,
+            false,
+            [0.0, 1.0],
+            &glyphs,
+        )
+        .unwrap();
+
+        let (vertices, indices) = merge_sign_text_surfaces(&[hidden.clone()], &[]);
+        assert!(vertices.is_empty());
+        assert!(indices.is_empty());
+
+        let (vertices, indices) = merge_sign_text_surfaces(&[hidden, visible], &[[4, 5, 6]]);
+        assert_eq!(indices.len(), 6);
+        assert!(vertices
+            .iter()
+            .all(|vertex| (4.0..5.0).contains(&vertex.position[0])));
     }
 }

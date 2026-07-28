@@ -2281,6 +2281,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) item_frame_map_decoration_surfaces: Vec<ItemFrameMapDecorationSurface>,
     pub(crate) item_frame_map_text_surfaces: Vec<ItemFrameMapTextSurface>,
     pub(crate) sign_text_surfaces: RendererFrameUpdate<Vec<SignTextSurface>>,
+    pub(crate) visible_sign_text_positions: Vec<[i32; 3]>,
     pub(crate) display_text_surfaces: Vec<DisplayTextSurface>,
     pub(crate) entity_name_tag_surfaces: Vec<EntityNameTagSurface>,
     pub(crate) entity_flame_surfaces: Vec<EntityFlameSurface>,
@@ -2748,6 +2749,7 @@ pub(crate) fn apply_renderer_frame(
     if let RendererFrameUpdate::Replace(surfaces) = frame.sign_text_surfaces {
         renderer.set_sign_text_surfaces(surfaces);
     }
+    renderer.set_visible_sign_text_positions(frame.visible_sign_text_positions);
     renderer.set_display_text_surfaces(frame.display_text_surfaces);
     renderer.set_entity_name_tag_surfaces(frame.entity_name_tag_surfaces);
     renderer.set_entity_flame_surfaces(frame.entity_flame_surfaces);

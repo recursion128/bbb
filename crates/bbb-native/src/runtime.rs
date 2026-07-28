@@ -93,6 +93,7 @@ use crate::{
     bed_scene::bed_model_instances_from_world,
     bell_scene::bell_model_instances_from_world_at_partial_tick,
     biome_tint::biome_height_adjusted_temperature,
+    block_entity_visibility::{retain_visible_block_entity_instances, BlockEntityVisibility},
     camera_fov::{camera_eye_in_water, CameraFovTickState},
     camera_pose::{
         camera_eye_position, camera_forward_vector, camera_hurt_effect_from_world,
@@ -3843,6 +3844,11 @@ pub(crate) fn update_renderer_from_publication(
     let block_entity_started_at = Instant::now();
     let block_destroy_stages = block_destroy_stages_from_world(world);
     let block_entity_model_start = entity_instances.len();
+    let block_entity_visibility = BlockEntityVisibility::new(
+        camera_pose,
+        [surface_size.width, surface_size.height],
+        camera_fov.culling_degrees,
+    );
     let StableBlockEntityFrame {
         sign_instances,
         bed_instances,
@@ -3864,6 +3870,12 @@ pub(crate) fn update_renderer_from_publication(
             )
         },
     );
+    let visible_sign_text_positions = sign_instances
+        .iter()
+        .filter_map(|instance| {
+            block_entity_visibility.visible_block_position(instance, world, terrain_upload)
+        })
+        .collect();
     // Chest block-entity models join the same single entity-model submission
     // stream after held-item baking (they have no hands to bake).
     entity_instances.extend(chest_model_instances_from_world_at_partial_tick(
@@ -3926,6 +3938,13 @@ pub(crate) fn update_renderer_from_publication(
         world,
         entity_partial_tick,
     ));
+    retain_visible_block_entity_instances(
+        &mut entity_instances,
+        block_entity_model_start,
+        block_entity_visibility,
+        world,
+        terrain_upload,
+    );
     apply_block_entity_crumbling(
         &mut entity_instances[block_entity_model_start..],
         &block_destroy_stages,
@@ -4275,6 +4294,7 @@ pub(crate) fn update_renderer_from_publication(
             item_frame_map_decoration_surfaces,
             item_frame_map_text_surfaces,
             sign_text_surfaces,
+            visible_sign_text_positions,
             display_text_surfaces,
             entity_name_tag_surfaces,
             entity_flame_surfaces,

@@ -14,6 +14,7 @@ mod banner_scene;
 mod bed_scene;
 mod bell_scene;
 mod biome_tint;
+mod block_entity_visibility;
 mod block_outline;
 mod camera_fov;
 mod camera_pose;

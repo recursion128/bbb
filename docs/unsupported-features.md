@@ -972,8 +972,6 @@ back into a todo. Do not delete these.
   between adjacent leaves and `ModelBlockRenderer.forceOpaque` from the effective graphics
   option; add the same resource-remesh boundary without reintroducing block-name render-layer
   guesses. The exact 11-block leaves membership is generated and shared already.
-- **Per-block-entity distance/frustum culling.** Block entities currently submit
-  like entities, unculled.
 - **Banner pattern no-depth-write pipeline.** Vanilla's `bannerPattern` pipeline
   disables depth writes; bbb's shared translucent pipeline keeps them on.
   Equal-depth `LessEqual` layering is unaffected. Restart only if a dedicated

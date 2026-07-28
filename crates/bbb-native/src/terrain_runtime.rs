@@ -116,6 +116,21 @@ impl TerrainUploadState {
         ))
     }
 
+    pub(crate) fn is_block_section_compiled_and_visible(
+        &self,
+        world: &WorldStore,
+        position: bbb_world::BlockPos,
+    ) -> bool {
+        if !world.dimension().contains_y(position.y) {
+            return true;
+        }
+        self.compiled_and_visible_sections.contains(&(
+            position.x.div_euclid(16),
+            position.y.div_euclid(16),
+            position.z.div_euclid(16),
+        ))
+    }
+
     /// Returns a command payload only when readiness changes or a new client
     /// level generation becomes active.
     pub(crate) fn take_readiness_edge(
@@ -1541,6 +1556,14 @@ mod tests {
                 z: 16.0,
             }
         ));
+        assert!(upload.is_block_section_compiled_and_visible(
+            &world,
+            bbb_world::BlockPos {
+                x: -1,
+                y: 64,
+                z: 16,
+            }
+        ));
 
         world.set_local_player_pose(LocalPlayerPoseState {
             position: Vec3d {
@@ -1562,6 +1585,14 @@ mod tests {
                 z: 16.0,
             }
         ));
+        assert!(!upload.is_block_section_compiled_and_visible(
+            &world,
+            bbb_world::BlockPos {
+                x: -1,
+                y: 80,
+                z: 16,
+            }
+        ));
 
         world.set_local_player_pose(LocalPlayerPoseState {
             position: Vec3d {
@@ -1578,6 +1609,14 @@ mod tests {
                 x: -0.25,
                 y: 400.0,
                 z: 16.0,
+            }
+        ));
+        assert!(upload.is_block_section_compiled_and_visible(
+            &world,
+            bbb_world::BlockPos {
+                x: -1,
+                y: 400,
+                z: 16,
             }
         ));
     }
