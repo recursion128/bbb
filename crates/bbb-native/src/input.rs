@@ -11683,6 +11683,10 @@ pub(crate) fn handle_key_input_with_item_runtime(
         }
     }
     if inventory_screen_layout(world).is_some() {
+        // Vanilla routes every open-screen hotbar key through
+        // AbstractContainerScreen.checkHotbarKeyPressed. In particular, the
+        // creative C/X activators do not reach handleHotbarLoadOrSave while
+        // CreativeModeInventoryScreen is open; the hovered-slot swap wins.
         if pressed {
             handle_inventory_key_input(input, world, counters, net_commands, item_runtime, code);
         }

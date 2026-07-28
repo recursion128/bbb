@@ -95,9 +95,6 @@ Inventory:
   `ItemStack` codec, so preset files do not interchange with a vanilla
   installation. Reopen the file-format half only if full item NBT codec
   support with registry context lands.
-- Route the in-screen `CreativeModeInventoryScreen.checkHotbarKeyPressed`
-  preset path (activator + hotbar key while the creative screen is open); the
-  keybind path above only covers the no-screen route.
 - Implement the rich-tooltip `space` font provider, the remaining text styles,
   italic/complex component styles, and component-specific detail lines from
   `font/default.json`.

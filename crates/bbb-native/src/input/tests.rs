@@ -29128,3 +29128,91 @@ fn hotbar_preset_activators_fall_through_to_slot_select_without_instabuild() {
     assert!(!store_path.exists());
     assert!(matches!(rx.try_recv(), Ok(NetCommand::SetHeldSlot(4))));
 }
+
+#[test]
+fn creative_screen_hotbar_keys_swap_hovered_items_even_with_preset_activators() {
+    for activator in [KeyCode::KeyC, KeyCode::KeyX] {
+        let (tx, mut rx) = mpsc::channel(16);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let store_path = std::env::temp_dir().join(format!(
+            "bbb-hotbar-preset-screen-{:?}-{}-{}.json",
+            activator,
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        input.set_hotbar_preset_store_path(store_path.clone());
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_update_enabled_features(bbb_protocol::packets::UpdateEnabledFeatures {
+            features: Vec::new(),
+        });
+        set_player_abilities(&mut world, false, true);
+        equip_player_slot(&mut world, 0, 1, 64);
+        assert!(world.open_local_inventory_with_operator_tab(false).unwrap());
+        world.apply_update_enabled_features(bbb_protocol::packets::UpdateEnabledFeatures {
+            features: vec!["minecraft:vanilla".to_string()],
+        });
+        input.sync_creative_inventory_presentation(&world, None);
+
+        let surface_size = PhysicalSize::new(1280, 720);
+        let slot = bbb_renderer::hud_creative_inventory_slot_layouts(
+            bbb_renderer::HudCreativeInventorySlotLayoutKind::Picker,
+        )
+        .into_iter()
+        .find(|slot| slot.slot == bbb_renderer::HudCreativeInventorySlot::Hotbar(0))
+        .expect("creative hotbar slot 0 layout");
+        let cursor = PhysicalPosition::new(
+            (f64::from(surface_size.width) - f64::from(bbb_renderer::HUD_CREATIVE_INVENTORY_WIDTH))
+                * 0.5
+                + f64::from(slot.x + 8),
+            (f64::from(surface_size.height)
+                - f64::from(bbb_renderer::HUD_CREATIVE_INVENTORY_HEIGHT))
+                * 0.5
+                + f64::from(slot.y + 8),
+        );
+        assert!(handle_inventory_cursor_moved(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            Some(cursor),
+            surface_size,
+        ));
+
+        for code in [activator, KeyCode::Digit3] {
+            handle_key_input(
+                &mut input,
+                &mut counters,
+                &mut world,
+                &commands,
+                PhysicalKey::Code(code),
+                ElementState::Pressed,
+            );
+        }
+
+        assert_eq!(world.local_player().selected_hotbar_slot, 0);
+        assert_eq!(world.inventory().hotbar_items()[0].item_id, None);
+        assert_eq!(world.inventory().hotbar_items()[2].item_id, Some(1));
+        assert_eq!(world.inventory().hotbar_items()[2].count, 64);
+        assert_eq!(counters.set_creative_mode_slot_commands_queued, 2);
+        assert!(matches!(
+            rx.try_recv(),
+            Ok(NetCommand::SetCreativeModeSlot(command))
+                if command.slot_num == 36 && command.item.item_id.is_none()
+        ));
+        assert!(matches!(
+            rx.try_recv(),
+            Ok(NetCommand::SetCreativeModeSlot(command))
+                if command.slot_num == 38
+                    && command.item.item_id == Some(1)
+                    && command.item.count == 64
+        ));
+        assert!(rx.try_recv().is_err());
+        assert!(world.action_bar().is_none());
+        assert!(!store_path.exists());
+    }
+}
