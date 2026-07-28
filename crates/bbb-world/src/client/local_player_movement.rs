@@ -40,7 +40,6 @@ const LOCAL_INPUT_FLY_SPRINT_SPEED_MULTIPLIER: f64 = 2.0;
 const LOCAL_INPUT_SNEAKING_SPEED_MULTIPLIER: f64 = 0.3;
 const LOCAL_INPUT_FLY_VERTICAL_SPEED_MULTIPLIER: f64 = 3.0;
 const LOCAL_INPUT_FLY_VERTICAL_DAMPING: f64 = 0.6;
-const LOCAL_INPUT_FLY_AIR_DRAG: f64 = 0.91;
 const LOCAL_PHYSICS_TICK_SECONDS: f64 = 0.05;
 const LOCAL_VERTICAL_FRICTION: f64 = 0.98;
 const LOCAL_INPUT_FLUID_SPEED_PER_TICK: f64 = 0.02;
@@ -266,19 +265,32 @@ fn advance_local_player_physics_step(
             stuck_multiplier,
         );
     }
+    let step_ticks = step_seconds / LOCAL_PHYSICS_TICK_SECONDS;
     if let Some(abilities) = flying {
-        return advance_local_player_flying_physics_step(
-            world,
-            pose,
-            input,
-            step_seconds,
-            abilities,
-            stuck_multiplier,
-        );
+        // Vanilla `Player.aiStep` resets the fall distance on every flying
+        // tick, and `LocalPlayer.aiStep` adds the vertical fly input to the
+        // carried delta before the shared `LivingEntity.aiStep` chain runs.
+        pose.fall_distance = 0.0;
+        let vertical_input = if input.focused {
+            axis(input.jump, input.sneak)
+        } else {
+            0.0
+        };
+        if vertical_input != 0.0 {
+            pose.delta_movement.y += vertical_input
+                * f64::from(abilities.flying_speed).max(0.0)
+                * LOCAL_INPUT_FLY_VERTICAL_SPEED_MULTIPLIER
+                * step_ticks;
+        }
     }
 
-    let step_ticks = step_seconds / LOCAL_PHYSICS_TICK_SECONDS;
-    let climbable_before = local_player_climbable_kind(world, pose);
+    // `Player.onClimbable` reports false while creative-flying, which also
+    // disables the climbable clamp and the wall-climb impulse below.
+    let climbable_before = if flying.is_none() {
+        local_player_climbable_kind(world, pose)
+    } else {
+        None
+    };
     let on_climbable_before = climbable_before.is_some();
     let powder_snow_climb_out_before = world.local_player_can_walk_on_powder_snow()
         && local_player_inside_powder_snow(world, pose);
@@ -298,6 +310,11 @@ fn advance_local_player_physics_step(
         }
     }
 
+    // `Player.travel` snapshots the pre-travel vertical delta while
+    // creative-flying and rescales it by 0.6 after the shared travel chain,
+    // discarding whatever the gravity/collision tail produced.
+    let flying_pre_travel_vertical = flying.map(|_| pose.delta_movement.y);
+
     // Vanilla `LivingEntity.travelInAir`: the block friction below the feet
     // only applies while grounded, and `moveRelative` accumulates the scaled
     // input into the carried delta instead of producing a displacement.
@@ -310,6 +327,9 @@ fn advance_local_player_physics_step(
     let acceleration = if pose.on_ground {
         local_player_ground_speed(world, input) * LOCAL_PLAYER_GROUND_ACCELERATION_FACTOR
             / (block_friction * block_friction * block_friction)
+    } else if let Some(abilities) = flying {
+        // `Player.getFlyingSpeed` while creative-flying off-vehicle.
+        local_player_flying_air_acceleration(abilities, input)
     } else if input.sprint {
         LOCAL_PLAYER_SPRINT_AIR_ACCELERATION
     } else {
@@ -387,7 +407,7 @@ fn advance_local_player_physics_step(
         && requested_y < 0.0
         && !input.sneak
         && local_player_standing_on_block(world, pose, "minecraft:slime_block");
-    let on_climbable_after = local_player_climbable_kind(world, pose).is_some();
+    let on_climbable_after = flying.is_none() && local_player_climbable_kind(world, pose).is_some();
     let fluid_contact = local_player_fluid_contact(world, pose);
     if let Some(fall_distance) = landing_fall_distance {
         append_local_player_powder_snow_fall_sound(world, pose, fall_distance);
@@ -415,7 +435,12 @@ fn advance_local_player_physics_step(
             0.0
         };
     }
-    let block_speed_factor = local_player_block_speed_factor(world, pose);
+    // `Player.getBlockSpeedFactor` is pinned to 1.0 while creative-flying.
+    let block_speed_factor = if flying.is_some() {
+        DEFAULT_BLOCK_SPEED_FACTOR
+    } else {
+        local_player_block_speed_factor(world, pose)
+    };
     pose.delta_movement.x *= block_speed_factor;
     pose.delta_movement.z *= block_speed_factor;
 
@@ -427,8 +452,14 @@ fn advance_local_player_physics_step(
     {
         pose.delta_movement.y = LOCAL_PLAYER_CLIMBABLE_UPWARD_VELOCITY_PER_TICK;
     }
-    pose.delta_movement.y =
-        local_player_airborne_vertical_velocity(world, pose.delta_movement.y, step_ticks);
+    pose.delta_movement.y = if let Some(pre_travel_vertical) = flying_pre_travel_vertical {
+        // The `Player.travel` creative-flight wrapper: the vertical delta is
+        // rebuilt from the pre-travel snapshot times 0.6, replacing the
+        // levitation/gravity chain outcome entirely.
+        pre_travel_vertical * LOCAL_INPUT_FLY_VERTICAL_DAMPING.powf(step_ticks)
+    } else {
+        local_player_airborne_vertical_velocity(world, pose.delta_movement.y, step_ticks)
+    };
     let horizontal_drag = horizontal_friction.powf(step_ticks);
     pose.delta_movement.x *= horizontal_drag;
     pose.delta_movement.z *= horizontal_drag;
@@ -438,131 +469,9 @@ fn advance_local_player_physics_step(
     (pose, step_move)
 }
 
-/// The pre-rewrite creative-flight step: displacement-model travel with the
-/// flying acceleration/damping owners. The S4 stage of
-/// `docs/local-player-travel-ordering-design.md` aligns this wrapper with
-/// `Player.travel`'s y*0.6 preservation.
-fn advance_local_player_flying_physics_step(
-    world: &mut WorldStore,
-    mut pose: LocalPlayerPoseState,
-    input: LocalPlayerInputState,
-    step_seconds: f64,
-    abilities: LocalPlayerAbilitiesState,
-    stuck_multiplier: Option<EntityVec3>,
-) -> (LocalPlayerPoseState, EntityBlockEffectMovement) {
-    let step_ticks = step_seconds / LOCAL_PHYSICS_TICK_SECONDS;
-    let (move_x, move_z) = local_player_legacy_direction_input(world, pose, input);
-    let (mut requested_x, mut requested_z, next_velocity_x, next_velocity_z) =
-        local_player_flying_air_travel(
-            pose.delta_movement.x,
-            pose.delta_movement.z,
-            move_x,
-            move_z,
-            abilities,
-            input,
-            step_ticks,
-        );
-    let vertical_input = if input.focused {
-        axis(input.jump, input.sneak)
-    } else {
-        0.0
-    };
-    let mut requested_y = (pose.delta_movement.y
-        + vertical_input
-            * f64::from(abilities.flying_speed).max(0.0)
-            * LOCAL_INPUT_FLY_VERTICAL_SPEED_MULTIPLIER)
-        * step_ticks;
-    if let Some(stuck) = stuck_multiplier {
-        requested_x *= stuck.x;
-        requested_y *= stuck.y;
-        requested_z *= stuck.z;
-    }
-    if should_back_off_from_edge(world, pose, input, requested_y) {
-        (requested_x, requested_z) = back_off_from_edge(world, pose, requested_x, requested_z);
-    }
-    let collision_context = LocalPlayerCollisionContext::for_pose(world, pose, input.sneak);
-    let movement = clip_local_player_movement(
-        world,
-        pose,
-        requested_x,
-        requested_y,
-        requested_z,
-        pose.on_ground,
-        collision_context,
-    );
-    let step_move = EntityBlockEffectMovement::clipped(
-        EntityVec3 {
-            x: pose.position.x,
-            y: pose.position.y,
-            z: pose.position.z,
-        },
-        EntityVec3 {
-            x: pose.position.x + movement.x,
-            y: pose.position.y + movement.y,
-            z: pose.position.z + movement.z,
-        },
-        EntityVec3 {
-            x: requested_x,
-            y: requested_y,
-            z: requested_z,
-        },
-    );
-    pose.position.x += movement.x;
-    pose.position.y += movement.y;
-    pose.position.z += movement.z;
-
-    let tick_span = step_ticks.max(f64::EPSILON);
-    let x_collision = (movement.x - requested_x).abs() > COLLISION_EPSILON;
-    let z_collision = (movement.z - requested_z).abs() > COLLISION_EPSILON;
-    let horizontal_collision = x_collision || z_collision;
-    let vertical_collision = (movement.y - requested_y).abs() > COLLISION_EPSILON;
-    let on_ground = vertical_collision && requested_y < 0.0
-        || local_player_supported(world, pose, collision_context);
-    let landing_fall_distance =
-        on_ground.then_some(pose.fall_distance + if movement.y < 0.0 { -movement.y } else { 0.0 });
-    let fluid_contact = local_player_fluid_contact(world, pose);
-    if let Some(fall_distance) = landing_fall_distance {
-        append_local_player_powder_snow_fall_sound(world, pose, fall_distance);
-    }
-    pose.fall_distance = if fluid_contact.in_water() {
-        0.0
-    } else {
-        next_local_player_fall_distance(pose.fall_distance, movement.y, on_ground)
-    };
-
-    pose.delta_movement = ProtocolVec3d {
-        x: movement.x / tick_span,
-        y: movement.y / tick_span,
-        z: movement.z / tick_span,
-    };
-    if x_collision {
-        pose.delta_movement.x = 0.0;
-    }
-    if z_collision {
-        pose.delta_movement.z = 0.0;
-    }
-    if stuck_multiplier.is_some() {
-        pose.delta_movement = ProtocolVec3d::default();
-    }
-    if !x_collision {
-        pose.delta_movement.x = next_velocity_x;
-    }
-    if !z_collision {
-        pose.delta_movement.z = next_velocity_z;
-    }
-    if vertical_collision {
-        pose.delta_movement.y = 0.0;
-    } else {
-        pose.delta_movement.y *= LOCAL_INPUT_FLY_VERTICAL_DAMPING.powf(step_ticks);
-    }
-    pose.on_ground = on_ground;
-    pose.horizontal_collision = horizontal_collision;
-    (pose, step_move)
-}
-
-/// The pre-rewrite normalized direction input consumed by the fluid and
-/// creative-flight branches: yaw-rotated unit direction scaled by the
-/// item-use multiplier.
+/// The pre-rewrite normalized direction input consumed by the fluid branch:
+/// yaw-rotated unit direction scaled by the item-use multiplier. The S5
+/// fluid-owner follow-up aligns this with `LocalPlayer.modifyInput`.
 fn local_player_legacy_direction_input(
     world: &WorldStore,
     pose: LocalPlayerPoseState,
@@ -1435,27 +1344,8 @@ fn local_player_no_gravity(world: &WorldStore) -> bool {
         .unwrap_or(false)
 }
 
-fn local_player_flying_air_travel(
-    current_velocity_x: f64,
-    current_velocity_z: f64,
-    move_x: f64,
-    move_z: f64,
-    abilities: LocalPlayerAbilitiesState,
-    input: LocalPlayerInputState,
-    step_ticks: f64,
-) -> (f64, f64, f64, f64) {
-    let speed = local_player_flying_air_acceleration(abilities, input);
-    let velocity_x = current_velocity_x + move_x * speed;
-    let velocity_z = current_velocity_z + move_z * speed;
-    let drag = LOCAL_INPUT_FLY_AIR_DRAG.powf(step_ticks);
-    (
-        velocity_x * step_ticks,
-        velocity_z * step_ticks,
-        velocity_x * drag,
-        velocity_z * drag,
-    )
-}
-
+/// `Player.getFlyingSpeed` while creative-flying off-vehicle: the abilities
+/// flying speed, doubled while sprinting.
 fn local_player_flying_air_acceleration(
     abilities: LocalPlayerAbilitiesState,
     input: LocalPlayerInputState,

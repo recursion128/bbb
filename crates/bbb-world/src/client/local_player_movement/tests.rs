@@ -3431,11 +3431,11 @@ fn local_player_flying_in_water_uses_flying_movement_not_fluid_travel() {
         )
         .unwrap();
 
-    let expected_step = f64::from(0.05_f32);
+    let expected_step = LOCAL_PLAYER_INPUT_SCALE * f64::from(0.05_f32);
     assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
     assert_f64_near(
         pose.delta_movement.z,
-        expected_step * LOCAL_INPUT_FLY_AIR_DRAG,
+        expected_step * LOCAL_HORIZONTAL_FRICTION,
         0.000001,
     );
     assert_f64_near(pose.delta_movement.y, 0.0, 0.000001);
@@ -3643,11 +3643,11 @@ fn local_player_flying_horizontal_velocity_accumulates_and_drags() {
             LOCAL_PHYSICS_TICK_SECONDS,
         )
         .unwrap();
-    let acceleration = f64::from(0.05_f32);
+    let acceleration = LOCAL_PLAYER_INPUT_SCALE * f64::from(0.05_f32);
     assert_f64_near(first.position.z, 0.5 + acceleration, 0.000001);
     assert_f64_near(
         first.delta_movement.z,
-        acceleration * LOCAL_INPUT_FLY_AIR_DRAG,
+        acceleration * LOCAL_HORIZONTAL_FRICTION,
         0.000001,
     );
 
@@ -3669,7 +3669,7 @@ fn local_player_flying_horizontal_velocity_accumulates_and_drags() {
     );
     assert_f64_near(
         second.delta_movement.z,
-        second_step * LOCAL_INPUT_FLY_AIR_DRAG,
+        second_step * LOCAL_HORIZONTAL_FRICTION,
         0.000001,
     );
 }
@@ -3696,11 +3696,12 @@ fn local_player_flying_uses_abilities_speed_and_sprint_multiplier() {
         )
         .unwrap();
 
-    let expected_step = f64::from(0.1_f32) * LOCAL_INPUT_FLY_SPRINT_SPEED_MULTIPLIER;
+    let expected_step =
+        LOCAL_PLAYER_INPUT_SCALE * f64::from(0.1_f32) * LOCAL_INPUT_FLY_SPRINT_SPEED_MULTIPLIER;
     assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
     assert_f64_near(
         pose.delta_movement.z,
-        expected_step * LOCAL_INPUT_FLY_AIR_DRAG,
+        expected_step * LOCAL_HORIZONTAL_FRICTION,
         0.000001,
     );
     assert_f64_near(pose.position.y, 64.0, 0.000001);

@@ -58,15 +58,16 @@ Tick order, from `LivingEntity.aiStep`:
 
 ## Current bbb model and deltas
 
-`advance_local_player_physics_step`
-(`bbb-world/src/client/local_player_movement.rs`) treats input as a direct
-per-tick displacement (`input × speed × dt`) and rebuilds `delta_movement`
+Before this contract, `advance_local_player_physics_step`
+(`bbb-world/src/client/local_player_movement.rs`) treated input as a direct
+per-tick displacement (`input × speed × dt`) and rebuilt `delta_movement`
 from the clipped displacement (`movement / tick_span`), so horizontal
-momentum does not persist between ticks and ground friction/ice sliding do
-not exist. Jump power, sprint jump impulse, climbable clamp values, stuck
-multiplier consumption, edge back-off, block speed/jump factors, and the
-airborne vertical chain already have vanilla-aligned owners; they must be
-re-plumbed into the ordering above rather than reimplemented.
+momentum did not persist between ticks and ground friction/ice sliding did
+not exist. With S1–S4 landed, the ground/air/creative-flight paths run the
+vanilla ordering above on the carried delta. Remaining deltas: the collision
+epsilon stays at `1.0e-7` (vs `Mth.equal`'s `1.0e-5`), and the fluid branch
+still consumes the pre-rewrite normalized direction input pending its
+owner's `modifyInput` alignment.
 
 ## Stages
 
@@ -89,9 +90,20 @@ gate (core physics is high-risk), and is a safe stop point.
   movement fixtures encode first-tick acceleration plus carried momentum
   derived from the vanilla formulas. Known deviation: collision epsilon
   stays at the repo's `1.0e-7` instead of `Mth.equal`'s `1.0e-5`.
-- **S4 — player wrappers**: creative-flight y×0.6 preservation and the
-  sprint air-control constant; verify the swimming surface steer against the
-  fluid branch owner.
+- **S4 — player wrappers (landed)**: creative flight runs the shared chain
+  instead of a separate displacement path. The vertical fly input
+  (±`abilities.getFlyingSpeed() * 3`) is added before the chain per
+  `LocalPlayer.aiStep`, the fall distance resets every flying tick per
+  `Player.aiStep`, airborne acceleration uses `Player.getFlyingSpeed`
+  (abilities speed, ×2 sprinting), and the vertical delta is rebuilt from the
+  pre-travel snapshot ×0.6 per `Player.travel`, discarding the
+  gravity/collision tail exactly as vanilla does. Flying pins
+  `Player.onClimbable` to false (no clamp, no wall-climb impulse) and
+  `Player.getBlockSpeedFactor` to 1.0; the edge back-off already carried its
+  own flying gate. Flying-while-grounded keeps the ground friction/speed
+  formula, matching `getFrictionInfluencedSpeed`'s `onGround` key. The
+  swimming surface steer stays with the fluid branch owner
+  (`isSwimming()` is false while flying).
 - **S5 — closure**: ledger/matrix updates, playable-gate fixture plus live
   movement evidence, archive this contract.
 
