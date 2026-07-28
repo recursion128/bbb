@@ -640,3 +640,6 @@
 - **2026-07-27（通用数据包 Component owner 工程闭环）**：直接 Component/Style
   载体现保留精确 NBT，并在任何 world mutation 前用当前 session RegistryAccess
   原子预检；合同见 `docs/archive/generic-packet-component-owner-design.md`。
+- **2026-07-28（稳定 HUD 投影缓存工程闭环）**：scoreboard sidebar 与 player
+  list 现按 world、资源、异步 profile/skin 和可见性修订键复用静态负载；心形分数
+  的 GUI tick 状态独立逐帧同步，不把动画时间并入缓存键。
