@@ -559,11 +559,13 @@ scale remain instance/uniform values; clock/compass animation therefore never
 rebuilds static geometry. Ordinary hotbar, inventory and debug GUI block items
 submit the same exact model identity and narrow pose/tint target into the
 resident item pipelines. The target preserves `Gui`, `GuiBeforeBlur` and
-`GuiAfterBlur` ordering. Only GUI items whose floating/stats scissor rectangle
-requires CPU triangle clipping retain a measured legacy fallback; it is
-explicitly counted and does not route ordinary items through transient buffers.
-Map text similarly reuses the resource-owned font atlas and static quad rather
-than constructing a world-space glyph mesh.
+`GuiAfterBlur` ordering. At the phase-5 boundary, GUI items whose floating/stats
+scissor rectangle required CPU triangle clipping retained a measured legacy
+fallback. The 2026-07-28 continuation moved those ordinary block quads to the
+same per-draw resident GPU scissor used by Vanilla, preserving exact GUI target
+and draw-phase ordering without transient item buffers. Map text similarly
+reuses the resource-owned font atlas and static quad rather than constructing a
+world-space glyph mesh.
 
 The phase-5 same-host Criterion run uses the same configuration and isolates
 the last CPU geometry owners. It excludes queue submission time and is paired
@@ -599,16 +601,15 @@ capacity growth. The exact-world-`Arc` projection cache may reject upper-layer
 work, but disabling it still leaves this residency boundary and all zero-static-
 upload assertions intact.
 
-Remaining measured boundaries are the explicit scissored GUI clipping fallback,
-dynamic/special model selection and property evaluation before an identity is
-known, per-frame instance uploads, draw/pipeline state churn, and driver-owned
-deferred-release memory. Item model residency and persistent map pixels each
-allow 256 MiB logical ownership, while a frame that pins more owners than the
-bound can temporarily retain explicit fallback/overflow storage. These are not
-hidden inside the reported logical peak. A strict equal-load official Java
-26.1 CPU/GPU capture was not produced by this microbenchmark slice and remains
-subject to the comparison protocol below; no isolated section number is used
-to claim overall client superiority.
+Remaining measured boundaries are dynamic/special model selection and property
+evaluation before an identity is known, per-frame instance uploads,
+draw/pipeline state churn, and driver-owned deferred-release memory. Item model
+residency and persistent map pixels each allow 256 MiB logical ownership, while
+a frame that pins more owners than the bound can temporarily retain explicit
+fallback/overflow storage. These are not hidden inside the reported logical
+peak. A strict equal-load official Java 26.1 CPU/GPU capture was not produced
+by this microbenchmark slice and remains subject to the comparison protocol
+below; no isolated section number is used to claim overall client superiority.
 
 Every phase is a normal reviewable commit with affected-crate focused tests,
 `cargo fmt --all --check`, `git diff --check`, documentation lint when needed,

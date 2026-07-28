@@ -3015,12 +3015,9 @@ impl Renderer {
                     stats,
                 );
             }
-            let before_blur_items = self
-                .collect_hud_block_item_mesh_for_stratum(crate::hud::HudScreenStratum::BeforeBlur);
             self.draw_hud_item_pass(
                 encoder,
                 &surface_view,
-                &before_blur_items,
                 crate::item_models::ItemModelDrawTarget::GuiBeforeBlur,
                 "bbb-native-hud-item-before-blur-pass",
                 stats,
@@ -3060,12 +3057,9 @@ impl Renderer {
                     stats,
                 );
             }
-            let after_blur_items = self
-                .collect_hud_block_item_mesh_for_stratum(crate::hud::HudScreenStratum::AfterBlur);
             self.draw_hud_item_pass(
                 encoder,
                 &surface_view,
-                &after_blur_items,
                 crate::item_models::ItemModelDrawTarget::GuiAfterBlur,
                 "bbb-native-hud-item-after-blur-pass",
                 stats,
@@ -3095,11 +3089,9 @@ impl Renderer {
                     stats,
                 );
             }
-            let gui_item_meshes = self.collect_hud_block_item_mesh();
             self.draw_hud_item_pass(
                 encoder,
                 &surface_view,
-                &gui_item_meshes,
                 crate::item_models::ItemModelDrawTarget::Gui,
                 "bbb-native-hud-item-pass",
                 stats,
@@ -3220,7 +3212,6 @@ impl Renderer {
         &self,
         encoder: &mut wgpu::CommandEncoder,
         surface_view: &wgpu::TextureView,
-        meshes: &crate::item_models::ItemModelMeshSet,
         target: crate::item_models::ItemModelDrawTarget,
         label: &str,
         stats: &mut FrameDrawStats,
@@ -3230,21 +3221,9 @@ impl Renderer {
             .draws()
             .iter()
             .any(|draw| draw.target == target);
-        if meshes.is_empty() && !has_resident {
+        if !has_resident {
             return;
         }
-        let solid_buffers =
-            self.create_item_model_frame_buffers(&meshes.solid.vertices, &meshes.solid.indices);
-        let glint_buffers =
-            self.create_item_model_frame_buffers(&meshes.glint.vertices, &meshes.glint.indices);
-        let translucent_buffers = self.create_item_model_frame_buffers(
-            &meshes.translucent.vertices,
-            &meshes.translucent.indices,
-        );
-        let glint_translucent_buffers = self.create_item_model_frame_buffers(
-            &meshes.glint_translucent.vertices,
-            &meshes.glint_translucent.indices,
-        );
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some(label),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -3266,16 +3245,6 @@ impl Renderer {
             occlusion_query_set: None,
             timestamp_writes: None,
         });
-        if let Some(buffers) = &solid_buffers {
-            self.draw_item_model_frame_buffers(
-                &mut pass,
-                &self.item_model_pipeline,
-                buffers,
-                &self.gui_item_bind_group,
-            );
-            stats.pipeline_switches += 1;
-            stats.item_model_draw_calls += 1;
-        }
         self.draw_resident_item_models(
             &mut pass,
             target,
@@ -3290,11 +3259,6 @@ impl Renderer {
             None,
             stats,
         );
-        if let (Some(glint), Some(buffers)) = (&self.item_glint_texture, &glint_buffers) {
-            self.draw_item_model_glint_frame_buffers(&mut pass, buffers, &glint.gui_bind_group);
-            stats.pipeline_switches += 1;
-            stats.item_model_draw_calls += 1;
-        }
         self.draw_resident_item_models(
             &mut pass,
             target,
@@ -3302,16 +3266,6 @@ impl Renderer {
             None,
             stats,
         );
-        if let Some(buffers) = &translucent_buffers {
-            self.draw_item_model_frame_buffers(
-                &mut pass,
-                &self.item_model_translucent_pipeline,
-                buffers,
-                &self.gui_item_bind_group,
-            );
-            stats.pipeline_switches += 1;
-            stats.item_model_draw_calls += 1;
-        }
         self.draw_resident_item_models(
             &mut pass,
             target,
@@ -3322,12 +3276,6 @@ impl Renderer {
             None,
             stats,
         );
-        if let (Some(glint), Some(buffers)) = (&self.item_glint_texture, &glint_translucent_buffers)
-        {
-            self.draw_item_model_glint_frame_buffers(&mut pass, buffers, &glint.gui_bind_group);
-            stats.pipeline_switches += 1;
-            stats.item_model_draw_calls += 1;
-        }
         self.draw_resident_item_models(
             &mut pass,
             target,
@@ -7446,13 +7394,9 @@ mod tests {
             .find("\"bbb-native-hud-pass\",")
             .map(|index| pre_commands + index)
             .expect("base HUD pass label is used");
-        let gui_items = source[hud_pass..]
-            .find("let gui_item_meshes = self.collect_hud_block_item_mesh()")
-            .map(|index| hud_pass + index)
-            .expect("GUI 3D item mesh is collected after base HUD");
-        let hud_item_pass = source[gui_items..]
+        let hud_item_pass = source[hud_pass..]
             .find("\"bbb-native-hud-item-pass\",")
-            .map(|index| gui_items + index)
+            .map(|index| hud_pass + index)
             .expect("GUI 3D item pass label is used");
         let post_commands = source[hud_item_pass..]
             .find("&hud_draws.commands[hud_draws.post_gui_item_start..]")
@@ -7465,8 +7409,7 @@ mod tests {
 
         assert!(
             pre_commands < hud_pass
-                && hud_pass < gui_items
-                && gui_items < hud_item_pass
+                && hud_pass < hud_item_pass
                 && hud_item_pass < post_commands
                 && post_commands < hud_overlay_pass,
             "GUI 3D item models draw after base HUD/slot backgrounds and before decorations/front overlays"
@@ -7536,42 +7479,39 @@ mod tests {
     }
 
     #[test]
-    fn hud_gui_3d_items_draw_translucent_base_and_glint_in_gui_item_pass() {
+    fn hud_gui_3d_items_draw_resident_base_and_glint_phases_in_gui_item_pass() {
         let source = include_str!("render.rs");
         let hud_item_pass = source
             .find("fn draw_hud_item_pass(")
             .expect("GUI 3D item pass helper is defined");
-        let translucent_buffers = source[hud_item_pass..]
-            .find("&meshes.translucent.vertices")
+        let next_helper = source[hud_item_pass..]
+            .find("fn screen_blur_passes(")
             .map(|index| hud_item_pass + index)
-            .expect("GUI 3D item translucent buffers are created");
-        let _glint_translucent_buffers = source[translucent_buffers..]
-            .find("&meshes.glint_translucent.vertices")
-            .map(|index| translucent_buffers + index)
-            .expect("GUI 3D item glintTranslucent buffers are created");
+            .expect("GUI item helper has a bounded source body");
+        let helper = &source[hud_item_pass..next_helper];
+        assert!(
+            !helper.contains("create_item_model_frame_buffers"),
+            "GUI item pass must not restore transient CPU mesh uploads"
+        );
         let solid_draw = source[hud_item_pass..]
-            .find("&self.item_model_pipeline")
+            .find("ItemModelDrawPhase::Solid,")
             .map(|index| hud_item_pass + index)
-            .expect("solid GUI 3D item base draws first");
+            .expect("resident solid GUI 3D item base draws first");
         let solid_glint = source[solid_draw..]
-            .find("self.draw_item_model_glint_frame_buffers(")
+            .find("&[crate::item_models::ItemModelDrawPhase::Glint],")
             .map(|index| solid_draw + index)
-            .expect("solid GUI 3D item glint follows solid base");
+            .expect("resident solid GUI 3D item glint follows solid base");
         let translucent_draw = source[solid_glint..]
-            .find("&self.item_model_translucent_pipeline")
+            .find("ItemModelDrawPhase::Translucent,")
             .map(|index| solid_glint + index)
-            .expect("translucent GUI 3D item base follows solid glint");
+            .expect("resident translucent GUI 3D item base follows solid glint");
         let translucent_glint = source[translucent_draw..]
-            .find("self.draw_item_model_glint_frame_buffers(")
+            .find("&[crate::item_models::ItemModelDrawPhase::GlintTranslucent],")
             .map(|index| translucent_draw + index)
-            .expect("GUI 3D item glintTranslucent follows translucent base");
-        let gui_items = source
-            .find("let gui_item_meshes = self.collect_hud_block_item_mesh()")
-            .expect("GUI 3D item mesh is collected");
-        let hud_item_call = source[gui_items..]
+            .expect("resident GUI 3D item glintTranslucent follows translucent base");
+        let hud_item_call = source
             .find("\"bbb-native-hud-item-pass\",")
-            .map(|index| gui_items + index)
-            .expect("GUI 3D item pass is submitted");
+            .expect("resident GUI 3D item pass is submitted");
         let post_commands = source[hud_item_call..]
             .find("&hud_draws.commands[hud_draws.post_gui_item_start..]")
             .map(|index| hud_item_call + index)
@@ -7582,9 +7522,8 @@ mod tests {
                 && solid_draw < solid_glint
                 && solid_glint < translucent_draw
                 && translucent_draw < translucent_glint
-                && gui_items < hud_item_call
                 && hud_item_call < post_commands,
-            "GUI 3D item translucent base and glintTranslucent stay inside the GUI item pass"
+            "resident GUI 3D item phases stay inside the GUI item pass"
         );
     }
 

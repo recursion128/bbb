@@ -163,6 +163,7 @@ fn vanilla_fill_hud_rect(x0: i64, y0: i64, x1: i64, y1: i64) -> HudRect {
     )
 }
 
+#[cfg(test)]
 pub(super) fn hud_rect_bounds(rect: HudRect) -> (f32, f32, f32, f32) {
     (
         rect.x,
