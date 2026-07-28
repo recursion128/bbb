@@ -94,6 +94,12 @@ transitions install `LAST_WOKEN`. Those memories need their own client-owned
 runtime state before they can be encoded. Unretained last-attacker references,
 impulse context, and locator-icon state are likewise not synthesized here.
 
+Registry-backed entity variants use the identity frozen onto each synchronized
+metadata value, including server-defined resources. Tropical fish keep their
+wire-packed metadata, but persistent projection follows
+`TropicalFish.Variant.CODEC`: decode the sparse pattern and both dye ids through
+their Vanilla fallback maps, then repack the normalized value.
+
 ## Serial stages and focused checks
 
 1. **Persistent value audit.** Mechanically compare all 26.1 persistent data

@@ -5651,6 +5651,17 @@ fn shift_f3_i_with_permission_copies_local_tropical_fish_save_nbt_to_clipboard()
         messages[0].content,
         "[Debug]: Copied client-side entity data to clipboard"
     );
+
+    assert!(world.apply_set_entity_data(ProtocolSetEntityData {
+        id: 55,
+        values: vec![tropical_fish_variant_data(0xFF10_FFFFu32 as i32)],
+    }));
+    let entity = world.probe_entity(55).unwrap();
+    let snbt = debug_local_entity_pretty_snbt(&world, None, &entity).unwrap();
+    assert!(
+        snbt.ends_with("Variant: 0}"),
+        "unknown pattern and dye ids normalize through KOB/WHITE like Variant.CODEC: {snbt}"
+    );
 }
 
 #[test]

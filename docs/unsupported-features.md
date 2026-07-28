@@ -229,14 +229,13 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   Ordinary F3+I already waits for the matching
   server tag-query response, which is the complete NBT authority;
   server-private owner/target/inventory/timer/RNG fields are not client work
-  and must not be synthesized from defaults. Remaining observable work includes registry-backed
-  entity-data projection (the fixed vanilla entity/block-entity type catalogs
-  are generated), packed variant projection, and the entity families named
-  below. Direct jukebox-song and painting network holders are intentionally
-  omitted from persistent reconstruction because vanilla `JukeboxSong.CODEC`
-  and `PaintingVariant.CODEC` are named-only `RegistryFixedCodec`s. Keep the
-  remaining dispatch owned by the protocol generated-metadata/handler
-  descriptor catalog and the native persistent SNBT encoder registry.
+  and must not be synthesized from defaults. Remaining observable work is in
+  the entity families named below. Direct jukebox-song and painting network
+  holders are intentionally omitted from persistent reconstruction because
+  vanilla `JukeboxSong.CODEC` and `PaintingVariant.CODEC` are named-only
+  `RegistryFixedCodec`s. Keep the remaining dispatch owned by the protocol
+  generated-metadata/handler descriptor catalog and the native persistent SNBT
+  encoder registry.
   `AbstractArrow` still needs its complete client entity-hit state machine
   (friendly-fire filtering, age-dependent hit margin, per-target client hurt/
   deflection, piercing ignore/discard state, and client RNG) before

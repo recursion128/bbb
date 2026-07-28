@@ -8,6 +8,7 @@ use bbb_control::NetCounters;
 use bbb_net::NetCommand;
 use bbb_protocol::{
     attribute_types::vanilla_attribute_type,
+    builtin_enum_component_values::normalize_vanilla_dye_color_id,
     chat_formattings::VANILLA_CHAT_FORMATTINGS,
     entity_types::{
         vanilla_entity_resource_id_for_type_id, VANILLA_ENTITY_TYPE_ALLAY_ID,
@@ -77,6 +78,7 @@ use bbb_protocol::{
         ResolvableProfileSummary, SeenAdvancements, SetCommandBlock, SetCommandMinecart,
         SignUpdate, MAX_COMMAND_BLOCK_COMMAND_UTF16_UNITS,
     },
+    tropical_fish_patterns::vanilla_tropical_fish_pattern,
     ComponentClickEvent, ComponentStyle, StyledTextRun, MC_BUILD_TIME, MC_DATA_PACK_FORMAT,
     MC_DATA_VERSION, MC_DATA_VERSION_SERIES, MC_RESOURCE_PACK_FORMAT, MC_STABLE, MC_VERSION,
     PROTOCOL_VERSION,
@@ -9380,6 +9382,15 @@ fn debug_push_tropical_fish_additional_save_data(entity: &EntityState, fields: &
     };
     let variant = debug_entity_data_int_present(entity, accessors.variant_data_id)
         .unwrap_or(accessors.variant_default);
+    // `TropicalFish.Variant.CODEC` constructs the three enum-backed parts from
+    // the synchronized packed int and packs them again while saving. Preserve
+    // that normalization instead of leaking invalid raw pattern/color bits.
+    let pattern = vanilla_tropical_fish_pattern(accessors.pattern_id(variant)).packed_id;
+    let base_color = normalize_vanilla_dye_color_id(accessors.base_color_id(variant));
+    let pattern_color = normalize_vanilla_dye_color_id(accessors.pattern_color_id(variant));
+    let variant = pattern & accessors.pattern_mask
+        | (base_color & accessors.base_color_mask) << accessors.base_color_shift
+        | (pattern_color & accessors.pattern_color_mask) << accessors.pattern_color_shift;
     fields.push(format!("Variant: {variant}"));
 }
 
