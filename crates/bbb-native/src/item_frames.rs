@@ -202,7 +202,7 @@ pub(crate) fn item_frame_models_with_map_cache(
                         if let Some(glyphs) = item_runtime.map_text_glyphs() {
                             if let Some(text_surface) = bake_item_frame_map_text_surface(
                                 decoration.type_id,
-                                name.as_str(),
+                                name.text(),
                                 decoration.x,
                                 decoration.y,
                                 visible_decoration_index,
@@ -776,14 +776,16 @@ mod tests {
                     x: 0,
                     y: 0,
                     rot: 0,
-                    name: Some("player marker is hidden on frames".to_string()),
+                    name: Some(bbb_protocol::RichTextComponent::plain(
+                        "player marker is hidden on frames",
+                    )),
                 },
                 bbb_protocol::packets::MapDecoration {
                     type_id: 1,
                     x: -20,
                     y: 30,
                     rot: 7,
-                    name: Some("Frame".to_string()),
+                    name: Some(bbb_protocol::RichTextComponent::plain("Frame")),
                 },
                 bbb_protocol::packets::MapDecoration {
                     type_id: 4,

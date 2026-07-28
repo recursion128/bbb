@@ -756,7 +756,7 @@ fn formatted_score_text(
         Some(NumberFormatSummary::Styled(style)) => {
             vec![ScoreboardTextSegmentState::Styled(vec![StyledTextRun {
                 text: value.to_string(),
-                style: style.clone(),
+                style: style.style().clone(),
             }])]
         }
         Some(NumberFormatSummary::Fixed(component)) => {
@@ -820,7 +820,7 @@ fn format_score_value(
         Some(NumberFormatSummary::Blank) => Vec::new(),
         Some(NumberFormatSummary::Styled(style)) => vec![StyledTextRun {
             text: value.to_string(),
-            style: style.clone(),
+            style: style.style().clone(),
         }],
         Some(NumberFormatSummary::Fixed(component)) => component.styled().to_vec(),
         None => vec![StyledTextRun {

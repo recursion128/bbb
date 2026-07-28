@@ -5,9 +5,9 @@ pub use crate::filter_mask_types::FilterMaskKind;
 use crate::{
     codec::{Decoder, ProtocolError, Result},
     component::{
-        decode_component_style_from_decoder, decode_styled_component_summary_with_nbt_from_decoder,
+        decode_rich_text_style_from_decoder, decode_styled_component_summary_with_nbt_from_decoder,
     },
-    styled_runs_summary_text, ComponentStyle, NbtSummaryValue, StyledTextRun,
+    styled_runs_summary_text, NbtSummaryValue, RichTextStyle, StyledTextRun,
 };
 
 const MESSAGE_SIGNATURE_BYTES: usize = 256;
@@ -108,7 +108,7 @@ pub struct ChatTypeDecorationSummary {
     pub translation_key: String,
     pub parameters: Vec<i32>,
     #[serde(default)]
-    pub style: ComponentStyle,
+    pub style: RichTextStyle,
 }
 
 pub(crate) fn decode_delete_chat(decoder: &mut Decoder<'_>) -> Result<DeleteChat> {
@@ -312,7 +312,7 @@ fn decode_chat_type_decoration(decoder: &mut Decoder<'_>) -> Result<ChatTypeDeco
 
     // Style.Serializer.TRUSTED_STREAM_CODEC is an NBT-backed codec distinct
     // from ComponentSerialization.CODEC.
-    let style = decode_component_style_from_decoder(decoder)?;
+    let style = decode_rich_text_style_from_decoder(decoder)?;
 
     Ok(ChatTypeDecorationSummary {
         translation_key,

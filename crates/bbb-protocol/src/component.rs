@@ -227,6 +227,240 @@ impl<'de> Deserialize<'de> for RichTextComponent {
     }
 }
 
+/// One trusted standalone `Style.Serializer.CODEC` value, preserving the exact
+/// validated NBT beside its presentation projection.
+///
+/// Direct chat-type holders and styled scoreboard number formats carry a
+/// `Style` without an enclosing Component. Keeping the source value here lets
+/// the world/session owner validate nested click/hover Component payloads
+/// before canonical mutation.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct RichTextStyle {
+    style: ComponentStyle,
+    component: NbtSummaryValue,
+}
+
+impl RichTextStyle {
+    pub fn try_from_style_nbt(component: NbtSummaryValue) -> std::result::Result<Self, String> {
+        codec::validate_component_style_nbt(&component, "rich text style")?;
+        let NbtSummaryValue::Compound(entries) = &component else {
+            unreachable!("validated component style must be a compound")
+        };
+        Ok(Self {
+            style: component_style_from_entries(entries),
+            component,
+        })
+    }
+
+    /// Builds an exact valid standalone Style value from a semantic
+    /// projection. This is primarily useful for typed fixtures and local
+    /// values; network decode always keeps the server's original NBT.
+    pub fn try_from_style(style: ComponentStyle) -> std::result::Result<Self, String> {
+        let component = NbtSummaryValue::Compound(style_entries_from_projection(&style)?);
+        let rich = Self::try_from_style_nbt(component)?;
+        if rich.style != style {
+            return Err("component style could not be represented exactly".to_string());
+        }
+        Ok(rich)
+    }
+
+    pub fn style(&self) -> &ComponentStyle {
+        &self.style
+    }
+
+    pub fn component(&self) -> &NbtSummaryValue {
+        &self.component
+    }
+}
+
+fn style_entries_from_projection(
+    style: &ComponentStyle,
+) -> std::result::Result<Vec<NbtSummaryEntry>, String> {
+    let mut entries = Vec::new();
+    for (name, value) in [
+        ("bold", style.bold),
+        ("italic", style.italic),
+        ("underlined", style.underlined),
+        ("strikethrough", style.strikethrough),
+        ("obfuscated", style.obfuscated),
+    ] {
+        if let Some(value) = value {
+            entries.push(NbtSummaryEntry {
+                name: name.to_string(),
+                value: NbtSummaryValue::Byte(i8::from(value)),
+            });
+        }
+    }
+    if let Some(color) = style.color {
+        entries.push(NbtSummaryEntry {
+            name: "color".to_string(),
+            value: NbtSummaryValue::String(format!("#{:06x}", color & 0xFF_FFFF)),
+        });
+    }
+    if let Some(click_event) = style.click_event.as_ref() {
+        entries.push(NbtSummaryEntry {
+            name: "click_event".to_string(),
+            value: click_event_nbt(click_event)?,
+        });
+    }
+    if let Some(hover_event) = style.hover_event.as_ref() {
+        entries.push(NbtSummaryEntry {
+            name: "hover_event".to_string(),
+            value: hover_event_nbt(hover_event)?,
+        });
+    }
+    if let Some(font) = style.font.as_ref() {
+        entries.push(NbtSummaryEntry {
+            name: "font".to_string(),
+            value: NbtSummaryValue::String(font.clone()),
+        });
+    }
+    Ok(entries)
+}
+
+fn click_event_nbt(
+    click_event: &ComponentClickEvent,
+) -> std::result::Result<NbtSummaryValue, String> {
+    let (action, name, value) = match click_event {
+        ComponentClickEvent::OpenFile { .. } => {
+            return Err("open_file is not valid in a server-backed Style".to_string())
+        }
+        ComponentClickEvent::OpenUrl { url } => {
+            ("open_url", "url", NbtSummaryValue::String(url.clone()))
+        }
+        ComponentClickEvent::RunCommand { command } => (
+            "run_command",
+            "command",
+            NbtSummaryValue::String(command.clone()),
+        ),
+        ComponentClickEvent::SuggestCommand { command } => (
+            "suggest_command",
+            "command",
+            NbtSummaryValue::String(command.clone()),
+        ),
+        ComponentClickEvent::ShowDialog { dialog } => ("show_dialog", "dialog", dialog.clone()),
+        ComponentClickEvent::ChangePage { page } => {
+            ("change_page", "page", NbtSummaryValue::Int(*page))
+        }
+        ComponentClickEvent::CopyToClipboard { value } => (
+            "copy_to_clipboard",
+            "value",
+            NbtSummaryValue::String(value.clone()),
+        ),
+        ComponentClickEvent::Custom { id, payload } => {
+            let mut entries = vec![
+                nbt_entry("action", NbtSummaryValue::String("custom".to_string())),
+                nbt_entry("id", NbtSummaryValue::String(id.clone())),
+            ];
+            if let Some(payload) = payload {
+                entries.push(nbt_entry("payload", payload.clone()));
+            }
+            return Ok(NbtSummaryValue::Compound(entries));
+        }
+    };
+    Ok(NbtSummaryValue::Compound(vec![
+        nbt_entry("action", NbtSummaryValue::String(action.to_string())),
+        nbt_entry(name, value),
+    ]))
+}
+
+fn hover_event_nbt(
+    hover_event: &ComponentHoverEvent,
+) -> std::result::Result<NbtSummaryValue, String> {
+    let mut entries = Vec::new();
+    match hover_event {
+        ComponentHoverEvent::ShowText { value } => {
+            entries.push(nbt_entry(
+                "action",
+                NbtSummaryValue::String("show_text".to_string()),
+            ));
+            entries.push(nbt_entry("value", styled_runs_component_nbt(value)?));
+        }
+        ComponentHoverEvent::ShowItem {
+            id,
+            count,
+            components,
+        } => {
+            entries.push(nbt_entry(
+                "action",
+                NbtSummaryValue::String("show_item".to_string()),
+            ));
+            entries.push(nbt_entry("id", NbtSummaryValue::String(id.clone())));
+            entries.push(nbt_entry("count", NbtSummaryValue::Int(*count)));
+            if let Some(components) = components {
+                entries.push(nbt_entry("components", components.clone()));
+            }
+        }
+        ComponentHoverEvent::ShowEntity { id, uuid, name } => {
+            entries.push(nbt_entry(
+                "action",
+                NbtSummaryValue::String("show_entity".to_string()),
+            ));
+            entries.push(nbt_entry("id", NbtSummaryValue::String(id.clone())));
+            entries.push(nbt_entry("uuid", uuid.clone()));
+            if let Some(name) = name {
+                entries.push(nbt_entry("name", styled_runs_component_nbt(name)?));
+            }
+        }
+    }
+    Ok(NbtSummaryValue::Compound(entries))
+}
+
+fn styled_runs_component_nbt(
+    runs: &[StyledTextRun],
+) -> std::result::Result<NbtSummaryValue, String> {
+    if runs.is_empty() {
+        return Ok(NbtSummaryValue::String(String::new()));
+    }
+    let mut components = Vec::with_capacity(runs.len());
+    for run in runs {
+        let mut entries = vec![nbt_entry("text", NbtSummaryValue::String(run.text.clone()))];
+        entries.extend(style_entries_from_projection(&run.style)?);
+        components.push(NbtSummaryValue::Compound(entries));
+    }
+    if components.len() == 1 {
+        Ok(components.pop().expect("one component remains"))
+    } else {
+        Ok(NbtSummaryValue::List(components))
+    }
+}
+
+fn nbt_entry(name: &str, value: NbtSummaryValue) -> NbtSummaryEntry {
+    NbtSummaryEntry {
+        name: name.to_string(),
+        value,
+    }
+}
+
+impl Default for RichTextStyle {
+    fn default() -> Self {
+        Self::try_from_style_nbt(NbtSummaryValue::Compound(Vec::new()))
+            .expect("empty component style is valid")
+    }
+}
+
+impl<'de> Deserialize<'de> for RichTextStyle {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        struct RichTextStyleFields {
+            style: ComponentStyle,
+            component: NbtSummaryValue,
+        }
+
+        let fields = RichTextStyleFields::deserialize(deserializer)?;
+        let style = Self::try_from_style_nbt(fields.component).map_err(de::Error::custom)?;
+        if style.style != fields.style {
+            return Err(de::Error::custom(
+                "rich text style projection does not match exact style NBT",
+            ));
+        }
+        Ok(style)
+    }
+}
+
 /// Concatenated plain text of a run list; the empty-component fallback matches
 /// the legacy plain-text decoder (`"component nbt"`), keeping the old API a
 /// pure delegation of the styled one.
@@ -280,18 +514,13 @@ pub(crate) fn decode_boxed_rich_text_component_from_decoder(
     }))
 }
 
-pub(crate) fn decode_component_style_from_decoder(
+pub(crate) fn decode_rich_text_style_from_decoder(
     decoder: &mut Decoder<'_>,
-) -> Result<ComponentStyle> {
+) -> Result<RichTextStyle> {
     let style = decode_nbt_summary_from_decoder(decoder)?.ok_or_else(|| {
         ProtocolError::InvalidData("component style network nbt root is absent".to_string())
     })?;
-    codec::validate_component_style_nbt(&style, "component style network nbt")
-        .map_err(ProtocolError::InvalidData)?;
-    let NbtSummaryValue::Compound(entries) = style else {
-        unreachable!("validated component style must be a compound")
-    };
-    Ok(component_style_from_entries(&entries))
+    RichTextStyle::try_from_style_nbt(style).map_err(ProtocolError::InvalidData)
 }
 
 /// Decodes a validated standalone vanilla `Style.Serializer.CODEC` value.
@@ -924,15 +1153,45 @@ mod tests {
     fn component_style_wire_is_distinct_from_component_contents() {
         let empty_style = [10, 0];
         let mut decoder = Decoder::new(&empty_style);
-        decode_component_style_from_decoder(&mut decoder).unwrap();
+        let style = decode_rich_text_style_from_decoder(&mut decoder).unwrap();
         assert!(decoder.is_empty());
+        assert_eq!(style.style(), &ComponentStyle::default());
+        assert_eq!(style.component(), &NbtSummaryValue::Compound(Vec::new()));
 
         let mut malformed_style = vec![10];
         write_named_string(&mut malformed_style, "bold", "true");
         malformed_style.push(0);
         let mut decoder = Decoder::new(&malformed_style);
-        let error = decode_component_style_from_decoder(&mut decoder).unwrap_err();
+        let error = decode_rich_text_style_from_decoder(&mut decoder).unwrap_err();
         assert!(error.to_string().contains("bold is not a boolean"));
+    }
+
+    #[test]
+    fn rich_text_style_retains_exact_nbt_and_rejects_serde_projection_mismatch() {
+        let exact = NbtSummaryValue::Compound(vec![
+            nbt_entry("bold", NbtSummaryValue::Byte(1)),
+            nbt_entry("color", NbtSummaryValue::String("dark_purple".to_string())),
+        ]);
+        let style = RichTextStyle::try_from_style_nbt(exact.clone()).unwrap();
+        assert_eq!(
+            style.style(),
+            &ComponentStyle {
+                bold: Some(true),
+                color: Some(0xAA_00_AA),
+                ..ComponentStyle::default()
+            }
+        );
+        assert_eq!(style.component(), &exact);
+
+        let synthesized = RichTextStyle::try_from_style(style.style().clone()).unwrap();
+        assert_eq!(synthesized.style(), style.style());
+
+        let mut serialized = serde_json::to_value(&style).unwrap();
+        serialized["style"]["bold"] = serde_json::Value::Bool(false);
+        let error = serde_json::from_value::<RichTextStyle>(serialized).unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("projection does not match exact style NBT"));
     }
 
     #[test]

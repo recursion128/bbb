@@ -2352,15 +2352,16 @@ mod tests {
                     chat: ChatTypeDecorationSummary {
                         translation_key: "example.direct".to_string(),
                         parameters: vec![99, 2],
-                        style: ComponentStyle {
+                        style: bbb_protocol::RichTextStyle::try_from_style(ComponentStyle {
                             italic: Some(true),
                             ..ComponentStyle::default()
-                        },
+                        })
+                        .unwrap(),
                     },
                     narration: ChatTypeDecorationSummary {
                         translation_key: "example.direct.narrate".to_string(),
                         parameters: vec![0, 2],
-                        style: ComponentStyle::default(),
+                        style: bbb_protocol::RichTextStyle::default(),
                     },
                 },
                 name: "Server".to_string(),

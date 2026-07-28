@@ -690,7 +690,7 @@ fn map_item_data_event_updates_world_state() {
             x: -20,
             y: 30,
             rot: 7,
-            name: Some("Village".to_string()),
+            name: Some(bbb_protocol::RichTextComponent::plain("Village")),
         }]),
         color_patch: Some(MapColorPatch {
             start_x: 3,
@@ -713,7 +713,13 @@ fn map_item_data_event_updates_world_state() {
     assert_eq!(map.scale, 2);
     assert!(map.locked);
     assert_eq!(map.decorations.len(), 1);
-    assert_eq!(map.decorations[0].name.as_deref(), Some("Village"));
+    assert_eq!(
+        map.decorations[0]
+            .name
+            .as_ref()
+            .map(bbb_protocol::RichTextComponent::text),
+        Some("Village")
+    );
     assert_eq!(map.colors[3 + 4 * 128], 1);
     assert_eq!(map.colors[4 + 5 * 128], 4);
 

@@ -7,7 +7,7 @@ use crate::{
     attribute_modifier_types::normalize_attribute_modifier_operation_id,
     attribute_types::vanilla_attribute_type,
     codec::{Decoder, ProtocolError, Result},
-    component::{decode_component_summary_from_decoder, decode_rich_text_component_from_decoder},
+    component::decode_rich_text_component_from_decoder,
 };
 
 use super::{
@@ -342,8 +342,8 @@ pub struct DirectPaintingVariantData {
     pub width: i32,
     pub height: i32,
     pub asset_id: String,
-    pub title: Option<String>,
-    pub author: Option<String>,
+    pub title: Option<crate::RichTextComponent>,
+    pub author: Option<crate::RichTextComponent>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -978,14 +978,16 @@ fn decode_direct_painting_variant_data(
         width: decoder.read_var_i32()?,
         height: decoder.read_var_i32()?,
         asset_id: read_resource_location(decoder)?,
-        title: decode_optional_component(decoder)?,
-        author: decode_optional_component(decoder)?,
+        title: decode_optional_rich_component(decoder)?,
+        author: decode_optional_rich_component(decoder)?,
     })
 }
 
-fn decode_optional_component(decoder: &mut Decoder<'_>) -> Result<Option<String>> {
+fn decode_optional_rich_component(
+    decoder: &mut Decoder<'_>,
+) -> Result<Option<crate::RichTextComponent>> {
     if decoder.read_bool()? {
-        Ok(Some(decode_component_summary_from_decoder(decoder)?))
+        Ok(Some(decode_rich_text_component_from_decoder(decoder)?))
     } else {
         Ok(None)
     }

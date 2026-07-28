@@ -3,6 +3,7 @@ use crate::{
     codec::Encoder,
     ids,
     packets::{decode_play_clientbound, PlayClientbound},
+    ComponentStyle,
 };
 use uuid::Uuid;
 
@@ -96,15 +97,16 @@ fn decodes_disguised_chat_with_direct_chat_type() {
                     chat: ChatTypeDecorationSummary {
                         translation_key: "chat.type.text".to_string(),
                         parameters: vec![0, 2],
-                        style: ComponentStyle {
+                        style: RichTextStyle::try_from_style(ComponentStyle {
                             bold: Some(true),
                             ..ComponentStyle::default()
-                        },
+                        })
+                        .unwrap(),
                     },
                     narration: ChatTypeDecorationSummary {
                         translation_key: "chat.type.text.narrate".to_string(),
                         parameters: vec![0, 2],
-                        style: ComponentStyle::default(),
+                        style: RichTextStyle::default(),
                     },
                 },
                 name: "Narrator".to_string(),

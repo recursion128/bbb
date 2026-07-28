@@ -9,11 +9,11 @@ pub use crate::objective_render_types::ObjectiveRenderType;
 pub use crate::scoreboard_display_slots::ScoreboardDisplaySlot;
 pub use crate::scoreboard_methods::{PlayerTeamMethod, SetObjectiveMethod};
 pub use crate::scoreboard_team_options::{TeamCollisionRule, TeamVisibility};
-use crate::{ComponentStyle, RichTextComponent};
+use crate::{RichTextComponent, RichTextStyle};
 
 use super::{decode_nullable_string, ChatFormatting};
 use crate::component::{
-    decode_component_style_from_decoder, decode_rich_text_component_from_decoder,
+    decode_rich_text_component_from_decoder, decode_rich_text_style_from_decoder,
 };
 
 const MAX_PLAYER_TEAM_PLAYERS: usize = 8192;
@@ -154,7 +154,7 @@ pub struct PlayerTeamParameters {
 #[serde(tag = "type", content = "value", rename_all = "snake_case")]
 pub enum NumberFormatSummary {
     Blank,
-    Styled(ComponentStyle),
+    Styled(RichTextStyle),
     Fixed(RichTextComponent),
 }
 
@@ -305,7 +305,7 @@ fn decode_number_format(decoder: &mut Decoder<'_>) -> Result<NumberFormatSummary
     match type_id {
         VANILLA_NUMBER_FORMAT_TYPE_BLANK_ID => Ok(NumberFormatSummary::Blank),
         VANILLA_NUMBER_FORMAT_TYPE_STYLED_ID => Ok(NumberFormatSummary::Styled(
-            decode_component_style_from_decoder(decoder)?,
+            decode_rich_text_style_from_decoder(decoder)?,
         )),
         VANILLA_NUMBER_FORMAT_TYPE_FIXED_ID => Ok(NumberFormatSummary::Fixed(
             decode_rich_text_component_from_decoder(decoder)?,
@@ -549,14 +549,25 @@ mod tests {
         let PlayClientbound::SetScore(packet) = packet else {
             panic!("expected set score packet");
         };
+        let Some(NumberFormatSummary::Styled(style)) = packet.number_format else {
+            panic!("expected styled number format");
+        };
         assert_eq!(
-            packet.number_format,
-            Some(NumberFormatSummary::Styled(ComponentStyle {
+            style.style(),
+            &crate::ComponentStyle {
                 bold: Some(true),
                 color: Some(0xFF_55_55),
-                ..ComponentStyle::default()
-            }))
+                ..crate::ComponentStyle::default()
+            }
         );
+        assert!(matches!(
+            style.component(),
+            crate::NbtSummaryValue::Compound(entries)
+                if entries.iter().any(|entry| {
+                    entry.name == "color"
+                        && entry.value == crate::NbtSummaryValue::String("red".to_string())
+                })
+        ));
 
         let mut fixed = Encoder::new();
         fixed.write_string("Steve");

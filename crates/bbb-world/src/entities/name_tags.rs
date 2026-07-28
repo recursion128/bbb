@@ -370,7 +370,7 @@ impl WorldStore {
             Some(NumberFormatSummary::Styled(style)) => {
                 segments.push(EntityNameTagTextSegmentState::Styled(vec![StyledTextRun {
                     text: value.to_string(),
-                    style: style.clone(),
+                    style: style.style().clone(),
                 }]));
             }
             Some(NumberFormatSummary::Fixed(component)) => {

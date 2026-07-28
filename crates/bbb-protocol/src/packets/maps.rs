@@ -1,8 +1,10 @@
 use serde::{Deserialize, Serialize};
 
-use crate::codec::{Decoder, ProtocolError, Result};
-
-use super::decode_optional_component_summary_from_decoder;
+use crate::{
+    codec::{Decoder, ProtocolError, Result},
+    component::decode_rich_text_component_from_decoder,
+    RichTextComponent,
+};
 
 const MAP_SIZE: usize = 128;
 const MAX_MAP_DECORATIONS: usize = 4096;
@@ -22,7 +24,7 @@ pub struct MapDecoration {
     pub x: i8,
     pub y: i8,
     pub rot: u8,
-    pub name: Option<String>,
+    pub name: Option<RichTextComponent>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -72,7 +74,10 @@ fn decode_map_decoration(decoder: &mut Decoder<'_>) -> Result<MapDecoration> {
         x: decoder.read_i8()?,
         y: decoder.read_i8()?,
         rot: decoder.read_u8()? & 15,
-        name: decode_optional_component_summary_from_decoder(decoder)?,
+        name: decoder
+            .read_bool()?
+            .then(|| decode_rich_text_component_from_decoder(decoder))
+            .transpose()?,
     })
 }
 

@@ -603,7 +603,7 @@ fn player_info_events_update_world_and_world_counters() {
                     listed: true,
                     latency: 42,
                     game_mode: bbb_protocol::packets::GameType::Creative,
-                    display_name: Some("Ada Lovelace".to_string()),
+                    display_name: Some(bbb_protocol::RichTextComponent::plain("Ada Lovelace")),
                     show_hat: true,
                     list_order: 3,
                     chat_session: Some(bbb_protocol::packets::PlayerInfoChatSession {
@@ -654,7 +654,13 @@ fn player_info_events_update_world_and_world_counters() {
     assert!(entry.listed);
     assert_eq!(entry.latency, 42);
     assert_eq!(entry.game_mode, "creative");
-    assert_eq!(entry.display_name.as_deref(), Some("Ada Lovelace"));
+    assert_eq!(
+        entry
+            .display_name
+            .as_ref()
+            .map(bbb_protocol::RichTextComponent::text),
+        Some("Ada Lovelace")
+    );
     assert!(entry.show_hat);
     assert_eq!(entry.list_order, 3);
     assert!(!entry.chat_session_present);

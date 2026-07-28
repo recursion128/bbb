@@ -43,7 +43,7 @@ fn decodes_map_item_data_with_decorations_and_patch() {
                     x: -20,
                     y: 30,
                     rot: 7,
-                    name: Some("Village".to_string()),
+                    name: Some(crate::RichTextComponent::plain("Village")),
                 },
             ]),
             color_patch: Some(MapColorPatch {

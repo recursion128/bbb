@@ -12,6 +12,7 @@ use bbb_protocol::packets::{
     MapColorPatch as ProtocolMapColorPatch, MapDecoration as ProtocolMapDecoration,
     MapItemData as ProtocolMapItemData,
 };
+use bbb_protocol::RichTextComponent;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::WorldStore;
@@ -130,7 +131,7 @@ pub struct MapDecorationState {
     pub x: i8,
     pub y: i8,
     pub rot: u8,
-    pub name: Option<String>,
+    pub name: Option<RichTextComponent>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -278,7 +279,7 @@ mod tests {
                 x: -20,
                 y: 30,
                 rot: 7,
-                name: Some("Village".to_string()),
+                name: Some(RichTextComponent::plain("Village")),
             }]),
             color_patch: Some(ProtocolMapColorPatch {
                 start_x: 3,
@@ -299,7 +300,7 @@ mod tests {
                 x: -20,
                 y: 30,
                 rot: 7,
-                name: Some("Village".to_string()),
+                name: Some(RichTextComponent::plain("Village")),
             }]
         );
         assert_eq!(map.colors[3 + 4 * MAP_SIZE], 1);

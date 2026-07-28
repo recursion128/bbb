@@ -120,10 +120,13 @@ fn entity_name_tag_source_preserves_rich_team_and_below_name_components() {
         parameters: Some(SetObjectiveParameters {
             display_name: rich_text("Health", "red", true),
             render_type: ObjectiveRenderType::Integer,
-            number_format: Some(NumberFormatSummary::Styled(ComponentStyle {
-                color: Some(0x55_FF_55),
-                ..ComponentStyle::default()
-            })),
+            number_format: Some(NumberFormatSummary::Styled(
+                bbb_protocol::RichTextStyle::try_from_style(ComponentStyle {
+                    color: Some(0x55_FF_55),
+                    ..ComponentStyle::default()
+                })
+                .unwrap(),
+            )),
         }),
     }));
     assert!(store.apply_set_display_objective(SetDisplayObjective {

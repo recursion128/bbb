@@ -16,7 +16,8 @@ pub use component::{
     CanonicalComponentOwnerValue, CommandCoordinatesKind, CommandEntitySelectorOption,
     CommandEntitySelectorOptionKind, CommandEntitySelectorPrefix, CommandSnbtKind,
     ComponentClickEvent, ComponentHoverEvent, ComponentPayload, ComponentStyle, RichTextComponent,
-    SignBlockEntityNbt, SignTextNbt, StyledTextRun, VANILLA_COMMAND_ENTITY_SELECTOR_OPTIONS,
+    RichTextStyle, SignBlockEntityNbt, SignTextNbt, StyledTextRun,
+    VANILLA_COMMAND_ENTITY_SELECTOR_OPTIONS,
 };
 pub use nbt_summary::{
     canonical_snbt_string, decode_nbt_summary, parse_snbt_compound, NbtSummaryEntry,

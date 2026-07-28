@@ -1844,14 +1844,14 @@ fn first_person_map_decorations_keep_builtin_order_after_registry_injection() {
                 x: 0,
                 y: 0,
                 rot: 0,
-                name: Some("Player".to_string()),
+                name: Some(bbb_protocol::RichTextComponent::plain("Player")),
             },
             bbb_protocol::packets::MapDecoration {
                 type_id: 1,
                 x: -20,
                 y: 30,
                 rot: 7,
-                name: Some("Frame".to_string()),
+                name: Some(bbb_protocol::RichTextComponent::plain("Frame")),
             },
         ]),
         color_patch: Some(MapColorPatch {

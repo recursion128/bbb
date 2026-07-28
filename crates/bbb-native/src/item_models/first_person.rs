@@ -250,7 +250,7 @@ pub(crate) fn first_person_item_models_with_map_cache(
                             if let Some(glyphs) = item_runtime.map_text_glyphs() {
                                 if let Some(text_surface) = bake_first_person_map_text_surface(
                                     decoration.type_id,
-                                    name.as_str(),
+                                    name.text(),
                                     decoration.x,
                                     decoration.y,
                                     visible_decoration_index,

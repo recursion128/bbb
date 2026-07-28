@@ -1498,7 +1498,7 @@ fn hud_scoreboard_projection_localizes_rich_team_and_score_runs() {
         score: 9,
         display: Some(styled("Ace", Some("aqua"), false)),
         number_format: Some(NumberFormatSummary::Styled(
-            bbb_protocol::ComponentStyle::default(),
+            bbb_protocol::RichTextStyle::default(),
         )),
     }));
 

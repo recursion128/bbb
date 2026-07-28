@@ -17,10 +17,13 @@ fn scoreboard_objective_lifecycle_clears_display_and_scores() {
         Some(protocol_objective_parameters(
             "Kills",
             ObjectiveRenderType::Integer,
-            Some(NumberFormatSummary::Styled(ComponentStyle {
-                color: Some(0xFF_55_55),
-                ..ComponentStyle::default()
-            })),
+            Some(NumberFormatSummary::Styled(
+                bbb_protocol::RichTextStyle::try_from_style(ComponentStyle {
+                    color: Some(0xFF_55_55),
+                    ..ComponentStyle::default()
+                })
+                .unwrap(),
+            )),
         )),
     )));
     assert!(store.apply_set_display_objective(SetDisplayObjective {
@@ -158,10 +161,13 @@ fn scoreboard_preserves_rich_components_and_formats_below_name_scores() {
         Some(SetObjectiveParameters {
             display_name: objective_name,
             render_type: ObjectiveRenderType::Integer,
-            number_format: Some(NumberFormatSummary::Styled(ComponentStyle {
-                color: Some(0xFF_55_55),
-                ..ComponentStyle::default()
-            })),
+            number_format: Some(NumberFormatSummary::Styled(
+                bbb_protocol::RichTextStyle::try_from_style(ComponentStyle {
+                    color: Some(0xFF_55_55),
+                    ..ComponentStyle::default()
+                })
+                .unwrap(),
+            )),
         }),
     )));
     assert!(store.apply_set_display_objective(SetDisplayObjective {

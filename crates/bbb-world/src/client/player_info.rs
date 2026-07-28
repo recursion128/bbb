@@ -6,6 +6,7 @@ use bbb_protocol::packets::{
     PlayerInfoChatSession as ProtocolPlayerInfoChatSession,
     PlayerInfoRemove as ProtocolPlayerInfoRemove, PlayerInfoUpdate as ProtocolPlayerInfoUpdate,
 };
+use bbb_protocol::RichTextComponent;
 use rsa::{
     pkcs8::{DecodePublicKey, EncodePublicKey},
     Pkcs1v15Sign, RsaPublicKey,
@@ -38,7 +39,7 @@ pub struct PlayerInfoEntryState {
     pub listed: bool,
     pub latency: i32,
     pub game_mode: String,
-    pub display_name: Option<String>,
+    pub display_name: Option<RichTextComponent>,
     pub show_hat: bool,
     pub list_order: i32,
     /// True only after the advertised profile key validates against the
@@ -291,7 +292,7 @@ mod tests {
         entry.listed = true;
         entry.latency = 42;
         entry.game_mode = ProtocolGameType::Creative;
-        entry.display_name = Some("{\"text\":\"Ada Lovelace\"}".to_string());
+        entry.display_name = Some(RichTextComponent::plain("{\"text\":\"Ada Lovelace\"}"));
         entry.show_hat = true;
         entry.list_order = 7;
         let (services_key, chat_session) = signed_player_info_chat_session(id);
@@ -321,7 +322,7 @@ mod tests {
         assert_eq!(info.latency, 42);
         assert_eq!(info.game_mode, "creative");
         assert_eq!(
-            info.display_name.as_deref(),
+            info.display_name.as_ref().map(RichTextComponent::text),
             Some("{\"text\":\"Ada Lovelace\"}")
         );
         assert!(info.show_hat);

@@ -1941,7 +1941,7 @@ fn hud_player_list_entries_from_world(
                         item_runtime,
                     )
                 },
-                |display_name| vec![HudStyledTextRun::plain(display_name)],
+                |display_name| hud_tab_list_component_runs(display_name, item_runtime),
             );
             if entry.is_spectator() {
                 for run in &mut name_runs {

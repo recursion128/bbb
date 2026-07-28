@@ -120,7 +120,7 @@ fn direct_decoration(decoration: &ChatTypeDecorationSummary) -> ChatTypeDecorati
             .iter()
             .map(|parameter| network_parameter(*parameter))
             .collect(),
-        style: decoration.style.clone(),
+        style: decoration.style.style().clone(),
     }
 }
 

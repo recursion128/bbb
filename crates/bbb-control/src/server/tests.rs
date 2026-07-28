@@ -3629,7 +3629,9 @@ fn client_player_info_reads_canonical_world_state() {
                 listed: true,
                 latency: 42,
                 game_mode: GameType::Creative,
-                display_name: Some("{\"text\":\"Ada Lovelace\"}".to_string()),
+                display_name: Some(bbb_protocol::RichTextComponent::plain(
+                    "{\"text\":\"Ada Lovelace\"}",
+                )),
                 show_hat: true,
                 list_order: 7,
                 chat_session: None,
@@ -3657,7 +3659,11 @@ fn client_player_info_reads_canonical_world_state() {
     assert_eq!(entry["listed"], true);
     assert_eq!(entry["latency"], 42);
     assert_eq!(entry["game_mode"], "creative");
-    assert_eq!(entry["display_name"], "{\"text\":\"Ada Lovelace\"}");
+    assert_eq!(entry["display_name"]["text"], "{\"text\":\"Ada Lovelace\"}");
+    assert_eq!(
+        entry["display_name"]["component"],
+        json!({"type": "String", "value": "{\"text\":\"Ada Lovelace\"}"})
+    );
     assert_eq!(entry["show_hat"], true);
     assert_eq!(entry["list_order"], 7);
     assert_eq!(entry["chat_session_present"], false);
@@ -3761,7 +3767,7 @@ fn client_maps_reads_canonical_world_state() {
                 x: -20,
                 y: 30,
                 rot: 7,
-                name: Some("Village".to_string()),
+                name: Some(bbb_protocol::RichTextComponent::plain("Village")),
             }]),
             color_patch: Some(MapColorPatch {
                 start_x: 3,
@@ -3790,7 +3796,11 @@ fn client_maps_reads_canonical_world_state() {
     assert_eq!(map["locked"], true);
     assert_eq!(map["decorations"][0]["type_id"], 4);
     assert_eq!(map["decorations"][0]["x"], -20);
-    assert_eq!(map["decorations"][0]["name"], "Village");
+    assert_eq!(map["decorations"][0]["name"]["text"], "Village");
+    assert_eq!(
+        map["decorations"][0]["name"]["component"],
+        json!({"type": "String", "value": "Village"})
+    );
     assert_eq!(map["last_color_patch"]["start_x"], 3);
     assert_eq!(map["last_color_patch"]["height"], 2);
     let colors = map["colors"].as_array().unwrap();
@@ -3814,7 +3824,7 @@ fn last_map_color_patch_reads_canonical_world_state() {
                 x: -20,
                 y: 30,
                 rot: 7,
-                name: Some("Village".to_string()),
+                name: Some(bbb_protocol::RichTextComponent::plain("Village")),
             }]),
             color_patch: Some(MapColorPatch {
                 start_x: 3,

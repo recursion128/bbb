@@ -1501,7 +1501,7 @@ mod tests {
                 listed: true,
                 latency: 42,
                 game_mode: packets::GameType::Creative,
-                display_name: Some("Ada Lovelace".to_string()),
+                display_name: Some(bbb_protocol::RichTextComponent::plain("Ada Lovelace")),
                 show_hat: true,
                 list_order: 3,
                 chat_session: Some(packets::PlayerInfoChatSession {
@@ -2574,7 +2574,7 @@ mod tests {
                 x: -8,
                 y: 9,
                 rot: 3,
-                name: Some("Camp".to_string()),
+                name: Some(bbb_protocol::RichTextComponent::plain("Camp")),
             }]),
             color_patch: Some(packets::MapColorPatch {
                 start_x: 5,

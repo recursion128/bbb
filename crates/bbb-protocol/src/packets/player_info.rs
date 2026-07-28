@@ -2,13 +2,12 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::codec::{Decoder, ProtocolError, Result};
+use crate::component::decode_rich_text_component_from_decoder;
 pub use crate::game_types::GameType;
 pub use crate::player_info_actions::PlayerInfoAction;
+use crate::RichTextComponent;
 
-use super::{
-    decode_byte_array, decode_optional_component_summary_from_decoder, GameProfile,
-    GameProfileProperty,
-};
+use super::{decode_byte_array, GameProfile, GameProfileProperty};
 
 const MAX_PLAYER_INFO_ENTRIES: usize = 8192;
 const MAX_GAME_PROFILE_PROPERTIES: usize = 1024;
@@ -33,7 +32,7 @@ pub struct PlayerInfoEntry {
     pub listed: bool,
     pub latency: i32,
     pub game_mode: GameType,
-    pub display_name: Option<String>,
+    pub display_name: Option<RichTextComponent>,
     pub show_hat: bool,
     pub list_order: i32,
     pub chat_session: Option<PlayerInfoChatSession>,
@@ -124,7 +123,10 @@ pub(super) fn decode_player_info_update(decoder: &mut Decoder<'_>) -> Result<Pla
                     entry.latency = decoder.read_var_i32()?;
                 }
                 PlayerInfoAction::UpdateDisplayName => {
-                    entry.display_name = decode_optional_component_summary_from_decoder(decoder)?;
+                    entry.display_name = decoder
+                        .read_bool()?
+                        .then(|| decode_rich_text_component_from_decoder(decoder))
+                        .transpose()?;
                 }
                 PlayerInfoAction::UpdateListOrder => {
                     entry.list_order = decoder.read_var_i32()?;
@@ -272,7 +274,7 @@ mod tests {
         payload.write_bool(true);
         payload.write_var_i32(47);
         payload.write_bool(true);
-        payload.write_bytes(&nbt_string_root("Captain Steve"));
+        payload.write_bytes(&nbt_styled_text_root("Captain Steve"));
         payload.write_var_i32(12);
         payload.write_bool(true);
         let payload = payload.into_inner();
@@ -297,7 +299,23 @@ mod tests {
                     listed: true,
                     latency: 47,
                     game_mode: GameType::Adventure,
-                    display_name: Some("Captain Steve".to_string()),
+                    display_name: Some(
+                        crate::RichTextComponent::try_from_component_nbt(
+                            crate::NbtSummaryValue::Compound(vec![
+                                crate::NbtSummaryEntry {
+                                    name: "text".to_string(),
+                                    value: crate::NbtSummaryValue::String(
+                                        "Captain Steve".to_string(),
+                                    ),
+                                },
+                                crate::NbtSummaryEntry {
+                                    name: "bold".to_string(),
+                                    value: crate::NbtSummaryValue::Byte(1),
+                                },
+                            ]),
+                        )
+                        .unwrap(),
+                    ),
                     show_hat: true,
                     list_order: 12,
                     chat_session: None,
@@ -345,10 +363,19 @@ mod tests {
             .fold(0, |bits, action| bits | (1u8 << action.ordinal()))
     }
 
-    fn nbt_string_root(text: &str) -> Vec<u8> {
-        let mut payload = vec![8];
-        payload.extend_from_slice(&(text.len() as u16).to_be_bytes());
-        payload.extend_from_slice(text.as_bytes());
+    fn nbt_styled_text_root(text: &str) -> Vec<u8> {
+        let mut payload = vec![10, 8];
+        write_mutf8(&mut payload, "text");
+        write_mutf8(&mut payload, text);
+        payload.push(1);
+        write_mutf8(&mut payload, "bold");
+        payload.push(1);
+        payload.push(0);
         payload
+    }
+
+    fn write_mutf8(out: &mut Vec<u8>, value: &str) {
+        out.extend_from_slice(&(value.len() as u16).to_be_bytes());
+        out.extend_from_slice(value.as_bytes());
     }
 }

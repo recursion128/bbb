@@ -664,7 +664,7 @@ mod tests {
                     x: -8,
                     y: 9,
                     rot: 3,
-                    name: Some("Camp".to_string()),
+                    name: Some(bbb_protocol::RichTextComponent::plain("Camp")),
                 }]),
                 color_patch: Some(MapColorPatch {
                     start_x: 5,
@@ -680,7 +680,13 @@ mod tests {
         let report = probe.finish(1, ChunkPos { x: 0, z: 0 });
         let map = report.world.map_item(12).expect("map state is tracked");
         assert_eq!(map.decorations.len(), 1);
-        assert_eq!(map.decorations[0].name.as_deref(), Some("Camp"));
+        assert_eq!(
+            map.decorations[0]
+                .name
+                .as_ref()
+                .map(bbb_protocol::RichTextComponent::text),
+            Some("Camp")
+        );
         assert_eq!(map.colors[5 + 6 * 128], 11);
         assert_eq!(map.colors[6 + 6 * 128], 12);
         assert_eq!(
@@ -4677,7 +4683,7 @@ mod tests {
                         listed: true,
                         latency: 42,
                         game_mode: GameType::Creative,
-                        display_name: Some("Ada Lovelace".to_string()),
+                        display_name: Some(bbb_protocol::RichTextComponent::plain("Ada Lovelace")),
                         show_hat: true,
                         list_order: 3,
                         chat_session: Some(PlayerInfoChatSession {
@@ -4721,7 +4727,13 @@ mod tests {
         assert!(entry.listed);
         assert_eq!(entry.latency, 42);
         assert_eq!(entry.game_mode, "creative");
-        assert_eq!(entry.display_name.as_deref(), Some("Ada Lovelace"));
+        assert_eq!(
+            entry
+                .display_name
+                .as_ref()
+                .map(bbb_protocol::RichTextComponent::text),
+            Some("Ada Lovelace")
+        );
         assert!(entry.show_hat);
         assert_eq!(entry.list_order, 3);
         assert!(!entry.chat_session_present);
