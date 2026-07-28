@@ -10403,6 +10403,19 @@ fn apply_local_container_quick_move_rejects_non_inventory_menu() {
 }
 
 #[test]
+fn every_generated_menu_type_has_known_container_click_rules() {
+    assert_eq!(VANILLA_MENU_TYPES.len(), 25);
+    for menu_type in VANILLA_MENU_TYPES {
+        assert!(
+            menu_type_has_known_slot_rules(Some(menu_type.id)),
+            "generated menu {} ({}) has no container-click rules",
+            menu_type.constant_name,
+            menu_type.resource_id
+        );
+    }
+}
+
+#[test]
 fn apply_local_container_throw_drops_one_from_inventory_slot() {
     let mut store = WorldStore::new();
     store.apply_set_player_inventory(ProtocolSetPlayerInventory {

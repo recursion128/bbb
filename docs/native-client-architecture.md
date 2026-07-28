@@ -130,6 +130,15 @@ Owns canonical client state.
 semantic state and lightweight event summaries. It must not store backend
 handles.
 
+Container-click prediction is owned by the canonical inventory state. All
+generated MenuType and ContainerInput variants have explicit local rules.
+Hashable predictable changes send their exact changed-slot hashes; a branch
+whose component or specialized rule cannot be reproduced sends an empty delta
+without locally mutating slots. The server independently executes `clicked`,
+then ordinary ContainerSetContent/Slot updates replace the retained state.
+That correction path is authoritative state synchronization, not a synthetic
+packet acknowledgement.
+
 The synchronized `Commands` graph is instantiated as one immutable world-owned
 dispatcher. `bbb-protocol` decodes the generated 57-entry argument-template
 catalog; `bbb-world` performs parsing, redirect traversal, validation, signable

@@ -3199,7 +3199,7 @@ mod tests {
     }
 
     #[test]
-    fn play_serverbound_container_click_keeps_specialized_prediction_open() {
+    fn play_serverbound_container_click_is_closed_with_authoritative_fallback() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -3213,17 +3213,10 @@ mod tests {
             entry.coverage["ack_response"].status,
             PacketCoverageStatus::NotApplicable
         );
-        for dimension in ["command_surface", "encoder"] {
+        for dimension in ["command_surface", "encoder", "state_guard", "tests"] {
             assert_eq!(
                 entry.coverage[dimension].status,
                 PacketCoverageStatus::Complete,
-                "{dimension}"
-            );
-        }
-        for dimension in ["state_guard", "tests"] {
-            assert_eq!(
-                entry.coverage[dimension].status,
-                PacketCoverageStatus::Partial,
                 "{dimension}"
             );
         }

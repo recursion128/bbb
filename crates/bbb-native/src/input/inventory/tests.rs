@@ -4886,7 +4886,7 @@ fn enchantment_table_shift_click_player_item_queues_predicted_input_move() {
 }
 
 #[test]
-fn non_local_quick_move_with_unhashable_prediction_falls_back_to_server_click() {
+fn non_local_quick_move_with_unhashable_prediction_falls_back_and_accepts_correction() {
     let (tx, mut rx) = mpsc::channel(2);
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
@@ -4942,6 +4942,25 @@ fn non_local_quick_move_with_unhashable_prediction_falls_back_to_server_click() 
     let slots = &world.inventory().open_container.as_ref().unwrap().slots;
     assert_eq!(slots[1].item, bundle_stack(42, 3, 1));
     assert_eq!(slots[10].item, ItemStackSummary::empty());
+
+    let corrected = bundle_stack(42, 3, 1);
+    let mut corrected_items = vec![ItemStackSummary::empty(); 46];
+    corrected_items[45] = corrected.clone();
+    world.apply_container_set_content(ContainerSetContent {
+        container_id: 7,
+        state_id: 13,
+        items: corrected_items,
+        carried_item: ItemStackSummary::empty(),
+    });
+
+    let slots = &world.inventory().open_container.as_ref().unwrap().slots;
+    assert_eq!(slots[1].item, ItemStackSummary::empty());
+    assert_eq!(slots[45].item, corrected);
+    assert_eq!(
+        world.inventory().open_container.as_ref().unwrap().state_id,
+        13
+    );
+    assert_eq!(world.inventory().cursor_item, ItemStackSummary::empty());
 }
 
 #[test]

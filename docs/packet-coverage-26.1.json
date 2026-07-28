@@ -3666,19 +3666,22 @@
             "crates/bbb-world/src/client/inventory/crafting.rs#apply_crafting_menu_result_pickup_to_slots",
             "crates/bbb-world/src/client/inventory/slot_ops.rs#apply_inventory_menu_result_quick_move_to_slots",
             "crates/bbb-world/src/client/inventory/slot_ops.rs#apply_crafting_result_take_side_effects",
+            "crates/bbb-world/src/client/inventory/slot_ops.rs#menu_type_has_known_slot_rules",
+            "crates/bbb-native/src/input/inventory.rs#local_inventory_apply_and_queue_click",
             "vanilla:net/minecraft/client/multiplayer/MultiPlayerGameMode.java#handleContainerInput",
             "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleContainerClick",
             "vanilla:net/minecraft/world/inventory/AbstractContainerMenu.java#doClick",
             "vanilla:net/minecraft/world/inventory/ResultSlot.java#onTake"
           ],
-          "gap": "docs/unsupported-features.md#container-menu-presentation-parity",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/tests.rs#encodes_container_inventory_packets",
             "crates/bbb-protocol/src/packets/tests.rs#container_click_rejects_vanilla_bounded_collections_before_encoding",
             "crates/bbb-net/src/driver/commands/tests.rs#send_container_inventory_commands_encode_packets",
+            "crates/bbb-world/src/client/inventory/tests.rs#every_generated_menu_type_has_known_container_click_rules",
             "crates/bbb-world/src/client/inventory/tests.rs#apply_local_container_click_slot_picks_up_and_places_stack",
             "crates/bbb-world/src/client/inventory/tests.rs#apply_local_container_quick_craft_left_drag_distributes_evenly",
             "crates/bbb-world/src/client/inventory/tests.rs#inventory_menu_crafting_result_pickup_preserves_server_components_and_consumes_inputs_once",
@@ -3686,10 +3689,12 @@
             "crates/bbb-world/src/client/inventory/tests.rs#crafting_result_server_correction_replaces_default_client_prediction",
             "crates/bbb-native/src/input/inventory/tests.rs#generic_container_mouse_click_queues_pickup",
             "crates/bbb-native/src/input/inventory/tests.rs#inventory_double_left_click_queues_container_zero_pickup_all",
-            "crates/bbb-native/src/input/inventory/tests.rs#crafting_result_with_recipe_specific_remainder_uses_default_client_prediction"
+            "crates/bbb-native/src/input/inventory/tests.rs#non_local_quick_move_with_unhashable_prediction_falls_back_and_accepts_correction",
+            "crates/bbb-native/src/input/inventory/tests.rs#stonecutter_left_click_result_slot_with_remaining_input_queues_server_authoritative_click",
+            "crates/bbb-protocol/src/packet_coverage.rs#play_serverbound_container_click_is_closed_with_authoritative_fallback"
           ],
-          "gap": "docs/unsupported-features.md#container-menu-presentation-parity",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",

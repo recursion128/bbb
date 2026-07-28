@@ -932,14 +932,6 @@ back into a todo. Do not delete these.
 
 ## Container menu presentation parity
 
-- ContainerClick encodes all seven generated ContainerInput ids and predicts common
-  pickup, quick-move, swap, clone, throw, quick-craft, and pickup-all paths, including
-  remote Inventory/Crafting `ResultSlot` prediction. Keep the conservative
-  empty-delta/server-authoritative fallback for direct-dialog Component values,
-  named-only direct jukebox/painting holders, remaining lossy predicate codecs, and
-  the remaining specialized result-slot semantics until their local rules are
-  complete; ordinary ContainerSetContent/Slot/Data updates remain the correction path
-  rather than a synthetic acknowledgement.
 - Keep clientbound container lifecycle audits aligned with vanilla even when a
   packet field is redundant: ContainerClose carries an id but the 26.1 client
   closes its current menu unconditionally; matching-id behavior is not an
