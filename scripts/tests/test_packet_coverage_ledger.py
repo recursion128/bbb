@@ -85,6 +85,26 @@ class PacketCoverageLedgerTests(unittest.TestCase):
             256,
         )
 
+    def test_checked_in_fixed_matrix_has_no_partial_or_deferred_cells(self) -> None:
+        ledger = json.loads(
+            (SCRIPTS.parent / "docs" / "packet-coverage-26.1.json").read_text()
+        )
+        self.assertEqual(
+            [
+                (
+                    entry["state"],
+                    entry["direction"],
+                    entry["constant_name"],
+                    dimension,
+                    cell["status"],
+                )
+                for entry in ledger["entries"]
+                for dimension, cell in entry["coverage"].items()
+                if cell["status"] not in {"complete", "not-applicable"}
+            ],
+            [],
+        )
+
     def test_sparse_overrides_require_known_packet_dimension_and_evidence(self) -> None:
         catalogs = {}
         index = 0

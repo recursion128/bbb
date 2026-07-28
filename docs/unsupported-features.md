@@ -48,51 +48,6 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
   and chunk-update comparison captures; report any losing scene by measured
   owner instead of reducing visible work.
 
-## Protocol coverage for remaining required 26.1 packet families
-
-Owner: `bbb-protocol`
-
-- Audit remaining play-family field order, nullability, enum ordinals, and
-  serverbound encoders against
-  `<MC_CODE_ROOT>/sources/26.1/`, adding focused encode/decode tests with each
-  packet slice, including strict unit-payload, terminal packet/component roots,
-  remaining bounded strings/byte arrays, typed resource-id normalization,
-  Vanilla-declared semantic collection/map count and key/value limits,
-  untrusted URI validation and
-  NBT-root/depth/count boundaries;
-  keep handwritten handler coverage aligned with the generated packet catalog
-  as unsupported families are implemented.
-- Use `docs/packet-coverage-26.1.json` as the complete 256-entry inventory. Every
-  remaining `partial` cell must carry implementation and semantic-test
-  evidence through the checked-in sparse overrides; catalog presence, a
-  generic dispatch arm, an ungated state query, or one representative action
-  from a multi-action serverbound family is not completion. Serverbound
-  request coverage must include every distinct success/fallback response
-  branch, including ordinary authoritative state-sync packets; local
-  prediction alone does not replace accepting a later server correction with
-  exact item components and associated menu data. Conversely, do not invent a
-  native command producer for an enum action that the Vanilla client never
-  sends; pin that exception with a reverse client-callsite audit plus the
-  server handler and encoder evidence. A serverbound family marked as having
-  no acknowledgement must likewise pin the Vanilla broadcast target and any
-  required local-first prediction, rather than infer no response from the
-  absence of a dedicated packet type.
-- Use `docs/item-component-coverage-26.1.json` as the complete 110-entry
-  ItemStack component semantic inventory. Each `partial` cell must close
-  through its sparse evidence override; consuming the right wire length or
-  retaining only a component type id does not establish typed decode,
-  canonical retention, re-encoding, persistent projection, or a consumer.
-- Then cover the remaining play, movement, inventory, chat and interaction
-  families end to end.
-
-## Unknown clientbound packets in login, configuration, and play
-
-Owner: `bbb-protocol` + `bbb-net` + `bbb-native`
-
-- For each unsupported packet surfaced by probe/control diagnostics, verify it
-  against local vanilla 26.1 sources, then either implement protocol decode plus
-  world/runtime handling, or record why it is runtime-only.
-
 ## Signed chat and chat acknowledgement production
 
 Owner: `bbb-protocol` + `bbb-net` + `bbb-world` + `bbb-native`

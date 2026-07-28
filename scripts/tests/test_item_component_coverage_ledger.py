@@ -43,6 +43,20 @@ def component(
 
 
 class ItemComponentCoverageLedgerTests(unittest.TestCase):
+    def test_checked_in_fixed_matrix_has_no_partial_or_deferred_cells(self) -> None:
+        ledger = json.loads(
+            (SCRIPTS.parent / "docs" / "item-component-coverage-26.1.json").read_text()
+        )
+        self.assertEqual(
+            [
+                (entry["constant_name"], dimension, cell["status"])
+                for entry in ledger["entries"]
+                for dimension, cell in entry["coverage"].items()
+                if cell["status"] not in {"complete", "not-applicable"}
+            ],
+            [],
+        )
+
     def test_rendered_ledger_uses_semantic_dimensions_and_codec_facts(self) -> None:
         ledger = json.loads(
             GENERATOR.render_item_component_coverage(

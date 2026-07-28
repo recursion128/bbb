@@ -255,8 +255,10 @@ foundation、entity matrix、playable session lifecycle 四个
 foundation milestone 均已闭环（见 goal-archive 索引；RegistryAccess 消费长尾
 整队列随之闭环，权威来源规则转入上方结构不变量维护），后续裁决顺序调整为：
 
-1. play packet family 长尾；
-2. P2 非实体 closeout → P2 屏幕/HUD → P3 资源 → P4 健壮性/性能/平台。
+1. P2 非实体 closeout；
+2. P2 屏幕/HUD；
+3. P3 资源；
+4. P4 健壮性/性能/平台。
 
 （playable 基础游玩交互与扩展失败证据两阶段均已闭环，见下节；playable 门禁
 转入维护态：新交互场景随对应垂直 slice 扩展，不再单列队列。）
@@ -298,36 +300,6 @@ renderer/audio/net/world counters、pending 写探针双采样和最终 screensh
 `playable-gate` 一条命令完成上述场景并稳定回收；合法 session 无 panic、hang、
 required unknown packet 或状态泄漏；每个核心用户动作同时有 server 结果、world
 状态和适用呈现断言；大 milestone 关闭前必须通过该门禁。
-
-### P1：Protocol / session 行为覆盖矩阵长尾
-
-foundation（matrix inventory、state/framing、handshake/status/login/
-configuration 全路径与 required play handoff）已闭环。coverage ledger 为
-`docs/packet-coverage-26.1.json`（由
-`scripts/data/packet-coverage-overrides-26.1.json` 经
-`scripts/generate-packet-catalog.py` 生成）；catalog 只拥有机械元数据，
-decode/encode、world apply 和 runtime side effect 保持手写。
-
-开放工作：
-
-1. **play family 收口**：按 ledger 仍为 `partial` 的 play clientbound/
-   serverbound 行，补齐 decode→唯一分发→canonical apply→side effect→tests
-   或 encoder→sequence/state guard→ack 全路径；纯连接包和 vanilla no-op 写明
-   owner/依据，不用 generic unsupported counter 冒充完成。优先随 playable
-   交互与 entity family 垂直 slice 顺带关闭。ItemStack added-value 语义按
-   `docs/item-component-coverage-26.1.json` 的逐 component 单元收口，不以
-   packet 行或 type-id presence 替代。
-2. **边界与恶意输入**：为 string/list/NBT/component/chunk/plugin payload 的
-   长度、深度、count、VarInt 与压缩边界增加 focused tests；合法边界
-   round-trip，越界在分配前失败，malformed input 不污染 decoder/session state。
-3. **反向覆盖门禁收尾**：catalog 新增 packet 默认令矩阵测试失败；dispatch
-   arm 数与 catalog 双向一致；生产代码不允许无 catalog descriptor 的裸
-   packet id，probe/online/native 不得重建平行 packet switch。
-
-完成标准：全部 catalog entry 都有矩阵行；目标客户端适用项为 `complete`，
-其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；
-unknown/custom packet 不流失步；账本只保留具体字段、状态转换或服务端能力
-阻塞。
 
 ### P1：消除可机械推导的 vanilla 手工维护（收尾审计）
 

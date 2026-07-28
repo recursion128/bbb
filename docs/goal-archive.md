@@ -698,3 +698,6 @@
 - **2026-07-28（粒子 runtime Vanilla parity 最终闭环）**：逐 provider 矩阵、
   dust/terrain 呈现与资源包定义/精灵缺失诊断均已贯通 native resolver、renderer
   提交计数和 control snapshot；开放账本中的粒子域已清空。
+- **2026-07-28（Protocol / session 覆盖矩阵最终闭环）**：固定 26.1 的 256 个
+  packet 五维矩阵与 110 个 ItemStack component 六维矩阵均只剩 complete/
+  not-applicable；反向守卫、P0 audit 与双 server live gate 固化该关闭状态。
