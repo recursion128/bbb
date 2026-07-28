@@ -252,6 +252,7 @@ fn independent_simulation_projection_copies_catalogs_without_renderer_async_cach
 #[test]
 fn dynamic_texture_session_edge_clears_resolved_profile_handles_exactly_once() {
     let runtime = NativeItemRuntime::empty_for_test();
+    assert_eq!(runtime.profile_presentation_revision(), 0);
     let cache_dir = unique_temp_dir("dynamic-texture-session-reset");
     std::fs::create_dir_all(&cache_dir).unwrap();
     let download_calls = Arc::new(AtomicUsize::new(0));
@@ -281,7 +282,9 @@ fn dynamic_texture_session_edge_clears_resolved_profile_handles_exactly_once() {
     };
 
     assert!(runtime.synchronize_dynamic_texture_session(3, true));
+    assert_eq!(runtime.profile_presentation_revision(), 1);
     runtime.mark_profile_skin_resolved(url, 9001);
+    assert_eq!(runtime.profile_presentation_revision(), 2);
     assert!(matches!(
         runtime.player_skin_for_profile(&profile),
         EntityPlayerSkin::Dynamic(EntityDynamicPlayerSkin {
@@ -292,6 +295,7 @@ fn dynamic_texture_session_edge_clears_resolved_profile_handles_exactly_once() {
     ));
 
     assert!(!runtime.synchronize_dynamic_texture_session(3, true));
+    assert_eq!(runtime.profile_presentation_revision(), 2);
     assert!(matches!(
         runtime.player_skin_for_profile(&profile),
         EntityPlayerSkin::Dynamic(EntityDynamicPlayerSkin {
@@ -302,6 +306,7 @@ fn dynamic_texture_session_edge_clears_resolved_profile_handles_exactly_once() {
     ));
 
     assert!(runtime.synchronize_dynamic_texture_session(3, false));
+    assert_eq!(runtime.profile_presentation_revision(), 3);
     assert!(matches!(
         runtime.player_skin_for_profile(&profile),
         EntityPlayerSkin::Dynamic(EntityDynamicPlayerSkin {
@@ -315,8 +320,18 @@ fn dynamic_texture_session_edge_clears_resolved_profile_handles_exactly_once() {
     assert_eq!(observation.resident_bytes, 0);
     assert_eq!(download_calls.load(Ordering::Relaxed), 0);
     assert!(runtime.synchronize_dynamic_texture_session(4, true));
+    assert_eq!(runtime.profile_presentation_revision(), 4);
 
     std::fs::remove_dir_all(cache_dir).unwrap();
+}
+
+#[test]
+fn profile_presentation_revision_tracks_skin_failure_after_success() {
+    let runtime = NativeItemRuntime::empty_for_test();
+    runtime.mark_profile_skin_resolved("https://example.invalid/skin", 7);
+    assert_eq!(runtime.profile_presentation_revision(), 1);
+    runtime.mark_profile_skin_failed("https://example.invalid/skin");
+    assert_eq!(runtime.profile_presentation_revision(), 2);
 }
 
 #[test]
@@ -4514,6 +4529,7 @@ fn player_skin_for_profile_resolves_dynamic_owner_before_skin_selection() {
     let name_calls = Arc::new(AtomicUsize::new(0));
     let id_calls = Arc::new(AtomicUsize::new(0));
     let runtime = NativeItemRuntime::empty_for_test();
+    assert_eq!(runtime.profile_presentation_revision(), 0);
     *runtime.profile_resolutions.borrow_mut() = Some(
         crate::profile_resolver::AsyncProfileResolutionRuntime::new(TestProfileFetcher {
             uuid,
@@ -4557,6 +4573,7 @@ fn player_skin_for_profile_resolves_dynamic_owner_before_skin_selection() {
     }
 
     assert_eq!(resolved, Some(expected));
+    assert!(runtime.profile_presentation_revision() > 0);
     assert_eq!(name_calls.load(Ordering::Relaxed), 1);
     assert_eq!(id_calls.load(Ordering::Relaxed), 1);
 }

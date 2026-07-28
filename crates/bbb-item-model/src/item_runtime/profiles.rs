@@ -482,11 +482,16 @@ impl NativeItemRuntime {
         &self,
         profile: &ResolvableProfileSummary,
     ) -> ResolvableProfileSummary {
-        self.profile_resolutions
-            .borrow_mut()
-            .as_mut()
-            .map(|profile_resolutions| profile_resolutions.resolve_or_queue(profile))
-            .unwrap_or_else(|| profile.clone())
+        let mut profile_resolutions = self.profile_resolutions.borrow_mut();
+        let Some(profile_resolutions) = profile_resolutions.as_mut() else {
+            return profile.clone();
+        };
+        let drained = profile_resolutions.drain_results();
+        let resolved = profile_resolutions.resolve_or_queue(profile);
+        if drained > 0 {
+            self.advance_profile_presentation_revision();
+        }
+        resolved
     }
 
     pub fn enable_http_profile_resolution(&self) {
@@ -505,11 +510,16 @@ impl NativeItemRuntime {
     }
 
     pub fn drain_profile_resolution_results(&self) -> usize {
-        self.profile_resolutions
+        let drained = self
+            .profile_resolutions
             .borrow_mut()
             .as_mut()
             .map(AsyncProfileResolutionRuntime::drain_results)
-            .unwrap_or(0)
+            .unwrap_or(0);
+        if drained > 0 {
+            self.advance_profile_presentation_revision();
+        }
+        drained
     }
 
     pub fn enable_http_player_skin_downloads(&self, cache_dir: impl Into<PathBuf>) {
@@ -550,7 +560,7 @@ impl NativeItemRuntime {
             .unwrap_or_default();
         for result in &results {
             if result.skin.is_none() {
-                self.profile_skins.borrow_mut().mark_failed(&result.url);
+                self.mark_profile_skin_failed(&result.url);
             }
         }
         local_results.extend(
@@ -614,10 +624,16 @@ impl NativeItemRuntime {
         self.profile_skins
             .borrow_mut()
             .mark_resolved(url, texture_handle);
+        self.advance_profile_presentation_revision();
     }
 
     pub fn mark_profile_skin_failed(&self, url: &str) {
         self.profile_skins.borrow_mut().mark_failed(url);
+        self.advance_profile_presentation_revision();
+    }
+
+    pub fn profile_presentation_revision(&self) -> u64 {
+        self.profile_presentation_revision.get()
     }
 
     pub fn dynamic_texture_resource_generation(&self) -> u64 {
@@ -657,6 +673,7 @@ impl NativeItemRuntime {
             .get()
             .saturating_add(1);
         self.dynamic_texture_session_generation.set(generation);
+        self.advance_profile_presentation_revision();
         *self.profile_skins.borrow_mut() = ProfileSkinCache::default();
         *self.local_dynamic_skins.borrow_mut() = LocalDynamicPlayerSkinCache::default();
         *self.local_dynamic_textures.borrow_mut() = LocalDynamicPlayerTextureCache::default();
@@ -664,6 +681,11 @@ impl NativeItemRuntime {
             runtime.reset_session_generation(generation, connected);
         }
         true
+    }
+
+    fn advance_profile_presentation_revision(&self) {
+        self.profile_presentation_revision
+            .set(self.profile_presentation_revision.get().saturating_add(1));
     }
 
     pub fn item_mining_profiles_by_protocol_id(&self) -> BTreeMap<i32, WorldItemMiningProfile> {

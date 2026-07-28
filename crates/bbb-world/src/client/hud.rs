@@ -251,6 +251,7 @@ impl WorldStore {
         }
         self.client_hud.tab_list.header = non_empty_tab_list_component(packet.header);
         self.client_hud.tab_list.footer = non_empty_tab_list_component(packet.footer);
+        self.advance_player_list_display_revision();
     }
 
     pub fn apply_change_difficulty(&mut self, packet: ProtocolChangeDifficulty) {
@@ -801,6 +802,8 @@ mod tests {
             header: styled_header,
             footer: RichTextComponent::plain("Online"),
         });
+        assert_eq!(store.scoreboard_display_revision(), 0);
+        assert_eq!(store.player_list_display_revision(), 1);
         let header = store.tab_list().header.as_ref().unwrap();
         assert_eq!(header.text(), "Welcome");
         assert_eq!(header.styled()[0].style.bold, Some(true));
@@ -846,6 +849,8 @@ mod tests {
         );
         assert_eq!(store.tab_list().footer, None);
         assert_eq!(store.counters().tab_list_packets, 3);
+        assert_eq!(store.scoreboard_display_revision(), 0);
+        assert_eq!(store.player_list_display_revision(), 3);
     }
 
     #[test]

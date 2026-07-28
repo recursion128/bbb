@@ -135,6 +135,7 @@ impl WorldStore {
 
         self.entities
             .apply_add_entity_components(identity, transform);
+        self.advance_scoreboard_display_revision();
         if packet.entity_type_id == VANILLA_ENTITY_TYPE_WARDEN_ID && packet.data == 1 {
             self.apply_warden_spawn_pose(packet.id);
         }
@@ -184,7 +185,8 @@ mod tests {
     };
     use bbb_protocol::game_types::GameType;
     use bbb_protocol::packets::{
-        GameProfile, PlayerInfoAction, PlayerInfoEntry, PlayerInfoUpdate, Vec3d,
+        GameProfile, PlayerInfoAction, PlayerInfoEntry, PlayerInfoUpdate,
+        RemoveEntities as ProtocolRemoveEntities, Vec3d,
     };
     use uuid::Uuid;
 
@@ -275,6 +277,36 @@ mod tests {
         assert_eq!(counters.entities_received, 4);
         assert_eq!(counters.entity_add_updates_applied, 2);
         assert_eq!(counters.entity_add_updates_ignored, 2);
+    }
+
+    #[test]
+    fn entity_membership_advances_stable_hud_display_revisions() {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(add_entity(
+            1,
+            Uuid::from_u128(1),
+            VANILLA_ENTITY_TYPE_COW_ID,
+        ));
+        assert_eq!(store.scoreboard_display_revision(), 1);
+        assert_eq!(store.player_list_display_revision(), 1);
+
+        assert_eq!(
+            store.apply_remove_entities(ProtocolRemoveEntities {
+                entity_ids: vec![404],
+            }),
+            0
+        );
+        assert_eq!(store.scoreboard_display_revision(), 1);
+        assert_eq!(store.player_list_display_revision(), 1);
+
+        assert_eq!(
+            store.apply_remove_entities(ProtocolRemoveEntities {
+                entity_ids: vec![1],
+            }),
+            1
+        );
+        assert_eq!(store.scoreboard_display_revision(), 2);
+        assert_eq!(store.player_list_display_revision(), 2);
     }
 
     #[test]

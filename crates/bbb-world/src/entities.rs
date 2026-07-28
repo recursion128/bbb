@@ -3249,6 +3249,9 @@ impl WorldStore {
             self.local_player_vehicle_id = None;
         }
         let removed = self.entities.remove_ids(removed_ids);
+        if removed > 0 {
+            self.advance_scoreboard_display_revision();
+        }
         for uuid in removed_uuids {
             self.drop_debug_entity_uuid(uuid);
         }

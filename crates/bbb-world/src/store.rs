@@ -148,6 +148,14 @@ pub struct WorldStore {
     pub(crate) selected_known_pack_data: Option<PublicationShared<KnownPackDataSource>>,
     #[serde(skip)]
     pub(crate) known_pack_data_error: Option<String>,
+    /// Runtime-only exact invalidation key for the scoreboard sidebar
+    /// projection. It is cloned into immutable publications but intentionally
+    /// rebuilt behind the client-level generation after snapshot restore.
+    #[serde(skip)]
+    pub(crate) scoreboard_display_revision: u64,
+    /// Runtime-only exact invalidation key for the player-list static payload.
+    #[serde(skip)]
+    pub(crate) player_list_display_revision: u64,
     #[serde(default)]
     pub(crate) player_info: PlayerInfoState,
     #[serde(default)]
@@ -218,6 +226,15 @@ impl WorldStore {
             registries: RegistrySet::vanilla_26_1().into(),
             ..Self::default()
         }
+    }
+
+    pub(crate) fn advance_scoreboard_display_revision(&mut self) {
+        self.scoreboard_display_revision = self.scoreboard_display_revision.saturating_add(1);
+        self.advance_player_list_display_revision();
+    }
+
+    pub(crate) fn advance_player_list_display_revision(&mut self) {
+        self.player_list_display_revision = self.player_list_display_revision.saturating_add(1);
     }
 
     /// `Level.isRaining()` (`canHaveWeather && getRainLevel(1.0F) > 0.2`) plus

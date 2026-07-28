@@ -175,6 +175,9 @@ impl WorldStore {
         }
 
         self.update_player_info_counts();
+        if applied > 0 {
+            self.advance_scoreboard_display_revision();
+        }
         applied
     }
 
@@ -189,6 +192,9 @@ impl WorldStore {
             self.player_info.current_seen_players.remove(&profile_id);
         }
         self.update_player_info_counts();
+        if removed > 0 {
+            self.advance_scoreboard_display_revision();
+        }
         removed
     }
 
@@ -202,6 +208,10 @@ impl WorldStore {
 
     pub fn listed_players(&self) -> &BTreeSet<Uuid> {
         &self.player_info.listed_players
+    }
+
+    pub fn player_list_display_revision(&self) -> u64 {
+        self.player_list_display_revision
     }
 
     pub fn seen_players(&self) -> &BTreeMap<Uuid, PlayerInfoEntryState> {
@@ -221,10 +231,14 @@ impl WorldStore {
     }
 
     pub(crate) fn clear_active_player_info(&mut self) {
+        let display_changed = !self.player_info.entries.is_empty();
         self.player_info.entries.clear();
         self.player_info.listed_players.clear();
         self.player_info.current_seen_players.clear();
         self.update_player_info_counts();
+        if display_changed {
+            self.advance_scoreboard_display_revision();
+        }
     }
 
     fn update_player_info_counts(&mut self) {
@@ -289,6 +303,8 @@ mod tests {
     #[test]
     fn player_info_adds_player_with_profile_and_fields() {
         let mut store = WorldStore::new();
+        assert_eq!(store.scoreboard_display_revision(), 0);
+        assert_eq!(store.player_list_display_revision(), 0);
         let id = Uuid::from_u128(0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa);
         let mut entry = protocol_player_info_entry(id);
         entry.profile = Some(protocol_game_profile(id, "Ada"));
@@ -333,6 +349,8 @@ mod tests {
         assert!(info.chat_session_present);
         assert!(info.chat_session.is_some());
         assert_eq!(store.listed_players(), &BTreeSet::from([id]));
+        assert_eq!(store.scoreboard_display_revision(), 1);
+        assert_eq!(store.player_list_display_revision(), 1);
 
         let counters = store.counters();
         assert_eq!(counters.player_info_update_packets, 1);
@@ -362,6 +380,8 @@ mod tests {
         assert_eq!(store.counters().player_info_update_packets, 1);
         assert_eq!(store.counters().player_info_entries_tracked, 0);
         assert_eq!(store.counters().listed_players_tracked, 0);
+        assert_eq!(store.scoreboard_display_revision(), 0);
+        assert_eq!(store.player_list_display_revision(), 0);
     }
 
     #[test]

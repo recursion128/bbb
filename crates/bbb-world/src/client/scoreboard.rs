@@ -563,6 +563,10 @@ impl WorldStore {
         &self.scoreboard
     }
 
+    pub fn scoreboard_display_revision(&self) -> u64 {
+        self.scoreboard_display_revision
+    }
+
     pub fn scoreboard_sidebar(&self) -> Option<ScoreboardSidebarState> {
         let local_scoreboard_name = self.local_player_scoreboard_name();
         self.scoreboard
@@ -604,6 +608,7 @@ impl WorldStore {
     fn finish_set_objective_update(&mut self, applied: bool) -> bool {
         if applied {
             self.counters.set_objective_updates_applied += 1;
+            self.advance_scoreboard_display_revision();
         } else {
             self.counters.set_objective_updates_ignored += 1;
         }
@@ -613,6 +618,7 @@ impl WorldStore {
     fn finish_set_score_update(&mut self, applied: bool) -> bool {
         if applied {
             self.counters.set_score_updates_applied += 1;
+            self.advance_scoreboard_display_revision();
         } else {
             self.counters.set_score_updates_ignored += 1;
         }
@@ -622,6 +628,7 @@ impl WorldStore {
     fn finish_reset_score_update(&mut self, applied: bool) -> bool {
         if applied {
             self.counters.reset_score_updates_applied += 1;
+            self.advance_scoreboard_display_revision();
         } else {
             self.counters.reset_score_updates_ignored += 1;
         }
@@ -631,6 +638,7 @@ impl WorldStore {
     fn finish_set_display_objective_update(&mut self, applied: bool) -> bool {
         if applied {
             self.counters.set_display_objective_updates_applied += 1;
+            self.advance_scoreboard_display_revision();
         } else {
             self.counters.set_display_objective_updates_ignored += 1;
         }
@@ -640,6 +648,7 @@ impl WorldStore {
     fn finish_set_player_team_update(&mut self, applied: bool) -> bool {
         if applied {
             self.counters.set_player_team_updates_applied += 1;
+            self.advance_scoreboard_display_revision();
         } else {
             self.counters.set_player_team_updates_ignored += 1;
         }

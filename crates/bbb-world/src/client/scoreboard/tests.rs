@@ -8,6 +8,49 @@ use bbb_protocol::packets::{
 use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 
 #[test]
+fn scoreboard_display_revision_advances_only_for_applied_mutations_and_survives_clone() {
+    let mut store = WorldStore::new();
+    assert_eq!(store.scoreboard_display_revision(), 0);
+    assert_eq!(store.player_list_display_revision(), 0);
+
+    assert!(!store.apply_set_score(SetScore {
+        owner: "Alex".to_string(),
+        objective_name: "missing".to_string(),
+        score: 1,
+        display: None,
+        number_format: None,
+    }));
+    assert_eq!(store.scoreboard_display_revision(), 0);
+    assert_eq!(store.player_list_display_revision(), 0);
+
+    assert!(store.apply_set_objective(protocol_set_objective(
+        "kills",
+        SetObjectiveMethod::Add,
+        Some(protocol_objective_parameters(
+            "Kills",
+            ObjectiveRenderType::Integer,
+            None,
+        )),
+    )));
+    assert_eq!(store.scoreboard_display_revision(), 1);
+    assert_eq!(store.player_list_display_revision(), 1);
+
+    let publication = store.publication_snapshot();
+    assert_eq!(
+        publication.scoreboard_display_revision(),
+        store.scoreboard_display_revision()
+    );
+    assert_eq!(
+        publication.player_list_display_revision(),
+        store.player_list_display_revision()
+    );
+
+    let encoded = serde_json::to_value(&store).unwrap();
+    assert!(encoded.get("scoreboard_display_revision").is_none());
+    assert!(encoded.get("player_list_display_revision").is_none());
+}
+
+#[test]
 fn scoreboard_objective_lifecycle_clears_display_and_scores() {
     let mut store = WorldStore::new();
 
