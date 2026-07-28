@@ -34,7 +34,7 @@ use bbb_protocol::entity_types::{
     vanilla_entity_type, vanilla_entity_type_dimensions, VANILLA_ENTITY_TYPE_BLAZE_ID,
     VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID,
     VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
-    VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_PIG_ID,
+    VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_TRIDENT_ID,
     VANILLA_ENTITY_TYPE_VILLAGER_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
     VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
 };
@@ -824,9 +824,15 @@ impl EntityStore {
         let uuid = identity.uuid;
         let entity_type_id = identity.entity_type_id;
         let spawn_owner_uuid = self.uuid_for_protocol_id(identity.data);
+        let spawn_owner_is_player =
+            self.entity_type_id(identity.data) == Some(VANILLA_ENTITY_TYPE_PLAYER_ID);
         let fresh_projectile = entity_hurting_projectile_from_state(entity_type_id, None);
-        let fresh_projectile_lifecycle =
-            entity_projectile_lifecycle_from_state(entity_type_id, None, spawn_owner_uuid);
+        let fresh_projectile_lifecycle = entity_projectile_lifecycle_from_state(
+            entity_type_id,
+            None,
+            spawn_owner_uuid,
+            spawn_owner_is_player,
+        );
         let fresh_experience_orb_movement = (entity_type_id
             == VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID)
             .then(|| super::client_movement::experience_orb_movement_from_uuid(uuid));
@@ -1105,6 +1111,8 @@ impl EntityStore {
         let uuid = state.uuid;
         let entity_type_id = state.entity_type_id;
         let spawn_owner_uuid = self.uuid_for_protocol_id(state.data);
+        let spawn_owner_is_player =
+            self.entity_type_id(state.data) == Some(VANILLA_ENTITY_TYPE_PLAYER_ID);
         let incarnation = self.allocate_incarnation();
         let mut identity = EntityIdentity::from(&state);
         identity.incarnation = incarnation;
@@ -1144,6 +1152,7 @@ impl EntityStore {
             state.entity_type_id,
             state.projectile_lifecycle,
             spawn_owner_uuid,
+            spawn_owner_is_player,
         ) {
             let _ = self.ecs.insert_one(entity, projectile);
         }
@@ -4844,7 +4853,13 @@ impl EntityStore {
             y_rot: source_y_rot,
             x_rot: source_x_rot,
             y_head_rot: render_head_y_rot,
-            arrow_shake: client_animations.animations.arrow_shake(partial_ticks),
+            // ThrownTrident inherits AbstractArrow.shakeTime (and persists it)
+            // but its dedicated renderer state never extracts that field.
+            arrow_shake: if identity.entity_type_id == VANILLA_ENTITY_TYPE_TRIDENT_ID {
+                0.0
+            } else {
+                client_animations.animations.arrow_shake(partial_ticks)
+            },
             is_passenger,
             age_ticks: if identity.entity_type_id == VANILLA_ENTITY_TYPE_END_CRYSTAL_ID {
                 client_animations.animations.end_crystal_age_ticks()
@@ -9233,6 +9248,7 @@ impl EntityStore {
             state.entity_type_id,
             state.projectile_lifecycle,
             self.uuid_for_protocol_id(state.data),
+            self.entity_type_id(state.data) == Some(VANILLA_ENTITY_TYPE_PLAYER_ID),
         );
         if let Some(projectile) = projectile {
             let updated = {

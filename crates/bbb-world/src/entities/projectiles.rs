@@ -110,21 +110,25 @@ pub(crate) fn entity_projectile_lifecycle_from_state(
     entity_type_id: i32,
     state: Option<ProjectileLifecycleState>,
     spawn_owner_uuid: Option<Uuid>,
+    spawn_owner_is_player: bool,
 ) -> Option<EntityProjectileLifecycle> {
     if !is_vanilla_saved_projectile_type(entity_type_id) {
         return None;
     }
-    Some(EntityProjectileLifecycle::from(state.unwrap_or(
-        ProjectileLifecycleState {
+    Some(EntityProjectileLifecycle::from(
+        state.unwrap_or(ProjectileLifecycleState {
             owner_uuid: spawn_owner_uuid,
             left_owner: false,
             has_been_shot: false,
             trident_in_ground_time: 0,
             trident_dealt_damage: false,
             trident_return_ticks: 0,
+            arrow_pickup_allowed: spawn_owner_is_player
+                && vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(entity_type_id)
+                    .is_some(),
             arrow_no_physics: false,
-        },
-    )))
+        }),
+    ))
 }
 
 pub(crate) fn is_vanilla_saved_projectile_type(entity_type_id: i32) -> bool {
@@ -656,6 +660,7 @@ mod tests {
                 trident_in_ground_time: 0,
                 trident_dealt_damage: false,
                 trident_return_ticks: 0,
+                arrow_pickup_allowed: false,
                 arrow_no_physics: false,
             })
         );
@@ -669,6 +674,7 @@ mod tests {
                 trident_in_ground_time: 0,
                 trident_dealt_damage: false,
                 trident_return_ticks: 0,
+                arrow_pickup_allowed: false,
                 arrow_no_physics: false,
             })
         );
@@ -741,6 +747,7 @@ mod tests {
                 trident_in_ground_time: 0,
                 trident_dealt_damage: false,
                 trident_return_ticks: 0,
+                arrow_pickup_allowed: false,
                 arrow_no_physics: false,
             })
         );
@@ -771,6 +778,7 @@ mod tests {
                 trident_in_ground_time: 0,
                 trident_dealt_damage: false,
                 trident_return_ticks: 0,
+                arrow_pickup_allowed: false,
                 arrow_no_physics: false,
             })
         );
@@ -784,9 +792,42 @@ mod tests {
                 trident_in_ground_time: 0,
                 trident_dealt_damage: false,
                 trident_return_ticks: 0,
+                arrow_pickup_allowed: false,
                 arrow_no_physics: false,
             })
         );
+    }
+
+    #[test]
+    fn arrow_pickup_allowed_is_frozen_from_the_spawn_resolved_player_owner() {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(protocol_add_entity(
+            80,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            ProtocolVec3d::default(),
+            0,
+        ));
+        store.apply_add_entity(protocol_add_entity(
+            81,
+            VANILLA_ENTITY_TYPE_ARROW_ID,
+            ProtocolVec3d::default(),
+            80,
+        ));
+        assert!(store
+            .probe_entity(81)
+            .and_then(|entity| entity.projectile_lifecycle)
+            .is_some_and(|projectile| projectile.arrow_pickup_allowed));
+
+        assert_eq!(
+            store.apply_remove_entities(ProtocolRemoveEntities {
+                entity_ids: vec![80],
+            }),
+            1
+        );
+        assert!(store
+            .probe_entity(81)
+            .and_then(|entity| entity.projectile_lifecycle)
+            .is_some_and(|projectile| projectile.arrow_pickup_allowed));
     }
 
     #[test]

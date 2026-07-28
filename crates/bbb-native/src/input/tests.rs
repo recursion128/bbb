@@ -11974,8 +11974,42 @@ fn shift_f3_i_skips_unpickable_arrow_but_direct_copy_encodes_save_nbt() {
         58,
         "/summon minecraft:arrow 0.00 1.50 2.00 \
          {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-         HasBeenShot: 0b, crit: 1b, PierceLevel: 3b}",
+         HasBeenShot: 0b, life: 0s, pickup: 0b, damage: 2.0d, \
+         crit: 1b, PierceLevel: 3b, \
+         SoundEvent: \"minecraft:entity.arrow.hit\", \
+         item: {id: \"minecraft:arrow\"}}",
     );
+}
+
+#[test]
+fn shift_f3_i_arrow_uses_spawn_frozen_player_pickup_mode() {
+    let mut world = world_with_debug_player(false);
+    world.apply_add_entity(AddEntity {
+        id: 42,
+        uuid: Uuid::from_u128(42),
+        entity_type_id: VANILLA_ENTITY_TYPE_PLAYER_ID,
+        position: ProtocolVec3d::default(),
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
+    world.apply_add_entity(AddEntity {
+        id: 159,
+        uuid: Uuid::from_u128(159),
+        entity_type_id: VANILLA_ENTITY_TYPE_ARROW_ID,
+        position: ProtocolVec3d::default(),
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 42,
+    });
+
+    let entity = world.probe_entity(159).expect("owned arrow state");
+    let snbt = debug_local_entity_pretty_snbt(&world, None, &entity).expect("owned arrow save");
+    assert!(snbt.contains("life: 0s, pickup: 1b, damage: 2.0d"));
 }
 
 #[test]
@@ -12054,7 +12088,10 @@ fn shift_f3_i_skips_unpickable_spectral_arrow_but_direct_copy_encodes_save_nbt()
         59,
         "/summon minecraft:spectral_arrow 0.00 1.50 2.00 \
          {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-         HasBeenShot: 0b, crit: 1b, PierceLevel: 2b}",
+         HasBeenShot: 0b, life: 0s, pickup: 0b, damage: 2.0d, \
+         crit: 1b, PierceLevel: 2b, \
+         SoundEvent: \"minecraft:entity.arrow.hit\", \
+         item: {id: \"minecraft:spectral_arrow\"}, Duration: 200}",
     );
 }
 
@@ -12135,9 +12172,16 @@ fn shift_f3_i_skips_unpickable_trident_but_direct_copy_encodes_save_nbt() {
         60,
         "/summon minecraft:trident 0.00 1.50 2.00 \
          {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-         HasBeenShot: 0b, crit: 1b, PierceLevel: 4b, DealtDamage: 0b}",
+         HasBeenShot: 0b, life: 0s, pickup: 0b, damage: 2.0d, \
+         crit: 1b, PierceLevel: 4b, \
+         SoundEvent: \"minecraft:item.trident.hit_ground\", \
+         item: {id: \"minecraft:trident\"}, DealtDamage: 0b}",
     );
 
+    // Move past `firstTick` so the inherited
+    // `AbstractArrow.onSyncedDataUpdated(IN_GROUND)` callback starts the
+    // private shake timer even though ThrownTrident's renderer ignores it.
+    world.advance_entity_client_animations(1);
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 60,
         values: vec![ProtocolEntityDataValue {
@@ -12151,13 +12195,20 @@ fn shift_f3_i_skips_unpickable_trident_but_direct_copy_encodes_save_nbt() {
     let command = debug_copy_recreate_entity_command(&world, None, 60, true)
         .expect("trident recreate command")
         .command;
-    assert!(command.ends_with("crit: 1b, PierceLevel: 4b, DealtDamage: 0b}"));
+    assert!(command.contains("shake: 2b, inGround: 1b"));
+    assert!(command.ends_with(
+        "crit: 1b, PierceLevel: 4b, item: {id: \"minecraft:trident\"}, \
+         DealtDamage: 0b}"
+    ));
 
     world.advance_entity_client_animations(1);
     let command = debug_copy_recreate_entity_command(&world, None, 60, true)
         .expect("trident recreate command after sixth in-ground tick")
         .command;
-    assert!(command.ends_with("crit: 1b, PierceLevel: 4b, DealtDamage: 1b}"));
+    assert!(command.ends_with(
+        "crit: 1b, PierceLevel: 4b, item: {id: \"minecraft:trident\"}, \
+         DealtDamage: 1b}"
+    ));
 }
 
 #[test]

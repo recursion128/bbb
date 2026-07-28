@@ -4660,26 +4660,25 @@ impl EntityClientAnimationState {
     ) {
         // Vanilla `AbstractArrow.onSyncedDataUpdated(IN_GROUND)`: once the entity is past
         // its first client tick, setting `IN_GROUND` true starts the seven-tick impact
-        // wobble if the previous shake has already settled.
-        if bbb_protocol::entity_types::vanilla_entity_type_is_arrow_tagged(entity_type_id) {
-            if let Some(accessors) =
-                vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(entity_type_id)
+        // wobble if the previous shake has already settled. This is class inheritance,
+        // not the `#arrows` entity-type tag: ThrownTrident follows the same callback.
+        if let Some(accessors) =
+            vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(entity_type_id)
+        {
+            if self.age_ticks > 0
+                && updated_values
+                    .iter()
+                    .any(|value| value.data_id == accessors.in_ground_data_id)
+                && entity_data_bool(
+                    data_values,
+                    accessors.in_ground_data_id,
+                    accessors.in_ground_default,
+                )
+                && self
+                    .arrow_shake
+                    .map_or(true, ArrowShakeAnimationState::is_settled)
             {
-                if self.age_ticks > 0
-                    && updated_values
-                        .iter()
-                        .any(|value| value.data_id == accessors.in_ground_data_id)
-                    && entity_data_bool(
-                        data_values,
-                        accessors.in_ground_data_id,
-                        accessors.in_ground_default,
-                    )
-                    && self
-                        .arrow_shake
-                        .map_or(true, ArrowShakeAnimationState::is_settled)
-                {
-                    self.arrow_shake = Some(ArrowShakeAnimationState::started());
-                }
+                self.arrow_shake = Some(ArrowShakeAnimationState::started());
             }
         }
         if let Some(accessors) =

@@ -6173,16 +6173,37 @@ fn debug_push_entity_additional_save_data(
         }
         VANILLA_ENTITY_TYPE_ARROW_ID => {
             debug_push_projectile_additional_save_data(entity, fields);
-            debug_push_abstract_arrow_additional_save_data(entity, fields);
+            debug_push_abstract_arrow_additional_save_data(
+                world,
+                entity,
+                item_runtime,
+                "minecraft:arrow",
+                "minecraft:entity.arrow.hit",
+                fields,
+            );
         }
         VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID => {
             debug_push_projectile_additional_save_data(entity, fields);
-            debug_push_abstract_arrow_additional_save_data(entity, fields);
+            debug_push_abstract_arrow_additional_save_data(
+                world,
+                entity,
+                item_runtime,
+                "minecraft:spectral_arrow",
+                "minecraft:entity.arrow.hit",
+                fields,
+            );
             debug_push_spectral_arrow_additional_save_data(fields);
         }
         VANILLA_ENTITY_TYPE_TRIDENT_ID => {
             debug_push_projectile_additional_save_data(entity, fields);
-            debug_push_abstract_arrow_additional_save_data(entity, fields);
+            debug_push_abstract_arrow_additional_save_data(
+                world,
+                entity,
+                item_runtime,
+                "minecraft:trident",
+                "minecraft:item.trident.hit_ground",
+                fields,
+            );
             debug_push_trident_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID => {
@@ -6420,15 +6441,37 @@ fn debug_push_projectile_additional_save_data(entity: &EntityState, fields: &mut
     }
 }
 
-fn debug_push_abstract_arrow_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+fn debug_push_abstract_arrow_additional_save_data(
+    world: &WorldStore,
+    entity: &EntityState,
+    item_runtime: Option<&NativeItemRuntime>,
+    default_item_resource_id: &str,
+    default_sound_resource_id: &str,
+    fields: &mut Vec<String>,
+) {
     let Some(accessors) =
         vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(entity.entity_type_id)
     else {
         return;
     };
+    let pickup = entity
+        .projectile_lifecycle
+        .is_some_and(|projectile| projectile.arrow_pickup_allowed);
+
+    // These constructor-owned fields are client-exact despite not being
+    // synchronized. A remote arrow is recreated through the type-only
+    // constructor, which keeps life and damage at their defaults, installs the
+    // concrete default pickup stack, and only upgrades pickup to ALLOWED when
+    // the spawn owner resolves to a loaded Player.
+    fields.push("life: 0s".to_string());
+    if let Some(shake) = entity.client_animations.arrow_shake {
+        fields.push(format!("shake: {}b", shake.shake_time));
+    }
     if let Some(in_ground) = debug_entity_data_bool_present(entity, accessors.in_ground_data_id) {
         fields.push(format!("inGround: {}", debug_snbt_bool(in_ground)));
     }
+    fields.push(format!("pickup: {}b", i8::from(pickup)));
+    fields.push("damage: 2.0d".to_string());
     if let Some(flags) = debug_entity_data_byte_present(entity, accessors.flags_data_id) {
         fields.push(format!(
             "crit: {}",
@@ -6440,9 +6483,36 @@ fn debug_push_abstract_arrow_additional_save_data(entity: &EntityState, fields: 
     {
         fields.push(format!("PierceLevel: {pierce_level}b"));
     }
+    // Arrow and SpectralArrow use ARROW_HIT both before and after a block hit.
+    // ThrownTrident changes from TRIDENT_HIT_GROUND to ARROW_HIT in
+    // AbstractArrow.onHitBlock, whose complete client collision state remains
+    // outside this stage. The constructor value is therefore exact only before
+    // the first client tick.
+    if entity.entity_type_id != VANILLA_ENTITY_TYPE_TRIDENT_ID
+        || entity.client_animations.age_ticks == 0
+    {
+        fields.push(format!(
+            "SoundEvent: {}",
+            debug_snbt_string(default_sound_resource_id)
+        ));
+    }
+    let item = debug_item_stack_snbt_with_context(
+        default_item_resource_id,
+        1,
+        None,
+        PersistentSnbtContext {
+            item_runtime,
+            registry_access: Some(world.frozen_registry_access()),
+            ..Default::default()
+        },
+    )
+    .expect("vanilla arrow default item stack is valid");
+    fields.push(format!("item: {item}"));
 }
 
-fn debug_push_spectral_arrow_additional_save_data(_fields: &mut Vec<String>) {}
+fn debug_push_spectral_arrow_additional_save_data(fields: &mut Vec<String>) {
+    fields.push("Duration: 200".to_string());
+}
 
 fn debug_push_trident_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
     if let Some(projectile) = entity.projectile_lifecycle {

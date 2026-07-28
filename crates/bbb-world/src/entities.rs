@@ -1064,6 +1064,11 @@ pub struct ProjectileLifecycleState {
     pub trident_dealt_damage: bool,
     #[serde(default, skip_serializing_if = "u32_is_zero")]
     pub trident_return_ticks: u32,
+    /// Spawn-time `AbstractArrow.pickup == ALLOWED`. The client upgrades the
+    /// constructor default only when the add-entity owner resolves to Player;
+    /// later owner unloading does not change the private enum.
+    #[serde(default, skip_serializing_if = "bool_is_false")]
+    pub arrow_pickup_allowed: bool,
     /// Client-side `Entity.noPhysics` field mirror: only `ThrownTrident.tick`
     /// sets it via `setNoPhysics(true)`, and no client path ever clears it.
     /// `isAffectedByBlocks` reads this field, not the synced arrow flag.

@@ -1,0 +1,106 @@
+# Shift-local F3+I observable entity save closeout
+
+## Goal and completion criteria
+
+Close the remaining Shift-local F3+I entity `saveWithoutId` gap without inventing
+server-private state. The slice is complete when every residual named in the
+`HUD overlay and screen render surfaces` ledger entry is one of:
+
+- projected from synchronized metadata, spawn data, equipment/components,
+  client-owned runtime, or a protocol-backed registry reference;
+- omitted with a focused Vanilla proof that the client does not observe the
+  value or that the persistent codec cannot reconstruct the network holder; or
+- represented by an exact bounded persistent value already retained by the
+  protocol summary.
+
+The final recreate command must continue to use the one existing
+`debug_local_entity_pretty_snbt` dispatch and persistent component encoder
+registry. Focused tests must prove exact SNBT keys, default omission, registry
+identity, nested item/component shape, and the absence of unobserved fields.
+
+## Non-goals
+
+- Do not synthesize server-private mutable owner/target/inventory/timer/RNG
+  state from Java constructor defaults. A constructor value is projectable only
+  with a focused proof that the external client owns it and no client-observable
+  path can change it.
+- Do not change ordinary F3+I: it remains server-tag-query-authoritative.
+- Do not add an integrated-server boundary or use server sources at runtime.
+- Do not create a second entity save dispatcher, component encoder table, or
+  hand-maintained registry ordinal table.
+- Do not broaden this slice into entity rendering, interaction, or general NBT
+  editing.
+
+## Ownership and integration contract
+
+- `bbb-protocol` owns exact bounded network retention for values that are
+  present on the wire. `DataComponentPatchSummary` and generated entity
+  metadata descriptors remain the only protocol summaries consumed here.
+- `bbb-world` owns synchronized entity state and registry resolution. New
+  observable runtime state is added only when an existing packet/metadata/tick
+  path can update it faithfully.
+- `bbb-native` owns the Shift-local projection in
+  `input.rs::debug_local_entity_pretty_snbt` and the sorted
+  `input/component_patch.rs::PERSISTENT_SNBT_ENCODERS` registry.
+- Persistent holder ids resolve through the current frozen session registry;
+  fixed Vanilla catalogs are used only when that registry has no server
+  contents. Unknown ids omit the containing value rather than guessing.
+- Nested item stacks use the existing depth bound and require an exact
+  persistent component patch; partial nested values never produce misleading
+  SNBT.
+
+## Vanilla basis
+
+- `KeyboardHandler.copyRecreateCommand` calls `Entity.saveWithoutId` only for
+  Shift-local capture; ordinary capture sends a server tag query.
+- `Entity.saveWithoutId` writes the base entity state and then invokes the
+  concrete `addAdditionalSaveData` inheritance chain.
+- `LivingEntity.addAdditionalSaveData`, `AbstractArrow.addAdditionalSaveData`,
+  the minecart hierarchy, and container entity implementations define the
+  remaining key names, default omission, codec shape, and parent-before-child
+  ordering.
+- Persistent item component shape comes from `DataComponents` and each
+  registered component `Codec`; network-only components have no persistent
+  projection.
+
+Authoritative sources are under
+`/home/zgy/Work/mc-code/sources/26.1/net/minecraft/`.
+
+## Serial stages and focused checks
+
+1. **Persistent value audit.** Mechanically compare all 26.1 persistent data
+   component descriptors with `PERSISTENT_SNBT_ENCODERS`; close exact rich
+   Component and other codec-backed residuals, plus item/block-state values
+   used by entity save paths.
+   - `scripts/cargo-dev.sh test -p bbb-protocol data_components`
+   - `scripts/cargo-dev.sh test -p bbb-native input::component_patch::tests`
+   - `scripts/cargo-dev.sh test -p bbb-native input::tests::item_stack_snbt`
+2. **Entity and Living parent state.** Audit the generated entity handler
+   dispatch against each concrete Vanilla save chain; project remaining
+   synchronized constructor/default, health/equipment/effect/attribute,
+   packed-variant, projectile, falling-block, item-frame, and vibration fields.
+   - `scripts/cargo-dev.sh test -p bbb-world entities`
+   - `scripts/cargo-dev.sh test -p bbb-native input::tests`
+3. **Observable inventories and specialized minecarts.** Project only
+   protocol-backed non-empty container/loot data plus furnace, spawner, and
+   command-block minecart fields whose client value is exact.
+   - `scripts/cargo-dev.sh test -p bbb-world inventory`
+   - `scripts/cargo-dev.sh test -p bbb-native input::tests`
+4. **Reverse audit and closeout.** Add/refresh structural assertions that every
+   generated entity save handler and every persistent component descriptor has
+   one explicit decision. Remove the closed ledger text and archive this
+   contract with a short milestone index entry.
+
+## Checkpoints and failure isolation
+
+Each stage ends in a clean, reviewable commit after focused tests, format,
+diff-check, docs lint, and full diff review. Any stage that changes protocol
+decode/encode or generated catalogs runs a full gate immediately; otherwise a
+full gate runs at four commits or before crossing into another semantic domain.
+The final closeout always runs `scripts/cargo-dev.sh gate`.
+
+The safe stopping point is a clean committed stage whose applicable full gate
+passes. A partially decoded value, a partially wired world field, or an
+uncommitted ledger deletion is not a safe stopping point. Failures are isolated
+first by component descriptor, entity inheritance family, or minecart/container
+family before using `batch-gate`.

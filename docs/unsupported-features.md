@@ -224,47 +224,25 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   with an in-process integrated server boundary.
 - Extend Shift-local F3+I entity capture only for fields actually observed from
   synced metadata, spawn/equipment/components, client-owned runtime, and
-  protocol-backed references. Ordinary F3+I already waits for the matching
-  server tag-query response, which is the complete NBT authority; private
-  owner/target/inventory/timer/RNG fields are not client work and must not be
-  synthesized from defaults. Remaining observable work includes registry-backed
-  other registry-backed entity-data projection (the fixed vanilla
-  entity/block-entity type catalogs are generated),
-  packed variant projection, remaining codec-backed SNBT projection (component removals are complete;
-  added values still include `AbstractArrow`
-  `inBlockState` and `item`, attribute-modifier override-display Component trees,
-  and other rich Component values. Direct jukebox-song and painting network
-  holders are intentionally omitted from persistent reconstruction because
-  vanilla `JukeboxSong.CODEC` and `PaintingVariant.CODEC` are named-only
-  `RegistryFixedCodec`s. Keep the remaining dispatch
-  owned by the protocol
-  generated-metadata/handler descriptor catalog and native persistent SNBT encoder registry
-  beyond the supported custom-NBT/primitive (including repair-cost/enchantable/glider/
-  minimum-attack-charge)/
-  enchantments/stored-enchantments/
-  adventure-mode-predicate (block/state/NBT/exact/partial matchers; its 15
-  predicate-type ids/resources are generated)/
-  equippable (slot/sound/asset/entity-holder/default flags)/
-  blocks-attacks (damage-reduction/item-damage/damage-type-holder/sound)/
-  attribute-modifiers-named-holder-default-hidden-display/
-  simple-resource (note-block-sound)/
-  consumable/death-protection/potion-contents/
-  weapon/
-  tool-block-holder-rules/
-  use-remainder/
-  use-cooldown/tooltip-display/attack-range/
-  swing-animation/resource/color (including dye/base-color)/map/ominous/firework/custom-model-data/
-  codec-backed-NBT (flattened-SNBT alternatives for custom-data, entity-data,
-  bucket-data, and block-entity-data/lock)/
-  charged-projectile/bundle/written-book-exact-component-trees/
-  lodestone/profile/
-  container/block-state/
-  built-in animal/color enum (wolf/cat collars, fox,
-  salmon, parrot, mooshroom, rabbit, horse, llama, axolotl, sheep, shulker,
-  and tropical-fish) subset on throwable/firework/
-  item-frame item stacks, falling-block `TileEntityData`,
-  and non-default `VibrationSystem.Data` listener payloads),
-  remaining entity-specific
+  protocol-backed references. The active engineering contract is
+  [`f3i-observable-entity-save-closeout-design.md`](f3i-observable-entity-save-closeout-design.md).
+  Ordinary F3+I already waits for the matching
+  server tag-query response, which is the complete NBT authority;
+  server-private owner/target/inventory/timer/RNG fields are not client work
+  and must not be synthesized from defaults. Remaining observable work includes registry-backed
+  entity-data projection (the fixed vanilla entity/block-entity type catalogs
+  are generated), packed variant projection, and the entity families named
+  below. Direct jukebox-song and painting network holders are intentionally
+  omitted from persistent reconstruction because vanilla `JukeboxSong.CODEC`
+  and `PaintingVariant.CODEC` are named-only `RegistryFixedCodec`s. Keep the
+  remaining dispatch owned by the protocol generated-metadata/handler
+  descriptor catalog and the native persistent SNBT encoder registry.
+  `AbstractArrow` still needs its complete client entity-hit state machine
+  (friendly-fire filtering, age-dependent hit margin, per-target client hurt/
+  deflection, piercing ignore/discard state, and client RNG) before
+  `inBlockState`, locally changed `shake` / `inGround` / `crit` /
+  `PierceLevel`, and Trident's hit-mutated `SoundEvent` can be projected
+  without inventing a block collision. Remaining entity-specific
   constructor/default save values, LivingEntity parent health/equipment/effect/attribute
   projection, observable non-empty entity inventory/container projection
   (including chest/hopper minecart `Items` / loot-table contents, and chest
