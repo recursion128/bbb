@@ -7105,7 +7105,7 @@
             "crates/bbb-native/src/runtime/tests.rs#hud_stats_screen_clamps_pixel_scroll_to_projected_content",
             "crates/bbb-native/src/hud_assets.rs#stats_sprite_catalog_resolves_through_gui_atlas_ids",
             "crates/bbb-pack/src/item_registry.rs#checked_in_item_catalog_matches_generated_protocol_catalog",
-            "crates/bbb-renderer/src/hud.rs#stats_screen_block_item_mesh_includes_visible_item_rows",
+            "crates/bbb-renderer/src/hud.rs#stats_screen_block_items_submit_scissored_resident_rows",
             "crates/bbb-renderer/src/hud.rs#stats_screen_sprite_catalog_and_states_match_vanilla",
             "crates/bbb-renderer/src/hud.rs#stats_screen_scrollbar_and_scissor_match_vanilla_geometry",
             "crates/bbb-net/src/probe/play.rs#probe_applies_award_stats_to_world",
