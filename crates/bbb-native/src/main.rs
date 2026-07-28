@@ -67,6 +67,7 @@ mod sky_assets;
 mod spawner_scene;
 mod startup;
 mod terrain_runtime;
+mod weather_effect_runtime;
 mod win_screen_resources;
 
 use audio_runtime::{AudioEventSink, NativeAudioRuntime};
@@ -831,6 +832,7 @@ fn main() -> Result<()> {
         level_event_sound_random,
         environment_audio: environment_audio_runtime::EnvironmentAudioRuntime::default(),
         environment_animate: environment_animate_runtime::EnvironmentAnimateRuntime::default(),
+        weather_effects: weather_effect_runtime::WeatherEffectRuntime::new(client_particle_status),
         music: MusicRuntime::default(),
         win_screen_resources,
         particle_runtime,

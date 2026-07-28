@@ -701,3 +701,6 @@
 - **2026-07-28（Protocol / session 覆盖矩阵最终闭环）**：固定 26.1 的 256 个
   packet 五维矩阵与 110 个 ItemStack component 六维矩阵均只剩 complete/
   not-applicable；反向守卫、P0 audit 与双 server live gate 固化该关闭状态。
+- **2026-07-28（天气环境效果工程闭环）**：simulation 侧现按 Vanilla
+  `WeatherEffectRenderer` 的 tick seed、粒子等级、降水/高度图/碰撞面采样与
+  雨声节流，向既有粒子和音频 effect sink 提交 rain/smoke 与上下方雨声。

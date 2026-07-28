@@ -2479,6 +2479,7 @@ pub(crate) fn advance_simulation(
     level_event_sound_random: &mut LevelEventSoundRandomState,
     environment_audio: &mut crate::environment_audio_runtime::EnvironmentAudioRuntime,
     environment_animate: &mut crate::environment_animate_runtime::EnvironmentAnimateRuntime,
+    weather_effects: &mut crate::weather_effect_runtime::WeatherEffectRuntime,
     music: &mut MusicRuntime,
     win_screen_resources: &mut Arc<crate::win_screen_resources::WinScreenResources>,
     terrain_textures: &mut TerrainTextureState,
@@ -2704,6 +2705,23 @@ pub(crate) fn advance_simulation(
     let sky_environment =
         sky_environment_for_world_at_camera(world, render_camera_pose, hide_lightning_flash);
     let cloud_environment = cloud_environment_for_world(world);
+    // Vanilla `GameRenderer.tick` calls `LevelRenderer.tick` before entity and
+    // block-entity ticks. Inside `LevelRenderer.tick`, weather sampling precedes
+    // stale block-breaking cleanup (`LevelRenderer.java:1148-1167`). Canonical
+    // entity mutation is already batched above, but submit these client-local
+    // effects before the later entity/animate effect drains to preserve the
+    // observable effect order.
+    weather_effects.advance_for_ticks(
+        world,
+        running_ticks,
+        render_camera_pose.map(|camera| camera_eye_position(camera).map(f64::from)),
+        particle_runtime
+            .as_mut()
+            .map(|runtime| runtime as &mut dyn ParticleEventSink),
+        particle_batches,
+        &mut audio_events,
+        item_runtime.as_ref(),
+    );
     advance_block_destruction_render_ticks(world, running_ticks);
     level_profile_duration = level_profile_duration
         .saturating_add(optional_profile_elapsed(level_environment_started_at));

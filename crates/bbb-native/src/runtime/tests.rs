@@ -7431,6 +7431,38 @@ fn renderer_frame_weather_extracts_after_client_time_camera_and_partial_tick() {
 }
 
 #[test]
+fn weather_tick_effects_preserve_level_renderer_order_before_later_effect_drains() {
+    let source = include_str!("../runtime.rs");
+    let weather = source
+        .find("weather_effects.advance_for_ticks(")
+        .expect("pump should advance weather effects");
+    let block_breaking = source
+        .find("advance_block_destruction_render_ticks(world, running_ticks);")
+        .expect("pump should clean stale block breaking after weather");
+    let environment_audio = source
+        .find("environment_audio.advance_for_ticks(")
+        .expect("pump should drain entity ambient audio after weather");
+    let animate_tick = source
+        .find("environment_animate.advance_for_ticks(")
+        .expect("pump should submit animate-tick effects after weather");
+    let entity_effects = source
+        .find("submit_entity_client_tick_effects(")
+        .expect("pump should submit entity client effects after weather");
+
+    for later in [
+        block_breaking,
+        environment_audio,
+        animate_tick,
+        entity_effects,
+    ] {
+        assert!(
+            weather < later,
+            "weather effects should keep Vanilla LevelRenderer ordering"
+        );
+    }
+}
+
+#[test]
 fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
     let source = include_str!("../runtime.rs");
     let input_advance = source
@@ -8195,6 +8227,101 @@ fn weather_render_state_uses_motion_blocking_heightmap_for_column_bounds() {
         .expect("center column uses the loaded precipitating biome");
     assert_eq!(center.bottom_y, 8);
     assert_eq!(center.top_y, 15);
+}
+
+#[test]
+fn weather_tick_samples_vanilla_rain_positions_and_particle_status_counts() {
+    let mut all_world = weather_effect_test_world(0);
+    let mut all = crate::weather_effect_runtime::WeatherEffectRuntime::new(
+        bbb_protocol::packets::ClientParticleStatus::All,
+    );
+
+    let effects = all.tick_running(&mut all_world, [7.5, 4.0, 7.5]);
+
+    assert_eq!(effects.particles.len(), 58);
+    assert!(effects.sound.is_none());
+    let first = &effects.particles[0];
+    assert_eq!(first.particle.resource_id, "minecraft:rain");
+    assert!((first.position[0] - 2.893_004_380_652_515).abs() < 1.0e-12);
+    assert_eq!(first.position[1], 7.0);
+    assert!((first.position[2] - 14.265_544_316_978_81).abs() < 1.0e-12);
+
+    let mut decreased_world = weather_effect_test_world(0);
+    let mut decreased = crate::weather_effect_runtime::WeatherEffectRuntime::new(
+        bbb_protocol::packets::ClientParticleStatus::Decreased,
+    );
+    assert_eq!(
+        decreased
+            .tick_running(&mut decreased_world, [7.5, 4.0, 7.5])
+            .particles
+            .len(),
+        32
+    );
+
+    let mut minimal_world = weather_effect_test_world(0);
+    let mut minimal = crate::weather_effect_runtime::WeatherEffectRuntime::new(
+        bbb_protocol::packets::ClientParticleStatus::Minimal,
+    );
+    assert!(minimal
+        .tick_running(&mut minimal_world, [7.5, 4.0, 7.5])
+        .particles
+        .is_empty());
+}
+
+#[test]
+fn weather_tick_uses_hot_surface_smoke_and_above_rain_sound_throttle() {
+    let magma = bbb_world::vanilla_block_state_id("minecraft:magma_block", &BTreeMap::new())
+        .expect("vanilla magma block state");
+    let mut world = weather_effect_test_world(magma);
+    let mut runtime = crate::weather_effect_runtime::WeatherEffectRuntime::new(
+        bbb_protocol::packets::ClientParticleStatus::All,
+    );
+
+    let first = runtime.tick_running(&mut world, [7.5, 4.0, 7.5]);
+    assert_eq!(first.particles.len(), 58);
+    assert!(first
+        .particles
+        .iter()
+        .all(|spawn| spawn.particle.resource_id == "minecraft:smoke" && spawn.position[1] == 8.0));
+    assert!(first.sound.is_none());
+
+    let second = runtime.tick_running(&mut world, [7.5, 4.0, 7.5]);
+    let sound = second
+        .sound
+        .expect("second valid rain tick passes throttle");
+    let above_id = world
+        .resolved_registry_entry_by_resource_id(
+            "minecraft:sound_event",
+            "minecraft:weather.rain.above",
+        )
+        .expect("weather above sound registry entry")
+        .holder_id;
+    assert_eq!(sound.sound.registry_id, Some(above_id));
+    assert_eq!(sound.source, "weather");
+    assert_eq!(sound.volume, 0.1);
+    assert_eq!(sound.pitch, 0.5);
+    assert_eq!(sound.position.y, 7.5);
+    assert!(!sound.distance_delay);
+
+    let mut normal_world = weather_effect_test_world(magma);
+    let mut normal_runtime = crate::weather_effect_runtime::WeatherEffectRuntime::new(
+        bbb_protocol::packets::ClientParticleStatus::All,
+    );
+    assert!(normal_runtime
+        .tick_running(&mut normal_world, [7.5, 7.0, 7.5])
+        .sound
+        .is_none());
+    let normal_sound = normal_runtime
+        .tick_running(&mut normal_world, [7.5, 7.0, 7.5])
+        .sound
+        .expect("second valid rain tick passes normal-rain throttle");
+    let rain_id = normal_world
+        .resolved_registry_entry_by_resource_id("minecraft:sound_event", "minecraft:weather.rain")
+        .expect("weather rain sound registry entry")
+        .holder_id;
+    assert_eq!(normal_sound.sound.registry_id, Some(rain_id));
+    assert_eq!(normal_sound.volume, 0.2);
+    assert_eq!(normal_sound.pitch, 1.0);
 }
 
 #[test]
@@ -9966,6 +10093,35 @@ fn empty_lightmap_test_chunk_with_sky_light(
         block_updates: Vec::new(),
     };
     chunk
+}
+
+fn weather_effect_test_world(block_state_id: i32) -> WorldStore {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    set_world_weather(&mut world, 1.0, 0.0);
+    install_biome_environment_profiles(&mut world, &[(42, &[])]);
+    world.record_registry_entries(
+        "minecraft:sound_event",
+        0,
+        vec![
+            RegistryPacketEntry::stub("minecraft:weather.rain"),
+            RegistryPacketEntry::stub("minecraft:weather.rain.above"),
+        ],
+    );
+    let mut chunk = empty_lightmap_test_chunk_with_biome(world.dimension(), 42);
+    let height_entries = (0..16)
+        .flat_map(|z| (0..16).map(move |x| (x, z, 8)))
+        .collect::<Vec<_>>();
+    chunk.heightmaps = vec![test_motion_blocking_heightmap(
+        world.dimension(),
+        &height_entries,
+    )];
+    for section in &mut chunk.sections {
+        section.block_states =
+            single_value_container(PaletteDomain::BlockStates, 4096, block_state_id);
+        section.non_empty_block_count = i16::from(block_state_id != 0) * 4096;
+    }
+    world.insert_decoded_chunk(chunk);
+    world
 }
 
 fn empty_lightmap_test_chunk_with_biomes(
