@@ -770,6 +770,79 @@ stops at the preceding clean stage commit and is fixed forward. The final safe
 stop is the clean stage-3 commit after its full gate; the next slice does not
 start earlier.
 
+## Specialized entity culling and section visibility contract (2026-07-28)
+
+This bounded high-risk engineering continuation removes the remaining
+unconditional visibility exception for Guardian, EndCrystal, and Shulker
+renderers and narrows the terrain compilation gate from a whole chunk to the
+entity's current section. Work starts from the clean, fully gated
+`5fe5caf53`.
+
+Completion requires all of the following:
+
+- The ordinary dispatcher path keeps its current distance, generated custom
+  bounds, frustum, leash-holder, and leash-union tests. A specialized renderer
+  first accepts that ordinary result, then evaluates only its Vanilla fallback.
+- Guardian falls back to the current-tick eye-to-live-target-center AABB only
+  while its generated attack-target metadata names a tracked living entity.
+  Missing, zero, unknown, or non-living targets do not bypass the frustum.
+- EndCrystal bypasses the ordinary result exactly when generated
+  `DATA_BEAM_TARGET` metadata contains a block position; a crystal without a
+  target uses the ordinary path.
+- Shulker falls back only during its six-tick attach-position transition, using
+  Vanilla's literal
+  `AABB(getRenderPosition(0), atBottomCenterOf(blockPosition))` half-height
+  adjustment and type-width/type-height inflation. Its ordinary dispatcher
+  bounds remain the current metadata/animation-owned entity bounds rather than
+  a pre-expanded transition union.
+- The terrain render owner publishes exact `(section_x, section_y, section_z)`
+  membership from selected cached meshes and their resident section revisions.
+  Entity gating reads the non-interpolated current block position; positions
+  outside build height continue to pass as Vanilla does. Two vertical sections
+  in one compiled chunk can therefore produce different entity results.
+
+The world candidate remains a narrow copy-only ECS row. Its specialized culling
+union is populated from generated renderer/schema facts and contains only the
+attack target and eye height, beam-target presence, or Shulker offset and base
+dimensions needed by the native decision. It carries no heap model source,
+renderer object, duplicate entity-type table, camera, frustum, terrain owner,
+or wall clock.
+
+Vanilla 26.1 fixes the boundary. `EntityRenderer.shouldRender` applies entity
+distance, `affectedByCulling`, the renderer culling box inflated by `0.5`, and
+the leash holder/union fallback. `GuardianRenderer.shouldRender` then tests the
+current-tick eye-to-target AABB; `EndCrystalRenderer.shouldRender` ORs
+`getBeamTarget() != null`; and `ShulkerRenderer.shouldRender` tests the
+transition AABB above. `LevelRenderer.extractVisibleEntities` applies that
+dispatcher decision before `isSectionCompiledAndVisible(entity.blockPosition())`
+and camera/local-player suppression. `isSectionCompiledAndVisible` requires a
+non-`UNCOMPILED` render section and its current visibility threshold.
+
+This slice preserves bbb's existing selected-resident definition of a visible
+terrain section; it does not add the separate Vanilla chunk occlusion graph,
+terrain fade rendering/configuration, or a second render-distance policy.
+Entity model projection, partial-tick animation, render order, shadows, name
+tags, Display no-cull metadata, local-player passenger exceptions, and
+out-of-height handling do not otherwise change.
+
+Serial stages and failure-localizing checks are:
+
+1. Add the generated-fact-derived world candidate union, stop pre-expanding
+   Shulker ordinary bounds, and cover Guardian/EndCrystal metadata plus
+   Shulker transition inputs in focused `bbb-world` tests. Run format, diff,
+   and docs checks before the normal commit.
+2. Replace the native unconditional special pass with the exact three
+   fallbacks, publish resident section membership, and add frustum, target,
+   transition, vertical-section, reset, and source-order guards. Run focused
+   `bbb-native` tests and the per-commit checks before the normal commit.
+3. Delete the closed ledger item, update the architecture/archive, review the
+   integrated diff, commit, and run the full workspace gate at that committed
+   checkpoint.
+
+Stage 1 is the only intermediate safe stop. Stage 2's world/native semantic
+handoff is fixed forward until its focused tests pass; the next slice waits for
+the clean stage-3 checkpoint and full gate.
+
 ## Official Comparison Protocol
 
 Both clients use the same machine/GPU, resolution, view and simulation

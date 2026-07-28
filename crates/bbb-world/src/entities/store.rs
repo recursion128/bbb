@@ -155,7 +155,7 @@ use crate::entities::dimensions::{
     vanilla_local_player_passenger_position_for_entity_data,
     vanilla_model_source_bounds_for_entity_data, vanilla_passenger_position_for_entity_data,
     vanilla_passenger_vehicle_debug_target_for_entity_data, vanilla_pick_bounds_for_entity_data,
-    vanilla_render_scale, vanilla_shulker_attached_position,
+    vanilla_pick_bounds_for_type, vanilla_render_scale, vanilla_shulker_attached_position,
 };
 use crate::entities::dragon::{
     ender_dragon_parent_pick_target, ender_dragon_part_parent_id,
@@ -3256,19 +3256,6 @@ impl EntityStore {
             ) {
                 bounds = bounds.expand_towards_y(display_offset as f32 * 0.75 / 16.0);
             }
-            if identity.entity_type_id == VANILLA_ENTITY_TYPE_SHULKER_ID {
-                let scale = vanilla_render_scale(identity.entity_type_id, &attributes.attributes);
-                if let Some(offset) =
-                    animations
-                        .animations
-                        .shulker_render_offset(transform.position, 0.0, scale)
-                {
-                    // `ShulkerRenderer.shouldRender` tests the complete old-to-
-                    // current transition at partial tick zero, independently
-                    // of the render state's current interpolation fraction.
-                    bounds = expand_bounds_towards_offset(bounds, offset);
-                }
-            }
             candidates.push(super::EntityRenderCandidateState {
                 entity_id: identity.id,
                 uuid: identity.uuid,
@@ -3292,6 +3279,14 @@ impl EntityStore {
                 display_culling: display_entity_culling_state(
                     identity.entity_type_id,
                     &metadata.data_values,
+                ),
+                special_culling: renderer_special_culling_state(
+                    identity.entity_type_id,
+                    identity.data,
+                    transform.position,
+                    &metadata.data_values,
+                    &attributes.attributes,
+                    animations.animations,
                 ),
             });
         }
@@ -10040,16 +10035,55 @@ fn add_entity_vec3(left: super::EntityVec3, right: super::EntityVec3) -> super::
     }
 }
 
-fn expand_bounds_towards_offset(
-    mut bounds: super::EntityPickBoundsState,
-    offset: super::EntityVec3,
-) -> super::EntityPickBoundsState {
-    for (axis, value) in [offset.x, offset.y, offset.z].into_iter().enumerate() {
-        let value = value as f32;
-        bounds.min[axis] = bounds.min[axis].min(bounds.min[axis] + value);
-        bounds.max[axis] = bounds.max[axis].max(bounds.max[axis] + value);
+fn renderer_special_culling_state(
+    entity_type_id: i32,
+    add_entity_data: i32,
+    position: super::EntityVec3,
+    data_values: &[ProtocolEntityDataValue],
+    attributes: &[ProtocolAttributeSnapshot],
+    animations: EntityClientAnimationState,
+) -> super::EntityRendererSpecialCullingState {
+    if vanilla_entity_metadata_type_is_guardian(entity_type_id) {
+        return vanilla_eye_height_for_entity_data(
+            entity_type_id,
+            add_entity_data,
+            data_values,
+            attributes,
+            Some(animations),
+            None,
+        )
+        .map_or(
+            super::EntityRendererSpecialCullingState::None,
+            |eye_height| super::EntityRendererSpecialCullingState::Guardian {
+                attack_target_id: guardian_attack_target_id(entity_type_id, data_values),
+                eye_height,
+            },
+        );
     }
-    bounds
+
+    if let Some(accessors) =
+        vanilla_entity_metadata_end_crystal_accessors_for_entity_type(entity_type_id)
+    {
+        let has_beam_target = data_values.iter().any(|value| {
+            value.data_id == accessors.beam_target_data_id
+                && matches!(value.value, EntityDataValueKind::OptionalBlockPos(Some(_)))
+        });
+        return super::EntityRendererSpecialCullingState::EndCrystal { has_beam_target };
+    }
+
+    if vanilla_entity_metadata_shulker_accessors_for_entity_type(entity_type_id).is_some() {
+        let Some(bounds) = vanilla_pick_bounds_for_type(entity_type_id) else {
+            return super::EntityRendererSpecialCullingState::None;
+        };
+        let scale = vanilla_render_scale(entity_type_id, attributes);
+        return super::EntityRendererSpecialCullingState::Shulker {
+            render_offset_at_zero: animations.shulker_render_offset(position, 0.0, scale),
+            half_width: (bounds.max[0] - bounds.min[0]) * 0.5,
+            half_height: (bounds.max[1] - bounds.min[1]) * 0.5,
+        };
+    }
+
+    super::EntityRendererSpecialCullingState::None
 }
 
 fn solve_living_passenger_body_y_rot(head_y_rot: f32, vehicle_body_y_rot: f32) -> f32 {

@@ -595,6 +595,89 @@ fn entity_model_sources_project_guardian_attack_beam() {
 }
 
 #[test]
+fn render_candidates_project_special_guardian_and_end_crystal_culling_inputs() {
+    let guardian_accessors = guardian_metadata_accessors();
+    let add_at = |id: i32, type_id: i32, x: f64| ProtocolAddEntity {
+        id,
+        uuid: default_entity_uuid(),
+        entity_type_id: type_id,
+        position: ProtocolVec3d { x, y: 64.0, z: 0.0 },
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    };
+    let candidate = |store: &WorldStore, id: i32| {
+        store
+            .entity_render_candidates_at_partial_tick(0.5)
+            .into_iter()
+            .find(|candidate| candidate.entity_id == id)
+            .expect("render candidate")
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(add_at(170, VANILLA_ENTITY_TYPE_GUARDIAN_ID, 0.0));
+    store.apply_add_entity(add_at(171, VANILLA_ENTITY_TYPE_ZOMBIE_ID, 8.0));
+    store.apply_add_entity(add_at(172, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, 16.0));
+
+    assert!(matches!(
+        candidate(&store, 170).special_culling,
+        EntityRendererSpecialCullingState::Guardian {
+            attack_target_id: 0,
+            eye_height
+        } if eye_height > 0.0
+    ));
+    assert!(matches!(
+        candidate(&store, 172).special_culling,
+        EntityRendererSpecialCullingState::EndCrystal {
+            has_beam_target: false
+        }
+    ));
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 170,
+        values: vec![protocol_int_data(
+            guardian_accessors.attack_target_data_id,
+            171,
+        )],
+    }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 172,
+        values: vec![end_crystal_beam_target_data(Some(ProtocolBlockPos {
+            x: 20,
+            y: 70,
+            z: -4,
+        }))],
+    }));
+
+    assert!(matches!(
+        candidate(&store, 170).special_culling,
+        EntityRendererSpecialCullingState::Guardian {
+            attack_target_id: 171,
+            eye_height
+        } if eye_height > 0.0
+    ));
+    assert_eq!(
+        candidate(&store, 172).special_culling,
+        EntityRendererSpecialCullingState::EndCrystal {
+            has_beam_target: true,
+        }
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 172,
+        values: vec![end_crystal_beam_target_data(None)],
+    }));
+    assert_eq!(
+        candidate(&store, 172).special_culling,
+        EntityRendererSpecialCullingState::EndCrystal {
+            has_beam_target: false,
+        }
+    );
+}
+
+#[test]
 fn entity_model_sources_project_guardian_eye_target_with_attack_priority() {
     let accessors = guardian_metadata_accessors();
     let add_at =

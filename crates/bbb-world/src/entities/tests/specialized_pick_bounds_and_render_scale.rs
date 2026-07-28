@@ -807,15 +807,28 @@ fn shulker_block_snap_uses_quadratic_render_offset_and_retained_generation() {
     let candidate = store.entity_render_candidates_at_partial_tick(0.0)[0];
     assert_eq!(candidate.position, new_position);
     assert!(
-        candidate.bounds.min[0] < -3.0,
-        "culling bounds must retain the old attachment endpoint"
+        candidate.bounds.min[0] > -1.0,
+        "ordinary bounds must remain local to the current Shulker pose"
     );
-    assert!(
-        store.entity_render_candidates_at_partial_tick(1.0)[0]
-            .bounds
-            .min[0]
-            < -3.0,
-        "Shulker culling uses the complete transition even late in the frame"
+    let EntityRendererSpecialCullingState::Shulker {
+        render_offset_at_zero: Some(render_offset),
+        half_width,
+        half_height,
+    } = candidate.special_culling
+    else {
+        panic!("Shulker candidate must retain the transition culling inputs");
+    };
+    assert!(render_offset.x < -2.9);
+    assert_eq!(render_offset.y, 0.0);
+    assert_eq!(render_offset.z, 0.0);
+    assert_eq!(half_width, 0.5);
+    assert_eq!(half_height, 0.5);
+
+    let late_candidate = store.entity_render_candidates_at_partial_tick(1.0)[0];
+    assert_eq!(late_candidate.bounds, candidate.bounds);
+    assert_eq!(
+        late_candidate.special_culling, candidate.special_culling,
+        "Shulker shouldRender samples the complete transition at partial tick zero"
     );
 
     let generation_a = store.publication_snapshot();

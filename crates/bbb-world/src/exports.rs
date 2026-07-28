@@ -17,6 +17,7 @@ pub use crate::entities::EntityNameTagTextSegmentState;
 pub use crate::entities::EntityNameTagTextState;
 pub use crate::entities::EntityNameTagVisibilityPolicy;
 pub use crate::entities::EntityRenderCandidateState;
+pub use crate::entities::EntityRendererSpecialCullingState;
 pub use crate::entities::FishingHookRenderSourceState;
 pub use crate::entities::VanillaAbstractBoatMetadataAccessors;
 pub use crate::entities::VanillaAbstractHorseMetadataAccessors;

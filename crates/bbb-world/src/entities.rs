@@ -1364,6 +1364,25 @@ pub struct EntityPickTargetState {
     pub bounds: EntityPickBoundsState,
 }
 
+/// Copy-only inputs for the three renderer-specific `shouldRender` fallbacks.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub enum EntityRendererSpecialCullingState {
+    #[default]
+    None,
+    Guardian {
+        attack_target_id: i32,
+        eye_height: f32,
+    },
+    EndCrystal {
+        has_beam_target: bool,
+    },
+    Shulker {
+        render_offset_at_zero: Option<EntityVec3>,
+        half_width: f32,
+        half_height: f32,
+    },
+}
+
 /// Narrow immutable row used to decide renderer visibility before projecting
 /// the heap-heavy [`EntityModelSourceState`].
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -1386,6 +1405,7 @@ pub struct EntityRenderCandidateState {
     pub is_sleeping: bool,
     pub wears_dragon_head: bool,
     pub display_culling: Option<DisplayEntityCullingState>,
+    pub special_culling: EntityRendererSpecialCullingState,
 }
 
 /// Per-frame world state consumed by vanilla `FishingHookRenderer.extractRenderState`.
