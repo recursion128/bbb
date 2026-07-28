@@ -56,7 +56,7 @@ test "$(cat state.txt)" = good
     def run_batch_gate(
         self,
         repo: Path,
-        commit_range: str,
+        commit_range: str | None,
         fake_gate: Path,
         trace: Path,
         logs: Path,
@@ -72,8 +72,11 @@ test "$(cat state.txt)" = good
                 "CARGO_TARGET_DIR": "/tmp/bbb-target-cargo-linux",
             }
         )
+        command = [str(CARGO_DEV), "batch-gate"]
+        if commit_range is not None:
+            command.append(commit_range)
         return subprocess.run(
-            [str(CARGO_DEV), "batch-gate", commit_range],
+            command,
             cwd=repo,
             env=env,
             text=True,
@@ -140,6 +143,38 @@ test "$(cat state.txt)" = good
                 {"/tmp/bbb-target-batch-gate"},
             )
             self.assert_only_main_worktree_remains(repo)
+
+    def test_default_range_uses_recorded_last_gated_commit(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            repo, commits = self.make_repo(root)
+            stamp_dir = repo / ".git" / "bbb"
+            stamp_dir.mkdir()
+            (stamp_dir / "last-gated").write_text(
+                f"{commits[0]}\n", encoding="utf-8"
+            )
+            fake_gate = self.make_fake_gate(root)
+            trace = root / "trace"
+            result = self.run_batch_gate(repo, None, fake_gate, trace, root / "logs")
+
+            self.assertEqual(result.returncode, 0, result.stdout)
+            self.assertIn(
+                f"defaulting to last-gated range: {commits[0]}..HEAD",
+                result.stdout,
+            )
+            self.assertIn("range tip passed; no bisection needed", result.stdout)
+            self.assert_only_main_worktree_remains(repo)
+
+    def test_default_range_without_last_gated_stamp_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            repo, _commits = self.make_repo(root)
+            fake_gate = self.make_fake_gate(root)
+            trace = root / "trace"
+            result = self.run_batch_gate(repo, None, fake_gate, trace, root / "logs")
+
+            self.assertEqual(result.returncode, 2, result.stdout)
+            self.assertIn("no recorded last-gated commit", result.stdout)
 
     def test_timing_commands_have_a_bash_fallback(self) -> None:
         script = CARGO_DEV.read_text(encoding="utf-8")
@@ -247,8 +282,124 @@ class CargoDevGateScriptsTestsStatusTests(unittest.TestCase):
     def test_gate_cargo_steps_do_not_toggle_rustflags(self) -> None:
         script = CARGO_DEV.read_text(encoding="utf-8")
         self.assertNotIn("RUSTFLAGS='-D warnings'", script)
-        self.assertIn('run_gate_step "cargo check --workspace" cargo check --workspace', script)
-        self.assertIn('run_gate_step "cargo test --workspace" cargo test --workspace', script)
+        self.assertIn(
+            'run_gate_step check "cargo check --workspace" cargo check --workspace',
+            script,
+        )
+        self.assertIn(
+            'run_gate_step test "cargo test --workspace" cargo test --workspace',
+            script,
+        )
+
+
+class CargoDevGateStampTests(unittest.TestCase):
+    def run_git(self, repo: Path, *args: str) -> str:
+        result = subprocess.run(
+            ["git", *args],
+            cwd=repo,
+            check=True,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        return result.stdout.strip()
+
+    def commit_state(self, repo: Path, state: str, subject: str) -> str:
+        (repo / "state.txt").write_text(f"{state}\n", encoding="utf-8")
+        self.run_git(repo, "add", "state.txt")
+        self.run_git(repo, "commit", "-q", "--allow-empty", "-m", subject)
+        return self.run_git(repo, "rev-parse", "HEAD")
+
+    def make_repo(self, root: Path) -> tuple[Path, str]:
+        repo = root / "repo"
+        repo.mkdir()
+        self.run_git(repo, "init", "-q")
+        self.run_git(repo, "config", "user.name", "Cargo Dev Test")
+        self.run_git(repo, "config", "user.email", "cargo-dev-test@example.invalid")
+        tip = self.commit_state(repo, "good", "root good")
+        return repo, tip
+
+    def run_gate(
+        self, repo: Path, command: str = "true", *, test_mode: bool = True
+    ) -> subprocess.CompletedProcess[str]:
+        env = os.environ.copy()
+        env.pop("BBB_GATE_TEST_MODE", None)
+        env.update(
+            {
+                "BBB_GATE_TEST_COMMAND": command,
+                "BBB_CARGO_TARGET_NAME": "cargo-linux",
+                "CARGO_TARGET_DIR": "/tmp/bbb-target-cargo-linux",
+            }
+        )
+        if test_mode:
+            env["BBB_GATE_TEST_MODE"] = "1"
+        return subprocess.run(
+            [str(CARGO_DEV), "gate"],
+            cwd=repo,
+            env=env,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+
+    def read_log(self, repo: Path) -> list[list[str]]:
+        log = repo / ".git" / "bbb" / "gate-log.tsv"
+        return [
+            line.split("\t")
+            for line in log.read_text(encoding="utf-8").splitlines()
+        ]
+
+    def test_clean_gate_records_log_and_last_gated_pointer(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo, tip = self.make_repo(Path(directory))
+            result = self.run_gate(repo)
+
+            self.assertEqual(result.returncode, 0, result.stdout)
+            rows = self.read_log(repo)
+            self.assertEqual(len(rows), 1, rows)
+            _time, head, state, detail = rows[0]
+            self.assertEqual(head, tip)
+            self.assertEqual(state, "clean")
+            self.assertTrue(detail.startswith("total:"), detail)
+            self.assertIn("test-command:", detail)
+            last_gated = repo / ".git" / "bbb" / "last-gated"
+            self.assertEqual(
+                last_gated.read_text(encoding="utf-8").strip(), tip
+            )
+
+    def test_dirty_gate_appends_log_without_moving_pointer(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo, first_tip = self.make_repo(Path(directory))
+            self.assertEqual(self.run_gate(repo).returncode, 0)
+            second_tip = self.commit_state(repo, "good", "second good")
+            (repo / "state.txt").write_text("dirty\n", encoding="utf-8")
+            result = self.run_gate(repo)
+
+            self.assertEqual(result.returncode, 0, result.stdout)
+            rows = self.read_log(repo)
+            self.assertEqual(len(rows), 2, rows)
+            self.assertEqual(rows[1][1], second_tip)
+            self.assertEqual(rows[1][2], "dirty")
+            last_gated = repo / ".git" / "bbb" / "last-gated"
+            self.assertEqual(
+                last_gated.read_text(encoding="utf-8").strip(), first_tip
+            )
+
+    def test_failing_gate_writes_no_stamp(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo, _tip = self.make_repo(Path(directory))
+            result = self.run_gate(repo, command="false")
+
+            self.assertNotEqual(result.returncode, 0, result.stdout)
+            self.assertFalse((repo / ".git" / "bbb").exists())
+
+    def test_gate_test_command_requires_test_mode(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo, _tip = self.make_repo(Path(directory))
+            result = self.run_gate(repo, test_mode=False)
+
+            self.assertEqual(result.returncode, 2, result.stdout)
+            self.assertIn("reserved for isolated script tests", result.stdout)
 
 
 class CargoDevPruneTests(unittest.TestCase):

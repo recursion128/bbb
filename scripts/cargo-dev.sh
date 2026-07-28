@@ -1,6 +1,9 @@
 #!/bin/sh
 set -eu
 
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+. "$script_dir/gate-stamp-lib.sh"
+
 usage() {
   cat <<'EOF'
 Usage:
@@ -15,7 +18,7 @@ Usage:
   scripts/cargo-dev.sh sccache-eval <run-suffix> [focused cargo test args...]
   scripts/cargo-dev.sh gate
   scripts/cargo-dev.sh gate-scripts-tests-status
-  scripts/cargo-dev.sh batch-gate <good-commit>..<bad-commit>
+  scripts/cargo-dev.sh batch-gate [<good-commit>..<bad-commit>]
   scripts/cargo-dev.sh size
   scripts/cargo-dev.sh prune [--force]
   scripts/cargo-dev.sh clean-target <target-suffix|/tmp/bbb-target-...>
@@ -49,6 +52,11 @@ Examples:
   scripts/cargo-dev.sh prune --force
   scripts/cargo-dev.sh gate
   scripts/cargo-dev.sh batch-gate master..HEAD
+  scripts/cargo-dev.sh batch-gate
+
+A passing gate appends per-step timings to <git-dir>/bbb/gate-log.tsv and, on
+a clean tree, records HEAD in <git-dir>/bbb/last-gated. batch-gate without a
+range defaults to <last-gated>..HEAD.
 EOF
 }
 
@@ -367,16 +375,20 @@ run_prune() {
 
 gate_step_total=6
 gate_step_index=0
+gate_step_timings=""
 
 run_gate_step() {
-  label="$1"
-  shift
+  step_key="$1"
+  label="$2"
+  shift 2
   gate_step_index=$((gate_step_index + 1))
   echo "== [$gate_step_index/$gate_step_total] $label =="
   step_start=$(date +%s)
   if "$@"; then
     step_end=$(date +%s)
-    echo "   $label: $((step_end - step_start))s"
+    step_seconds=$((step_end - step_start))
+    echo "   $label: ${step_seconds}s"
+    gate_step_timings="$gate_step_timings,$step_key:${step_seconds}s"
   else
     status=$?
     echo "gate step failed: $label (exit $status)" >&2
@@ -419,35 +431,70 @@ gate_scripts_tests_status() {
 
 run_gate() {
   gate_start=$(date +%s)
-  run_gate_step "docs-lint" scripts/docs-lint.sh
-  run_gate_step "cargo fmt --all --check" cargo fmt --all --check
-  scripts_tests_status="$(gate_scripts_tests_status)"
-  case "$scripts_tests_status" in
-    run:*)
-      run_gate_step "scripts python tests" \
-        scripts/vanilla-source-tools.sh python -m unittest discover -s scripts/tests
-      ;;
-    *)
-      gate_step_index=$((gate_step_index + 1))
-      echo "== [$gate_step_index/$gate_step_total] scripts python tests =="
-      echo "   skipped: ${scripts_tests_status#skip: } (BBB_GATE_FULL=1 forces)"
-      ;;
-  esac
-  run_gate_step "git diff --check" git diff --check
-  run_gate_step "cargo check --workspace" cargo check --workspace
-  run_gate_step "cargo test --workspace" cargo test --workspace
+  gate_step_timings=""
+  if [ -n "${BBB_GATE_TEST_COMMAND:-}" ]; then
+    if [ "${BBB_GATE_TEST_MODE:-0}" != "1" ]; then
+      echo "BBB_GATE_TEST_COMMAND is reserved for isolated script tests" >&2
+      exit 2
+    fi
+    gate_step_total=1
+    run_gate_step test-command "gate test command" sh -c "$BBB_GATE_TEST_COMMAND"
+  else
+    run_gate_step docs-lint "docs-lint" scripts/docs-lint.sh
+    run_gate_step fmt "cargo fmt --all --check" cargo fmt --all --check
+    scripts_tests_status="$(gate_scripts_tests_status)"
+    case "$scripts_tests_status" in
+      run:*)
+        run_gate_step scripts-tests "scripts python tests" \
+          scripts/vanilla-source-tools.sh python -m unittest discover -s scripts/tests
+        ;;
+      *)
+        gate_step_index=$((gate_step_index + 1))
+        echo "== [$gate_step_index/$gate_step_total] scripts python tests =="
+        echo "   skipped: ${scripts_tests_status#skip: } (BBB_GATE_FULL=1 forces)"
+        gate_step_timings="$gate_step_timings,scripts-tests:skip"
+        ;;
+    esac
+    run_gate_step diff-check "git diff --check" git diff --check
+    run_gate_step check "cargo check --workspace" cargo check --workspace
+    run_gate_step test "cargo test --workspace" cargo test --workspace
+  fi
   gate_end=$(date +%s)
-  echo "gate: all $gate_step_total steps passed in $((gate_end - gate_start))s"
+  gate_total=$((gate_end - gate_start))
+  if [ -z "$(git status --porcelain 2>/dev/null | head -n 1)" ]; then
+    gate_tree_state=clean
+    gate_pointer=last-gated
+  else
+    gate_tree_state=dirty
+    gate_pointer=""
+  fi
+  record_gate_stamp gate-log.tsv "$gate_pointer" "$gate_tree_state" \
+    "total:${gate_total}s${gate_step_timings}"
+  echo "gate: all $gate_step_total steps passed in ${gate_total}s"
 }
 
 run_batch_gate() {
-  if [ "$#" -ne 1 ]; then
-    echo "batch-gate requires exactly one <good-commit>..<bad-commit> range" >&2
+  if [ "$#" -gt 1 ]; then
+    echo "batch-gate accepts at most one <good-commit>..<bad-commit> range" >&2
     usage >&2
     exit 2
   fi
 
-  range="$1"
+  if [ "$#" -eq 1 ]; then
+    range="$1"
+  else
+    stamp_git_dir=$(git rev-parse --absolute-git-dir 2>/dev/null) || {
+      echo "batch-gate must run inside a Git worktree" >&2
+      exit 2
+    }
+    last_gated_file="$stamp_git_dir/bbb/last-gated"
+    if [ ! -f "$last_gated_file" ]; then
+      echo "batch-gate found no recorded last-gated commit ($last_gated_file); pass an explicit <good-commit>..<bad-commit> range" >&2
+      exit 2
+    fi
+    range="$(cat "$last_gated_file")..HEAD"
+    echo "batch-gate: defaulting to last-gated range: $range"
+  fi
   case "$range" in
     *...*)
       echo "batch-gate requires a two-dot range, not a symmetric three-dot range: $range" >&2

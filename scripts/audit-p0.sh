@@ -72,6 +72,7 @@ LC_ALL=C awk '
     if (unclassified) {
       exit 1
     }
-    printf "P0 audit: %d hits, all classified\n", hit_count
+    printf "P0 audit: %d hits, all classified against %d allowlist entries\n", \
+      hit_count, pattern_count
   }
 ' "$allowlist" "$hits_file"

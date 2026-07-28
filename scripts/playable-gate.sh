@@ -2,6 +2,7 @@
 set -eu
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+. "$repo_root/scripts/gate-stamp-lib.sh"
 python_runner="$repo_root/scripts/vanilla-source-tools.sh"
 helper="$repo_root/scripts/playable_gate.py"
 fixture="$repo_root/scripts/fixtures/playable-gate/session-26.1.json"
@@ -67,6 +68,8 @@ run_fixture() {
 
 if [ "$mode" = fixture ]; then
   run_fixture
+  (cd "$repo_root" && record_gate_stamp playable-log.tsv last-playable-fixture \
+    fixture "mode:requested")
   exit 0
 fi
 
@@ -128,6 +131,8 @@ if [ -n "$live_reason" ]; then
   fi
   echo "playable gate: live portion NOT RUN: $live_reason"
   run_fixture
+  (cd "$repo_root" && record_gate_stamp playable-log.tsv last-playable-fixture \
+    fixture "fallback:$live_reason")
   exit 0
 fi
 
@@ -413,3 +418,5 @@ echo "playable gate evidence: packet/session timeline: $client_log"
 echo "playable gate evidence: world snapshot: $evidence_json"
 echo "playable gate evidence: server log: $server_log"
 echo "playable gate evidence: transfer server log: $transfer_server_log"
+(cd "$repo_root" && record_gate_stamp playable-log.tsv last-playable-live \
+  live "evidence:$evidence_json")
