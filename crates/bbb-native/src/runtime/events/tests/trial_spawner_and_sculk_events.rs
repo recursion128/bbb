@@ -145,6 +145,87 @@ fn trial_spawner_level_events_emit_distance_delayed_vanilla_sounds() {
 }
 
 #[test]
+fn ominous_item_spawner_server_sounds_use_packet_then_level_event_paths() {
+    let pos = ProtocolBlockPos { x: 4, y: 65, z: -6 };
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.try_send(NetEvent::Play(PlayClientbound::Sound(SoundEvent {
+        sound: SoundEventHolder::Reference { registry_id: 0 },
+        source: SoundSource::Neutral,
+        position: ProtocolVec3d {
+            x: 4.5,
+            y: 65.5,
+            z: -5.5,
+        },
+        volume: 1.0,
+        pitch: 1.0,
+        seed: 42,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {
+        event_type: 3021,
+        pos,
+        data: 1,
+        global: false,
+    })))
+    .unwrap();
+
+    let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+    let expected_spawn_pitch =
+        1.0 + (expected_random.next_float() - expected_random.next_float()) * 0.2;
+    let expected_spawn_seed = expected_random.next_long();
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(
+        test_sound_catalog(),
+        SoundEventRegistry::from_ids(["minecraft:block.trial_spawner.about_to_spawn_item"]),
+    );
+
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
+        2
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 2);
+    let AudioCommand::PlayPositionedSound(about_to_spawn) = &audio.commands[0] else {
+        panic!(
+            "expected positioned about-to-spawn sound, got {:?}",
+            audio.commands[0]
+        );
+    };
+    assert_eq!(
+        about_to_spawn.sound.event_id,
+        "minecraft:block.trial_spawner.about_to_spawn_item"
+    );
+    assert_eq!(about_to_spawn.category, AudioCategory::Neutral);
+    assert_eq!(about_to_spawn.position, [4.5, 65.5, -5.5]);
+    assert_close(about_to_spawn.packet_volume, 1.0);
+    assert_close(about_to_spawn.packet_pitch, 1.0);
+    assert_eq!(about_to_spawn.seed, 42);
+    assert!(!about_to_spawn.distance_delay);
+
+    let AudioCommand::PlayPositionedSound(spawn) = &audio.commands[1] else {
+        panic!(
+            "expected positioned spawn-item sound, got {:?}",
+            audio.commands[1]
+        );
+    };
+    assert_eq!(
+        spawn.sound.event_id,
+        "minecraft:block.trial_spawner.spawn_item"
+    );
+    assert_eq!(spawn.category, AudioCategory::Blocks);
+    assert_eq!(spawn.position, [4.5, 65.5, -5.5]);
+    assert_close(spawn.packet_volume, 1.0);
+    assert_close(spawn.packet_pitch, expected_spawn_pitch);
+    assert_eq!(spawn.seed, expected_spawn_seed);
+    assert!(spawn.distance_delay);
+    assert_eq!(world.counters().sound_packets, 1);
+    assert_eq!(world.counters().level_events_received, 1);
+    assert_eq!(world.counters().level_events_tracked, 1);
+}
+
+#[test]
 fn trial_spawner_audio_only_events_advance_post_sound_particle_randoms() {
     let cases = [
         (3012, 1, "minecraft:block.trial_spawner.spawn_mob"),

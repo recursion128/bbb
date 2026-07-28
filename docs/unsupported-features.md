@@ -690,10 +690,6 @@ Living-entity render state:
   getters directly without partial-tick interpolation. Only `yRot` uses
   `Mth.rotLerp`, and hit `wiggle` adds `partialTicks`; bbb already covers both.
 
-Attachment and spawner presentation:
-
-- Implement the ominous-item-spawner about-to-spawn and spawn sounds.
-
 ## HUD overlay and screen render surfaces
 
 Owner: `bbb-renderer` + `bbb-native` + `bbb-world`

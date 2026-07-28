@@ -1201,6 +1201,9 @@ fn test_sound_catalog() -> SoundCatalog {
             "block.trial_spawner.spawn_mob": {
                 "sounds": ["block/trial_spawner/spawn_mob"]
             },
+            "block.trial_spawner.about_to_spawn_item": {
+                "sounds": ["block/trial_spawner/about_to_spawn_item"]
+            },
             "block.trial_spawner.detect_player": {
                 "sounds": ["block/trial_spawner/detect_player"]
             },
