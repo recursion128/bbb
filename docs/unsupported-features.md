@@ -222,29 +222,6 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   `null` and emits the red `Missing Server Entity` 3D billboard instead. bbb
   owns no integrated server and implements that missing-label branch. Reopen
   with an in-process integrated server boundary.
-- Extend Shift-local F3+I entity capture only for fields actually observed from
-  synced metadata, spawn/equipment/components, client-owned runtime, and
-  protocol-backed references. The active engineering contract is
-  [`f3i-observable-entity-save-closeout-design.md`](f3i-observable-entity-save-closeout-design.md).
-  Ordinary F3+I already waits for the matching
-  server tag-query response, which is the complete NBT authority;
-  server-private owner/target/inventory/timer/RNG fields are not client work
-  and must not be synthesized from defaults. Remaining observable work is in
-  the entity families named below. Direct jukebox-song and painting network
-  holders are intentionally omitted from persistent reconstruction because
-  vanilla `JukeboxSong.CODEC` and `PaintingVariant.CODEC` are named-only
-  `RegistryFixedCodec`s. Keep the remaining dispatch owned by the protocol
-  generated-metadata/handler descriptor catalog and the native persistent SNBT
-  encoder registry.
-  Remaining entity-specific constructor/default save values, unretained
-  LivingEntity impulse context, observable non-empty entity
-  inventory/container projection (including chest/hopper minecart `Items` /
-  loot-table contents, and chest boat/raft `Items` / loot-table contents),
-  non-default furnace minecart push/fuel fields,
-  spawner minecart server-loaded non-default delay/count/range fields and
-  codec-backed `SpawnData` / `SpawnPotentials`, command-block minecart
-  server-private non-default success/custom-name/last-execution fields, or
-  entity-specific age and equipment projection before it can be emitted.
 ## Item model range-dispatch and select projection
 
 Owner: `bbb-protocol` + `bbb-native` + `bbb-pack`
@@ -659,6 +636,22 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
 
 ## HUD and configuration
 
+- **Shift-local F3+I server-private entity save residuals.** Not needed on an
+  external client: ordinary F3+I queries the authoritative server tag, while
+  Shift-local capture can project only synchronized metadata, spawn/equipment
+  components, client-owned runtime, and protocol-backed references. Unretained
+  Living impulse context, mutable owner/target/RNG/timer fields, non-empty
+  entity inventories or loot tables, server-loaded spawner-minecart
+  `SpawnData` / `SpawnPotentials` and non-default counters, and command-block
+  minecart execution results have no clientbound owner. Reopen a field only
+  when a protocol or client-owned mutation path makes its exact value
+  observable.
+- **Shift-local F3+I fixed-registry holder reconstruction for direct
+  jukebox-song and painting values.** Not needed: vanilla
+  `JukeboxSong.CODEC` and `PaintingVariant.CODEC` are named-only
+  `RegistryFixedCodec`s, while their network holders may be direct and have no
+  persistent resource key. Unknown direct holders omit the containing value
+  rather than guessing an identity.
 - **F3+I non-default `PrimedTnt.explosionPower`, item-frame `dropChance` /
   `fixed`, and `SpectralArrow.duration`.** Not needed on an external client:
   vanilla 26.1 changes all four only in `readAdditionalSaveData`; none is in the

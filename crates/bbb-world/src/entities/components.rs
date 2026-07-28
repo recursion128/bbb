@@ -13,7 +13,7 @@ use super::{
     AbstractArrowRuntimeState, EntityBlockEffectMovements, EntityBlockEffects,
     EntityClientAnimationState, EntityInterpolationState, EntityPickBoundsState,
     EntityRuntimeReferenceState, EntityState, EntityVec3, HurtingProjectileState,
-    LivingEntityBrainState, ProjectileLifecycleState,
+    LivingEntityBrainState, MinecartFurnaceState, ProjectileLifecycleState,
     VANILLA_COMMAND_BLOCK_MINECART_COMMAND_DATA_ID,
     VANILLA_COMMAND_BLOCK_MINECART_LAST_OUTPUT_DATA_ID,
 };
@@ -201,6 +201,12 @@ impl Default for EntityMinecartCommandBlock {
             track_output: true,
         }
     }
+}
+
+/// Client-local `MinecartFurnace.fuel` and `push`.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub(crate) struct EntityMinecartFurnace {
+    pub(crate) state: MinecartFurnaceState,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -516,6 +522,14 @@ impl From<&EntityState> for EntityMinecartCommandBlock {
     }
 }
 
+impl From<&EntityState> for EntityMinecartFurnace {
+    fn from(state: &EntityState) -> Self {
+        Self {
+            state: state.minecart_furnace.unwrap_or_default(),
+        }
+    }
+}
+
 impl EntityMinecartLerp {
     pub(crate) fn queue(&mut self, steps: Vec<ProtocolMinecartStep>) -> bool {
         if self
@@ -610,6 +624,12 @@ impl EntityMinecartLerp {
 impl EntityMinecartCommandBlock {
     pub(crate) fn write_to_state(self, state: &mut EntityState) {
         state.minecart_command_block_track_output = Some(self.track_output);
+    }
+}
+
+impl EntityMinecartFurnace {
+    pub(crate) fn write_to_state(self, state: &mut EntityState) {
+        state.minecart_furnace = Some(self.state);
     }
 }
 

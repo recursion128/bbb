@@ -64,9 +64,9 @@ pub(crate) use components::{
     EntityAbstractArrowRuntime, EntityAttributes, EntityClientAnimations, EntityDamage,
     EntityEquipment, EntityHurtingProjectile, EntityIdentity, EntityInterpolationCollisionInput,
     EntityLeash, EntityLivingBrain, EntityLivingLifecycle, EntityMetadata,
-    EntityMinecartCommandBlock, EntityMinecartLerp, EntityMobEffects, EntityMount,
-    EntityPlayerSleep, EntityProjectileLifecycle, EntitySupportingBlock, EntityTransform,
-    EntityTransientEvents, LivingDeathWakeTransition,
+    EntityMinecartCommandBlock, EntityMinecartFurnace, EntityMinecartLerp, EntityMobEffects,
+    EntityMount, EntityPlayerSleep, EntityProjectileLifecycle, EntitySupportingBlock,
+    EntityTransform, EntityTransientEvents, LivingDeathWakeTransition,
 };
 pub(crate) use dimensions::vanilla_bounds_for_type;
 pub use dimensions::EntityPickBoundsState;
@@ -1004,6 +1004,17 @@ pub struct LivingEntityBrainState {
     pub last_woken: Option<i64>,
 }
 
+/// Client-owned numeric furnace-minecart state.
+///
+/// `MinecartFurnace.interact` mutates both values on the client before the
+/// server confirms the interaction. Its client tick does not decrement fuel or
+/// clear push; the synchronized fuel accessor is only the lit/smoke boolean.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+pub struct MinecartFurnaceState {
+    pub fuel: i32,
+    pub push: EntityVec3,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EntityState {
     pub id: i32,
@@ -1069,6 +1080,10 @@ pub struct EntityState {
     /// minecarts. `None` identifies every other entity family.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub minecart_command_block_track_output: Option<bool>,
+    /// Client-owned numeric fuel/push for a furnace minecart. The protocol's
+    /// fuel metadata is a separate visual boolean.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub minecart_furnace: Option<MinecartFurnaceState>,
     #[serde(default)]
     pub hurting_projectile: Option<HurtingProjectileState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

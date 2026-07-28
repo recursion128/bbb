@@ -691,3 +691,7 @@
   Living/存活门禁、三张 selected-pack sprite、精确进度裁剪和 debug-crosshair
   替换均已贯通 world/native/renderer，合同见
   `docs/archive/crosshair-entity-feedback-closeout-design.md`。
+- **2026-07-28（Shift-local F3+I 可观测实体保存最终闭环）**：反向审计补齐同步
+  默认值、箭矢/展示框/带箱载具空库存及可交互熔炉矿车 fuel/push；所有空处理器和
+  persistent component descriptor 均有机械裁决，合同见
+  `docs/archive/f3i-observable-entity-save-closeout-design.md`。

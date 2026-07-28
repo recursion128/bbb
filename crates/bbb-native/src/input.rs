@@ -6148,7 +6148,7 @@ fn debug_push_entity_additional_save_data(
             debug_push_command_block_minecart_additional_save_data(world, entity, fields);
         }
         VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID => {
-            debug_push_furnace_minecart_additional_save_data(fields);
+            debug_push_furnace_minecart_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID => {
             debug_push_container_minecart_additional_save_data(fields);
@@ -6414,8 +6414,18 @@ fn debug_push_entity_additional_save_data(
         _ if debug_entity_type_writes_abstract_boat_save_data(entity.entity_type_id) => {
             debug_push_abstract_boat_additional_save_data(world, entity, fields);
         }
-        _ => {}
+        _ => debug_push_default_entity_additional_save_data(entity, fields),
     }
+}
+
+fn debug_push_default_entity_additional_save_data(
+    _entity: &EntityState,
+    _fields: &mut Vec<String>,
+) {
+    // F3I_DECISION: the generated 26.1 coverage matrix audits every default-arm
+    // type as either parent-only or an empty/server-private concrete save
+    // override. Keep the arm explicit so new specialized handlers cannot be
+    // mistaken for an accidental fallthrough.
 }
 
 fn debug_push_living_entity_additional_save_data(
@@ -6586,13 +6596,21 @@ fn debug_push_abstract_boat_additional_save_data(
     fields: &mut Vec<String>,
 ) {
     debug_push_leash_additional_save_data(world, entity, fields);
+    if bbb_world::vanilla_entity_type_is_chest_boat(entity.entity_type_id) {
+        // Screen menus receive an independent SimpleContainer; the packet-created
+        // chest boat/raft retains its constructor-empty entity inventory.
+        fields.push("Items: []".to_string());
+    }
 }
 
 fn debug_entity_type_writes_abstract_boat_save_data(entity_type_id: i32) -> bool {
     bbb_world::vanilla_entity_type_is_boat(entity_type_id)
 }
 
-fn debug_push_evoker_fangs_additional_save_data(_fields: &mut Vec<String>) {}
+fn debug_push_evoker_fangs_additional_save_data(_fields: &mut Vec<String>) {
+    // F3I_DECISION: warmup delay and owner are server-private and never
+    // synchronized into the packet-created client entity.
+}
 
 fn debug_push_projectile_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
     let lifecycle = entity.projectile_lifecycle;
@@ -6643,25 +6661,27 @@ fn debug_push_abstract_arrow_additional_save_data(
             debug_snbt_block_state(&block_state.name, &block_state.properties)
         ));
     }
-    if let Some(shake) = entity.client_animations.arrow_shake {
-        fields.push(format!("shake: {}b", shake.shake_time));
-    }
-    if let Some(in_ground) = debug_entity_data_bool_present(entity, accessors.in_ground_data_id) {
-        fields.push(format!("inGround: {}", debug_snbt_bool(in_ground)));
-    }
+    fields.push(format!(
+        "shake: {}b",
+        entity
+            .client_animations
+            .arrow_shake
+            .map_or(0, |shake| shake.shake_time)
+    ));
+    let in_ground = debug_entity_data_bool_present(entity, accessors.in_ground_data_id)
+        .unwrap_or(accessors.in_ground_default);
+    fields.push(format!("inGround: {}", debug_snbt_bool(in_ground)));
     fields.push(format!("pickup: {}b", i8::from(pickup)));
     fields.push("damage: 2.0d".to_string());
-    if let Some(flags) = debug_entity_data_byte_present(entity, accessors.flags_data_id) {
-        fields.push(format!(
-            "crit: {}",
-            debug_snbt_bool(flags & accessors.crit_mask != 0)
-        ));
-    }
-    if let Some(pierce_level) =
-        debug_entity_data_byte_present(entity, accessors.pierce_level_data_id)
-    {
-        fields.push(format!("PierceLevel: {pierce_level}b"));
-    }
+    let flags = debug_entity_data_byte_present(entity, accessors.flags_data_id)
+        .unwrap_or(accessors.flags_default);
+    fields.push(format!(
+        "crit: {}",
+        debug_snbt_bool(flags & accessors.crit_mask != 0)
+    ));
+    let pierce_level = debug_entity_data_byte_present(entity, accessors.pierce_level_data_id)
+        .unwrap_or(accessors.pierce_level_default);
+    fields.push(format!("PierceLevel: {pierce_level}b"));
     // Arrow and SpectralArrow always use ARROW_HIT. A trident starts with
     // TRIDENT_HIT_GROUND and AbstractArrow.onHitBlock mutates it to ARROW_HIT.
     let sound_resource_id = if entity.entity_type_id == VANILLA_ENTITY_TYPE_TRIDENT_ID
@@ -8203,12 +8223,20 @@ fn debug_push_container_minecart_additional_save_data(fields: &mut Vec<String>) 
     fields.push("Items: []".to_string());
 }
 
-fn debug_push_furnace_minecart_additional_save_data(fields: &mut Vec<String>) {
-    // DATA_ID_FUEL is only a visual boolean. Numeric fuel and push are private,
-    // server-owned fields and stay at these constructor defaults on a client.
-    fields.push("PushX: 0.0d".to_string());
-    fields.push("PushZ: 0.0d".to_string());
-    fields.push("Fuel: 0s".to_string());
+fn debug_push_furnace_minecart_additional_save_data(
+    entity: &EntityState,
+    fields: &mut Vec<String>,
+) {
+    let state = entity.minecart_furnace.unwrap_or_default();
+    let Some(push_x) = debug_snbt_double(state.push.x) else {
+        return;
+    };
+    let Some(push_z) = debug_snbt_double(state.push.z) else {
+        return;
+    };
+    fields.push(format!("PushX: {push_x}"));
+    fields.push(format!("PushZ: {push_z}"));
+    fields.push(format!("Fuel: {}s", state.fuel as i16));
 }
 
 fn debug_push_hopper_minecart_additional_save_data(fields: &mut Vec<String>) {
@@ -8287,18 +8315,20 @@ fn debug_push_item_frame_additional_save_data(
         }
     }
     let facing = debug_hanging_facing_legacy_id(entity, accessors.direction_data_id);
-    if let Some(rotation) = debug_entity_data_int_present(entity, accessors.rotation_data_id) {
-        fields.push(format!("ItemRotation: {}b", rotation.rem_euclid(8) as i8));
-    }
+    let rotation = debug_entity_data_int_present(entity, accessors.rotation_data_id)
+        .unwrap_or(accessors.rotation_default);
+    fields.push(format!("ItemRotation: {}b", rotation.rem_euclid(8) as i8));
+    // These private fields have no client mutation path; packet-created frames
+    // retain the constructor values that Vanilla writes unconditionally.
+    fields.push("ItemDropChance: 1.0f".to_string());
     fields.push(format!("Facing: {facing}b"));
-    if let Some(flags) =
-        debug_entity_data_byte_present(entity, entity_accessors.shared_flags_data_id)
-    {
-        fields.push(format!(
-            "Invisible: {}",
-            debug_snbt_bool(flags & entity_accessors.invisible_mask != 0)
-        ));
-    }
+    let flags = debug_entity_data_byte_present(entity, entity_accessors.shared_flags_data_id)
+        .unwrap_or(entity_accessors.shared_flags_default);
+    fields.push(format!(
+        "Invisible: {}",
+        debug_snbt_bool(flags & entity_accessors.invisible_mask != 0)
+    ));
+    fields.push("Fixed: 0b".to_string());
 }
 
 fn debug_hanging_facing_legacy_id(entity: &EntityState, direction_data_id: u8) -> i32 {
@@ -8394,7 +8424,10 @@ fn debug_push_wither_skull_additional_save_data(entity: &EntityState, fields: &m
     fields.push(format!("dangerous: {}", debug_snbt_bool(dangerous)));
 }
 
-fn debug_push_shulker_bullet_additional_save_data(_fields: &mut Vec<String>) {}
+fn debug_push_shulker_bullet_additional_save_data(_fields: &mut Vec<String>) {
+    // F3I_DECISION: target, direction, flight steps, and target deltas are
+    // server-private navigation state.
+}
 
 fn debug_push_experience_orb_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
     let Some((data_id, default)) =
@@ -8517,14 +8550,14 @@ fn debug_push_mob_additional_save_data(
     else {
         return;
     };
-    if let Some(flags) = debug_entity_data_byte_present(entity, accessors.flags_data_id) {
-        fields.push(format!(
-            "LeftHanded: {}",
-            debug_snbt_bool(flags & accessors.left_handed_mask != 0)
-        ));
-        if flags & accessors.no_ai_mask != 0 {
-            fields.push("NoAI: 1b".to_string());
-        }
+    let flags = debug_entity_data_byte_present(entity, accessors.flags_data_id)
+        .unwrap_or(accessors.flags_default);
+    fields.push(format!(
+        "LeftHanded: {}",
+        debug_snbt_bool(flags & accessors.left_handed_mask != 0)
+    ));
+    if flags & accessors.no_ai_mask != 0 {
+        fields.push("NoAI: 1b".to_string());
     }
 }
 
@@ -8546,35 +8579,39 @@ fn debug_push_leash_additional_save_data(
 }
 
 fn debug_push_ageable_mob_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    if let Some((baby_data_id, _default)) =
+    if let Some((baby_data_id, default)) =
         vanilla_entity_metadata_baby_accessor_for_entity_type(entity.entity_type_id)
     {
-        if let Some(is_baby) = debug_entity_data_bool_present(entity, baby_data_id) {
-            let age = if is_baby {
-                AGEABLE_MOB_CLIENT_BABY_AGE
-            } else {
-                AGEABLE_MOB_CLIENT_ADULT_AGE
-            };
-            fields.push(format!("Age: {age}"));
-        }
+        let is_baby = debug_entity_data_bool_present(entity, baby_data_id).unwrap_or(default);
+        let age = if is_baby {
+            AGEABLE_MOB_CLIENT_BABY_AGE
+        } else {
+            AGEABLE_MOB_CLIENT_ADULT_AGE
+        };
+        fields.push(format!("Age: {age}"));
     }
     debug_push_age_locked_additional_save_data(entity, fields);
 }
 
 fn debug_push_age_locked_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let Some((data_id, _default)) =
+    let Some((data_id, default)) =
         vanilla_entity_metadata_age_locked_accessor_for_entity_type(entity.entity_type_id)
     else {
         return;
     };
-    if let Some(age_locked) = debug_entity_data_bool_present(entity, data_id) {
-        fields.push(format!("AgeLocked: {}", debug_snbt_bool(age_locked)));
-    }
+    let age_locked = debug_entity_data_bool_present(entity, data_id).unwrap_or(default);
+    fields.push(format!("AgeLocked: {}", debug_snbt_bool(age_locked)));
 }
 
-fn debug_push_animal_additional_save_data(_fields: &mut Vec<String>) {}
+fn debug_push_animal_additional_save_data(_fields: &mut Vec<String>) {
+    // F3I_DECISION: love time and cause are server-owned breeding state.
+}
 
-fn debug_push_allay_additional_save_data(_fields: &mut Vec<String>) {}
+fn debug_push_allay_additional_save_data(_fields: &mut Vec<String>) {
+    // F3I_DECISION: Allay inventory, vibration data, and duplication cooldown
+    // are server-private; observable packed Brain memories are emitted by the
+    // LivingEntity parent projection.
+}
 
 fn debug_push_abstract_horse_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
     let Some(accessors) =
@@ -8582,33 +8619,37 @@ fn debug_push_abstract_horse_additional_save_data(entity: &EntityState, fields: 
     else {
         return;
     };
-    if let Some(flags) = debug_entity_data_byte_present(entity, accessors.flags_data_id) {
-        fields.push(format!(
-            "EatingHaystack: {}",
-            debug_snbt_bool(flags & accessors.eating_mask != 0)
-        ));
-        fields.push(format!(
-            "Bred: {}",
-            debug_snbt_bool(flags & accessors.bred_mask != 0)
-        ));
-        fields.push(format!(
-            "Tame: {}",
-            debug_snbt_bool(flags & accessors.tame_mask != 0)
-        ));
-    }
+    let flags = debug_entity_data_byte_present(entity, accessors.flags_data_id)
+        .unwrap_or(accessors.flags_default);
+    fields.push(format!(
+        "EatingHaystack: {}",
+        debug_snbt_bool(flags & accessors.eating_mask != 0)
+    ));
+    fields.push(format!(
+        "Bred: {}",
+        debug_snbt_bool(flags & accessors.bred_mask != 0)
+    ));
+    fields.push(format!(
+        "Tame: {}",
+        debug_snbt_bool(flags & accessors.tame_mask != 0)
+    ));
 }
 
 fn debug_push_abstract_chested_horse_additional_save_data(
     entity: &EntityState,
     fields: &mut Vec<String>,
 ) {
-    let Some((chest_data_id, _)) =
+    let Some((chest_data_id, default)) =
         vanilla_entity_metadata_chested_horse_chest_accessor_for_entity_type(entity.entity_type_id)
     else {
         return;
     };
-    if let Some(has_chest) = debug_entity_data_bool_present(entity, chest_data_id) {
-        fields.push(format!("ChestedHorse: {}", debug_snbt_bool(has_chest)));
+    let has_chest = debug_entity_data_bool_present(entity, chest_data_id).unwrap_or(default);
+    fields.push(format!("ChestedHorse: {}", debug_snbt_bool(has_chest)));
+    if has_chest {
+        // Horse inventory is independent from the menu container and is never
+        // filled by a clientbound entity path.
+        fields.push("Items: []".to_string());
     }
 }
 
@@ -8622,7 +8663,9 @@ fn debug_push_horse_additional_save_data(entity: &EntityState, fields: &mut Vec<
     fields.push(format!("Variant: {variant}"));
 }
 
-fn debug_push_skeleton_horse_additional_save_data(_fields: &mut Vec<String>) {}
+fn debug_push_skeleton_horse_additional_save_data(_fields: &mut Vec<String>) {
+    // F3I_DECISION: trap flag and trap time are server-private.
+}
 
 fn debug_push_camel_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
     let Some((last_pose_change_tick_data_id, last_pose_change_tick_default)) =
@@ -9230,7 +9273,9 @@ fn debug_push_bogged_additional_save_data(entity: &EntityState, fields: &mut Vec
     fields.push(format!("sheared: {}", debug_snbt_bool(sheared)));
 }
 
-fn debug_push_endermite_additional_save_data(_fields: &mut Vec<String>) {}
+fn debug_push_endermite_additional_save_data(_fields: &mut Vec<String>) {
+    // F3I_DECISION: lifetime and player-spawned provenance are server-private.
+}
 
 fn debug_push_end_crystal_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
     let Some(accessors) =
@@ -9251,7 +9296,9 @@ fn debug_push_end_crystal_additional_save_data(entity: &EntityState, fields: &mu
     fields.push(format!("ShowBottom: {}", debug_snbt_bool(show_bottom)));
 }
 
-fn debug_push_ghast_additional_save_data(_fields: &mut Vec<String>) {}
+fn debug_push_ghast_additional_save_data(_fields: &mut Vec<String>) {
+    // F3I_DECISION: explosion power is server-private.
+}
 
 fn debug_push_glow_squid_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
     let Some((data_id, default)) =
@@ -9265,7 +9312,9 @@ fn debug_push_glow_squid_additional_save_data(entity: &EntityState, fields: &mut
     fields.push(format!("DarkTicksRemaining: {dark_ticks}"));
 }
 
-fn debug_push_happy_ghast_additional_save_data(_fields: &mut Vec<String>) {}
+fn debug_push_happy_ghast_additional_save_data(_fields: &mut Vec<String>) {
+    // F3I_DECISION: the still timeout is server-private.
+}
 
 fn debug_push_hoglin_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
     let Some((data_id, default)) =
@@ -9300,14 +9349,13 @@ fn debug_push_abstract_piglin_additional_save_data(entity: &EntityState, fields:
 }
 
 fn debug_push_piglin_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let Some((data_id, _default)) =
+    let Some((data_id, default)) =
         bbb_world::vanilla_entity_metadata_baby_accessor_for_entity_type(entity.entity_type_id)
     else {
         return;
     };
-    if let Some(is_baby) = debug_entity_data_bool_present(entity, data_id) {
-        fields.push(format!("IsBaby: {}", debug_snbt_bool(is_baby)));
-    }
+    let is_baby = debug_entity_data_bool_present(entity, data_id).unwrap_or(default);
+    fields.push(format!("IsBaby: {}", debug_snbt_bool(is_baby)));
 }
 
 fn debug_push_interaction_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
@@ -9347,7 +9395,9 @@ fn debug_push_iron_golem_additional_save_data(entity: &EntityState, fields: &mut
     ));
 }
 
-fn debug_push_neutral_mob_additional_save_data(_fields: &mut Vec<String>) {}
+fn debug_push_neutral_mob_additional_save_data(_fields: &mut Vec<String>) {
+    // F3I_DECISION: generic anger time and target UUID are server-private.
+}
 
 fn debug_push_neutral_mob_additional_save_data_with_end_time(
     fields: &mut Vec<String>,
@@ -9366,9 +9416,14 @@ fn debug_push_ocelot_additional_save_data(entity: &EntityState, fields: &mut Vec
     fields.push(format!("Trusting: {}", debug_snbt_bool(trusting)));
 }
 
-fn debug_push_patrolling_monster_additional_save_data(_fields: &mut Vec<String>) {}
+fn debug_push_patrolling_monster_additional_save_data(_fields: &mut Vec<String>) {
+    // F3I_DECISION: patrol target, leader, and patrolling flags are
+    // server-private.
+}
 
-fn debug_push_inventory_carrier_additional_save_data(_fields: &mut Vec<String>) {}
+fn debug_push_inventory_carrier_additional_save_data(_fields: &mut Vec<String>) {
+    // F3I_DECISION: the carrier inventory is not synchronized to the entity.
+}
 
 fn debug_push_abstract_villager_additional_save_data(fields: &mut Vec<String>) {
     debug_push_inventory_carrier_additional_save_data(fields);
@@ -9467,7 +9522,9 @@ fn debug_salmon_variant_name(variant: i32) -> &'static str {
     }
 }
 
-fn debug_push_skeleton_additional_save_data(_fields: &mut Vec<String>) {}
+fn debug_push_skeleton_additional_save_data(_fields: &mut Vec<String>) {
+    // F3I_DECISION: stray-conversion time is server-private.
+}
 
 fn debug_push_tadpole_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
     debug_push_age_locked_additional_save_data(entity, fields);
@@ -9493,9 +9550,13 @@ fn debug_push_tropical_fish_additional_save_data(entity: &EntityState, fields: &
     fields.push(format!("Variant: {variant}"));
 }
 
-fn debug_push_raider_additional_save_data(_fields: &mut Vec<String>) {}
+fn debug_push_raider_additional_save_data(_fields: &mut Vec<String>) {
+    // F3I_DECISION: raid membership and wave state are server-private.
+}
 
-fn debug_push_spellcaster_illager_additional_save_data(_fields: &mut Vec<String>) {}
+fn debug_push_spellcaster_illager_additional_save_data(_fields: &mut Vec<String>) {
+    // F3I_DECISION: remaining spell ticks are server-private.
+}
 
 fn debug_push_ravager_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
     let ravager = entity.client_animations.ravager;
@@ -9526,7 +9587,9 @@ fn debug_push_wither_additional_save_data(entity: &EntityState, fields: &mut Vec
     fields.push(format!("Invul: {invulnerable_ticks}"));
 }
 
-fn debug_push_wandering_trader_additional_save_data(_fields: &mut Vec<String>) {}
+fn debug_push_wandering_trader_additional_save_data(_fields: &mut Vec<String>) {
+    // F3I_DECISION: despawn delay and wander target are server-private.
+}
 
 fn debug_push_zombie_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
     let Some(accessors) =

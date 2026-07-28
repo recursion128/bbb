@@ -1671,9 +1671,13 @@ impl WorldStore {
             LocalTargetUsePrediction::Result(LocalInteractionResult::Success(
                 LocalInteractionSuccess::client_item_interaction(),
             ))
-        } else if let Some(result) =
-            self.predict_local_minecart_interact(owner, entity_id, secondary_use_active)
-        {
+        } else if let Some(result) = self.predict_local_minecart_interact(
+            owner,
+            entity_id,
+            hand,
+            held_item_id,
+            secondary_use_active,
+        ) {
             result
         } else if let Some(result) = self.predict_local_boat_interact(
             owner,
@@ -1878,9 +1882,11 @@ impl WorldStore {
     }
 
     fn predict_local_minecart_interact(
-        &self,
+        &mut self,
         owner: &'static str,
         entity_id: i32,
+        hand: InteractionHand,
+        held_item_id: Option<i32>,
         secondary_use_active: bool,
     ) -> Option<LocalTargetUsePrediction> {
         let success = || {
@@ -1896,9 +1902,44 @@ impl WorldStore {
                     success()
                 },
             ),
-            VANILLA_MINECART_CONTAINER_INTERACT_OWNER
-            | VANILLA_MINECART_CHEST_INTERACT_OWNER
-            | VANILLA_MINECART_FURNACE_INTERACT_OWNER => Some(success()),
+            VANILLA_MINECART_CONTAINER_INTERACT_OWNER | VANILLA_MINECART_CHEST_INTERACT_OWNER => {
+                Some(success())
+            }
+            VANILLA_MINECART_FURNACE_INTERACT_OWNER => {
+                let Some(item_id) = held_item_id else {
+                    return Some(success());
+                };
+                let Some(fuel_items) = self.registry_holder_ids_for_tag(
+                    "minecraft:item",
+                    "minecraft:furnace_minecart_fuel",
+                ) else {
+                    return Some(LocalTargetUsePrediction::UnsupportedEntityInteract(owner));
+                };
+                if !fuel_items.contains(&item_id) {
+                    return Some(success());
+                }
+                let Some(player_position) = self.local_player_pose().map(|pose| pose.position)
+                else {
+                    return Some(LocalTargetUsePrediction::UnsupportedEntityInteract(owner));
+                };
+                match self
+                    .entities
+                    .add_client_furnace_minecart_fuel(entity_id, player_position)
+                {
+                    Some(true) => {
+                        if !self.consume_local_item_in_hand(hand, 1) {
+                            return Some(LocalTargetUsePrediction::UnsupportedEntityInteract(
+                                owner,
+                            ));
+                        }
+                        Some(success())
+                    }
+                    Some(false) => Some(success()),
+                    None => Some(LocalTargetUsePrediction::UnknownEntityType(
+                        self.entity_type_id(entity_id),
+                    )),
+                }
+            }
             VANILLA_MINECART_COMMAND_BLOCK_INTERACT_OWNER => {
                 Some(if self.local_player_can_use_gamemaster_blocks() {
                     success()
@@ -3195,17 +3236,18 @@ mod tests {
             VanillaItemInteractLivingEntityOverride, VanillaItemUseOnOverride,
             VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_ARMOR_STAND_ID, VANILLA_ITEM_BONE_MEAL_ID,
             VANILLA_ITEM_BRUSH_ID, VANILLA_ITEM_BUCKET_ID, VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID,
-            VANILLA_ITEM_CHORUS_FRUIT_ID, VANILLA_ITEM_COD_BUCKET_ID, VANILLA_ITEM_COMPASS_ID,
-            VANILLA_ITEM_DEBUG_STICK_ID, VANILLA_ITEM_ENDER_EYE_ID, VANILLA_ITEM_END_CRYSTAL_ID,
-            VANILLA_ITEM_FILLED_MAP_ID, VANILLA_ITEM_FIREWORK_ROCKET_ID,
-            VANILLA_ITEM_FIRE_CHARGE_ID, VANILLA_ITEM_FLINT_AND_STEEL_ID,
-            VANILLA_ITEM_FROGSPAWN_ID, VANILLA_ITEM_GLASS_BOTTLE_ID,
-            VANILLA_ITEM_GLOW_ITEM_FRAME_ID, VANILLA_ITEM_GOAT_HORN_ID, VANILLA_ITEM_HONEYCOMB_ID,
-            VANILLA_ITEM_IRON_AXE_ID, VANILLA_ITEM_IRON_HOE_ID, VANILLA_ITEM_IRON_SHOVEL_ID,
-            VANILLA_ITEM_ITEM_FRAME_ID, VANILLA_ITEM_LAVA_BUCKET_ID, VANILLA_ITEM_LEAD_ID,
-            VANILLA_ITEM_LILY_PAD_ID, VANILLA_ITEM_MINECART_ID, VANILLA_ITEM_NAME_TAG_ID,
-            VANILLA_ITEM_OAK_BOAT_ID, VANILLA_ITEM_PAINTING_ID, VANILLA_ITEM_POPPY_ID,
-            VANILLA_ITEM_POTION_ID, VANILLA_ITEM_POWDER_SNOW_BUCKET_ID, VANILLA_ITEM_RED_DYE_ID,
+            VANILLA_ITEM_CHORUS_FRUIT_ID, VANILLA_ITEM_COAL_ID, VANILLA_ITEM_COD_BUCKET_ID,
+            VANILLA_ITEM_COMPASS_ID, VANILLA_ITEM_DEBUG_STICK_ID, VANILLA_ITEM_ENDER_EYE_ID,
+            VANILLA_ITEM_END_CRYSTAL_ID, VANILLA_ITEM_FILLED_MAP_ID,
+            VANILLA_ITEM_FIREWORK_ROCKET_ID, VANILLA_ITEM_FIRE_CHARGE_ID,
+            VANILLA_ITEM_FLINT_AND_STEEL_ID, VANILLA_ITEM_FROGSPAWN_ID,
+            VANILLA_ITEM_GLASS_BOTTLE_ID, VANILLA_ITEM_GLOW_ITEM_FRAME_ID,
+            VANILLA_ITEM_GOAT_HORN_ID, VANILLA_ITEM_HONEYCOMB_ID, VANILLA_ITEM_IRON_AXE_ID,
+            VANILLA_ITEM_IRON_HOE_ID, VANILLA_ITEM_IRON_SHOVEL_ID, VANILLA_ITEM_ITEM_FRAME_ID,
+            VANILLA_ITEM_LAVA_BUCKET_ID, VANILLA_ITEM_LEAD_ID, VANILLA_ITEM_LILY_PAD_ID,
+            VANILLA_ITEM_MINECART_ID, VANILLA_ITEM_NAME_TAG_ID, VANILLA_ITEM_OAK_BOAT_ID,
+            VANILLA_ITEM_PAINTING_ID, VANILLA_ITEM_POPPY_ID, VANILLA_ITEM_POTION_ID,
+            VANILLA_ITEM_POWDER_SNOW_BUCKET_ID, VANILLA_ITEM_RED_DYE_ID,
             VANILLA_ITEM_RED_MUSHROOM_ID, VANILLA_ITEM_SADDLE_ID, VANILLA_ITEM_SHEARS_ID,
             VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_STONE_ID, VANILLA_ITEM_SWEET_BERRIES_ID,
             VANILLA_ITEM_TRIDENT_ID, VANILLA_ITEM_TYPES, VANILLA_ITEM_WATER_BUCKET_ID,
@@ -9561,6 +9603,83 @@ mod tests {
                 success
             );
         }
+
+        world.set_local_player_pose(crate::LocalPlayerPoseState {
+            position: Vec3d {
+                x: -2.0,
+                y: 5.0,
+                z: 3.0,
+            },
+            ..crate::LocalPlayerPoseState::default()
+        });
+        world.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: "minecraft:item".to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: "minecraft:furnace_minecart_fuel".to_string(),
+                    entries: vec![VANILLA_ITEM_COAL_ID],
+                }],
+            }],
+        });
+        world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: ItemStackSummary {
+                count: 9,
+                ..stack(VANILLA_ITEM_COAL_ID)
+            },
+        });
+        for expected_fuel in (3_600..=28_800).step_by(3_600) {
+            assert_eq!(
+                world.predict_local_entity_interaction(13, InteractionHand::MainHand, false),
+                success
+            );
+            let furnace = world
+                .probe_entity(13)
+                .and_then(|entity| entity.minecart_furnace)
+                .expect("furnace minecart state");
+            assert_eq!(furnace.fuel, expected_fuel);
+            assert_eq!(
+                furnace.push,
+                crate::EntityVec3 {
+                    x: 2.0,
+                    y: 0.0,
+                    z: -3.0,
+                }
+            );
+        }
+        assert_eq!(player_inventory_item(&world, 0).count, 1);
+        assert_eq!(
+            world.predict_local_entity_interaction(13, InteractionHand::MainHand, false),
+            success
+        );
+        assert_eq!(
+            world
+                .probe_entity(13)
+                .and_then(|entity| entity.minecart_furnace)
+                .expect("furnace minecart state")
+                .fuel,
+            28_800
+        );
+        assert_eq!(player_inventory_item(&world, 0).count, 1);
+
+        let serialized = serde_json::to_value(&world).expect("serialize furnace minecart state");
+        let mut restored: WorldStore =
+            serde_json::from_value(serialized).expect("restore furnace minecart state");
+        assert_eq!(
+            restored
+                .probe_entity(13)
+                .and_then(|entity| entity.minecart_furnace)
+                .expect("restored furnace minecart state")
+                .fuel,
+            28_800
+        );
+        add_entity(&mut restored, 13, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID);
+        assert_eq!(
+            restored
+                .probe_entity(13)
+                .and_then(|entity| entity.minecart_furnace),
+            Some(crate::MinecartFurnaceState::default())
+        );
 
         assert_eq!(
             world.predict_local_entity_interaction(14, InteractionHand::MainHand, false),
