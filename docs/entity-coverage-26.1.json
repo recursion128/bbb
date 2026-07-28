@@ -7757,18 +7757,30 @@
       "implementation": [
         "crates/bbb-native/src/input.rs#fn debug_local_entity_pretty_snbt",
         "crates/bbb-native/src/input.rs#fn debug_push_entity_additional_save_data",
+        "crates/bbb-native/src/input.rs#fn debug_push_abstract_arrow_additional_save_data",
+        "crates/bbb-native/src/input.rs#fn debug_push_furnace_minecart_additional_save_data",
+        "crates/bbb-native/src/input.rs#fn debug_push_item_frame_additional_save_data",
         "crates/bbb-native/src/input.rs#fn debug_push_mannequin_additional_save_data",
         "crates/bbb-native/src/input.rs#fn debug_push_display_additional_save_data",
+        "crates/bbb-native/src/input/component_patch.rs#static PERSISTENT_SNBT_ENCODERS",
         "crates/bbb-native/src/input.rs#fn debug_copy_recreate_entity_command"
       ],
       "tests": [
         "crates/bbb-native/src/input/tests.rs#f3_i_entity_disappearing_before_matching_response_does_not_copy",
+        "crates/bbb-native/src/input/tests.rs#fn debug_save_empty_handlers_keep_explicit_observability_decisions",
+        "crates/bbb-native/src/input/tests.rs#fn shift_f3_i_with_permission_copies_local_furnace_minecart_save_nbt_to_clipboard",
+        "crates/bbb-native/src/input/component_patch.rs#fn encoder_registry_is_unique_sorted_and_persistent",
+        "crates/bbb-world/src/entities/schema/generated_26_1.rs#fn production_debug_save_data_does_not_restore_class_type_memberships",
         "crates/bbb-native/src/input/tests.rs#fn villager_local_save_projects_synced_villager_data_and_finalized_flag",
         "crates/bbb-native/src/input/tests.rs#fn block_display_local_save_projects_display_defaults_and_synced_block_state",
         "crates/bbb-native/src/input/tests.rs#fn mannequin_local_save_projects_synced_profile_layers_pose_and_description"
       ],
       "vanilla": [
         "vanilla:net/minecraft/world/entity/Entity.java#saveWithoutId",
+        "vanilla:net/minecraft/world/entity/projectile/arrow/AbstractArrow.java#protected void addAdditionalSaveData",
+        "vanilla:net/minecraft/world/entity/vehicle/minecart/MinecartFurnace.java#public InteractionResult interact",
+        "vanilla:net/minecraft/world/entity/decoration/ItemFrame.java#protected void addAdditionalSaveData",
+        "vanilla:net/minecraft/world/entity/animal/equine/AbstractHorse.java#protected void addAdditionalSaveData",
         "vanilla:net/minecraft/world/entity/decoration/Mannequin.java#addAdditionalSaveData",
         "vanilla:net/minecraft/world/entity/Display.java#addAdditionalSaveData"
       ]
