@@ -127,3 +127,45 @@ fn warden_heartbeat_reaches_native_audio_with_vanilla_mix() {
         .next()
         .is_none());
 }
+
+#[test]
+fn ender_dragon_flap_reaches_native_audio_with_vanilla_mix() {
+    let mut world = WorldStore::new();
+    world.apply_add_entity(protocol_add_entity_with_type(
+        164,
+        VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
+    ));
+    // The generated default HOVERING phase advances flapTime by 0.1. One full
+    // ten-tick phase cycle contains exactly one
+    // `cos(old) <= -0.3 && cos(current) >= -0.3` rising crossing.
+    world.advance_entity_client_animations(10);
+
+    let mut batches = RecordingParticleBatches::default();
+    let mut particles = RecordingParticleSink::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+    let mut particle_events: Option<&mut dyn ParticleEventSink> = Some(&mut particles);
+    let mut audio_events: Option<&mut dyn crate::audio_runtime::AudioEventSink> = Some(&mut audio);
+    crate::runtime::submit_entity_client_tick_effects(
+        &mut batches,
+        &mut world,
+        &mut particle_events,
+        &mut audio_events,
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    let [AudioCommand::PlayPositionedSound(sound)] = audio.commands.as_slice() else {
+        panic!("expected one positioned dragon flap: {:?}", audio.commands);
+    };
+    assert_eq!(sound.sound.event_id, "minecraft:entity.ender_dragon.flap");
+    assert_eq!(sound.category, AudioCategory::Hostile);
+    assert_eq!(sound.position, [1.0, 64.0, -2.0]);
+    assert_eq!(sound.packet_volume, 5.0);
+    assert!((0.8..1.1).contains(&sound.packet_pitch));
+    assert!(particles.entity_client_movement_states.is_empty());
+    assert_eq!(batches.batches.len(), 1);
+    assert!(batches.batches[0].commands.is_empty());
+    assert!(world
+        .drain_entity_client_movement_effect_states()
+        .next()
+        .is_none());
+}

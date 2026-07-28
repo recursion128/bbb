@@ -16,7 +16,7 @@ use crate::WorldStore;
 use super::dimensions::{entity_data_pose, vanilla_living_entity_type};
 use super::dragon::{
     vanilla_ender_dragon_phase_is_landing_or_takeoff, DragonFlightHistorySample,
-    EnderDragonAnimationState,
+    EnderDragonAnimationState, EnderDragonClientSoundTriggers,
 };
 use super::renderer_catalog::vanilla_entity_renderer_uses_abstract_horse_renderer;
 use super::schema::{
@@ -284,6 +284,9 @@ const NAUTILUS_CLIENT_RANDOM_SALT: u64 = 0x6e61_7574_696c_7573;
 /// Client-local `Slime.random` cursor for the landing particle ring followed by
 /// the two-float squish pitch roll.
 const SLIME_CLIENT_RANDOM_SALT: u64 = 0x736c_696d_655f_726e;
+/// Shared client-local `EnderDragon.random` cursor for flap, ambient growl,
+/// sitting-attack growl, and death-particle draws in Java tick order.
+const ENDER_DRAGON_CLIENT_RANDOM_SALT: u64 = 0x6472_6167_6f6e_5f72;
 /// Client-local Warden RNG cursor for `LivingEntity.getVoicePitch()` on each
 /// heartbeat. The server does not synchronize the entity RNG seed.
 const WARDEN_CLIENT_RANDOM_SALT: u64 = 0x7761_7264_656e_5f72;
@@ -322,6 +325,9 @@ pub(crate) struct EntityClientTickParticleTriggers {
     /// Vanilla `Warden.tick` emits this on the same edge that resets the heart
     /// animation, after its silent gate and two-float voice-pitch draw.
     pub(crate) warden_heartbeat_pitch: Option<f32>,
+    /// Ordered `EnderDragon.aiStep` sound edges. Flap always precedes the
+    /// mutually-exclusive ambient or sitting-attack growl.
+    pub(crate) ender_dragon_sounds: EnderDragonClientSoundTriggers,
     /// Vanilla Enderman/Endermite `aiStep`: two portal particles per tick.
     pub(crate) ender_portal: Option<[EnderAmbientParticleOffset; 2]>,
     /// Vanilla moving, submerged Guardian: two bubbles behind its view vector.
@@ -632,6 +638,10 @@ pub struct EntityClientAnimationState {
     /// generation isolation and omitted from the stable probe shape.
     #[serde(skip)]
     pub(crate) warden_client_random_seed: Option<u64>,
+    /// Shared client-local Ender Dragon RNG cursor. It preserves the sound and
+    /// death-particle draw sequence without exposing a fabricated wire seed.
+    #[serde(skip)]
+    pub(crate) ender_dragon_client_random_seed: Option<u64>,
     /// Client-local Camel voice-pitch cursor. Vanilla does not synchronize the
     /// entity RandomSource; the retained cursor preserves the two-float pitch
     /// distribution and old-generation isolation without a parallel owner.
@@ -4634,6 +4644,13 @@ impl EntityClientAnimationState {
                     WARDEN_CLIENT_RANDOM_SALT ^ entity_type_id as u64,
                 ) as i64)
             });
+        self.ender_dragon_client_random_seed =
+            (entity_type_id == VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID).then(|| {
+                java_random_seed(spawn_random_bits(
+                    uuid,
+                    ENDER_DRAGON_CLIENT_RANDOM_SALT ^ entity_type_id as u64,
+                ) as i64)
+            });
         self.camel_voice_random_seed =
             vanilla_entity_metadata_type_is_camel(entity_type_id).then(|| {
                 java_random_seed(spawn_random_bits(
@@ -7059,10 +7076,23 @@ impl EntityClientAnimationState {
                     .get_or_insert_with(WitherHeadRotationsState::default)
                     .advance_client_tick(targets);
             }
-            VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID => self
-                .ender_dragon
-                .get_or_insert_with(EnderDragonAnimationState::default)
-                .advance_client_tick(transform),
+            VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID => {
+                let random_seed = self.ender_dragon_client_random_seed.get_or_insert_with(|| {
+                    java_random_seed(
+                        i64::from(entity_id).wrapping_add(ENDER_DRAGON_CLIENT_RANDOM_SALT as i64),
+                    )
+                });
+                particle_triggers.ender_dragon_sounds = self
+                    .ender_dragon
+                    .get_or_insert_with(EnderDragonAnimationState::default)
+                    .advance_client_tick(
+                        transform,
+                        is_silent,
+                        random_seed,
+                        java_random_next_float,
+                        java_random_next_int_bound,
+                    );
+            }
             _ if vanilla_entity_type_is_squid(entity_type_id) => self
                 .squid
                 .get_or_insert_with(|| {

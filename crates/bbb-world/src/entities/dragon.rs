@@ -103,6 +103,22 @@ pub struct EnderDragonAnimationState {
     pub no_ai: bool,
     #[serde(default)]
     pub flight_history: DragonFlightHistoryState,
+    /// Vanilla `EnderDragon.growlTime`, initialized to 100 and decremented only
+    /// by the audible, non-sitting client branch. It is client-private runtime
+    /// state, so stable probes omit it while retained generations still clone it.
+    #[serde(skip)]
+    pub(crate) growl_time: Option<i32>,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub(crate) struct EnderDragonClientSoundTriggers {
+    /// `Entity.processFlappingMovement` / `EnderDragon.onFlap`, before `aiStep`
+    /// advances either flap endpoint.
+    pub(crate) flap_pitch: Option<f32>,
+    /// Either the non-sitting ambient growl or
+    /// `DragonSittingAttackingPhase.doClientTick`; those branches are mutually
+    /// exclusive in one tick.
+    pub(crate) growl_pitch: Option<f32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -136,6 +152,7 @@ impl Default for EnderDragonAnimationState {
             flap_time: 0.0,
             no_ai: false,
             flight_history: DragonFlightHistoryState::default(),
+            growl_time: None,
         }
     }
 }
@@ -226,10 +243,46 @@ impl EnderDragonAnimationState {
     /// sitting); a no-AI dragon pins `flapTime = 0.5` instead of recording. The halved in-wall rate
     /// cannot occur here: `EnderDragon.inWall` is only ever assigned inside the `ServerLevel` phase
     /// branch, so a remote client always reads its `false` default.
-    pub(crate) fn advance_client_tick(&mut self, transform: EntityTransform) {
+    pub(crate) fn advance_client_tick(
+        &mut self,
+        transform: EntityTransform,
+        is_silent: bool,
+        random_seed: &mut u64,
+        next_float: fn(&mut u64) -> f32,
+        next_int_bound: fn(&mut u64, i32) -> i32,
+    ) -> EnderDragonClientSoundTriggers {
+        let mut sounds = EnderDragonClientSoundTriggers::default();
+
+        // Vanilla `EnderDragon.aiStep` starts with
+        // `processFlappingMovement()`, so the crossing test reads the previous
+        // tick's endpoints and the silent gate precedes the entity RNG draw.
+        let flap = (self.flap_time * std::f32::consts::TAU).cos();
+        let old_flap = (self.o_flap_time * std::f32::consts::TAU).cos();
+        if old_flap <= -0.3 && flap >= -0.3 && !is_silent {
+            sounds.flap_pitch = Some(0.8 + next_float(random_seed) * 0.3);
+        }
+
+        // The short-circuit order is observable: silent or sitting dragons do
+        // not decrement the countdown. A firing edge consumes pitch first,
+        // then the reset's bounded integer from the same entity RNG.
+        if !is_silent && !self.is_sitting() {
+            let growl_time = self.growl_time.get_or_insert(100);
+            *growl_time -= 1;
+            if *growl_time < 0 {
+                sounds.growl_pitch = Some(0.8 + next_float(random_seed) * 0.3);
+                *growl_time = 200 + next_int_bound(random_seed, 200);
+            }
+        }
+
         self.o_flap_time = self.flap_time;
         if self.dragon_dying {
-            return;
+            // Vanilla's death explosion position consumes three floats after
+            // the two sound branches. The renderer owns the visual, but this
+            // canonical cursor must still preserve later sound ordering.
+            next_float(random_seed);
+            next_float(random_seed);
+            next_float(random_seed);
+            return sounds;
         }
         let delta = transform.delta_movement;
         let horizontal = ((delta.x * delta.x + delta.z * delta.z).sqrt()) as f32;
@@ -244,7 +297,14 @@ impl EnderDragonAnimationState {
         } else {
             self.flight_history
                 .record(transform.position.y, transform.y_rot);
+            // The client phase tick runs after flap/history advancement. Unlike
+            // `onFlap` and the ambient growl, this phase-local sound has no
+            // `isSilent()` gate in Vanilla.
+            if self.is_sitting_attacking() {
+                sounds.growl_pitch = Some(0.8 + next_float(random_seed) * 0.3);
+            }
         }
+        sounds
     }
 
     /// Vanilla `EnderDragonRenderer.extractRenderState`:
@@ -255,6 +315,13 @@ impl EnderDragonAnimationState {
 
     fn is_sitting(self) -> bool {
         vanilla_ender_dragon_phase_is_sitting(self.phase_id)
+    }
+
+    fn is_sitting_attacking(self) -> bool {
+        usize::try_from(self.phase_id)
+            .ok()
+            .and_then(|phase_id| VANILLA_ENDER_DRAGON_PHASES_26_1.get(phase_id))
+            .is_some_and(|phase| phase.java_field_name == "SITTING_ATTACKING")
     }
 }
 
@@ -527,6 +594,17 @@ mod tests {
         }
     }
 
+    fn advance(dragon: &mut EnderDragonAnimationState, transform: EntityTransform) {
+        fn next_float(_: &mut u64) -> f32 {
+            0.5
+        }
+        fn next_int_bound(_: &mut u64, _: i32) -> i32 {
+            0
+        }
+        let mut seed = 0;
+        dragon.advance_client_tick(transform, false, &mut seed, next_float, next_int_bound);
+    }
+
     #[test]
     fn dragon_client_flap_advance_matches_vanilla_ai_step() {
         // Vanilla `EnderDragon.aiStep`: `flapSpeed = 0.2 / ((float)horizontalDistance · 10 + 1) ·
@@ -541,7 +619,7 @@ mod tests {
             phase_id: flying.phase_id,
             ..EnderDragonAnimationState::default()
         };
-        dragon.advance_client_tick(transform_at(64.0, 30.0, [0.3, 0.1, 0.4]));
+        advance(&mut dragon, transform_at(64.0, 30.0, [0.3, 0.1, 0.4]));
         let expected = 0.2 / (0.5_f32 * 10.0 + 1.0) * (2.0_f64.powf(0.1)) as f32;
         assert_eq!(dragon.o_flap_time, 0.0);
         assert!((dragon.flap_time - expected).abs() < 1.0e-7, "{dragon:?}");
@@ -564,7 +642,10 @@ mod tests {
             phase_id: sitting.phase_id,
             ..EnderDragonAnimationState::default()
         };
-        sitting_dragon.advance_client_tick(transform_at(64.0, 0.0, [0.3, 0.1, 0.4]));
+        advance(
+            &mut sitting_dragon,
+            transform_at(64.0, 0.0, [0.3, 0.1, 0.4]),
+        );
         assert!((sitting_dragon.flap_time - 0.1).abs() < 1.0e-7);
 
         // A no-AI dragon pins `flapTime = 0.5` and records no flight history.
@@ -572,7 +653,7 @@ mod tests {
             no_ai: true,
             ..EnderDragonAnimationState::default()
         };
-        no_ai.advance_client_tick(transform_at(70.0, 45.0, [0.0, 0.0, 0.0]));
+        advance(&mut no_ai, transform_at(70.0, 45.0, [0.0, 0.0, 0.0]));
         assert_eq!(no_ai.flap_time, 0.5);
         assert_eq!(no_ai.flight_history.head, -1);
 
@@ -583,7 +664,7 @@ mod tests {
             o_flap_time: 0.5,
             ..EnderDragonAnimationState::default()
         };
-        dying.advance_client_tick(transform_at(70.0, 45.0, [0.0, 0.2, 0.0]));
+        advance(&mut dying, transform_at(70.0, 45.0, [0.0, 0.2, 0.0]));
         assert_eq!((dying.o_flap_time, dying.flap_time), (0.75, 0.75));
         assert_eq!(dying.flight_history.head, -1);
     }

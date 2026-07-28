@@ -858,6 +858,12 @@ pub enum EntityClientMovementSoundKind {
     WardenHeartbeat {
         pitch: f32,
     },
+    EnderDragonFlap {
+        pitch: f32,
+    },
+    EnderDragonGrowl {
+        pitch: f32,
+    },
     GuardianFlop {
         elder: bool,
     },

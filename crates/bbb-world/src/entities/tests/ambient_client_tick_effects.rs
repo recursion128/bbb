@@ -1,4 +1,7 @@
-use super::super::schema::vanilla_entity_metadata_guardian_accessors_for_entity_type;
+use super::super::schema::{
+    vanilla_entity_metadata_ender_dragon_phase_accessor_for_entity_type,
+    vanilla_entity_metadata_guardian_accessors_for_entity_type, VANILLA_ENDER_DRAGON_PHASES_26_1,
+};
 use super::*;
 
 #[test]
@@ -216,6 +219,143 @@ fn warden_heartbeat_edge_emits_hostile_sound_and_honors_silent_metadata() {
     assert!(store
         .drain_entity_client_movement_effect_states()
         .all(|effect| !matches!(effect, EntityClientMovementEffectState::Sound(_))));
+}
+
+#[test]
+fn ender_dragon_flap_and_ambient_growl_follow_vanilla_edges_and_silent_gate() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        162,
+        VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
+    ));
+    let (phase_data_id, _) = vanilla_entity_metadata_ender_dragon_phase_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
+    )
+    .unwrap();
+    let flying_phase = VANILLA_ENDER_DRAGON_PHASES_26_1
+        .iter()
+        .find(|phase| !phase.is_sitting)
+        .unwrap();
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 162,
+        values: vec![protocol_int_data(phase_data_id, flying_phase.phase_id)],
+    }));
+
+    store.advance_entity_client_animations(5);
+    let sounds = store
+        .drain_entity_client_movement_effect_states()
+        .filter_map(|effect| match effect {
+            EntityClientMovementEffectState::Sound(sound) => Some(sound),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    let [flap] = sounds.as_slice() else {
+        panic!("expected one fifth-tick flap sound, got {sounds:?}");
+    };
+    let EntityClientMovementSoundKind::EnderDragonFlap { pitch } = flap.kind else {
+        panic!("expected dragon flap sound, got {flap:?}");
+    };
+    assert!((0.8..1.1).contains(&pitch));
+    let resolved = store.record_entity_client_movement_sound(*flap);
+    assert_eq!(
+        resolved.sound.location.as_deref(),
+        Some("minecraft:entity.ender_dragon.flap")
+    );
+    assert_eq!(resolved.source, "hostile");
+    assert_eq!(resolved.volume, 5.0);
+    assert_eq!(resolved.pitch, pitch);
+
+    let accessors = vanilla_entity_metadata_entity_accessors().unwrap();
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 162,
+        values: vec![protocol_bool_data(accessors.silent_data_id, true)],
+    }));
+    store.advance_entity_client_animations(101);
+    assert!(store
+        .drain_entity_client_movement_effect_states()
+        .next()
+        .is_none());
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 162,
+        values: vec![protocol_bool_data(accessors.silent_data_id, false)],
+    }));
+    // The five audible flap-setup ticks above already decremented the
+    // countdown from 100 to 95; the 101 silent ticks consumed none.
+    store.advance_entity_client_animations(95);
+    assert!(store
+        .drain_entity_client_movement_effect_states()
+        .all(|effect| !matches!(
+            effect,
+            EntityClientMovementEffectState::Sound(EntityClientMovementSoundState {
+                kind: EntityClientMovementSoundKind::EnderDragonGrowl { .. },
+                ..
+            })
+        )));
+    store.advance_entity_client_animations(1);
+    let effects = store
+        .drain_entity_client_movement_effect_states()
+        .collect::<Vec<_>>();
+    let growl = effects.iter().find_map(|effect| match effect {
+        EntityClientMovementEffectState::Sound(EntityClientMovementSoundState {
+            kind: EntityClientMovementSoundKind::EnderDragonGrowl { pitch },
+            ..
+        }) => Some(*pitch),
+        _ => None,
+    });
+    let pitch = growl.expect("101st total audible non-sitting tick emits ambient growl");
+    assert!((0.8..1.1).contains(&pitch));
+}
+
+#[test]
+fn sitting_attacking_dragon_growls_even_when_silent_and_keeps_generation_rng_isolated() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        163,
+        VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
+    ));
+    let (phase_data_id, _) = vanilla_entity_metadata_ender_dragon_phase_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
+    )
+    .unwrap();
+    let sitting_attacking = VANILLA_ENDER_DRAGON_PHASES_26_1
+        .iter()
+        .find(|phase| phase.java_field_name == "SITTING_ATTACKING")
+        .unwrap();
+    let accessors = vanilla_entity_metadata_entity_accessors().unwrap();
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 163,
+        values: vec![
+            protocol_int_data(phase_data_id, sitting_attacking.phase_id),
+            protocol_bool_data(accessors.silent_data_id, true),
+        ],
+    }));
+    let mut retained = store.publication_snapshot();
+
+    store.advance_entity_client_animations(1);
+    retained.advance_entity_client_animations(1);
+    let live = store
+        .drain_entity_client_movement_effect_states()
+        .collect::<Vec<_>>();
+    let retained = retained
+        .drain_entity_client_movement_effect_states()
+        .collect::<Vec<_>>();
+    assert_eq!(live, retained);
+    let [EntityClientMovementEffectState::Sound(sound)] = live.as_slice() else {
+        panic!("expected one sitting-attack growl, got {live:?}");
+    };
+    let EntityClientMovementSoundKind::EnderDragonGrowl { pitch } = sound.kind else {
+        panic!("expected dragon growl, got {sound:?}");
+    };
+    assert!((0.8..1.1).contains(&pitch));
+    let resolved = store.record_entity_client_movement_sound(*sound);
+    assert_eq!(
+        resolved.sound.location.as_deref(),
+        Some("minecraft:entity.ender_dragon.growl")
+    );
+    assert_eq!(resolved.source, "hostile");
+    assert_eq!(resolved.volume, 2.5);
+    assert_eq!(resolved.pitch, pitch);
 }
 
 fn ender_ambient_effect(

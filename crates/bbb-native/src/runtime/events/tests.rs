@@ -1102,6 +1102,12 @@ fn test_sound_catalog() -> SoundCatalog {
             "entity.warden.heartbeat": {
                 "sounds": ["mob/warden/heartbeat"]
             },
+            "entity.ender_dragon.flap": {
+                "sounds": ["mob/enderdragon/wings"]
+            },
+            "entity.ender_dragon.growl": {
+                "sounds": ["mob/enderdragon/growl"]
+            },
             "entity.magma_cube.squish": {
                 "sounds": ["mob/slime/big2"]
             },

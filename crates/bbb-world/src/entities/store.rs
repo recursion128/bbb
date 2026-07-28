@@ -34,10 +34,10 @@ use uuid::Uuid;
 use bbb_protocol::entity_types::{
     vanilla_entity_type, vanilla_entity_type_dimensions, VANILLA_ENTITY_TYPE_BLAZE_ID,
     VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID,
-    VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
-    VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_TRIDENT_ID,
-    VANILLA_ENTITY_TYPE_VILLAGER_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
-    VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+    VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+    VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+    VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_TRIDENT_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
+    VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
 };
 use bbb_protocol::equipment_slots::vanilla_equipment_slot_by_ordinal;
 use bbb_protocol::item_types::{
@@ -8705,6 +8705,7 @@ impl EntityStore {
                 };
                 let is_silent = (entity_type_id == VANILLA_ENTITY_TYPE_BLAZE_ID
                     || entity_type_id == VANILLA_ENTITY_TYPE_WARDEN_ID
+                    || entity_type_id == VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID
                     || is_guardian
                     || is_nautilus
                     || is_slime)
@@ -10119,6 +10120,24 @@ fn append_client_tick_particle_triggers(
             super::EntityClientMovementSoundState {
                 entity_id: identity.id,
                 kind: super::EntityClientMovementSoundKind::WardenHeartbeat { pitch },
+                position: transform.position,
+            },
+        ));
+    }
+    if let Some(pitch) = triggers.ender_dragon_sounds.flap_pitch {
+        pending_entity_client_movement_effects.push(EntityClientMovementEffectState::Sound(
+            super::EntityClientMovementSoundState {
+                entity_id: identity.id,
+                kind: super::EntityClientMovementSoundKind::EnderDragonFlap { pitch },
+                position: transform.position,
+            },
+        ));
+    }
+    if let Some(pitch) = triggers.ender_dragon_sounds.growl_pitch {
+        pending_entity_client_movement_effects.push(EntityClientMovementEffectState::Sound(
+            super::EntityClientMovementSoundState {
+                entity_id: identity.id,
+                kind: super::EntityClientMovementSoundKind::EnderDragonGrowl { pitch },
                 position: transform.position,
             },
         ));
