@@ -6615,6 +6615,16 @@ fn debug_push_abstract_arrow_additional_save_data(
     // concrete default pickup stack, and only upgrades pickup to ALLOWED when
     // the spawn owner resolves to a loaded Player.
     fields.push("life: 0s".to_string());
+    if let Some(block_state) = entity
+        .projectile_lifecycle
+        .and_then(|projectile| projectile.arrow_last_block_state_id)
+        .and_then(|state_id| world.registries().block_state(state_id))
+    {
+        fields.push(format!(
+            "inBlockState: {}",
+            debug_snbt_block_state(&block_state.name, &block_state.properties)
+        ));
+    }
     if let Some(shake) = entity.client_animations.arrow_shake {
         fields.push(format!("shake: {}b", shake.shake_time));
     }
@@ -6634,19 +6644,21 @@ fn debug_push_abstract_arrow_additional_save_data(
     {
         fields.push(format!("PierceLevel: {pierce_level}b"));
     }
-    // Arrow and SpectralArrow use ARROW_HIT both before and after a block hit.
-    // ThrownTrident changes from TRIDENT_HIT_GROUND to ARROW_HIT in
-    // AbstractArrow.onHitBlock, whose complete client collision state remains
-    // outside this stage. The constructor value is therefore exact only before
-    // the first client tick.
-    if entity.entity_type_id != VANILLA_ENTITY_TYPE_TRIDENT_ID
-        || entity.client_animations.age_ticks == 0
+    // Arrow and SpectralArrow always use ARROW_HIT. A trident starts with
+    // TRIDENT_HIT_GROUND and AbstractArrow.onHitBlock mutates it to ARROW_HIT.
+    let sound_resource_id = if entity.entity_type_id == VANILLA_ENTITY_TYPE_TRIDENT_ID
+        && entity
+            .projectile_lifecycle
+            .is_some_and(|projectile| projectile.arrow_hit_ground_sound_is_arrow)
     {
-        fields.push(format!(
-            "SoundEvent: {}",
-            debug_snbt_string(default_sound_resource_id)
-        ));
-    }
+        "minecraft:entity.arrow.hit"
+    } else {
+        default_sound_resource_id
+    };
+    fields.push(format!(
+        "SoundEvent: {}",
+        debug_snbt_string(sound_resource_id)
+    ));
     let item = debug_item_stack_snbt_with_context(
         default_item_resource_id,
         1,

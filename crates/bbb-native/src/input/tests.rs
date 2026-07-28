@@ -12331,7 +12331,9 @@ fn shift_f3_i_skips_unpickable_trident_but_direct_copy_encodes_save_nbt() {
         .command;
     assert!(command.contains("shake: 2b, inGround: 1b"));
     assert!(command.ends_with(
-        "crit: 1b, PierceLevel: 4b, item: {id: \"minecraft:trident\"}, \
+        "crit: 1b, PierceLevel: 4b, \
+         SoundEvent: \"minecraft:item.trident.hit_ground\", \
+         item: {id: \"minecraft:trident\"}, \
          DealtDamage: 0b}"
     ));
 
@@ -12340,9 +12342,77 @@ fn shift_f3_i_skips_unpickable_trident_but_direct_copy_encodes_save_nbt() {
         .expect("trident recreate command after sixth in-ground tick")
         .command;
     assert!(command.ends_with(
-        "crit: 1b, PierceLevel: 4b, item: {id: \"minecraft:trident\"}, \
+        "crit: 1b, PierceLevel: 4b, \
+         SoundEvent: \"minecraft:item.trident.hit_ground\", \
+         item: {id: \"minecraft:trident\"}, \
          DealtDamage: 1b}"
     ));
+}
+
+#[test]
+fn trident_local_block_hit_projects_mutated_arrow_save_state() {
+    let accessors = vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_TRIDENT_ID,
+    )
+    .unwrap();
+    let mut world = world_with_debug_player(false);
+    let block_pos = BlockPos { x: 1, y: 10, z: 0 };
+    insert_empty_chunk_for_block(&mut world, block_pos);
+    let stone_state_id = vanilla_block_state_id("minecraft:stone", []);
+    assert!(world.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos {
+            x: block_pos.x,
+            y: block_pos.y,
+            z: block_pos.z,
+        },
+        block_state_id: stone_state_id,
+    }));
+    world.apply_add_entity(AddEntity {
+        id: 160,
+        uuid: Uuid::from_u128(160),
+        entity_type_id: VANILLA_ENTITY_TYPE_TRIDENT_ID,
+        position: ProtocolVec3d {
+            x: 0.0,
+            y: 10.5,
+            z: 0.5,
+        },
+        delta_movement: ProtocolVec3d {
+            x: 2.0,
+            y: 0.0,
+            z: 0.0,
+        },
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
+    assert!(world.apply_set_entity_data(ProtocolSetEntityData {
+        id: 160,
+        values: vec![
+            ProtocolEntityDataValue {
+                data_id: accessors.flags_data_id,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                value: EntityDataValueKind::Byte(accessors.crit_mask),
+            },
+            ProtocolEntityDataValue {
+                data_id: accessors.pierce_level_data_id,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                value: EntityDataValueKind::Byte(4),
+            },
+        ],
+    }));
+
+    world.advance_entity_client_animations(1);
+    let command = debug_copy_recreate_entity_command(&world, None, 160, true)
+        .expect("locally grounded trident recreate command")
+        .command;
+    assert!(command.contains("Motion: [0.0d, 0.0d, 0.0d]"), "{command}");
+    assert!(command.contains("inBlockState: {Name: \"minecraft:stone\"}"));
+    assert!(command.contains("shake: 7b, inGround: 1b"));
+    assert!(command.contains("crit: 0b, PierceLevel: 0b"));
+    assert!(command.contains("SoundEvent: \"minecraft:entity.arrow.hit\""));
 }
 
 #[test]

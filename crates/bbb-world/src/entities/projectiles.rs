@@ -16,9 +16,9 @@ use super::schema::{
     vanilla_entity_metadata_type_is_projectile, vanilla_entity_metadata_type_is_wind_charge,
 };
 use super::{
-    EntityHurtingProjectile, EntityIdentity, EntityMount, EntityPickBoundsState,
-    EntityProjectileLifecycle, EntityStore, EntityTransform, EntityVec3, ProjectileLifecycleState,
-    VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+    EntityAbstractArrowRuntime, EntityHurtingProjectile, EntityIdentity, EntityMount,
+    EntityPickBoundsState, EntityProjectileLifecycle, EntityStore, EntityTransform, EntityVec3,
+    ProjectileLifecycleState, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
     VANILLA_ENTITY_TYPE_TRIDENT_ID,
 };
 
@@ -127,8 +127,26 @@ pub(crate) fn entity_projectile_lifecycle_from_state(
                 && vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(entity_type_id)
                     .is_some(),
             arrow_no_physics: false,
+            arrow_last_block_state_id: None,
+            arrow_hit_ground_sound_is_arrow: false,
         }),
     ))
+}
+
+pub(crate) fn entity_abstract_arrow_runtime_from_uuid(
+    entity_type_id: i32,
+    uuid: Uuid,
+) -> Option<EntityAbstractArrowRuntime> {
+    entity_abstract_arrow_runtime_from_state(entity_type_id, uuid, None)
+}
+
+pub(crate) fn entity_abstract_arrow_runtime_from_state(
+    entity_type_id: i32,
+    uuid: Uuid,
+    state: Option<&super::AbstractArrowRuntimeState>,
+) -> Option<EntityAbstractArrowRuntime> {
+    vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(entity_type_id)
+        .map(|_| EntityAbstractArrowRuntime::from_state(uuid, state))
 }
 
 pub(crate) fn is_vanilla_saved_projectile_type(entity_type_id: i32) -> bool {
@@ -229,7 +247,7 @@ impl EntityStore {
             .collect()
     }
 
-    fn projectile_outside_owner_collision_by_id(
+    pub(super) fn projectile_outside_owner_collision_by_id(
         &self,
         spectator_player_uuids: &HashSet<Uuid>,
     ) -> HashMap<i32, bool> {
@@ -662,6 +680,8 @@ mod tests {
                 trident_return_ticks: 0,
                 arrow_pickup_allowed: false,
                 arrow_no_physics: false,
+                arrow_last_block_state_id: None,
+                arrow_hit_ground_sound_is_arrow: false,
             })
         );
         store.advance_entity_client_animations(1);
@@ -676,6 +696,8 @@ mod tests {
                 trident_return_ticks: 0,
                 arrow_pickup_allowed: false,
                 arrow_no_physics: false,
+                arrow_last_block_state_id: None,
+                arrow_hit_ground_sound_is_arrow: false,
             })
         );
 
@@ -749,6 +771,8 @@ mod tests {
                 trident_return_ticks: 0,
                 arrow_pickup_allowed: false,
                 arrow_no_physics: false,
+                arrow_last_block_state_id: None,
+                arrow_hit_ground_sound_is_arrow: false,
             })
         );
     }
@@ -780,6 +804,8 @@ mod tests {
                 trident_return_ticks: 0,
                 arrow_pickup_allowed: false,
                 arrow_no_physics: false,
+                arrow_last_block_state_id: None,
+                arrow_hit_ground_sound_is_arrow: false,
             })
         );
         store.advance_entity_client_animations(1);
@@ -794,6 +820,8 @@ mod tests {
                 trident_return_ticks: 0,
                 arrow_pickup_allowed: false,
                 arrow_no_physics: false,
+                arrow_last_block_state_id: None,
+                arrow_hit_ground_sound_is_arrow: false,
             })
         );
     }

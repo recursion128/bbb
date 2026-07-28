@@ -236,13 +236,8 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   `RegistryFixedCodec`s. Keep the remaining dispatch owned by the protocol
   generated-metadata/handler descriptor catalog and the native persistent SNBT
   encoder registry.
-  `AbstractArrow` still needs its complete client entity-hit state machine
-  (friendly-fire filtering, age-dependent hit margin, per-target client hurt/
-  deflection, piercing ignore/discard state, and client RNG) before
-  `inBlockState`, locally changed `shake` / `inGround` / `crit` /
-  `PierceLevel`, and Trident's hit-mutated `SoundEvent` can be projected
-  without inventing a block collision. Remaining entity-specific
-  constructor/default save values, client-owned `LivingEntity.Brain.Packed`
+  Remaining entity-specific constructor/default save values, client-owned
+  `LivingEntity.Brain.Packed`
   memories (including Copper Golem's randomized transport cooldown, Allay's
   liked player, and Villager's last-woken timestamp), unretained LivingEntity
   impulse context, observable non-empty entity inventory/container projection

@@ -62,6 +62,14 @@ pub struct ParticleBlockFluidSurfaceSample {
 pub(crate) struct ProjectileBlockMovementClip {
     pub(crate) movement: [f64; 3],
     pub(crate) world_border_hit: bool,
+    /// Global block-state id at the hit cell. `None` identifies a miss.
+    pub(crate) block_state_id: Option<i32>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct BlockShapeHit {
+    scale: f64,
+    block_state_id: i32,
 }
 
 /// One world-space AABB from `CollisionGetter.getCollisions` near the active
@@ -1013,7 +1021,7 @@ impl WorldStore {
             return None;
         }
         let context = self.debug_camera_collision_query()?.block_context;
-        let scale = block_hit_scale(self, from, to, context, BlockClipShape::Visual)?;
+        let scale = block_hit_scale(self, from, to, context, BlockClipShape::Visual)?.scale;
         Some(std::array::from_fn(|axis| {
             from[axis] + (to[axis] - from[axis]) * scale
         }))
@@ -1809,10 +1817,28 @@ impl WorldStore {
         movement: [f64; 3],
         on_ground: bool,
     ) -> ProjectileBlockMovementClip {
+        self.clip_projectile_block_movement_with_context_y(
+            entity_type_id,
+            position,
+            movement,
+            on_ground,
+            position[1],
+        )
+    }
+
+    pub(crate) fn clip_projectile_block_movement_with_context_y(
+        &self,
+        entity_type_id: i32,
+        position: [f64; 3],
+        movement: [f64; 3],
+        on_ground: bool,
+        collision_context_y: f64,
+    ) -> ProjectileBlockMovementClip {
         if !particle_collision_input_is_finite(position, movement) || movement == [0.0, 0.0, 0.0] {
             return ProjectileBlockMovementClip {
                 movement,
                 world_border_hit: false,
+                block_state_id: None,
             };
         }
         let to = [
@@ -1821,25 +1847,25 @@ impl WorldStore {
             position[2] + movement[2],
         ];
         let context = LocalPlayerCollisionContext::for_remote_entity(
-            position[1],
+            collision_context_y,
             on_ground,
             false,
             entity_type_id == VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
         )
         .with_can_stand_on_lava(entity_type_id == VANILLA_ENTITY_TYPE_STRIDER_ID);
-        let block_scale =
-            block_hit_scale(self, position, to, context, BlockClipShape::Collision).unwrap_or(1.0);
-        let block_hit: [f64; 3] =
+        let shape_hit = block_hit_scale(self, position, to, context, BlockClipShape::Collision);
+        let block_scale = shape_hit.map_or(1.0, |hit| hit.scale);
+        let block_hit_location: [f64; 3] =
             std::array::from_fn(|axis| position[axis] + movement[axis] * block_scale);
         let border = self.world_border();
         let from_is_inside = position[0] >= border.min_x_at(0.0)
             && position[0] < border.max_x_at(0.0)
             && position[2] >= border.min_z_at(0.0)
             && position[2] < border.max_z_at(0.0);
-        let block_hit_is_inside = block_hit[0] >= border.min_x_at(0.0)
-            && block_hit[0] < border.max_x_at(0.0)
-            && block_hit[2] >= border.min_z_at(0.0)
-            && block_hit[2] < border.max_z_at(0.0);
+        let block_hit_is_inside = block_hit_location[0] >= border.min_x_at(0.0)
+            && block_hit_location[0] < border.max_x_at(0.0)
+            && block_hit_location[2] >= border.min_z_at(0.0)
+            && block_hit_location[2] < border.max_z_at(0.0);
         let world_border_hit = from_is_inside && !block_hit_is_inside;
         let scale = if world_border_hit {
             // `CollisionGetter.clipIncludingBorder` clamps the block hit (or
@@ -1848,9 +1874,11 @@ impl WorldStore {
             // to run FishingHook's reverse deflection instead of `onHitBlock`.
             let max_edge_offset = f64::from(1.0e-5_f32);
             let border_hit = [
-                block_hit[0].clamp(border.min_x_at(0.0), border.max_x_at(0.0) - max_edge_offset),
-                block_hit[1],
-                block_hit[2].clamp(border.min_z_at(0.0), border.max_z_at(0.0) - max_edge_offset),
+                block_hit_location[0]
+                    .clamp(border.min_x_at(0.0), border.max_x_at(0.0) - max_edge_offset),
+                block_hit_location[1],
+                block_hit_location[2]
+                    .clamp(border.min_z_at(0.0), border.max_z_at(0.0) - max_edge_offset),
             ];
             let border_distance_squared = (border_hit[0] - position[0]).powi(2)
                 + (border_hit[1] - position[1]).powi(2)
@@ -1867,7 +1895,47 @@ impl WorldStore {
                 movement[2] * scale,
             ],
             world_border_hit,
+            block_state_id: if world_border_hit {
+                None
+            } else {
+                shape_hit.map(|hit| hit.block_state_id)
+            },
         }
+    }
+
+    /// `AbstractArrow.tick`'s pre-flight containment check at
+    /// `blockPosition()`. This is intentionally separate from segment clipping:
+    /// Vanilla grounds an arrow at its exact current position before applying
+    /// water, crit, rotation, or movement.
+    pub(crate) fn projectile_position_inside_block_collision(
+        &self,
+        entity_type_id: i32,
+        position: [f64; 3],
+        on_ground: bool,
+    ) -> Option<i32> {
+        if !position.iter().all(|value| value.is_finite()) {
+            return None;
+        }
+        let pos = BlockPos {
+            x: block_floor(position[0]),
+            y: block_floor(position[1]),
+            z: block_floor(position[2]),
+        };
+        let block = self.probe_block(pos)?;
+        let context = LocalPlayerCollisionContext::for_remote_entity(
+            position[1],
+            on_ground,
+            false,
+            entity_type_id == VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
+        )
+        .with_can_stand_on_lava(entity_type_id == VANILLA_ENTITY_TYPE_STRIDER_ID);
+        let shape = block_collision_shape_with_context(self, &block, pos, context)?;
+        shape
+            .boxes()
+            .any(|shape_box| {
+                world_collision_box_contains(world_collision_box(pos, shape_box), position)
+            })
+            .then_some(block.block_state_id)
     }
 
     pub(crate) fn entity_supporting_block_after_collision(
@@ -2101,7 +2169,7 @@ fn block_hit_scale(
     to: [f64; 3],
     context: LocalPlayerCollisionContext,
     clip_shape: BlockClipShape,
-) -> Option<f64> {
+) -> Option<BlockShapeHit> {
     // `BlockGetter.traverseBlocks` extrapolates both endpoints by -1e-7 away
     // from the opposite endpoint before selecting the first cell.
     let nudged_to: [f64; 3] =
@@ -2169,7 +2237,7 @@ fn block_shape_hit_scale(
     to: [f64; 3],
     context: LocalPlayerCollisionContext,
     clip_shape: BlockClipShape,
-) -> Option<f64> {
+) -> Option<BlockShapeHit> {
     let pos = BlockPos {
         x: cell[0],
         y: cell[1],
@@ -2195,6 +2263,10 @@ fn block_shape_hit_scale(
             }
         })
         .min_by(f64::total_cmp)
+        .map(|scale| BlockShapeHit {
+            scale,
+            block_state_id: block.block_state_id,
+        })
 }
 
 fn world_collision_box_contains(bounds: WorldCollisionBox, point: [f64; 3]) -> bool {
@@ -6042,6 +6114,7 @@ mod tests {
         assert_f64_near(clipped.movement[1], 0.0);
         assert_f64_near(clipped.movement[2], 0.0);
         assert!(!clipped.world_border_hit);
+        assert_eq!(clipped.block_state_id, Some(stone));
     }
 
     #[test]
@@ -6143,6 +6216,23 @@ mod tests {
         assert_f64_near(clipped.movement[1], 0.0);
         assert_f64_near(clipped.movement[2], 0.0);
         assert!(!clipped.world_border_hit);
+        assert_eq!(clipped.block_state_id, Some(stone));
+        assert_eq!(
+            world.projectile_position_inside_block_collision(
+                VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+                [0.5, 1.5, 0.5],
+                false,
+            ),
+            Some(stone),
+        );
+        assert_eq!(
+            world.projectile_position_inside_block_collision(
+                VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+                [1.5, 1.5, 0.5],
+                false,
+            ),
+            None,
+        );
     }
 
     #[test]
@@ -6161,6 +6251,7 @@ mod tests {
         assert_f64_near(clipped.movement[1], 0.0);
         assert_f64_near(clipped.movement[2], 0.0);
         assert!(clipped.world_border_hit);
+        assert_eq!(clipped.block_state_id, None);
     }
 
     #[test]

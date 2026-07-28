@@ -4758,6 +4758,40 @@ pub(crate) fn vanilla_entity_metadata_type_accepts_local_attack_hurt(entity_type
         })
 }
 
+/// Returns whether Vanilla's external client accepts an AbstractArrow damage
+/// simulation for this runtime class.
+///
+/// LivingEntity keeps the base `false` implementation. The accepting 26.1
+/// overrides are VehicleEntity, ExperienceOrb, ItemEntity, ShulkerBullet,
+/// EndCrystal, and the BlockAttachedEntity family (Painting,
+/// LeashFenceKnotEntity, and item frames). Remote item frames keep their
+/// client-constructor
+/// `fixed == false`, so their narrower override reaches the same accepting
+/// result for arrow damage. ItemEntity's damage-resistant component and
+/// EndCrystal's EnderDragon-owner exception are refined by WorldStore.
+pub(crate) fn vanilla_entity_metadata_type_accepts_projectile_hurt_client(
+    entity_type_id: i32,
+) -> bool {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
+        .is_some_and(|entry| {
+            entry.is_vehicle
+                || matches!(
+                    entry.runtime_class,
+                    Some(
+                        "net.minecraft.world.entity.ExperienceOrb"
+                            | "net.minecraft.world.entity.item.ItemEntity"
+                            | "net.minecraft.world.entity.projectile.ShulkerBullet"
+                            | "net.minecraft.world.entity.boss.enderdragon.EndCrystal"
+                            | "net.minecraft.world.entity.decoration.painting.Painting"
+                            | "net.minecraft.world.entity.decoration.LeashFenceKnotEntity"
+                            | "net.minecraft.world.entity.decoration.ItemFrame"
+                            | "net.minecraft.world.entity.decoration.GlowItemFrame"
+                    )
+                )
+        })
+}
+
 pub fn vanilla_entity_metadata_type_is_boat(entity_type_id: i32) -> bool {
     VANILLA_ENTITY_TYPE_METADATA_26_1
         .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
@@ -5913,6 +5947,37 @@ mod tests {
         }
         assert!(!vanilla_entity_metadata_type_is_pickable(-1));
         assert!(!vanilla_entity_metadata_type_is_pickable(157));
+        for resource_id in [
+            "minecraft:experience_orb",
+            "minecraft:item",
+            "minecraft:end_crystal",
+            "minecraft:painting",
+            "minecraft:leash_knot",
+            "minecraft:item_frame",
+            "minecraft:glow_item_frame",
+            "minecraft:shulker_bullet",
+            "minecraft:oak_boat",
+            "minecraft:minecart",
+        ] {
+            let entry = VANILLA_ENTITY_TYPE_METADATA_26_1
+                .iter()
+                .find(|entry| entry.resource_id == resource_id)
+                .unwrap();
+            assert!(
+                vanilla_entity_metadata_type_accepts_projectile_hurt_client(entry.entity_type_id),
+                "{resource_id}"
+            );
+        }
+        for resource_id in ["minecraft:arrow", "minecraft:player", "minecraft:zombie"] {
+            let entry = VANILLA_ENTITY_TYPE_METADATA_26_1
+                .iter()
+                .find(|entry| entry.resource_id == resource_id)
+                .unwrap();
+            assert!(
+                !vanilla_entity_metadata_type_accepts_projectile_hurt_client(entry.entity_type_id),
+                "{resource_id}"
+            );
+        }
         for (kind, expected_count) in [
             (VanillaEntitySoundSourceKind::Neutral, 110),
             (VanillaEntitySoundSourceKind::Hostile, 42),

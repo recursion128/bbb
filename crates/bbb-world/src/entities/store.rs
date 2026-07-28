@@ -53,7 +53,7 @@ use bbb_protocol::packets::{
 use super::components::{
     EntityBoatMovement, EntityClientMovementCollisionFacts, EntityClientMovementFluidFacts,
     EntityExperienceOrbMovement, EntityExperienceOrbPlayerTargetFacts, EntityFishingHookMovement,
-    EntityIncarnation,
+    EntityIncarnation, EntityInstanceReference,
 };
 use super::display::{display_entity_culling_state, display_entity_render_source};
 use super::renderer_catalog::vanilla_living_entity_renderer_name_is_upside_down;
@@ -104,18 +104,19 @@ use super::{
     calculate_view_vector, is_vanilla_abstract_nautilus_type, is_vanilla_boat_type,
     is_vanilla_can_wear_horse_armor_type, is_vanilla_llama_type, is_vanilla_minecart_type,
     is_vanilla_vehicle_entity_type, vanilla_entity_event_kind, vanilla_entity_type_is_squid,
-    ArmorMaterialKind, BlazeAmbientParticleState, DisplayEntityRenderSourceState,
-    EnderAmbientParticleState, EntityAttachmentFace, EntityAttributes,
-    EntityBlockEffectBaseTickReset, EntityBlockEffectMovement, EntityBlockEffectMovementIter,
-    EntityBlockEffectQuery, EntityBlockModelState, EntityCameraHurtState, EntityCameraPoseState,
+    AbstractArrowRuntimeState, ArmorMaterialKind, BlazeAmbientParticleState,
+    DisplayEntityRenderSourceState, EnderAmbientParticleState, EntityAbstractArrowRuntime,
+    EntityAttachmentFace, EntityAttributes, EntityBlockEffectBaseTickReset,
+    EntityBlockEffectMovement, EntityBlockEffectMovementIter, EntityBlockEffectQuery,
+    EntityBlockModelState, EntityCameraHurtState, EntityCameraPoseState,
     EntityClientAnimationState, EntityClientAnimations, EntityClientMovementEffectState,
     EntityClientMovementParticleState, EntityClientMovementSimpleParticleKind,
     EntityClientMovementSimpleParticleState, EntityDamage, EntityDamageEventState, EntityEquipment,
     EntityHurtingProjectile, EntityIdentity, EntityInterpolationCollisionInput, EntityLeash,
     EntityLivingLifecycle, EntityMetadata, EntityMinecartCommandBlock, EntityMinecartLerp,
     EntityMobEffects, EntityModelSourceState, EntityMount, EntityPlayerSleep,
-    EntityProjectileLifecycle, EntityState, EntitySupportingBlock, EntityTransform,
-    EntityTransformState, EntityTransientEvents, EntityVec3, EquipmentAssetId,
+    EntityProjectileLifecycle, EntityRuntimeReferenceState, EntityState, EntitySupportingBlock,
+    EntityTransform, EntityTransformState, EntityTransientEvents, EntityVec3, EquipmentAssetId,
     EvokerFangsCritParticleState, FallingBlockModelState, FireworkRocketExplosionParticleState,
     FireworkRocketItemState, FishingHookRenderSourceState, FoxEatParticleState,
     GuardianAmbientParticleState, GuardianAttackParticleState, HappyGhastHarnessColor,
@@ -162,6 +163,7 @@ use crate::entities::dragon::{
     ender_dragon_part_pick_targets_at_partial_tick,
 };
 use crate::entities::projectiles::{
+    entity_abstract_arrow_runtime_from_state, entity_abstract_arrow_runtime_from_uuid,
     entity_hurting_projectile_from_state, entity_projectile_lifecycle_from_state,
 };
 use crate::entities::renderer_catalog::{
@@ -507,6 +509,7 @@ pub(crate) struct EntityStore {
     pending_ravager_stun_particles: Vec<RavagerStunParticleState>,
     pending_evoker_fangs_crit_particles: Vec<EvokerFangsCritParticleState>,
     pub(super) pending_entity_client_movement_effects: Vec<EntityClientMovementEffectState>,
+    pub(super) pending_local_discards: Vec<i32>,
     pending_ominous_item_spawner_particles: Vec<OminousItemSpawnerParticleState>,
     client_tick_scratch: EntityClientTickScratch,
     publication_snapshot_observation: EntityPublicationSnapshotObservation,
@@ -799,6 +802,7 @@ impl EntityStore {
     pub(crate) fn insert_or_replace(&mut self, state: EntityState) {
         if let Some(entity) = self.by_protocol_id.get(&state.id).copied() {
             self.replace_existing_components(entity, state);
+            self.resolve_abstract_arrow_runtime_references();
             return;
         }
 
@@ -807,6 +811,7 @@ impl EntityStore {
         }
 
         self.spawn_components(state);
+        self.resolve_abstract_arrow_runtime_references();
     }
 
     /// Spawns (or re-add-resets) an entity directly from `AddEntity` packet
@@ -833,6 +838,8 @@ impl EntityStore {
             spawn_owner_uuid,
             spawn_owner_is_player,
         );
+        let fresh_abstract_arrow_runtime =
+            entity_abstract_arrow_runtime_from_uuid(entity_type_id, uuid);
         let fresh_experience_orb_movement = (entity_type_id
             == VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID)
             .then(|| super::client_movement::experience_orb_movement_from_uuid(uuid));
@@ -974,6 +981,18 @@ impl EntityStore {
             } else {
                 let _ = self.ecs.remove_one::<EntityProjectileLifecycle>(entity);
             }
+            if let Some(runtime) = fresh_abstract_arrow_runtime {
+                let updated = self
+                    .ecs
+                    .get::<&mut EntityAbstractArrowRuntime>(entity)
+                    .map(|mut existing| *existing = runtime.clone())
+                    .is_ok();
+                if !updated {
+                    let _ = self.ecs.insert_one(entity, runtime);
+                }
+            } else {
+                let _ = self.ecs.remove_one::<EntityAbstractArrowRuntime>(entity);
+            }
             if let Some(movement) = fresh_experience_orb_movement {
                 let updated = {
                     if let Ok(mut existing) =
@@ -1068,6 +1087,9 @@ impl EntityStore {
         if let Some(projectile) = fresh_projectile_lifecycle {
             let _ = self.ecs.insert_one(entity, projectile);
         }
+        if let Some(runtime) = fresh_abstract_arrow_runtime {
+            let _ = self.ecs.insert_one(entity, runtime);
+        }
         if let Some(movement) = fresh_experience_orb_movement {
             let _ = self.ecs.insert_one(entity, movement);
         }
@@ -1155,6 +1177,13 @@ impl EntityStore {
             spawn_owner_is_player,
         ) {
             let _ = self.ecs.insert_one(entity, projectile);
+        }
+        if let Some(runtime) = entity_abstract_arrow_runtime_from_state(
+            state.entity_type_id,
+            state.uuid,
+            state.abstract_arrow_runtime.as_ref(),
+        ) {
+            let _ = self.ecs.insert_one(entity, runtime);
         }
         if state.entity_type_id == VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID {
             let _ = self.ecs.insert_one(
@@ -1754,6 +1783,10 @@ impl EntityStore {
             .get::<&EntityIdentity>(entity)
             .ok()
             .map(|identity| (*identity).clone())
+    }
+
+    pub(crate) fn take_local_discards(&mut self) -> Vec<i32> {
+        std::mem::take(&mut self.pending_local_discards)
     }
 
     pub(crate) fn main_arm_left(&self, id: i32) -> Option<bool> {
@@ -6619,6 +6652,15 @@ impl EntityStore {
             .map(|movement| *movement)
     }
 
+    #[cfg(test)]
+    pub(crate) fn abstract_arrow_runtime(&self, id: i32) -> Option<EntityAbstractArrowRuntime> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        self.ecs
+            .get::<&EntityAbstractArrowRuntime>(entity)
+            .ok()
+            .map(|runtime| (*runtime).clone())
+    }
+
     pub(crate) fn with_transform_mut<R>(
         &mut self,
         id: i32,
@@ -8071,6 +8113,17 @@ impl EntityStore {
         )
     }
 
+    /// The client `AbstractArrow.tick` flight branch reaches `super.tick()`
+    /// only after all segment callbacks and hit handling have completed.
+    pub(super) fn apply_arrow_base_tick_reset(&mut self, entity: Entity) {
+        let Ok(mut supporting_block) = self.ecs.get::<&mut EntitySupportingBlock>(entity) else {
+            return;
+        };
+        supporting_block.block_effects.remaining_fire_ticks =
+            supporting_block.block_effects.remaining_fire_ticks.min(0);
+        supporting_block.block_effects.in_powder_snow = false;
+    }
+
     /// `AbstractArrow.tick` head: `if (this.isInWaterOrRain()) this.clearFire();`
     /// runs before the in-ground/flight branches and is not gated by
     /// `isAffectedByBlocks`, so a no-physics returning trident still clears.
@@ -8137,6 +8190,10 @@ impl EntityStore {
             i32,
             super::client_movement::EntityClientMovementCollisionResult,
         >,
+        abstract_arrow_collisions_by_id: &HashMap<
+            i32,
+            super::client_movement::EntityAbstractArrowCollisionFacts,
+        >,
         minecart_improvements_enabled: bool,
         death_tick_player_chunk: Option<(i32, i32)>,
         death_tick_simulation_distance: Option<i32>,
@@ -8191,6 +8248,7 @@ impl EntityStore {
                 &tick_scratch.scheduled_entities,
                 fluid_facts_by_id,
                 client_movement_collisions_by_id,
+                abstract_arrow_collisions_by_id,
                 block_effect_world,
             );
             work.projectile_duration +=
@@ -9159,6 +9217,7 @@ impl EntityStore {
         }
         self.sync_hurting_projectile_from_state(entity, state);
         self.sync_projectile_lifecycle_from_state(entity, state);
+        self.sync_abstract_arrow_runtime_from_state(entity, state);
         if state.entity_type_id == VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID {
             let movement = super::client_movement::experience_orb_movement_from_uuid(state.uuid);
             let updated = self
@@ -9267,6 +9326,73 @@ impl EntityStore {
         }
     }
 
+    fn sync_abstract_arrow_runtime_from_state(&mut self, entity: Entity, state: &EntityState) {
+        if let Some(runtime) = entity_abstract_arrow_runtime_from_state(
+            state.entity_type_id,
+            state.uuid,
+            state.abstract_arrow_runtime.as_ref(),
+        ) {
+            let updated = self
+                .ecs
+                .get::<&mut EntityAbstractArrowRuntime>(entity)
+                .map(|mut existing| *existing = runtime.clone())
+                .is_ok();
+            if !updated {
+                let _ = self.ecs.insert_one(entity, runtime);
+            }
+        } else {
+            let _ = self.ecs.remove_one::<EntityAbstractArrowRuntime>(entity);
+        }
+    }
+
+    fn resolve_abstract_arrow_runtime_references(&mut self) {
+        let identities = self
+            .by_protocol_id
+            .iter()
+            .filter_map(|(&id, &entity)| {
+                let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+                Some(((id, identity.uuid), identity.incarnation))
+            })
+            .collect::<HashMap<_, _>>();
+        for (_, runtime) in self.ecs.query_mut::<&mut EntityAbstractArrowRuntime>() {
+            let Some(reference) = runtime.pending_last_deflected_by else {
+                continue;
+            };
+            let Some(&incarnation) = identities.get(&(reference.entity_id, reference.uuid)) else {
+                continue;
+            };
+            runtime.last_deflected_by = Some(EntityInstanceReference {
+                entity_id: reference.entity_id,
+                incarnation,
+            });
+            runtime.pending_last_deflected_by = None;
+        }
+    }
+
+    fn project_abstract_arrow_runtime(
+        &self,
+        runtime: &EntityAbstractArrowRuntime,
+    ) -> AbstractArrowRuntimeState {
+        let last_deflected_by = runtime
+            .last_deflected_by
+            .and_then(|reference| {
+                let entity = self.by_protocol_id.get(&reference.entity_id).copied()?;
+                let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+                (identity.incarnation == reference.incarnation).then_some(
+                    EntityRuntimeReferenceState {
+                        entity_id: identity.id,
+                        uuid: identity.uuid,
+                    },
+                )
+            })
+            .or(runtime.pending_last_deflected_by);
+        AbstractArrowRuntimeState {
+            random_seed: runtime.random_seed,
+            last_deflected_by,
+            piercing_ignore_entity_ids: runtime.piercing_ignore_entity_ids.clone(),
+        }
+    }
+
     fn project_entity(&self, entity: Entity) -> Option<EntityState> {
         let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
         let transform = self.ecs.get::<&EntityTransform>(entity).ok()?;
@@ -9286,6 +9412,7 @@ impl EntityStore {
         let minecart_command_block = self.ecs.get::<&EntityMinecartCommandBlock>(entity).ok();
         let hurting_projectile = self.ecs.get::<&EntityHurtingProjectile>(entity).ok();
         let projectile_lifecycle = self.ecs.get::<&EntityProjectileLifecycle>(entity).ok();
+        let abstract_arrow_runtime = self.ecs.get::<&EntityAbstractArrowRuntime>(entity).ok();
 
         let mut state = EntityState {
             id: identity.id,
@@ -9325,6 +9452,7 @@ impl EntityStore {
             minecart_command_block_track_output: None,
             hurting_projectile: None,
             projectile_lifecycle: None,
+            abstract_arrow_runtime: None,
         };
         (*transform).write_to_state(&mut state);
         (*metadata).clone().write_to_state(&mut state);
@@ -9355,6 +9483,9 @@ impl EntityStore {
         if let Some(projectile) = projectile_lifecycle {
             (*projectile).write_to_state(&mut state);
         }
+        if let Some(runtime) = abstract_arrow_runtime {
+            state.abstract_arrow_runtime = Some(self.project_abstract_arrow_runtime(&runtime));
+        }
         Some(state)
     }
 }
@@ -9370,6 +9501,7 @@ impl Default for EntityStore {
             pending_ravager_stun_particles: Vec::new(),
             pending_evoker_fangs_crit_particles: Vec::new(),
             pending_entity_client_movement_effects: Vec::new(),
+            pending_local_discards: Vec::new(),
             pending_ominous_item_spawner_particles: Vec::new(),
             client_tick_scratch: EntityClientTickScratch::default(),
             publication_snapshot_observation: EntityPublicationSnapshotObservation::default(),
@@ -9443,6 +9575,9 @@ impl Clone for EntityStore {
             }
             if let Ok(projectile) = self.ecs.get::<&EntityProjectileLifecycle>(entity) {
                 let _ = store.ecs.insert_one(cloned, *projectile);
+            }
+            if let Ok(runtime) = self.ecs.get::<&EntityAbstractArrowRuntime>(entity) {
+                let _ = store.ecs.insert_one(cloned, (*runtime).clone());
             }
             if let Ok(lifecycle) = self.ecs.get::<&EntityLivingLifecycle>(entity) {
                 let _ = store.ecs.insert_one(cloned, *lifecycle);

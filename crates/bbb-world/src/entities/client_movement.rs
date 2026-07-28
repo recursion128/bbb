@@ -1,22 +1,27 @@
 use std::collections::{HashMap, HashSet};
 
 use bbb_protocol::entity_data_serializers::{
-    VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID, VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+    VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID, VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+    VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
 };
 use bbb_protocol::entity_types::{
-    vanilla_entity_type_deflects_projectiles, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
-    VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, VANILLA_ENTITY_TYPE_TRIDENT_ID,
+    vanilla_entity_type_deflects_projectiles, vanilla_entity_type_is_redirectable_projectile,
+    VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
+    VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_TRIDENT_ID,
 };
 use bbb_protocol::item_types::VANILLA_ITEM_FIREWORK_ROCKET_ID;
 use bbb_protocol::packets::EntityDataValueKind;
 use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
 use hecs::Entity;
 
-use super::animations::{java_random_next_float, java_random_seed, spawn_random_bits};
+use super::animations::{
+    java_random_next_float, java_random_next_int_bound, java_random_seed, spawn_random_bits,
+};
 use super::components::{
-    EntityAttributes, EntityClientAnimations, EntityClientMovementCollisionFacts, EntityEquipment,
-    EntityExperienceOrbMovement, EntityExperienceOrbPlayerTargetFacts, EntityFishingHookMovement,
-    EntityFishingHookState, EntityHurtingProjectile, EntityIdentity, EntityIncarnation,
+    EntityAbstractArrowRuntime, EntityAttributes, EntityClientAnimations,
+    EntityClientMovementCollisionFacts, EntityEquipment, EntityExperienceOrbMovement,
+    EntityExperienceOrbPlayerTargetFacts, EntityFishingHookMovement, EntityFishingHookState,
+    EntityHurtingProjectile, EntityIdentity, EntityIncarnation, EntityInstanceReference,
     EntityMetadata, EntityProjectileLifecycle, EntitySupportingBlock, EntityTransform,
 };
 use super::dimensions::{vanilla_bounds_for_entity_data, vanilla_eye_height_for_entity_data};
@@ -29,6 +34,7 @@ use super::schema::{
     vanilla_entity_metadata_living_entity_accessors_for_entity_type,
     vanilla_entity_metadata_primed_tnt_accessors_for_entity_type,
     vanilla_entity_metadata_thrown_trident_accessors_for_entity_type,
+    vanilla_entity_metadata_type_accepts_projectile_hurt_client,
     vanilla_entity_metadata_type_block_effect_tick_policy,
     vanilla_entity_metadata_type_client_movement_policy, vanilla_entity_metadata_type_is_living,
     vanilla_entity_metadata_type_is_pickable,
@@ -123,16 +129,88 @@ struct EntityExperienceOrbPlayerTarget {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-struct EntityFishingHookProjectileTarget {
-    entity_id: i32,
-    entity_type_id: i32,
+pub(crate) struct EntityProjectileTarget {
+    pub(crate) entity_id: i32,
+    pub(crate) entity_type_id: i32,
+    uuid: uuid::Uuid,
     root_vehicle_id: i32,
     position: EntityVec3,
     bounds: EntityPickBoundsState,
     alive: bool,
     pickable: bool,
     deflects_projectiles: bool,
+    redirectable_projectile: bool,
+    hurt_client: bool,
+    trident_hurt_client: bool,
+    hurt_client_rejects_ender_dragon_owner: bool,
     incarnation: EntityIncarnation,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct EntityAbstractArrowCollisionSource {
+    pub(crate) entity_id: i32,
+    pub(crate) entity_type_id: i32,
+    pub(crate) position: EntityVec3,
+    pub(crate) movement: EntityVec3,
+    pub(crate) bounds: EntityPickBoundsState,
+    pub(crate) on_ground: bool,
+    pub(crate) tick_count: u32,
+    pub(crate) owner_uuid: Option<uuid::Uuid>,
+    pub(crate) owner_entity_type_id: Option<i32>,
+    pub(crate) owner_root_vehicle_id: Option<i32>,
+    pub(crate) left_owner: bool,
+    pub(crate) trident_dealt_damage: bool,
+    pub(crate) piercing_ignore_entity_ids: Vec<i32>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct EntityAbstractArrowCollisionBatch {
+    pub(crate) sources: Vec<EntityAbstractArrowCollisionSource>,
+    pub(crate) targets: Vec<EntityProjectileTarget>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct EntityAbstractArrowBlockHit {
+    pub(crate) location: EntityVec3,
+    pub(crate) block_state_id: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct EntityAbstractArrowEntityHit {
+    pub(crate) entity_id: i32,
+    pub(crate) incarnation: EntityIncarnation,
+    pub(crate) location: EntityVec3,
+    pub(crate) target_position: EntityVec3,
+    pub(crate) deflects_projectiles: bool,
+    pub(crate) redirectable_projectile: bool,
+    pub(crate) hurt_client: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct EntityAbstractArrowCollisionFacts {
+    pub(crate) initial_block_state_id: Option<i32>,
+    pub(crate) endpoint: EntityVec3,
+    pub(crate) world_border_hit: bool,
+    pub(crate) block_hit: Option<EntityAbstractArrowBlockHit>,
+    pub(crate) entity_hits: Vec<EntityAbstractArrowEntityHit>,
+}
+
+impl EntityAbstractArrowCollisionBatch {
+    pub(crate) fn set_item_hurt_client(
+        &mut self,
+        entity_id: i32,
+        arrow_hurt_client: bool,
+        trident_hurt_client: bool,
+    ) {
+        if let Some(target) = self
+            .targets
+            .iter_mut()
+            .find(|target| target.entity_id == entity_id)
+        {
+            target.hurt_client = arrow_hurt_client;
+            target.trident_hurt_client = trident_hurt_client;
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -142,12 +220,12 @@ pub(crate) struct EntityFishingHookProjectileHit {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-struct FishingHookAabb {
+struct ProjectileAabb {
     min: EntityVec3,
     max: EntityVec3,
 }
 
-impl FishingHookAabb {
+impl ProjectileAabb {
     fn expand_towards(self, delta: EntityVec3) -> Self {
         Self {
             min: EntityVec3 {
@@ -186,13 +264,18 @@ impl FishingHookAabb {
             && self.min.z < other.max.z
             && self.max.z > other.min.z
     }
+
+    fn center(self) -> EntityVec3 {
+        EntityVec3 {
+            x: (self.min.x + self.max.x) * 0.5,
+            y: (self.min.y + self.max.y) * 0.5,
+            z: (self.min.z + self.max.z) * 0.5,
+        }
+    }
 }
 
-fn fishing_hook_world_bounds(
-    position: EntityVec3,
-    bounds: EntityPickBoundsState,
-) -> FishingHookAabb {
-    FishingHookAabb {
+fn projectile_world_bounds(position: EntityVec3, bounds: EntityPickBoundsState) -> ProjectileAabb {
+    ProjectileAabb {
         min: EntityVec3 {
             x: position.x + f64::from(bounds.min[0]),
             y: position.y + f64::from(bounds.min[1]),
@@ -214,7 +297,7 @@ fn fishing_hook_entity_hit(
     left_owner: bool,
     tick_count: u32,
     last_deflected_by: Option<EntityIncarnation>,
-    targets: &[EntityFishingHookProjectileTarget],
+    targets: &[EntityProjectileTarget],
 ) -> Option<EntityFishingHookProjectileHit> {
     let to = add(from, delta);
     let margin = (((tick_count as f32) - 2.0) / 20.0).clamp(0.0, 0.3);
@@ -232,8 +315,7 @@ fn fishing_hook_entity_hit(
             fishing_hook_segment_box_entry_scale(
                 from,
                 to,
-                fishing_hook_world_bounds(target.position, target.bounds)
-                    .inflate(f64::from(margin)),
+                projectile_world_bounds(target.position, target.bounds).inflate(f64::from(margin)),
             )
             .map(|scale| EntityFishingHookProjectileHit {
                 scale,
@@ -246,10 +328,192 @@ fn fishing_hook_entity_hit(
         .min_by(|left, right| left.scale.total_cmp(&right.scale))
 }
 
+pub(crate) fn resolve_abstract_arrow_collision_facts(
+    batch: EntityAbstractArrowCollisionBatch,
+    mut initial_block_state: impl FnMut(&EntityAbstractArrowCollisionSource) -> Option<i32>,
+    mut clip_blocks: impl FnMut(
+        i32,
+        EntityVec3,
+        EntityVec3,
+        bool,
+        f64,
+    ) -> crate::client::ProjectileBlockMovementClip,
+    mut players_can_harm: impl FnMut(uuid::Uuid, uuid::Uuid) -> bool,
+) -> HashMap<i32, EntityAbstractArrowCollisionFacts> {
+    let mut facts_by_id = HashMap::new();
+    for source in batch.sources {
+        let initial_block_state_id = initial_block_state(&source);
+        let clipped = clip_blocks(
+            source.entity_type_id,
+            source.position,
+            source.movement,
+            source.on_ground,
+            source.position.y,
+        );
+        let block_location = add(
+            source.position,
+            EntityVec3 {
+                x: clipped.movement[0],
+                y: clipped.movement[1],
+                z: clipped.movement[2],
+            },
+        );
+        let block_hit = clipped
+            .block_state_id
+            .map(|block_state_id| EntityAbstractArrowBlockHit {
+                location: block_location,
+                block_state_id,
+            });
+        let endpoint = if block_hit.is_some() || clipped.world_border_hit {
+            block_location
+        } else {
+            add(source.position, source.movement)
+        };
+        let to = endpoint;
+        let search_bounds = projectile_world_bounds(source.position, source.bounds)
+            .expand_towards(source.movement)
+            .inflate(1.0);
+        let margin = (((source.tick_count as f32) - 2.0) / 20.0).clamp(0.0, 0.3) as f64;
+        let mut entity_hits = batch
+            .targets
+            .iter()
+            .filter(|target| {
+                target.entity_id != source.entity_id
+                    && target.alive
+                    && target.pickable
+                    && search_bounds
+                        .intersects(projectile_world_bounds(target.position, target.bounds))
+                    && (source.left_owner
+                        || source
+                            .owner_root_vehicle_id
+                            .is_none_or(|owner_root| target.root_vehicle_id != owner_root))
+                    && !source
+                        .piercing_ignore_entity_ids
+                        .contains(&target.entity_id)
+                    && !(target.entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID
+                        && source
+                            .owner_uuid
+                            .is_some_and(|owner_uuid| !players_can_harm(owner_uuid, target.uuid)))
+            })
+            .filter_map(|target| {
+                let bounds = projectile_world_bounds(target.position, target.bounds);
+                let location = if source.entity_type_id == VANILLA_ENTITY_TYPE_TRIDENT_ID {
+                    fishing_hook_segment_box_entry_scale(
+                        source.position,
+                        to,
+                        bounds.inflate(margin),
+                    )
+                    .map(|entry_scale| {
+                        add(
+                            source.position,
+                            scale(subtract(to, source.position), entry_scale),
+                        )
+                    })
+                } else if let Some(entry_scale) =
+                    fishing_hook_segment_box_entry_scale(source.position, to, bounds)
+                {
+                    Some(add(
+                        source.position,
+                        scale(subtract(to, source.position), entry_scale),
+                    ))
+                } else if margin > 0.0 {
+                    fishing_hook_segment_box_entry_scale(
+                        source.position,
+                        to,
+                        bounds.inflate(margin),
+                    )
+                    .and_then(|outside_scale| {
+                        let outside = add(
+                            source.position,
+                            scale(subtract(to, source.position), outside_scale),
+                        );
+                        let toward_center = bounds.center();
+                        let center_delta = subtract(toward_center, outside);
+                        let center_clip = clip_blocks(
+                            source.entity_type_id,
+                            outside,
+                            center_delta,
+                            source.on_ground,
+                            source.position.y,
+                        );
+                        let toward_surface = if center_clip.block_state_id.is_some()
+                            || center_clip.world_border_hit
+                        {
+                            add(
+                                outside,
+                                EntityVec3 {
+                                    x: center_clip.movement[0],
+                                    y: center_clip.movement[1],
+                                    z: center_clip.movement[2],
+                                },
+                            )
+                        } else {
+                            toward_center
+                        };
+                        fishing_hook_segment_box_entry_scale(outside, toward_surface, bounds).map(
+                            |surface_scale| {
+                                add(
+                                    outside,
+                                    scale(subtract(toward_surface, outside), surface_scale),
+                                )
+                            },
+                        )
+                    })
+                } else {
+                    None
+                }?;
+                Some(EntityAbstractArrowEntityHit {
+                    entity_id: target.entity_id,
+                    incarnation: target.incarnation,
+                    location,
+                    target_position: target.position,
+                    deflects_projectiles: target.deflects_projectiles,
+                    redirectable_projectile: target.redirectable_projectile,
+                    hurt_client: (if source.entity_type_id == VANILLA_ENTITY_TYPE_TRIDENT_ID {
+                        target.trident_hurt_client
+                    } else {
+                        target.hurt_client
+                    }) && !(target.hurt_client_rejects_ender_dragon_owner
+                        && source.owner_entity_type_id
+                            == Some(VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID)),
+                })
+            })
+            .collect::<Vec<_>>();
+        if source.entity_type_id == VANILLA_ENTITY_TYPE_TRIDENT_ID {
+            if source.trident_dealt_damage {
+                entity_hits.clear();
+            } else {
+                entity_hits.sort_by(|left, right| {
+                    length_squared(subtract(left.location, source.position))
+                        .total_cmp(&length_squared(subtract(right.location, source.position)))
+                });
+                entity_hits.truncate(1);
+            }
+        } else {
+            entity_hits.sort_by(|left, right| {
+                length_squared(subtract(left.target_position, source.position)).total_cmp(
+                    &length_squared(subtract(right.target_position, source.position)),
+                )
+            });
+        }
+        facts_by_id.insert(
+            source.entity_id,
+            EntityAbstractArrowCollisionFacts {
+                initial_block_state_id,
+                endpoint,
+                world_border_hit: clipped.world_border_hit,
+                block_hit,
+                entity_hits,
+            },
+        );
+    }
+    facts_by_id
+}
+
 fn fishing_hook_segment_box_entry_scale(
     from: EntityVec3,
     to: EntityVec3,
-    bounds: FishingHookAabb,
+    bounds: ProjectileAabb,
 ) -> Option<f64> {
     let delta = subtract(to, from);
     let mut nearest = 1.0;
@@ -376,6 +640,40 @@ pub(super) fn client_movement_uses_collision_facts(entity_type_id: i32) -> bool 
 }
 
 impl EntityStore {
+    /// Virtual `AbstractArrow.lerpMotion`: a non-zero server motion correction
+    /// releases a locally grounded arrow before its next client tick.
+    pub(crate) fn apply_abstract_arrow_lerp_motion(
+        &mut self,
+        entity_id: i32,
+        movement: EntityVec3,
+    ) {
+        if length_squared(movement) <= 0.0 {
+            return;
+        }
+        let Some(entity) = self.by_protocol_id.get(&entity_id).copied() else {
+            return;
+        };
+        let Ok(identity) = self.ecs.get::<&EntityIdentity>(entity) else {
+            return;
+        };
+        let Some(accessors) = vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(
+            identity.entity_type_id,
+        ) else {
+            return;
+        };
+        drop(identity);
+        let Ok(mut metadata) = self.ecs.get::<&mut EntityMetadata>(entity) else {
+            return;
+        };
+        if entity_data_bool(
+            &metadata.data_values,
+            accessors.in_ground_data_id,
+            accessors.in_ground_default,
+        ) {
+            set_entity_data_bool(&mut metadata, accessors.in_ground_data_id, false);
+        }
+    }
+
     pub(crate) fn client_movement_collision_inputs(
         &mut self,
         fluid_by_id: &HashMap<i32, crate::client::EntityFluidContactState>,
@@ -399,7 +697,7 @@ impl EntityStore {
             })
         };
         let fishing_hook_targets = fishing_hook_needs_targets
-            .then(|| self.fishing_hook_projectile_targets(spectator_player_uuids))
+            .then(|| self.projectile_targets(spectator_player_uuids))
             .unwrap_or_default();
         let mut inputs = Vec::new();
         let mut facts_query = self.ecs.query::<(
@@ -697,10 +995,10 @@ impl EntityStore {
         targets
     }
 
-    fn fishing_hook_projectile_targets(
+    fn projectile_targets(
         &self,
         spectator_player_uuids: &HashSet<uuid::Uuid>,
-    ) -> Vec<EntityFishingHookProjectileTarget> {
+    ) -> Vec<EntityProjectileTarget> {
         let mut targets = Vec::new();
         let mut query = self.ecs.query::<(
             &EntityIdentity,
@@ -735,6 +1033,9 @@ impl EntityStore {
                 true
             };
             let pickable = vanilla_entity_metadata_type_is_pickable(identity.entity_type_id)
+                // Interaction is intentionally pickable for cursor selection
+                // but overrides `canBeHitByProjectile` to false.
+                && identity.entity_type_id != super::VANILLA_ENTITY_TYPE_INTERACTION_ID
                 && !(identity.entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID
                     && spectator_player_uuids.contains(&identity.uuid))
                 && (identity.entity_type_id != VANILLA_ENTITY_TYPE_ARMOR_STAND_ID
@@ -749,9 +1050,10 @@ impl EntityStore {
                         ) & accessors.marker_mask
                             == 0
                     }));
-            targets.push(EntityFishingHookProjectileTarget {
+            targets.push(EntityProjectileTarget {
                 entity_id: identity.id,
                 entity_type_id: identity.entity_type_id,
+                uuid: identity.uuid,
                 root_vehicle_id: self.fishing_hook_root_vehicle_id(identity.id),
                 position: transform.position,
                 bounds,
@@ -760,6 +1062,17 @@ impl EntityStore {
                 deflects_projectiles: vanilla_entity_type_deflects_projectiles(
                     identity.entity_type_id,
                 ),
+                redirectable_projectile: vanilla_entity_type_is_redirectable_projectile(
+                    identity.entity_type_id,
+                ),
+                hurt_client: vanilla_entity_metadata_type_accepts_projectile_hurt_client(
+                    identity.entity_type_id,
+                ),
+                trident_hurt_client: vanilla_entity_metadata_type_accepts_projectile_hurt_client(
+                    identity.entity_type_id,
+                ),
+                hurt_client_rejects_ender_dragon_owner: identity.entity_type_id
+                    == VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
                 incarnation: identity.incarnation,
             });
             if identity.entity_type_id == VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID {
@@ -772,9 +1085,10 @@ impl EntityStore {
                         1.0,
                     )
                     .into_iter()
-                    .map(|part| EntityFishingHookProjectileTarget {
+                    .map(|part| EntityProjectileTarget {
                         entity_id: part.entity_id,
                         entity_type_id: VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
+                        uuid: identity.uuid,
                         root_vehicle_id: part.entity_id,
                         position: part.position,
                         bounds: part.bounds,
@@ -783,12 +1097,106 @@ impl EntityStore {
                         // the parent EnderDragon itself remains non-pickable.
                         pickable: true,
                         deflects_projectiles: false,
+                        redirectable_projectile: false,
+                        hurt_client: false,
+                        trident_hurt_client: false,
+                        hurt_client_rejects_ender_dragon_owner: false,
                         incarnation: identity.incarnation,
                     }),
                 );
             }
         }
+        targets.sort_by_key(|target| {
+            self.order
+                .iter()
+                .position(|id| *id == target.entity_id)
+                .unwrap_or(usize::MAX)
+        });
         targets
+    }
+
+    /// Immutable collision contract for the WorldStore terrain pass. Entity
+    /// ownership, metadata, dimensions, and target identity stay in the ECS;
+    /// the caller supplies collision-shape and scoreboard facts before the
+    /// mutable arrow movement slot consumes the resolved results.
+    pub(crate) fn abstract_arrow_collision_batch(
+        &self,
+        spectator_player_uuids: &HashSet<uuid::Uuid>,
+    ) -> EntityAbstractArrowCollisionBatch {
+        let outside_owner_by_id =
+            self.projectile_outside_owner_collision_by_id(spectator_player_uuids);
+        let mut sources = Vec::new();
+        let mut query = self.ecs.query::<(
+            &EntityIdentity,
+            &EntityTransform,
+            &EntityMetadata,
+            &EntityAttributes,
+            &EntityClientAnimations,
+            &EntityProjectileLifecycle,
+            &EntityAbstractArrowRuntime,
+        )>();
+        for (_, (identity, transform, metadata, attributes, animations, lifecycle, runtime)) in
+            query.iter()
+        {
+            let Some(accessors) = vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(
+                identity.entity_type_id,
+            ) else {
+                continue;
+            };
+            let flags = entity_data_byte(
+                &metadata.data_values,
+                accessors.flags_data_id,
+                accessors.flags_default,
+            );
+            if flags & accessors.no_physics_mask != 0 {
+                continue;
+            }
+            let Some(bounds) = vanilla_bounds_for_entity_data(
+                identity.entity_type_id,
+                identity.data,
+                &metadata.data_values,
+                &attributes.attributes,
+                Some(animations.animations),
+                metadata.painting_variant_projection.as_ref(),
+            ) else {
+                continue;
+            };
+            let owner_root_vehicle_id = lifecycle
+                .owner_uuid
+                .and_then(|owner_uuid| self.protocol_id_by_uuid.get(&owner_uuid).copied())
+                .map(|owner_id| self.fishing_hook_root_vehicle_id(owner_id));
+            let owner_entity_type_id = lifecycle.owner_uuid.and_then(|owner_uuid| {
+                self.protocol_id_by_uuid
+                    .get(&owner_uuid)
+                    .and_then(|owner_id| self.by_protocol_id.get(owner_id))
+                    .and_then(|owner| self.ecs.get::<&EntityIdentity>(*owner).ok())
+                    .map(|owner| owner.entity_type_id)
+            });
+            sources.push(EntityAbstractArrowCollisionSource {
+                entity_id: identity.id,
+                entity_type_id: identity.entity_type_id,
+                position: transform.position,
+                movement: transform.delta_movement,
+                bounds,
+                on_ground: transform.on_ground.unwrap_or(false),
+                tick_count: animations.animations.age_ticks.saturating_add(1),
+                owner_uuid: lifecycle.owner_uuid,
+                owner_entity_type_id,
+                owner_root_vehicle_id,
+                left_owner: lifecycle.left_owner
+                    || outside_owner_by_id
+                        .get(&identity.id)
+                        .copied()
+                        .unwrap_or(true),
+                trident_dealt_damage: lifecycle.trident_dealt_damage,
+                piercing_ignore_entity_ids: runtime.piercing_ignore_entity_ids.clone(),
+            });
+        }
+        drop(query);
+        let targets = (!sources.is_empty())
+            .then(|| self.projectile_targets(spectator_player_uuids))
+            .unwrap_or_default();
+        EntityAbstractArrowCollisionBatch { sources, targets }
     }
 
     fn fishing_hook_root_vehicle_id(&self, entity_id: i32) -> i32 {
@@ -824,7 +1232,7 @@ impl EntityStore {
         game_time: i64,
         bounds: EntityPickBoundsState,
         tick_count: u32,
-        targets: &[EntityFishingHookProjectileTarget],
+        targets: &[EntityProjectileTarget],
         spectator_player_uuids: &HashSet<uuid::Uuid>,
     ) -> (
         EntityVec3,
@@ -858,7 +1266,7 @@ impl EntityStore {
             .and_then(|uuid| self.protocol_id_by_uuid.get(&uuid).copied())
             .map(|id| self.fishing_hook_root_vehicle_id(id));
         if !movement.left_owner {
-            let source_bounds = fishing_hook_world_bounds(position, bounds)
+            let source_bounds = projectile_world_bounds(position, bounds)
                 .expand_towards(delta_movement)
                 .inflate(1.0);
             update.movement.left_owner = owner_root_vehicle_id.is_none_or(|owner_root| {
@@ -866,7 +1274,7 @@ impl EntityStore {
                     !target.pickable
                         || target.root_vehicle_id != owner_root
                         || !source_bounds
-                            .intersects(fishing_hook_world_bounds(target.position, target.bounds))
+                            .intersects(projectile_world_bounds(target.position, target.bounds))
                 })
             });
         }
@@ -1004,15 +1412,17 @@ impl EntityStore {
     }
 
     /// Advances client-owned projectile and nonliving movement in the frozen
-    /// entity schedule. Server-authoritative hit consequences and removals are
-    /// never manufactured here; incoming packets remain their canonical owner.
-    /// Vehicle, item, orb, and fishing-hook movement stay with their dedicated
-    /// collision/authority owners.
+    /// entity schedule. Incoming packets remain authoritative, while the
+    /// external client's AbstractArrow hit simulation may locally discard its
+    /// own projectile exactly as Vanilla does. Vehicle, item, orb, and
+    /// fishing-hook movement stay with their dedicated collision/authority
+    /// owners.
     pub(super) fn advance_direct_client_movement(
         &mut self,
         scheduled: &[Entity],
         fluid_facts_by_id: &HashMap<i32, super::store::EntityClientTickFluidFacts>,
         collisions_by_id: &HashMap<i32, EntityClientMovementCollisionResult>,
+        abstract_arrow_collisions_by_id: &HashMap<i32, EntityAbstractArrowCollisionFacts>,
         block_effect_world: &mut crate::client::EntityBlockEffectWorld<'_>,
     ) -> super::store::EntityBlockEffectWork {
         let record_block_effect_movements = block_effect_world.has_loaded_chunks();
@@ -1189,9 +1599,12 @@ impl EntityStore {
                     };
                     self.apply_arrow_water_or_rain_fire_clear(entity, in_water, block_effect_world);
                     let step = {
-                        let Ok((metadata, transform)) = self
-                            .ecs
-                            .query_one_mut::<(&EntityMetadata, &mut EntityTransform)>(entity)
+                        let Ok((metadata, animations, transform)) =
+                            self.ecs.query_one_mut::<(
+                                &mut EntityMetadata,
+                                &mut EntityClientAnimations,
+                                &mut EntityTransform,
+                            )>(entity)
                         else {
                             continue;
                         };
@@ -1199,20 +1612,38 @@ impl EntityStore {
                             entity_id,
                             entity_type_id,
                             metadata,
+                            animations,
                             transform,
                             accessors,
                             in_water,
+                            abstract_arrow_collisions_by_id.get(&entity_id),
                             &mut effects,
                         )
                     };
-                    if affected_by_blocks {
-                        if let Some((segment, base_tick_reset)) = step.effects {
+                    let ArrowMoveStep {
+                        first_effect,
+                        collision,
+                        finish,
+                        trident_initial_containment_grounded,
+                    } = step;
+                    if entity_type_id == VANILLA_ENTITY_TYPE_TRIDENT_ID
+                        && trident_initial_containment_grounded
+                    {
+                        if let Ok(mut projectile) =
+                            self.ecs.get::<&mut EntityProjectileLifecycle>(entity)
+                        {
+                            projectile.trident_in_ground_time =
+                                projectile.trident_in_ground_time.saturating_add(1);
+                        }
+                    }
+                    let mut apply_segment =
+                        |store: &mut EntityStore, segment: EntityBlockEffectMovement| {
                             let started_at = std::time::Instant::now();
-                            let (effect_entities, effect_blocks, effect_callbacks) = self
+                            let (effect_entities, effect_blocks, effect_callbacks) = store
                                 .apply_arrow_block_effect_tick(
                                     entity,
                                     segment,
-                                    base_tick_reset,
+                                    super::EntityBlockEffectBaseTickReset::Skip,
                                     collisions_by_id,
                                     block_effect_world,
                                 );
@@ -1222,15 +1653,101 @@ impl EntityStore {
                                 block_effect_work.blocks.saturating_add(effect_blocks);
                             block_effect_work.callbacks =
                                 block_effect_work.callbacks.saturating_add(effect_callbacks);
+                        };
+                    if affected_by_blocks {
+                        apply_segment(self, first_effect);
+                    }
+                    if let Some(collision) = collision.as_ref() {
+                        let owner_look_angle = self
+                            .ecs
+                            .get::<&EntityProjectileLifecycle>(entity)
+                            .ok()
+                            .and_then(|projectile| projectile.owner_uuid)
+                            .and_then(|owner_uuid| self.protocol_id_by_uuid.get(&owner_uuid))
+                            .and_then(|owner_id| self.by_protocol_id.get(owner_id))
+                            .and_then(|owner| self.ecs.get::<&EntityTransform>(*owner).ok())
+                            .map(|owner| calculate_view_vector(owner.x_rot, owner.y_rot));
+                        let collision_step = {
+                            let Ok((metadata, projectile, runtime, transform)) =
+                                self.ecs.query_one_mut::<(
+                                    &mut EntityMetadata,
+                                    &mut EntityProjectileLifecycle,
+                                    &mut EntityAbstractArrowRuntime,
+                                    &mut EntityTransform,
+                                )>(entity)
+                            else {
+                                continue;
+                            };
+                            advance_abstract_arrow_collision_after_first_effect(
+                                entity_type_id,
+                                metadata,
+                                projectile,
+                                runtime,
+                                transform,
+                                accessors,
+                                collision,
+                                owner_look_angle,
+                            )
+                        };
+                        for redirect in &collision_step.redirected_targets {
+                            let Some(target) =
+                                self.by_protocol_id.get(&redirect.entity_id).copied()
+                            else {
+                                continue;
+                            };
+                            let Ok((identity, transform)) =
+                                self.ecs
+                                    .query_one_mut::<(&EntityIdentity, &mut EntityTransform)>(
+                                        target,
+                                    )
+                            else {
+                                continue;
+                            };
+                            if identity.incarnation == redirect.incarnation {
+                                transform.delta_movement = redirect.movement;
+                            }
+                        }
+                        if affected_by_blocks {
+                            if let Some(second_effect) = collision_step.second_effect {
+                                apply_segment(self, second_effect);
+                            }
+                        }
+                        if collision_step.reaches_endpoint
+                            && (collision.block_hit.is_some() || collision.world_border_hit)
+                        {
+                            if let Ok((metadata, projectile, runtime, animations, transform)) =
+                                self.ecs.query_one_mut::<(
+                                    &mut EntityMetadata,
+                                    &mut EntityProjectileLifecycle,
+                                    &mut EntityAbstractArrowRuntime,
+                                    &mut EntityClientAnimations,
+                                    &mut EntityTransform,
+                                )>(entity)
+                            {
+                                apply_abstract_arrow_endpoint_hit(
+                                    entity_type_id,
+                                    metadata,
+                                    projectile,
+                                    runtime,
+                                    animations,
+                                    transform,
+                                    accessors,
+                                    collision,
+                                );
+                            }
+                        }
+                        if collision_step.discarded {
+                            self.pending_local_discards.push(entity_id);
                         }
                     }
-                    if let Some(finish) = step.finish {
+                    if let Some(finish) = finish {
                         if let Ok((metadata, transform)) = self
                             .ecs
                             .query_one_mut::<(&EntityMetadata, &mut EntityTransform)>(entity)
                         {
-                            finish_abstract_arrow(metadata, transform, finish);
+                            finish_abstract_arrow(metadata, transform, finish, accessors);
                         }
+                        self.apply_arrow_base_tick_reset(entity);
                     }
                 }
                 VanillaEntityClientMovementPolicy::Item => {
@@ -1778,11 +2295,10 @@ fn advance_returning_trident(
 /// slot with its `Entity.baseTick` reset placement, plus the deferred
 /// inertia/gravity tail that runs after the effects callback.
 struct ArrowMoveStep {
-    effects: Option<(
-        EntityBlockEffectMovement,
-        super::EntityBlockEffectBaseTickReset,
-    )>,
+    first_effect: EntityBlockEffectMovement,
+    collision: Option<EntityAbstractArrowCollisionFacts>,
     finish: Option<ArrowMoveFinish>,
+    trident_initial_containment_grounded: bool,
 }
 
 struct ArrowMoveFinish {
@@ -1790,13 +2306,29 @@ struct ArrowMoveFinish {
     physics_enabled: bool,
 }
 
+struct ArrowCollisionStep {
+    second_effect: Option<EntityBlockEffectMovement>,
+    reaches_endpoint: bool,
+    discarded: bool,
+    redirected_targets: Vec<EntityProjectileAimRedirect>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct EntityProjectileAimRedirect {
+    entity_id: i32,
+    incarnation: EntityIncarnation,
+    movement: EntityVec3,
+}
+
 fn advance_abstract_arrow(
     entity_id: i32,
     entity_type_id: i32,
-    metadata: &EntityMetadata,
+    metadata: &mut EntityMetadata,
+    animations: &mut EntityClientAnimations,
     transform: &mut EntityTransform,
     accessors: super::schema::VanillaAbstractArrowMetadataAccessors,
     in_water: bool,
+    collision: Option<&EntityAbstractArrowCollisionFacts>,
     effects: &mut Vec<EntityClientMovementEffectState>,
 ) -> ArrowMoveStep {
     let flags = entity_data_byte(
@@ -1805,20 +2337,32 @@ fn advance_abstract_arrow(
         accessors.flags_default,
     );
     let physics_enabled = flags & accessors.no_physics_mask == 0;
-    let in_ground = entity_data_bool(
+    let mut in_ground = entity_data_bool(
         &metadata.data_values,
         accessors.in_ground_data_id,
         accessors.in_ground_default,
     );
+    let mut initial_containment_grounded = false;
+    if physics_enabled {
+        if collision.is_some_and(|collision| collision.initial_block_state_id.is_some()) {
+            initial_containment_grounded = !in_ground;
+            transform.delta_movement = EntityVec3::default();
+            set_entity_data_bool(metadata, accessors.in_ground_data_id, true);
+            in_ground = true;
+            animations.animations.start_local_arrow_shake();
+        }
+    }
+    // Vanilla decrements shake after the initial containment check and before
+    // either the stuck branch or a later segment hit.
+    animations.animations.advance_arrow_shake_tick();
     if in_ground && physics_enabled {
         // The stuck branch still calls the no-arg `applyEffectsFromBlocks`
         // (a degenerate old-to-current segment) but never `super.tick()`.
         return ArrowMoveStep {
-            effects: Some((
-                EntityBlockEffectMovement::direct(transform.position, transform.position),
-                super::EntityBlockEffectBaseTickReset::Skip,
-            )),
+            first_effect: EntityBlockEffectMovement::direct(transform.position, transform.position),
+            collision: None,
             finish: None,
+            trident_initial_containment_grounded: initial_containment_grounded,
         };
     }
 
@@ -1843,16 +2387,261 @@ fn advance_abstract_arrow(
     }
 
     update_arrow_rotation(transform, movement, physics_enabled);
-    transform.position = add(original_position, movement);
+    let collision = physics_enabled.then(|| collision.cloned()).flatten();
+    if physics_enabled {
+        if let Some(collision) = collision.as_ref() {
+            transform.position = collision
+                .entity_hits
+                .first()
+                .map_or(collision.endpoint, |hit| hit.location);
+        } else {
+            transform.position = add(original_position, movement);
+        }
+    } else {
+        transform.position = add(original_position, movement);
+    }
     ArrowMoveStep {
-        effects: Some((
-            EntityBlockEffectMovement::direct(original_position, transform.position),
-            super::EntityBlockEffectBaseTickReset::AfterCallbacks,
-        )),
+        first_effect: EntityBlockEffectMovement::direct(original_position, transform.position),
+        collision,
         finish: Some(ArrowMoveFinish {
             in_water,
             physics_enabled,
         }),
+        trident_initial_containment_grounded: false,
+    }
+}
+
+fn advance_abstract_arrow_collision_after_first_effect(
+    entity_type_id: i32,
+    metadata: &mut EntityMetadata,
+    projectile: &mut EntityProjectileLifecycle,
+    runtime: &mut EntityAbstractArrowRuntime,
+    transform: &mut EntityTransform,
+    accessors: super::schema::VanillaAbstractArrowMetadataAccessors,
+    collision: &EntityAbstractArrowCollisionFacts,
+    owner_look_angle: Option<EntityVec3>,
+) -> ArrowCollisionStep {
+    if collision.entity_hits.is_empty() {
+        return ArrowCollisionStep {
+            second_effect: None,
+            reaches_endpoint: true,
+            discarded: false,
+            redirected_targets: Vec::new(),
+        };
+    }
+    let mut redirected_targets = Vec::new();
+    let outcome = apply_abstract_arrow_entity_hits(
+        entity_type_id,
+        metadata,
+        projectile,
+        runtime,
+        transform,
+        accessors,
+        &collision.entity_hits,
+        owner_look_angle,
+        &mut redirected_targets,
+    );
+    if outcome.discarded || !outcome.continues_to_block {
+        return ArrowCollisionStep {
+            second_effect: None,
+            reaches_endpoint: false,
+            discarded: outcome.discarded,
+            redirected_targets,
+        };
+    }
+    let from = transform.position;
+    transform.position = collision.endpoint;
+    ArrowCollisionStep {
+        second_effect: Some(EntityBlockEffectMovement::direct(from, collision.endpoint)),
+        reaches_endpoint: true,
+        discarded: false,
+        redirected_targets,
+    }
+}
+
+fn apply_abstract_arrow_endpoint_hit(
+    entity_type_id: i32,
+    metadata: &mut EntityMetadata,
+    projectile: &mut EntityProjectileLifecycle,
+    runtime: &mut EntityAbstractArrowRuntime,
+    animations: &mut EntityClientAnimations,
+    transform: &mut EntityTransform,
+    accessors: super::schema::VanillaAbstractArrowMetadataAccessors,
+    collision: &EntityAbstractArrowCollisionFacts,
+) {
+    if let Some(block_hit) = collision.block_hit {
+        apply_abstract_arrow_block_hit(
+            entity_type_id,
+            metadata,
+            projectile,
+            runtime,
+            animations,
+            transform,
+            accessors,
+            block_hit.block_state_id,
+        );
+    } else if collision.world_border_hit {
+        reverse_projectile(transform, runtime, None);
+        transform.delta_movement = scale(transform.delta_movement, 0.2);
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ArrowEntityHitOutcome {
+    continues_to_block: bool,
+    discarded: bool,
+}
+
+fn apply_abstract_arrow_entity_hits(
+    entity_type_id: i32,
+    metadata: &mut EntityMetadata,
+    projectile: &mut EntityProjectileLifecycle,
+    runtime: &mut EntityAbstractArrowRuntime,
+    transform: &mut EntityTransform,
+    accessors: super::schema::VanillaAbstractArrowMetadataAccessors,
+    hits: &[EntityAbstractArrowEntityHit],
+    owner_look_angle: Option<EntityVec3>,
+    redirected_targets: &mut Vec<EntityProjectileAimRedirect>,
+) -> ArrowEntityHitOutcome {
+    let pierce_level = entity_data_byte(
+        &metadata.data_values,
+        accessors.pierce_level_data_id,
+        accessors.pierce_level_default,
+    )
+    .max(0);
+    for hit in hits {
+        if hit.deflects_projectiles {
+            let deflector = EntityInstanceReference {
+                entity_id: hit.entity_id,
+                incarnation: hit.incarnation,
+            };
+            if runtime.last_deflected_by != Some(deflector) {
+                reverse_projectile(transform, runtime, Some(deflector));
+            }
+            return ArrowEntityHitOutcome {
+                continues_to_block: false,
+                discarded: false,
+            };
+        }
+        if hit.redirectable_projectile {
+            if let Some(movement) = owner_look_angle {
+                redirected_targets.push(EntityProjectileAimRedirect {
+                    entity_id: hit.entity_id,
+                    incarnation: hit.incarnation,
+                    movement,
+                });
+            }
+        }
+
+        if entity_type_id == VANILLA_ENTITY_TYPE_TRIDENT_ID {
+            projectile.trident_dealt_damage = true;
+            reverse_projectile(transform, runtime, None);
+            transform.delta_movement.x *= 0.02;
+            transform.delta_movement.y *= 0.2;
+            transform.delta_movement.z *= 0.02;
+        } else {
+            if pierce_level > 0 {
+                if runtime.piercing_ignore_entity_ids.len()
+                    >= usize::from(pierce_level as u8).saturating_add(1)
+                {
+                    return ArrowEntityHitOutcome {
+                        continues_to_block: false,
+                        discarded: true,
+                    };
+                }
+                if !runtime.piercing_ignore_entity_ids.contains(&hit.entity_id) {
+                    runtime.piercing_ignore_entity_ids.push(hit.entity_id);
+                }
+            }
+            let flags = entity_data_byte(
+                &metadata.data_values,
+                accessors.flags_data_id,
+                accessors.flags_default,
+            );
+            if flags & accessors.crit_mask != 0 {
+                let speed = length_squared(transform.delta_movement).sqrt() as f32;
+                let damage = (speed * 2.0).clamp(0.0, i32::MAX as f32).ceil() as i32;
+                let _ = java_random_next_int_bound(&mut runtime.random_seed, damage / 2 + 2);
+            }
+            if hit.hurt_client {
+                let _ = java_random_next_float(&mut runtime.random_seed);
+                if pierce_level <= 0 {
+                    return ArrowEntityHitOutcome {
+                        continues_to_block: false,
+                        discarded: true,
+                    };
+                }
+            } else {
+                reverse_projectile(transform, runtime, None);
+                transform.delta_movement = scale(transform.delta_movement, 0.2);
+            }
+        }
+    }
+    ArrowEntityHitOutcome {
+        continues_to_block: pierce_level > 0,
+        discarded: false,
+    }
+}
+
+fn reverse_projectile(
+    transform: &mut EntityTransform,
+    runtime: &mut EntityAbstractArrowRuntime,
+    deflector: Option<EntityInstanceReference>,
+) {
+    let rotation = 170.0 + java_random_next_float(&mut runtime.random_seed) * 20.0;
+    transform.delta_movement = scale(transform.delta_movement, -0.5);
+    transform.y_rot += rotation;
+    transform.old_y_rot += rotation;
+    if let Some(deflector) = deflector {
+        runtime.last_deflected_by = Some(deflector);
+    }
+}
+
+fn apply_abstract_arrow_block_hit(
+    entity_type_id: i32,
+    metadata: &mut EntityMetadata,
+    projectile: &mut EntityProjectileLifecycle,
+    runtime: &mut EntityAbstractArrowRuntime,
+    animations: &mut EntityClientAnimations,
+    transform: &mut EntityTransform,
+    accessors: super::schema::VanillaAbstractArrowMetadataAccessors,
+    block_state_id: i32,
+) {
+    projectile.arrow_last_block_state_id = Some(block_state_id);
+    let movement = transform.delta_movement;
+    transform.position = EntityVec3 {
+        x: transform.position.x - vanilla_signum(movement.x) * f64::from(0.05_f32),
+        y: transform.position.y - vanilla_signum(movement.y) * f64::from(0.05_f32),
+        z: transform.position.z - vanilla_signum(movement.z) * f64::from(0.05_f32),
+    };
+    transform.delta_movement = EntityVec3::default();
+    let _ = java_random_next_float(&mut runtime.random_seed);
+    set_entity_data_bool(metadata, accessors.in_ground_data_id, true);
+    animations.animations.start_local_arrow_shake();
+    let flags = entity_data_byte(
+        &metadata.data_values,
+        accessors.flags_data_id,
+        accessors.flags_default,
+    );
+    set_entity_data_byte(
+        metadata,
+        accessors.flags_data_id,
+        flags & !accessors.crit_mask,
+    );
+    set_entity_data_byte(metadata, accessors.pierce_level_data_id, 0);
+    if entity_type_id == VANILLA_ENTITY_TYPE_TRIDENT_ID {
+        projectile.arrow_hit_ground_sound_is_arrow = true;
+    }
+    runtime.piercing_ignore_entity_ids.clear();
+}
+
+fn vanilla_signum(value: f64) -> f64 {
+    if value > 0.0 {
+        1.0
+    } else if value < 0.0 {
+        -1.0
+    } else {
+        value
     }
 }
 
@@ -1863,6 +2652,7 @@ fn finish_abstract_arrow(
     metadata: &EntityMetadata,
     transform: &mut EntityTransform,
     finish: ArrowMoveFinish,
+    accessors: super::schema::VanillaAbstractArrowMetadataAccessors,
 ) {
     if !finish.in_water {
         transform.delta_movement = scale(transform.delta_movement, f64::from(0.99_f32));
@@ -1874,7 +2664,12 @@ fn finish_abstract_arrow(
             accessors.no_gravity_default,
         )
     });
-    if finish.physics_enabled && !no_gravity {
+    let in_ground = entity_data_bool(
+        &metadata.data_values,
+        accessors.in_ground_data_id,
+        accessors.in_ground_default,
+    );
+    if finish.physics_enabled && !in_ground && !no_gravity {
         transform.delta_movement.y -= 0.05;
     }
 }
@@ -2330,6 +3125,24 @@ fn set_entity_data_byte(metadata: &mut EntityMetadata, data_id: u8, value: i8) {
     }
 }
 
+fn set_entity_data_bool(metadata: &mut EntityMetadata, data_id: u8, value: bool) {
+    let value = bbb_protocol::packets::EntityDataValue {
+        data_id,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        value: EntityDataValueKind::Boolean(value),
+    };
+    if let Some(existing) = metadata
+        .data_values
+        .iter_mut()
+        .find(|existing| existing.data_id == data_id)
+    {
+        *existing = value;
+    } else {
+        metadata.data_values.push(value);
+        metadata.data_values.sort_by_key(|value| value.data_id);
+    }
+}
+
 fn set_entity_data_int(metadata: &mut EntityMetadata, data_id: u8, value: i32) {
     let value = bbb_protocol::packets::EntityDataValue {
         data_id,
@@ -2500,7 +3313,8 @@ mod tests {
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, EntityDataValue, ItemStackSummary, RemoveEntities,
         SetBorderLerpSize as ProtocolSetBorderLerpSize, SetBorderSize as ProtocolSetBorderSize,
-        SetEntityData as ProtocolSetEntityData, Vec3d as ProtocolVec3d,
+        SetEntityData as ProtocolSetEntityData, SetEntityMotion as ProtocolSetEntityMotion,
+        Vec3d as ProtocolVec3d,
     };
     use uuid::Uuid;
 
@@ -2929,11 +3743,12 @@ mod tests {
 
     #[test]
     fn abstract_arrow_water_inertia_precedes_bubbles_and_free_flight() {
-        let metadata = EntityMetadata::default();
         for (entity_id, entity_type_id, inertia) in [
             (57, VANILLA_ENTITY_TYPE_ARROW_ID, 0.6_f32),
             (58, VANILLA_ENTITY_TYPE_TRIDENT_ID, 0.99_f32),
         ] {
+            let mut metadata = EntityMetadata::default();
+            let mut animations = EntityClientAnimations::default();
             let mut transform = test_transform(EntityVec3 {
                 x: 0.5,
                 y: -0.25,
@@ -2947,17 +3762,15 @@ mod tests {
             let step = advance_abstract_arrow(
                 entity_id,
                 entity_type_id,
-                &metadata,
+                &mut metadata,
+                &mut animations,
                 &mut transform,
                 accessors,
                 true,
+                None,
                 &mut effects,
             );
-            let (segment, base_tick_reset) = step.effects.expect("flight applies block effects");
-            assert_eq!(
-                base_tick_reset,
-                super::super::EntityBlockEffectBaseTickReset::AfterCallbacks
-            );
+            let segment = step.first_effect;
             assert_vec3_near(
                 segment.from,
                 EntityVec3 {
@@ -2971,6 +3784,7 @@ mod tests {
                 &metadata,
                 &mut transform,
                 step.finish.expect("flight runs the inertia tail"),
+                accessors,
             );
 
             let water_movement = scale(
@@ -3013,6 +3827,629 @@ mod tests {
                     ))
             }));
         }
+    }
+
+    #[test]
+    fn abstract_arrow_margin_refinement_honors_blocks_and_player_friendly_fire() {
+        let owner_uuid = Uuid::from_u128(70);
+        let target_uuid = Uuid::from_u128(71);
+        let source = EntityAbstractArrowCollisionSource {
+            entity_id: 70,
+            entity_type_id: VANILLA_ENTITY_TYPE_ARROW_ID,
+            position: EntityVec3 {
+                x: 0.0,
+                y: 0.9,
+                z: 0.0,
+            },
+            movement: EntityVec3 {
+                x: 2.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            bounds: EntityPickBoundsState::from_base_size(0.5, 0.5, 0.0),
+            on_ground: false,
+            tick_count: 22,
+            owner_uuid: Some(owner_uuid),
+            owner_entity_type_id: Some(VANILLA_ENTITY_TYPE_PLAYER_ID),
+            owner_root_vehicle_id: None,
+            left_owner: true,
+            trident_dealt_damage: false,
+            piercing_ignore_entity_ids: Vec::new(),
+        };
+        let target = EntityProjectileTarget {
+            entity_id: 71,
+            entity_type_id: VANILLA_ENTITY_TYPE_PLAYER_ID,
+            uuid: target_uuid,
+            root_vehicle_id: 71,
+            position: EntityVec3 {
+                x: 1.0,
+                y: 0.0,
+                z: 0.35,
+            },
+            bounds: EntityPickBoundsState::from_base_size(0.6, 1.8, 0.1),
+            alive: true,
+            pickable: true,
+            deflects_projectiles: false,
+            redirectable_projectile: false,
+            hurt_client: false,
+            trident_hurt_client: false,
+            hurt_client_rejects_ender_dragon_owner: false,
+            incarnation: EntityIncarnation(71),
+        };
+        let batch = || EntityAbstractArrowCollisionBatch {
+            sources: vec![source.clone()],
+            targets: vec![target],
+        };
+        let miss_clip = |_: i32, _: EntityVec3, movement: EntityVec3, _: bool, _: f64| {
+            crate::client::ProjectileBlockMovementClip {
+                movement: [movement.x, movement.y, movement.z],
+                world_border_hit: false,
+                block_state_id: None,
+            }
+        };
+        let friendly_filtered = resolve_abstract_arrow_collision_facts(
+            batch(),
+            |_| None,
+            miss_clip,
+            |owner, target| owner != owner_uuid || target != target_uuid,
+        );
+        assert!(friendly_filtered[&70].entity_hits.is_empty());
+
+        let unobstructed =
+            resolve_abstract_arrow_collision_facts(batch(), |_| None, miss_clip, |_, _| true);
+        assert_eq!(unobstructed[&70].entity_hits.len(), 1);
+        assert!(
+            unobstructed[&70].entity_hits[0].location.z >= 0.05 - 1.0e-12,
+            "the inflated-margin entry must be refined back to the exact target surface"
+        );
+
+        let crystal = EntityProjectileTarget {
+            entity_type_id: VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
+            hurt_client: true,
+            hurt_client_rejects_ender_dragon_owner: true,
+            ..target
+        };
+        let mut dragon_owned_source = source.clone();
+        dragon_owned_source.owner_entity_type_id = Some(VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID);
+        let dragon_owned = resolve_abstract_arrow_collision_facts(
+            EntityAbstractArrowCollisionBatch {
+                sources: vec![dragon_owned_source],
+                targets: vec![crystal],
+            },
+            |_| None,
+            miss_clip,
+            |_, _| true,
+        );
+        assert!(!dragon_owned[&70].entity_hits[0].hurt_client);
+
+        let obstructed = resolve_abstract_arrow_collision_facts(
+            batch(),
+            |_| None,
+            |_, _, movement, _, _| {
+                let secondary = movement.z != 0.0;
+                crate::client::ProjectileBlockMovementClip {
+                    movement: if secondary {
+                        [0.0; 3]
+                    } else {
+                        [movement.x, movement.y, movement.z]
+                    },
+                    world_border_hit: false,
+                    block_state_id: secondary.then_some(1),
+                }
+            },
+            |_, _| true,
+        );
+        assert!(obstructed[&70].entity_hits.is_empty());
+    }
+
+    #[test]
+    fn abstract_arrow_block_hit_mutates_exact_saveable_client_state() {
+        let accessors = vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_TRIDENT_ID,
+        )
+        .unwrap();
+        let mut metadata = EntityMetadata::default();
+        set_entity_data_byte(&mut metadata, accessors.flags_data_id, accessors.crit_mask);
+        set_entity_data_byte(&mut metadata, accessors.pierce_level_data_id, 4);
+        let mut projectile = test_arrow_lifecycle();
+        let mut runtime = test_arrow_runtime(72);
+        runtime.piercing_ignore_entity_ids.extend([80, 81]);
+        let mut animations = EntityClientAnimations::default();
+        let mut transform = test_transform(EntityVec3 {
+            x: 1.0,
+            y: -0.25,
+            z: 0.0,
+        });
+        let collision = EntityAbstractArrowCollisionFacts {
+            initial_block_state_id: None,
+            endpoint: EntityVec3 {
+                x: 1.75,
+                y: 63.75,
+                z: -2.0,
+            },
+            world_border_hit: false,
+            block_hit: Some(EntityAbstractArrowBlockHit {
+                location: EntityVec3 {
+                    x: 1.75,
+                    y: 63.75,
+                    z: -2.0,
+                },
+                block_state_id: 9,
+            }),
+            entity_hits: Vec::new(),
+        };
+        let step = advance_abstract_arrow(
+            72,
+            VANILLA_ENTITY_TYPE_TRIDENT_ID,
+            &mut metadata,
+            &mut animations,
+            &mut transform,
+            accessors,
+            false,
+            Some(&collision),
+            &mut Vec::new(),
+        );
+        assert_eq!(step.collision, Some(collision.clone()));
+        apply_abstract_arrow_endpoint_hit(
+            VANILLA_ENTITY_TYPE_TRIDENT_ID,
+            &mut metadata,
+            &mut projectile,
+            &mut runtime,
+            &mut animations,
+            &mut transform,
+            accessors,
+            &collision,
+        );
+        assert_eq!(projectile.arrow_last_block_state_id, Some(9));
+        assert!(projectile.arrow_hit_ground_sound_is_arrow);
+        assert!(runtime.piercing_ignore_entity_ids.is_empty());
+        assert!(entity_data_bool(
+            &metadata.data_values,
+            accessors.in_ground_data_id,
+            accessors.in_ground_default
+        ));
+        assert_eq!(
+            entity_data_byte(
+                &metadata.data_values,
+                accessors.flags_data_id,
+                accessors.flags_default
+            ) & accessors.crit_mask,
+            0
+        );
+        assert_eq!(
+            entity_data_byte(
+                &metadata.data_values,
+                accessors.pierce_level_data_id,
+                accessors.pierce_level_default
+            ),
+            0
+        );
+        assert_eq!(
+            animations.animations.arrow_shake.unwrap().shake_time,
+            7,
+            "onHitBlock installs shake after this tick's decrement"
+        );
+        assert_vec3_near(
+            transform.position,
+            EntityVec3 {
+                x: 1.75 - f64::from(0.05_f32),
+                y: 63.75 + f64::from(0.05_f32),
+                z: -2.0,
+            },
+        );
+        assert_eq!(transform.delta_movement, EntityVec3::default());
+    }
+
+    #[test]
+    fn trident_initial_block_containment_enters_ground_branch_on_the_same_tick() {
+        let accessors = vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_TRIDENT_ID,
+        )
+        .unwrap();
+        let mut metadata = EntityMetadata::default();
+        let mut animations = EntityClientAnimations::default();
+        let mut transform = test_transform(EntityVec3 {
+            x: 1.0,
+            y: 0.0,
+            z: 0.0,
+        });
+        let collision = EntityAbstractArrowCollisionFacts {
+            initial_block_state_id: Some(9),
+            endpoint: transform.position,
+            world_border_hit: false,
+            block_hit: None,
+            entity_hits: Vec::new(),
+        };
+        let step = advance_abstract_arrow(
+            720,
+            VANILLA_ENTITY_TYPE_TRIDENT_ID,
+            &mut metadata,
+            &mut animations,
+            &mut transform,
+            accessors,
+            false,
+            Some(&collision),
+            &mut Vec::new(),
+        );
+
+        assert!(step.trident_initial_containment_grounded);
+        assert!(step.finish.is_none());
+        assert_eq!(transform.delta_movement, EntityVec3::default());
+        assert!(entity_data_bool(
+            &metadata.data_values,
+            accessors.in_ground_data_id,
+            accessors.in_ground_default,
+        ));
+        assert_eq!(animations.animations.arrow_shake.unwrap().shake_time, 6);
+    }
+
+    #[test]
+    fn abstract_arrow_world_border_hit_reverses_before_inertia_and_gravity() {
+        let accessors = vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_ARROW_ID,
+        )
+        .unwrap();
+        let mut metadata = EntityMetadata::default();
+        let mut projectile = test_arrow_lifecycle();
+        let mut runtime = test_arrow_runtime(721);
+        let mut animations = EntityClientAnimations::default();
+        let mut transform = test_transform(EntityVec3 {
+            x: 1.0,
+            y: 0.0,
+            z: 0.0,
+        });
+        let collision = EntityAbstractArrowCollisionFacts {
+            initial_block_state_id: None,
+            endpoint: EntityVec3 {
+                x: 1.5,
+                y: 64.0,
+                z: -2.0,
+            },
+            world_border_hit: true,
+            block_hit: None,
+            entity_hits: Vec::new(),
+        };
+        let step = advance_abstract_arrow(
+            721,
+            VANILLA_ENTITY_TYPE_ARROW_ID,
+            &mut metadata,
+            &mut animations,
+            &mut transform,
+            accessors,
+            false,
+            Some(&collision),
+            &mut Vec::new(),
+        );
+        apply_abstract_arrow_endpoint_hit(
+            VANILLA_ENTITY_TYPE_ARROW_ID,
+            &mut metadata,
+            &mut projectile,
+            &mut runtime,
+            &mut animations,
+            &mut transform,
+            accessors,
+            &collision,
+        );
+        finish_abstract_arrow(&metadata, &mut transform, step.finish.unwrap(), accessors);
+
+        assert_vec3_near(
+            transform.position,
+            EntityVec3 {
+                x: 1.5,
+                y: 64.0,
+                z: -2.0,
+            },
+        );
+        assert_vec3_near(
+            transform.delta_movement,
+            EntityVec3 {
+                x: -0.1 * f64::from(0.99_f32),
+                y: -0.05,
+                z: 0.0,
+            },
+        );
+        assert_eq!(projectile.arrow_last_block_state_id, None);
+    }
+
+    #[test]
+    fn abstract_arrow_piercing_limit_discards_after_level_plus_one_targets() {
+        let accessors = vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_ARROW_ID,
+        )
+        .unwrap();
+        let mut metadata = EntityMetadata::default();
+        set_entity_data_byte(&mut metadata, accessors.pierce_level_data_id, 1);
+        let mut projectile = test_arrow_lifecycle();
+        let mut runtime = test_arrow_runtime(73);
+        let mut animations = EntityClientAnimations::default();
+        let mut transform = test_transform(EntityVec3 {
+            x: 1.0,
+            y: 0.0,
+            z: 0.0,
+        });
+        let entity_hits = (80..83)
+            .map(|entity_id| EntityAbstractArrowEntityHit {
+                entity_id,
+                incarnation: EntityIncarnation(entity_id as u64),
+                location: EntityVec3 {
+                    x: f64::from(entity_id - 79),
+                    y: 64.0,
+                    z: -2.0,
+                },
+                target_position: EntityVec3 {
+                    x: f64::from(entity_id - 79),
+                    y: 64.0,
+                    z: -2.0,
+                },
+                deflects_projectiles: false,
+                redirectable_projectile: false,
+                hurt_client: true,
+            })
+            .collect();
+        let collision = EntityAbstractArrowCollisionFacts {
+            initial_block_state_id: None,
+            endpoint: EntityVec3 {
+                x: 2.0,
+                y: 64.0,
+                z: -2.0,
+            },
+            world_border_hit: false,
+            block_hit: None,
+            entity_hits,
+        };
+        let step = advance_abstract_arrow(
+            73,
+            VANILLA_ENTITY_TYPE_ARROW_ID,
+            &mut metadata,
+            &mut animations,
+            &mut transform,
+            accessors,
+            false,
+            Some(&collision),
+            &mut Vec::new(),
+        );
+        let collision_step = advance_abstract_arrow_collision_after_first_effect(
+            VANILLA_ENTITY_TYPE_ARROW_ID,
+            &mut metadata,
+            &mut projectile,
+            &mut runtime,
+            &mut transform,
+            accessors,
+            step.collision.as_ref().unwrap(),
+            None,
+        );
+        assert!(collision_step.discarded);
+        assert_eq!(runtime.piercing_ignore_entity_ids, vec![80, 81]);
+        assert_vec3_near(
+            transform.position,
+            EntityVec3 {
+                x: 1.0,
+                y: 64.0,
+                z: -2.0,
+            },
+        );
+    }
+
+    #[test]
+    fn abstract_arrow_client_hurt_discards_and_motion_correction_releases_ground_state() {
+        let mut store = WorldStore::new();
+        let mut arrow = projectile(
+            74,
+            VANILLA_ENTITY_TYPE_ARROW_ID,
+            ProtocolVec3d {
+                x: 2.0,
+                y: 0.0,
+                z: 0.0,
+            },
+        );
+        arrow.position = ProtocolVec3d {
+            x: 0.0,
+            y: 64.0,
+            z: 0.0,
+        };
+        store.apply_add_entity(arrow.clone());
+        let accessors = vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_ARROW_ID,
+        )
+        .unwrap();
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id: 74,
+            values: vec![EntityDataValue {
+                data_id: accessors.in_ground_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                value: EntityDataValueKind::Boolean(true),
+            }],
+        }));
+        assert!(store.apply_set_entity_motion(ProtocolSetEntityMotion {
+            id: 74,
+            delta_movement: ProtocolVec3d {
+                x: 2.0,
+                y: 0.0,
+                z: 0.0,
+            },
+        }));
+        assert!(!store
+            .entities
+            .metadata_bool_for_entity(74, accessors.in_ground_data_id, accessors.in_ground_default,)
+            .unwrap());
+
+        let mut boat = projectile(
+            75,
+            VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+            ProtocolVec3d::default(),
+        );
+        boat.position = ProtocolVec3d {
+            x: 1.5,
+            y: 64.0,
+            z: 0.0,
+        };
+        store.apply_add_entity(boat);
+        store.advance_entity_client_animations(1);
+        assert!(
+            store.probe_entity(74).is_none(),
+            "VehicleEntity.hurtClient accepts the simulated arrow hit, so a non-piercing arrow discards locally"
+        );
+        assert!(store.probe_entity(75).is_some());
+    }
+
+    #[test]
+    fn item_entity_projectile_hurt_respects_effective_damage_resistant_component() {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(projectile(
+            76,
+            VANILLA_ENTITY_TYPE_ITEM_ID,
+            ProtocolVec3d::default(),
+        ));
+        set_nonempty_item_stack(&mut store, 76);
+        assert!(store.item_entity_accepts_projectile_hurt_client(76, "minecraft:arrow"));
+
+        let arrow_damage_type_id = store
+            .registry_holder_id_by_resource_id("minecraft:damage_type", "minecraft:arrow")
+            .unwrap();
+        let mut component_patch = bbb_protocol::packets::DataComponentPatchSummary::default();
+        component_patch.added = 1;
+        component_patch.added_type_ids = vec![
+            bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID,
+        ];
+        component_patch.damage_resistant_type_registry_ids = vec![arrow_damage_type_id];
+        let data_id = vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_ITEM_ID,
+        )
+        .unwrap();
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id: 76,
+            values: vec![EntityDataValue {
+                data_id,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+                value: EntityDataValueKind::ItemStack(ItemStackSummary {
+                    item_id: Some(bbb_protocol::item_types::VANILLA_ITEM_STONE_ID),
+                    count: 1,
+                    component_patch,
+                }),
+            }],
+        }));
+        assert!(!store.item_entity_accepts_projectile_hurt_client(76, "minecraft:arrow"));
+        assert!(store.item_entity_accepts_projectile_hurt_client(76, "minecraft:trident"));
+    }
+
+    #[test]
+    fn abstract_arrow_hit_aim_deflects_redirectable_projectile_to_owner_look() {
+        let mut store = WorldStore::new();
+        let mut owner = projectile(77, VANILLA_ENTITY_TYPE_PLAYER_ID, ProtocolVec3d::default());
+        owner.position = ProtocolVec3d {
+            x: -5.0,
+            y: 64.0,
+            z: 0.0,
+        };
+        owner.x_rot = -10.0;
+        owner.y_rot = 45.0;
+        store.apply_add_entity(owner);
+
+        let mut fireball = projectile(
+            78,
+            VANILLA_ENTITY_TYPE_FIREBALL_ID,
+            ProtocolVec3d::default(),
+        );
+        fireball.position = ProtocolVec3d {
+            x: 1.5,
+            y: 64.0,
+            z: 0.0,
+        };
+        store.apply_add_entity(fireball);
+
+        let mut arrow = projectile(
+            79,
+            VANILLA_ENTITY_TYPE_ARROW_ID,
+            ProtocolVec3d {
+                x: 2.0,
+                y: 0.0,
+                z: 0.0,
+            },
+        );
+        arrow.position = ProtocolVec3d {
+            x: 0.0,
+            y: 64.0,
+            z: 0.0,
+        };
+        arrow.data = 77;
+        store.apply_add_entity(arrow);
+
+        store.advance_entity_client_animations(1);
+
+        assert_vec3_near(
+            store.probe_entity_transform(78).unwrap().delta_movement,
+            calculate_view_vector(-10.0, 45.0),
+        );
+        assert!(
+            store.probe_entity_transform(79).unwrap().delta_movement.x < 0.0,
+            "the redirectable target still rejects client damage, so the source arrow reverses"
+        );
+    }
+
+    #[test]
+    fn abstract_arrow_runtime_round_trip_rebinds_deflector_and_preserves_private_state() {
+        let mut store = WorldStore::new();
+        let breeze = projectile(80, VANILLA_ENTITY_TYPE_BREEZE_ID, ProtocolVec3d::default());
+        let breeze_uuid = breeze.uuid;
+        store.apply_add_entity(breeze);
+        store.apply_add_entity(projectile(
+            81,
+            VANILLA_ENTITY_TYPE_ARROW_ID,
+            ProtocolVec3d::default(),
+        ));
+
+        let mut arrow = store.probe_entity(81).unwrap();
+        let runtime = arrow.abstract_arrow_runtime.as_mut().unwrap();
+        runtime.random_seed = 0x1234_5678_9abc;
+        runtime.last_deflected_by = Some(crate::entities::EntityRuntimeReferenceState {
+            entity_id: 80,
+            uuid: breeze_uuid,
+        });
+        runtime.piercing_ignore_entity_ids = vec![82, 83];
+        store.entities.insert_or_replace(arrow.clone());
+
+        let breeze_incarnation = store
+            .entities
+            .projectile_targets(&HashSet::new())
+            .into_iter()
+            .find(|target| target.entity_id == 80)
+            .unwrap()
+            .incarnation;
+        let runtime = store.entities.abstract_arrow_runtime(81).unwrap();
+        assert_eq!(
+            runtime.last_deflected_by,
+            Some(EntityInstanceReference {
+                entity_id: 80,
+                incarnation: breeze_incarnation,
+            })
+        );
+        assert_eq!(store.probe_entity(81).unwrap(), arrow);
+        assert_eq!(
+            store.publication_snapshot().probe_entity(81).unwrap(),
+            arrow
+        );
+
+        let encoded = serde_json::to_value(&store).unwrap();
+        let restored: WorldStore = serde_json::from_value(encoded).unwrap();
+        assert_eq!(restored.probe_entity(81).unwrap(), arrow);
+        let restored_breeze_incarnation = restored
+            .entities
+            .projectile_targets(&HashSet::new())
+            .into_iter()
+            .find(|target| target.entity_id == 80)
+            .unwrap()
+            .incarnation;
+        let restored_runtime = restored.entities.abstract_arrow_runtime(81).unwrap();
+        assert_eq!(
+            restored_runtime.last_deflected_by,
+            Some(EntityInstanceReference {
+                entity_id: 80,
+                incarnation: restored_breeze_incarnation,
+            })
+        );
+        assert!(restored_runtime.pending_last_deflected_by.is_none());
+        assert_eq!(restored_runtime.random_seed, 0x1234_5678_9abc);
+        assert_eq!(restored_runtime.piercing_ignore_entity_ids, vec![82, 83]);
     }
 
     #[test]
@@ -3704,9 +5141,10 @@ mod tests {
 
     #[test]
     fn fishing_hook_entity_hit_uses_margin_and_owner_root_gate() {
-        let target = EntityFishingHookProjectileTarget {
+        let target = EntityProjectileTarget {
             entity_id: 91,
             entity_type_id: VANILLA_ENTITY_TYPE_PLAYER_ID,
+            uuid: uuid::Uuid::from_u128(91),
             root_vehicle_id: 91,
             position: EntityVec3 {
                 x: 1.0,
@@ -3717,6 +5155,10 @@ mod tests {
             alive: true,
             pickable: true,
             deflects_projectiles: false,
+            redirectable_projectile: false,
+            hurt_client: false,
+            trident_hurt_client: false,
+            hurt_client_rejects_ender_dragon_owner: false,
             incarnation: EntityIncarnation(91),
         };
         let from = EntityVec3 {
@@ -3738,7 +5180,7 @@ mod tests {
             fishing_hook_entity_hit(90, from, delta, Some(91), true, 22, None, &[target]).unwrap();
         assert!((hit.scale - 0.2).abs() <= 1.0e-6, "{}", hit.scale);
 
-        let deflecting = EntityFishingHookProjectileTarget {
+        let deflecting = EntityProjectileTarget {
             deflects_projectiles: true,
             ..target
         };
@@ -3764,7 +5206,7 @@ mod tests {
             None,
             "Projectile.lastDeflectedBy suppresses a repeated reverse from the same instance"
         );
-        let replacement = EntityFishingHookProjectileTarget {
+        let replacement = EntityProjectileTarget {
             incarnation: EntityIncarnation(92),
             ..deflecting
         };
@@ -3795,9 +5237,7 @@ mod tests {
             ProtocolVec3d::default(),
         ));
 
-        let targets = store
-            .entities
-            .fishing_hook_projectile_targets(&HashSet::new());
+        let targets = store.entities.projectile_targets(&HashSet::new());
         let parent = targets
             .iter()
             .find(|target| target.entity_id == 100)
@@ -3821,7 +5261,7 @@ mod tests {
         store.apply_add_entity(breeze.clone());
         let first = store
             .entities
-            .fishing_hook_projectile_targets(&HashSet::new())
+            .projectile_targets(&HashSet::new())
             .into_iter()
             .find(|target| target.entity_id == 109)
             .unwrap()
@@ -3831,14 +5271,14 @@ mod tests {
         store.apply_add_entity(breeze);
         let replacement = store
             .entities
-            .fishing_hook_projectile_targets(&HashSet::new())
+            .projectile_targets(&HashSet::new())
             .into_iter()
             .find(|target| target.entity_id == 109)
             .unwrap()
             .incarnation;
         let retained = generation_a
             .entities
-            .fishing_hook_projectile_targets(&HashSet::new())
+            .projectile_targets(&HashSet::new())
             .into_iter()
             .find(|target| target.entity_id == 109)
             .unwrap()
@@ -3948,7 +5388,7 @@ mod tests {
         store.apply_add_entity(breeze);
         let breeze_incarnation = store
             .entities
-            .fishing_hook_projectile_targets(&HashSet::new())
+            .projectile_targets(&HashSet::new())
             .into_iter()
             .find(|target| target.entity_id == 113)
             .unwrap()
@@ -4788,6 +6228,30 @@ mod tests {
             old_y_head_rot: 0.0,
             on_ground: None,
             interpolation: None,
+        }
+    }
+
+    fn test_arrow_lifecycle() -> EntityProjectileLifecycle {
+        EntityProjectileLifecycle {
+            owner_uuid: None,
+            left_owner: true,
+            has_been_shot: true,
+            trident_in_ground_time: 0,
+            trident_dealt_damage: false,
+            trident_return_ticks: 0,
+            arrow_pickup_allowed: false,
+            arrow_no_physics: false,
+            arrow_last_block_state_id: None,
+            arrow_hit_ground_sound_is_arrow: false,
+        }
+    }
+
+    fn test_arrow_runtime(seed: i64) -> EntityAbstractArrowRuntime {
+        EntityAbstractArrowRuntime {
+            random_seed: java_random_seed(seed),
+            last_deflected_by: None,
+            pending_last_deflected_by: None,
+            piercing_ignore_entity_ids: Vec::new(),
         }
     }
 

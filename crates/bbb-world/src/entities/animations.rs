@@ -1,3 +1,4 @@
+use bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID;
 use bbb_protocol::entity_poses::{
     VANILLA_ENTITY_POSE_CROAKING_ID, VANILLA_ENTITY_POSE_DIGGING_ID,
     VANILLA_ENTITY_POSE_EMERGING_ID, VANILLA_ENTITY_POSE_FALL_FLYING_ID,
@@ -3644,7 +3645,7 @@ pub(super) fn java_random_next_bits(state: &mut u64, bits: u32) -> u32 {
     (*state >> (48 - bits)) as u32
 }
 
-fn java_random_next_int_bound(state: &mut u64, bound: i32) -> i32 {
+pub(super) fn java_random_next_int_bound(state: &mut u64, bound: i32) -> i32 {
     debug_assert!(bound > 0);
     if (bound & (bound - 1)) == 0 {
         return ((i64::from(bound) * i64::from(java_random_next_bits(state, 31))) >> 31) as i32;
@@ -4400,6 +4401,19 @@ impl FoxAnimationState {
 }
 
 impl EntityClientAnimationState {
+    pub(super) fn start_local_arrow_shake(&mut self) {
+        self.arrow_shake = Some(ArrowShakeAnimationState::started());
+    }
+
+    pub(super) fn advance_arrow_shake_tick(&mut self) {
+        if let Some(shake) = self.arrow_shake.as_mut() {
+            shake.advance_client_tick();
+            if shake.is_settled() {
+                self.arrow_shake = None;
+            }
+        }
+    }
+
     pub(crate) fn camel_dash_should_clear_before_tick(
         self,
         is_dashing: bool,
@@ -6586,15 +6600,9 @@ impl EntityClientAnimationState {
         self.advance_age_lock_particle_timer_tick();
         self.spawn_body_y_rot = None;
         let mut particle_triggers = EntityClientTickParticleTriggers::default();
-        // Vanilla `AbstractArrow.tick`: `if (shakeTime > 0) --shakeTime`.
-        // The state is only created for arrow/spectral-arrow metadata updates, so
-        // it can advance outside the per-type match without touching other entities.
-        if let Some(shake) = self.arrow_shake.as_mut() {
-            shake.advance_client_tick();
-            if shake.is_settled() {
-                self.arrow_shake = None;
-            }
-        }
+        // AbstractArrow owns the ordering-sensitive shake decrement in the
+        // direct movement pass: an initial containment hit precedes it, while
+        // `onHitBlock` installs a fresh seven-tick shake after it.
         // Vanilla `LivingEntity.baseTick`: `if (hurtTime > 0) hurtTime--`. Applies
         // to every living entity, so it runs outside the per-type match.
         if let Some(hurt) = self.hurt.as_mut() {
@@ -7522,6 +7530,31 @@ pub(crate) fn warden_heartbeat_delay(entity_type_id: i32, data_values: &[EntityD
 }
 
 impl WorldStore {
+    pub(super) fn item_entity_accepts_projectile_hurt_client(
+        &self,
+        entity_id: i32,
+        damage_type: &str,
+    ) -> bool {
+        let Some(stack) = self.entities.item_stack_for_entity(entity_id) else {
+            // Empty ItemStack has no DAMAGE_RESISTANT component.
+            return true;
+        };
+        if !self.item_stack_has_effective_component(
+            &stack,
+            VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID,
+        ) {
+            return true;
+        }
+        let effective = self.effective_item_stack(&stack);
+        self.registry_holder_id_by_resource_id("minecraft:damage_type", damage_type)
+            .is_none_or(|damage_type_id| {
+                !effective
+                    .component_patch
+                    .damage_resistant_type_registry_ids
+                    .contains(&damage_type_id)
+            })
+    }
+
     pub fn advance_entity_client_animations(&mut self, ticks: u32) {
         let _ = self.advance_entity_client_animations_with_observation(ticks);
     }
@@ -7797,6 +7830,60 @@ impl WorldStore {
             .iter()
             .filter_map(|(uuid, info)| info.is_spectator().then_some(*uuid))
             .collect();
+        let mut abstract_arrow_collision_batch = self
+            .entities
+            .abstract_arrow_collision_batch(&spectator_player_uuids);
+        let item_target_ids = abstract_arrow_collision_batch
+            .targets
+            .iter()
+            .filter(|target| target.entity_type_id == VANILLA_ENTITY_TYPE_ITEM_ID)
+            .map(|target| target.entity_id)
+            .collect::<Vec<_>>();
+        for entity_id in item_target_ids {
+            abstract_arrow_collision_batch.set_item_hurt_client(
+                entity_id,
+                self.item_entity_accepts_projectile_hurt_client(entity_id, "minecraft:arrow"),
+                self.item_entity_accepts_projectile_hurt_client(entity_id, "minecraft:trident"),
+            );
+        }
+        let abstract_arrow_collisions_by_id =
+            super::client_movement::resolve_abstract_arrow_collision_facts(
+                abstract_arrow_collision_batch,
+                |source| {
+                    self.projectile_position_inside_block_collision(
+                        source.entity_type_id,
+                        [source.position.x, source.position.y, source.position.z],
+                        source.on_ground,
+                    )
+                },
+                |entity_type_id, position, movement, on_ground, collision_context_y| {
+                    self.clip_projectile_block_movement_with_context_y(
+                        entity_type_id,
+                        [position.x, position.y, position.z],
+                        [movement.x, movement.y, movement.z],
+                        on_ground,
+                        collision_context_y,
+                    )
+                },
+                |owner_uuid, target_uuid| {
+                    let owner_is_loaded_player = self
+                        .entities
+                        .protocol_id_for_uuid(owner_uuid)
+                        .and_then(|id| self.entities.identity(id))
+                        .is_some_and(|identity| {
+                            identity.entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID
+                        });
+                    if !owner_is_loaded_player {
+                        return true;
+                    }
+                    let owner_name = self
+                        .scoreboard_name_for_identity(VANILLA_ENTITY_TYPE_PLAYER_ID, owner_uuid);
+                    let target_name = self
+                        .scoreboard_name_for_identity(VANILLA_ENTITY_TYPE_PLAYER_ID, target_uuid);
+                    self.scoreboard
+                        .player_can_harm_player(&owner_name, &target_name)
+                },
+            );
         let lava_current_scale = crate::client::local_player_lava_current_push_per_tick(self);
         let client_movement_collisions_by_id = self
             .entities
@@ -8024,12 +8111,18 @@ impl WorldStore {
             &guardian_can_stand_on_below_by_id,
             &guardian_attack_target_ids,
             &client_movement_collisions_by_id,
+            &abstract_arrow_collisions_by_id,
             minecart_improvements_enabled,
             death_tick_player_chunk,
             death_tick_simulation_distance,
             &can_carry_interpolation_target,
             &mut block_effect_world,
         );
+        let local_discards = self.entities.take_local_discards();
+        drop(block_effect_world);
+        for entity_id in local_discards {
+            self.discard_local_entity(entity_id);
+        }
         work.preparation_duration += preparation_duration;
         self.counters.minecart_lerp_steps_tracked = self.entities.total_minecart_lerp_steps();
         work

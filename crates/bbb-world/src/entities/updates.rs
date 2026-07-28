@@ -347,12 +347,15 @@ impl WorldStore {
 
     pub fn apply_set_entity_motion(&mut self, packet: ProtocolSetEntityMotion) -> bool {
         self.counters.entity_motion_updates_received += 1;
+        let movement = entity_vec3(packet.delta_movement);
         let Some(()) = self.entities.with_transform_mut(packet.id, |transform| {
-            transform.delta_movement = entity_vec3(packet.delta_movement);
+            transform.delta_movement = movement;
         }) else {
             self.counters.entity_motion_updates_ignored += 1;
             return false;
         };
+        self.entities
+            .apply_abstract_arrow_lerp_motion(packet.id, movement);
         self.counters.entity_motion_updates_applied += 1;
         true
     }

@@ -8,6 +8,45 @@ use bbb_protocol::packets::{
 use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 
 #[test]
+fn player_harm_gate_uses_owner_team_membership_and_friendly_fire_option() {
+    let mut store = WorldStore::new();
+    assert!(store.apply_set_player_team(protocol_set_player_team(
+        "red",
+        PlayerTeamMethod::Add,
+        Some(protocol_team_parameters(
+            "Red",
+            0,
+            TeamVisibility::Always,
+            TeamCollisionRule::Always,
+            ChatFormatting::Red,
+            "",
+            "",
+        )),
+        &["Alice", "Bob"],
+    )));
+
+    assert!(!store.scoreboard().player_can_harm_player("Alice", "Bob"));
+    assert!(store.scoreboard().player_can_harm_player("Alice", "Carol"));
+    assert!(store.scoreboard().player_can_harm_player("Carol", "Bob"));
+
+    assert!(store.apply_set_player_team(protocol_set_player_team(
+        "red",
+        PlayerTeamMethod::Change,
+        Some(protocol_team_parameters(
+            "Red",
+            1,
+            TeamVisibility::Always,
+            TeamCollisionRule::Always,
+            ChatFormatting::Red,
+            "",
+            "",
+        )),
+        &[],
+    )));
+    assert!(store.scoreboard().player_can_harm_player("Alice", "Bob"));
+}
+
+#[test]
 fn scoreboard_display_revision_advances_only_for_applied_mutations_and_survives_clone() {
     let mut store = WorldStore::new();
     assert_eq!(store.scoreboard_display_revision(), 0);

@@ -113,6 +113,34 @@ always saves and the client can know exactly:
   replaces it; OminousItemSpawner saves the packet-constructor's zero delay
   because only the server factory randomizes that field.
 
+The reverse audit closes the client-owned `AbstractArrow` collision prerequisite
+before projecting its mutable save fields:
+
+- `bbb-world` freezes terrain, world-border, target bounds/incarnations, owner
+  vehicle, scoreboard friendly-fire, and owner-look facts before the mutable
+  entity pass, then follows Vanilla's age-dependent exact/margin-refined hit
+  selection and target-position ordering;
+- block-effect callbacks remain interleaved before entity or block hit handling,
+  so reverse/critical RNG and the block-hit backstep consume the callback-mutated
+  velocity in Vanilla order;
+- target deflection, redirectable-projectile `AIM_DEFLECT`, EndCrystal's dragon
+  owner exception, item `damage_resistant` checks for the arrow/trident damage
+  types, piercing ignore/discard, trident dealt-damage, and world-border bounce
+  are all client-owned state transitions;
+- the arrow RNG seed, piercing ignore set, and last deflector survive canonical
+  world serialization and publication snapshots; the object reference projects
+  as protocol id plus UUID and rebinds to the restored ECS incarnation rather
+  than persisting a store-local incarnation number;
+- initial block containment updates in-ground, shake, and motion before the
+  stuck branch; a segment block hit additionally clears critical/pierce state
+  and retains the last block state plus trident ground sound; nonzero motion
+  correction releases a grounded arrow; and a locally accepted non-piercing hit
+  removes the client projectile after its scheduled tick;
+- Shift-local projection now emits `inBlockState` only from the retained session
+  block-state id and always emits the exact current `SoundEvent`. Hit audio,
+  game events, target damage mutation, and server-only enchantment callbacks do
+  not contribute an entity save value and remain outside this projection slice.
+
 ## Serial stages and focused checks
 
 1. **Persistent value audit.** Mechanically compare all 26.1 persistent data

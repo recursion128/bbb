@@ -61,11 +61,12 @@ pub(crate) use block_effects::{
 };
 pub(crate) use client_movement::calculate_view_vector;
 pub(crate) use components::{
-    EntityAttributes, EntityClientAnimations, EntityDamage, EntityEquipment,
-    EntityHurtingProjectile, EntityIdentity, EntityInterpolationCollisionInput, EntityLeash,
-    EntityLivingLifecycle, EntityMetadata, EntityMinecartCommandBlock, EntityMinecartLerp,
-    EntityMobEffects, EntityMount, EntityPlayerSleep, EntityProjectileLifecycle,
-    EntitySupportingBlock, EntityTransform, EntityTransientEvents, LivingDeathWakeTransition,
+    EntityAbstractArrowRuntime, EntityAttributes, EntityClientAnimations, EntityDamage,
+    EntityEquipment, EntityHurtingProjectile, EntityIdentity, EntityInterpolationCollisionInput,
+    EntityLeash, EntityLivingLifecycle, EntityMetadata, EntityMinecartCommandBlock,
+    EntityMinecartLerp, EntityMobEffects, EntityMount, EntityPlayerSleep,
+    EntityProjectileLifecycle, EntitySupportingBlock, EntityTransform, EntityTransientEvents,
+    LivingDeathWakeTransition,
 };
 pub(crate) use dimensions::vanilla_bounds_for_type;
 pub use dimensions::EntityPickBoundsState;
@@ -969,6 +970,26 @@ pub struct EntityInterpolationState {
     pub previous_x_rot: f32,
 }
 
+/// Stable identity projection for a client-owned entity reference. ECS
+/// incarnations are deliberately store-local, so serialized references retain
+/// both the protocol id and UUID and are rebound after restoration.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EntityRuntimeReferenceState {
+    pub entity_id: i32,
+    pub uuid: Uuid,
+}
+
+/// Client-owned `AbstractArrow` runtime that affects later collision results
+/// but is not included in Vanilla's entity save tag.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AbstractArrowRuntimeState {
+    pub random_seed: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_deflected_by: Option<EntityRuntimeReferenceState>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub piercing_ignore_entity_ids: Vec<i32>,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EntityState {
     pub id: i32,
@@ -1035,6 +1056,8 @@ pub struct EntityState {
     pub hurting_projectile: Option<HurtingProjectileState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub projectile_lifecycle: Option<ProjectileLifecycleState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub abstract_arrow_runtime: Option<AbstractArrowRuntimeState>,
 }
 
 fn bool_is_false(value: &bool) -> bool {
@@ -1074,6 +1097,15 @@ pub struct ProjectileLifecycleState {
     /// `isAffectedByBlocks` reads this field, not the synced arrow flag.
     #[serde(default, skip_serializing_if = "bool_is_false")]
     pub arrow_no_physics: bool,
+    /// Last block state captured by client-side `AbstractArrow.onHitBlock`.
+    /// The global id resolves through the current session block-state registry.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub arrow_last_block_state_id: Option<i32>,
+    /// Whether a trident's mutable ground-hit sound has changed from
+    /// `TRIDENT_HIT_GROUND` to `ARROW_HIT`. Ordinary arrows already use
+    /// `ARROW_HIT`, so this bit is meaningful only for ThrownTrident.
+    #[serde(default, skip_serializing_if = "bool_is_false")]
+    pub arrow_hit_ground_sound_is_arrow: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]

@@ -10,10 +10,10 @@ use uuid::Uuid;
 
 use super::status::{EntityDamageEventState, MobEffectState};
 use super::{
-    EntityBlockEffectMovements, EntityBlockEffects, EntityClientAnimationState,
-    EntityInterpolationState, EntityPickBoundsState, EntityState, EntityVec3,
-    HurtingProjectileState, ProjectileLifecycleState,
-    VANILLA_COMMAND_BLOCK_MINECART_COMMAND_DATA_ID,
+    AbstractArrowRuntimeState, EntityBlockEffectMovements, EntityBlockEffects,
+    EntityClientAnimationState, EntityInterpolationState, EntityPickBoundsState,
+    EntityRuntimeReferenceState, EntityState, EntityVec3, HurtingProjectileState,
+    ProjectileLifecycleState, VANILLA_COMMAND_BLOCK_MINECART_COMMAND_DATA_ID,
     VANILLA_COMMAND_BLOCK_MINECART_LAST_OUTPUT_DATA_ID,
 };
 use crate::{BlockPos, PaintingVariantClientProjection, PublicationShared};
@@ -37,6 +37,12 @@ pub(crate) struct EntityIdentity {
 /// `EntityState`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct EntityIncarnation(pub(crate) u64);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct EntityInstanceReference {
+    pub(crate) entity_id: i32,
+    pub(crate) incarnation: EntityIncarnation,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct EntityTransform {
@@ -202,6 +208,35 @@ pub(crate) struct EntityProjectileLifecycle {
     pub(crate) trident_return_ticks: u32,
     pub(crate) arrow_pickup_allowed: bool,
     pub(crate) arrow_no_physics: bool,
+    pub(crate) arrow_last_block_state_id: Option<i32>,
+    pub(crate) arrow_hit_ground_sound_is_arrow: bool,
+}
+
+/// Client-owned mutable state used only while resolving AbstractArrow hits.
+/// These values affect later collision ordering and random deflection but are
+/// not part of `AbstractArrow.addAdditionalSaveData`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct EntityAbstractArrowRuntime {
+    pub(crate) random_seed: u64,
+    pub(crate) last_deflected_by: Option<EntityInstanceReference>,
+    pub(crate) pending_last_deflected_by: Option<EntityRuntimeReferenceState>,
+    pub(crate) piercing_ignore_entity_ids: Vec<i32>,
+}
+
+impl EntityAbstractArrowRuntime {
+    pub(crate) fn from_state(uuid: Uuid, state: Option<&AbstractArrowRuntimeState>) -> Self {
+        let initial_random_seed = super::animations::java_random_seed(
+            super::animations::spawn_random_bits(uuid, 0x6172_726f_775f_726e) as i64,
+        );
+        Self {
+            random_seed: state.map_or(initial_random_seed, |state| state.random_seed),
+            last_deflected_by: None,
+            pending_last_deflected_by: state.and_then(|state| state.last_deflected_by),
+            piercing_ignore_entity_ids: state
+                .map(|state| state.piercing_ignore_entity_ids.clone())
+                .unwrap_or_default(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -646,6 +681,8 @@ impl From<ProjectileLifecycleState> for EntityProjectileLifecycle {
             trident_return_ticks: state.trident_return_ticks,
             arrow_pickup_allowed: state.arrow_pickup_allowed,
             arrow_no_physics: state.arrow_no_physics,
+            arrow_last_block_state_id: state.arrow_last_block_state_id,
+            arrow_hit_ground_sound_is_arrow: state.arrow_hit_ground_sound_is_arrow,
         }
     }
 }
@@ -661,6 +698,8 @@ impl From<EntityProjectileLifecycle> for ProjectileLifecycleState {
             trident_return_ticks: projectile.trident_return_ticks,
             arrow_pickup_allowed: projectile.arrow_pickup_allowed,
             arrow_no_physics: projectile.arrow_no_physics,
+            arrow_last_block_state_id: projectile.arrow_last_block_state_id,
+            arrow_hit_ground_sound_is_arrow: projectile.arrow_hit_ground_sound_is_arrow,
         }
     }
 }

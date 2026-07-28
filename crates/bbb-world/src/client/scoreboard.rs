@@ -269,6 +269,27 @@ impl ScoreboardState {
                 .is_some_and(ScoreboardTeamParameters::can_see_friendly_invisibles)
     }
 
+    /// Vanilla `Player.canHarmPlayer`: an owner without a team can harm any
+    /// player; allied players are filtered only when the owner's team disables
+    /// friendly fire.
+    pub(crate) fn player_can_harm_player(
+        &self,
+        owner_scoreboard_name: &str,
+        target_scoreboard_name: &str,
+    ) -> bool {
+        let Some(owner_team) = self.team_for_scoreboard_name(owner_scoreboard_name) else {
+            return true;
+        };
+        let target_team = self.team_for_scoreboard_name(target_scoreboard_name);
+        target_team.is_none_or(|target_team| {
+            target_team.name != owner_team.name
+                || owner_team
+                    .parameters
+                    .as_ref()
+                    .is_none_or(ScoreboardTeamParameters::allows_friendly_fire)
+        })
+    }
+
     /// Vanilla `Entity.belowNameDisplay`: format the score override (or the
     /// objective's default, falling back to unstyled decimal zero), append one
     /// space, then preserve the objective display component's inherited runs.
@@ -366,6 +387,10 @@ impl ScoreboardState {
 }
 
 impl ScoreboardTeamParameters {
+    pub fn allows_friendly_fire(&self) -> bool {
+        self.options & 1 != 0
+    }
+
     pub fn can_see_friendly_invisibles(&self) -> bool {
         self.options & 2 != 0
     }
