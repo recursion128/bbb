@@ -618,6 +618,65 @@ failure keeps the previous accepted owner and surfaces an error rather than
 publishing mixed state. If a milestone full gate fails, work stops at that
 phase boundary and the failure is fixed forward in a normal commit.
 
+## Stable HUD projection revision-cache contract (2026-07-27)
+
+This bounded engineering continuation removes repeated scoreboard-sidebar and
+player-list rich-text, sorting, score-formatting, and profile-skin projection
+across immutable publications that changed unrelated world state. Completion
+requires the renderer to retain each exact static projection until one of its
+semantic inputs changes. A cache hit must skip the projection closure and the
+renderer replacement; it is not established by a hash or an approximate
+counter.
+
+The world owns two runtime-only monotonic display revisions. The scoreboard
+revision advances for applied scoreboard mutations and for player-info or
+entity-membership changes that can change the local player's team-specific
+sidebar. The player-list revision additionally advances for tab-list changes.
+Both revisions survive publication cloning, reset behind the client-level
+generation boundary, and are omitted from serialized canonical snapshots.
+Invalid packets and ignored mutations do not advance them.
+
+The item runtime separately owns a monotonic profile-presentation revision.
+Completed profile resolution, dynamic skin success/failure, and dynamic
+texture-session reset advance it before render extraction. Resource generation
+and loaded/unloaded state remain separate exact cache-key fields. This prevents
+an asynchronously resolved head from being hidden behind an unchanged world
+revision.
+
+Native keys the sidebar by client-level generation, scoreboard display
+revision, resource generation/load state, and hide-GUI state. It keys the
+player-list payload by client-level generation, player-list display revision,
+profile-presentation revision, resource generation/load state, visibility, and
+the encrypted-session `showHeads` decision. `PlayerTabOverlay` heart
+blink/display catch-up remains renderer-owned and receives the current GUI tick
+even when the static payload is unchanged. Surface layout, obfuscated glyph
+animation, hover/input state outside these projections, and every partial-tick,
+camera, or wall-clock value remain frame-local.
+
+Vanilla 26.1 fixes the semantic inputs and ordering:
+`GameRenderer.extractGui` resets `GuiRenderState` before
+`Gui.extractRenderState`; `Gui.extractScoreboardSidebar` derives the selected
+objective and formatted entries from the scoreboard; and
+`PlayerTabOverlay.extractRenderState` derives its ordered entries/header/footer
+while retaining `healthStates` across visible frames and updating them with
+`gui.getGuiTicks()`. Native may retain equal derived payloads, but must preserve
+those visibility edges, heart updates, and draw order.
+
+The serial phases are:
+
+1. add world and item-runtime revisions plus focused mutation, clone/reset, and
+   async completion tests;
+2. add renderer unchanged-payload tick synchronization and native exact cache
+   keys, with focused closure-hit, visibility/resource/profile invalidation,
+   and heart-state tests;
+3. update the gap ledger/archive, run affected-crate tests and the per-commit
+   checks, then run the full workspace gate at the engineering checkpoint.
+
+Each phase is a clean, buildable commit. A failed world/item revision test
+localizes before renderer integration; a failed native cache test localizes
+before the full gate. The safe stop is the last clean phase commit, but the
+ledger item remains open until all three phases and the checkpoint gate pass.
+
 ## Official Comparison Protocol
 
 Both clients use the same machine/GPU, resolution, view and simulation
