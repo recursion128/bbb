@@ -539,6 +539,25 @@ impl ControlState {
 mod tests {
     use super::*;
 
+    fn struct_fields<'a>(source: &'a str, declaration: &str) -> Vec<&'a str> {
+        source
+            .split_once(declaration)
+            .expect("struct declaration is present")
+            .1
+            .split_once('}')
+            .expect("struct body is closed")
+            .0
+            .lines()
+            .filter_map(|line| {
+                let field = line.trim().strip_prefix("pub ").unwrap_or(line.trim());
+                let (name, _) = field.split_once(':')?;
+                name.chars()
+                    .all(|character| character == '_' || character.is_ascii_alphanumeric())
+                    .then_some(name)
+            })
+            .collect()
+    }
+
     #[derive(Default)]
     struct RecordingSink {
         requests: Mutex<Vec<ControlWriteRequest>>,
@@ -582,5 +601,18 @@ mod tests {
         assert!(compatibility.screenshot_request.is_none());
         assert!(compatibility.net_requests.is_empty());
         assert!(compatibility.input_requests.is_empty());
+    }
+
+    #[test]
+    fn control_snapshot_shapes_keep_world_and_runtime_owners_separate() {
+        let source = include_str!("snapshot.rs");
+        assert_eq!(
+            struct_fields(source, "pub struct ControlSnapshot {"),
+            ["generation", "app", "net", "audio", "renderer"]
+        );
+        assert_eq!(
+            struct_fields(source, "pub struct ControlWorldSnapshot {"),
+            ["generation", "world"]
+        );
     }
 }

@@ -93,16 +93,6 @@ Owner: `bbb-protocol` + `bbb-net` + `bbb-native`
   against local vanilla 26.1 sources, then either implement protocol decode plus
   world/runtime handling, or record why it is runtime-only.
 
-## Native-owned business snapshots
-
-Owner: `bbb-world` + `bbb-native` + `bbb-control`
-
-- Move the remaining client-observable state into `WorldStore`, removing
-  native-only `last_*` snapshots wherever a world owner exists or should exist;
-  any new control exposure must derive from the paired immutable world/runtime
-  generation rather than create an independent control-owned value.
-- Keep `NetCounters` limited to connection/runtime status and command-queue
-  projections.
 ## Signed chat and chat acknowledgement production
 
 Owner: `bbb-protocol` + `bbb-net` + `bbb-world` + `bbb-native`

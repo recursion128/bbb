@@ -331,6 +331,62 @@ mod tests {
     }
 
     #[test]
+    fn net_counters_only_expose_connection_runtime_and_queue_projections() {
+        let source = include_str!("net.rs");
+        let fields = source
+            .split_once("pub struct NetCounters {")
+            .expect("NetCounters declaration is present")
+            .1
+            .split_once('}')
+            .expect("NetCounters body is closed")
+            .0
+            .lines()
+            .filter_map(|line| {
+                let field = line.trim().strip_prefix("pub ").unwrap_or(line.trim());
+                let (name, _) = field.split_once(':')?;
+                name.chars()
+                    .all(|character| character == '_' || character.is_ascii_alphanumeric())
+                    .then_some(name)
+            })
+            .collect::<std::collections::BTreeSet<_>>();
+        let json = serde_json::to_value(NetCounters::default()).unwrap();
+        let serialized_fields = json
+            .as_object()
+            .expect("NetCounters serializes as an object")
+            .keys()
+            .map(String::as_str)
+            .collect::<std::collections::BTreeSet<_>>();
+        assert!(fields.len() > 80, "counter guard must not pass vacuously");
+        assert_eq!(
+            fields, serialized_fields,
+            "every NetCounters field must remain an explicit control observation"
+        );
+
+        for field in fields {
+            let connection_or_runtime = matches!(
+                field,
+                "connected"
+                    | "connection_generation"
+                    | "client_resources"
+                    | "state"
+                    | "compression_threshold"
+                    | "packets_seen"
+                    | "unsupported_packets"
+                    | "last_unsupported_packet_state"
+                    | "last_unsupported_packet_id"
+                    | "last_unsupported_packet_len"
+                    | "last_error"
+            );
+            assert!(
+                connection_or_runtime
+                    || field.ends_with("_commands_queued")
+                    || field.starts_with("simulation_"),
+                "NetCounters field {field:?} is outside connection/runtime status and command-queue projections"
+            );
+        }
+    }
+
+    #[test]
     fn resource_memory_diagnostics_default_for_older_payloads() {
         let diagnostics: ClientResourceDiagnostics = serde_json::from_value(serde_json::json!({
             "generation": 3,

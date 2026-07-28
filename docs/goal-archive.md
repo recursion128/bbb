@@ -683,3 +683,6 @@
 - **2026-07-28（Vanilla Java 生成器前端迁移闭环）**：所有直接 Java-source
   consumer 已统一到共享 Tree-sitter 前端，runtime probes 显式隔离，并新增自动
   source-ownership 防回退测试；合同见 `docs/archive/vanilla-java-frontend-closeout-design.md`。
+- **2026-07-28（Native business snapshot 所有权闭环）**：control 业务读取统一
+  使用同代不可变 `WorldStore`，snapshot 精确形状、`NetCounters` 分类与 paired
+  generation 入口均有反向守卫；合同见 `docs/archive/native-business-snapshot-closeout-design.md`。

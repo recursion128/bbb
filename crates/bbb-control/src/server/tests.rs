@@ -215,12 +215,25 @@ fn control_reads_retry_until_runtime_and_world_generations_match() {
 #[test]
 fn dispatcher_read_methods_have_no_live_world_or_blocking_pool_path() {
     let source = include_str!("../server.rs");
+    let (dispatcher, paired_view_loader) = source
+        .split_once("fn load_control_views(")
+        .expect("paired control-view loader is present");
     assert!(!source.contains("state.world.read"));
     assert!(!source.contains("spawn_blocking"));
     assert!(source.contains("state.requests.submit("));
     assert!(!source.contains(".net_requests.push("));
     assert!(!source.contains(".input_requests.push("));
     assert!(!source.contains(".code_of_conduct_requests.push("));
+    assert!(
+        !dispatcher.contains("state.snapshot."),
+        "dispatcher reads must not bypass the paired control-view loader"
+    );
+    assert!(
+        !dispatcher.contains("state.world."),
+        "dispatcher world reads must not bypass the paired control-view loader"
+    );
+    assert!(paired_view_loader.contains("state.snapshot.load_full()"));
+    assert!(paired_view_loader.contains("state.world.load_full()"));
 }
 
 #[test]
