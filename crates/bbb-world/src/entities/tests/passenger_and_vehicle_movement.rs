@@ -460,6 +460,77 @@ fn passenger_render_positions_follow_the_partial_tick_root_pose_through_nested_e
 }
 
 #[test]
+fn camel_passenger_render_positions_consume_the_body_anchor_curve() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(ProtocolAddEntity {
+        position: ProtocolVec3d {
+            x: 4.0,
+            y: 70.0,
+            z: -3.0,
+        },
+        y_rot: 0.0,
+        ..protocol_add_entity_with_type(10, VANILLA_ENTITY_TYPE_CAMEL_ID)
+    });
+    for id in [20, 21] {
+        store.apply_add_entity(protocol_add_entity_with_type(
+            id,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+        ));
+    }
+    let entity_accessors = vanilla_entity_metadata_entity_accessors()
+        .expect("generated Entity metadata accessors must resolve");
+    let (pose_tick_data_id, _) =
+        vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_CAMEL_ID,
+        )
+        .expect("generated Camel pose tick accessor");
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 10,
+        values: vec![
+            protocol_pose_data(
+                entity_accessors.pose_data_id,
+                bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_SITTING_ID,
+            ),
+            protocol_long_data(pose_tick_data_id, -100),
+        ],
+    }));
+    store.apply_world_time(ProtocolPlayTime {
+        game_time: 128,
+        clock_updates: Vec::new(),
+    });
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![20, 21],
+    }));
+
+    let position = |entity_id| {
+        store
+            .entity_model_source_at_partial_tick(entity_id, 0.0)
+            .expect("Camel passenger model source")
+            .position
+    };
+    // Vanilla Camel.getPassengerAttachmentPoint uses the front and rear
+    // getBodyAnchorAnimationYOffset curves. Player.getVehicleAttachmentPoint
+    // then subtracts 0.6 from each riding-position Y coordinate.
+    assert_entity_vec3_close(
+        position(20),
+        EntityVec3 {
+            x: 4.0,
+            y: 70.785,
+            z: -2.5,
+        },
+    );
+    assert_entity_vec3_close(
+        position(21),
+        EntityVec3 {
+            x: 4.0,
+            y: 71.277,
+            z: -3.7,
+        },
+    );
+}
+
+#[test]
 fn malformed_passenger_cycle_falls_back_to_packet_positions_within_the_loaded_entity_bound() {
     let mut store = WorldStore::new();
     for (id, x) in [(10, 10.0), (20, 20.0)] {

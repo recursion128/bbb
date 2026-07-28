@@ -692,8 +692,6 @@ Living-entity render state:
 
 Attachment and spawner presentation:
 
-- Wire the camel body-anchor passenger/leash attachment consumers. The anchor
-  provider `Camel.getBodyAnchorAnimationYOffset` already exists.
 - Implement the ominous-item-spawner about-to-spawn and spawn sounds.
 
 ## HUD overlay and screen render surfaces
