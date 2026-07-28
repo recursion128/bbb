@@ -6930,14 +6930,24 @@ fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
     let bell_shake_tick = source
         .find("world.advance_bell_shake_ticks(running_ticks);")
         .expect("pump should advance bell shake ticks");
+    let stable_block_entity_cache = source
+        .find("non_entity_render_extraction.stable_block_entity_frame(")
+        .expect("pump should enter the exact stable block-entity cache");
+    let bed_projection = source
+        .find("                bed_model_instances_from_world(world),")
+        .expect("stable cache should project bed block-entity model instances");
     let bed_instances = source
-        .find("entity_instances.extend(bed_model_instances_from_world(world));")
-        .expect("pump should extract bed block-entity model instances");
+        .find("entity_instances.extend_from_slice(bed_instances);")
+        .expect("pump should insert cached bed block-entity model instances");
     let bell_instances = source
         .find("entity_instances.extend(bell_model_instances_from_world_at_partial_tick(")
         .expect("pump should extract bell block-entity model instances");
     assert!(bell_shake_tick < bell_instances);
-    assert!(held_models < bed_instances);
+    assert!(
+        held_models < stable_block_entity_cache
+            && stable_block_entity_cache < bed_projection
+            && bed_projection < bed_instances
+    );
     assert!(held_models < bell_instances);
     // The shulker box lid ticker (`ShulkerBoxBlockEntity.tick`) and the pot
     // wobble clock likewise run before render extraction reads their lerped
@@ -6968,12 +6978,17 @@ fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
     let enchanting_book_instances = source
         .find("enchanting_table_book_model_instances_from_world_at_partial_tick(")
         .expect("pump should extract enchanting table book block-entity model instances");
+    let lectern_book_projection = source
+        .find("                lectern_book_model_instances_from_world(world),")
+        .expect("stable cache should project lectern book block-entity model instances");
     let lectern_book_instances = source
-        .find("entity_instances.extend(lectern_book_model_instances_from_world(world));")
-        .expect("pump should extract lectern book block-entity model instances");
+        .find("entity_instances.extend_from_slice(lectern_instances);")
+        .expect("pump should insert cached lectern book block-entity model instances");
     assert!(enchanting_book_tick < enchanting_book_instances);
     assert!(held_models < enchanting_book_instances);
-    assert!(held_models < lectern_book_instances);
+    assert!(
+        held_models < lectern_book_projection && lectern_book_projection < lectern_book_instances
+    );
     // The conduit ticker (`ConduitBlockEntity.clientTick`) advances the
     // active rotation and shape/hunting state before render extraction expands
     // the block entity into shell/cage/wind/eye model instances. The eye uses
