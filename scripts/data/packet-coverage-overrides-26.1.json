@@ -840,8 +840,8 @@
       "canonical_apply": {"evidence": ["crates/bbb-world/src/entities/updates.rs#apply_entity_event", "crates/bbb-world/src/client/audio.rs#living_death_sound_for_entity", "crates/bbb-world/src/play_apply.rs#PlayClientbound::EntityEvent", "crates/bbb-world/src/entities/schema/generated_26_1.rs#VANILLA_ENTITY_TYPE_METADATA_26_1", "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleEntityEvent", "vanilla:net/minecraft/world/entity/LivingEntity.java#handleEntityEvent"], "status": "complete"},
       "decode": {"evidence": ["crates/bbb-protocol/src/packets/entities/tests.rs#decodes_entity_transient_event_packets", "vanilla:net/minecraft/network/protocol/game/ClientboundEntityEventPacket.java#STREAM_CODEC"], "status": "complete"},
       "ownership": {"evidence": ["crates/bbb-world/src/play_apply.rs#PlayClientbound::EntityEvent"], "status": "complete"},
-      "runtime_side_effect": {"evidence": ["crates/bbb-world/src/play_apply.rs#all_generated_living_death_policies_cross_the_play_effect_boundary", "crates/bbb-native/src/runtime/events/tests/entity_particle_events.rs#totem_entity_event_emits_tracking_emitter_particles", "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#all_generated_living_death_sounds_reach_native_audio_commands", "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleEntityEvent"], "status": "complete"},
-      "tests": {"evidence": ["crates/bbb-protocol/src/packets/entities/tests.rs#decodes_entity_transient_event_packets", "crates/bbb-net/src/event_stream.rs#play_entity_and_respawn_packets_emit_matching_events", "crates/bbb-world/src/entities/tests/transient_events_and_animation_triggers.rs#living_death_event_sets_non_player_health_and_starts_death_animation", "crates/bbb-world/src/play_apply.rs#all_generated_living_death_policies_cross_the_play_effect_boundary", "crates/bbb-world/src/play_apply.rs#living_death_sound_uses_the_pre_wake_position", "crates/bbb-native/src/runtime/events/tests/entity_particle_events.rs#entity_events_update_world_and_world_counters", "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#all_generated_living_death_sounds_reach_native_audio_commands"], "status": "complete"}
+      "runtime_side_effect": {"evidence": ["crates/bbb-world/src/play_apply.rs#generated_remote_living_death_events_do_not_cross_the_play_effect_boundary", "crates/bbb-world/src/play_apply.rs#local_player_death_event_forwards_player_death_sound", "crates/bbb-native/src/runtime/events/tests/entity_particle_events.rs#totem_entity_event_emits_tracking_emitter_particles", "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#generated_remote_living_death_events_emit_no_positioned_audio_commands", "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#remote_zombie_death_and_server_sound_entity_emit_one_runtime_command", "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleEntityEvent"], "status": "complete"},
+      "tests": {"evidence": ["crates/bbb-protocol/src/packets/entities/tests.rs#decodes_entity_transient_event_packets", "crates/bbb-net/src/event_stream.rs#play_entity_and_respawn_packets_emit_matching_events", "crates/bbb-world/src/entities/tests/transient_events_and_animation_triggers.rs#living_death_event_sets_non_player_health_and_starts_death_animation", "crates/bbb-world/src/play_apply.rs#generated_remote_living_death_events_do_not_cross_the_play_effect_boundary", "crates/bbb-world/src/play_apply.rs#remote_living_death_wakes_entity_without_client_owned_sound", "crates/bbb-world/src/play_apply.rs#local_player_death_event_forwards_player_death_sound", "crates/bbb-native/src/runtime/events/tests/entity_particle_events.rs#entity_events_update_world_and_world_counters", "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#generated_remote_living_death_events_emit_no_positioned_audio_commands", "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#remote_zombie_death_and_server_sound_entity_emit_one_runtime_command"], "status": "complete"}
     },
     "play/clientbound/CLIENTBOUND_EXPLODE": {
       "canonical_apply": {"evidence": ["crates/bbb-world/src/client/effects.rs#apply_explosion", "crates/bbb-world/src/play_apply.rs#apply_play_packet_orders_typed_explosion_effects_before_knockback", "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleExplosion"], "status": "complete"},
@@ -3480,9 +3480,9 @@
       },
       "runtime_side_effect": {
         "evidence": [
-          "crates/bbb-world/src/client/audio.rs#living_damage_hurt_sound_for_entity_with_optional_effects",
-          "crates/bbb-world/src/client/audio.rs#generated_damage_audio_policies_resolve_all_fixed_living_entity_types",
-          "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#damage_event_mutates_living_state_before_generated_fixed_hurt_audio",
+          "crates/bbb-world/src/client/audio.rs#local_player_damage_hurt_sound",
+          "crates/bbb-world/src/play_apply.rs#local_player_damage_event_resolves_reordered_type_and_forwards_hurt_sound",
+          "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#remote_damage_and_server_sound_entity_emit_one_runtime_command",
           "vanilla:net/minecraft/world/entity/LivingEntity.java#handleDamageEvent"
         ],
         "status": "complete"
@@ -3494,7 +3494,9 @@
           "crates/bbb-world/src/entities/status.rs#damage_event_timers_last_source_expiry_and_recreation_are_canonical",
           "crates/bbb-world/src/client/audio.rs#generated_damage_audio_policies_resolve_all_fixed_living_entity_types",
           "crates/bbb-world/src/client/audio.rs#dynamic_damage_audio_policies_read_canonical_metadata_and_fluid_state",
-          "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#damage_event_mutates_living_state_before_generated_fixed_hurt_audio"
+          "crates/bbb-world/src/play_apply.rs#local_player_damage_event_resolves_reordered_type_and_forwards_hurt_sound",
+          "crates/bbb-world/src/play_apply.rs#remote_damage_event_mutates_state_without_client_owned_hurt_sound",
+          "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#remote_damage_and_server_sound_entity_emit_one_runtime_command"
         ],
         "status": "complete"
       }
