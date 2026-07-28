@@ -155,13 +155,9 @@ The fixed vanilla 26.1 particle type id/resource/override-limiter catalog is
 generated, including its named type-id constants; native consumers must not restore
 resource-to-id declaration macros or a second expected registry length. Particle definition JSON and atlas sprites remain resource-pack-owned
 runtime catalogs rather than fixed vanilla snapshots; the remaining items below
-are provider and presentation behavior.
+are presentation and diagnostic behavior. New provider gaps enter through the
+per-provider coverage matrix at the end of this file before cutting a slice.
 
-- Implement full vanilla provider behavior and presentation parity. New gaps
-  enter through the per-provider coverage matrix at the end of this file: add
-  the row, or flip the cell back to `todo`, before cutting the slice.
-- Implement option-driven atlas rendering and provider-specific option effects
-  beyond spell, for `dust` and `dust_color_transition`.
 - Finish the terrain/block particle GPU presentation refinements around
   `addDestroyBlockEffect` and terrain tint.
 - Keep missing definition/sprite diagnostics: native spawn resolution and
