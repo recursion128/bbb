@@ -1622,8 +1622,8 @@ fn game_test_highlight_network_apply_uses_monotonic_deadline() {
 
 #[test]
 fn game_events_emit_local_player_sounds_and_elder_guardian_particles() {
-    let (tx, mut rx) = mpsc::channel(4);
-    for (event_id, param) in [(6, 0.0), (9, 0.0), (10, 1.75), (10, 0.0)] {
+    let (tx, mut rx) = mpsc::channel(5);
+    for (event_id, param) in [(6, 0.0), (9, 0.0), (10, 0.5), (10, 1.5), (10, 0.0)] {
         tx.try_send(NetEvent::Play(PlayClientbound::GameEvent(
             bbb_protocol::packets::GameEvent { event_id, param },
         )))
@@ -1656,7 +1656,7 @@ fn game_events_emit_local_player_sounds_and_elder_guardian_particles() {
             None,
             &mut level_event_sound_random,
         ),
-        4
+        5
     );
 
     assert!(audio.errors.is_empty(), "{:?}", audio.errors);
@@ -1700,8 +1700,8 @@ fn game_events_emit_local_player_sounds_and_elder_guardian_particles() {
         assert_eq!(command.seed, 0);
     }
 
-    assert_eq!(particles.packets.len(), 2);
-    assert_eq!(particles.contexts.len(), 2);
+    assert_eq!(particles.packets.len(), 3);
+    assert_eq!(particles.contexts.len(), 3);
     for packet in &particles.packets {
         assert_eq!(
             packet.particle.particle_type_id,
@@ -1727,6 +1727,6 @@ fn game_events_emit_local_player_sounds_and_elder_guardian_particles() {
         assert_close(camera_position[1] as f32, 71.62);
         assert_close(camera_position[2] as f32, -1.0);
     }
-    assert_eq!(particles.batches.len(), 2);
-    assert_eq!(world.counters().game_event_packets, 4);
+    assert_eq!(particles.batches.len(), 3);
+    assert_eq!(world.counters().game_event_packets, 5);
 }

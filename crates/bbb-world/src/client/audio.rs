@@ -42,6 +42,7 @@ use crate::entities::{
     VANILLA_COPPER_GOLEM_WEATHER_STATE_UNAFFECTED_ID,
     VANILLA_COPPER_GOLEM_WEATHER_STATE_WEATHERED_ID, VANILLA_RABBIT_VARIANT_EVIL_ID,
 };
+use crate::level::rounded_game_event_param;
 use crate::registries::{
     DamageTypeEffects, RegistrySoundEvent, RegistrySoundKind, CAT_SOUND_VARIANT_REGISTRY,
     CHICKEN_SOUND_VARIANT_REGISTRY, COW_SOUND_VARIANT_REGISTRY, DAMAGE_TYPE_REGISTRY,
@@ -1688,7 +1689,7 @@ impl WorldStore {
                 1.0,
             ),
             VANILLA_CLIENT_GAME_EVENT_GUARDIAN_ELDER_EFFECT_ID
-                if game_event_param_floor(event.param) == Some(1) =>
+                if rounded_game_event_param(event.param) == 1 =>
             {
                 (
                     ELDER_GUARDIAN_CURSE_SOUND_EVENT,
@@ -3210,10 +3211,6 @@ fn registry_sound_holder(sound: RegistrySoundEvent) -> SoundHolderState {
     }
 }
 
-fn game_event_param_floor(param: f32) -> Option<i32> {
-    param.is_finite().then_some(param.floor() as i32)
-}
-
 fn sound_holder_state(sound: ProtocolSoundEventHolder) -> SoundHolderState {
     match sound {
         ProtocolSoundEventHolder::Reference { registry_id } => SoundHolderState {
@@ -3873,6 +3870,27 @@ mod tests {
         assert_close_f64(random.next_gaussian(), 0.802_533_063_739_030_5);
         assert_close_f64(random.next_gaussian(), -0.901_546_088_417_512_2);
         assert_close_f64(random.next_gaussian(), 2.080_920_790_428_163);
+    }
+
+    #[test]
+    fn elder_guardian_game_event_sound_uses_listener_rounded_param() {
+        let mut store = WorldStore::new();
+        store.set_local_player_pose(crate::LocalPlayerPoseState::default());
+
+        for (param, expected) in [
+            (0.499, false),
+            (0.5, true),
+            (1.499, true),
+            (1.5, false),
+            (f32::NAN, false),
+        ] {
+            let sound = store.game_event_positioned_sound(ProtocolGameEvent {
+                event_id: VANILLA_CLIENT_GAME_EVENT_GUARDIAN_ELDER_EFFECT_ID,
+                param,
+            });
+
+            assert_eq!(sound.is_some(), expected, "param={param:?}");
+        }
     }
 
     #[test]

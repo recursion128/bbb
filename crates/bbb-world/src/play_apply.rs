@@ -3050,7 +3050,11 @@ mod tests {
             }),
             PlayClientbound::GameEvent(GameEvent {
                 event_id: 10,
-                param: 1.75,
+                param: 0.5,
+            }),
+            PlayClientbound::GameEvent(GameEvent {
+                event_id: 10,
+                param: 1.5,
             }),
             PlayClientbound::GameEvent(GameEvent {
                 event_id: 10,
@@ -3108,10 +3112,15 @@ mod tests {
                     y: 64.0,
                     z: -5.0,
                 },
+                Vec3d {
+                    x: 2.0,
+                    y: 64.0,
+                    z: -5.0,
+                },
             ]
         );
         assert_eq!(store.last_sound(), Some(&effects.positioned_sounds[2]));
-        assert_eq!(store.counters().game_event_packets, 4);
+        assert_eq!(store.counters().game_event_packets, 5);
     }
 
     #[test]

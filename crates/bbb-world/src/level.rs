@@ -1160,7 +1160,9 @@ fn built_in_dimension_default_clock_resource_id(
     }
 }
 
-fn rounded_game_event_param(param: f32) -> i32 {
+pub(crate) fn rounded_game_event_param(param: f32) -> i32 {
+    // ClientPacketListener.handleGameEvent uses Mth.floor(paramFloat + 0.5F)
+    // once for every integer-valued game-event consumer.
     if param.is_finite() {
         (param + 0.5).floor() as i32
     } else {
