@@ -158,8 +158,6 @@ runtime catalogs rather than fixed vanilla snapshots; the remaining items below
 are presentation and diagnostic behavior. New provider gaps enter through the
 per-provider coverage matrix at the end of this file before cutting a slice.
 
-- Finish the terrain/block particle GPU presentation refinements around
-  `addDestroyBlockEffect` and terrain tint.
 - Keep missing definition/sprite diagnostics: native spawn resolution and
   renderer counters must record them rather than dropping otherwise valid spawns.
 
