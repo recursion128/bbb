@@ -15409,6 +15409,7 @@ fn debug_options_screen_projects_vanilla_order_and_search_filter() {
                 path: "biome".to_string(),
                 status: DebugScreenEntryStatus::Never,
                 hovered_status: None,
+                focused_status: None,
                 allowed: true,
             },
             DebugOptionsScreenHudRow::Entry {
@@ -15416,6 +15417,7 @@ fn debug_options_screen_projects_vanilla_order_and_search_filter() {
                 path: "chunk_generation_stats".to_string(),
                 status: DebugScreenEntryStatus::Never,
                 hovered_status: None,
+                focused_status: None,
                 allowed: true,
             },
         ]
@@ -15444,6 +15446,246 @@ fn debug_options_screen_projects_vanilla_order_and_search_filter() {
             "chunk_borders",
             "chunk_section_octree",
         ]
+    );
+}
+
+#[test]
+fn debug_options_screen_keyboard_focus_starts_at_search_and_skips_inactive_widgets() {
+    let mut input = ClientInputState::new(true);
+    input.open_debug_options_screen();
+    let surface = winit::dpi::PhysicalSize::new(420, 240);
+
+    let initial = input
+        .debug_options_screen_hud_state(surface, false)
+        .expect("debug options screen");
+    assert!(initial.search_focused);
+    assert!(!initial.done_focused);
+
+    assert!(input
+        .handle_debug_options_screen_key(PhysicalKey::Code(KeyCode::Tab), ElementState::Pressed,));
+    let first_focus = input.debug_options_screen_focus().unwrap();
+    let DebugOptionsScreenFocus::Entry {
+        entry: first_entry,
+        status: first_status,
+    } = first_focus
+    else {
+        panic!("Tab should enter the option list");
+    };
+    assert_ne!(input.debug_screen_entry_status(first_entry), first_status);
+
+    assert!(input.handle_debug_options_screen_key(
+        PhysicalKey::Code(KeyCode::ArrowRight),
+        ElementState::Pressed,
+    ));
+    let moved = input.debug_options_screen_focus().unwrap();
+    assert!(matches!(
+        moved,
+        DebugOptionsScreenFocus::Entry {
+            entry,
+            status: DebugScreenEntryStatus::AlwaysOn,
+        } if entry == first_entry
+    ));
+
+    assert!(
+        input.handle_debug_options_screen_key(
+            PhysicalKey::Code(KeyCode::Enter),
+            ElementState::Pressed,
+        )
+    );
+    assert_eq!(
+        input.debug_screen_entry_status(first_entry),
+        DebugScreenEntryStatus::AlwaysOn
+    );
+    assert!(input.handle_debug_options_screen_text_input("ignored"));
+    assert_eq!(
+        input
+            .debug_options_screen_hud_state(surface, false)
+            .unwrap()
+            .search_text,
+        ""
+    );
+
+    input.set_debug_options_focus(DebugOptionsScreenFocus::Search, surface);
+    assert!(input.handle_debug_options_screen_key(
+        PhysicalKey::Code(KeyCode::ShiftLeft),
+        ElementState::Pressed,
+    ));
+    assert!(input
+        .handle_debug_options_screen_key(PhysicalKey::Code(KeyCode::Tab), ElementState::Pressed,));
+    assert_eq!(
+        input.debug_options_screen_focus(),
+        Some(DebugOptionsScreenFocus::Done)
+    );
+    assert!(input.handle_debug_options_screen_key(
+        PhysicalKey::Code(KeyCode::ShiftLeft),
+        ElementState::Released,
+    ));
+    assert!(input.handle_debug_options_screen_key(
+        PhysicalKey::Code(KeyCode::ArrowLeft),
+        ElementState::Pressed,
+    ));
+    assert_eq!(
+        input.debug_options_screen_focus(),
+        Some(DebugOptionsScreenFocus::PerformanceProfile)
+    );
+    assert!(input.handle_debug_options_screen_key(
+        PhysicalKey::Code(KeyCode::ArrowUp),
+        ElementState::Pressed,
+    ));
+    assert!(matches!(
+        input.debug_options_screen_focus(),
+        Some(DebugOptionsScreenFocus::Entry {
+            status: DebugScreenEntryStatus::Never,
+            ..
+        })
+    ));
+}
+
+#[test]
+fn debug_options_screen_directional_focus_falls_through_an_inactive_filtered_column() {
+    let mut input = ClientInputState::new(true);
+    input.open_debug_options_screen();
+    assert!(input.handle_debug_options_screen_text_input("biome"));
+
+    assert!(input.handle_debug_options_screen_key(
+        PhysicalKey::Code(KeyCode::ArrowDown),
+        ElementState::Pressed,
+    ));
+    assert_eq!(
+        input.debug_options_screen_focus(),
+        Some(DebugOptionsScreenFocus::PerformanceProfile)
+    );
+    assert!(input.handle_debug_options_screen_key(
+        PhysicalKey::Code(KeyCode::ArrowUp),
+        ElementState::Pressed,
+    ));
+    assert_eq!(
+        input.debug_options_screen_focus(),
+        Some(DebugOptionsScreenFocus::Search)
+    );
+
+    input.set_debug_options_focus(
+        DebugOptionsScreenFocus::List,
+        winit::dpi::PhysicalSize::new(800, 600),
+    );
+    assert!(input.handle_debug_options_screen_key(
+        PhysicalKey::Code(KeyCode::ArrowDown),
+        ElementState::Pressed,
+    ));
+    assert_eq!(
+        input.debug_options_screen_focus(),
+        Some(DebugOptionsScreenFocus::PerformanceProfile)
+    );
+}
+
+#[test]
+fn debug_options_screen_mouse_focus_projects_selected_button_and_search_focus() {
+    let mut input = ClientInputState::new(true);
+    input.open_debug_options_screen();
+    assert!(input.handle_debug_options_screen_text_input("entity_hitboxes"));
+    let surface = winit::dpi::PhysicalSize::new(420, 240);
+    let buttons_start = debug_options_content_x(surface) + DEBUG_OPTIONS_ROW_WIDTH
+        - DEBUG_OPTIONS_STATUS_BUTTON_WIDTH * 3;
+    let always_x = buttons_start + DEBUG_OPTIONS_STATUS_BUTTON_WIDTH * 2 + 2;
+    let entry_y = DEBUG_OPTIONS_HEADER_HEIGHT + DEBUG_OPTIONS_ROW_HEIGHT + 2;
+
+    assert!(input.handle_debug_options_screen_mouse_input(
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(
+            f64::from(always_x),
+            f64::from(entry_y),
+        )),
+        surface,
+        false,
+    ));
+    let focused = input
+        .debug_options_screen_hud_state(surface, false)
+        .unwrap();
+    assert!(!focused.search_focused);
+    assert!(focused.rows.iter().any(|row| matches!(
+        row,
+        DebugOptionsScreenHudRow::Entry {
+            entry: DebugScreenEntryId::EntityHitboxes,
+            focused_status: Some(DebugScreenEntryStatus::AlwaysOn),
+            ..
+        }
+    )));
+
+    assert!(input.handle_debug_options_screen_mouse_input(
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(
+            f64::from(debug_options_content_x(surface) + 2),
+            f64::from(entry_y),
+        )),
+        surface,
+        false,
+    ));
+    assert_eq!(
+        input.debug_options_screen_focus(),
+        Some(DebugOptionsScreenFocus::Entry {
+            entry: DebugScreenEntryId::EntityHitboxes,
+            status: DebugScreenEntryStatus::AlwaysOn,
+        })
+    );
+
+    let (search_x, search_y, _, _) = debug_options_search_box_rect(surface);
+    assert!(input.handle_debug_options_screen_mouse_input(
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(
+            f64::from(search_x + 4),
+            f64::from(search_y + 4),
+        )),
+        surface,
+        false,
+    ));
+    assert!(
+        input
+            .debug_options_screen_hud_state(surface, false)
+            .unwrap()
+            .search_focused
+    );
+
+    assert!(input.handle_debug_options_screen_mouse_input(
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(
+            f64::from(debug_options_content_x(surface) + 2),
+            f64::from(entry_y),
+        )),
+        surface,
+        false,
+    ));
+    assert_eq!(
+        input.debug_options_screen_focus(),
+        Some(DebugOptionsScreenFocus::List)
+    );
+
+    assert!(input.handle_debug_options_screen_mouse_input(
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(
+            f64::from(search_x + 4),
+            f64::from(search_y + 4),
+        )),
+        surface,
+        false,
+    ));
+    assert!(input.handle_debug_options_screen_mouse_input(
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(
+            f64::from(debug_options_content_x(surface) + 2),
+            f64::from(DEBUG_OPTIONS_HEADER_HEIGHT + DEBUG_OPTIONS_ROW_HEIGHT * 4 + 2),
+        )),
+        surface,
+        false,
+    ));
+    assert_eq!(
+        input.debug_options_screen_focus(),
+        Some(DebugOptionsScreenFocus::Search)
     );
 }
 

@@ -772,8 +772,6 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   track-output/custom-name/last-execution fields and exact styled `LastOutput`
   component projection, or entity-specific age and equipment projection before
   it can be emitted.
-- Finish `DebugOptionsScreen` narration, focus, and widget styling.
-
 ## Item model range-dispatch and select projection
 
 Owner: `bbb-protocol` + `bbb-native` + `bbb-pack`

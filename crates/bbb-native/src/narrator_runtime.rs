@@ -151,6 +151,7 @@ impl ScreenNarrationCollector {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ScreenNarrationInput {
+    Immediate,
     MouseMove,
     MouseAction,
     KeyboardAction,
@@ -173,6 +174,7 @@ impl ScreenNarrationRuntime {
             return;
         }
         let (delay, ignore_suppression) = match input {
+            ScreenNarrationInput::Immediate => (Duration::ZERO, true),
             ScreenNarrationInput::MouseMove => (SCREEN_NARRATION_MOUSE_MOVE_DELAY, false),
             ScreenNarrationInput::MouseAction | ScreenNarrationInput::KeyboardAction => {
                 (SCREEN_NARRATION_ACTION_DELAY, true)
@@ -594,15 +596,28 @@ mod tests {
             ["Stats", "General tab", "Screen element 2 out of 3"]
         );
 
+        let mut immediate_changed = keyboard_changed.clone();
+        immediate_changed.add(NarratedElementKind::Hint, 0, "Filtered");
+        runtime.after_input(
+            ScreenNarrationInput::Immediate,
+            start + Duration::from_millis(2_400),
+        );
+        runtime.tick(
+            Some(&immediate_changed),
+            start + Duration::from_millis(2_401),
+            Some(&mut narrator),
+        );
+        assert_eq!(narrator.0.last().map(String::as_str), Some("Filtered"));
+
         runtime.tick(None, start + Duration::from_secs(3), Some(&mut narrator));
         runtime.tick(
-            Some(&keyboard_changed),
+            Some(&immediate_changed),
             start + Duration::from_secs(4),
             Some(&mut narrator),
         );
         assert_eq!(
             narrator.0.last().map(String::as_str),
-            Some("Stats. General tab. Screen element 2 out of 3")
+            Some("Stats. General tab. Screen element 2 out of 3. Filtered")
         );
     }
 }

@@ -797,6 +797,11 @@ pub struct HudDebugOptionsScreen {
     pub search_cursor: usize,
     pub search_selection: usize,
     pub search_cursor_visible: bool,
+    pub search_focused: bool,
+    pub search_hint: String,
+    pub never_label: String,
+    pub overlay_label: String,
+    pub always_label: String,
     pub rows: Vec<HudDebugOptionsRow>,
     pub tooltip: Option<HudDebugOptionsTooltip>,
     pub scroll_row: usize,
@@ -804,9 +809,15 @@ pub struct HudDebugOptionsScreen {
     pub visible_rows: usize,
     pub default_profile_active: bool,
     pub default_profile_hovered: bool,
+    pub default_profile_focused: bool,
+    pub default_profile_label: String,
     pub performance_profile_active: bool,
     pub performance_profile_hovered: bool,
+    pub performance_profile_focused: bool,
+    pub performance_profile_label: String,
     pub done_hovered: bool,
+    pub done_focused: bool,
+    pub done_label: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -878,6 +889,7 @@ pub enum HudDebugOptionsRow {
         path: String,
         status: HudDebugOptionsEntryStatus,
         hovered_status: Option<HudDebugOptionsEntryStatus>,
+        focused_status: Option<HudDebugOptionsEntryStatus>,
         allowed: bool,
     },
 }
@@ -7277,6 +7289,7 @@ impl Renderer {
                 &mut vertices,
                 &mut post_gui_item_commands,
                 &self.hud_white_pixel,
+                self.hud_widget_text_field.as_ref(),
                 self.hud_widget_text_field_highlighted.as_ref(),
                 HudDebugOptionsButtonSprites {
                     normal: self.hud_widget_button.as_ref(),
@@ -12553,6 +12566,7 @@ fn push_hud_debug_options_screen<'a>(
     vertices: &mut Vec<HudVertex>,
     commands: &mut Vec<HudDrawCommand<'a>>,
     white_pixel: &'a HudSpriteGpu,
+    text_field: Option<&'a HudSpriteGpu>,
     text_field_highlighted: Option<&'a HudSpriteGpu>,
     button_sprites: HudDebugOptionsButtonSprites<'a>,
     tooltip_background: Option<&'a HudNineSliceSprite>,
@@ -12592,7 +12606,7 @@ fn push_hud_debug_options_screen<'a>(
         8,
         HUD_TINT_WHITE,
     );
-    push_hud_debug_options_centered_text(
+    push_hud_debug_options_centered_wrapped_text(
         vertices,
         commands,
         white_pixel,
@@ -12603,6 +12617,7 @@ fn push_hud_debug_options_screen<'a>(
         surface_size,
         &screen.warning,
         34,
+        HUD_DEBUG_OPTIONS_ROW_WIDTH.max(0) as u32,
         hud_argb_to_tint(0xFFDF5050),
     );
     push_hud_debug_options_search_box(
@@ -12618,6 +12633,9 @@ fn push_hud_debug_options_screen<'a>(
         screen.search_cursor,
         screen.search_selection,
         screen.search_cursor_visible,
+        screen.search_focused,
+        &screen.search_hint,
+        text_field,
         text_field_highlighted,
     );
 
@@ -12647,6 +12665,7 @@ fn push_hud_debug_options_screen<'a>(
                 path,
                 status,
                 hovered_status,
+                focused_status,
                 allowed,
             } => {
                 push_hud_debug_options_entry(
@@ -12664,7 +12683,11 @@ fn push_hud_debug_options_screen<'a>(
                     path,
                     *status,
                     *hovered_status,
+                    *focused_status,
                     *allowed,
+                    &screen.never_label,
+                    &screen.overlay_label,
+                    &screen.always_label,
                 );
             }
         }
@@ -12691,9 +12714,15 @@ fn push_hud_debug_options_screen<'a>(
         button_sprites,
         screen.default_profile_active,
         screen.default_profile_hovered,
+        screen.default_profile_focused,
+        &screen.default_profile_label,
         screen.performance_profile_active,
         screen.performance_profile_hovered,
+        screen.performance_profile_focused,
+        &screen.performance_profile_label,
         screen.done_hovered,
+        screen.done_focused,
+        &screen.done_label,
     );
     push_hud_debug_options_tooltip(
         vertices,
@@ -12924,14 +12953,18 @@ fn push_hud_debug_options_entry<'a>(
     path: &str,
     status: HudDebugOptionsEntryStatus,
     hovered_status: Option<HudDebugOptionsEntryStatus>,
+    focused_status: Option<HudDebugOptionsEntryStatus>,
     allowed: bool,
+    never_label: &str,
+    overlay_label: &str,
+    always_label: &str,
 ) {
     let name_tint = if allowed {
         HUD_TINT_WHITE
     } else {
         hud_argb_to_tint(0xFF808080)
     };
-    push_hud_debug_options_text(
+    push_hud_debug_options_entry_name(
         vertices,
         commands,
         white_pixel,
@@ -12943,20 +12976,21 @@ fn push_hud_debug_options_entry<'a>(
         path,
         (content_x as f32, (y + 5) as f32),
         name_tint,
+        allowed,
     );
     let buttons_start_x =
         content_x + HUD_DEBUG_OPTIONS_ROW_WIDTH - HUD_DEBUG_OPTIONS_STATUS_BUTTON_WIDTH * 3;
     for (index, (button_status, label)) in [
-        (HudDebugOptionsEntryStatus::Never, "OFF"),
-        (HudDebugOptionsEntryStatus::InOverlay, "In Overlay"),
-        (HudDebugOptionsEntryStatus::AlwaysOn, "Always"),
+        (HudDebugOptionsEntryStatus::Never, never_label),
+        (HudDebugOptionsEntryStatus::InOverlay, overlay_label),
+        (HudDebugOptionsEntryStatus::AlwaysOn, always_label),
     ]
     .into_iter()
     .enumerate()
     {
         let x = buttons_start_x
             + i32::try_from(index).unwrap_or(i32::MAX) * HUD_DEBUG_OPTIONS_STATUS_BUTTON_WIDTH;
-        push_hud_debug_options_button(
+        push_hud_debug_options_button_with_text_policy(
             vertices,
             commands,
             white_pixel,
@@ -12971,8 +13005,9 @@ fn push_hud_debug_options_entry<'a>(
             HUD_DEBUG_OPTIONS_STATUS_BUTTON_HEIGHT,
             label,
             status != button_status,
-            hovered_status == Some(button_status),
+            hovered_status == Some(button_status) || focused_status == Some(button_status),
             hud_debug_options_status_tint(button_status, status == button_status),
+            false,
             button_sprites,
         );
     }
@@ -12991,9 +13026,15 @@ fn push_hud_debug_options_footer<'a>(
     button_sprites: HudDebugOptionsButtonSprites<'a>,
     default_profile_active: bool,
     default_profile_hovered: bool,
+    default_profile_focused: bool,
+    default_profile_label: &str,
     performance_profile_active: bool,
     performance_profile_hovered: bool,
+    performance_profile_focused: bool,
+    performance_profile_label: &str,
     done_hovered: bool,
+    done_focused: bool,
+    done_label: &str,
 ) {
     let y = hud_debug_options_footer_button_y(surface_size);
     let (default_x, performance_x, done_x) = hud_debug_options_footer_button_xs(surface_size);
@@ -13010,9 +13051,9 @@ fn push_hud_debug_options_footer<'a>(
         y,
         HUD_DEBUG_OPTIONS_PROFILE_BUTTON_WIDTH,
         HUD_DEBUG_OPTIONS_FOOTER_BUTTON_HEIGHT,
-        "Default",
+        default_profile_label,
         default_profile_active,
-        default_profile_hovered,
+        default_profile_hovered || default_profile_focused,
         HUD_TINT_WHITE,
         button_sprites,
     );
@@ -13029,9 +13070,9 @@ fn push_hud_debug_options_footer<'a>(
         y,
         HUD_DEBUG_OPTIONS_PROFILE_BUTTON_WIDTH,
         HUD_DEBUG_OPTIONS_FOOTER_BUTTON_HEIGHT,
-        "Performance",
+        performance_profile_label,
         performance_profile_active,
-        performance_profile_hovered,
+        performance_profile_hovered || performance_profile_focused,
         HUD_TINT_WHITE,
         button_sprites,
     );
@@ -13048,9 +13089,9 @@ fn push_hud_debug_options_footer<'a>(
         y,
         HUD_DEBUG_OPTIONS_DONE_BUTTON_WIDTH,
         HUD_DEBUG_OPTIONS_FOOTER_BUTTON_HEIGHT,
-        "Done",
+        done_label,
         true,
-        done_hovered,
+        done_hovered || done_focused,
         HUD_TINT_WHITE,
         button_sprites,
     );
@@ -13070,17 +13111,25 @@ fn push_hud_debug_options_search_box<'a>(
     search_cursor: usize,
     search_selection: usize,
     search_cursor_visible: bool,
+    search_focused: bool,
+    search_hint: &str,
+    text_field: Option<&'a HudSpriteGpu>,
     text_field_highlighted: Option<&'a HudSpriteGpu>,
 ) {
     let x = hud_debug_options_content_x(surface_size) + HUD_DEBUG_OPTIONS_ROW_WIDTH
         - HUD_DEBUG_OPTIONS_SEARCH_WIDTH;
     let y = 6;
     let (outer, inner) = hud_debug_options_search_box_rects(surface_size);
-    if let Some(text_field_highlighted) = text_field_highlighted {
+    let text_field = if search_focused {
+        text_field_highlighted.or(text_field)
+    } else {
+        text_field
+    };
+    if let Some(text_field) = text_field {
         push_hud_draw_with_uv_and_tint(
             vertices,
             commands,
-            text_field_highlighted,
+            text_field,
             surface_size,
             absolute_hud_rect(outer.0 as f32, outer.1 as f32, outer.2, outer.3),
             HudUvRect {
@@ -13113,6 +13162,27 @@ fn push_hud_debug_options_search_box<'a>(
             [0.0, 0.0, 0.0, 0.75],
         );
     }
+    if search_text.is_empty() && !search_focused {
+        let (_, runs) = hud_debug_options_search_display(search_text, false, search_hint);
+        let draw = HudScreenTextDraw {
+            runs: &runs,
+            origin: ((x + 4) as f32, (y + 6) as f32),
+            scale: 1.0,
+            tint: hud_argb_to_tint(0xFFE0E0E0),
+        };
+        push_hud_screen_text_draw(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            &draw,
+        );
+        return;
+    }
     let input = HudInventoryTextInputDecoration {
         cursor: search_cursor,
         selection: search_selection,
@@ -13122,7 +13192,7 @@ fn push_hud_debug_options_search_box<'a>(
             search_cursor
         },
         max_length: 32,
-        cursor_visible: search_cursor_visible,
+        cursor_visible: search_focused && search_cursor_visible,
         cursor_tint: HUD_TINT_WHITE,
         selection_tint: HUD_DEBUG_OPTIONS_SEARCH_SELECTION_TINT,
     };
@@ -13131,7 +13201,7 @@ fn push_hud_debug_options_search_box<'a>(
         y: 0,
         width: u32::try_from(HUD_DEBUG_OPTIONS_SEARCH_WIDTH - 8).unwrap_or_default(),
         text: search_text.to_string(),
-        tint: HUD_TINT_WHITE,
+        tint: hud_argb_to_tint(0xFFE0E0E0),
         background: None,
         input: Some(input),
         scrolling: None,
@@ -13190,6 +13260,49 @@ fn push_hud_debug_options_button<'a>(
     active: bool,
     highlighted: bool,
     text_tint: [f32; 4],
+    button_sprites: HudDebugOptionsButtonSprites<'a>,
+) {
+    push_hud_debug_options_button_with_text_policy(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        x,
+        y,
+        width,
+        height,
+        label,
+        active,
+        highlighted,
+        text_tint,
+        true,
+        button_sprites,
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_debug_options_button_with_text_policy<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    x: i32,
+    y: i32,
+    width: i32,
+    height: i32,
+    label: &str,
+    active: bool,
+    highlighted: bool,
+    text_tint: [f32; 4],
+    use_inactive_text_tint: bool,
     button_sprites: HudDebugOptionsButtonSprites<'a>,
 ) {
     let sprite = button_sprites.get(active, highlighted);
@@ -13253,12 +13366,41 @@ fn push_hud_debug_options_button<'a>(
         x,
         width,
         y + (height - 8).max(0) / 2,
-        if active {
-            text_tint
-        } else {
-            hud_argb_to_tint(0xFF8A8A8A)
-        },
+        hud_debug_options_button_label_tint(active, text_tint, use_inactive_text_tint),
     );
+}
+
+fn hud_debug_options_search_display(
+    search_text: &str,
+    search_focused: bool,
+    search_hint: &str,
+) -> (String, Vec<HudStyledTextRun>) {
+    if !search_text.is_empty() || search_focused {
+        return (search_text.to_string(), Vec::new());
+    }
+    (
+        search_hint.to_string(),
+        vec![HudStyledTextRun {
+            text: search_hint.to_string(),
+            style: HudTextStyle {
+                italic: true,
+                ..HudTextStyle::default()
+            },
+            color: Some(0xAAAAAA),
+        }],
+    )
+}
+
+fn hud_debug_options_button_label_tint(
+    active: bool,
+    text_tint: [f32; 4],
+    use_inactive_text_tint: bool,
+) -> [f32; 4] {
+    if active || !use_inactive_text_tint {
+        text_tint
+    } else {
+        hud_argb_to_tint(0xFF8A8A8A)
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -13290,6 +13432,50 @@ fn push_hud_debug_options_centered_text<'a>(
         y,
         tint,
     );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_debug_options_centered_wrapped_text<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    text: &str,
+    y: i32,
+    max_width: u32,
+    tint: [f32; 4],
+) {
+    let source = [HudStyledTextRun::plain(text)];
+    for (line_index, runs) in hud_wrap_chat_runs(&source, max_width, glyphs)
+        .into_iter()
+        .enumerate()
+    {
+        let width = hud_font_runs_width(&runs, glyphs).unwrap_or_default() as f32;
+        let draw = HudScreenTextDraw {
+            runs: &runs,
+            origin: (
+                surface_size.width as f32 * 0.5 - width * 0.5,
+                (y + i32::try_from(line_index).unwrap_or(i32::MAX) * 9) as f32,
+            ),
+            scale: 1.0,
+            tint,
+        };
+        push_hud_screen_text_draw(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            &draw,
+        );
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -13367,9 +13553,55 @@ fn push_hud_debug_options_text<'a>(
     );
 }
 
+#[allow(clippy::too_many_arguments)]
+fn push_hud_debug_options_entry_name<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    text: &str,
+    origin: (f32, f32),
+    tint: [f32; 4],
+    allowed: bool,
+) {
+    let runs = [hud_debug_options_entry_name_run(text, allowed)];
+    let draw = HudScreenTextDraw {
+        runs: &runs,
+        origin,
+        scale: 1.0,
+        tint,
+    };
+    push_hud_screen_text_draw(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        &draw,
+    );
+}
+
+fn hud_debug_options_entry_name_run(text: &str, allowed: bool) -> HudStyledTextRun {
+    HudStyledTextRun {
+        text: text.to_string(),
+        style: HudTextStyle {
+            italic: !allowed,
+            ..HudTextStyle::default()
+        },
+        color: None,
+    }
+}
+
 fn hud_debug_options_status_tint(status: HudDebugOptionsEntryStatus, current: bool) -> [f32; 4] {
     if !current {
-        return hud_argb_to_tint(0xFF8A8A8A);
+        return hud_argb_to_tint(0xFFBABABA);
     }
     match status {
         HudDebugOptionsEntryStatus::AlwaysOn => hud_argb_to_tint(0xFFDF5050),
@@ -19254,6 +19486,13 @@ fn sanitize_hud_debug_options_screen(
 ) -> Option<HudDebugOptionsScreen> {
     let title = sanitize_hud_text_line(screen.title)?;
     let warning = sanitize_hud_text_line(screen.warning)?;
+    let search_hint = sanitize_hud_text_line(screen.search_hint)?;
+    let never_label = sanitize_hud_text_line(screen.never_label)?;
+    let overlay_label = sanitize_hud_text_line(screen.overlay_label)?;
+    let always_label = sanitize_hud_text_line(screen.always_label)?;
+    let default_profile_label = sanitize_hud_text_line(screen.default_profile_label)?;
+    let performance_profile_label = sanitize_hud_text_line(screen.performance_profile_label)?;
+    let done_label = sanitize_hud_text_line(screen.done_label)?;
     let search_text = sanitize_hud_text_preserving_empty_utf16(screen.search_text, 32);
     let search_len = search_text.chars().count();
     let visible_rows = screen.visible_rows.min(64);
@@ -19270,6 +19509,11 @@ fn sanitize_hud_debug_options_screen(
         search_cursor: screen.search_cursor.min(search_len),
         search_selection: screen.search_selection.min(search_len),
         search_cursor_visible: screen.search_cursor_visible,
+        search_focused: screen.search_focused,
+        search_hint,
+        never_label,
+        overlay_label,
+        always_label,
         search_text,
         rows,
         tooltip,
@@ -19278,9 +19522,15 @@ fn sanitize_hud_debug_options_screen(
         visible_rows,
         default_profile_active: screen.default_profile_active,
         default_profile_hovered: screen.default_profile_hovered,
+        default_profile_focused: screen.default_profile_focused,
+        default_profile_label,
         performance_profile_active: screen.performance_profile_active,
         performance_profile_hovered: screen.performance_profile_hovered,
+        performance_profile_focused: screen.performance_profile_focused,
+        performance_profile_label,
         done_hovered: screen.done_hovered,
+        done_focused: screen.done_focused,
+        done_label,
     })
 }
 
@@ -19294,6 +19544,7 @@ fn sanitize_hud_debug_options_row(row: HudDebugOptionsRow) -> Option<HudDebugOpt
             path,
             status,
             hovered_status,
+            focused_status,
             allowed,
         } => {
             let path = sanitize_hud_text_line(path)?;
@@ -19301,6 +19552,7 @@ fn sanitize_hud_debug_options_row(row: HudDebugOptionsRow) -> Option<HudDebugOpt
                 path,
                 status,
                 hovered_status,
+                focused_status,
                 allowed,
             })
         }
@@ -26597,6 +26849,11 @@ mod tests {
             search_cursor: 99,
             search_selection: 1,
             search_cursor_visible: true,
+            search_focused: true,
+            search_hint: "Search...".to_string(),
+            never_label: "OFF".to_string(),
+            overlay_label: "In Overlay".to_string(),
+            always_label: "Always".to_string(),
             tooltip: Some(HudDebugOptionsTooltip {
                 text: "No\nReduced".to_string(),
                 x: 12,
@@ -26610,12 +26867,14 @@ mod tests {
                     path: "biome".to_string(),
                     status: HudDebugOptionsEntryStatus::AlwaysOn,
                     hovered_status: Some(HudDebugOptionsEntryStatus::AlwaysOn),
+                    focused_status: None,
                     allowed: true,
                 },
                 HudDebugOptionsRow::Entry {
                     path: "fps".to_string(),
                     status: HudDebugOptionsEntryStatus::InOverlay,
                     hovered_status: None,
+                    focused_status: Some(HudDebugOptionsEntryStatus::Never),
                     allowed: false,
                 },
             ],
@@ -26624,9 +26883,15 @@ mod tests {
             visible_rows: 2,
             default_profile_active: false,
             default_profile_hovered: true,
+            default_profile_focused: false,
+            default_profile_label: "Default profile".to_string(),
             performance_profile_active: true,
             performance_profile_hovered: false,
+            performance_profile_focused: true,
+            performance_profile_label: "Performance profile".to_string(),
             done_hovered: true,
+            done_focused: false,
+            done_label: "Done".to_string(),
         })
         .expect("debug options screen");
 
@@ -26655,6 +26920,11 @@ mod tests {
             search_cursor: 99,
             search_selection: 99,
             search_cursor_visible: true,
+            search_focused: false,
+            search_hint: "Search...".to_string(),
+            never_label: "OFF".to_string(),
+            overlay_label: "In Overlay".to_string(),
+            always_label: "Always".to_string(),
             tooltip: None,
             rows: Vec::new(),
             scroll_row: 0,
@@ -26662,9 +26932,15 @@ mod tests {
             visible_rows: 0,
             default_profile_active: true,
             default_profile_hovered: false,
+            default_profile_focused: false,
+            default_profile_label: "Default profile".to_string(),
             performance_profile_active: true,
             performance_profile_hovered: false,
+            performance_profile_focused: false,
+            performance_profile_label: "Performance profile".to_string(),
             done_hovered: false,
+            done_focused: false,
+            done_label: "Done".to_string(),
         })
         .expect("wide debug options screen");
         assert_eq!(wide.search_text, "\u{1f600}".repeat(16));
@@ -26679,6 +26955,11 @@ mod tests {
             search_cursor: 0,
             search_selection: 0,
             search_cursor_visible: false,
+            search_focused: false,
+            search_hint: "Search...".to_string(),
+            never_label: "OFF".to_string(),
+            overlay_label: "In Overlay".to_string(),
+            always_label: "Always".to_string(),
             tooltip: None,
             rows: Vec::new(),
             scroll_row: 0,
@@ -26686,9 +26967,15 @@ mod tests {
             visible_rows: 0,
             default_profile_active: true,
             default_profile_hovered: false,
+            default_profile_focused: false,
+            default_profile_label: "Default profile".to_string(),
             performance_profile_active: true,
             performance_profile_hovered: false,
+            performance_profile_focused: false,
+            performance_profile_label: "Performance profile".to_string(),
             done_hovered: false,
+            done_focused: false,
+            done_label: "Done".to_string(),
         })
         .is_none());
     }
@@ -26736,6 +27023,44 @@ mod tests {
         assert_eq!(
             hud_debug_options_button_sprite_slot(false, true),
             HudDebugOptionsButtonSpriteSlot::Disabled
+        );
+    }
+
+    #[test]
+    fn debug_options_widget_text_styles_match_vanilla_focus_and_status_states() {
+        let (hint, hint_runs) = hud_debug_options_search_display("", false, "Search...");
+        assert_eq!(hint, "Search...");
+        assert_eq!(hint_runs.len(), 1);
+        assert!(hint_runs[0].style.italic);
+        assert_eq!(hint_runs[0].color, Some(0xAAAAAA));
+        assert_eq!(
+            hud_debug_options_search_display("", true, "Search..."),
+            (String::new(), Vec::new())
+        );
+
+        assert!(!hud_debug_options_entry_name_run("biome", true).style.italic);
+        assert!(
+            hud_debug_options_entry_name_run("biome", false)
+                .style
+                .italic
+        );
+
+        let selected = hud_debug_options_status_tint(HudDebugOptionsEntryStatus::AlwaysOn, true);
+        assert_eq!(
+            hud_debug_options_button_label_tint(false, selected, false),
+            hud_argb_to_tint(0xFFDF5050)
+        );
+        assert_eq!(
+            hud_debug_options_button_label_tint(false, selected, true),
+            hud_argb_to_tint(0xFF8A8A8A)
+        );
+        assert_eq!(
+            hud_debug_options_status_tint(HudDebugOptionsEntryStatus::InOverlay, true),
+            hud_argb_to_tint(0xFFFFFF55)
+        );
+        assert_eq!(
+            hud_debug_options_status_tint(HudDebugOptionsEntryStatus::Never, false),
+            hud_argb_to_tint(0xFFBABABA)
         );
     }
 

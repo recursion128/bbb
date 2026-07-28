@@ -652,3 +652,6 @@
 - **2026-07-28（原生 Tutorial 系统工程闭环）**：六步骤状态机、三条物品包、
   输入/观察/破坏/背包回调与共享可变高度五槽 toast 已贯通 world、native 和
   renderer；合同见 `docs/archive/tutorial-system-closure-design.md`。
+- **2026-07-28（DebugOptionsScreen 工程闭环）**：搜索、列表、状态与页脚控件现按
+  Vanilla 焦点遍历、禁用规则和鼠标交接运行；本地化提示、精确文字样式与屏幕/
+  列表/按钮旁白贯通 input、native runtime 和 renderer。

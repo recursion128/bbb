@@ -449,6 +449,25 @@ struct DebugGameModeSwitcherState {
     first_mouse_position: Option<(i32, i32)>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum DebugOptionsScreenFocus {
+    Search,
+    List,
+    Entry {
+        entry: DebugScreenEntryId,
+        status: DebugScreenEntryStatus,
+    },
+    DefaultProfile,
+    PerformanceProfile,
+    Done,
+}
+
+impl Default for DebugOptionsScreenFocus {
+    fn default() -> Self {
+        Self::Search
+    }
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct DebugOptionsScreenState {
     search_text: String,
@@ -459,6 +478,7 @@ struct DebugOptionsScreenState {
     scroll_row: usize,
     scrollbar_drag_y: Option<i32>,
     cursor_position: Option<(i32, i32)>,
+    focus: DebugOptionsScreenFocus,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -466,6 +486,7 @@ pub(crate) struct DebugOptionsScreenHudState {
     pub(crate) search_text: String,
     pub(crate) search_cursor: usize,
     pub(crate) search_selection: usize,
+    pub(crate) search_focused: bool,
     pub(crate) rows: Vec<DebugOptionsScreenHudRow>,
     pub(crate) tooltip: Option<DebugOptionsScreenTooltip>,
     pub(crate) scroll_row: usize,
@@ -473,9 +494,12 @@ pub(crate) struct DebugOptionsScreenHudState {
     pub(crate) visible_rows: usize,
     pub(crate) default_profile_active: bool,
     pub(crate) default_profile_hovered: bool,
+    pub(crate) default_profile_focused: bool,
     pub(crate) performance_profile_active: bool,
     pub(crate) performance_profile_hovered: bool,
+    pub(crate) performance_profile_focused: bool,
     pub(crate) done_hovered: bool,
+    pub(crate) done_focused: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -488,6 +512,7 @@ pub(crate) enum DebugOptionsScreenHudRow {
         path: String,
         status: DebugScreenEntryStatus,
         hovered_status: Option<DebugScreenEntryStatus>,
+        focused_status: Option<DebugScreenEntryStatus>,
         allowed: bool,
     },
 }
@@ -500,7 +525,7 @@ pub(crate) struct DebugOptionsScreenTooltip {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum DebugOptionsScreenRow {
+pub(crate) enum DebugOptionsScreenRow {
     Category { label: &'static str },
     Entry(DebugScreenEntryId),
 }
@@ -2571,7 +2596,6 @@ impl ClientInputState {
         self.set_debug_screen_entry_status_inner(entry, status);
     }
 
-    #[cfg(test)]
     pub(crate) fn debug_screen_entry_status(
         &self,
         entry: DebugScreenEntryId,
@@ -2713,6 +2737,50 @@ impl ClientInputState {
         self.debug_options_screen.is_some()
     }
 
+    pub(crate) fn debug_options_screen_search_text(&self) -> Option<&str> {
+        self.debug_options_screen
+            .as_ref()
+            .map(|screen| screen.search_text.as_str())
+    }
+
+    pub(crate) fn debug_options_screen_focus(&self) -> Option<DebugOptionsScreenFocus> {
+        self.debug_options_screen
+            .as_ref()
+            .map(|screen| screen.focus)
+    }
+
+    pub(crate) fn debug_options_screen_hovered_row(
+        &self,
+        surface_size: PhysicalSize<u32>,
+    ) -> Option<(usize, DebugOptionsScreenRow)> {
+        let screen = self.debug_options_screen.as_ref()?;
+        let (mouse_x, mouse_y) = screen.cursor_position?;
+        let visible_row = debug_options_row_index_at(mouse_x, mouse_y, surface_size)?;
+        let rows = debug_options_screen_rows(&screen.search_text);
+        let visible_rows = debug_options_visible_row_count(surface_size);
+        let scroll_row = screen
+            .scroll_row
+            .min(debug_options_max_scroll_row(rows.len(), visible_rows));
+        rows.get(scroll_row + visible_row)
+            .copied()
+            .map(|row| (scroll_row + visible_row, row))
+    }
+
+    pub(crate) fn debug_options_screen_search_hovered(
+        &self,
+        surface_size: PhysicalSize<u32>,
+    ) -> bool {
+        let Some((mouse_x, mouse_y)) = self
+            .debug_options_screen
+            .as_ref()
+            .and_then(|screen| screen.cursor_position)
+        else {
+            return false;
+        };
+        let (x, y, width, height) = debug_options_search_box_rect(surface_size);
+        mouse_x >= x && mouse_x < x + width && mouse_y >= y && mouse_y < y + height
+    }
+
     pub(crate) fn debug_options_screen_hud_state(
         &self,
         surface_size: PhysicalSize<u32>,
@@ -2749,6 +2817,13 @@ impl ClientInputState {
                     hovered_status: hovered_status_button
                         .filter(|(hovered_entry, _)| *hovered_entry == entry)
                         .map(|(_, status)| status),
+                    focused_status: match screen.focus {
+                        DebugOptionsScreenFocus::Entry {
+                            entry: focused_entry,
+                            status,
+                        } if focused_entry == entry => Some(status),
+                        _ => None,
+                    },
                     allowed: entry.is_allowed(reduced_debug_info),
                 },
             })
@@ -2778,6 +2853,7 @@ impl ClientInputState {
             search_selection: screen
                 .search_selection
                 .min(text_edit::char_len(&screen.search_text)),
+            search_focused: screen.focus == DebugOptionsScreenFocus::Search,
             rows,
             tooltip,
             scroll_row,
@@ -2787,12 +2863,16 @@ impl ClientInputState {
                 .debug_entries
                 .is_using_profile(DebugScreenProfile::Default),
             default_profile_hovered: hovered_profile_button == Some(DebugScreenProfile::Default),
+            default_profile_focused: screen.focus == DebugOptionsScreenFocus::DefaultProfile,
             performance_profile_active: !self
                 .debug_entries
                 .is_using_profile(DebugScreenProfile::Performance),
             performance_profile_hovered: hovered_profile_button
                 == Some(DebugScreenProfile::Performance),
+            performance_profile_focused: screen.focus
+                == DebugOptionsScreenFocus::PerformanceProfile,
             done_hovered,
+            done_focused: screen.focus == DebugOptionsScreenFocus::Done,
         })
     }
 
@@ -2805,11 +2885,27 @@ impl ClientInputState {
         self.handle_debug_options_screen_key_with_clipboard(physical_key, state, None)
     }
 
+    #[cfg(test)]
     pub(crate) fn handle_debug_options_screen_key_with_clipboard(
         &mut self,
         physical_key: PhysicalKey,
         state: ElementState,
+        clipboard: Option<&mut dyn DebugClipboard>,
+    ) -> bool {
+        self.handle_debug_options_screen_key_with_clipboard_and_surface(
+            physical_key,
+            state,
+            clipboard,
+            PhysicalSize::new(800, 600),
+        )
+    }
+
+    pub(crate) fn handle_debug_options_screen_key_with_clipboard_and_surface(
+        &mut self,
+        physical_key: PhysicalKey,
+        state: ElementState,
         mut clipboard: Option<&mut dyn DebugClipboard>,
+        surface_size: PhysicalSize<u32>,
     ) -> bool {
         if self.debug_options_screen.is_none() {
             return false;
@@ -2830,24 +2926,46 @@ impl ClientInputState {
         if !pressed {
             return true;
         }
+        let search_focused = self
+            .debug_options_screen
+            .as_ref()
+            .is_some_and(|screen| screen.focus == DebugOptionsScreenFocus::Search);
         match code {
             KeyCode::Escape => {
                 self.set_key_down(code, false);
                 self.close_debug_options_screen();
             }
-            KeyCode::KeyA if self.control_down() && !self.shift_down() => {
+            KeyCode::Tab => {
+                self.move_debug_options_tab_focus(self.shift_down(), surface_size);
+            }
+            KeyCode::Enter | KeyCode::Space if !search_focused => {
+                self.activate_debug_options_focus();
+            }
+            KeyCode::ArrowUp if !search_focused => {
+                self.move_debug_options_vertical_focus(-1, surface_size);
+            }
+            KeyCode::ArrowDown => {
+                self.move_debug_options_vertical_focus(1, surface_size);
+            }
+            KeyCode::ArrowLeft if !search_focused => {
+                self.move_debug_options_horizontal_focus(-1, surface_size);
+            }
+            KeyCode::ArrowRight if !search_focused => {
+                self.move_debug_options_horizontal_focus(1, surface_size);
+            }
+            KeyCode::KeyA if search_focused && self.control_down() && !self.shift_down() => {
                 if let Some(screen) = self.debug_options_screen.as_mut() {
                     select_debug_options_search_text(screen);
                 }
             }
-            KeyCode::KeyC if self.control_down() && !self.shift_down() => {
+            KeyCode::KeyC if search_focused && self.control_down() && !self.shift_down() => {
                 if let (Some(screen), Some(clipboard)) =
                     (self.debug_options_screen.as_ref(), clipboard.as_deref_mut())
                 {
                     clipboard.set_debug_clipboard_text(&debug_options_search_selected_text(screen));
                 }
             }
-            KeyCode::KeyV if self.control_down() && !self.shift_down() => {
+            KeyCode::KeyV if search_focused && self.control_down() && !self.shift_down() => {
                 if let (Some(text), Some(screen)) = (
                     clipboard
                         .as_deref_mut()
@@ -2857,7 +2975,7 @@ impl ClientInputState {
                     insert_debug_options_search_text(screen, &text);
                 }
             }
-            KeyCode::KeyX if self.control_down() && !self.shift_down() => {
+            KeyCode::KeyX if search_focused && self.control_down() && !self.shift_down() => {
                 if let (Some(screen), Some(clipboard)) =
                     (self.debug_options_screen.as_mut(), clipboard.as_deref_mut())
                 {
@@ -2871,7 +2989,7 @@ impl ClientInputState {
                     }
                 }
             }
-            KeyCode::ArrowLeft => {
+            KeyCode::ArrowLeft if search_focused => {
                 let control_down = self.control_down();
                 let shift_down = self.shift_down();
                 if let Some(screen) = self.debug_options_screen.as_mut() {
@@ -2883,7 +3001,7 @@ impl ClientInputState {
                     move_debug_options_search_cursor(screen, cursor, shift_down);
                 }
             }
-            KeyCode::ArrowRight => {
+            KeyCode::ArrowRight if search_focused => {
                 let control_down = self.control_down();
                 let shift_down = self.shift_down();
                 if let Some(screen) = self.debug_options_screen.as_mut() {
@@ -2895,20 +3013,20 @@ impl ClientInputState {
                     move_debug_options_search_cursor(screen, cursor, shift_down);
                 }
             }
-            KeyCode::Home => {
+            KeyCode::Home if search_focused => {
                 let shift_down = self.shift_down();
                 if let Some(screen) = self.debug_options_screen.as_mut() {
                     move_debug_options_search_cursor(screen, 0, shift_down);
                 }
             }
-            KeyCode::End => {
+            KeyCode::End if search_focused => {
                 let shift_down = self.shift_down();
                 if let Some(screen) = self.debug_options_screen.as_mut() {
                     let cursor = text_edit::char_len(&screen.search_text);
                     move_debug_options_search_cursor(screen, cursor, shift_down);
                 }
             }
-            KeyCode::Backspace => {
+            KeyCode::Backspace if search_focused => {
                 let control_down = self.control_down();
                 if let Some(screen) = self.debug_options_screen.as_mut() {
                     let before = screen.search_text.clone();
@@ -2931,7 +3049,7 @@ impl ClientInputState {
                     }
                 }
             }
-            KeyCode::Delete => {
+            KeyCode::Delete if search_focused => {
                 let control_down = self.control_down();
                 if let Some(screen) = self.debug_options_screen.as_mut() {
                     let before = screen.search_text.clone();
@@ -2959,11 +3077,399 @@ impl ClientInputState {
         true
     }
 
+    fn move_debug_options_tab_focus(&mut self, backwards: bool, surface_size: PhysicalSize<u32>) {
+        let Some(screen) = self.debug_options_screen.as_ref() else {
+            return;
+        };
+        let current = screen.focus;
+        let mut order = vec![(DebugOptionsScreenFocus::Search, true)];
+        for row in debug_options_screen_rows(&screen.search_text) {
+            let DebugOptionsScreenRow::Entry(entry) = row else {
+                continue;
+            };
+            let current_status = self.debug_entries.status(entry);
+            for status in [
+                DebugScreenEntryStatus::Never,
+                DebugScreenEntryStatus::InOverlay,
+                DebugScreenEntryStatus::AlwaysOn,
+            ] {
+                order.push((
+                    DebugOptionsScreenFocus::Entry { entry, status },
+                    status != current_status,
+                ));
+            }
+        }
+        order.extend([
+            (
+                DebugOptionsScreenFocus::DefaultProfile,
+                !self
+                    .debug_entries
+                    .is_using_profile(DebugScreenProfile::Default),
+            ),
+            (
+                DebugOptionsScreenFocus::PerformanceProfile,
+                !self
+                    .debug_entries
+                    .is_using_profile(DebugScreenProfile::Performance),
+            ),
+            (DebugOptionsScreenFocus::Done, true),
+        ]);
+        if current == DebugOptionsScreenFocus::List {
+            let active = order
+                .iter()
+                .filter(|(focus, active)| {
+                    *active && matches!(focus, DebugOptionsScreenFocus::Entry { .. })
+                })
+                .map(|(focus, _)| *focus)
+                .collect::<Vec<_>>();
+            if let Some(focus) = if backwards {
+                active.last().copied()
+            } else {
+                active.first().copied()
+            } {
+                self.set_debug_options_focus(focus, surface_size);
+            }
+            return;
+        }
+        let current_index = order
+            .iter()
+            .position(|(focus, _)| *focus == current)
+            .unwrap_or_default();
+        for offset in 1..=order.len() {
+            let index = if backwards {
+                current_index
+                    .checked_sub(offset)
+                    .unwrap_or_else(|| order.len() - (offset - current_index))
+            } else {
+                (current_index + offset) % order.len()
+            };
+            if order[index].1 {
+                self.set_debug_options_focus(order[index].0, surface_size);
+                break;
+            }
+        }
+    }
+
+    fn move_debug_options_horizontal_focus(
+        &mut self,
+        direction: i32,
+        surface_size: PhysicalSize<u32>,
+    ) {
+        let Some(focus) = self.debug_options_screen_focus() else {
+            return;
+        };
+        let default_active = !self
+            .debug_entries
+            .is_using_profile(DebugScreenProfile::Default);
+        let performance_active = !self
+            .debug_entries
+            .is_using_profile(DebugScreenProfile::Performance);
+        let footer_focus = match (focus, direction) {
+            (DebugOptionsScreenFocus::DefaultProfile, direction) if direction > 0 => {
+                Some(if performance_active {
+                    DebugOptionsScreenFocus::PerformanceProfile
+                } else {
+                    DebugOptionsScreenFocus::Done
+                })
+            }
+            (DebugOptionsScreenFocus::PerformanceProfile, direction) if direction < 0 => {
+                default_active.then_some(DebugOptionsScreenFocus::DefaultProfile)
+            }
+            (DebugOptionsScreenFocus::PerformanceProfile, direction) if direction > 0 => {
+                Some(DebugOptionsScreenFocus::Done)
+            }
+            (DebugOptionsScreenFocus::Done, direction) if direction < 0 => performance_active
+                .then_some(DebugOptionsScreenFocus::PerformanceProfile)
+                .or_else(|| default_active.then_some(DebugOptionsScreenFocus::DefaultProfile)),
+            _ => None,
+        };
+        if let Some(footer_focus) = footer_focus {
+            self.set_debug_options_focus(footer_focus, surface_size);
+            return;
+        }
+        if matches!(
+            focus,
+            DebugOptionsScreenFocus::DefaultProfile
+                | DebugOptionsScreenFocus::PerformanceProfile
+                | DebugOptionsScreenFocus::Done
+        ) {
+            return;
+        }
+        if focus == DebugOptionsScreenFocus::List {
+            let status = if direction < 0 {
+                DebugScreenEntryStatus::AlwaysOn
+            } else {
+                DebugScreenEntryStatus::Never
+            };
+            let search_text = self
+                .debug_options_screen
+                .as_ref()
+                .map(|screen| screen.search_text.as_str())
+                .unwrap_or_default();
+            for row in debug_options_screen_rows(search_text) {
+                let DebugOptionsScreenRow::Entry(entry) = row else {
+                    continue;
+                };
+                if self.debug_entries.status(entry) != status {
+                    self.set_debug_options_focus(
+                        DebugOptionsScreenFocus::Entry { entry, status },
+                        surface_size,
+                    );
+                    break;
+                }
+            }
+            return;
+        };
+        let DebugOptionsScreenFocus::Entry { entry, status } = focus else {
+            return;
+        };
+        let statuses = [
+            DebugScreenEntryStatus::Never,
+            DebugScreenEntryStatus::InOverlay,
+            DebugScreenEntryStatus::AlwaysOn,
+        ];
+        let Some(current_index) = statuses.iter().position(|candidate| *candidate == status) else {
+            return;
+        };
+        let mut index = current_index as i32 + direction;
+        while let Ok(candidate_index) = usize::try_from(index) {
+            let Some(candidate) = statuses.get(candidate_index).copied() else {
+                break;
+            };
+            if self.debug_entries.status(entry) != candidate {
+                self.set_debug_options_focus(
+                    DebugOptionsScreenFocus::Entry {
+                        entry,
+                        status: candidate,
+                    },
+                    surface_size,
+                );
+                break;
+            }
+            index += direction;
+        }
+    }
+
+    fn move_debug_options_vertical_focus(
+        &mut self,
+        direction: i32,
+        surface_size: PhysicalSize<u32>,
+    ) {
+        let Some(current) = self.debug_options_screen_focus() else {
+            return;
+        };
+        let search_text = self
+            .debug_options_screen
+            .as_ref()
+            .map(|screen| screen.search_text.clone())
+            .unwrap_or_default();
+        let entries = debug_options_screen_rows(&search_text)
+            .into_iter()
+            .filter_map(|row| match row {
+                DebugOptionsScreenRow::Entry(entry) => Some(entry),
+                DebugOptionsScreenRow::Category { .. } => None,
+            })
+            .collect::<Vec<_>>();
+        match current {
+            DebugOptionsScreenFocus::List => {
+                let status = DebugScreenEntryStatus::Never;
+                let entry = if direction < 0 {
+                    entries
+                        .iter()
+                        .rev()
+                        .find(|entry| self.debug_entries.status(**entry) != status)
+                } else {
+                    entries
+                        .iter()
+                        .find(|entry| self.debug_entries.status(**entry) != status)
+                };
+                if let Some(entry) = entry {
+                    self.set_debug_options_focus(
+                        DebugOptionsScreenFocus::Entry {
+                            entry: *entry,
+                            status,
+                        },
+                        surface_size,
+                    );
+                } else if direction < 0 {
+                    self.set_debug_options_focus(DebugOptionsScreenFocus::Search, surface_size);
+                } else {
+                    let footer_focus = if !self
+                        .debug_entries
+                        .is_using_profile(DebugScreenProfile::Default)
+                    {
+                        DebugOptionsScreenFocus::DefaultProfile
+                    } else if !self
+                        .debug_entries
+                        .is_using_profile(DebugScreenProfile::Performance)
+                    {
+                        DebugOptionsScreenFocus::PerformanceProfile
+                    } else {
+                        DebugOptionsScreenFocus::Done
+                    };
+                    self.set_debug_options_focus(footer_focus, surface_size);
+                }
+            }
+            DebugOptionsScreenFocus::Search if direction > 0 => {
+                for entry in &entries {
+                    let status = DebugScreenEntryStatus::Never;
+                    if self.debug_entries.status(*entry) != status {
+                        self.set_debug_options_focus(
+                            DebugOptionsScreenFocus::Entry {
+                                entry: *entry,
+                                status,
+                            },
+                            surface_size,
+                        );
+                        return;
+                    }
+                }
+                let footer_focus = if self
+                    .debug_entries
+                    .is_using_profile(DebugScreenProfile::Performance)
+                {
+                    DebugOptionsScreenFocus::Done
+                } else {
+                    DebugOptionsScreenFocus::PerformanceProfile
+                };
+                self.set_debug_options_focus(footer_focus, surface_size);
+            }
+            DebugOptionsScreenFocus::Entry { entry, status } => {
+                let Some(current_index) = entries.iter().position(|candidate| *candidate == entry)
+                else {
+                    return;
+                };
+                let mut index = current_index as i32 + direction;
+                while let Ok(candidate_index) = usize::try_from(index) {
+                    let Some(candidate) = entries.get(candidate_index).copied() else {
+                        break;
+                    };
+                    if self.debug_entries.status(candidate) != status {
+                        self.set_debug_options_focus(
+                            DebugOptionsScreenFocus::Entry {
+                                entry: candidate,
+                                status,
+                            },
+                            surface_size,
+                        );
+                        return;
+                    }
+                    index += direction;
+                }
+                if direction < 0 {
+                    self.set_debug_options_focus(DebugOptionsScreenFocus::Search, surface_size);
+                } else {
+                    let performance_active = !self
+                        .debug_entries
+                        .is_using_profile(DebugScreenProfile::Performance);
+                    let footer_focus = match status {
+                        DebugScreenEntryStatus::Never | DebugScreenEntryStatus::InOverlay
+                            if performance_active =>
+                        {
+                            DebugOptionsScreenFocus::PerformanceProfile
+                        }
+                        DebugScreenEntryStatus::Never
+                        | DebugScreenEntryStatus::InOverlay
+                        | DebugScreenEntryStatus::AlwaysOn => DebugOptionsScreenFocus::Done,
+                    };
+                    self.set_debug_options_focus(footer_focus, surface_size);
+                }
+            }
+            DebugOptionsScreenFocus::DefaultProfile
+            | DebugOptionsScreenFocus::PerformanceProfile
+            | DebugOptionsScreenFocus::Done
+                if direction < 0 =>
+            {
+                let status = DebugScreenEntryStatus::Never;
+                let mut moved = false;
+                for entry in entries.into_iter().rev() {
+                    if self.debug_entries.status(entry) != status {
+                        self.set_debug_options_focus(
+                            DebugOptionsScreenFocus::Entry { entry, status },
+                            surface_size,
+                        );
+                        moved = true;
+                        break;
+                    }
+                }
+                if !moved {
+                    self.set_debug_options_focus(DebugOptionsScreenFocus::Search, surface_size);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn set_debug_options_focus(
+        &mut self,
+        focus: DebugOptionsScreenFocus,
+        surface_size: PhysicalSize<u32>,
+    ) {
+        let Some(screen) = self.debug_options_screen.as_mut() else {
+            return;
+        };
+        screen.focus = focus;
+        let DebugOptionsScreenFocus::Entry { entry, .. } = focus else {
+            return;
+        };
+        let rows = debug_options_screen_rows(&screen.search_text);
+        let Some(row_index) = rows
+            .iter()
+            .position(|row| *row == DebugOptionsScreenRow::Entry(entry))
+        else {
+            return;
+        };
+        let visible_rows = debug_options_visible_row_count(surface_size);
+        if visible_rows == 0 {
+            screen.scroll_row = 0;
+        } else if row_index < screen.scroll_row {
+            screen.scroll_row = row_index;
+        } else if row_index >= screen.scroll_row.saturating_add(visible_rows) {
+            screen.scroll_row = row_index + 1 - visible_rows;
+        }
+        screen.scroll_row = screen
+            .scroll_row
+            .min(debug_options_max_scroll_row(rows.len(), visible_rows));
+    }
+
+    fn activate_debug_options_focus(&mut self) {
+        let Some(focus) = self.debug_options_screen_focus() else {
+            return;
+        };
+        match focus {
+            DebugOptionsScreenFocus::Entry { entry, status } => {
+                if self.debug_entries.status(entry) != status {
+                    self.set_debug_screen_entry_status_inner(entry, status);
+                }
+            }
+            DebugOptionsScreenFocus::DefaultProfile => {
+                if !self
+                    .debug_entries
+                    .is_using_profile(DebugScreenProfile::Default)
+                {
+                    self.load_debug_screen_profile(DebugScreenProfile::Default);
+                }
+            }
+            DebugOptionsScreenFocus::PerformanceProfile => {
+                if !self
+                    .debug_entries
+                    .is_using_profile(DebugScreenProfile::Performance)
+                {
+                    self.load_debug_screen_profile(DebugScreenProfile::Performance);
+                }
+            }
+            DebugOptionsScreenFocus::Done => self.close_debug_options_screen(),
+            DebugOptionsScreenFocus::Search | DebugOptionsScreenFocus::List => {}
+        }
+    }
+
     pub(crate) fn handle_debug_options_screen_text_input(&mut self, text: &str) -> bool {
         let Some(screen) = self.debug_options_screen.as_mut() else {
             return false;
         };
-        insert_debug_options_search_text(screen, text);
+        if screen.focus == DebugOptionsScreenFocus::Search {
+            insert_debug_options_search_text(screen, text);
+        }
         true
     }
 
@@ -3078,6 +3584,7 @@ impl ClientInputState {
         if let Some(cursor) = search_cursor {
             let shift_down = self.shift_down();
             if let Some(screen) = self.debug_options_screen.as_mut() {
+                screen.focus = DebugOptionsScreenFocus::Search;
                 if double_click {
                     select_debug_options_search_word_at(screen, cursor);
                 } else {
@@ -3094,6 +3601,12 @@ impl ClientInputState {
         let over_scrollbar = self.debug_options_screen.as_ref().is_some_and(|screen| {
             debug_options_scrollbar_contains(mouse_x, mouse_y, &screen.search_text, surface_size)
         });
+        let over_row = self
+            .debug_options_screen_hovered_row(surface_size)
+            .is_some();
+        if over_scrollbar {
+            self.set_debug_options_focus(DebugOptionsScreenFocus::List, surface_size);
+        }
         if over_scrollbar {
             if let Some(screen) = self.debug_options_screen.as_mut() {
                 screen.scrollbar_drag_y = Some(mouse_y);
@@ -3102,6 +3615,11 @@ impl ClientInputState {
         }
         if let Some(profile) = debug_options_profile_button_at(mouse_x, mouse_y, surface_size) {
             if !self.debug_entries.is_using_profile(profile) {
+                let focus = match profile {
+                    DebugScreenProfile::Default => DebugOptionsScreenFocus::DefaultProfile,
+                    DebugScreenProfile::Performance => DebugOptionsScreenFocus::PerformanceProfile,
+                };
+                self.set_debug_options_focus(focus, surface_size);
                 self.load_debug_screen_profile(profile);
                 if let Some(screen) = self.debug_options_screen.as_mut() {
                     screen.scroll_row = 0;
@@ -3116,7 +3634,30 @@ impl ClientInputState {
         if let Some((entry, status)) =
             self.debug_options_status_button_at(mouse_x, mouse_y, surface_size, reduced_debug_info)
         {
-            self.set_debug_screen_entry_status_inner(entry, status);
+            if self.debug_entries.status(entry) != status {
+                self.set_debug_options_focus(
+                    DebugOptionsScreenFocus::Entry { entry, status },
+                    surface_size,
+                );
+                self.set_debug_screen_entry_status_inner(entry, status);
+            } else if !matches!(
+                self.debug_options_screen_focus(),
+                Some(DebugOptionsScreenFocus::Entry {
+                    entry: focused_entry,
+                    ..
+                }) if focused_entry == entry
+            ) {
+                self.set_debug_options_focus(DebugOptionsScreenFocus::List, surface_size);
+            }
+            return true;
+        }
+        if over_row
+            && !matches!(
+                self.debug_options_screen_focus(),
+                Some(DebugOptionsScreenFocus::Entry { .. })
+            )
+        {
+            self.set_debug_options_focus(DebugOptionsScreenFocus::List, surface_size);
         }
         true
     }

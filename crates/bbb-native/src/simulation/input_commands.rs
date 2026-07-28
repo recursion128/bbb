@@ -396,6 +396,11 @@ impl SimulationInputRuntime {
                     self.surface_size,
                     &self.text_measurements,
                 );
+            context
+                .platform
+                .submit(PlatformEffect::DebugOptionsScreenInput(
+                    ScreenNarrationScheduleInput::MouseMove,
+                ));
             return;
         }
         if context
@@ -659,15 +664,31 @@ impl SimulationInputRuntime {
             read: clipboard_text,
             effects: &queued_effects,
         };
+        let debug_options_search_before = context
+            .input
+            .debug_options_screen_search_text()
+            .map(str::to_owned);
         if context
             .input
-            .handle_debug_options_screen_key_with_clipboard(
+            .handle_debug_options_screen_key_with_clipboard_and_surface(
                 physical_key,
                 state,
                 Some(&mut clipboard),
+                self.surface_size,
             )
         {
             flush_platform_effects(&queued_effects, context.platform);
+            if matches!(state, ElementState::Pressed) {
+                let search_changed = context.input.debug_options_screen_search_text()
+                    != debug_options_search_before.as_deref();
+                context
+                    .platform
+                    .submit(PlatformEffect::DebugOptionsScreenInput(if search_changed {
+                        ScreenNarrationScheduleInput::Immediate
+                    } else {
+                        ScreenNarrationScheduleInput::KeyboardAction
+                    }));
+            }
             if simulation_wants_cursor(context.input, context.world) {
                 self.request_cursor_capture(false, context.platform);
             }
@@ -1030,7 +1051,18 @@ impl SimulationInputRuntime {
         let test_instance_block_editor_open = context.input.test_instance_block_editor_is_active();
         if context.input.debug_options_screen_is_open() {
             self.request_cursor_capture(false, context.platform);
+            let search_before = context
+                .input
+                .debug_options_screen_search_text()
+                .map(str::to_owned);
             context.input.handle_debug_options_screen_text_input(text);
+            if context.input.debug_options_screen_search_text() != search_before.as_deref() {
+                context
+                    .platform
+                    .submit(PlatformEffect::DebugOptionsScreenInput(
+                        ScreenNarrationScheduleInput::Immediate,
+                    ));
+            }
             return;
         }
         if context.world.dialog_screen_is_open() {
@@ -1136,6 +1168,11 @@ impl SimulationInputRuntime {
                     context.world.local_player_has_reduced_debug_info(),
                     &self.text_measurements,
                 );
+            context
+                .platform
+                .submit(PlatformEffect::DebugOptionsScreenInput(
+                    ScreenNarrationScheduleInput::MouseAction,
+                ));
             return;
         }
         if context.input.debug_pause_screen_is_open() {
@@ -1622,6 +1659,11 @@ impl SimulationInputRuntime {
             context
                 .input
                 .handle_debug_options_screen_mouse_wheel(delta, self.surface_size);
+            context
+                .platform
+                .submit(PlatformEffect::DebugOptionsScreenInput(
+                    ScreenNarrationScheduleInput::MouseAction,
+                ));
             return;
         }
         if context.world.death_screen().is_some() || context.world.game_event_screen().is_some() {

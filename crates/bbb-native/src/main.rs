@@ -213,6 +213,7 @@ struct NativeRenderEffectSink<'a> {
     clipboard: &'a mut NativeDebugClipboard,
     terrain_upload: &'a mut TerrainUploadState,
     debug_profiler: &'a mut DebugProfiler,
+    debug_options_screen_narration: &'a mut ScreenNarrationRuntime,
     stats_screen_narration: &'a mut ScreenNarrationRuntime,
     recipe_book_narration: &'a mut ScreenNarrationRuntime,
     social_interactions_narration: &'a mut ScreenNarrationRuntime,
@@ -310,8 +311,21 @@ impl PlatformEffectSink for NativeRenderEffectSink<'_> {
                     );
                 }
             }
+            PlatformEffect::DebugOptionsScreenInput(input) => {
+                let input = match input {
+                    ScreenNarrationScheduleInput::Immediate => ScreenNarrationInput::Immediate,
+                    ScreenNarrationScheduleInput::MouseMove => ScreenNarrationInput::MouseMove,
+                    ScreenNarrationScheduleInput::MouseAction => ScreenNarrationInput::MouseAction,
+                    ScreenNarrationScheduleInput::KeyboardAction => {
+                        ScreenNarrationInput::KeyboardAction
+                    }
+                };
+                self.debug_options_screen_narration
+                    .after_input(input, Instant::now());
+            }
             PlatformEffect::StatsScreenInput(input) => {
                 let input = match input {
+                    ScreenNarrationScheduleInput::Immediate => ScreenNarrationInput::Immediate,
                     ScreenNarrationScheduleInput::MouseMove => ScreenNarrationInput::MouseMove,
                     ScreenNarrationScheduleInput::MouseAction => ScreenNarrationInput::MouseAction,
                     ScreenNarrationScheduleInput::KeyboardAction => {
@@ -323,6 +337,7 @@ impl PlatformEffectSink for NativeRenderEffectSink<'_> {
             }
             PlatformEffect::RecipeBookInput(input) => {
                 let input = match input {
+                    ScreenNarrationScheduleInput::Immediate => ScreenNarrationInput::Immediate,
                     ScreenNarrationScheduleInput::MouseMove => ScreenNarrationInput::MouseMove,
                     ScreenNarrationScheduleInput::MouseAction => ScreenNarrationInput::MouseAction,
                     ScreenNarrationScheduleInput::KeyboardAction => {
@@ -334,6 +349,7 @@ impl PlatformEffectSink for NativeRenderEffectSink<'_> {
             }
             PlatformEffect::SocialInteractionsInput(input) => {
                 let input = match input {
+                    ScreenNarrationScheduleInput::Immediate => ScreenNarrationInput::Immediate,
                     ScreenNarrationScheduleInput::MouseMove => ScreenNarrationInput::MouseMove,
                     ScreenNarrationScheduleInput::MouseAction => ScreenNarrationInput::MouseAction,
                     ScreenNarrationScheduleInput::KeyboardAction => {
@@ -345,6 +361,7 @@ impl PlatformEffectSink for NativeRenderEffectSink<'_> {
             }
             PlatformEffect::GameEventScreenInput(input) => {
                 let input = match input {
+                    ScreenNarrationScheduleInput::Immediate => ScreenNarrationInput::Immediate,
                     ScreenNarrationScheduleInput::MouseMove => ScreenNarrationInput::MouseMove,
                     ScreenNarrationScheduleInput::MouseAction => ScreenNarrationInput::MouseAction,
                     ScreenNarrationScheduleInput::KeyboardAction => {
@@ -356,6 +373,7 @@ impl PlatformEffectSink for NativeRenderEffectSink<'_> {
             }
             PlatformEffect::DeathScreenInput(input) => {
                 let input = match input {
+                    ScreenNarrationScheduleInput::Immediate => ScreenNarrationInput::Immediate,
                     ScreenNarrationScheduleInput::MouseMove => ScreenNarrationInput::MouseMove,
                     ScreenNarrationScheduleInput::MouseAction => ScreenNarrationInput::MouseAction,
                     ScreenNarrationScheduleInput::KeyboardAction => {
@@ -731,6 +749,7 @@ fn main() -> Result<()> {
     let mut next_redraw_at = Instant::now();
     let mut last_command_suggestion_narration = None;
     let mut player_list_narration_visible = false;
+    let mut debug_options_screen_narration = ScreenNarrationRuntime::default();
     let mut stats_screen_narration = ScreenNarrationRuntime::default();
     let mut recipe_book_narration = ScreenNarrationRuntime::default();
     let mut social_interactions_narration = ScreenNarrationRuntime::default();
@@ -847,6 +866,7 @@ fn main() -> Result<()> {
                     clipboard: &mut debug_clipboard,
                     terrain_upload: &mut terrain_upload,
                     debug_profiler: &mut debug_profiler,
+                    debug_options_screen_narration: &mut debug_options_screen_narration,
                     stats_screen_narration: &mut stats_screen_narration,
                     recipe_book_narration: &mut recipe_book_narration,
                     social_interactions_narration: &mut social_interactions_narration,
@@ -1037,6 +1057,17 @@ fn main() -> Result<()> {
                     if let Some(particles) = particle_render_runtime.as_mut() {
                         particles.maybe_upload_particle_atlas_animation(&mut renderer);
                     }
+                    debug_options_screen_narration.tick(
+                        render_publication
+                            .input
+                            .debug_options_screen_is_open()
+                            .then(|| hud_render_runtime.debug_options_screen_narration())
+                            .flatten(),
+                        Instant::now(),
+                        narrator_runtime
+                            .as_mut()
+                            .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
+                    );
                     social_interactions_narration.tick(
                         render_publication
                             .world

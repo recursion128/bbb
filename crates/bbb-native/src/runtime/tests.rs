@@ -72,6 +72,7 @@ use bbb_protocol::recipe_wire_types::{
     VANILLA_SLOT_DISPLAY_TYPE_SMITHING_TRIM_ID, VANILLA_SLOT_DISPLAY_TYPE_TAG_ID,
     VANILLA_SLOT_DISPLAY_TYPE_WITH_ANY_POTION_ID, VANILLA_SLOT_DISPLAY_TYPE_WITH_REMAINDER_ID,
 };
+use bbb_renderer::{HudDebugOptionsEntryStatus, HudDebugOptionsRow};
 
 use bbb_protocol::stat_types::{
     VANILLA_STAT_TYPE_BLOCK_MINED_ID, VANILLA_STAT_TYPE_CUSTOM_ID,
@@ -12223,8 +12224,13 @@ fn hud_debug_options_screen_projects_visible_rows_and_suppresses_pause() {
     );
 
     assert!(hud_pause_screen(&input, None, winit::dpi::PhysicalSize::new(420, 240)).is_none());
-    let screen = hud_debug_options_screen(&input, &world, winit::dpi::PhysicalSize::new(420, 240))
-        .expect("debug options screen");
+    let screen = hud_debug_options_screen(
+        &input,
+        &world,
+        None,
+        winit::dpi::PhysicalSize::new(420, 240),
+    )
+    .expect("debug options screen");
 
     assert_eq!(screen.title, "Debug Options");
     assert_eq!(screen.total_rows, 47);
@@ -12242,6 +12248,7 @@ fn hud_debug_options_screen_projects_visible_rows_and_suppresses_pause() {
             path: "biome".to_string(),
             status: HudDebugOptionsEntryStatus::AlwaysOn,
             hovered_status: None,
+            focused_status: None,
             allowed: true,
         }
     );
@@ -12265,7 +12272,8 @@ fn hud_debug_options_screen_projects_not_allowed_tooltip_under_reduced_debug_inf
         surface,
     ));
 
-    let screen = hud_debug_options_screen(&input, &world, surface).expect("debug options screen");
+    let screen =
+        hud_debug_options_screen(&input, &world, None, surface).expect("debug options screen");
 
     assert_eq!(
         screen.tooltip.as_ref().map(|tooltip| tooltip.text.as_str()),
@@ -12284,9 +12292,108 @@ fn hud_debug_options_screen_projects_not_allowed_tooltip_under_reduced_debug_inf
             path: "biome".to_string(),
             status: HudDebugOptionsEntryStatus::Never,
             hovered_status: None,
+            focused_status: None,
             allowed: false,
         }
     );
+}
+
+#[test]
+fn debug_options_narration_matches_search_list_and_status_button_semantics() {
+    let mut input = ClientInputState::new(true);
+    let world = WorldStore::new();
+    let surface = winit::dpi::PhysicalSize::new(420, 240);
+    input.open_debug_options_screen();
+
+    let screen =
+        hud_debug_options_screen(&input, &world, None, surface).expect("debug options screen");
+    let initial =
+        debug_options_screen_narration_frame(&input, &screen, None, surface).all_text_for_test();
+    assert!(initial.contains("Debug Options"));
+    assert!(initial.contains("Screen element 1 out of 4"));
+    assert!(initial.contains("Search... edit box:"));
+    assert!(initial.contains("Press Tab to navigate to the next element"));
+
+    assert!(input
+        .handle_debug_options_screen_key(PhysicalKey::Code(KeyCode::Tab), ElementState::Pressed,));
+    let screen =
+        hud_debug_options_screen(&input, &world, None, surface).expect("debug options screen");
+    let focused =
+        debug_options_screen_narration_frame(&input, &screen, None, surface).all_text_for_test();
+    assert!(focused.contains("Screen element 2 out of 4"));
+    assert!(focused.contains("Selected list row 2 out of 47"));
+    assert!(focused.contains("Selected row element 2 out of 3"));
+    assert!(focused.contains("biome: Currently off: In Overlay"));
+    assert!(focused.contains("Press Enter to activate"));
+
+    assert!(input.handle_debug_options_screen_cursor_moved(
+        Some(winit::dpi::PhysicalPosition::new(328.0, 82.0)),
+        surface,
+    ));
+    let screen =
+        hud_debug_options_screen(&input, &world, None, surface).expect("debug options screen");
+    let same_row_hover =
+        debug_options_screen_narration_frame(&input, &screen, None, surface).all_text_for_test();
+    assert!(same_row_hover.contains("Selected row element 2 out of 3"));
+    assert!(same_row_hover.contains("biome: Currently off: In Overlay"));
+    assert!(!same_row_hover.contains("Currently off: Always"));
+
+    assert!(input.handle_debug_options_screen_cursor_moved(
+        Some(winit::dpi::PhysicalPosition::new(36.0, 62.0)),
+        surface,
+    ));
+    let screen =
+        hud_debug_options_screen(&input, &world, None, surface).expect("debug options screen");
+    let category_hover =
+        debug_options_screen_narration_frame(&input, &screen, None, surface).all_text_for_test();
+    assert!(category_hover.contains("Selected list row 1 out of 47"));
+    assert!(category_hover.contains("Debug Screen Text"));
+    assert!(!category_hover.contains("Selected row element"));
+
+    assert!(input.handle_debug_options_screen_cursor_moved(None, surface));
+    assert!(
+        input.handle_debug_options_screen_key(
+            PhysicalKey::Code(KeyCode::Enter),
+            ElementState::Pressed,
+        )
+    );
+    let screen =
+        hud_debug_options_screen(&input, &world, None, surface).expect("debug options screen");
+    let selected =
+        debug_options_screen_narration_frame(&input, &screen, None, surface).all_text_for_test();
+    assert!(selected.contains("biome: Currently only in debug overlay: In Overlay"));
+    assert!(!selected.contains("Press Enter to activate"));
+
+    assert!(input.handle_debug_options_screen_mouse_input(
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(winit::dpi::PhysicalPosition::new(181.0, 214.0)),
+        surface,
+        false,
+    ));
+    assert!(input.handle_debug_options_screen_cursor_moved(
+        Some(winit::dpi::PhysicalPosition::new(36.0, 62.0)),
+        surface,
+    ));
+    let screen =
+        hud_debug_options_screen(&input, &world, None, surface).expect("debug options screen");
+    let inactive_profile_list_hover =
+        debug_options_screen_narration_frame(&input, &screen, None, surface).all_text_for_test();
+    assert!(inactive_profile_list_hover.contains("Debug Screen Text"));
+    assert!(!inactive_profile_list_hover.contains("Press Tab to navigate"));
+    assert!(!inactive_profile_list_hover.contains("Use mouse cursor"));
+
+    assert!(input.handle_debug_options_screen_cursor_moved(
+        Some(winit::dpi::PhysicalPosition::new(53.0, 214.0)),
+        surface,
+    ));
+    let screen =
+        hud_debug_options_screen(&input, &world, None, surface).expect("debug options screen");
+    let inactive_profile_button_hover =
+        debug_options_screen_narration_frame(&input, &screen, None, surface).all_text_for_test();
+    assert!(inactive_profile_button_hover.contains("Default profile button"));
+    assert!(inactive_profile_button_hover.contains("Left click to activate"));
+    assert!(!inactive_profile_button_hover.contains("Press Enter to activate"));
 }
 
 #[test]

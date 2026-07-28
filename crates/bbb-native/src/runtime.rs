@@ -44,12 +44,11 @@ use bbb_renderer::{
     HudCommandBlockEditorScreen, HudCommandSuggestionEntry, HudCommandSuggestionTooltip,
     HudCommandSuggestions, HudCommandSuggestionsLayout, HudContextualBar, HudDebugCrosshair,
     HudDebugFrameTimeChart, HudDebugGameModeSwitcher, HudDebugGameModeSwitcherSlot,
-    HudDebugNetworkCharts, HudDebugOptionsEntryStatus, HudDebugOptionsRow, HudDebugOptionsScreen,
-    HudDebugOptionsTooltip, HudDebugOverlay, HudDebugProfilerChart, HudDebugTpsChart,
-    HudDebugTpsSample, HudDemoLinkConfirmationScreen, HudDemoPopupScreen, HudEntityPreview,
-    HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer, HudEntityPreviewItemSlot,
-    HudEntityPreviewRect, HudFoodEffect, HudGameEventButton, HudGameEventScreen,
-    HudGameModeSwitcherMode, HudHeartKind, HudHotbarMode, HudIconLayer,
+    HudDebugNetworkCharts, HudDebugOptionsTooltip, HudDebugOverlay, HudDebugProfilerChart,
+    HudDebugTpsChart, HudDebugTpsSample, HudDemoLinkConfirmationScreen, HudDemoPopupScreen,
+    HudEntityPreview, HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer,
+    HudEntityPreviewItemSlot, HudEntityPreviewRect, HudFoodEffect, HudGameEventButton,
+    HudGameEventScreen, HudGameModeSwitcherMode, HudHeartKind, HudHotbarMode, HudIconLayer,
     HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryFillLayer,
     HudInventoryFillStage, HudInventoryGhostItem, HudInventoryItem, HudInventoryItemScissor,
     HudInventoryScreen, HudInventoryScrollingText, HudInventorySlot, HudInventoryTextBackground,
@@ -148,16 +147,15 @@ use crate::{
         stats_screen_done_button_contains, sync_beacon_effect_selection_state,
         sync_loom_pattern_state_for_hud, sync_recipe_book_presentation,
         sync_stonecutter_recipe_scroll_state, ClientInputState, CommandSuggestionHudTooltip,
-        CommandSuggestionNarrationState, CreativeInventoryHudState, DebugOptionsScreenHudRow,
-        DialogImePreeditHudState, InventoryScreenBackground, PauseScreenPage,
-        RecipeBookOverlayHudState, RecipeBookPageHudState, RecipeBookPresentationHudState,
-        RecipeBookSearchHudState, RecipeBookTabSelectionHudState, StatsScreenFocus,
-        LOOM_PATTERN_BUTTON_COLUMNS, LOOM_PATTERN_BUTTON_ROWS, LOOM_PATTERN_BUTTON_SIZE,
-        LOOM_PATTERN_BUTTON_X, LOOM_PATTERN_BUTTON_Y, LOOM_SCROLLER_HEIGHT,
-        LOOM_SCROLLER_MAX_OFFSET, LOOM_SCROLLER_WIDTH, LOOM_SCROLLER_X, LOOM_SCROLLER_Y,
-        LOOM_SELECTED_PATTERN_DATA_ID, RECIPE_BOOK_BUTTON_HEIGHT, RECIPE_BOOK_BUTTON_WIDTH,
-        RECIPE_BOOK_FILTER_BUTTON_HEIGHT, RECIPE_BOOK_FILTER_BUTTON_WIDTH,
-        RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y,
+        CommandSuggestionNarrationState, CreativeInventoryHudState, DialogImePreeditHudState,
+        InventoryScreenBackground, PauseScreenPage, RecipeBookOverlayHudState,
+        RecipeBookPageHudState, RecipeBookPresentationHudState, RecipeBookSearchHudState,
+        RecipeBookTabSelectionHudState, StatsScreenFocus, LOOM_PATTERN_BUTTON_COLUMNS,
+        LOOM_PATTERN_BUTTON_ROWS, LOOM_PATTERN_BUTTON_SIZE, LOOM_PATTERN_BUTTON_X,
+        LOOM_PATTERN_BUTTON_Y, LOOM_SCROLLER_HEIGHT, LOOM_SCROLLER_MAX_OFFSET, LOOM_SCROLLER_WIDTH,
+        LOOM_SCROLLER_X, LOOM_SCROLLER_Y, LOOM_SELECTED_PATTERN_DATA_ID, RECIPE_BOOK_BUTTON_HEIGHT,
+        RECIPE_BOOK_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_HEIGHT,
+        RECIPE_BOOK_FILTER_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y,
         RECIPE_BOOK_PAGE_BACKWARD_BUTTON_X, RECIPE_BOOK_PAGE_BUTTON_HEIGHT,
         RECIPE_BOOK_PAGE_BUTTON_WIDTH, RECIPE_BOOK_PAGE_BUTTON_Y,
         RECIPE_BOOK_PAGE_FORWARD_BUTTON_X, RECIPE_BOOK_RECIPE_BUTTON_COLUMNS,
@@ -238,6 +236,7 @@ pub(crate) use book_screen::hud_book_component_click_event;
 mod control_requests;
 mod creative_inventory;
 mod debug_light_sections;
+mod debug_options_screen;
 mod dialog_screen;
 mod game_rules_screen;
 mod render_extract;
@@ -252,6 +251,7 @@ pub(crate) use events::queue_chat_acknowledgement;
 use book_screen::hud_book_screen;
 use creative_inventory::{creative_inventory_narration_frame, hud_creative_inventory_screen};
 pub(crate) use debug_light_sections::DebugSkyLightSectionCache;
+use debug_options_screen::{debug_options_screen_narration_frame, hud_debug_options_screen};
 pub(crate) use dialog_screen::{
     dialog_ime_cursor_area, handle_dialog_cursor_moved_with_measurer,
     handle_dialog_key_input_with_modifiers_for_surface_and_measurer,
@@ -716,6 +716,7 @@ pub(crate) struct HudRenderRuntime {
     insecure_chat_toast: SystemToastAnimationState,
     low_disk_space_toast: SystemToastAnimationState,
     client_toasts: ClientToastRuntime,
+    debug_options_screen_narration: Option<ScreenNarrationFrame>,
     stats_screen_narration: Option<ScreenNarrationFrame>,
     recipe_book_narration: Option<ScreenNarrationFrame>,
     social_interactions_narration: Option<ScreenNarrationFrame>,
@@ -795,6 +796,10 @@ impl ClientAnimationTickState {
 }
 
 impl HudRenderRuntime {
+    pub(crate) fn debug_options_screen_narration(&self) -> Option<&ScreenNarrationFrame> {
+        self.debug_options_screen_narration.as_ref()
+    }
+
     pub(crate) fn stats_screen_narration(&self) -> Option<&ScreenNarrationFrame> {
         self.stats_screen_narration.as_ref()
     }
@@ -3360,8 +3365,12 @@ pub(crate) fn update_renderer_from_publication(
     let hud_debug_options_screen = if exclusive_game_screen_present {
         None
     } else {
-        hud_debug_options_screen(input, world, surface_size)
+        hud_debug_options_screen(input, world, item_runtime, surface_size)
     };
+    hud_render_runtime.debug_options_screen_narration =
+        hud_debug_options_screen.as_ref().map(|screen| {
+            debug_options_screen_narration_frame(input, screen, item_runtime, surface_size)
+        });
     let hud_command_suggestions = if !exclusive_game_screen_present
         && hud_debug_options_screen.is_none()
         && input.command_suggestions_active()
@@ -6910,58 +6919,6 @@ fn format_grouped_integer(value: i32) -> String {
     grouped
 }
 
-fn hud_debug_options_screen(
-    input: &ClientInputState,
-    world: &WorldStore,
-    surface_size: winit::dpi::PhysicalSize<u32>,
-) -> Option<HudDebugOptionsScreen> {
-    let state = input.debug_options_screen_hud_state(
-        surface_size,
-        world.local_player_has_reduced_debug_info(),
-    )?;
-    let rows = state
-        .rows
-        .into_iter()
-        .map(|row| match row {
-            DebugOptionsScreenHudRow::Category { label } => HudDebugOptionsRow::Category { label },
-            DebugOptionsScreenHudRow::Entry {
-                path,
-                status,
-                hovered_status,
-                allowed,
-                ..
-            } => HudDebugOptionsRow::Entry {
-                path,
-                status: hud_debug_options_status(status),
-                hovered_status: hovered_status.map(hud_debug_options_status),
-                allowed,
-            },
-        })
-        .collect();
-    Some(HudDebugOptionsScreen {
-        title: "Debug Options".to_string(),
-        warning: "These options are for testing purposes only. They may slow down your computer, crash the game, or eat your pet rock.".to_string(),
-        search_text: state.search_text,
-        search_cursor: state.search_cursor,
-        search_selection: state.search_selection,
-        search_cursor_visible: (wall_clock_millis() / 300) % 2 == 0,
-        rows,
-        tooltip: state.tooltip.map(|tooltip| HudDebugOptionsTooltip {
-            text: tooltip.text,
-            x: tooltip.x,
-            y: tooltip.y,
-        }),
-        scroll_row: state.scroll_row,
-        total_rows: state.total_rows,
-        visible_rows: state.visible_rows,
-        default_profile_active: state.default_profile_active,
-        default_profile_hovered: state.default_profile_hovered,
-        performance_profile_active: state.performance_profile_active,
-        performance_profile_hovered: state.performance_profile_hovered,
-        done_hovered: state.done_hovered,
-    })
-}
-
 fn hud_command_suggestions(
     input: &mut ClientInputState,
     world: &WorldStore,
@@ -7610,20 +7567,6 @@ fn hud_command_suggestion_tooltip_runs(
             color: run.style.color,
         })
         .collect()
-}
-
-fn hud_debug_options_status(
-    status: crate::debug_entries::DebugScreenEntryStatus,
-) -> HudDebugOptionsEntryStatus {
-    match status {
-        crate::debug_entries::DebugScreenEntryStatus::AlwaysOn => {
-            HudDebugOptionsEntryStatus::AlwaysOn
-        }
-        crate::debug_entries::DebugScreenEntryStatus::InOverlay => {
-            HudDebugOptionsEntryStatus::InOverlay
-        }
-        crate::debug_entries::DebugScreenEntryStatus::Never => HudDebugOptionsEntryStatus::Never,
-    }
 }
 
 fn hud_sign_editor_screen(

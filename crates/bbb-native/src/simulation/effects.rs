@@ -42,6 +42,7 @@ pub(crate) enum PlatformEffect {
     NavigateProfiler {
         digits: Vec<u8>,
     },
+    DebugOptionsScreenInput(ScreenNarrationScheduleInput),
     StatsScreenInput(ScreenNarrationScheduleInput),
     RecipeBookInput(ScreenNarrationScheduleInput),
     SocialInteractionsInput(ScreenNarrationScheduleInput),
@@ -56,6 +57,7 @@ pub(crate) enum PlatformEffect {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ScreenNarrationScheduleInput {
+    Immediate,
     MouseMove,
     MouseAction,
     KeyboardAction,
