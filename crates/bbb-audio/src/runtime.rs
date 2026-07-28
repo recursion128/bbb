@@ -27,6 +27,16 @@ pub struct KiraAudioRuntime {
     playing: Vec<KiraPlayingSound>,
     music_gain: f32,
     residency: AudioResidency,
+    channel_capacity: usize,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct AudioChannelObservation {
+    pub static_used: usize,
+    pub streaming_used: usize,
+    /// Kira's main-track sound slots plus the spatial-track slots used by
+    /// bbb. Static and streaming handles share this admission upper bound.
+    pub shared_capacity: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -60,6 +70,10 @@ impl KiraAudioRuntime {
     pub fn new_with_resource_generation(resource_generation: u64) -> Result<Self> {
         let mut manager = AudioManager::<DefaultBackend>::new(AudioManagerSettings::default())
             .map_err(|_| anyhow!("initialize Kira audio manager"))?;
+        let channel_capacity = manager
+            .main_track()
+            .sound_capacity()
+            .saturating_add(manager.sub_track_capacity());
         let listener = manager
             .add_listener([0.0, 0.0, 0.0], identity_quaternion())
             .map_err(|_| anyhow!("initialize Kira audio listener"))?;
@@ -71,11 +85,25 @@ impl KiraAudioRuntime {
             playing: Vec::new(),
             music_gain: 1.0,
             residency: AudioResidency::new(resource_generation),
+            channel_capacity,
         })
     }
 
     pub fn residency_observation(&self) -> AudioResidencyObservation {
         self.residency.observation()
+    }
+
+    pub fn channel_observation(&self) -> AudioChannelObservation {
+        let (static_used, streaming_used) = active_channel_counts(
+            self.playing
+                .iter()
+                .map(|sound| (sound.handle.is_streaming(), sound.is_active())),
+        );
+        AudioChannelObservation {
+            static_used,
+            streaming_used,
+            shared_capacity: self.channel_capacity,
+        }
     }
 
     /// Returns the most recently started music-category event that the audio
@@ -502,6 +530,10 @@ impl KiraSoundHandle {
         }
     }
 
+    fn is_streaming(&self) -> bool {
+        matches!(self, Self::Streaming(_))
+    }
+
     fn set_volume(&mut self, gain: f32) {
         let volume = channel_decibels_from_gain(gain);
         match self {
@@ -535,6 +567,19 @@ fn latest_active_music_event_id<'a>(
     sounds.rev().find_map(|(event_id, category, active)| {
         (active && category == &AudioCategory::Music).then_some(event_id)
     })
+}
+
+fn active_channel_counts(sounds: impl IntoIterator<Item = (bool, bool)>) -> (usize, usize) {
+    sounds.into_iter().filter(|(_, active)| *active).fold(
+        (0usize, 0usize),
+        |(static_used, streaming_used), (streaming, _)| {
+            if streaming {
+                (static_used, streaming_used.saturating_add(1))
+            } else {
+                (static_used.saturating_add(1), streaming_used)
+            }
+        },
+    )
 }
 
 fn stop_delayed_positioned_sounds(
@@ -783,6 +828,20 @@ mod tests {
         assert_eq!(channel_decibels_from_gain(0.0), Decibels::SILENCE);
         assert_eq!(channel_decibels_from_gain(f32::NAN), Decibels::SILENCE);
         assert_eq!(spatial_max_distance(&sound, 2.0, None), 32.0);
+    }
+
+    #[test]
+    fn channel_diagnostics_count_only_active_handles_by_decode_mode() {
+        assert_eq!(
+            active_channel_counts([
+                (false, true),
+                (false, false),
+                (true, true),
+                (true, true),
+                (true, false),
+            ]),
+            (1, 2)
+        );
     }
 
     #[test]

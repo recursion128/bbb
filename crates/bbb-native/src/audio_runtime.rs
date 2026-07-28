@@ -7,7 +7,9 @@ pub(crate) use effects::AudioEffect;
 use std::collections::BTreeSet;
 
 use anyhow::{Context, Result};
-use bbb_audio::{AudioCommand, KiraAudioRuntime, TickEntitySoundPositionsCommand};
+use bbb_audio::{
+    AudioChannelObservation, AudioCommand, KiraAudioRuntime, TickEntitySoundPositionsCommand,
+};
 use bbb_control::AudioCounters;
 use bbb_pack::{JukeboxSongRegistry, PackRoots, SoundCatalog, SoundEventRegistry};
 use bbb_world::{
@@ -98,6 +100,7 @@ impl NativeAudioRuntime {
         counters.sound_cache_evictions = observation.static_cache_evictions;
         counters.sound_admission_rejections = observation.audio_admission_rejections;
         counters.sound_streaming_starts = observation.streaming_starts;
+        project_audio_channel_observation(&mut counters, self.playback.channel_observation());
         counters
     }
 
@@ -148,6 +151,16 @@ impl NativeAudioRuntime {
             }
         }
     }
+}
+
+fn project_audio_channel_observation(
+    counters: &mut AudioCounters,
+    channels: AudioChannelObservation,
+) {
+    counters.sound_static_channels_used = channels.static_used;
+    counters.sound_static_channels_capacity = channels.shared_capacity;
+    counters.sound_streaming_channels_used = channels.streaming_used;
+    counters.sound_streaming_channels_capacity = channels.shared_capacity;
 }
 
 fn load_required_native_sound_catalog(roots: &PackRoots) -> Result<SoundCatalog> {
@@ -374,6 +387,30 @@ mod tests {
         assert!(!tickable_sound_needs_start(&active, &normal));
         assert!(tickable_sound_needs_start(&active, &aggressive));
         assert!(tickable_sound_needs_start(&BTreeSet::new(), &normal));
+    }
+
+    #[test]
+    fn audio_channel_diagnostics_preserve_failures_and_project_shared_capacity() {
+        let mut counters = AudioCounters {
+            enabled: true,
+            resolve_failures: 3,
+            ..AudioCounters::default()
+        };
+
+        project_audio_channel_observation(
+            &mut counters,
+            AudioChannelObservation {
+                static_used: 5,
+                streaming_used: 2,
+                shared_capacity: 256,
+            },
+        );
+
+        assert_eq!(counters.sound_static_channels_used, 5);
+        assert_eq!(counters.sound_streaming_channels_used, 2);
+        assert_eq!(counters.sound_static_channels_capacity, 256);
+        assert_eq!(counters.sound_streaming_channels_capacity, 256);
+        assert_eq!(counters.resolve_failures, 3);
     }
 
     #[test]

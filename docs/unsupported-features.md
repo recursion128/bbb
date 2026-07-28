@@ -200,7 +200,6 @@ Owner: `bbb-audio` + `bbb-native` + `bbb-pack` + `bbb-world`
 - Clientbound StopSound covers source/name/all four filter combinations and unknown
   flag bits. Filtered stops affect active sounds only; stop-all also clears queued
   distance-delayed sounds, matching SoundEngine rather than over-stopping the queue.
-- Cover device/runtime diagnostics.
 - Keep unit tests independent of an audio device.
 
 ## Official 26.1 resource-pack coverage

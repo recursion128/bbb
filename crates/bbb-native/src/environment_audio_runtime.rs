@@ -1,3 +1,4 @@
+use bbb_control::AudioCounters;
 use bbb_protocol::packets::{SoundSource, Vec3d as ProtocolVec3d};
 use bbb_world::{
     AmbientLoopSoundState, BlockPos, ClientAmbientMood, ClientAmbientSounds,
@@ -32,6 +33,10 @@ struct LoopSound {
 }
 
 impl EnvironmentAudioRuntime {
+    pub(crate) fn project_diagnostics(&self, counters: &mut AudioCounters) {
+        counters.sound_mood_percent = (self.moodiness * 100.0).round().clamp(0.0, 100.0) as u8;
+    }
+
     pub(crate) fn advance_for_ticks(
         &mut self,
         world: &mut WorldStore,
@@ -608,6 +613,32 @@ mod tests {
 
         assert!((runtime.moodiness - 0.499).abs() < f32::EPSILON);
         assert!(audio.positioned.is_empty());
+    }
+
+    #[test]
+    fn environment_audio_projects_vanilla_rounded_mood_percent() {
+        for (moodiness, expected) in [
+            (-0.25, 0),
+            (0.004, 0),
+            (0.006, 1),
+            (0.754, 75),
+            (0.756, 76),
+            (1.25, 100),
+        ] {
+            let runtime = EnvironmentAudioRuntime {
+                moodiness,
+                ..EnvironmentAudioRuntime::default()
+            };
+            let mut counters = AudioCounters {
+                commands_submitted: 7,
+                ..AudioCounters::default()
+            };
+
+            runtime.project_diagnostics(&mut counters);
+
+            assert_eq!(counters.sound_mood_percent, expected);
+            assert_eq!(counters.commands_submitted, 7);
+        }
     }
 
     #[test]

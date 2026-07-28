@@ -31,10 +31,14 @@ pub struct AudioCounters {
     pub sound_streaming_starts: u64,
     #[serde(default)]
     pub sound_static_channels_used: usize,
+    /// Kira static and streaming handles share this runtime admission upper
+    /// bound; the duplicate fields preserve Vanilla's two-pool debug shape
+    /// without claiming two independent bbb pools.
     #[serde(default)]
     pub sound_static_channels_capacity: usize,
     #[serde(default)]
     pub sound_streaming_channels_used: usize,
+    /// See `sound_static_channels_capacity`.
     #[serde(default)]
     pub sound_streaming_channels_capacity: usize,
     #[serde(default)]

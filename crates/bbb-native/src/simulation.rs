@@ -197,6 +197,8 @@ impl SimulationCore {
             self.hide_lightning_flash,
             now,
         );
+        self.environment_audio
+            .project_diagnostics(&mut self.audio_counters);
         // Duration rounding can let the timer convert a tick at the edge of a
         // conservatively classified input-only wake. Never reuse a world Arc
         // when the actual pump reports canonical tick mutation.
@@ -347,6 +349,35 @@ mod tests {
         let noop = step.find("return None;").expect("no-op return");
         assert!(noop < step.find("RenderEffectCollector::new").unwrap());
         assert!(noop < step.find("self.publisher.publish(").unwrap());
+    }
+
+    #[test]
+    fn environment_audio_diagnostics_follow_tick_and_precede_publication() {
+        let source = include_str!("simulation.rs");
+        let step = source
+            .split_once("pub(crate) fn step(")
+            .expect("step")
+            .1
+            .split_once("pub(crate) fn next_tick_deadline")
+            .expect("step end")
+            .0;
+        let advance = step
+            .find("let frame = advance_simulation(")
+            .expect("simulation advance");
+        let diagnostics = step
+            .find("self.environment_audio")
+            .and_then(|offset| {
+                step[offset..]
+                    .find(".project_diagnostics(&mut self.audio_counters)")
+                    .map(|relative| offset + relative)
+            })
+            .expect("environment audio diagnostics");
+        let publication = step
+            .find("let publication_input = SimulationPublicationInput")
+            .expect("publication input");
+
+        assert!(advance < diagnostics);
+        assert!(diagnostics < publication);
     }
 
     #[test]
