@@ -5240,7 +5240,7 @@
         "state_guard": {
           "evidence": [
             "crates/bbb-world/src/level.rs#level_chunks_load_start_advances_active_level_load_tracker_once",
-            "crates/bbb-native/src/terrain_runtime.rs#player_section_ready_requires_an_uploaded_in_height_chunk",
+            "crates/bbb-native/src/terrain_runtime.rs#section_ready_distinguishes_vertical_meshes_and_height_policy",
             "crates/bbb-native/src/level_load_runtime.rs#player_loaded_waits_for_server_and_player_section_then_sends_once",
             "crates/bbb-native/src/level_load_runtime.rs#player_loaded_uses_vanilla_shortcuts_and_strict_timeout",
             "crates/bbb-native/src/level_load_runtime.rs#production_checks_level_readiness_after_terrain_upload",
