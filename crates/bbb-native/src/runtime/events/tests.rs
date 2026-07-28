@@ -1099,6 +1099,9 @@ fn test_sound_catalog() -> SoundCatalog {
             "entity.slime.squish_small": {
                 "sounds": ["mob/slime/small1"]
             },
+            "entity.warden.heartbeat": {
+                "sounds": ["mob/warden/heartbeat"]
+            },
             "entity.magma_cube.squish": {
                 "sounds": ["mob/slime/big2"]
             },

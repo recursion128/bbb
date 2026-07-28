@@ -85,3 +85,45 @@ fn slime_client_tick_effects_reach_native_particle_and_audio_sinks_in_order() {
         .next()
         .is_none());
 }
+
+#[test]
+fn warden_heartbeat_reaches_native_audio_with_vanilla_mix() {
+    let mut world = WorldStore::new();
+    world.apply_add_entity(protocol_add_entity_with_type(
+        161,
+        VANILLA_ENTITY_TYPE_WARDEN_ID,
+    ));
+    world.advance_entity_client_animations(40);
+
+    let mut batches = RecordingParticleBatches::default();
+    let mut particles = RecordingParticleSink::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+    let mut particle_events: Option<&mut dyn ParticleEventSink> = Some(&mut particles);
+    let mut audio_events: Option<&mut dyn crate::audio_runtime::AudioEventSink> = Some(&mut audio);
+    crate::runtime::submit_entity_client_tick_effects(
+        &mut batches,
+        &mut world,
+        &mut particle_events,
+        &mut audio_events,
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    let [AudioCommand::PlayPositionedSound(sound)] = audio.commands.as_slice() else {
+        panic!(
+            "expected one positioned heartbeat sound: {:?}",
+            audio.commands
+        );
+    };
+    assert_eq!(sound.sound.event_id, "minecraft:entity.warden.heartbeat");
+    assert_eq!(sound.category, AudioCategory::Hostile);
+    assert_eq!(sound.position, [1.0, 64.0, -2.0]);
+    assert_eq!(sound.packet_volume, 5.0);
+    assert!((0.8..1.2).contains(&sound.packet_pitch));
+    assert!(particles.entity_client_movement_states.is_empty());
+    assert_eq!(batches.batches.len(), 1);
+    assert!(batches.batches[0].commands.is_empty());
+    assert!(world
+        .drain_entity_client_movement_effect_states()
+        .next()
+        .is_none());
+}

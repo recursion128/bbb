@@ -8704,6 +8704,7 @@ impl EntityStore {
                     0.52
                 };
                 let is_silent = (entity_type_id == VANILLA_ENTITY_TYPE_BLAZE_ID
+                    || entity_type_id == VANILLA_ENTITY_TYPE_WARDEN_ID
                     || is_guardian
                     || is_nautilus
                     || is_slime)
@@ -10110,6 +10111,15 @@ fn append_client_tick_particle_triggers(
                     y: transform.position.y + 0.5,
                     z: transform.position.z + 0.5,
                 },
+            },
+        ));
+    }
+    if let Some(pitch) = triggers.warden_heartbeat_pitch {
+        pending_entity_client_movement_effects.push(EntityClientMovementEffectState::Sound(
+            super::EntityClientMovementSoundState {
+                entity_id: identity.id,
+                kind: super::EntityClientMovementSoundKind::WardenHeartbeat { pitch },
+                position: transform.position,
             },
         ));
     }

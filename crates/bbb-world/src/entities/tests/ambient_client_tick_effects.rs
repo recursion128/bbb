@@ -153,6 +153,71 @@ fn silent_blaze_suppresses_burn_sound_without_suppressing_smoke() {
     }
 }
 
+#[test]
+fn warden_heartbeat_edge_emits_hostile_sound_and_honors_silent_metadata() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        160,
+        VANILLA_ENTITY_TYPE_WARDEN_ID,
+    ));
+
+    store.advance_entity_client_animations(39);
+    assert!(store
+        .drain_entity_client_movement_effect_states()
+        .all(|effect| !matches!(effect, EntityClientMovementEffectState::Sound(_))));
+    let mut retained = store.publication_snapshot();
+
+    store.advance_entity_client_animations(1);
+    let effects = store
+        .drain_entity_client_movement_effect_states()
+        .collect::<Vec<_>>();
+    let [EntityClientMovementEffectState::Sound(sound)] = effects.as_slice() else {
+        panic!("expected one heartbeat sound, got {effects:?}");
+    };
+    let EntityClientMovementSoundKind::WardenHeartbeat { pitch } = sound.kind else {
+        panic!("expected warden heartbeat, got {sound:?}");
+    };
+    assert!((0.8..1.2).contains(&pitch));
+    assert_eq!(sound.entity_id, 160);
+    assert_eq!(
+        sound.position,
+        EntityVec3 {
+            x: 1.0,
+            y: 64.0,
+            z: -2.0,
+        }
+    );
+
+    let resolved = store.record_entity_client_movement_sound(*sound);
+    assert_eq!(
+        resolved.sound.location.as_deref(),
+        Some("minecraft:entity.warden.heartbeat")
+    );
+    assert_eq!(resolved.source, "hostile");
+    assert_eq!(resolved.volume, 5.0);
+    assert_eq!(resolved.pitch, pitch);
+
+    retained.advance_entity_client_animations(1);
+    let retained_effects = retained
+        .drain_entity_client_movement_effect_states()
+        .collect::<Vec<_>>();
+    let [EntityClientMovementEffectState::Sound(retained_sound)] = retained_effects.as_slice()
+    else {
+        panic!("expected retained heartbeat sound, got {retained_effects:?}");
+    };
+    assert_eq!(retained_sound.kind, sound.kind);
+
+    let accessors = vanilla_entity_metadata_entity_accessors().unwrap();
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 160,
+        values: vec![protocol_bool_data(accessors.silent_data_id, true)],
+    }));
+    store.advance_entity_client_animations(40);
+    assert!(store
+        .drain_entity_client_movement_effect_states()
+        .all(|effect| !matches!(effect, EntityClientMovementEffectState::Sound(_))));
+}
+
 fn ender_ambient_effect(
     effects: &[EntityClientMovementEffectState],
     entity_id: i32,

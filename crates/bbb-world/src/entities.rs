@@ -855,6 +855,9 @@ pub enum EntityClientMovementSoundKind {
         volume: f32,
         pitch: f32,
     },
+    WardenHeartbeat {
+        pitch: f32,
+    },
     GuardianFlop {
         elder: bool,
     },

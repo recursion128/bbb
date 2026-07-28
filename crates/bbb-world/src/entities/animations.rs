@@ -284,6 +284,9 @@ const NAUTILUS_CLIENT_RANDOM_SALT: u64 = 0x6e61_7574_696c_7573;
 /// Client-local `Slime.random` cursor for the landing particle ring followed by
 /// the two-float squish pitch roll.
 const SLIME_CLIENT_RANDOM_SALT: u64 = 0x736c_696d_655f_726e;
+/// Client-local Warden RNG cursor for `LivingEntity.getVoicePitch()` on each
+/// heartbeat. The server does not synchronize the entity RNG seed.
+const WARDEN_CLIENT_RANDOM_SALT: u64 = 0x7761_7264_656e_5f72;
 /// Vanilla `Camel.setupAnimationStates`: `idleAnimationTimeout = random.nextInt(40) + 80`, then
 /// `idleAnimationState.start(tickCount)`. `CAMEL_IDLE` itself is the 4.0 s non-looping keyframe.
 const CAMEL_IDLE_TIMEOUT_RANDOM_BOUND: i32 = 40;
@@ -316,6 +319,9 @@ pub(crate) struct EntityClientTickParticleTriggers {
     pub(crate) blaze_large_smoke: Option<[BlazeSmokeParticleOffset; 2]>,
     /// The optional burn sound is ordered before the two smoke particles.
     pub(crate) blaze_burn_sound: Option<BlazeBurnSoundParameters>,
+    /// Vanilla `Warden.tick` emits this on the same edge that resets the heart
+    /// animation, after its silent gate and two-float voice-pitch draw.
+    pub(crate) warden_heartbeat_pitch: Option<f32>,
     /// Vanilla Enderman/Endermite `aiStep`: two portal particles per tick.
     pub(crate) ender_portal: Option<[EnderAmbientParticleOffset; 2]>,
     /// Vanilla moving, submerged Guardian: two bubbles behind its view vector.
@@ -622,6 +628,10 @@ pub struct EntityClientAnimationState {
     /// phase, dry spike flicker, ambient bubbles, and dry jump in Java order.
     #[serde(skip)]
     pub(crate) guardian_client_random_seed: Option<u64>,
+    /// Client-local Warden RNG cursor used by heartbeat voice pitch. Cloned for
+    /// generation isolation and omitted from the stable probe shape.
+    #[serde(skip)]
+    pub(crate) warden_client_random_seed: Option<u64>,
     /// Client-local Camel voice-pitch cursor. Vanilla does not synchronize the
     /// entity RandomSource; the retained cursor preserves the two-float pitch
     /// distribution and old-generation isolation without a parallel owner.
@@ -3611,14 +3621,16 @@ impl WardenHeartAnimationState {
     /// if (heartAnimation > 0) heartAnimation--`. `age_ticks` is the post-increment
     /// `tickCount` (the caller bumps it before the per-type tick) and `heartbeat_delay`
     /// is [`warden_heartbeat_delay`] over the synced anger.
-    fn advance_client_tick(&mut self, age_ticks: u32, heartbeat_delay: u32) {
-        if heartbeat_delay > 0 && age_ticks % heartbeat_delay == 0 {
+    fn advance_client_tick(&mut self, age_ticks: u32, heartbeat_delay: u32) -> bool {
+        let heartbeat = heartbeat_delay > 0 && age_ticks % heartbeat_delay == 0;
+        if heartbeat {
             self.current = WARDEN_HEART_ANIMATION_TICKS;
         }
         self.previous = self.current;
         if self.current > 0 {
             self.current -= 1;
         }
+        heartbeat
     }
 
     /// Vanilla `Warden.getHeartAnimation(partialTick)`:
@@ -4615,6 +4627,13 @@ impl EntityClientAnimationState {
                 ENDER_AMBIENT_RANDOM_SALT ^ entity_type_id as u64,
             ) as i64)
         });
+        self.warden_client_random_seed =
+            (entity_type_id == VANILLA_ENTITY_TYPE_WARDEN_ID).then(|| {
+                java_random_seed(spawn_random_bits(
+                    uuid,
+                    WARDEN_CLIENT_RANDOM_SALT ^ entity_type_id as u64,
+                ) as i64)
+            });
         self.camel_voice_random_seed =
             vanilla_entity_metadata_type_is_camel(entity_type_id).then(|| {
                 java_random_seed(spawn_random_bits(
@@ -6590,8 +6609,9 @@ impl EntityClientAnimationState {
         // Current `getDimensions(getPose()).width()`, including size, pose,
         // and the LivingEntity SCALE attribute.
         slime_width: f32,
-        // Vanilla `Entity.isSilent()`, used by Blaze and Guardian client-local
-        // sound branches. The Blaze gate must precede its two sound floats.
+        // Vanilla `Entity.isSilent()`, used by Blaze, Warden, Guardian,
+        // Nautilus, and Slime client-local sound branches. Each gate precedes
+        // that branch's sound random draws.
         is_silent: bool,
         // Vanilla `Entity.isSwimming()` for player cape bob suppression.
         is_swimming: bool,
@@ -7011,9 +7031,22 @@ impl EntityClientAnimationState {
                 // The heart beats forever (vanilla resets it every `getHeartBeatDelay()`
                 // ticks), so unlike the event-driven tendril it is never dropped once a
                 // warden starts ticking.
-                self.warden_heart
+                let heartbeat = self
+                    .warden_heart
                     .get_or_insert_with(WardenHeartAnimationState::default)
                     .advance_client_tick(self.age_ticks, warden_heartbeat_delay);
+                if heartbeat && !is_silent {
+                    let random_seed = self.warden_client_random_seed.get_or_insert_with(|| {
+                        java_random_seed(
+                            i64::from(entity_id).wrapping_add(WARDEN_CLIENT_RANDOM_SALT as i64),
+                        )
+                    });
+                    particle_triggers.warden_heartbeat_pitch = Some(
+                        (java_random_next_float(random_seed) - java_random_next_float(random_seed))
+                            * 0.2
+                            + 1.0,
+                    );
+                }
             }
             VANILLA_ENTITY_TYPE_WITHER_ID => {
                 let targets = wither_head_targets.unwrap_or_else(|| {

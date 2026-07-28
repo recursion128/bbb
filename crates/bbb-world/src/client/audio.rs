@@ -88,6 +88,7 @@ const PLAYER_DEATH_SOUND_EVENT: &str = "minecraft:entity.player.death";
 const ITEM_PICKUP_SOUND_EVENT: &str = "minecraft:entity.item.pickup";
 const EXPERIENCE_ORB_PICKUP_SOUND_EVENT: &str = "minecraft:entity.experience_orb.pickup";
 const BLAZE_BURN_SOUND_EVENT: &str = "minecraft:entity.blaze.burn";
+const WARDEN_HEARTBEAT_SOUND_EVENT: &str = "minecraft:entity.warden.heartbeat";
 const GUARDIAN_FLOP_SOUND_EVENT: &str = "minecraft:entity.guardian.flop";
 const ELDER_GUARDIAN_FLOP_SOUND_EVENT: &str = "minecraft:entity.elder_guardian.flop";
 const SLIME_SQUISH_SOUND_EVENT: &str = "minecraft:entity.slime.squish";
@@ -2134,6 +2135,9 @@ impl WorldStore {
             }
             EntityClientMovementSoundKind::BlazeBurn { volume, pitch } => {
                 (BLAZE_BURN_SOUND_EVENT, "hostile", volume, pitch)
+            }
+            EntityClientMovementSoundKind::WardenHeartbeat { pitch } => {
+                (WARDEN_HEARTBEAT_SOUND_EVENT, "hostile", 5.0, pitch)
             }
             EntityClientMovementSoundKind::GuardianFlop { elder } => (
                 if elder {
