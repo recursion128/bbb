@@ -627,7 +627,6 @@ Movement:
 - Cover the remaining vanilla voxel collision shapes.
 - Implement full vanilla post-`Entity.move` `deltaMovement` travel ordering.
 - Add sprint-swim camera, animation, and presentation nuance.
-- Handle the remaining `MovePlayer.Rot` vehicle movement send edge cases.
 
 Commands:
 

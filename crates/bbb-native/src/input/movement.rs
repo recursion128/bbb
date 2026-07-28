@@ -106,9 +106,16 @@ pub(crate) fn advance_player_input_for_client_ticks(
     if world.local_player_root_vehicle_id().is_some() {
         let input_state = input.local_player_input();
         if let Some(pose) = world.advance_local_player_look_input(input_state) {
-            if client_ticks > 0 || input.last_move_command_at.is_none() {
-                maybe_queue_passenger_rotation_command(input, counters, net_commands, pose, now);
-            }
+            let rotation_command_count =
+                client_ticks.max(u32::from(input.last_move_command_at.is_none()));
+            queue_passenger_rotation_commands(
+                input,
+                counters,
+                net_commands,
+                pose,
+                now,
+                rotation_command_count,
+            );
         }
         maybe_queue_riding_jump_command(input, world, counters, net_commands, dt_seconds);
         let boat_vehicle = world
@@ -316,37 +323,36 @@ fn maybe_queue_vehicle_commands(
     input.last_vehicle_command_at = Some(now);
 }
 
-fn maybe_queue_passenger_rotation_command(
+fn queue_passenger_rotation_commands(
     input: &mut ClientInputState,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     pose: LocalPlayerPoseState,
     now: Instant,
+    command_count: u32,
 ) {
     let Some(tx) = net_commands else {
         return;
     };
-    let elapsed_since_last = input
-        .last_move_command_at
-        .and_then(|last| now.checked_duration_since(last));
-    let command_due = elapsed_since_last.map_or(true, |elapsed| elapsed >= MOVE_COMMAND_INTERVAL);
-    if !command_due {
-        return;
-    }
 
     let mut command_state = pose.position_state();
     command_state.delta_movement = pose.delta_movement;
-    let command = NetCommand::MovePlayer(PlayerMoveCommand {
+    let command = PlayerMoveCommand {
         state: command_state,
         on_ground: pose.on_ground,
         horizontal_collision: pose.horizontal_collision,
         force_position: false,
         force_pos_rot: false,
         force_rotation_only: true,
-    });
-    if tx.try_send(command).is_ok() {
+    };
+    // Vanilla's passenger branch sends one Rot packet per LocalPlayer tick and
+    // bypasses sendPosition entirely. In particular, these packets must not
+    // advance the unmounted xLast/yLast/zLast or rotation/status baselines.
+    for _ in 0..command_count {
+        if tx.try_send(NetCommand::MovePlayer(command)).is_err() {
+            break;
+        }
         input.last_move_command_at = Some(now);
-        input.last_move_command_pose = Some(pose);
         counters.player_move_commands_queued += 1;
     }
 }
@@ -1295,6 +1301,105 @@ mod tests {
     }
 
     #[test]
+    fn passenger_rotation_commands_preserve_each_synchronized_tick_opportunity() {
+        let (tx, mut rx) = mpsc::channel(4);
+        let commands = Some(tx);
+        let now = Instant::now();
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_local_vehicle(VANILLA_ENTITY_TYPE_MINECART_ID);
+        let mut counters = NetCounters::default();
+
+        advance_player_input_for_client_ticks(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            now,
+            3,
+        );
+
+        for _ in 0..3 {
+            assert!(matches!(
+                rx.try_recv().unwrap(),
+                NetCommand::MovePlayer(command) if command.force_rotation_only
+            ));
+        }
+        assert!(rx.try_recv().is_err());
+        assert_eq!(counters.player_move_commands_queued, 3);
+
+        advance_player_input_for_client_ticks(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            now,
+            0,
+        );
+        assert!(rx.try_recv().is_err());
+        assert_eq!(counters.player_move_commands_queued, 3);
+    }
+
+    #[test]
+    fn passenger_rotations_preserve_unmounted_position_send_baseline() {
+        let (tx, mut rx) = mpsc::channel(3);
+        let commands = Some(tx);
+        let now = Instant::now();
+        let mut input = ClientInputState::new(true);
+        let baseline = LocalPlayerPoseState {
+            position: vec3(0.0, 64.0, 0.0),
+            y_rot: 10.0,
+            x_rot: -5.0,
+            ..LocalPlayerPoseState::default()
+        };
+        input.last_move_command_pose = Some(baseline);
+        input.move_position_reminder_ticks = 7;
+        let mut world = world_with_local_vehicle(VANILLA_ENTITY_TYPE_MINECART_ID);
+        let passenger_pose = LocalPlayerPoseState {
+            position: vec3(8.0, 65.0, -3.0),
+            y_rot: 35.0,
+            x_rot: 12.0,
+            ..baseline
+        };
+        world.set_local_player_pose(passenger_pose);
+        let mut counters = NetCounters::default();
+
+        queue_passenger_rotation_commands(
+            &mut input,
+            &mut counters,
+            &commands,
+            passenger_pose,
+            now,
+            1,
+        );
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::MovePlayer(command) if command.force_rotation_only
+        ));
+        assert_eq!(input.last_move_command_pose, Some(baseline));
+        assert_eq!(input.move_position_reminder_ticks, 7);
+
+        assert!(world.apply_set_passengers(SetPassengers {
+            vehicle_id: 10,
+            passenger_ids: Vec::new(),
+        }));
+        maybe_queue_player_move_command(
+            &mut input,
+            &mut counters,
+            &commands,
+            passenger_pose,
+            now + MOVE_COMMAND_INTERVAL,
+        );
+        let dismount = match rx.try_recv().unwrap() {
+            NetCommand::MovePlayer(command) => command,
+            other => panic!("expected post-dismount position command, got {other:?}"),
+        };
+        assert_eq!(dismount.state.position, passenger_pose.position);
+        assert!(!dismount.force_rotation_only);
+        assert!(rx.try_recv().is_err());
+        assert_eq!(counters.player_move_commands_queued, 2);
+    }
+
+    #[test]
     fn controlled_happy_ghast_queues_vehicle_move_without_boat_paddles() {
         let (tx, mut rx) = mpsc::channel(3);
         let commands = Some(tx);
@@ -1448,6 +1553,10 @@ mod tests {
             rx.try_recv().unwrap(),
             NetCommand::MovePlayer(command) if command.force_rotation_only
         ));
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::MovePlayer(command) if command.force_rotation_only
+        ));
         let command = match rx.try_recv().unwrap() {
             NetCommand::PlayerCommand(command) => command,
             other => panic!("expected riding jump player command, got {other:?}"),
@@ -1577,6 +1686,10 @@ mod tests {
             start + Duration::from_millis(100),
         );
 
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::MovePlayer(command) if command.force_rotation_only
+        ));
         assert!(matches!(
             rx.try_recv().unwrap(),
             NetCommand::MovePlayer(command) if command.force_rotation_only
