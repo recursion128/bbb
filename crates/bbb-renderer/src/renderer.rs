@@ -61,8 +61,9 @@ use crate::{
     gpu::{
         create_camera_buffer, create_depth_target, create_terrain_atlas_gpu,
         create_terrain_atlas_mips_gpu, create_terrain_bind_group, create_terrain_bind_group_layout,
-        create_terrain_pipeline, create_terrain_translucent_pipeline, write_terrain_atlas_gpu,
-        write_terrain_atlas_mips_gpu, DepthTarget, TerrainAtlasGpu,
+        create_terrain_cutout_pipeline, create_terrain_solid_pipeline,
+        create_terrain_translucent_pipeline, write_terrain_atlas_gpu, write_terrain_atlas_mips_gpu,
+        DepthTarget, TerrainAtlasGpu,
     },
     gpu_timing::{optional_gpu_timing_features, GpuFrameTiming},
     hud::{
@@ -85,6 +86,7 @@ use crate::{
         create_resident_item_model_end_gateway_pipeline,
         create_resident_item_model_end_portal_pipeline, create_resident_item_model_glint_pipeline,
         create_resident_item_model_pattern_pipeline, create_resident_item_model_pipeline,
+        create_resident_item_model_solid_no_cutout_pipeline,
         create_resident_item_model_translucent_no_cull_pipeline,
         create_resident_item_model_translucent_pipeline,
         create_resident_item_model_z_offset_forward_pipeline, DisplayTextSurface,
@@ -290,7 +292,8 @@ pub struct Renderer {
     pub(super) transparency_blit_pipeline: wgpu::RenderPipeline,
     pub(super) transparency_final_target: TransparencyFinalTarget,
     pub(super) depth: DepthTarget,
-    pub(super) terrain_pipeline: wgpu::RenderPipeline,
+    pub(super) terrain_solid_pipeline: wgpu::RenderPipeline,
+    pub(super) terrain_cutout_pipeline: wgpu::RenderPipeline,
     pub(super) terrain_translucent_pipeline: wgpu::RenderPipeline,
     pub(super) block_destroy_pipeline: wgpu::RenderPipeline,
     pub(super) debug_filled_box_pipeline: wgpu::RenderPipeline,
@@ -363,6 +366,7 @@ pub struct Renderer {
     pub(super) display_text_pipeline: wgpu::RenderPipeline,
     pub(super) display_text_see_through_pipeline: wgpu::RenderPipeline,
     pub(super) resident_item_model_pipeline: wgpu::RenderPipeline,
+    pub(super) resident_item_model_solid_no_cutout_pipeline: wgpu::RenderPipeline,
     pub(super) resident_item_model_z_offset_forward_pipeline: wgpu::RenderPipeline,
     pub(super) resident_item_model_cutout_no_cull_pipeline: wgpu::RenderPipeline,
     pub(super) resident_item_model_cutout_z_offset_pipeline: wgpu::RenderPipeline,
@@ -1240,7 +1244,13 @@ impl Renderer {
             &gui_item_camera_buffer,
             &terrain_atlas,
         );
-        let terrain_pipeline = create_terrain_pipeline(
+        let terrain_solid_pipeline = create_terrain_solid_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            &lightmap_sample_bind_group_layout,
+        );
+        let terrain_cutout_pipeline = create_terrain_cutout_pipeline(
             &device,
             format,
             &terrain_bind_group_layout,
@@ -1463,6 +1473,13 @@ impl Renderer {
             &terrain_bind_group_layout,
             &lightmap_sample_bind_group_layout,
         );
+        let resident_item_model_solid_no_cutout_pipeline =
+            create_resident_item_model_solid_no_cutout_pipeline(
+                &device,
+                format,
+                &terrain_bind_group_layout,
+                &lightmap_sample_bind_group_layout,
+            );
         let resident_item_model_z_offset_forward_pipeline =
             create_resident_item_model_z_offset_forward_pipeline(
                 &device,
@@ -1714,7 +1731,8 @@ impl Renderer {
             transparency_blit_pipeline,
             transparency_final_target,
             depth,
-            terrain_pipeline,
+            terrain_solid_pipeline,
+            terrain_cutout_pipeline,
             terrain_translucent_pipeline,
             block_destroy_pipeline,
             debug_filled_box_pipeline,
@@ -1821,6 +1839,7 @@ impl Renderer {
             display_text_pipeline,
             display_text_see_through_pipeline,
             resident_item_model_pipeline,
+            resident_item_model_solid_no_cutout_pipeline,
             resident_item_model_z_offset_forward_pipeline,
             resident_item_model_cutout_no_cull_pipeline,
             resident_item_model_cutout_z_offset_pipeline,

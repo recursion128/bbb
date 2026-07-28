@@ -37,6 +37,7 @@ pub(crate) struct TerrainTextureState {
     transparencies: Vec<TerrainTransparency>,
     sprite_alphas: HashMap<String, SpriteAlpha>,
     fallback_index: u32,
+    cutout_leaves: bool,
     animation: Option<TerrainTextureAnimation>,
     block_item_default_quads: RefCell<HashMap<String, Option<Arc<[bbb_renderer::ItemModelQuad]>>>>,
     block_item_property_quads: RefCell<
@@ -75,6 +76,7 @@ impl Default for TerrainTextureState {
             transparencies: vec![TerrainTransparency::OPAQUE],
             sprite_alphas: HashMap::new(),
             fallback_index: 0,
+            cutout_leaves: true,
             animation: None,
             block_item_default_quads: RefCell::new(HashMap::new()),
             block_item_property_quads: RefCell::new(HashMap::new()),
@@ -242,6 +244,7 @@ impl TerrainTextureState {
             transparencies,
             sprite_alphas,
             fallback_index,
+            cutout_leaves: true,
             animation: None,
             block_item_default_quads: RefCell::new(HashMap::new()),
             block_item_property_quads: RefCell::new(HashMap::new()),
@@ -253,6 +256,32 @@ impl TerrainTextureState {
 
     pub(super) fn has_texture_animation(&self) -> bool {
         self.animation.is_some()
+    }
+
+    pub(crate) fn with_cutout_leaves(mut self, cutout_leaves: bool) -> Self {
+        self.cutout_leaves = cutout_leaves;
+        self
+    }
+
+    pub(crate) fn cutout_leaves(&self) -> bool {
+        self.cutout_leaves
+    }
+
+    pub(crate) fn forces_opaque_leaves(&self, block_name: &str) -> bool {
+        !self.cutout_leaves && bbb_world::block_name_is_leaves(block_name)
+    }
+
+    pub(super) fn force_opaque_leaves(
+        &self,
+        block_name: Option<&str>,
+        face_transparency: &mut [TerrainTransparency; 6],
+        render_shape: &mut TerrainRenderShape,
+    ) {
+        if !block_name.is_some_and(|block_name| self.forces_opaque_leaves(block_name)) {
+            return;
+        }
+        *face_transparency = [TerrainTransparency::OPAQUE; 6];
+        render_shape.force_opaque();
     }
 
     pub(super) fn animation_atlas_frame(&self, tick: u64) -> Result<Option<AtlasMipImage>> {
@@ -710,8 +739,8 @@ impl TerrainTextureState {
             Some(block_position),
             None,
         );
-        let face_transparency = self.face_texture_transparencies(&model.face_textures);
-        let shape = self.terrain_render_shape_for_block(
+        let mut face_transparency = self.face_texture_transparencies(&model.face_textures);
+        let mut shape = self.terrain_render_shape_for_block(
             block_name,
             properties,
             material,
@@ -723,6 +752,7 @@ impl TerrainTextureState {
             Some(block_position),
             None,
         );
+        self.force_opaque_leaves(Some(block_name), &mut face_transparency, &mut shape);
         Some(Arc::from(bbb_renderer::terrain::bake_moving_block_quads(
             &shape,
             texture_indices,
@@ -1754,18 +1784,19 @@ fn as_vanilla_argb_channel(value: f32) -> u8 {
 pub(crate) fn load_terrain_textures(
     renderer: &mut bbb_renderer::Renderer,
     roots: Option<&PackRoots>,
+    cutout_leaves: bool,
 ) -> TerrainTextureState {
     let Some(roots) = roots else {
         tracing::warn!("falling back to default terrain texture atlas without pack roots");
         renderer.set_terrain_particle_sprite_uvs(Vec::new());
-        return TerrainTextureState::default();
+        return TerrainTextureState::default().with_cutout_leaves(cutout_leaves);
     };
-    match try_load_terrain_textures(renderer, roots) {
+    match try_load_terrain_textures(renderer, roots, cutout_leaves) {
         Ok(textures) => textures,
         Err(err) => {
             tracing::warn!(?err, "falling back to default terrain texture atlas");
             renderer.set_terrain_particle_sprite_uvs(Vec::new());
-            TerrainTextureState::default()
+            TerrainTextureState::default().with_cutout_leaves(cutout_leaves)
         }
     }
 }
@@ -1773,6 +1804,7 @@ pub(crate) fn load_terrain_textures(
 pub(crate) fn try_load_terrain_textures(
     renderer: &mut bbb_renderer::Renderer,
     roots: &PackRoots,
+    cutout_leaves: bool,
 ) -> Result<TerrainTextureState> {
     let images = roots.load_block_texture_images()?;
     let block_models = roots.load_block_model_catalog()?;
@@ -1820,7 +1852,8 @@ pub(crate) fn try_load_terrain_textures(
         Some(block_models),
         colormaps,
         biome_colors,
-    );
+    )
+    .with_cutout_leaves(cutout_leaves);
     textures.animation =
         TerrainTextureAnimation::new(packer, images, VANILLA_DEFAULT_MIPMAP_LEVELS);
     Ok(textures)

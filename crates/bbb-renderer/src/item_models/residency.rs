@@ -157,6 +157,9 @@ impl ItemModelAssetKey {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ItemModelDrawPhase {
     Solid,
+    /// Vanilla `RenderTypes.solidMovingBlock()`: depth-writing solid block
+    /// geometry without the item/cutout alpha test.
+    SolidNoCutout,
     SolidZOffsetForward,
     CutoutNoCull,
     CutoutZOffset,
@@ -1142,6 +1145,10 @@ fn resident_z_offset_forward_shader() -> String {
         .replace("out.position = camera.view_proj * world;", "out.position = camera.view_proj_view_offset_z_forward * world;")
 }
 
+fn resident_no_alpha_cutout_shader() -> String {
+    ITEM_MODEL_RESIDENT_SHADER.replace("    if (sampled.a < ALPHA_CUTOUT) { discard; }\n", "")
+}
+
 fn resident_per_face_shader() -> String {
     ITEM_MODEL_RESIDENT_SHADER
         .replace(
@@ -1267,6 +1274,24 @@ pub(crate) fn create_resident_item_model_pipeline(
     )
 }
 
+pub(crate) fn create_resident_item_model_solid_no_cutout_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    let shader = resident_no_alpha_cutout_shader();
+    create_resident_item_model_pipeline_with_blend(
+        device,
+        format,
+        bind_group_layout,
+        lightmap_bind_group_layout,
+        &shader,
+        "bbb-item-model-resident-solid-no-cutout-pipeline",
+        wgpu::BlendState::REPLACE,
+    )
+}
+
 pub(crate) fn create_resident_item_model_z_offset_forward_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
@@ -1368,8 +1393,7 @@ pub(crate) fn create_resident_item_model_pattern_pipeline(
     bind_group_layout: &wgpu::BindGroupLayout,
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
 ) -> wgpu::RenderPipeline {
-    let shader =
-        ITEM_MODEL_RESIDENT_SHADER.replace("    if (sampled.a < ALPHA_CUTOUT) { discard; }\n", "");
+    let shader = resident_no_alpha_cutout_shader();
     RenderPipelineBuilder::new(device, "bbb-item-model-resident-pattern-pipeline")
         .shader("bbb-item-model-resident-pattern-shader", &shader)
         .layout(
@@ -1886,6 +1910,7 @@ impl Renderer {
                     | ItemModelDrawPhase::Translucent
                     | ItemModelDrawPhase::TranslucentNoCull => ItemModelGeometryClass::Translucent,
                     ItemModelDrawPhase::Solid
+                    | ItemModelDrawPhase::SolidNoCutout
                     | ItemModelDrawPhase::SolidZOffsetForward
                     | ItemModelDrawPhase::CutoutNoCull
                     | ItemModelDrawPhase::CutoutZOffset
@@ -2183,6 +2208,13 @@ mod tests {
         path: "textures/entity/test_special_portal.png",
         size: [16, 16],
     };
+
+    #[test]
+    fn resident_solid_no_cutout_shader_matches_vanilla_solid_block() {
+        let shader = resident_no_alpha_cutout_shader();
+        assert!(!shader.contains("discard"));
+        assert!(shader.contains("textureSample(item_atlas, item_sampler, input.uv)"));
+    }
 
     fn quad(translucent: bool) -> ItemModelQuad {
         ItemModelQuad {

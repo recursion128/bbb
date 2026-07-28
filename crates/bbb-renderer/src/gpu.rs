@@ -24,6 +24,9 @@ const TERRAIN_PIPELINE_OPAQUE_DEPTH_WRITE_ENABLED: bool = true;
 const TERRAIN_PIPELINE_TRANSLUCENT_DEPTH_WRITE_ENABLED: bool = false;
 const TERRAIN_PIPELINE_DEPTH_COMPARE: wgpu::CompareFunction = wgpu::CompareFunction::LessEqual;
 const CAMERA_BIND_GROUP_VISIBILITY: wgpu::ShaderStages = wgpu::ShaderStages::VERTEX_FRAGMENT;
+const TERRAIN_ALPHA_CUTOUT_PLACEHOLDER: &str = "    // __BBB_ALPHA_CUTOUT__";
+const TERRAIN_CUTOUT_ALPHA_THRESHOLD: &str = "0.5";
+const TERRAIN_TRANSLUCENT_ALPHA_THRESHOLD: &str = "0.01";
 
 const TERRAIN_SHADER: &str = r#"
 struct Camera {
@@ -136,9 +139,7 @@ fn vs_main(input: VertexIn) -> VertexOut {
 @fragment
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let texel = textureSample(terrain_atlas, terrain_sampler, input.uv);
-    if texel.a <= 0.01 {
-        discard;
-    }
+    // __BBB_ALPHA_CUTOUT__
     let base = texel.rgb * input.tint;
     let light_color = sample_lightmap(input.light);
     let shade = input.shade * input.ambient_occlusion;
@@ -440,7 +441,7 @@ fn write_texture_rgba(
     );
 }
 
-pub(super) fn create_terrain_pipeline(
+pub(super) fn create_terrain_solid_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     camera_bind_group_layout: &wgpu::BindGroupLayout,
@@ -454,6 +455,25 @@ pub(super) fn create_terrain_pipeline(
         "bbb-terrain-pipeline",
         TERRAIN_PIPELINE_OPAQUE_DEPTH_WRITE_ENABLED,
         TERRAIN_PIPELINE_OPAQUE_BLEND,
+        None,
+    )
+}
+
+pub(super) fn create_terrain_cutout_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    camera_bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    create_terrain_pipeline_with_options(
+        device,
+        format,
+        camera_bind_group_layout,
+        lightmap_bind_group_layout,
+        "bbb-terrain-cutout-pipeline",
+        TERRAIN_PIPELINE_OPAQUE_DEPTH_WRITE_ENABLED,
+        TERRAIN_PIPELINE_OPAQUE_BLEND,
+        Some(TERRAIN_CUTOUT_ALPHA_THRESHOLD),
     )
 }
 
@@ -471,6 +491,7 @@ pub(super) fn create_terrain_translucent_pipeline(
         "bbb-terrain-translucent-pipeline",
         TERRAIN_PIPELINE_TRANSLUCENT_DEPTH_WRITE_ENABLED,
         TERRAIN_PIPELINE_TRANSLUCENT_BLEND,
+        Some(TERRAIN_TRANSLUCENT_ALPHA_THRESHOLD),
     )
 }
 
@@ -482,9 +503,11 @@ fn create_terrain_pipeline_with_options(
     label: &'static str,
     depth_write_enabled: bool,
     blend: Option<wgpu::BlendState>,
+    alpha_cutout: Option<&str>,
 ) -> wgpu::RenderPipeline {
+    let shader = terrain_shader(alpha_cutout);
     RenderPipelineBuilder::new(device, label)
-        .shader("bbb-terrain-shader", TERRAIN_SHADER)
+        .shader("bbb-terrain-shader", &shader)
         .layout(
             "bbb-terrain-pipeline-layout",
             &[camera_bind_group_layout, lightmap_bind_group_layout],
@@ -498,6 +521,13 @@ fn create_terrain_pipeline_with_options(
             TERRAIN_PIPELINE_DEPTH_COMPARE,
         ))
         .build()
+}
+
+fn terrain_shader(alpha_cutout: Option<&str>) -> String {
+    let alpha_cutout = alpha_cutout.map_or_else(String::new, |threshold| {
+        format!("    if texel.a < {threshold} {{\n        discard;\n    }}")
+    });
+    TERRAIN_SHADER.replace(TERRAIN_ALPHA_CUTOUT_PLACEHOLDER, &alpha_cutout)
 }
 
 fn terrain_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
@@ -575,6 +605,18 @@ mod tests {
             translucent_blend.alpha.dst_factor,
             wgpu::BlendFactor::OneMinusSrcAlpha
         );
+    }
+
+    #[test]
+    fn terrain_shaders_match_vanilla_layer_alpha_cutoffs() {
+        let solid = terrain_shader(None);
+        let cutout = terrain_shader(Some(TERRAIN_CUTOUT_ALPHA_THRESHOLD));
+        let translucent = terrain_shader(Some(TERRAIN_TRANSLUCENT_ALPHA_THRESHOLD));
+
+        assert!(!solid.contains("discard"));
+        assert!(cutout.contains("if texel.a < 0.5"));
+        assert!(translucent.contains("if texel.a < 0.01"));
+        assert!(!cutout.contains("texel.a < 0.01"));
     }
 
     #[test]

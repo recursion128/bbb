@@ -29,6 +29,29 @@ use uuid::Uuid;
 const GRASS_BLOCK_STATE_ID: i32 = 9;
 
 #[test]
+fn fast_leaves_moving_blocks_select_solid_without_alpha_cutout() {
+    let cutout_leaves = TerrainTextureState::default();
+    let fast_leaves = TerrainTextureState::default().with_cutout_leaves(false);
+
+    assert_eq!(
+        block_model_solid_phase(true, "minecraft:oak_leaves", &cutout_leaves),
+        ItemModelDrawPhase::Solid
+    );
+    assert_eq!(
+        block_model_solid_phase(true, "minecraft:oak_leaves", &fast_leaves),
+        ItemModelDrawPhase::SolidNoCutout
+    );
+    assert_eq!(
+        block_model_solid_phase(true, "minecraft:stone", &fast_leaves),
+        ItemModelDrawPhase::Solid
+    );
+    assert_eq!(
+        block_model_solid_phase(false, "minecraft:oak_leaves", &fast_leaves),
+        ItemModelDrawPhase::Solid
+    );
+}
+
+#[test]
 fn synchronized_variant_registry_context_inventory_is_complete() {
     let registries =
         bbb_protocol::data_component_types::vanilla_data_component_animal_variant_registries()

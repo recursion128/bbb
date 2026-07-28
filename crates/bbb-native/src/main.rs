@@ -658,7 +658,8 @@ fn main() -> Result<()> {
             }
         }
     }
-    let mut terrain_textures = load_terrain_textures(&mut renderer, pack_roots.as_ref());
+    let mut terrain_textures =
+        load_terrain_textures(&mut renderer, pack_roots.as_ref(), args.cutout_leaves);
     if let Some(particles) = particle_runtime.as_mut() {
         particles.set_terrain_particle_sprite_ids(&terrain_textures);
         if let Some(items) = &item_runtime {

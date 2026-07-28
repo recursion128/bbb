@@ -104,6 +104,8 @@ pub struct TerrainSkipRendering {
     pub same_block_culls_all_faces: bool,
     #[serde(default)]
     pub same_block_culls_vertical_faces: bool,
+    #[serde(default)]
+    pub leaves_block: bool,
     pub iron_bars_block: bool,
     pub bars_tag: bool,
     pub north: bool,
@@ -117,6 +119,7 @@ impl TerrainSkipRendering {
         same_block_key: 0,
         same_block_culls_all_faces: false,
         same_block_culls_vertical_faces: false,
+        leaves_block: false,
         iron_bars_block: false,
         bars_tag: false,
         north: false,
@@ -293,6 +296,12 @@ pub fn classify_terrain_skip_rendering(
     let Some(name) = block_name else {
         return TerrainSkipRendering::NONE;
     };
+    if block_name_is_leaves(name) {
+        return TerrainSkipRendering {
+            leaves_block: true,
+            ..TerrainSkipRendering::NONE
+        };
+    }
     if is_half_transparent_skip_rendering_block_name(name)
         || VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS.contains(&name)
     {
@@ -902,6 +911,10 @@ mod tests {
         for &name in VANILLA_LEAVES_BLOCKS {
             assert!(block_name_is_leaves(name), "{name}");
             assert!(!block_name_is_half_transparent(name), "{name}");
+            assert!(
+                classify_terrain_skip_rendering(Some(name), &BTreeMap::new()).leaves_block,
+                "{name}"
+            );
         }
         assert!(block_name_is_door("minecraft:oak_door"));
         assert!(block_name_is_door("minecraft:iron_door"));

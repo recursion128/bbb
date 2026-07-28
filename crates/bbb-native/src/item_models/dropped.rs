@@ -145,6 +145,7 @@ pub(crate) fn entity_block_models(
             continue;
         }
         let base_variant = block_item_variant_identity(&attachment.properties);
+        let moving_block = attachment.moving_block.is_some();
         let (quads, variant) = if let Some(context) = attachment.moving_block {
             let Some(quads) = terrain_textures.moving_block_quads(
                 attachment.block_id.as_ref(),
@@ -176,6 +177,7 @@ pub(crate) fn entity_block_models(
             );
             let source = ItemModelAssetSource::Quads(Arc::clone(&quads));
             if quads.iter().any(|quad| !quad.translucent) {
+                let first_instance = residency.instances.len();
                 push_resident_item_instances(
                     &mut residency,
                     identity.clone(),
@@ -189,6 +191,18 @@ pub(crate) fn entity_block_models(
                     ItemModelFoil::None,
                     ItemModelDrawTarget::World,
                 );
+                let phase = block_model_solid_phase(
+                    moving_block,
+                    attachment.block_id.as_ref(),
+                    terrain_textures,
+                );
+                if phase != ItemModelDrawPhase::Solid {
+                    for instance in &mut residency.instances[first_instance..] {
+                        if instance.phase == ItemModelDrawPhase::Solid {
+                            instance.phase = phase;
+                        }
+                    }
+                }
             }
             if quads.iter().any(|quad| quad.translucent) {
                 push_resident_item_instances(
@@ -208,6 +222,18 @@ pub(crate) fn entity_block_models(
         }
     }
     residency
+}
+
+pub(super) fn block_model_solid_phase(
+    moving_block: bool,
+    block_id: &str,
+    terrain_textures: &TerrainTextureState,
+) -> ItemModelDrawPhase {
+    if moving_block && terrain_textures.forces_opaque_leaves(block_id) {
+        ItemModelDrawPhase::SolidNoCutout
+    } else {
+        ItemModelDrawPhase::Solid
+    }
 }
 
 fn block_render_position(pos: BlockPos) -> BlockRenderPosition {
@@ -1352,7 +1378,10 @@ pub(super) fn resident_item_test_meshes(frame: &ItemModelResidencyFrame) -> Resi
         // owned special phases and entity atlases have no pre-residency mesh
         // counterpart and are covered by renderer semantic/offscreen tests.
         let target = match (instance.atlas, instance.phase) {
-            (ItemModelAtlasKind::Blocks, ItemModelDrawPhase::Solid) => &mut meshes.block,
+            (
+                ItemModelAtlasKind::Blocks,
+                ItemModelDrawPhase::Solid | ItemModelDrawPhase::SolidNoCutout,
+            ) => &mut meshes.block,
             (ItemModelAtlasKind::Blocks, ItemModelDrawPhase::Translucent) => {
                 &mut meshes.block_translucent
             }
@@ -1360,7 +1389,10 @@ pub(super) fn resident_item_test_meshes(frame: &ItemModelResidencyFrame) -> Resi
             (ItemModelAtlasKind::Blocks, ItemModelDrawPhase::GlintTranslucent) => {
                 &mut meshes.block_glint_translucent
             }
-            (ItemModelAtlasKind::Items, ItemModelDrawPhase::Solid) => &mut meshes.flat,
+            (
+                ItemModelAtlasKind::Items,
+                ItemModelDrawPhase::Solid | ItemModelDrawPhase::SolidNoCutout,
+            ) => &mut meshes.flat,
             (ItemModelAtlasKind::Items, ItemModelDrawPhase::Translucent) => {
                 &mut meshes.flat_translucent
             }
@@ -1386,7 +1418,7 @@ pub(super) fn resident_item_test_meshes(frame: &ItemModelResidencyFrame) -> Resi
             ) => continue,
         };
         let mesh = match instance.phase {
-            ItemModelDrawPhase::Solid => baked.solid,
+            ItemModelDrawPhase::Solid | ItemModelDrawPhase::SolidNoCutout => baked.solid,
             ItemModelDrawPhase::Translucent => baked.translucent,
             ItemModelDrawPhase::Glint => baked.glint,
             ItemModelDrawPhase::GlintTranslucent => baked.glint_translucent,

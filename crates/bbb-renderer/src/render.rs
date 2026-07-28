@@ -323,7 +323,7 @@ impl Renderer {
                 match terrain_layer {
                     TerrainOpaqueGroupLayer::Solid => {
                         if !self.terrain_opaque.is_empty() {
-                            pass.set_pipeline(&self.terrain_pipeline);
+                            pass.set_pipeline(&self.terrain_solid_pipeline);
                             stats.pipeline_switches += 1;
                             pass.set_bind_group(0, &self.terrain_bind_group, &[]);
                             pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
@@ -340,7 +340,7 @@ impl Renderer {
                     }
                     TerrainOpaqueGroupLayer::Cutout => {
                         if !self.terrain_cutout.is_empty() {
-                            pass.set_pipeline(&self.terrain_pipeline);
+                            pass.set_pipeline(&self.terrain_cutout_pipeline);
                             stats.pipeline_switches += 1;
                             pass.set_bind_group(0, &self.terrain_bind_group, &[]);
                             pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
@@ -686,7 +686,10 @@ impl Renderer {
         }
         self.resident_item_model_main_pass(
             &mut *encoder,
-            &[crate::item_models::ItemModelDrawPhase::Solid],
+            &[
+                crate::item_models::ItemModelDrawPhase::Solid,
+                crate::item_models::ItemModelDrawPhase::SolidNoCutout,
+            ],
             Some(&[crate::item_models::ItemModelAtlasKind::Blocks]),
             stats,
         );
@@ -3927,6 +3930,9 @@ impl Renderer {
             };
             let pipeline = match draw.phase {
                 crate::item_models::ItemModelDrawPhase::Solid => &self.resident_item_model_pipeline,
+                crate::item_models::ItemModelDrawPhase::SolidNoCutout => {
+                    &self.resident_item_model_solid_no_cutout_pipeline
+                }
                 crate::item_models::ItemModelDrawPhase::SolidZOffsetForward => {
                     &self.resident_item_model_z_offset_forward_pipeline
                 }
@@ -5182,6 +5188,14 @@ mod tests {
                 TerrainOpaqueGroupLayer::Cutout,
             ]
         );
+        let source = include_str!("render.rs");
+        let solid = source
+            .find("pass.set_pipeline(&self.terrain_solid_pipeline)")
+            .expect("solid terrain uses its no-cutoff pipeline");
+        let cutout = source
+            .find("pass.set_pipeline(&self.terrain_cutout_pipeline)")
+            .expect("cutout terrain uses its 0.5-cutoff pipeline");
+        assert!(solid < cutout);
     }
 
     #[test]
@@ -5387,8 +5401,8 @@ mod tests {
     fn terrain_draws_sample_dynamic_lightmap_texture() {
         let source = include_str!("render.rs");
         let terrain = source
-            .find("pass.set_pipeline(&self.terrain_pipeline)")
-            .expect("opaque terrain pipeline is selected");
+            .find("pass.set_pipeline(&self.terrain_solid_pipeline)")
+            .expect("solid terrain pipeline is selected");
         let terrain_atlas = source[terrain..]
             .find("pass.set_bind_group(0, &self.terrain_bind_group, &[])")
             .map(|index| terrain + index)
@@ -5411,7 +5425,7 @@ mod tests {
 
         assert!(
             terrain < terrain_atlas && terrain_atlas < lightmap && lightmap < draw,
-            "terrain samples the renderer-owned LightTexture before opaque draws"
+            "terrain samples the renderer-owned LightTexture before solid draws"
         );
         assert!(
             translucent < translucent_lightmap,

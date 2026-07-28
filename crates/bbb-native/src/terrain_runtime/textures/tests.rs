@@ -255,6 +255,17 @@ fn moving_block_quads_use_start_seed_and_cardinal_context() {
         }"##,
     );
     write_json(
+        &asset_root.join("blockstates").join("oak_leaves.json"),
+        r##"{
+            "variants": {
+                "": [
+                    { "model": "minecraft:block/red_model", "weight": 2 },
+                    { "model": "minecraft:block/blue_model" }
+                ]
+            }
+        }"##,
+    );
+    write_json(
         &asset_root
             .join("models")
             .join("block")
@@ -288,7 +299,7 @@ fn moving_block_quads_use_start_seed_and_cardinal_context() {
         );
     }
     let images = vec![
-        sprite("minecraft:block/red"),
+        bbb_pack::SpriteImage::new("minecraft:block/red", 1, 1, vec![255, 255, 255, 127]).unwrap(),
         sprite("minecraft:block/blue"),
     ];
     let atlas = bbb_pack::AtlasPacker::new(64, 1)
@@ -313,6 +324,7 @@ fn moving_block_quads_use_start_seed_and_cardinal_context() {
         .unwrap();
     let red_rect = textures.atlas.rects[textures.texture_index("minecraft:block/red") as usize];
     assert_eq!(red.len(), 6);
+    assert!(red.iter().all(|quad| quad.translucent));
     assert!(red[0].uvs.iter().all(|uv| {
         (red_rect.min[0]..=red_rect.max[0]).contains(&uv[0])
             && (red_rect.min[1]..=red_rect.max[1]).contains(&uv[1])
@@ -342,7 +354,49 @@ fn moving_block_quads_use_start_seed_and_cardinal_context() {
         .expect("a start-position seed selects the blue weighted model");
     assert_eq!(blue.len(), 6);
 
+    let fast_leaves = textures.clone().with_cutout_leaves(false);
+    let leaves = fast_leaves
+        .moving_block_quads(
+            "minecraft:oak_leaves",
+            &BTreeMap::new(),
+            BlockRenderPosition { x: 0, y: 0, z: 0 },
+            block_position,
+            None,
+            bbb_renderer::terrain::TerrainCardinalLighting::Default,
+        )
+        .unwrap();
+    assert!(leaves.iter().all(|quad| !quad.translucent));
+
     std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn fast_leaves_force_root_and_nested_model_transparency_opaque() {
+    let textures = TerrainTextureState::default().with_cutout_leaves(false);
+    let mut face_transparency = [TerrainTransparency::TRANSLUCENT; 6];
+    let mut shape = TerrainRenderShape::Quads(vec![TerrainQuad {
+        corners: [[0.0; 3]; 4],
+        normal: [0.0, 1.0, 0.0],
+        uvs: [[0.0; 2]; 4],
+        cull: None,
+        texture_index: 0,
+        tint: TerrainTint::WHITE,
+        transparency: TerrainTransparency::TRANSLUCENT,
+        shade: true,
+        light_emission: 0,
+    }]);
+
+    textures.force_opaque_leaves(
+        Some("minecraft:oak_leaves"),
+        &mut face_transparency,
+        &mut shape,
+    );
+
+    assert_eq!(face_transparency, [TerrainTransparency::OPAQUE; 6]);
+    let TerrainRenderShape::Quads(quads) = shape else {
+        panic!("expected quad model");
+    };
+    assert_eq!(quads[0].transparency, TerrainTransparency::OPAQUE);
 }
 
 #[test]

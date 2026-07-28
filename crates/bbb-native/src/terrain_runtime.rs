@@ -792,6 +792,7 @@ fn convert_terrain_snapshot(
 ) -> TerrainChunkSnapshot {
     let chunk_origin_x = snapshot.pos.x * 16;
     let chunk_origin_z = snapshot.pos.z * 16;
+    let cutout_leaves = textures.cutout_leaves();
     let cells = snapshot
         .cells
         .into_iter()
@@ -818,15 +819,21 @@ fn convert_terrain_snapshot(
                 .map(|name| block_wants_biome_blend(name, has_water_fluid))
                 .unwrap_or(has_water_fluid);
             let blend = wants_blend.then(|| build_biome_blend(biome_sampler, position));
+            let mut render_data = textures.block_render_data(
+                cell.block_name.as_deref(),
+                &cell.block_properties,
+                world_material,
+                cell.biome_id,
+                Some(position),
+                blend.as_ref(),
+            );
+            textures.force_opaque_leaves(
+                cell.block_name.as_deref(),
+                &mut render_data.2,
+                &mut render_data.3,
+            );
             let (texture_indices, tint, face_transparency, render_shape, ambient_occlusion) =
-                textures.block_render_data(
-                    cell.block_name.as_deref(),
-                    &cell.block_properties,
-                    world_material,
-                    cell.biome_id,
-                    Some(position),
-                    blend.as_ref(),
-                );
+                render_data;
             let fluid = cell.fluid.map(renderer_fluid);
             let (fluid_texture_indices, fluid_tint) = fluid
                 .map(|fluid| {
@@ -866,7 +873,7 @@ fn convert_terrain_snapshot(
                 },
                 tint,
                 face_transparency,
-                skip_rendering: renderer_skip_rendering(cell.skip_rendering),
+                skip_rendering: renderer_skip_rendering(cell.skip_rendering, cutout_leaves),
             }
         })
         .collect();
@@ -904,11 +911,13 @@ fn build_biome_blend(
 
 fn renderer_skip_rendering(
     skip_rendering: bbb_world::TerrainSkipRendering,
+    cutout_leaves: bool,
 ) -> TerrainSkipRendering {
     TerrainSkipRendering {
         same_block_key: skip_rendering.same_block_key,
         same_block_culls_all_faces: skip_rendering.same_block_culls_all_faces,
         same_block_culls_vertical_faces: skip_rendering.same_block_culls_vertical_faces,
+        culls_with_leaves: !cutout_leaves && skip_rendering.leaves_block,
         iron_bars_block: skip_rendering.iron_bars_block,
         bars_tag: skip_rendering.bars_tag,
         north: skip_rendering.north,
@@ -971,6 +980,7 @@ mod tests {
             same_block_key: 42,
             same_block_culls_all_faces: true,
             same_block_culls_vertical_faces: true,
+            leaves_block: true,
             iron_bars_block: true,
             bars_tag: true,
             north: true,
@@ -980,11 +990,12 @@ mod tests {
         };
 
         assert_eq!(
-            renderer_skip_rendering(skip),
+            renderer_skip_rendering(skip, false),
             TerrainSkipRendering {
                 same_block_key: 42,
                 same_block_culls_all_faces: true,
                 same_block_culls_vertical_faces: true,
+                culls_with_leaves: true,
                 iron_bars_block: true,
                 bars_tag: true,
                 north: true,
@@ -993,6 +1004,7 @@ mod tests {
                 east: false,
             }
         );
+        assert!(!renderer_skip_rendering(skip, true).culls_with_leaves);
     }
 
     #[test]

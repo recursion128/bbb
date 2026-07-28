@@ -956,6 +956,41 @@ fn different_translucent_block_keys_keep_shared_face() {
 }
 
 #[test]
+fn fast_leaves_skip_shared_face_across_leaf_kinds() {
+    let fast_leaves = TerrainSkipRendering {
+        culls_with_leaves: true,
+        ..TerrainSkipRendering::NONE
+    };
+    let neighbor = TerrainCell::with_shape(
+        11,
+        TerrainMaterialClass::Cutout,
+        0,
+        TerrainRenderShape::Cross {
+            shade: true,
+            light_emission: 0,
+        },
+    )
+    .with_skip_rendering(fast_leaves);
+
+    assert!(culls_face_between_cells(
+        TerrainMeshMode::CutoutOnly,
+        fast_leaves,
+        TerrainMaterialClass::Cutout,
+        None,
+        TerrainFace::East,
+        &neighbor,
+    ));
+    assert!(!culls_face_between_cells(
+        TerrainMeshMode::CutoutOnly,
+        TerrainSkipRendering::NONE,
+        TerrainMaterialClass::Cutout,
+        None,
+        TerrainFace::East,
+        &neighbor,
+    ));
+}
+
+#[test]
 fn same_block_vertical_skip_only_culls_up_down_faces() {
     let skip = same_block_vertical_faces_skip(9);
     let mut vertical_cells = vec![TerrainCell::EMPTY; 16 * 2 * 16];

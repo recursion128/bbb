@@ -60,6 +60,38 @@ pub enum TerrainRenderShape {
     Quads(Vec<TerrainQuad>),
 }
 
+impl TerrainRenderShape {
+    /// Routes every quad in this model through the solid terrain layer.
+    ///
+    /// Vanilla's fast-leaves path changes the output layer selected by
+    /// `ModelBlockRenderer.forceOpaque`; keeping this operation on the shared
+    /// render-shape value covers root faces and all nested model shapes from
+    /// one owner.
+    pub fn force_opaque(&mut self) {
+        match self {
+            Self::Cube | Self::Cross { .. } => {}
+            Self::Crosses(crosses) => {
+                for cross in crosses {
+                    cross.face_transparency = [TerrainTransparency::OPAQUE; 6];
+                }
+            }
+            Self::Box {
+                face_transparency, ..
+            } => *face_transparency = [TerrainTransparency::OPAQUE; 6],
+            Self::Boxes(boxes) => {
+                for model_box in boxes {
+                    model_box.face_transparency = [TerrainTransparency::OPAQUE; 6];
+                }
+            }
+            Self::Quads(quads) => {
+                for quad in quads {
+                    quad.transparency = TerrainTransparency::OPAQUE;
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TerrainBox {
     pub from: [u8; 3],
@@ -149,6 +181,8 @@ pub struct TerrainSkipRendering {
     pub same_block_culls_all_faces: bool,
     #[serde(default)]
     pub same_block_culls_vertical_faces: bool,
+    #[serde(default)]
+    pub culls_with_leaves: bool,
     pub iron_bars_block: bool,
     pub bars_tag: bool,
     pub north: bool,
@@ -162,6 +196,7 @@ impl TerrainSkipRendering {
         same_block_key: 0,
         same_block_culls_all_faces: false,
         same_block_culls_vertical_faces: false,
+        culls_with_leaves: false,
         iron_bars_block: false,
         bars_tag: false,
         north: false,

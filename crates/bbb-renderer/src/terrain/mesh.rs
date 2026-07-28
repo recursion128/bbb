@@ -471,6 +471,9 @@ pub(super) fn culls_face_between_cells(
         }
     }
     let neighbor_skip = neighbor.skip_rendering;
+    if current_skip.culls_with_leaves && neighbor_skip.culls_with_leaves {
+        return true;
+    }
     if current_skip.same_block_culls_all_faces && current_skip.is_same_block(neighbor_skip) {
         return true;
     }

@@ -967,11 +967,6 @@ back into a todo. Do not delete these.
 
 ## Block entities and terrain
 
-- **Fast-leaves graphics-option parity.** The current baked sprite-transparency path keeps
-  leaves in the cutout-style behavior. Vanilla toggles both `LeavesBlock.skipRendering`
-  between adjacent leaves and `ModelBlockRenderer.forceOpaque` from the effective graphics
-  option; add the same resource-remesh boundary without reintroducing block-name render-layer
-  guesses. The exact 11-block leaves membership is generated and shared already.
 - **Banner pattern no-depth-write pipeline.** Vanilla's `bannerPattern` pipeline
   disables depth writes; bbb's shared translucent pipeline keeps them on.
   Equal-depth `LessEqual` layering is unaffected. Restart only if a dedicated

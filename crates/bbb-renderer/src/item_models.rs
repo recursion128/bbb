@@ -70,6 +70,7 @@ pub(crate) use residency::{
     create_resident_item_model_end_gateway_pipeline,
     create_resident_item_model_end_portal_pipeline, create_resident_item_model_glint_pipeline,
     create_resident_item_model_pattern_pipeline, create_resident_item_model_pipeline,
+    create_resident_item_model_solid_no_cutout_pipeline,
     create_resident_item_model_translucent_no_cull_pipeline,
     create_resident_item_model_translucent_pipeline,
     create_resident_item_model_z_offset_forward_pipeline,

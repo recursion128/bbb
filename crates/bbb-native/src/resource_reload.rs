@@ -190,6 +190,7 @@ fn apply_native_resource_reload(
             error,
         })?;
 
+    let cutout_leaves = terrain_textures.cutout_leaves();
     let (next_terrain_textures, win_screen_resources) = renderer
         .transactional_resource_reload(|renderer| {
             renderer
@@ -199,7 +200,7 @@ fn apply_native_resource_reload(
                     upload_reload_atlases(renderer, &prepared.particles.render, &prepared.items)
                 })
                 .and_then(|()| {
-                    try_load_terrain_textures(renderer, &prepared.roots)
+                    try_load_terrain_textures(renderer, &prepared.roots, cutout_leaves)
                         .context("upload terrain resources during resource reload")
                 })
                 .and_then(|textures| {

@@ -658,3 +658,6 @@
 - **2026-07-28（方块实体可见性工程闭环）**：已支持的方块实体模型现按 Vanilla
   渲染器距离与所在 16³ 可见 section 筛选；告示牌文字复用同一可见位置 owner，
   同时保留稳定字形网格缓存。
+- **2026-07-28（Fast Leaves 图形选项工程闭环）**：启动配置、资源重载、区块
+  邻面裁剪与 moving-block 现共享生成的 leaves membership；SOLID/CUTOUT/
+  TRANSLUCENT terrain 管线分别使用 Vanilla 的无阈值、0.5 与 0.01 alpha 规则。
