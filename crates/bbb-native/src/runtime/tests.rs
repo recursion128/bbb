@@ -7160,7 +7160,7 @@ fn renderer_frame_block_destroy_overlays_extract_after_destroy_tick() {
 }
 
 #[test]
-fn renderer_frame_outlines_extract_after_input_camera_and_partial_tick() {
+fn renderer_frame_crosshair_feedback_and_outlines_share_post_input_camera_state() {
     let source = include_str!("../runtime.rs");
     let input_advance = source
         .find("advance_player_input_for_client_ticks(")
@@ -7185,9 +7185,12 @@ fn renderer_frame_outlines_extract_after_input_camera_and_partial_tick() {
     let entity_scene_outline = source
         .find("let entity_scene_outline =")
         .expect("pump should extract entity scene outline");
-    let entity_target_outline = source
-        .find("let entity_target_outline =")
-        .expect("pump should extract entity target outline");
+    let targeted_entity = source
+        .find("let targeted_entity_id =")
+        .expect("pump should extract one crosshair entity target");
+    let attack_indicator = source
+        .find("let hud_crosshair_attack_indicator =")
+        .expect("pump should derive the crosshair attack indicator");
 
     for advance in [input_advance, using_item_tick, entity_tick, partial_tick] {
         assert!(
@@ -7195,15 +7198,81 @@ fn renderer_frame_outlines_extract_after_input_camera_and_partial_tick() {
             "vanilla picks and outlines use post-input camera/entity state before render extract"
         );
     }
-    for outline in [
+    for extraction in [
+        targeted_entity,
+        attack_indicator,
         selection_outline,
         entity_scene_outline,
-        entity_target_outline,
     ] {
         assert!(
-            camera_pose < outline,
-            "outline RendererFrame fields should read one camera pose snapshot"
+            camera_pose < extraction,
+            "crosshair and outline RendererFrame fields should read one camera pose snapshot"
         );
+    }
+    assert!(targeted_entity < attack_indicator);
+    assert!(source.contains("local_player_crosshair_attack_indicator_state(targeted_entity_id)"));
+    assert!(source.contains(
+        "camera_pose,\n        targeted_entity_id,\n        world.local_player().camera.entity_id,"
+    ));
+}
+
+#[test]
+fn crosshair_attack_indicator_maps_world_semantics_without_restoring_target_aabb() {
+    assert_eq!(
+        hud_crosshair_attack_indicator(true, None),
+        HudCrosshairAttackIndicator::None
+    );
+    assert_eq!(
+        hud_crosshair_attack_indicator(
+            true,
+            Some(LocalPlayerCrosshairAttackIndicatorState {
+                strength_scale: 0.5,
+                full: false,
+            })
+        ),
+        HudCrosshairAttackIndicator::Progress {
+            strength_scale: 0.5,
+        }
+    );
+    assert_eq!(
+        hud_crosshair_attack_indicator(
+            true,
+            Some(LocalPlayerCrosshairAttackIndicatorState {
+                strength_scale: 1.0,
+                full: true,
+            })
+        ),
+        HudCrosshairAttackIndicator::Full
+    );
+    assert_eq!(
+        hud_crosshair_attack_indicator(
+            true,
+            Some(LocalPlayerCrosshairAttackIndicatorState {
+                strength_scale: 1.0,
+                full: false,
+            })
+        ),
+        HudCrosshairAttackIndicator::None
+    );
+    assert_eq!(
+        hud_crosshair_attack_indicator(
+            false,
+            Some(LocalPlayerCrosshairAttackIndicatorState {
+                strength_scale: 0.5,
+                full: false,
+            })
+        ),
+        HudCrosshairAttackIndicator::None
+    );
+
+    for source in [
+        include_str!("../runtime.rs"),
+        include_str!("../runtime/render_extract.rs"),
+        include_str!("../../../bbb-renderer/src/renderer.rs"),
+        include_str!("../../../bbb-renderer/src/render.rs"),
+    ] {
+        assert!(!source.contains("entity_target_outline"));
+        assert!(!source.contains("set_entity_target_outline"));
     }
 }
 

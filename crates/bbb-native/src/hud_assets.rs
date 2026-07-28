@@ -84,6 +84,26 @@ pub(crate) fn try_load_hud_textures(
     )?;
     let crosshair = hud_sprite(&sprites, "hud/crosshair")?;
     renderer.upload_hud_crosshair(crosshair.width, crosshair.height, &crosshair.rgba)?;
+    let crosshair_attack_full = hud_sprite(&sprites, "hud/crosshair_attack_indicator_full")?;
+    renderer.upload_hud_crosshair_attack_indicator_full(
+        crosshair_attack_full.width,
+        crosshair_attack_full.height,
+        &crosshair_attack_full.rgba,
+    )?;
+    let crosshair_attack_background =
+        hud_sprite(&sprites, "hud/crosshair_attack_indicator_background")?;
+    renderer.upload_hud_crosshair_attack_indicator_background(
+        crosshair_attack_background.width,
+        crosshair_attack_background.height,
+        &crosshair_attack_background.rgba,
+    )?;
+    let crosshair_attack_progress =
+        hud_sprite(&sprites, "hud/crosshair_attack_indicator_progress")?;
+    renderer.upload_hud_crosshair_attack_indicator_progress(
+        crosshair_attack_progress.width,
+        crosshair_attack_progress.height,
+        &crosshair_attack_progress.rgba,
+    )?;
     let hotbar = hud_sprite(&sprites, "hud/hotbar")?;
     renderer.upload_hud_hotbar(hotbar.width, hotbar.height, &hotbar.rgba)?;
     let hotbar_selection = hud_sprite(&sprites, "hud/hotbar_selection")?;
@@ -1878,6 +1898,23 @@ mod tests {
 
         let crosshair = hud_sprite(&sprites, "hud/crosshair").unwrap();
         assert_eq!(crosshair.id, "minecraft:hud/crosshair");
+
+        for (path, width, height) in [
+            ("hud/crosshair_attack_indicator_full", 16, 16),
+            ("hud/crosshair_attack_indicator_background", 16, 4),
+            ("hud/crosshair_attack_indicator_progress", 16, 4),
+        ] {
+            let image = SpriteImage::new(
+                format!("minecraft:{path}"),
+                width,
+                height,
+                vec![255; (width * height * 4) as usize],
+            )
+            .unwrap();
+            sprites.insert(image.id.clone(), image);
+            let sprite = hud_sprite(&sprites, path).unwrap();
+            assert_eq!((sprite.width, sprite.height), (width, height));
+        }
 
         let err = hud_sprite(&sprites, "gui/sprites/hud/crosshair").unwrap_err();
         assert!(err

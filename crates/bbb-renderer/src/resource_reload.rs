@@ -232,6 +232,9 @@ macro_rules! take_hud_resource_owners {
         $take_owner!(hud_demo_popup_background);
         $take_owner!(hud_spyglass_scope_texture);
         $take_owner!(hud_crosshair);
+        $take_owner!(hud_crosshair_attack_indicator_full);
+        $take_owner!(hud_crosshair_attack_indicator_background);
+        $take_owner!(hud_crosshair_attack_indicator_progress);
         $take_owner!(hud_hotbar);
         $take_owner!(hud_hotbar_selection);
         $take_owner!(hud_spectator_close);
@@ -474,8 +477,8 @@ mod tests {
 
     use crate::{
         entity_model_texture_refs, ClearColor, EntityModelTextureImage, HudAsciiGlyph,
-        HudChatMessage, HudFontGlyphBook, HudFontGlyphMap, HudStyledTextRun, HudVignette,
-        ParticleSpriteUv, ParticleUvRect, Renderer,
+        HudChatMessage, HudCrosshairAttackIndicator, HudFontGlyphBook, HudFontGlyphMap,
+        HudStyledTextRun, HudVignette, ParticleSpriteUv, ParticleUvRect, Renderer,
     };
 
     #[test]
@@ -487,6 +490,10 @@ mod tests {
         renderer
             .upload_hud_crosshair(4, 4, &old_rgba)
             .expect("old crosshair");
+        renderer
+            .upload_hud_crosshair_attack_indicator_full(16, 16, &[0, 255, 0, 255].repeat(256))
+            .expect("old full attack indicator");
+        renderer.set_hud_crosshair_attack_indicator(HudCrosshairAttackIndicator::Full);
         for fail_after in 0..6 {
             let previous_counters = renderer.counters().clone();
             let error = renderer
@@ -511,6 +518,11 @@ mod tests {
                     fail_at(1, fail_after)?;
 
                     renderer.upload_hud_crosshair(2, 2, &[0, 0, 255, 255].repeat(4))?;
+                    renderer.upload_hud_crosshair_attack_indicator_full(
+                        16,
+                        16,
+                        &[255, 0, 255, 255].repeat(256),
+                    )?;
                     fail_at(2, fail_after)?;
 
                     let texture = entity_model_texture_refs()[0];
@@ -545,6 +557,11 @@ mod tests {
             assert!(
                 center[0] > 128 && center[2] < 128,
                 "rollback should retain the old red HUD owner, got {center:?}"
+            );
+            let attack_indicator = pixels.pixel(16, 25);
+            assert!(
+                attack_indicator[1] > 128 && attack_indicator[0] < 128 && attack_indicator[2] < 128,
+                "rollback should retain the old green attack indicator, got {attack_indicator:?}"
             );
         }
     }

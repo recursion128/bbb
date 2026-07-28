@@ -1317,6 +1317,34 @@ fn local_selected_main_hand_attack_range_reads_default_and_patch_components() {
 }
 
 #[test]
+fn local_active_item_attack_range_follows_use_hand_and_spectator_policy() {
+    let mut store = WorldStore::new();
+    let main_range = item_attack_range(0.0, 3.5);
+    let offhand_range = item_attack_range(0.0, 4.5);
+    store.set_default_item_attack_ranges(BTreeMap::from([(42, main_range), (99, offhand_range)]));
+    store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: item_stack(42, 1),
+    });
+    store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+        item: item_stack(99, 1),
+    });
+
+    assert_eq!(store.local_active_item_attack_range(), Some(main_range));
+    store.set_local_using_item_with_hand(true, InteractionHand::OffHand);
+    assert_eq!(store.local_active_item_attack_range(), Some(offhand_range));
+    store.take_local_using_item();
+    assert_eq!(store.local_active_item_attack_range(), Some(main_range));
+
+    store.apply_game_event(bbb_protocol::packets::GameEvent {
+        event_id: 3,
+        param: 3.0,
+    });
+    assert_eq!(store.local_active_item_attack_range(), None);
+}
+
+#[test]
 fn effective_food_properties_apply_default_patch_and_removal_precedence() {
     let mut store = WorldStore::new();
     store.set_default_item_food_properties(BTreeMap::from([

@@ -75,8 +75,9 @@ use self::layout::{
     hotbar_item_hud_rect, hotbar_selection_hud_rect, hud_air_bubble_icons,
     hud_air_bubble_wobble_offsets, hud_air_bubbles_visible, hud_armor_fill, hud_boss_bar_fill_uv,
     hud_boss_bar_name_origin, hud_boss_bar_progress_width, hud_boss_bar_rows,
-    hud_contextual_bar_progress_width, hud_experience_level_text_origin, hud_food_fill,
-    hud_food_jitter_offsets, hud_health_row_geometry, hud_inventory_text_label_origin,
+    hud_contextual_bar_progress_width, hud_crosshair_attack_indicator_layout,
+    hud_experience_level_text_origin, hud_food_fill, hud_food_jitter_offsets,
+    hud_health_row_geometry, hud_inventory_text_label_origin,
     hud_inventory_tooltip_background_hud_rect, hud_inventory_tooltip_line_origin,
     hud_inventory_tooltip_sprite_segments, hud_inventory_tooltip_text_height,
     hud_item_cooldown_rect, hud_item_count_digit_hud_rect, hud_item_durability_bar_rect,
@@ -942,6 +943,17 @@ pub struct HudDebugCrosshair {
     pub x_rot_degrees: f32,
     pub y_rot_degrees: f32,
     pub gui_scale: u32,
+}
+
+/// Vanilla's default `AttackIndicatorStatus.CROSSHAIR` presentation.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub enum HudCrosshairAttackIndicator {
+    #[default]
+    None,
+    Full,
+    Progress {
+        strength_scale: f32,
+    },
 }
 
 /// Vanilla `FpsDebugChart` sample stream: frame durations in nanoseconds,
@@ -2896,6 +2908,39 @@ impl Renderer {
         self.counters.hud_crosshair_width = width;
         self.counters.hud_crosshair_height = height;
         self.hud_crosshair = Some(crosshair);
+        Ok(())
+    }
+
+    pub fn upload_hud_crosshair_attack_indicator_full(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_crosshair_attack_indicator_full =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_crosshair_attack_indicator_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_crosshair_attack_indicator_background =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_crosshair_attack_indicator_progress(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_crosshair_attack_indicator_progress =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
@@ -5263,6 +5308,20 @@ impl Renderer {
             scope.filter(|scope| scope.scale.is_finite() && scope.scale >= 0.0);
     }
 
+    pub fn set_hud_crosshair_attack_indicator(&mut self, indicator: HudCrosshairAttackIndicator) {
+        self.hud_crosshair_attack_indicator = match indicator {
+            HudCrosshairAttackIndicator::Progress { strength_scale }
+                if strength_scale.is_finite() =>
+            {
+                HudCrosshairAttackIndicator::Progress {
+                    strength_scale: strength_scale.clamp(0.0, 1.0),
+                }
+            }
+            HudCrosshairAttackIndicator::Progress { .. } => HudCrosshairAttackIndicator::None,
+            indicator => indicator,
+        };
+    }
+
     /// Applies Vanilla's transient F1 `Options.hideGui` presentation policy.
     ///
     /// The renderer retains every latest HUD, screen, toast, and first-person
@@ -5906,6 +5965,47 @@ impl Renderer {
                 surface_size,
                 centered_hud_rect(surface_size, crosshair.width, crosshair.height),
             );
+            match self.hud_crosshair_attack_indicator {
+                HudCrosshairAttackIndicator::None => {}
+                HudCrosshairAttackIndicator::Full => {
+                    if let Some(full) = &self.hud_crosshair_attack_indicator_full {
+                        let layout = hud_crosshair_attack_indicator_layout(surface_size, 1.0);
+                        push_hud_draw(
+                            &mut vertices,
+                            &mut commands,
+                            full,
+                            surface_size,
+                            layout.full,
+                        );
+                    }
+                }
+                HudCrosshairAttackIndicator::Progress { strength_scale } => {
+                    if let (Some(background), Some(progress)) = (
+                        &self.hud_crosshair_attack_indicator_background,
+                        &self.hud_crosshair_attack_indicator_progress,
+                    ) {
+                        let layout =
+                            hud_crosshair_attack_indicator_layout(surface_size, strength_scale);
+                        push_hud_draw(
+                            &mut vertices,
+                            &mut commands,
+                            background,
+                            surface_size,
+                            layout.background,
+                        );
+                        if layout.progress.width > 0 {
+                            push_hud_draw_with_uv(
+                                &mut vertices,
+                                &mut commands,
+                                progress,
+                                surface_size,
+                                layout.progress,
+                                layout.progress_uv,
+                            );
+                        }
+                    }
+                }
+            }
         }
 
         if !self.hide_gui {
@@ -20055,6 +20155,102 @@ mod tests {
             renderer.collect_hud_draws().commands.len() > toast_commands,
             "unchanged crosshair state returns immediately when F1 is disabled"
         );
+    }
+
+    #[test]
+    fn crosshair_attack_indicator_draws_after_crosshair_and_obeys_debug_replacement() {
+        let Some(mut renderer) = Renderer::new_offscreen(321, 241) else {
+            return;
+        };
+        let solid = |width: u32, height: u32, rgba: [u8; 4]| rgba.repeat((width * height) as usize);
+        renderer
+            .upload_hud_crosshair(15, 15, &solid(15, 15, [255, 0, 0, 255]))
+            .expect("crosshair");
+        renderer
+            .upload_hud_crosshair_attack_indicator_full(16, 16, &solid(16, 16, [0, 255, 0, 255]))
+            .expect("full indicator");
+        renderer
+            .upload_hud_crosshair_attack_indicator_background(
+                16,
+                4,
+                &solid(16, 4, [0, 0, 255, 255]),
+            )
+            .expect("indicator background");
+        renderer
+            .upload_hud_crosshair_attack_indicator_progress(
+                16,
+                4,
+                &solid(16, 4, [255, 255, 255, 255]),
+            )
+            .expect("indicator progress");
+
+        renderer.set_hud_crosshair_attack_indicator(HudCrosshairAttackIndicator::Progress {
+            strength_scale: 0.5,
+        });
+        let draws = renderer.collect_hud_draws();
+        assert_eq!(draws.commands.len(), 3);
+        for (index, expected) in [
+            renderer.hud_crosshair.as_ref().unwrap(),
+            renderer
+                .hud_crosshair_attack_indicator_background
+                .as_ref()
+                .unwrap(),
+            renderer
+                .hud_crosshair_attack_indicator_progress
+                .as_ref()
+                .unwrap(),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let HudDrawCommand::Sprite { sprite, .. } = &draws.commands[index] else {
+                panic!("crosshair command {index} must be a sprite");
+            };
+            assert!(std::ptr::eq(*sprite, expected));
+        }
+        drop(draws);
+
+        renderer.set_hud_crosshair_attack_indicator(HudCrosshairAttackIndicator::Full);
+        let draws = renderer.collect_hud_draws();
+        assert_eq!(draws.commands.len(), 2);
+        let HudDrawCommand::Sprite { sprite, .. } = &draws.commands[1] else {
+            panic!("full indicator command");
+        };
+        assert!(std::ptr::eq(
+            *sprite,
+            renderer
+                .hud_crosshair_attack_indicator_full
+                .as_ref()
+                .unwrap()
+        ));
+        drop(draws);
+
+        renderer.set_hud_debug_overlay(Some(HudDebugOverlay {
+            debug_crosshair: Some(HudDebugCrosshair {
+                x_rot_degrees: 0.0,
+                y_rot_degrees: 0.0,
+                gui_scale: 1,
+            }),
+            ..HudDebugOverlay::default()
+        }));
+        let draws = renderer.collect_hud_draws();
+        assert!(draws.commands.iter().all(|command| {
+            let HudDrawCommand::Sprite { sprite, .. } = command else {
+                return false;
+            };
+            std::ptr::eq(*sprite, &renderer.hud_white_pixel)
+        }));
+        drop(draws);
+
+        renderer.set_hud_debug_overlay(None);
+        renderer.set_hud_crosshair_attack_indicator(HudCrosshairAttackIndicator::Progress {
+            strength_scale: f32::NAN,
+        });
+        assert_eq!(
+            renderer.hud_crosshair_attack_indicator,
+            HudCrosshairAttackIndicator::None
+        );
+        assert_eq!(renderer.collect_hud_draws().commands.len(), 1);
     }
 
     #[test]

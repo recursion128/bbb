@@ -42,13 +42,14 @@ use bbb_renderer::{
     HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite, HudAirSupply, HudBlockItemModel,
     HudChatContext, HudChatMessage, HudChatTag, HudChatTagKind, HudCommandBlockEditorKind,
     HudCommandBlockEditorScreen, HudCommandSuggestionEntry, HudCommandSuggestionTooltip,
-    HudCommandSuggestions, HudCommandSuggestionsLayout, HudContextualBar, HudDebugCrosshair,
-    HudDebugFrameTimeChart, HudDebugGameModeSwitcher, HudDebugGameModeSwitcherSlot,
-    HudDebugNetworkCharts, HudDebugOptionsTooltip, HudDebugOverlay, HudDebugProfilerChart,
-    HudDebugTpsChart, HudDebugTpsSample, HudDemoLinkConfirmationScreen, HudDemoPopupScreen,
-    HudEntityPreview, HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer,
-    HudEntityPreviewItemSlot, HudEntityPreviewRect, HudFoodEffect, HudGameEventButton,
-    HudGameEventScreen, HudGameModeSwitcherMode, HudHeartKind, HudHotbarMode, HudIconLayer,
+    HudCommandSuggestions, HudCommandSuggestionsLayout, HudContextualBar,
+    HudCrosshairAttackIndicator, HudDebugCrosshair, HudDebugFrameTimeChart,
+    HudDebugGameModeSwitcher, HudDebugGameModeSwitcherSlot, HudDebugNetworkCharts,
+    HudDebugOptionsTooltip, HudDebugOverlay, HudDebugProfilerChart, HudDebugTpsChart,
+    HudDebugTpsSample, HudDemoLinkConfirmationScreen, HudDemoPopupScreen, HudEntityPreview,
+    HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer, HudEntityPreviewItemSlot,
+    HudEntityPreviewRect, HudFoodEffect, HudGameEventButton, HudGameEventScreen,
+    HudGameModeSwitcherMode, HudHeartKind, HudHotbarMode, HudIconLayer,
     HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryFillLayer,
     HudInventoryFillStage, HudInventoryGhostItem, HudInventoryItem, HudInventoryItemScissor,
     HudInventoryScreen, HudInventoryScrollingText, HudInventorySlot, HudInventoryTextBackground,
@@ -79,11 +80,12 @@ use bbb_world::{
     java_string_hash_code, sign_wood_and_form_for_block_name, BlockPos, ChunkPos,
     ClientEnvironmentAttributes, ContainerState, EntityClientMovementEffectState,
     EntityClientTickWork, EnvironmentBiomeSampling, EvokerFangsCritParticleState,
-    ItemEquipmentSlot, LocalSoundEventState, MerchantOfferState, MerchantOffersState,
-    MobEffectState, MountArmorSlotKind, MountInventoryKind, OminousItemSpawnerParticleState,
-    PrimedTntSmokeParticleState, RavagerStunParticleState, SignBlockForm, SoundEventState,
-    SoundHolderState, TerrainFluidKind, TerrainFluidState, TerrainLight, TerrainMaterialClass,
-    WorldLevelInfo, WorldSkybox, WorldStore, WorldWeatherState,
+    ItemEquipmentSlot, LocalPlayerCrosshairAttackIndicatorState, LocalSoundEventState,
+    MerchantOfferState, MerchantOffersState, MobEffectState, MountArmorSlotKind,
+    MountInventoryKind, OminousItemSpawnerParticleState, PrimedTntSmokeParticleState,
+    RavagerStunParticleState, SignBlockForm, SoundEventState, SoundHolderState, TerrainFluidKind,
+    TerrainFluidState, TerrainLight, TerrainMaterialClass, WorldLevelInfo, WorldSkybox, WorldStore,
+    WorldWeatherState,
 };
 use tokio::sync::mpsc;
 
@@ -107,8 +109,7 @@ use crate::{
     crosshair::{
         crosshair_target_from_camera_at_partial_tick, debug_looking_at_block_hit_from_camera,
         debug_looking_at_fluid_hit_from_camera, debug_targeted_entity_from_camera_at_partial_tick,
-        entity_target_outline_from_camera_at_partial_tick, selection_outline_from_camera,
-        CrosshairTarget,
+        selection_outline_from_camera, CrosshairTarget,
     },
     debug_entries::DebugScreenEntryId,
     decorated_pot_scene::decorated_pot_model_instances_from_world_at_partial_tick,
@@ -3800,6 +3801,10 @@ pub(crate) fn update_renderer_from_publication(
         Some(CrosshairTarget::Entity(hit)) => Some(hit.entity_id),
         _ => None,
     };
+    let hud_crosshair_attack_indicator = hud_crosshair_attack_indicator(
+        input.camera_type().is_first_person() && !world.local_player_is_spectator(),
+        world.local_player_crosshair_attack_indicator_state(targeted_entity_id),
+    );
     let entity_name_tag_surfaces = entity_name_tag_surfaces(
         visible_entity_name_tag_render_sources(entity_render_extraction),
         &entity_instances,
@@ -4078,11 +4083,6 @@ pub(crate) fn update_renderer_from_publication(
         .flatten();
     let chunk_border_outline = debug_chunk_border_outline(input, world, camera_pose);
     let entity_scene_outline = debug_entity_scene_outline(input, world, entity_partial_tick);
-    let entity_target_outline = entity_target_outline_from_camera_at_partial_tick(
-        world,
-        camera_entity_pose,
-        entity_partial_tick,
-    );
     let remote_debug_selection = input.remote_debug_renderers();
     let selected_remote_debug_entity =
         remote_debug_selection_cache.selected_for_generation(world.client_level_generation());
@@ -4194,6 +4194,7 @@ pub(crate) fn update_renderer_from_publication(
             sky_environment,
             cloud_environment,
             hide_gui: input.hide_gui(),
+            hud_crosshair_attack_indicator,
             hud_player_health,
             hud_sleep_overlay,
             hud_food,
@@ -4316,7 +4317,6 @@ pub(crate) fn update_renderer_from_publication(
             selection_outline,
             chunk_border_outline,
             entity_scene_outline,
-            entity_target_outline,
             debug_filled_boxes,
             debug_filled_rects,
             debug_text_billboards,
@@ -8312,6 +8312,22 @@ fn hud_debug_crosshair(camera_pose: CameraPose) -> HudDebugCrosshair {
         x_rot_degrees: camera_pose.x_rot,
         y_rot_degrees: camera_pose.y_rot,
         gui_scale: 1,
+    }
+}
+
+fn hud_crosshair_attack_indicator(
+    visible: bool,
+    state: Option<LocalPlayerCrosshairAttackIndicatorState>,
+) -> HudCrosshairAttackIndicator {
+    if !visible {
+        return HudCrosshairAttackIndicator::None;
+    }
+    match state {
+        Some(state) if state.full => HudCrosshairAttackIndicator::Full,
+        Some(state) if state.strength_scale < 1.0 => HudCrosshairAttackIndicator::Progress {
+            strength_scale: state.strength_scale,
+        },
+        _ => HudCrosshairAttackIndicator::None,
     }
 }
 
@@ -18127,7 +18143,6 @@ pub(crate) fn control_renderer_counters(
         item_entity_draw_calls: counters.item_entity_draw_calls,
         selection_draw_calls: counters.selection_draw_calls,
         entity_scene_draw_calls: counters.entity_scene_draw_calls,
-        entity_target_draw_calls: counters.entity_target_draw_calls,
         chunk_border_draw_calls: counters.chunk_border_draw_calls,
         chunk_border_boxes: counters.chunk_border_boxes,
         entity_scene_boxes: counters.entity_scene_boxes,

@@ -3442,6 +3442,25 @@ impl WorldStore {
             .local_selected_main_hand_attack_range(inventory_ctx!(self))
     }
 
+    /// Vanilla `LivingEntity.getActiveItem()` followed by
+    /// `DataComponents.ATTACK_RANGE`: spectators expose an empty active item;
+    /// active use selects the use hand; otherwise the selected main hand wins.
+    pub fn local_active_item_attack_range(&self) -> Option<ItemAttackRange> {
+        if self.local_player_is_spectator() {
+            return None;
+        }
+        let hand = if self.local_player.interaction.using_item {
+            self.local_player
+                .interaction
+                .using_item_hand
+                .unwrap_or(InteractionHand::MainHand)
+        } else {
+            InteractionHand::MainHand
+        };
+        self.local_item_in_hand(hand)
+            .and_then(|item| item_stack_attack_range(item, &self.items.default_item_attack_ranges))
+    }
+
     pub fn local_selected_main_hand_minimum_attack_charge(&self) -> f32 {
         self.inventory
             .local_selected_main_hand_minimum_attack_charge(inventory_ctx!(self))

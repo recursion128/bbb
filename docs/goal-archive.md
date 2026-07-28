@@ -686,3 +686,8 @@
 - **2026-07-28（Native business snapshot 所有权闭环）**：control 业务读取统一
   使用同代不可变 `WorldStore`，snapshot 精确形状、`NetCounters` 分类与 paired
   generation 入口均有反向守卫；合同见 `docs/archive/native-business-snapshot-closeout-design.md`。
+- **2026-07-28（准星实体交互反馈工程闭环）**：移除非 Vanilla 的实体目标 AABB，
+  复用单次 canonical pick 驱动 name tag 与默认 CROSSHAIR 攻击指示器；蓄力、
+  Living/存活门禁、三张 selected-pack sprite、精确进度裁剪和 debug-crosshair
+  替换均已贯通 world/native/renderer，合同见
+  `docs/archive/crosshair-entity-feedback-closeout-design.md`。

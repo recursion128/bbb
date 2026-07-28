@@ -114,7 +114,6 @@ struct FrameDrawStats {
     selection_draw_calls: u64,
     chunk_border_draw_calls: u64,
     entity_scene_draw_calls: u64,
-    entity_target_draw_calls: u64,
     hud_draw_calls: u64,
     screen_blur_draw_calls: u64,
     post_effect_draw_calls: u64,
@@ -1614,7 +1613,6 @@ impl Renderer {
         if self.selection_outline.is_some()
             || self.chunk_border_outline.is_some()
             || self.entity_scene_outline.is_some()
-            || self.entity_target_outline.is_some()
             || has_fishing_lines
             || has_opaque_debug_lines
             || has_translucent_debug_lines
@@ -1648,7 +1646,6 @@ impl Renderer {
             if self.selection_outline.is_some()
                 || chunk_border_has_standard_vertices
                 || self.entity_scene_outline.is_some()
-                || self.entity_target_outline.is_some()
                 || has_fishing_lines
                 || has_opaque_debug_lines
             {
@@ -1670,11 +1667,6 @@ impl Renderer {
                     pass.set_vertex_buffer(0, outline.vertex_buffer.slice(..));
                     pass.draw(0..outline.vertex_count, 0..1);
                     stats.entity_scene_draw_calls += 1;
-                }
-                if let Some(outline) = &self.entity_target_outline {
-                    pass.set_vertex_buffer(0, outline.vertex_buffer.slice(..));
-                    pass.draw(0..outline.vertex_count, 0..1);
-                    stats.entity_target_draw_calls += 1;
                 }
                 if has_fishing_lines {
                     let buffer = self
@@ -3548,7 +3540,6 @@ impl Renderer {
         self.counters.chunk_border_draw_calls = stats.chunk_border_draw_calls;
         self.counters.entity_scene_draw_calls =
             stats.entity_scene_draw_calls + stats.entity_model_draw_calls;
-        self.counters.entity_target_draw_calls = stats.entity_target_draw_calls;
         self.counters.hud_draw_calls = stats.hud_draw_calls;
         self.counters.screen_blur_draw_calls = stats.screen_blur_draw_calls;
         self.counters.post_effect_draw_calls = stats.post_effect_draw_calls;
@@ -3571,7 +3562,6 @@ impl Renderer {
             + stats.selection_draw_calls
             + stats.chunk_border_draw_calls
             + stats.entity_scene_draw_calls
-            + stats.entity_target_draw_calls
             + stats.hud_draw_calls
             + stats.screen_blur_draw_calls
             + stats.post_effect_draw_calls

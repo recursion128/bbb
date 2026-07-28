@@ -41,7 +41,6 @@ pub struct RendererCounters {
     pub selection_draw_calls: u64,
     pub chunk_border_draw_calls: u64,
     pub entity_scene_draw_calls: u64,
-    pub entity_target_draw_calls: u64,
     pub chunk_border_boxes: usize,
     pub entity_scene_boxes: usize,
     pub item_entity_billboards: usize,

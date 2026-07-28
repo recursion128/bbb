@@ -58,40 +58,6 @@ pub(crate) fn selection_outline_from_camera(
     }
 }
 
-pub(crate) fn entity_target_outline_from_camera_at_partial_tick(
-    world: &WorldStore,
-    pose: Option<CameraPose>,
-    entity_partial_tick: f32,
-) -> Option<SelectionOutline> {
-    let CrosshairTarget::Entity(hit) =
-        crosshair_target_from_camera_at_partial_tick(world, pose, entity_partial_tick)?
-    else {
-        return None;
-    };
-    let partial_tick = clamp_entity_partial_tick(entity_partial_tick);
-    world
-        .entity_pick_targets_at_partial_tick(partial_tick)
-        .into_iter()
-        .find(|target| target.entity_id == hit.entity_id)
-        .map(entity_pick_target_outline)
-}
-
-fn entity_pick_target_outline(target: EntityPickTargetState) -> SelectionOutline {
-    let inflate = f64::from(target.bounds.pick_radius);
-    SelectionOutline::from_box(
-        [
-            (target.position.x + f64::from(target.bounds.min[0]) - inflate) as f32,
-            (target.position.y + f64::from(target.bounds.min[1]) - inflate) as f32,
-            (target.position.z + f64::from(target.bounds.min[2]) - inflate) as f32,
-        ],
-        [
-            (target.position.x + f64::from(target.bounds.max[0]) + inflate) as f32,
-            (target.position.y + f64::from(target.bounds.max[1]) + inflate) as f32,
-            (target.position.z + f64::from(target.bounds.max[2]) + inflate) as f32,
-        ],
-    )
-}
-
 fn crosshair_block_hit_from_camera(
     world: &WorldStore,
     pose: Option<CameraPose>,
@@ -249,7 +215,7 @@ where
 {
     let eye = ray.eye;
     let block_hit = crosshair_block_hit_from_ray(world, ray);
-    if let Some(attack_range) = selected_crosshair_attack_range(world, ray) {
+    if let Some(attack_range) = active_crosshair_attack_range(world, ray) {
         if let Some(target) = attack_range_target_from_ray(
             world,
             ray,
@@ -285,11 +251,11 @@ struct CrosshairAttackRange {
     movement_extension: f64,
 }
 
-fn selected_crosshair_attack_range(
+fn active_crosshair_attack_range(
     world: &WorldStore,
     ray: CrosshairRay,
 ) -> Option<CrosshairAttackRange> {
-    let range = world.local_selected_main_hand_attack_range()?;
+    let range = world.local_active_item_attack_range()?;
     let mut attack_range = crosshair_attack_range_from_item(
         range,
         world
@@ -1130,8 +1096,8 @@ mod tests {
     use bbb_protocol::packets::{
         AddEntity, AdventureModePredicateDataSummary, AdventureModePredicateSummary,
         AttackRangeSummary, BlockHolderSetSummary, BlockPredicateSummary, EntityDataValue,
-        EntityDataValueKind, EntityPositionSync, GameEvent, ItemStackSummary, PlayerAbilities,
-        SetEntityData, SetPlayerInventory, Vec3d as ProtocolVec3d,
+        EntityDataValueKind, EntityPositionSync, GameEvent, InteractionHand, ItemStackSummary,
+        PlayerAbilities, SetEntityData, SetPlayerInventory, Vec3d as ProtocolVec3d,
     };
     use bbb_world::{
         ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, PaletteDomain, PaletteKind,
@@ -1697,6 +1663,28 @@ mod tests {
     }
 
     #[test]
+    fn crosshair_target_attack_range_uses_the_active_offhand_item() {
+        let mut world = WorldStore::new();
+        world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 40,
+            item: item_stack_with_attack_range(42, 0.0, 4.5, 0.0, 4.5, 0.0),
+        });
+        world.set_local_using_item_with_hand(true, InteractionHand::OffHand);
+        world.apply_add_entity(protocol_add_entity(
+            12,
+            VANILLA_ENTITY_TYPE_MINECART_ID,
+            [0.0, 1.0, 4.0],
+        ));
+
+        let target = crosshair_target_from_world(&world, Some(player_pose(0.0, 0.0, 0.0)));
+
+        let CrosshairTarget::Entity(hit) = target.unwrap() else {
+            panic!("expected active offhand attack-range entity hit");
+        };
+        assert_eq!(hit.entity_id, 12);
+    }
+
+    #[test]
     fn crosshair_target_attack_range_does_not_extend_max_reach_by_backward_movement() {
         let mut world = WorldStore::new();
         set_selected_attack_range(&mut world, 0.0, 3.5, 0.0, 3.5, 0.0);
@@ -2000,41 +1988,6 @@ mod tests {
         assert!(selection_outline_from_camera(&world, pose).is_some());
     }
 
-    #[test]
-    fn entity_target_outline_is_none_without_crosshair_entity_target() {
-        let world = WorldStore::new();
-
-        assert_eq!(
-            entity_target_outline_from_camera_at_partial_tick(
-                &world,
-                Some(camera_pose_at([0.0, 0.0, 0.0], 0.0, 0.0)),
-                1.0,
-            ),
-            None
-        );
-    }
-
-    #[test]
-    fn entity_target_outline_uses_current_pick_target_bounds() {
-        let mut world = WorldStore::new();
-        world.apply_add_entity(protocol_add_entity(
-            10,
-            VANILLA_ENTITY_TYPE_MINECART_ID,
-            [0.0, 1.0, 3.0],
-        ));
-
-        let outline = entity_target_outline_from_camera_at_partial_tick(
-            &world,
-            Some(camera_pose_at([0.0, 0.0, 0.0], 0.0, 0.0)),
-            1.0,
-        )
-        .expect("expected entity target outline");
-
-        assert_eq!(outline.boxes.len(), 1);
-        assert_selection_box_close(outline.boxes[0].min, [-0.49, 1.0, 2.51]);
-        assert_selection_box_close(outline.boxes[0].max, [0.49, 1.7, 3.49]);
-    }
-
     fn player_pose(y_rot: f32, x_rot: f32, z: f64) -> LocalPlayerPoseState {
         player_pose_at([0.0, 0.0, z], y_rot, x_rot)
     }
@@ -2236,16 +2189,5 @@ mod tests {
             expected[2],
             actual.z
         );
-    }
-
-    fn assert_selection_box_close(actual: [f32; 3], expected: [f32; 3]) {
-        for axis in 0..3 {
-            assert!(
-                (actual[axis] - expected[axis]).abs() < 1.0e-5,
-                "axis {axis}: expected {}, got {}",
-                expected[axis],
-                actual[axis]
-            );
-        }
     }
 }

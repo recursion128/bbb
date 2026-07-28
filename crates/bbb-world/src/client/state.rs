@@ -21,7 +21,8 @@ pub use crate::client::chat::{
     DeletedChatState, OutboundLastSeenMessages,
 };
 pub use crate::client::combat::{
-    ClientCombatState, ClientDeathScreenState, PlayerCombatEventState, PlayerCombatKillApplyOutcome,
+    ClientCombatState, ClientDeathScreenState, LocalPlayerCrosshairAttackIndicatorState,
+    PlayerCombatEventState, PlayerCombatKillApplyOutcome,
 };
 pub use crate::client::command_suggestions::{
     CommandSuggestionRequestState, CommandSuggestionState, CommandSuggestionsResultState,

@@ -14,11 +14,11 @@ use bbb_renderer::{
     FirstPersonPlayerArm, HudActionBarText, HudAdvancementToast, HudAirSupply, HudBlockItemModel,
     HudBookScreen, HudBossBar, HudBossBarColor, HudBossBarOverlay, HudChatContext,
     HudChatInteraction, HudChatMessage, HudCommandBlockEditorScreen, HudCommandSuggestions,
-    HudComponentTextRun, HudDeathLinkConfirmationScreen, HudDeathMainScreen,
-    HudDeathQuitConfirmationScreen, HudDeathScreen, HudDebugOptionsScreen, HudDebugOverlay,
-    HudFoodEffect, HudGameEventScreen, HudGameRulesScreen, HudHotbarMode, HudInventoryScreen,
-    HudJigsawBlockEditorScreen, HudMobEffect, HudPauseScreen, HudPlayerHealth, HudPlayerList,
-    HudPlayerListEntry, HudPlayerListScore, HudRecipeToast, HudScoreboardSidebar,
+    HudComponentTextRun, HudCrosshairAttackIndicator, HudDeathLinkConfirmationScreen,
+    HudDeathMainScreen, HudDeathQuitConfirmationScreen, HudDeathScreen, HudDebugOptionsScreen,
+    HudDebugOverlay, HudFoodEffect, HudGameEventScreen, HudGameRulesScreen, HudHotbarMode,
+    HudInventoryScreen, HudJigsawBlockEditorScreen, HudMobEffect, HudPauseScreen, HudPlayerHealth,
+    HudPlayerList, HudPlayerListEntry, HudPlayerListScore, HudRecipeToast, HudScoreboardSidebar,
     HudScoreboardSidebarEntry, HudSignEditorScreen, HudSleepOverlay, HudSocialInteractionsFocus,
     HudSocialInteractionsLinkConfirmationScreen, HudSocialInteractionsMainScreen,
     HudSocialInteractionsPage, HudSocialInteractionsPlayer, HudSocialInteractionsPlayerAction,
@@ -2199,6 +2199,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) sky_environment: SkyEnvironment,
     pub(crate) cloud_environment: CloudEnvironment,
     pub(crate) hide_gui: bool,
+    pub(crate) hud_crosshair_attack_indicator: HudCrosshairAttackIndicator,
     pub(crate) hud_player_health: Option<HudPlayerHealth>,
     pub(crate) hud_sleep_overlay: Option<HudSleepOverlay>,
     pub(crate) hud_food: Option<i32>,
@@ -2301,7 +2302,6 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) selection_outline: Option<SelectionOutline>,
     pub(crate) chunk_border_outline: Option<SelectionOutline>,
     pub(crate) entity_scene_outline: Option<SelectionOutline>,
-    pub(crate) entity_target_outline: Option<SelectionOutline>,
     pub(crate) debug_filled_boxes: Vec<DebugFilledBox>,
     pub(crate) debug_filled_rects: Vec<DebugFilledRect>,
     pub(crate) debug_text_billboards: Vec<DebugTextBillboard>,
@@ -2628,6 +2628,7 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_sky_environment(frame.sky_environment);
     renderer.set_cloud_environment(frame.cloud_environment);
     renderer.set_hide_gui(frame.hide_gui);
+    renderer.set_hud_crosshair_attack_indicator(frame.hud_crosshair_attack_indicator);
     renderer.set_hud_player_health(frame.hud_player_health);
     renderer.set_hud_sleep_overlay(frame.hud_sleep_overlay);
     renderer.set_hud_food(frame.hud_food);
@@ -2771,7 +2772,6 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_selection_outline(frame.selection_outline);
     renderer.set_chunk_border_outline(frame.chunk_border_outline);
     renderer.set_entity_scene_outline(frame.entity_scene_outline);
-    renderer.set_entity_target_outline(frame.entity_target_outline);
     let filled_boxes = renderer.replace_debug_filled_boxes(frame.debug_filled_boxes);
     let filled_rects = renderer.replace_debug_filled_rects(frame.debug_filled_rects);
     let text_billboards = renderer.replace_debug_text_billboards(frame.debug_text_billboards);

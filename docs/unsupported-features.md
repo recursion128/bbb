@@ -111,14 +111,6 @@ Owner: `bbb-protocol` + `bbb-net` + `bbb-world` + `bbb-native`
   providers must consume those retained values rather than add a parallel
   Component schema.
 
-## Crosshair entity interaction parity
-
-Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
-
-- Validate any future `yRotA` source.
-- Replace the debug target overlay with full entity model rendering and
-  interaction feedback once renderer entity presentation exists.
-
 ## Native input, movement, interaction, inventory, and command flows
 
 Owner: `bbb-native` + `bbb-net` + `bbb-protocol` + `bbb-world`

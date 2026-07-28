@@ -37,6 +37,17 @@ pub struct ClientDeathScreenState {
     pub hardcore: bool,
 }
 
+/// Canonical world inputs for Vanilla's crosshair attack indicator.
+///
+/// Target range is intentionally absent: native's canonical crosshair pick
+/// already applies the active item's `ATTACK_RANGE` before it supplies
+/// `target_entity_id`.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct LocalPlayerCrosshairAttackIndicatorState {
+    pub strength_scale: f32,
+    pub full: bool,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlayerCombatKillApplyOutcome {
     Ignored,
@@ -210,16 +221,45 @@ impl WorldStore {
         true
     }
 
-    fn local_player_attack_strength_scale(&self, partial_tick: f32) -> f32 {
+    pub fn local_player_crosshair_attack_indicator_state(
+        &self,
+        target_entity_id: Option<i32>,
+    ) -> Option<LocalPlayerCrosshairAttackIndicatorState> {
+        let delay = self.local_player_attack_strength_delay()?;
+        let strength_scale =
+            ((self.local_player_attack_strength_ticks() as f32) / delay).clamp(0.0, 1.0);
+        let full = strength_scale >= 1.0
+            && delay > 5.0
+            && target_entity_id.is_some_and(|entity_id| {
+                self.entity_type_id(entity_id)
+                    .is_some_and(crate::vanilla_entity_type_is_living)
+                    && self
+                        .entities
+                        .living_entity_health(entity_id)
+                        .is_some_and(|health| health > 0.0)
+            });
+        Some(LocalPlayerCrosshairAttackIndicatorState {
+            strength_scale,
+            full,
+        })
+    }
+
+    fn local_player_attack_strength_delay(&self) -> Option<f32> {
         let Some(attack_speed) =
             self.local_player_attribute_value(VANILLA_ATTRIBUTE_ATTACK_SPEED_ID)
         else {
-            return 0.0;
+            return None;
         };
         if !attack_speed.is_finite() || attack_speed <= 0.0 {
-            return 0.0;
+            return None;
         }
-        let delay = (1.0 / attack_speed * 20.0) as f32;
+        Some((1.0 / attack_speed * 20.0) as f32)
+    }
+
+    fn local_player_attack_strength_scale(&self, partial_tick: f32) -> f32 {
+        let Some(delay) = self.local_player_attack_strength_delay() else {
+            return 0.0;
+        };
         ((self.local_player_attack_strength_ticks() as f32 + partial_tick) / delay).clamp(0.0, 1.0)
     }
 }
@@ -478,6 +518,125 @@ mod tests {
                 y: 0.4,
                 z: -0.3,
             }
+        );
+    }
+
+    #[test]
+    fn crosshair_attack_indicator_projects_canonical_charge_and_target_eligibility() {
+        let mut store = local_player_world(7);
+        add_target(
+            &mut store,
+            8,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            ProtocolVec3d::default(),
+        );
+        add_target(
+            &mut store,
+            9,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_MINECART_ID,
+            ProtocolVec3d::default(),
+        );
+        assert!(
+            store.apply_update_attributes(bbb_protocol::packets::UpdateAttributes {
+                entity_id: 7,
+                attributes: vec![bbb_protocol::packets::AttributeSnapshot {
+                    attribute_id: VANILLA_ATTRIBUTE_ATTACK_SPEED_ID,
+                    base: 2.0,
+                    modifiers: Vec::new(),
+                }],
+            })
+        );
+
+        store.advance_client_level_entity_ticks_with_observation(5);
+        assert_eq!(
+            store.local_player_crosshair_attack_indicator_state(Some(8)),
+            Some(LocalPlayerCrosshairAttackIndicatorState {
+                strength_scale: 0.5,
+                full: false,
+            })
+        );
+
+        store.advance_client_level_entity_ticks_with_observation(5);
+        assert_eq!(
+            store.local_player_crosshair_attack_indicator_state(None),
+            Some(LocalPlayerCrosshairAttackIndicatorState {
+                strength_scale: 1.0,
+                full: false,
+            })
+        );
+        assert_eq!(
+            store.local_player_crosshair_attack_indicator_state(Some(9)),
+            Some(LocalPlayerCrosshairAttackIndicatorState {
+                strength_scale: 1.0,
+                full: false,
+            })
+        );
+        assert_eq!(
+            store.local_player_crosshair_attack_indicator_state(Some(8)),
+            Some(LocalPlayerCrosshairAttackIndicatorState {
+                strength_scale: 1.0,
+                full: true,
+            })
+        );
+    }
+
+    #[test]
+    fn crosshair_full_attack_indicator_requires_slow_weapon_and_positive_health() {
+        let mut store = local_player_world(7);
+        add_target(
+            &mut store,
+            8,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            ProtocolVec3d::default(),
+        );
+        store.advance_client_level_entity_ticks_with_observation(5);
+        assert_eq!(
+            store.local_player_crosshair_attack_indicator_state(Some(8)),
+            Some(LocalPlayerCrosshairAttackIndicatorState {
+                strength_scale: 1.0,
+                full: false,
+            }),
+            "the default 4.0 attack speed has an exact five-tick delay"
+        );
+
+        assert!(
+            store.apply_update_attributes(bbb_protocol::packets::UpdateAttributes {
+                entity_id: 7,
+                attributes: vec![bbb_protocol::packets::AttributeSnapshot {
+                    attribute_id: VANILLA_ATTRIBUTE_ATTACK_SPEED_ID,
+                    base: 2.0,
+                    modifiers: Vec::new(),
+                }],
+            })
+        );
+        store.advance_client_level_entity_ticks_with_observation(5);
+        let accessors = crate::vanilla_entity_metadata_living_entity_accessors_for_entity_type(
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        )
+        .expect("generated zombie living accessors");
+        assert!(store.apply_set_entity_data(SetEntityData {
+            id: 8,
+            values: vec![EntityDataValue {
+                data_id: accessors.health_data_id,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
+                value: EntityDataValueKind::Float(0.0),
+            }],
+        }));
+        assert_eq!(
+            store.local_player_crosshair_attack_indicator_state(Some(8)),
+            Some(LocalPlayerCrosshairAttackIndicatorState {
+                strength_scale: 1.0,
+                full: false,
+            })
+        );
+    }
+
+    #[test]
+    fn crosshair_attack_indicator_is_absent_without_a_local_player() {
+        assert_eq!(
+            WorldStore::new().local_player_crosshair_attack_indicator_state(None),
+            None
         );
     }
 

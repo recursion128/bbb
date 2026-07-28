@@ -122,6 +122,38 @@ pub(super) fn absolute_hud_rect(x: f32, y: f32, width: u32, height: u32) -> HudR
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+pub(super) struct HudCrosshairAttackIndicatorLayout {
+    pub(super) full: HudRect,
+    pub(super) background: HudRect,
+    pub(super) progress: HudRect,
+    pub(super) progress_uv: HudUvRect,
+}
+
+/// Pixel placement from Vanilla `Gui.extractCrosshair`.
+pub(super) fn hud_crosshair_attack_indicator_layout(
+    surface_size: PhysicalSize<u32>,
+    strength_scale: f32,
+) -> HudCrosshairAttackIndicatorLayout {
+    let x = (surface_size.width.max(1) / 2) as f32 - 8.0;
+    let y = (surface_size.height.max(1) / 2) as f32 + 9.0;
+    let strength_scale = if strength_scale.is_finite() {
+        strength_scale.clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    let progress_width = ((strength_scale * 17.0) as u32).min(16);
+    HudCrosshairAttackIndicatorLayout {
+        full: absolute_hud_rect(x, y, 16, 16),
+        background: absolute_hud_rect(x, y, 16, 4),
+        progress: absolute_hud_rect(x, y, progress_width, 4),
+        progress_uv: HudUvRect {
+            min: [0.0, 0.0],
+            max: [progress_width as f32 / 16.0, 1.0],
+        },
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub(super) struct HudSpyglassScopeLayout {
     pub(super) texture: HudRect,
     /// Vanilla submission order: bottom, top, left, right.
@@ -1462,6 +1494,31 @@ pub(super) fn hud_inventory_tooltip_sprite_segments(
 mod tests {
     use super::super::{HudAsciiGlyph, HudTextStyle};
     use super::*;
+
+    #[test]
+    fn crosshair_attack_indicator_layout_matches_vanilla_pixels_and_progress_crop() {
+        let layout = hud_crosshair_attack_indicator_layout(PhysicalSize::new(321, 241), 0.5);
+        assert_eq!(hud_rect_bounds(layout.full), (152.0, 129.0, 168.0, 145.0));
+        assert_eq!(
+            hud_rect_bounds(layout.background),
+            (152.0, 129.0, 168.0, 133.0)
+        );
+        assert_eq!(
+            hud_rect_bounds(layout.progress),
+            (152.0, 129.0, 160.0, 133.0)
+        );
+        assert_eq!(
+            layout.progress_uv,
+            HudUvRect {
+                min: [0.0, 0.0],
+                max: [0.5, 1.0],
+            }
+        );
+
+        let nearly_full = hud_crosshair_attack_indicator_layout(PhysicalSize::new(320, 240), 0.999);
+        assert_eq!(nearly_full.progress.width, 16);
+        assert_eq!(nearly_full.progress_uv.max[0], 1.0);
+    }
 
     #[test]
     fn hud_quad_vertices_center_sprite_in_ndc() {

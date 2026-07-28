@@ -70,10 +70,10 @@ use crate::{
         create_hud_bind_group_layout, create_hud_item_glint_pipeline, create_hud_pipeline,
         create_hud_sprite_gpu, HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite,
         HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite, HudChatContext, HudChatLine,
-        HudChatMessage, HudDigitGlyph, HudFontGlyphBook, HudFontGlyphMap, HudHotbarMode,
-        HudInventoryScreen, HudItemIcon, HudNineSliceSprite, HudObfuscatedGlyphPool,
-        HudPlayerListPingSprite, HudSpriteGpu, HudStatsScrollbarSprite, HudStatsSprite,
-        HUD_HOTBAR_SLOTS,
+        HudChatMessage, HudCrosshairAttackIndicator, HudDigitGlyph, HudFontGlyphBook,
+        HudFontGlyphMap, HudHotbarMode, HudInventoryScreen, HudItemIcon, HudNineSliceSprite,
+        HudObfuscatedGlyphPool, HudPlayerListPingSprite, HudSpriteGpu, HudStatsScrollbarSprite,
+        HudStatsSprite, HUD_HOTBAR_SLOTS,
     },
     item_entities::{create_item_entity_pipeline, ItemEntityAtlasGpu, ItemEntityBillboard},
     item_models::{
@@ -582,7 +582,6 @@ pub struct Renderer {
     pub(super) selection_outline: Option<SelectionOutlineGpu>,
     pub(super) chunk_border_outline: Option<SelectionOutlineGpu>,
     pub(super) entity_scene_outline: Option<SelectionOutlineGpu>,
-    pub(super) entity_target_outline: Option<SelectionOutlineGpu>,
     pub(super) debug_filled_boxes: Vec<DebugFilledBox>,
     pub(super) debug_filled_rects: Vec<DebugFilledRect>,
     pub(super) debug_text_billboards: Vec<DebugTextBillboard>,
@@ -593,6 +592,10 @@ pub struct Renderer {
     pub(super) game_test_highlight_text_billboards: Vec<DebugTextBillboard>,
     pub(super) hud_spyglass_scope_texture: Option<HudSpriteGpu>,
     pub(super) hud_crosshair: Option<HudSpriteGpu>,
+    pub(super) hud_crosshair_attack_indicator_full: Option<HudSpriteGpu>,
+    pub(super) hud_crosshair_attack_indicator_background: Option<HudSpriteGpu>,
+    pub(super) hud_crosshair_attack_indicator_progress: Option<HudSpriteGpu>,
+    pub(super) hud_crosshair_attack_indicator: HudCrosshairAttackIndicator,
     pub(super) hud_hotbar: Option<HudSpriteGpu>,
     pub(super) hud_hotbar_selection: Option<HudSpriteGpu>,
     pub(super) hud_spectator_close: Option<HudSpriteGpu>,
@@ -2038,7 +2041,6 @@ impl Renderer {
             selection_outline: None,
             chunk_border_outline: None,
             entity_scene_outline: None,
-            entity_target_outline: None,
             debug_filled_boxes: Vec::new(),
             debug_filled_rects: Vec::new(),
             debug_text_billboards: Vec::new(),
@@ -2047,6 +2049,10 @@ impl Renderer {
             game_test_highlight_text_billboards: Vec::new(),
             hud_spyglass_scope_texture: None,
             hud_crosshair: None,
+            hud_crosshair_attack_indicator_full: None,
+            hud_crosshair_attack_indicator_background: None,
+            hud_crosshair_attack_indicator_progress: None,
+            hud_crosshair_attack_indicator: HudCrosshairAttackIndicator::None,
             hud_hotbar: None,
             hud_hotbar_selection: None,
             hud_spectator_close: None,
@@ -2700,19 +2706,6 @@ impl Renderer {
             return;
         }
         self.entity_scene_outline =
-            outline.map(|outline| create_selection_outline_gpu(&self.device, outline));
-    }
-
-    pub fn set_entity_target_outline(&mut self, outline: Option<SelectionOutline>) {
-        if self
-            .entity_target_outline
-            .as_ref()
-            .map(|selection| &selection.outline)
-            == outline.as_ref()
-        {
-            return;
-        }
-        self.entity_target_outline =
             outline.map(|outline| create_selection_outline_gpu(&self.device, outline));
     }
 
