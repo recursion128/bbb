@@ -20285,7 +20285,7 @@ mod tests {
             .unwrap();
         assert_eq!(renderer.counters().item_model_vertex_upload_bytes, 0);
         assert_eq!(renderer.counters().item_model_index_upload_bytes, 0);
-        assert!(renderer.counters().item_instance_upload_bytes > 0);
+        assert_eq!(renderer.counters().item_instance_upload_bytes, 0);
     }
 
     #[test]

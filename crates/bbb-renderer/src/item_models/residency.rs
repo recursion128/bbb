@@ -569,7 +569,6 @@ impl ItemModelResidency {
             .expect("item frame overflow");
         self.pinned.clear();
         self.instances.clear();
-        self.gpu_instances.clear();
         self.draws.clear();
         counters.item_model_lookup_nanos = 0;
         counters.item_gpu_apply_nanos = 0;
@@ -733,9 +732,20 @@ impl ItemModelResidency {
         }
 
         let apply_started = Instant::now();
-        self.gpu_instances.clear();
-        self.gpu_instances
-            .extend(instances.iter().map(ItemModelGpuInstance::from_record));
+        let previous_instance_count = self.gpu_instances.len();
+        let mut instance_upload_required = instances.len() > previous_instance_count;
+        for (index, instance) in instances.iter().enumerate() {
+            let next = ItemModelGpuInstance::from_record(instance);
+            if let Some(current) = self.gpu_instances.get_mut(index) {
+                if bytemuck::bytes_of(current) != bytemuck::bytes_of(&next) {
+                    instance_upload_required = true;
+                    *current = next;
+                }
+            } else {
+                self.gpu_instances.push(next);
+            }
+        }
+        self.gpu_instances.truncate(instances.len());
         self.draws.clear();
         for (index, instance) in instances.iter().enumerate() {
             let index = u32::try_from(index).expect("instance count checked above");
@@ -764,16 +774,18 @@ impl ItemModelResidency {
         }
         let previous_capacity = self.instance_buffer.capacity();
         let bytes = bytemuck::cast_slice(&self.gpu_instances);
-        let _uploaded = self.instance_buffer.upload(device, queue, bytes);
+        let uploaded =
+            instance_upload_required && self.instance_buffer.upload(device, queue, bytes);
         if self.instance_buffer.capacity() > previous_capacity {
             counters.item_extraction_scratch_capacity_growths = counters
                 .item_extraction_scratch_capacity_growths
                 .saturating_add(1);
         }
-        counters.item_instance_upload_bytes = bytes.len() as u64;
+        let uploaded_bytes = if uploaded { bytes.len() as u64 } else { 0 };
+        counters.item_instance_upload_bytes = uploaded_bytes;
         self.pending_instance_upload_bytes = self
             .pending_instance_upload_bytes
-            .saturating_add(bytes.len() as u64);
+            .saturating_add(uploaded_bytes);
         counters.item_model_instances = instances.len();
         self.instances = instances;
         record_apply_time(counters, apply_started);
@@ -2355,6 +2367,77 @@ mod tests {
         assert_eq!(
             renderer.resident_item_model_instance_orders_for_test(),
             vec![9]
+        );
+    }
+
+    #[test]
+    fn identical_gpu_instances_skip_upload_while_draw_metadata_refreshes() {
+        let Some(mut renderer) = Renderer::new_offscreen(16, 16) else {
+            return;
+        };
+        renderer.begin_item_model_frame();
+        let key = renderer.item_model_asset_key(
+            identity("minecraft:stone"),
+            ItemModelAtlasKind::Blocks,
+            ItemModelGeometryClass::Solid,
+        );
+        assert_eq!(
+            renderer.ensure_item_model_resident(key.clone(), || vec![quad(false)]),
+            ItemModelResidencyOutcome::Created
+        );
+        renderer
+            .set_resident_item_model_instances(vec![ItemModelInstanceRecord::new(
+                key.clone(),
+                Mat4::IDENTITY,
+                [1.0; 4],
+                [1.0; 2],
+                [0.0, 10.0],
+                ItemModelFoil::None,
+                ItemModelDrawTarget::Gui,
+                ItemModelDrawPhase::Solid,
+                9,
+            )])
+            .unwrap();
+        assert_eq!(
+            renderer.counters().item_instance_upload_bytes,
+            std::mem::size_of::<ItemModelGpuInstance>() as u64
+        );
+
+        renderer.begin_item_model_frame();
+        assert_eq!(
+            renderer.ensure_item_model_resident(key.clone(), Vec::new),
+            ItemModelResidencyOutcome::Reused
+        );
+        let scissor = ItemModelScissorRect::new(1, 2, 3, 4);
+        renderer
+            .set_resident_item_model_instances(vec![ItemModelInstanceRecord::new(
+                key,
+                Mat4::IDENTITY,
+                [1.0; 4],
+                [1.0; 2],
+                [0.0, 10.0],
+                ItemModelFoil::None,
+                ItemModelDrawTarget::Gui,
+                ItemModelDrawPhase::Translucent,
+                10,
+            )
+            .with_scissor(scissor)])
+            .unwrap();
+
+        assert_eq!(renderer.counters().item_instance_upload_bytes, 0);
+        assert_eq!(renderer.item_model_residency.draws().len(), 1);
+        assert_eq!(
+            renderer.item_model_residency.draws()[0].target,
+            ItemModelDrawTarget::Gui
+        );
+        assert_eq!(
+            renderer.item_model_residency.draws()[0].phase,
+            ItemModelDrawPhase::Translucent
+        );
+        assert_eq!(renderer.item_model_residency.draws()[0].scissor, scissor);
+        assert_eq!(
+            renderer.resident_item_model_instance_orders_for_test(),
+            vec![10]
         );
     }
 

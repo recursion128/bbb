@@ -44,7 +44,7 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
   revision caches to stable block-entity and debug projections without caching
   partial-tick or animation-dependent state.
 - Measure and reduce the remaining dynamic item-model property-selection,
-  per-frame instance upload, draw/pipeline state churn, and driver-deferred
+  changed-instance upload, draw/pipeline state churn, and driver-deferred
   resident-release tails. Any change must preserve exact phase/translucent
   order and the explicit bounded-owner fallback rather than dropping visible
   instances.

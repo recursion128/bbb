@@ -480,10 +480,13 @@ collapse to one instanced draw without sorting; phase filters preserve the
 existing world, item-entity and depth-cleared first-person pass positions.
 Static and instance uploads are accumulated until the next actual render and
 then consumed, so a second render of the same extraction reports zero upload
-rather than repeating stale telemetry.  Test builds reconstruct legacy meshes
-only under `cfg(test)` to keep the large vanilla pose-equivalence corpus
-checking final geometry; that compatibility projection is absent from normal
-and benchmark builds.
+rather than repeating stale telemetry. Exact non-empty GPU instance bytes are
+also retained across extraction boundaries: an identical payload reuses the
+existing grow-only buffer while draw grouping, order, target, phase and scissor
+metadata are refreshed. Test builds reconstruct legacy meshes only under
+`cfg(test)` to keep the large vanilla pose-equivalence corpus checking final
+geometry; that compatibility projection is absent from normal and benchmark
+builds.
 
 The phase-3 isolated instance-contract run on the same Ryzen 9 7945HX host uses
 the phase-1 Criterion configuration and the same six-quad mixed
@@ -505,13 +508,14 @@ frame timer.
 
 The 0-50% resident figures measure the already-frozen visibility-first
 contract (reject before full instance construction); they do not by themselves
-prove every item producer applies equivalent culling.  The production hard
+prove every item producer applies equivalent culling. The production hard
 assertion is stronger at the residency boundary: after a first offscreen owner
-build, transform/camera-only replacement reports zero vertex/index bytes and
-only instance bytes, and another render without replacement reports zero for
-all three upload classes.  The representative two-owner cube retains 1,392
-logical CPU geometry bytes plus driver-owned GPU buffers; driver-deferred
-release remains outside logical peak accounting.
+build, an exact repeated extraction reports zero for all three upload classes;
+transform/camera-only replacement reports zero vertex/index bytes and only
+instance bytes; and another render without replacement remains zero. The
+representative two-owner cube retains 1,392 logical CPU geometry bytes plus
+driver-owned GPU buffers; driver-deferred release remains outside logical peak
+accounting.
 
 Phase 4 of the item-residency slice moves dynamic map pixels below the same
 stable-owner boundary. Canonical `MapColors` is an Arc-COW byte owner with an
@@ -602,10 +606,10 @@ work, but disabling it still leaves this residency boundary and all zero-static-
 upload assertions intact.
 
 Remaining measured boundaries are dynamic/special model selection and property
-evaluation before an identity is known, per-frame instance uploads,
-draw/pipeline state churn, and driver-owned deferred-release memory. Item model
-residency and persistent map pixels each allow 256 MiB logical ownership, while
-a frame that pins more owners than the bound can temporarily retain explicit
+evaluation before an identity is known, changed-instance uploads, draw/pipeline
+state churn, and driver-owned deferred-release memory. Item model residency and
+persistent map pixels each allow 256 MiB logical ownership, while a frame that
+pins more owners than the bound can temporarily retain explicit
 fallback/overflow storage. These are not hidden inside the reported logical
 peak. A strict equal-load official Java 26.1 CPU/GPU capture was not produced
 by this microbenchmark slice and remains subject to the comparison protocol
