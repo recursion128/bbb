@@ -2101,6 +2101,23 @@ impl EntityStore {
         Some(entity_is_fall_flying(&metadata.data_values))
     }
 
+    /// Vanilla `LivingEntity.stopFallFlying` mutates shared flag 7 locally on
+    /// the client too (the `travelFallFlying` climbable branch); the server
+    /// remains authoritative and re-syncs the flag on its own tick.
+    pub(crate) fn stop_fall_flying(&mut self, id: i32) -> Option<()> {
+        let accessors = vanilla_entity_metadata_entity_accessors()?;
+        let current = self.metadata_byte(
+            id,
+            accessors.shared_flags_data_id,
+            accessors.shared_flags_default,
+        )?;
+        self.set_local_metadata_byte(
+            id,
+            accessors.shared_flags_data_id,
+            current & !(accessors.fall_flying_mask as i8),
+        )
+    }
+
     pub(crate) fn is_descending(&self, id: i32) -> Option<bool> {
         let accessors = vanilla_entity_metadata_entity_accessors()?;
         Some(

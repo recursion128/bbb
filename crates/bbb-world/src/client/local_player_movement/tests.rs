@@ -5809,3 +5809,160 @@ fn local_player_soul_sand_speed_factor_applies_under_water() {
         0.000001,
     );
 }
+
+fn apply_fall_flying(world: &mut WorldStore, entity_id: i32) -> bool {
+    let accessors = crate::entities::vanilla_entity_metadata_entity_accessors()
+        .expect("generated base Entity metadata accessors must resolve");
+    world.apply_set_entity_data(ProtocolSetEntityData {
+        id: entity_id,
+        values: vec![ProtocolEntityDataValue {
+            data_id: accessors.shared_flags_data_id,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+            value: ProtocolEntityDataValueKind::Byte(accessors.fall_flying_mask),
+        }],
+    })
+}
+
+#[test]
+fn local_player_fall_flying_level_glide_uses_lift_and_forward_conversion() {
+    let mut world = flat_collision_world();
+    attach_local_player_entity(&mut world, 123);
+    assert!(apply_fall_flying(&mut world, 123));
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: vec3(0.5, 8.0, 0.5),
+        on_ground: false,
+        ..LocalPlayerPoseState::default()
+    });
+
+    let pose = world
+        .advance_local_player_input(
+            LocalPlayerInputState {
+                focused: true,
+                ..LocalPlayerInputState::default()
+            },
+            LOCAL_PHYSICS_TICK_SECONDS,
+        )
+        .unwrap();
+
+    // `updateFallFlyingMovement` at yaw 0 / pitch 0 from rest:
+    // y = 0.08 * (-1 + 0.75) = -0.02, forward conversion 0.002 puts
+    // y at -0.018 and z at 0.002, the look steer pulls z back by 0.0002,
+    // then the drag multiply (0.99, 0.98, 0.99).
+    assert_f64_near(pose.delta_movement.y, -0.018 * 0.98, 0.000001);
+    assert_f64_near(pose.delta_movement.z, 0.0018 * 0.99, 0.000001);
+    assert_f64_near(pose.position.y, 8.0 - 0.018 * 0.98, 0.000001);
+    assert_f64_near(pose.position.z, 0.5 + 0.0018 * 0.99, 0.000001);
+    assert!(!pose.on_ground);
+}
+
+#[test]
+fn local_player_fall_flying_looking_up_converts_speed_to_climb() {
+    let mut world = flat_collision_world();
+    attach_local_player_entity(&mut world, 123);
+    assert!(apply_fall_flying(&mut world, 123));
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: vec3(0.5, 8.0, 0.5),
+        x_rot: -30.0,
+        delta_movement: vec3(0.0, 0.0, 1.0),
+        on_ground: false,
+        ..LocalPlayerPoseState::default()
+    });
+
+    let pose = world
+        .advance_local_player_input(
+            LocalPlayerInputState {
+                focused: true,
+                ..LocalPlayerInputState::default()
+            },
+            LOCAL_PHYSICS_TICK_SECONDS,
+        )
+        .unwrap();
+
+    // Pitch -30°: lift = cos² = 0.75, so y = 0.08 * (-1 + 0.75 * 0.75)
+    // = -0.035; the downward conversion adds 0.002625 to y and z; the climb
+    // conversion drains 0.02 from z into y * 3.2; the look steer adds
+    // (1 - 0.982625) * 0.1 back to z; then the drag multiply.
+    assert_f64_near(pose.delta_movement.y, 0.031625 * 0.98, 0.000001);
+    assert_f64_near(pose.delta_movement.z, 0.9843625 * 0.99, 0.000001);
+    assert!(pose.delta_movement.y > 0.0);
+    assert!(pose.delta_movement.z < 1.0);
+}
+
+#[test]
+fn local_player_fall_flying_on_climbable_clears_flag_and_uses_air_travel() {
+    let mut world = flat_collision_world();
+    set_test_block(&mut world, 0, 4, 0, LADDER_SOUTH_BLOCK_STATE_ID);
+    attach_local_player_entity(&mut world, 123);
+    assert!(apply_fall_flying(&mut world, 123));
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: vec3(0.5, 4.1, 0.5),
+        delta_movement: vec3(0.0, 0.0, 0.4),
+        on_ground: false,
+        ..LocalPlayerPoseState::default()
+    });
+
+    let pose = world
+        .advance_local_player_input(
+            LocalPlayerInputState {
+                focused: true,
+                ..LocalPlayerInputState::default()
+            },
+            LOCAL_PHYSICS_TICK_SECONDS,
+        )
+        .unwrap();
+
+    // `travelFallFlying` on a climbable runs `stopFallFlying` locally and
+    // falls through to `travelInAir`, whose `handleOnClimbable` clamp caps
+    // the carried horizontal delta at 0.15 before the move.
+    assert_eq!(world.entities.is_fall_flying(123), Some(false));
+    assert_f64_near(pose.position.z, 0.5 + 0.15, 0.000001);
+
+    let second = world
+        .advance_local_player_input(
+            LocalPlayerInputState {
+                focused: true,
+                ..LocalPlayerInputState::default()
+            },
+            LOCAL_PHYSICS_TICK_SECONDS,
+        )
+        .unwrap();
+    assert!(second.position.z > 0.65);
+}
+
+#[test]
+fn local_player_fall_flying_landing_zeroes_vertical_and_keeps_server_flag() {
+    let mut world = flat_collision_world();
+    attach_local_player_entity(&mut world, 123);
+    assert!(apply_fall_flying(&mut world, 123));
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: vec3(0.5, 1.6, 0.5),
+        delta_movement: vec3(0.0, -0.5, 0.0),
+        on_ground: false,
+        ..LocalPlayerPoseState::default()
+    });
+
+    let mut pose = None;
+    for _ in 0..4 {
+        pose = Some(
+            world
+                .advance_local_player_input(
+                    LocalPlayerInputState {
+                        focused: true,
+                        ..LocalPlayerInputState::default()
+                    },
+                    LOCAL_PHYSICS_TICK_SECONDS,
+                )
+                .unwrap(),
+        );
+    }
+    let pose = pose.unwrap();
+
+    // The `Entity.move` landing zeroes the vertical delta; clearing the glide
+    // flag on touchdown is `LivingEntity.updateFallFlying` server logic, so
+    // the local flag stays until the server re-syncs it.
+    assert!(pose.on_ground);
+    assert!(pose.position.y < 1.1);
+    assert_f64_near(pose.delta_movement.y, 0.0, 0.000001);
+    assert_eq!(world.entities.is_fall_flying(123), Some(true));
+}

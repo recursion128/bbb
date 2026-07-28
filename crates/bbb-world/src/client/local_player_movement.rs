@@ -98,6 +98,8 @@ const LOCAL_PLAYER_AIR_ACCELERATION: f64 = 0.02;
 const LOCAL_PLAYER_SPRINT_AIR_ACCELERATION: f64 = 0.025999999;
 // `LivingEntity.travelInAir`: friction = blockFriction * 0.91.
 const LOCAL_HORIZONTAL_FRICTION: f64 = 0.91;
+// `LivingEntity.updateFallFlyingMovement`: multiply(0.99, 0.98, 0.99).
+const LOCAL_PLAYER_FALL_FLYING_HORIZONTAL_FRICTION: f64 = 0.99;
 // Vanilla `SPEED_MODIFIER_SPRINTING`: +30% MULTIPLY_TOTAL on movement speed.
 const LOCAL_PLAYER_SPRINT_SPEED_MODIFIER: f64 = 1.3;
 const LOCAL_PLAYER_CLIMBABLE_MAX_HORIZONTAL_VELOCITY_PER_TICK: f64 = 0.15;
@@ -307,6 +309,27 @@ fn advance_local_player_physics_step(
         }
     }
 
+    // Vanilla `LivingEntity.travel` routes fall flying between the fluid and
+    // air branches; creative flight cannot coexist with the shared glide flag
+    // (`Player.canGlide` requires `!abilities.flying`). On a climbable,
+    // `travelFallFlying` clears the flag locally (the client-side
+    // `stopFallFlying` half) and falls through to the air chain.
+    if flying.is_none() && local_player_is_fall_flying(world) {
+        if on_climbable_before {
+            if let Some(local_player_id) = world.local_player_id {
+                world.entities.stop_fall_flying(local_player_id);
+            }
+        } else {
+            return advance_local_player_fall_flying_physics_step(
+                world,
+                pose,
+                input,
+                step_seconds,
+                stuck_multiplier,
+            );
+        }
+    }
+
     // `Player.travel` snapshots the pre-travel vertical delta while
     // creative-flying and rescales it by 0.6 after the shared travel chain,
     // discarding whatever the gravity/collision tail produced.
@@ -465,6 +488,160 @@ fn advance_local_player_physics_step(
     pose.on_ground = on_ground;
     pose.horizontal_collision = horizontal_collision;
     (pose, step_move)
+}
+
+/// Vanilla `LivingEntity.travelFallFlying`: the glide aerodynamics rebuild
+/// the carried delta from the look angle before `Entity.move`; movement
+/// input is not consumed (`updateFallFlyingMovement` has no `moveRelative`),
+/// and the fly-into-wall collision damage stays server-owned.
+fn advance_local_player_fall_flying_physics_step(
+    world: &mut WorldStore,
+    mut pose: LocalPlayerPoseState,
+    input: LocalPlayerInputState,
+    step_seconds: f64,
+    stuck_multiplier: Option<EntityVec3>,
+) -> (LocalPlayerPoseState, EntityBlockEffectMovement) {
+    let step_ticks = step_seconds / LOCAL_PHYSICS_TICK_SECONDS;
+    pose.delta_movement = local_player_fall_flying_updated_movement(world, pose, step_ticks);
+
+    let mut requested_x = pose.delta_movement.x * step_ticks;
+    let mut requested_y = pose.delta_movement.y * step_ticks;
+    let mut requested_z = pose.delta_movement.z * step_ticks;
+    if let Some(stuck) = stuck_multiplier {
+        requested_x *= stuck.x;
+        requested_y *= stuck.y;
+        requested_z *= stuck.z;
+        pose.delta_movement = ProtocolVec3d::default();
+    }
+    if should_back_off_from_edge(world, pose, input, requested_y) {
+        (requested_x, requested_z) = back_off_from_edge(world, pose, requested_x, requested_z);
+    }
+    let collision_context = LocalPlayerCollisionContext::for_pose(world, pose, input.sneak);
+    let movement = clip_local_player_movement(
+        world,
+        pose,
+        requested_x,
+        requested_y,
+        requested_z,
+        pose.on_ground,
+        collision_context,
+    );
+    let step_move = EntityBlockEffectMovement::clipped(
+        EntityVec3 {
+            x: pose.position.x,
+            y: pose.position.y,
+            z: pose.position.z,
+        },
+        EntityVec3 {
+            x: pose.position.x + movement.x,
+            y: pose.position.y + movement.y,
+            z: pose.position.z + movement.z,
+        },
+        EntityVec3 {
+            x: requested_x,
+            y: requested_y,
+            z: requested_z,
+        },
+    );
+    pose.position.x += movement.x;
+    pose.position.y += movement.y;
+    pose.position.z += movement.z;
+
+    let x_collision = (movement.x - requested_x).abs() > COLLISION_EPSILON;
+    let z_collision = (movement.z - requested_z).abs() > COLLISION_EPSILON;
+    let horizontal_collision = x_collision || z_collision;
+    let vertical_collision = (movement.y - requested_y).abs() > COLLISION_EPSILON;
+    let on_ground = vertical_collision && requested_y < 0.0
+        || local_player_supported(world, pose, collision_context);
+    let landing_fall_distance =
+        on_ground.then_some(pose.fall_distance + if movement.y < 0.0 { -movement.y } else { 0.0 });
+    let bounced_on_slime = vertical_collision
+        && requested_y < 0.0
+        && !input.sneak
+        && local_player_standing_on_block(world, pose, "minecraft:slime_block");
+    let fluid_contact = local_player_fluid_contact(world, pose);
+    if let Some(fall_distance) = landing_fall_distance {
+        append_local_player_powder_snow_fall_sound(world, pose, fall_distance);
+    }
+    pose.fall_distance = if fluid_contact.in_water() {
+        0.0
+    } else {
+        next_local_player_fall_distance(pose.fall_distance, movement.y, on_ground)
+    };
+
+    // `Entity.move` tail on the carried delta: zero the collided horizontal
+    // axes and let the supporting block resolve the vertical axis. The block
+    // speed factor is pinned to 1.0 while fall flying
+    // (`Player.getBlockSpeedFactor`), and `travelFallFlying` has no
+    // climbable clamp, wall-climb impulse, gravity, or friction tail — the
+    // aerodynamics above already folded gravity and the 0.99/0.98 drag in.
+    if x_collision {
+        pose.delta_movement.x = 0.0;
+    }
+    if z_collision {
+        pose.delta_movement.z = 0.0;
+    }
+    if vertical_collision {
+        pose.delta_movement.y = if bounced_on_slime && pose.delta_movement.y < 0.0 {
+            -pose.delta_movement.y
+        } else {
+            0.0
+        };
+    }
+
+    pose.on_ground = on_ground;
+    pose.horizontal_collision = horizontal_collision;
+    (pose, step_move)
+}
+
+/// `LivingEntity.updateFallFlyingMovement`: pitch-derived lift against
+/// gravity, downward-motion conversion along the look direction, climb
+/// conversion that drains horizontal speed while looking up, horizontal
+/// steering toward the look direction, then the 0.99/0.98/0.99 drag.
+fn local_player_fall_flying_updated_movement(
+    world: &WorldStore,
+    pose: LocalPlayerPoseState,
+    step_ticks: f64,
+) -> ProtocolVec3d {
+    let mut movement = pose.delta_movement;
+    let pitch_radians = f64::from(pose.x_rot).to_radians();
+    let yaw_radians = f64::from(pose.y_rot).to_radians();
+    // `Entity.calculateViewVector` for the look angle.
+    let look_x = -yaw_radians.sin() * pitch_radians.cos();
+    let look_z = yaw_radians.cos() * pitch_radians.cos();
+    let look_horizontal = (look_x * look_x + look_z * look_z).sqrt();
+    let horizontal_speed = (movement.x * movement.x + movement.z * movement.z).sqrt();
+    let gravity = local_player_effective_gravity_per_tick(world, movement.y);
+    let lift = pitch_radians.cos() * pitch_radians.cos();
+    movement.y += gravity * (-1.0 + lift * 0.75) * step_ticks;
+    if movement.y < 0.0 && look_horizontal > 0.0 {
+        let convert = movement.y * -0.1 * lift * step_ticks;
+        movement.x += look_x * convert / look_horizontal;
+        movement.y += convert;
+        movement.z += look_z * convert / look_horizontal;
+    }
+    if pitch_radians < 0.0 && look_horizontal > 0.0 {
+        let convert = horizontal_speed * -pitch_radians.sin() * 0.04 * step_ticks;
+        movement.x -= look_x * convert / look_horizontal;
+        movement.y += convert * 3.2;
+        movement.z -= look_z * convert / look_horizontal;
+    }
+    if look_horizontal > 0.0 {
+        movement.x += (look_x / look_horizontal * horizontal_speed - movement.x) * 0.1 * step_ticks;
+        movement.z += (look_z / look_horizontal * horizontal_speed - movement.z) * 0.1 * step_ticks;
+    }
+    ProtocolVec3d {
+        x: movement.x * LOCAL_PLAYER_FALL_FLYING_HORIZONTAL_FRICTION.powf(step_ticks),
+        y: movement.y * LOCAL_VERTICAL_FRICTION.powf(step_ticks),
+        z: movement.z * LOCAL_PLAYER_FALL_FLYING_HORIZONTAL_FRICTION.powf(step_ticks),
+    }
+}
+
+fn local_player_is_fall_flying(world: &WorldStore) -> bool {
+    world
+        .local_player_id
+        .and_then(|id| world.entities.is_fall_flying(id))
+        .unwrap_or(false)
 }
 
 /// Vanilla `LocalPlayer.modifyInput`: the raw ±1 key axes scaled by 0.98,
