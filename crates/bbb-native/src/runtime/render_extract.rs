@@ -2237,8 +2237,9 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) hud_debug_options_screen: Option<HudDebugOptionsScreen>,
     pub(crate) hud_action_bar_text: Option<HudActionBarText>,
     pub(crate) hud_title_text: Option<HudTitleText>,
-    pub(crate) hud_scoreboard_sidebar: Option<HudScoreboardSidebar>,
-    pub(crate) hud_player_list: Option<HudPlayerList>,
+    pub(crate) hud_scoreboard_sidebar: RendererFrameUpdate<Option<HudScoreboardSidebar>>,
+    pub(crate) hud_player_list: RendererFrameUpdate<Option<HudPlayerList>>,
+    pub(crate) hud_player_list_tick_count: u64,
     pub(crate) hud_chat_messages: RendererFrameUpdate<Vec<HudChatMessage>>,
     pub(crate) hud_chat_context: HudChatContext,
     pub(crate) hud_command_suggestions: Option<HudCommandSuggestions>,
@@ -2514,13 +2515,22 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_hud_debug_options_screen(frame.hud_debug_options_screen);
     renderer.set_hud_action_bar_text(frame.hud_action_bar_text);
     renderer.set_hud_title_text(frame.hud_title_text);
-    renderer.set_hud_scoreboard_sidebar(frame.hud_scoreboard_sidebar);
+    if let RendererFrameUpdate::Replace(sidebar) = frame.hud_scoreboard_sidebar {
+        renderer.set_hud_scoreboard_sidebar(sidebar);
+    }
     if let RendererFrameUpdate::Replace(messages) = frame.hud_chat_messages {
         renderer.set_hud_chat_messages(messages);
     }
     renderer.set_hud_chat_context(frame.hud_chat_context);
     renderer.set_hud_command_suggestions(frame.hud_command_suggestions);
-    renderer.set_hud_player_list(frame.hud_player_list);
+    match frame.hud_player_list {
+        RendererFrameUpdate::Unchanged => {
+            renderer.set_hud_player_list_tick_count(frame.hud_player_list_tick_count);
+        }
+        RendererFrameUpdate::Replace(player_list) => {
+            renderer.set_hud_player_list(player_list);
+        }
+    }
     renderer.set_hud_debug_overlay(frame.hud_debug_overlay);
     if let RendererFrameUpdate::Replace(bars) = frame.hud_boss_bars {
         renderer.set_hud_boss_bars(bars);

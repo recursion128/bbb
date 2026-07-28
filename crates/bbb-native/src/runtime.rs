@@ -56,21 +56,22 @@ use bbb_renderer::{
     HudInventoryTextInputDecoration, HudInventoryTextLabel, HudInventoryTooltip,
     HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
     HudJigsawBlockEditorScreen, HudJigsawBlockEditorTextField, HudJumpBar, HudMobEffect,
-    HudPauseScreen, HudPauseScreenTooltip, HudPlayerHealth, HudResidentItemLayer,
-    HudSignEditorKind, HudSignEditorPreedit, HudSignEditorScreen, HudSocialInteractionsFocus,
-    HudSocialInteractionsPage, HudSocialInteractionsPlayerAction, HudSocialInteractionsScreen,
-    HudSpyglassScope, HudStatsItemRow, HudStatsRow, HudStatsScreen, HudStructureBlockEditorScreen,
-    HudStructureBlockEditorTextField, HudStructureBlockMode, HudStyledTextRun, HudSystemToast,
-    HudTestBlockEditorScreen, HudTestBlockEditorTextField, HudTestInstanceBlockEditorScreen,
-    HudTestInstanceBlockEditorTextField, HudTextStyle, HudUvRect, HudVehicleHealth, HudWinScreen,
-    HudWinScreenLine, ItemModelAssetIdentity, ItemModelAssetSource, ItemModelGeometryClass,
-    LevelLighting, LightmapEnvironment, LightningBoltRenderState, ParticleBlockFluidSurfaceSample,
-    ParticleEntityTargetContext, ParticleFluidKind, ParticleLocalPlayerScopeContext,
-    ParticlePlayerMotionContext, ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand,
-    Renderer, SelectionColoredBox, SelectionLine, SelectionOutline, SignModelAttachment,
-    SignModelWood, SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState,
-    DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS,
-    ITEM_MODEL_NO_OVERLAY, VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
+    HudPauseScreen, HudPauseScreenTooltip, HudPlayerHealth, HudPlayerList, HudResidentItemLayer,
+    HudScoreboardSidebar, HudSignEditorKind, HudSignEditorPreedit, HudSignEditorScreen,
+    HudSocialInteractionsFocus, HudSocialInteractionsPage, HudSocialInteractionsPlayerAction,
+    HudSocialInteractionsScreen, HudSpyglassScope, HudStatsItemRow, HudStatsRow, HudStatsScreen,
+    HudStructureBlockEditorScreen, HudStructureBlockEditorTextField, HudStructureBlockMode,
+    HudStyledTextRun, HudSystemToast, HudTestBlockEditorScreen, HudTestBlockEditorTextField,
+    HudTestInstanceBlockEditorScreen, HudTestInstanceBlockEditorTextField, HudTextStyle, HudUvRect,
+    HudVehicleHealth, HudWinScreen, HudWinScreenLine, ItemModelAssetIdentity, ItemModelAssetSource,
+    ItemModelGeometryClass, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
+    ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext, ParticleFluidKind,
+    ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext, ParticleSoundEvent,
+    ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionColoredBox, SelectionLine,
+    SelectionOutline, SignModelAttachment, SignModelWood, SkyEnvironment, SkyMoonPhase,
+    WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY,
+    VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
     VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
     VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
@@ -725,6 +726,8 @@ pub(crate) struct HudRenderRuntime {
     last_ui_frame_at: Option<Instant>,
     chat_cache_key: Option<HudChatCacheKey>,
     hotbar_block_item_models_cache_key: Option<HudHotbarBlockItemModelsCacheKey>,
+    scoreboard_sidebar_cache_key: Option<HudScoreboardSidebarCacheKey>,
+    player_list_cache_key: Option<HudPlayerListCacheKey>,
     boss_connection_generation: Option<u64>,
     boss_progress: BTreeMap<uuid::Uuid, BossBarProgressPresentation>,
     contextual: waypoint_locator::HudContextualRuntime,
@@ -763,6 +766,26 @@ struct HudHotbarBlockItemModelsCacheKey {
     resources_loaded: bool,
     shift_down: bool,
     keybind_context: ItemModelKeybindContext,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+struct HudScoreboardSidebarCacheKey {
+    level_generation: u64,
+    display_revision: u64,
+    resource_generation: u64,
+    resources_loaded: bool,
+    hidden: bool,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+struct HudPlayerListCacheKey {
+    level_generation: u64,
+    display_revision: u64,
+    profile_presentation_revision: u64,
+    resource_generation: u64,
+    resources_loaded: bool,
+    visible: bool,
+    show_heads: bool,
 }
 
 impl ClientAnimationTickState {
@@ -914,6 +937,30 @@ impl HudRenderRuntime {
             return RendererFrameUpdate::Unchanged;
         }
         self.hotbar_block_item_models_cache_key = Some(key);
+        RendererFrameUpdate::Replace(project())
+    }
+
+    fn scoreboard_sidebar_update(
+        &mut self,
+        key: HudScoreboardSidebarCacheKey,
+        project: impl FnOnce() -> Option<HudScoreboardSidebar>,
+    ) -> RendererFrameUpdate<Option<HudScoreboardSidebar>> {
+        if self.scoreboard_sidebar_cache_key == Some(key) {
+            return RendererFrameUpdate::Unchanged;
+        }
+        self.scoreboard_sidebar_cache_key = Some(key);
+        RendererFrameUpdate::Replace(project())
+    }
+
+    fn player_list_update(
+        &mut self,
+        key: HudPlayerListCacheKey,
+        project: impl FnOnce() -> Option<HudPlayerList>,
+    ) -> RendererFrameUpdate<Option<HudPlayerList>> {
+        if self.player_list_cache_key == Some(key) {
+            return RendererFrameUpdate::Unchanged;
+        }
+        self.player_list_cache_key = Some(key);
         RendererFrameUpdate::Replace(project())
     }
 
@@ -3142,13 +3189,39 @@ pub(crate) fn update_renderer_from_publication(
     let hud_action_bar_text =
         hud_action_bar_text_from_world(world, item_runtime, entity_partial_tick);
     let hud_title_text = hud_title_text_from_world(world, item_runtime, entity_partial_tick);
-    let hud_scoreboard_sidebar = hud_scoreboard_sidebar_from_world(input, world, item_runtime);
-    let hud_player_list = hud_player_list_from_world(
-        input,
-        world,
-        item_runtime,
-        publication.client_tick_index,
-        publication.play_session_encrypted,
+    let resource_generation = item_runtime.map_or(0, NativeItemRuntime::resource_generation);
+    let resources_loaded = item_runtime.is_some();
+    let hud_scoreboard_sidebar = hud_render_runtime.scoreboard_sidebar_update(
+        HudScoreboardSidebarCacheKey {
+            level_generation: world.client_level_generation(),
+            display_revision: world.scoreboard_display_revision(),
+            resource_generation,
+            resources_loaded,
+            hidden: input.hide_gui(),
+        },
+        || hud_scoreboard_sidebar_from_world(input, world, item_runtime),
+    );
+    let hud_player_list_visible = hud_player_list_is_visible(input, world);
+    let hud_player_list = hud_render_runtime.player_list_update(
+        HudPlayerListCacheKey {
+            level_generation: world.client_level_generation(),
+            display_revision: world.player_list_display_revision(),
+            profile_presentation_revision: item_runtime
+                .map_or(0, NativeItemRuntime::profile_presentation_revision),
+            resource_generation,
+            resources_loaded,
+            visible: hud_player_list_visible,
+            show_heads: publication.play_session_encrypted,
+        },
+        || {
+            hud_player_list_from_world(
+                input,
+                world,
+                item_runtime,
+                publication.client_tick_index,
+                publication.play_session_encrypted,
+            )
+        },
     );
     let hud_chat_messages = hud_render_runtime.chat_messages_update(world, item_runtime);
     let queued_chat_messages = world.client_chat().delayed_messages.len();
@@ -4063,6 +4136,7 @@ pub(crate) fn update_renderer_from_publication(
             hud_title_text,
             hud_scoreboard_sidebar,
             hud_player_list,
+            hud_player_list_tick_count: publication.client_tick_index,
             hud_chat_messages,
             hud_chat_context,
             hud_command_suggestions,

@@ -5389,6 +5389,16 @@ impl Renderer {
             .synchronize(self.hud_player_list.as_ref());
     }
 
+    /// Advances vanilla's GUI-tick heart presentation without replacing the
+    /// stable player-list entries projected by native.
+    pub fn set_hud_player_list_tick_count(&mut self, tick_count: u64) {
+        if let Some(player_list) = self.hud_player_list.as_mut() {
+            player_list.tick_count = tick_count;
+        }
+        self.hud_player_list_runtime
+            .synchronize(self.hud_player_list.as_ref());
+    }
+
     /// Replaces the stable chat source entries and rebuilds the bounded
     /// renderer-owned wrapped-line cache once. Ordinary tick/fade frames use
     /// [`set_hud_chat_context`](Self::set_hud_chat_context) and never clone or

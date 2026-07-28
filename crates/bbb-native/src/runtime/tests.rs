@@ -749,6 +749,129 @@ fn hotbar_block_item_model_cache_requires_exact_world_and_input_resource_key() {
 }
 
 #[test]
+fn stable_hud_projection_caches_require_exact_revision_resource_and_input_keys() {
+    fn scoreboard_update(
+        runtime: &mut HudRenderRuntime,
+        key: HudScoreboardSidebarCacheKey,
+        builds: &std::cell::Cell<u64>,
+    ) -> RendererFrameUpdate<Option<bbb_renderer::HudScoreboardSidebar>> {
+        runtime.scoreboard_sidebar_update(key, || {
+            builds.set(builds.get() + 1);
+            None
+        })
+    }
+
+    fn player_list_update(
+        runtime: &mut HudRenderRuntime,
+        key: HudPlayerListCacheKey,
+        builds: &std::cell::Cell<u64>,
+    ) -> RendererFrameUpdate<Option<bbb_renderer::HudPlayerList>> {
+        runtime.player_list_update(key, || {
+            builds.set(builds.get() + 1);
+            None
+        })
+    }
+
+    let mut runtime = HudRenderRuntime::default();
+    let scoreboard_builds = std::cell::Cell::new(0);
+    let scoreboard_base = HudScoreboardSidebarCacheKey::default();
+    for key in [
+        scoreboard_base,
+        scoreboard_base,
+        HudScoreboardSidebarCacheKey {
+            display_revision: 1,
+            ..scoreboard_base
+        },
+        HudScoreboardSidebarCacheKey {
+            level_generation: 1,
+            display_revision: 1,
+            ..scoreboard_base
+        },
+        HudScoreboardSidebarCacheKey {
+            level_generation: 1,
+            display_revision: 1,
+            resources_loaded: true,
+            ..scoreboard_base
+        },
+        HudScoreboardSidebarCacheKey {
+            level_generation: 1,
+            display_revision: 1,
+            resource_generation: 1,
+            resources_loaded: true,
+            ..scoreboard_base
+        },
+        HudScoreboardSidebarCacheKey {
+            level_generation: 1,
+            display_revision: 1,
+            resource_generation: 1,
+            resources_loaded: true,
+            hidden: true,
+        },
+    ] {
+        let _ = scoreboard_update(&mut runtime, key, &scoreboard_builds);
+    }
+    assert_eq!(scoreboard_builds.get(), 6);
+
+    let player_list_builds = std::cell::Cell::new(0);
+    let player_list_base = HudPlayerListCacheKey::default();
+    for key in [
+        player_list_base,
+        player_list_base,
+        HudPlayerListCacheKey {
+            display_revision: 1,
+            ..player_list_base
+        },
+        HudPlayerListCacheKey {
+            level_generation: 1,
+            display_revision: 1,
+            ..player_list_base
+        },
+        HudPlayerListCacheKey {
+            level_generation: 1,
+            display_revision: 1,
+            profile_presentation_revision: 1,
+            ..player_list_base
+        },
+        HudPlayerListCacheKey {
+            level_generation: 1,
+            display_revision: 1,
+            profile_presentation_revision: 1,
+            resources_loaded: true,
+            ..player_list_base
+        },
+        HudPlayerListCacheKey {
+            level_generation: 1,
+            display_revision: 1,
+            profile_presentation_revision: 1,
+            resource_generation: 1,
+            resources_loaded: true,
+            ..player_list_base
+        },
+        HudPlayerListCacheKey {
+            level_generation: 1,
+            display_revision: 1,
+            profile_presentation_revision: 1,
+            resource_generation: 1,
+            resources_loaded: true,
+            visible: true,
+            ..player_list_base
+        },
+        HudPlayerListCacheKey {
+            level_generation: 1,
+            display_revision: 1,
+            profile_presentation_revision: 1,
+            resource_generation: 1,
+            resources_loaded: true,
+            visible: true,
+            show_heads: true,
+        },
+    ] {
+        let _ = player_list_update(&mut runtime, key, &player_list_builds);
+    }
+    assert_eq!(player_list_builds.get(), 8);
+}
+
+#[test]
 fn non_entity_render_observation_keeps_recent_and_peak_phase_costs() {
     let mut scratch = NonEntityRenderExtractionScratch::default();
     scratch.record_frame(

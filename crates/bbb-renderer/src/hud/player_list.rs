@@ -1016,6 +1016,13 @@ mod tests {
         assert_eq!(runtime.health_states.len(), 1);
         assert_eq!(runtime.health_state(2).unwrap().displayed_value, 18);
 
+        let unchanged_payload_later_tick = HudPlayerList {
+            tick_count: 32,
+            ..shorter.clone()
+        };
+        runtime.synchronize(Some(&unchanged_payload_later_tick));
+        assert_eq!(runtime.health_state(2).unwrap().displayed_value, 16);
+
         runtime.synchronize(None);
         assert!(runtime.health_states.is_empty());
         runtime.synchronize(Some(&shorter));
