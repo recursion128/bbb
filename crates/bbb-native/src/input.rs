@@ -5846,6 +5846,9 @@ fn debug_push_entity_additional_save_data(
     entity: &EntityState,
     fields: &mut Vec<String>,
 ) {
+    if bbb_world::vanilla_entity_type_is_living(entity.entity_type_id) {
+        debug_push_living_entity_additional_save_data(world, item_runtime, entity, fields);
+    }
     if bbb_world::vanilla_entity_type_is_minecart(entity.entity_type_id) {
         debug_push_minecart_additional_save_data(world, entity, fields);
     }
@@ -6408,6 +6411,150 @@ fn debug_push_entity_additional_save_data(
             debug_push_abstract_boat_additional_save_data(world, entity, fields);
         }
         _ => {}
+    }
+}
+
+fn debug_push_living_entity_additional_save_data(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    entity: &EntityState,
+    fields: &mut Vec<String>,
+) {
+    let Some(accessors) =
+        bbb_world::vanilla_entity_metadata_living_entity_accessors_for_entity_type(
+            entity.entity_type_id,
+        )
+    else {
+        return;
+    };
+    let health = debug_entity_data_float_present(entity, accessors.health_data_id)
+        .unwrap_or(accessors.health_default);
+    if let Some(health) = debug_snbt_float(health) {
+        fields.push(format!("Health: {health}"));
+    }
+    fields.push(format!(
+        "HurtTime: {}s",
+        entity
+            .client_animations
+            .hurt
+            .map_or(0, |hurt| hurt.hurt_time) as i16
+    ));
+    // `lastHurtByMobTimestamp` is assigned only by server-side combat and NBT
+    // load paths. Client damage events update `lastDamageSource` instead.
+    fields.push("HurtByTimestamp: 0".to_string());
+    fields.push(format!(
+        "DeathTime: {}s",
+        entity
+            .client_animations
+            .death
+            .map_or(0, |death| death.death_time) as i16
+    ));
+    let absorption = bbb_world::vanilla_entity_metadata_player_absorption_accessor_for_entity_type(
+        entity.entity_type_id,
+    )
+    .map(|(data_id, default)| debug_entity_data_float_present(entity, data_id).unwrap_or(default))
+    .unwrap_or(0.0);
+    if let Some(absorption) = debug_snbt_float(absorption) {
+        fields.push(format!("AbsorptionAmount: {absorption}"));
+    }
+
+    let attributes = entity
+        .attributes
+        .iter()
+        .map(|attribute| {
+            let descriptor = vanilla_attribute_type(attribute.attribute_id)?;
+            Some(format!(
+                "{{id: {}, base: {}}}",
+                debug_snbt_string(descriptor.resource_id),
+                debug_snbt_double(attribute.base)?
+            ))
+        })
+        .collect::<Option<Vec<_>>>();
+    if let Some(attributes) = attributes {
+        fields.push(format!("attributes: [{}]", attributes.join(", ")));
+    }
+
+    if !entity.mob_effects.is_empty() {
+        let effects = entity
+            .mob_effects
+            .values()
+            .map(|effect| {
+                let mut effect_fields = vec![format!(
+                    "id: {}",
+                    debug_snbt_string(vanilla_mob_effect_type(effect.effect_id)?.resource_id)
+                )];
+                effect_fields.extend(debug_mob_effect_details_fields(
+                    effect.amplifier,
+                    effect.duration_ticks,
+                    effect.ambient,
+                    effect.visible,
+                    effect.show_icon,
+                    None,
+                    0,
+                )?);
+                Some(format!("{{{}}}", effect_fields.join(", ")))
+            })
+            .collect::<Option<Vec<_>>>();
+        if let Some(effects) = effects {
+            fields.push(format!("active_effects: [{}]", effects.join(", ")));
+        }
+    }
+
+    let entity_accessors = vanilla_entity_metadata_entity_accessors()
+        .expect("generated base Entity metadata accessors must resolve");
+    let flags = debug_entity_data_byte_present(entity, entity_accessors.shared_flags_data_id)
+        .unwrap_or(entity_accessors.shared_flags_default);
+    fields.push(format!(
+        "FallFlying: {}",
+        debug_snbt_bool(flags & entity_accessors.fall_flying_mask != 0)
+    ));
+    if let Some(pos) =
+        debug_entity_data_optional_block_pos_present(entity, accessors.sleeping_pos_data_id)
+    {
+        fields.push(format!(
+            "sleeping_pos: [I; {}, {}, {}]",
+            pos.x, pos.y, pos.z
+        ));
+    }
+
+    // Do not synthesize `Brain.Packed`: most AI ticks are server-only, but
+    // client constructors and interactions can still install serializable
+    // memories (for example CopperGolem's randomized transport cooldown,
+    // Allay's liked player, and Villager's last-woken timestamp).
+
+    let context = PersistentSnbtContext {
+        item_runtime,
+        registry_access: Some(world.frozen_registry_access()),
+        ..PersistentSnbtContext::default()
+    };
+    let equipment = entity
+        .equipment
+        .iter()
+        .map(|update| {
+            let Some(item_id) = update.item.item_id else {
+                return Some(None);
+            };
+            let resource_id = item_runtime?.item_resource_id(item_id)?;
+            if resource_id == "minecraft:air" || update.item.count == 0 {
+                return Some(None);
+            }
+            let stack = debug_item_stack_snbt_with_context(
+                resource_id,
+                update.item.count,
+                Some(&update.item),
+                context,
+            )?;
+            let slot = bbb_protocol::equipment_slots::vanilla_equipment_slot_by_ordinal(
+                update.slot.ordinal(),
+            )?;
+            Some(Some(format!("{}: {stack}", slot.serialized_name)))
+        })
+        .collect::<Option<Vec<_>>>();
+    if let Some(equipment) = equipment {
+        let equipment = equipment.into_iter().flatten().collect::<Vec<_>>();
+        if !equipment.is_empty() {
+            fields.push(format!("equipment: {{{}}}", equipment.join(", ")));
+        }
     }
 }
 

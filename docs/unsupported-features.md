@@ -243,8 +243,10 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   `inBlockState`, locally changed `shake` / `inGround` / `crit` /
   `PierceLevel`, and Trident's hit-mutated `SoundEvent` can be projected
   without inventing a block collision. Remaining entity-specific
-  constructor/default save values, LivingEntity parent health/equipment/effect/attribute
-  projection, observable non-empty entity inventory/container projection
+  constructor/default save values, client-owned `LivingEntity.Brain.Packed`
+  memories (including Copper Golem's randomized transport cooldown, Allay's
+  liked player, and Villager's last-woken timestamp), unretained LivingEntity
+  impulse context, observable non-empty entity inventory/container projection
   (including chest/hopper minecart `Items` / loot-table contents, and chest
   boat/raft `Items` / loot-table contents), non-default furnace minecart
   push/fuel fields,

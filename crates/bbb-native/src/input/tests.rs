@@ -102,10 +102,11 @@ use bbb_protocol::packets::AwardStats;
 use bbb_protocol::packets::BlockEntityData;
 use bbb_protocol::packets::{
     AddEntity, AdvancementDisplaySummary, AdvancementFrameType, AdvancementIconSummary,
-    AdvancementSummary, BlockEntityTagQuery, BlockPos as ProtocolBlockPos,
-    BlockUpdate as ProtocolBlockUpdate, CommandArgumentParser, CommandNode, CommandNodeType,
-    CommandSuggestion, CommandSuggestionRequest, CommandSuggestions, Commands,
-    CommonPlayerSpawnInfo, ContainerClick, ContainerCloseRequest, ContainerInput,
+    AdvancementSummary, AttributeModifier as ProtocolAttributeModifier,
+    AttributeSnapshot as ProtocolAttributeSnapshot, BlockEntityTagQuery,
+    BlockPos as ProtocolBlockPos, BlockUpdate as ProtocolBlockUpdate, CommandArgumentParser,
+    CommandNode, CommandNodeType, CommandSuggestion, CommandSuggestionRequest, CommandSuggestions,
+    Commands, CommonPlayerSpawnInfo, ContainerClick, ContainerCloseRequest, ContainerInput,
     ContainerSetContent as ProtocolContainerSetContent, CustomChatCompletions,
     CustomChatCompletionsAction, DataComponentPatchSummary, DeleteChat, DialogHolder,
     EntityDataEnumSerializer, EntityDataRegistryHolder, EntityDataRegistryIdentity,
@@ -114,8 +115,9 @@ use bbb_protocol::packets::{
     EntityEvent as ProtocolEntityEvent, EntityTagQuery, EquipmentSlot, EquipmentSlotUpdate,
     FilterMask, FilterMaskKind, FireworkExplosionShapeSummary, FireworkExplosionSummary,
     GameEvent as ProtocolGameEvent, GameProfile, HashedComponentPatch, HashedItemStack,
-    HashedStack, ItemRaritySummary, ItemStackSummary as ProtocolItemStackSummary, JigsawGenerate,
-    JigsawJoint, LastSeenMessagesUpdate, MessageSignature, NbtSummaryEntry, OpenBook,
+    HashedStack, HurtAnimation as ProtocolHurtAnimation, ItemRaritySummary,
+    ItemStackSummary as ProtocolItemStackSummary, JigsawGenerate, JigsawJoint,
+    LastSeenMessagesUpdate, MessageSignature, MobEffectFlags, NbtSummaryEntry, OpenBook,
     OpenScreen as ProtocolOpenScreen, OpenSignEditor, PackedMessageSignature, PaddleBoat,
     PlayLogin, PlayerAbilities, PlayerAbilitiesCommand, PlayerAction, PlayerChat, PlayerCommand,
     PlayerHealth, PlayerInfoAction, PlayerInfoEntry, PlayerInfoUpdate, PlayerSkinPatchData,
@@ -127,9 +129,10 @@ use bbb_protocol::packets::{
     SetTestBlock, ShowDialog as ProtocolShowDialog, SignUpdate, SignedMessageBody, StatUpdate,
     StructureBlockMirror, StructureBlockMode, StructureBlockRotation, StructureBlockUpdateKind,
     TagQuery, TestBlockMode, TestInstanceBlockAction, TestInstanceBlockActionKind,
-    TestInstanceBlockRotation, TestInstanceBlockStatus, UpdateAdvancements, Vec3d as ProtocolVec3d,
-    Vec3i, WrittenBookContentSummary, VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_STRING_ID,
-    VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
+    TestInstanceBlockRotation, TestInstanceBlockStatus, UpdateAdvancements,
+    UpdateAttributes as ProtocolUpdateAttributes, UpdateMobEffect as ProtocolUpdateMobEffect,
+    Vec3d as ProtocolVec3d, Vec3i, WrittenBookContentSummary,
+    VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_STRING_ID, VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
 };
 use bbb_protocol::packets::{ChatTypeBound, ChatTypeHolder};
 use bbb_protocol::recipe_wire_types::{
@@ -4444,6 +4447,8 @@ fn shift_f3_i_with_permission_copies_local_creeper_save_nbt_to_clipboard() {
              Air: 123s, \
              CustomName: 'Bob \"Prime\"', \
              CustomNameVisible: 1b, Silent: 1b, NoGravity: 1b, Glowing: 1b, TicksFrozen: 42, \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, \
              powered: 1b, ignited: 1b}"
         )
@@ -4529,6 +4534,8 @@ fn shift_f3_i_with_permission_copies_local_mob_leash_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:creeper 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              leash: {UUID: [I; 0, 0, 0, 60]}, powered: 0b, ignited: 0b}"
         )
     );
@@ -4603,6 +4610,8 @@ fn shift_f3_i_with_permission_copies_local_creaking_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:creaking 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, home_pos: [I; 4, 5, 6]}"
         )
     );
@@ -4690,6 +4699,8 @@ fn shift_f3_i_with_permission_copies_local_shulker_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:shulker 0.50 1.00 2.50 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, AttachFace: 5b, Peek: 30b, \
              Color: 11b}"
         )
@@ -4768,6 +4779,8 @@ fn shift_f3_i_with_permission_copies_local_slime_family_save_nbt_to_clipboard() 
         let expected = format!(
             "/summon {} 0.00 0.00 3.00 \
              {{Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, Size: 3}}",
             entity_type.resource_id
         );
@@ -4852,6 +4865,8 @@ fn shift_f3_i_with_permission_copies_local_snow_golem_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:snow_golem 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, Pumpkin: 0b}"
         )
     );
@@ -4924,6 +4939,8 @@ fn shift_f3_i_with_permission_copies_local_bat_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:bat 0.00 1.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, BatFlags: 1b}"
         )
     );
@@ -4997,6 +5014,8 @@ fn shift_f3_i_with_permission_copies_local_armadillo_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:armadillo 0.00 1.35 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b, state: \"scared\"}"
         )
@@ -5081,6 +5100,8 @@ fn shift_f3_i_with_permission_copies_local_copper_golem_save_nbt_to_clipboard() 
         Some(
             "/summon minecraft:copper_golem 0.00 1.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, \
              weather_state: \"weathered\"}"
         )
@@ -5172,6 +5193,8 @@ fn shift_f3_i_with_permission_copies_local_bee_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:bee 0.00 1.35 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b, HasNectar: 1b, HasStung: 1b, \
              anger_end_time: 240L}"
@@ -5243,6 +5266,8 @@ fn shift_f3_i_with_permission_copies_local_blaze_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:blaze 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b}"
         )
     );
@@ -5312,6 +5337,8 @@ fn shift_f3_i_with_permission_copies_local_breeze_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:breeze 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b}"
         )
     );
@@ -5384,6 +5411,8 @@ fn shift_f3_i_with_permission_copies_local_cod_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:cod 0.00 1.45 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, FromBucket: 1b}"
         )
     );
@@ -5457,6 +5486,8 @@ fn shift_f3_i_with_permission_copies_local_pufferfish_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:pufferfish 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, \
              FromBucket: 1b, PuffState: 2}"
         )
@@ -5531,6 +5562,8 @@ fn shift_f3_i_with_permission_copies_local_salmon_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:salmon 0.00 1.20 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, \
              FromBucket: 1b, type: \"large\"}"
         )
@@ -5605,6 +5638,8 @@ fn shift_f3_i_with_permission_copies_local_tropical_fish_save_nbt_to_clipboard()
         Some(
             "/summon minecraft:tropical_fish 0.00 1.30 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, \
              FromBucket: 1b, Variant: 67436545}"
         )
@@ -5684,6 +5719,8 @@ fn shift_f3_i_with_permission_copies_local_turtle_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:turtle 0.00 1.35 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b, \
              home_pos: [I; 0, 0, 0], \
@@ -5759,6 +5796,8 @@ fn shift_f3_i_with_permission_copies_local_tadpole_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:tadpole 0.00 1.40 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b}"
         )
@@ -5835,6 +5874,8 @@ fn shift_f3_i_with_permission_copies_local_axolotl_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:axolotl 0.00 1.50 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b, Variant: 0, FromBucket: 1b}"
         )
@@ -5910,6 +5951,8 @@ fn shift_f3_i_with_permission_copies_local_nautilus_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:nautilus 0.00 1.50 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b, Sitting: 1b}"
         )
@@ -6005,6 +6048,8 @@ fn shift_f3_i_with_permission_copies_local_zombie_nautilus_save_nbt_to_clipboard
         Some(
             "/summon minecraft:zombie_nautilus 0.00 1.50 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b, Sitting: 1b, \
              variant: \"minecraft:warm\"}"
@@ -6116,6 +6161,8 @@ fn shift_f3_i_with_permission_copies_local_dolphin_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:dolphin 0.00 1.50 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b, GotFish: 1b, Moistness: 1234}"
         )
@@ -6210,6 +6257,8 @@ fn shift_f3_i_with_permission_copies_local_frog_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:frog 0.00 1.50 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b, variant: \"minecraft:cold\"}"
         )
@@ -6305,6 +6354,8 @@ fn shift_f3_i_with_permission_copies_local_rabbit_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:rabbit 0.00 1.30 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b, RabbitType: 99}"
         )
@@ -6380,6 +6431,8 @@ fn shift_f3_i_with_permission_copies_local_ocelot_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:ocelot 0.00 1.30 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b, Trusting: 1b}"
         )
@@ -6455,6 +6508,8 @@ fn shift_f3_i_with_permission_copies_local_sheep_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:sheep 0.00 1.20 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b, Sheared: 1b, Color: 14b}"
         )
@@ -6564,6 +6619,8 @@ fn shift_f3_i_with_permission_copies_local_pig_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:pig 0.00 1.25 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b, variant: \"minecraft:cold\", \
              sound_variant: \"minecraft:big\"}"
@@ -6729,6 +6786,8 @@ fn shift_f3_i_with_permission_copies_local_chicken_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:chicken 0.00 1.25 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b, variant: \"minecraft:warm\", \
              sound_variant: \"minecraft:picky\"}"
@@ -6867,6 +6926,8 @@ fn shift_f3_i_with_permission_copies_local_cow_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:cow 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b, variant: \"minecraft:cold\", \
              sound_variant: \"minecraft:moody\"}"
@@ -6978,6 +7039,8 @@ fn shift_f3_i_with_permission_copies_local_mooshroom_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:mooshroom 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b, Type: \"brown\"}"
         )
@@ -7071,6 +7134,8 @@ fn shift_f3_i_with_permission_copies_local_goat_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:goat 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b, IsScreamingGoat: 1b, \
              HasLeftHorn: 0b, HasRightHorn: 1b}"
@@ -7156,6 +7221,8 @@ fn shift_f3_i_with_permission_copies_local_polar_bear_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:polar_bear 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b}"
         )
@@ -7265,6 +7332,8 @@ fn shift_f3_i_with_permission_copies_local_panda_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:panda 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b, MainGene: \"brown\", \
              HiddenGene: \"lazy\"}"
@@ -7344,6 +7413,8 @@ fn shift_f3_i_with_permission_copies_local_parrot_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:parrot 0.00 1.20 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b, Sitting: 1b, Variant: 3}"
         )
@@ -7418,6 +7489,8 @@ fn shift_f3_i_with_permission_copies_local_allay_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:allay 0.00 1.10 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b}"
         )
     );
@@ -7493,6 +7566,8 @@ fn shift_f3_i_with_permission_copies_local_sniffer_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:sniffer 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b}"
         )
@@ -7573,6 +7648,8 @@ fn shift_f3_i_with_permission_copies_local_strider_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:strider 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b}"
         )
@@ -7652,6 +7729,8 @@ fn shift_f3_i_with_permission_copies_local_hoglin_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:hoglin 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b, \
              IsImmuneToZombification: 1b}"
@@ -7736,6 +7815,8 @@ fn shift_f3_i_with_permission_copies_local_horse_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:horse 0.00 0.25 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b, EatingHaystack: 1b, \
              Bred: 1b, Tame: 1b, Variant: 516}"
@@ -7831,6 +7912,8 @@ fn shift_f3_i_with_permission_copies_local_camel_family_save_nbt_to_clipboard() 
         let expected = format!(
             "/summon {} 0.00 0.00 3.00 \
              {{Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b, EatingHaystack: 0b, \
              Bred: 0b, Tame: 1b, LastPoseTick: 140L}}",
@@ -7956,6 +8039,8 @@ fn shift_f3_i_with_permission_copies_local_cat_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:cat 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b, Sitting: 1b, \
              variant: \"minecraft:calico\", sound_variant: \"minecraft:royal\", \
@@ -8109,6 +8194,8 @@ fn shift_f3_i_with_permission_copies_local_wolf_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:wolf 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b, Sitting: 1b, \
              CollarColor: 11b, variant: \"minecraft:striped\", \
@@ -8242,6 +8329,8 @@ fn shift_f3_i_with_permission_copies_local_fox_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:fox 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b, \
              Trusted: [[I; 1, 2, 3, 4], [I; 5, 6, 7, 8]], Sleeping: 1b, \
@@ -8324,6 +8413,13 @@ fn debug_save_data_abstract_chested_horse_class_dispatch_uses_generated_membersh
         let mut fields = Vec::new();
         debug_push_entity_additional_save_data(&world, None, &entity, &mut fields);
         let mut expected = vec![
+            "Health: 1.0f".to_string(),
+            "HurtTime: 0s".to_string(),
+            "HurtByTimestamp: 0".to_string(),
+            "DeathTime: 0s".to_string(),
+            "AbsorptionAmount: 0.0f".to_string(),
+            "attributes: []".to_string(),
+            "FallFlying: 0b".to_string(),
             "LeftHanded: 1b".to_string(),
             "NoAI: 1b".to_string(),
             "AgeLocked: 1b".to_string(),
@@ -8411,6 +8507,8 @@ fn shift_f3_i_with_permission_copies_local_donkey_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:donkey 0.00 0.25 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b, EatingHaystack: 1b, \
              Bred: 0b, Tame: 1b, ChestedHorse: 1b}"
@@ -8492,6 +8590,8 @@ fn shift_f3_i_with_permission_copies_local_mule_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:mule 0.00 0.25 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b, EatingHaystack: 0b, \
              Bred: 1b, Tame: 0b}"
@@ -8587,6 +8687,8 @@ fn shift_f3_i_with_permission_copies_local_llama_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:llama 0.00 0.25 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b, EatingHaystack: 0b, \
              Bred: 1b, Tame: 1b, ChestedHorse: 1b, \
@@ -8682,6 +8784,8 @@ fn shift_f3_i_with_permission_copies_local_trader_llama_save_nbt_to_clipboard() 
         Some(
             "/summon minecraft:trader_llama 0.00 0.25 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b, EatingHaystack: 0b, \
              Bred: 0b, Tame: 1b, Variant: 3, \
@@ -8764,6 +8868,8 @@ fn shift_f3_i_with_permission_copies_local_skeleton_horse_save_nbt_to_clipboard(
         Some(
             "/summon minecraft:skeleton_horse 0.00 0.25 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b, EatingHaystack: 0b, \
              Bred: 0b, Tame: 1b}"
@@ -8845,6 +8951,8 @@ fn shift_f3_i_with_permission_copies_local_zombie_horse_save_nbt_to_clipboard() 
         Some(
             "/summon minecraft:zombie_horse 0.00 0.25 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b, EatingHaystack: 0b, \
              Bred: 1b, Tame: 0b}"
@@ -8923,6 +9031,8 @@ fn shift_f3_i_with_permission_copies_local_piglin_brute_save_nbt_to_clipboard() 
         Some(
             "/summon minecraft:piglin_brute 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, \
              IsImmuneToZombification: 1b}"
         )
@@ -9005,6 +9115,8 @@ fn shift_f3_i_with_permission_copies_local_piglin_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:piglin 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, \
              IsImmuneToZombification: 1b, \
              IsBaby: 1b}"
@@ -9078,6 +9190,8 @@ fn shift_f3_i_with_permission_copies_local_spider_family_save_nbt_to_clipboard()
         let expected = format!(
             "/summon {entity_type} 0.00 1.25 3.00 \
              {{Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b}}"
         );
         assert_eq!(clipboard.text.as_deref(), Some(expected.as_str()));
@@ -9148,6 +9262,8 @@ fn shift_f3_i_with_permission_copies_local_skeleton_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:skeleton 0.00 1.25 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b}"
         )
     );
@@ -9223,6 +9339,8 @@ fn shift_f3_i_with_permission_copies_local_nonconverting_skeleton_family_save_nb
         let expected = format!(
             "/summon {entity_type} 0.00 1.25 3.00 \
              {{Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b}}"
         );
         assert_eq!(clipboard.text.as_deref(), Some(expected.as_str()));
@@ -9305,6 +9423,8 @@ fn shift_f3_i_with_permission_copies_local_zombie_family_save_nbt_to_clipboard()
         let expected = format!(
             "/summon {entity_type} 0.00 1.25 3.00 \
              {{Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, \
              IsBaby: 1b}}"
         );
@@ -9387,6 +9507,8 @@ fn shift_f3_i_with_permission_copies_local_zombified_piglin_save_nbt_to_clipboar
         Some(
             "/summon minecraft:zombified_piglin 0.00 1.25 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, \
              IsBaby: 1b}"
         )
@@ -9460,6 +9582,8 @@ fn shift_f3_i_with_permission_copies_local_bogged_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:bogged 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, sheared: 1b}"
         )
     );
@@ -13609,6 +13733,8 @@ fn shift_f3_i_with_permission_copies_local_armor_stand_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:armor_stand 0.00 1.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              Invisible: 1b, Small: 1b, \
              ShowArms: 1b, NoBasePlate: 1b, \
              Pose: {Body: [0.0f, 15.0f, 0.0f], LeftArm: [-30.0f, 0.0f, -20.0f]}}"
@@ -13753,6 +13879,8 @@ fn shift_f3_i_with_permission_copies_local_endermite_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:endermite 0.00 1.50 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b}"
         )
     );
@@ -13822,6 +13950,8 @@ fn shift_f3_i_with_permission_copies_local_enderman_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:enderman 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b}"
         )
     );
@@ -13891,6 +14021,8 @@ fn shift_f3_i_with_permission_copies_local_silverfish_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:silverfish 0.00 1.50 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b}"
         )
     );
@@ -13965,6 +14097,8 @@ fn shift_f3_i_with_permission_copies_local_guardian_family_save_nbt_to_clipboard
         let expected = format!(
             "/summon {} 0.00 1.00 3.00 \
              {{Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b}}",
             entity_type.resource_id
         );
@@ -14043,6 +14177,8 @@ fn shift_f3_i_with_permission_copies_local_happy_ghast_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:happy_ghast 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b}"
         )
@@ -14113,6 +14249,8 @@ fn shift_f3_i_with_permission_copies_local_ghast_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:ghast 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b}"
         )
     );
@@ -14182,6 +14320,8 @@ fn shift_f3_i_with_permission_copies_local_giant_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:giant 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b}"
         )
     );
@@ -14260,6 +14400,8 @@ fn shift_f3_i_with_permission_copies_local_glow_squid_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:glow_squid 0.00 1.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b, DarkTicksRemaining: 77}"
         )
@@ -14334,6 +14476,8 @@ fn shift_f3_i_with_permission_copies_local_squid_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:squid 0.00 1.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b}"
         )
@@ -14497,6 +14641,8 @@ fn shift_f3_i_with_permission_copies_local_iron_golem_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:iron_golem 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, PlayerCreated: 1b}"
         )
     );
@@ -14569,6 +14715,8 @@ fn shift_f3_i_with_permission_copies_local_phantom_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:phantom 0.00 1.50 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, size: 5}"
         )
     );
@@ -14646,6 +14794,8 @@ fn shift_f3_i_with_permission_copies_local_ravager_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:ravager 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, AttackTick: 10, StunTick: 40, RoarTick: 0}"
         )
     );
@@ -14715,6 +14865,8 @@ fn shift_f3_i_with_permission_copies_local_pillager_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:pillager 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b}"
         )
     );
@@ -14788,6 +14940,8 @@ fn shift_f3_i_with_permission_copies_local_wandering_trader_save_nbt_to_clipboar
         Some(
             "/summon minecraft:wandering_trader 0.00 1.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b}"
         )
@@ -14861,6 +15015,8 @@ fn shift_f3_i_with_permission_copies_local_witch_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:witch 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b}"
         )
     );
@@ -14943,6 +15099,8 @@ fn shift_f3_i_with_permission_copies_local_spellcaster_illager_save_nbt_to_clipb
         let expected = format!(
             "/summon {entity_type} 0.00 0.00 3.00 \
              {{Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b}}"
         );
         assert_eq!(clipboard.text.as_deref(), Some(expected.as_str()));
@@ -15020,6 +15178,8 @@ fn shift_f3_i_with_permission_copies_local_vindicator_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:vindicator 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b}"
         )
     );
@@ -15089,6 +15249,8 @@ fn shift_f3_i_with_permission_copies_local_vex_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:vex 0.00 1.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, NoAI: 1b}"
         )
     );
@@ -15161,6 +15323,8 @@ fn shift_f3_i_with_permission_copies_local_wither_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:wither 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, Invul: 220}"
         )
     );
@@ -15233,6 +15397,8 @@ fn shift_f3_i_with_permission_copies_local_zoglin_save_nbt_to_clipboard() {
         Some(
             "/summon minecraft:zoglin 0.00 1.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+             Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
              LeftHanded: 1b, IsBaby: 1b}"
         )
     );
@@ -27797,6 +27963,207 @@ fn simple_probe_entity(world: &mut WorldStore, id: i32, entity_type_id: i32) {
         y_head_rot: 0.0,
         data: 0,
     });
+}
+
+#[test]
+fn living_entity_local_save_projects_observable_parent_state() {
+    let item_runtime = diamond_item_runtime();
+    let mut world = WorldStore::new();
+    simple_probe_entity(&mut world, 299, VANILLA_ENTITY_TYPE_COW_ID);
+    let entity_accessors = vanilla_entity_metadata_entity_accessors().unwrap();
+    let living_accessors =
+        bbb_world::vanilla_entity_metadata_living_entity_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_COW_ID,
+        )
+        .expect("cow LivingEntity accessors");
+    let mob_accessors = bbb_world::vanilla_entity_metadata_mob_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_COW_ID,
+    )
+    .expect("cow Mob accessors");
+    assert!(world.apply_set_entity_data(ProtocolSetEntityData {
+        id: 299,
+        values: vec![
+            ProtocolEntityDataValue {
+                data_id: entity_accessors.shared_flags_data_id,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                value: EntityDataValueKind::Byte(entity_accessors.fall_flying_mask),
+            },
+            ProtocolEntityDataValue {
+                data_id: living_accessors.health_data_id,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
+                value: EntityDataValueKind::Float(12.5),
+            },
+            ProtocolEntityDataValue {
+                data_id: living_accessors.sleeping_pos_data_id,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
+                value: EntityDataValueKind::OptionalBlockPos(Some(ProtocolBlockPos {
+                    x: 4,
+                    y: 70,
+                    z: -2,
+                })),
+            },
+            ProtocolEntityDataValue {
+                data_id: mob_accessors.flags_data_id,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                value: EntityDataValueKind::Byte(mob_accessors.left_handed_mask),
+            },
+        ],
+    }));
+    assert!(world.apply_hurt_animation(ProtocolHurtAnimation { id: 299, yaw: 0.0 }));
+    world.advance_entity_client_animations(2);
+    assert!(world.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 299,
+        attributes: vec![
+            ProtocolAttributeSnapshot {
+                attribute_id:
+                    bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
+                base: 18.0,
+                modifiers: vec![ProtocolAttributeModifier {
+                    id: "minecraft:wire_only_bonus".to_string(),
+                    amount: 4.0,
+                    operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
+                }],
+            },
+            ProtocolAttributeSnapshot {
+                attribute_id:
+                    bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
+                base: 0.25,
+                modifiers: Vec::new(),
+            },
+        ],
+    }));
+    assert!(world.apply_update_mob_effect(ProtocolUpdateMobEffect {
+        entity_id: 299,
+        effect_id: VANILLA_MOB_EFFECT_POISON_ID,
+        amplifier: 2,
+        duration_ticks: 200,
+        flags: MobEffectFlags {
+            raw: 0x0d,
+            ambient: true,
+            visible: false,
+            show_icon: true,
+            blend: true,
+        },
+    }));
+    assert!(world.apply_set_equipment(SetEquipment {
+        entity_id: 299,
+        slots: vec![
+            EquipmentSlotUpdate {
+                slot: EquipmentSlot::Head,
+                item: ProtocolItemStackSummary {
+                    item_id: Some(0),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary::default(),
+                },
+            },
+            EquipmentSlotUpdate {
+                slot: EquipmentSlot::MainHand,
+                item: ProtocolItemStackSummary {
+                    item_id: Some(0),
+                    count: 2,
+                    component_patch: DataComponentPatchSummary {
+                        added: 1,
+                        added_type_ids: vec![
+                            bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
+                        ],
+                        custom_data: Some(NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                            name: "marker".to_string(),
+                            value: NbtSummaryValue::Int(7),
+                        }])),
+                        ..Default::default()
+                    },
+                },
+            },
+        ],
+    }));
+
+    let entity = world.probe_entity(299).unwrap();
+    let snbt = debug_local_entity_pretty_snbt(&world, Some(&item_runtime), &entity).unwrap();
+    assert!(snbt.contains(
+        "Health: 12.5f, HurtTime: 8s, HurtByTimestamp: 0, DeathTime: 0s, \
+         AbsorptionAmount: 0.0f"
+    ));
+    assert!(snbt.contains(
+        "attributes: [{id: \"minecraft:max_health\", base: 18.0d}, \
+         {id: \"minecraft:movement_speed\", base: 0.25d}]"
+    ));
+    assert!(
+        !snbt.contains("wire_only_bonus"),
+        "transient packet modifiers are not permanent save state: {snbt}"
+    );
+    assert!(snbt.contains(
+        "active_effects: [{id: \"minecraft:poison\", amplifier: 2, duration: 200, \
+         ambient: 1b, show_particles: 0b, show_icon: 1b}]"
+    ));
+    assert!(snbt.contains("FallFlying: 1b, sleeping_pos: [I; 4, 70, -2]"));
+    assert!(!snbt.contains("Brain:"));
+    assert!(snbt.contains(
+        "equipment: {mainhand: {id: \"minecraft:diamond\", count: 2, components: \
+         {\"minecraft:custom_data\": {marker: 7}}}, \
+         head: {id: \"minecraft:diamond\"}}"
+    ));
+    assert!(snbt.find("Health:").unwrap() < snbt.find("LeftHanded: 1b").unwrap());
+    assert!(snbt.find("equipment:").unwrap() < snbt.find("LeftHanded: 1b").unwrap());
+
+    assert!(world.apply_set_equipment(SetEquipment {
+        entity_id: 299,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::OffHand,
+            item: ProtocolItemStackSummary {
+                item_id: Some(99),
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            },
+        }],
+    }));
+    let entity = world.probe_entity(299).unwrap();
+    let snbt = debug_local_entity_pretty_snbt(&world, Some(&item_runtime), &entity).unwrap();
+    assert!(
+        !snbt.contains("equipment:"),
+        "an unresolved item must omit the whole compound instead of fabricating a partial value: \
+         {snbt}"
+    );
+}
+
+#[test]
+fn living_entity_local_save_tracks_death_and_player_absorption() {
+    let mut world = WorldStore::new();
+    simple_probe_entity(&mut world, 298, VANILLA_ENTITY_TYPE_COW_ID);
+    assert!(world.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 298,
+        event_id: 3,
+    }));
+    world.advance_entity_client_animations(3);
+    let cow = world.probe_entity(298).unwrap();
+    let cow_snbt = debug_local_entity_pretty_snbt(&world, None, &cow).unwrap();
+    assert!(cow_snbt.contains(
+        "Health: 0.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 3s, \
+         AbsorptionAmount: 0.0f"
+    ));
+
+    simple_probe_entity(&mut world, 297, VANILLA_ENTITY_TYPE_PLAYER_ID);
+    let (absorption_id, _) =
+        bbb_world::vanilla_entity_metadata_player_absorption_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+        )
+        .expect("player absorption accessor");
+    assert!(world.apply_set_entity_data(ProtocolSetEntityData {
+        id: 297,
+        values: vec![ProtocolEntityDataValue {
+            data_id: absorption_id,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
+            value: EntityDataValueKind::Float(6.0),
+        }],
+    }));
+    let player = world.probe_entity(297).unwrap();
+    let player_snbt = debug_local_entity_pretty_snbt(&world, None, &player).unwrap();
+    assert!(player_snbt.contains("AbsorptionAmount: 6.0f"));
+    assert!(player_snbt.contains("attributes: [], FallFlying: 0b"));
+    assert!(!player_snbt.contains("Brain:"));
 }
 
 #[test]
