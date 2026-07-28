@@ -147,11 +147,22 @@ impl WorldStore {
             }
         };
 
+        let progress = {
+            let interaction = &mut self.local_player.interaction;
+            interaction.destroying_block_progress = interaction
+                .destroying_block_progress
+                .saturating_add(progress_delta);
+            interaction.destroying_block_ticks =
+                interaction.destroying_block_ticks.saturating_add(1);
+            interaction
+                .destroying_block_progress
+                .min(LOCAL_DESTROY_PROGRESS_SCALE)
+        };
+        self.tutorial_on_destroy_block(
+            pos,
+            i32::try_from(progress).expect("destroy progress scale fits i32"),
+        );
         let interaction = &mut self.local_player.interaction;
-        interaction.destroying_block_progress = interaction
-            .destroying_block_progress
-            .saturating_add(progress_delta);
-        interaction.destroying_block_ticks = interaction.destroying_block_ticks.saturating_add(1);
         if interaction.destroying_block_progress < LOCAL_DESTROY_PROGRESS_SCALE {
             interaction.destroying_block_stage =
                 local_destroy_stage(interaction.destroying_block_progress);

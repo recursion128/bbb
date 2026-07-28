@@ -315,6 +315,8 @@ macro_rules! take_hud_resource_owners {
         $take_owner!(hud_system_toast_background);
         $take_owner!(hud_advancement_toast_background);
         $take_owner!(hud_recipe_toast_background);
+        $take_owner!(hud_tutorial_toast_background);
+        $take_owner!(hud_tutorial_toast_icons);
         $take_owner!(hud_debug_game_mode_switcher_background);
         $take_owner!(hud_debug_game_mode_switcher_slot);
         $take_owner!(hud_debug_game_mode_switcher_selection);

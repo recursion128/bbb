@@ -23552,6 +23552,8 @@ fn inventory_key_opens_local_inventory_without_player_command() {
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
     let mut world = world_with_local_player_id(77);
+    world.set_tutorial_step(bbb_world::TutorialStep::OpenInventory);
+    world.advance_tutorial_ticks(1);
 
     handle_key_input(
         &mut input,
@@ -23566,6 +23568,7 @@ fn inventory_key_opens_local_inventory_without_player_command() {
     assert_eq!(world.open_container_id(), Some(0));
     assert_eq!(counters.player_command_commands_queued, 0);
     assert!(rx.try_recv().is_err());
+    assert_eq!(world.tutorial_step(), bbb_world::TutorialStep::CraftPlanks);
 }
 
 #[test]
@@ -23575,6 +23578,8 @@ fn inventory_key_on_server_controlled_mount_queues_open_inventory_command() {
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
     let mut world = world_with_local_vehicle(77, 10, VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID);
+    world.set_tutorial_step(bbb_world::TutorialStep::OpenInventory);
+    world.advance_tutorial_ticks(1);
 
     handle_key_input(
         &mut input,
@@ -23595,6 +23600,10 @@ fn inventory_key_on_server_controlled_mount_queues_open_inventory_command() {
             action: PlayerCommandAction::OpenInventory,
             data: 0,
         })
+    );
+    assert_eq!(
+        world.tutorial_step(),
+        bbb_world::TutorialStep::OpenInventory
     );
 }
 
@@ -27007,19 +27016,59 @@ fn focus_loss_aborts_destroying_block() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
-    let mut world = WorldStore::new();
-    world.set_local_destroying_block(BlockPos { x: 4, y: 70, z: -6 });
+    let pos = BlockPos { x: 4, y: 70, z: -6 };
+    let mut world = world_with_local_player_id(77);
+    insert_empty_chunk_for_block(&mut world, pos);
+    assert!(world.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos {
+            x: pos.x,
+            y: pos.y,
+            z: pos.z,
+        },
+        block_state_id: vanilla_block_state_id("minecraft:oak_log", [("axis", "y")]),
+    }));
+    world.apply_update_tags(bbb_protocol::packets::UpdateTags {
+        registries: vec![bbb_protocol::packets::RegistryTags {
+            registry: "minecraft:block".to_string(),
+            tags: vec![bbb_protocol::packets::TagNetworkPayload {
+                tag: "minecraft:logs".to_string(),
+                entries: vec![bbb_protocol::block_types::VANILLA_BLOCK_OAK_LOG_ID],
+            }],
+        }],
+    });
+    world.set_tutorial_step(bbb_world::TutorialStep::PunchTree);
+    world.advance_tutorial_ticks(1);
+    world.advance_tutorial_ticks(600);
+    world.tutorial_on_destroy_block(pos, 500_000);
+    assert_eq!(
+        world
+            .active_tutorial_toast()
+            .and_then(|toast| toast.progress_millionths),
+        Some(500_000)
+    );
+    world.set_local_destroying_block(pos);
     let mut counters = NetCounters::default();
 
     handle_focus_change(&mut input, &mut world, &mut counters, &commands, false);
 
     assert_eq!(world.local_player().interaction.destroying_block, None);
+    assert_eq!(
+        world
+            .active_tutorial_toast()
+            .and_then(|toast| toast.progress_millionths),
+        Some(0),
+        "focus loss follows MultiPlayerGameMode.stopDestroyBlock before clearing state"
+    );
     assert_eq!(counters.player_action_commands_queued, 1);
     assert_eq!(
         rx.try_recv().unwrap(),
         NetCommand::PlayerAction(PlayerAction {
             action: PlayerActionKind::AbortDestroyBlock,
-            pos: ProtocolBlockPos { x: 4, y: 70, z: -6 },
+            pos: ProtocolBlockPos {
+                x: pos.x,
+                y: pos.y,
+                z: pos.z,
+            },
             direction: ProtocolDirection::Down,
             sequence: 0,
         })

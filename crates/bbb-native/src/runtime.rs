@@ -2853,6 +2853,16 @@ pub(crate) fn advance_simulation(
         level_event_sound_random,
         &mut audio_events,
     );
+    for _ in 0..advanced_ticks {
+        if let Some(CrosshairTarget::Block(hit)) = crosshair_target_from_camera_at_partial_tick(
+            world,
+            camera_pose_from_world(world),
+            entity_partial_tick,
+        ) {
+            world.tutorial_on_look_at_block(hit.pos);
+        }
+        world.advance_tutorial_ticks(1);
+    }
     push_simulation_profile_section(
         &mut profiling_sections,
         &["tick", "gameMode"],
@@ -3411,7 +3421,12 @@ pub(crate) fn update_renderer_from_publication(
     {
         audio_events.play_local_sound(sound);
     }
-    let advancement_toast_sounds = hud_render_runtime.client_toasts.update(world, now);
+    let advancement_toast_sounds = hud_render_runtime.client_toasts.update_with_resources(
+        world,
+        item_runtime,
+        renderer.hud_text_measurements_ref(),
+        now,
+    );
     if let Some(audio_events) = audio_events.as_deref_mut() {
         for sound in &advancement_toast_sounds {
             audio_events.play_local_sound(sound);
@@ -3431,6 +3446,7 @@ pub(crate) fn update_renderer_from_publication(
         item_model_keybind_context,
         entity_partial_tick,
     );
+    let hud_tutorial_toasts = hud_render_runtime.client_toasts.project_tutorials();
     let toasts_duration = optional_profile_elapsed(toasts_started_at);
     let hud_sign_editor_screen = if exclusive_game_screen_present
         || hud_debug_options_screen.is_some()
@@ -4183,6 +4199,7 @@ pub(crate) fn update_renderer_from_publication(
             hud_system_toast,
             hud_advancement_toasts,
             hud_recipe_toasts,
+            hud_tutorial_toasts,
             hud_debug_options_screen,
             hud_action_bar_text,
             hud_title_text,

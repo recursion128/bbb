@@ -935,6 +935,7 @@ fn start_destroy_block(
 
     let sequence = world.next_local_prediction_sequence();
     if local_player_instabuild(world) {
+        world.tutorial_on_destroy_block(hit.pos, 1_000_000);
         if world.local_selected_main_hand_can_destroy_block_in_creative() {
             world.predict_local_destroy_block(hit.pos, sequence);
         }
@@ -943,6 +944,7 @@ fn start_destroy_block(
         if let Some(effect) = world.apply_local_block_attack(hit.pos, sequence) {
             input.queue_local_block_attack_effect(effect);
         }
+        world.tutorial_on_destroy_block(hit.pos, 0);
         if world.local_destroy_block_is_immediate(hit.pos) {
             world.predict_local_destroy_block(hit.pos, sequence);
         } else {
@@ -986,6 +988,9 @@ fn abort_destroy_block(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     direction: ProtocolDirection,
 ) {
+    if let Some(pos) = world.local_player().interaction.destroying_block {
+        world.tutorial_on_destroy_block(pos, -1);
+    }
     if let Some(pos) = world.take_local_destroying_block() {
         queue_player_action_command(
             counters,

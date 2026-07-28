@@ -3064,6 +3064,7 @@ macro_rules! inventory_ctx {
 /// cross-domain borrows explicitly.
 impl WorldStore {
     pub fn apply_set_player_inventory(&mut self, packet: ProtocolSetPlayerInventory) -> bool {
+        self.tutorial_on_get_item(&packet.item);
         let applied = self
             .inventory
             .apply_set_player_inventory(&mut self.counters, packet);
@@ -3074,6 +3075,7 @@ impl WorldStore {
     }
 
     pub fn apply_set_cursor_item(&mut self, packet: ProtocolSetCursorItem) {
+        self.tutorial_on_get_item(&packet.item);
         self.apply_creative_aware_set_cursor_item(packet)
     }
 
@@ -3105,6 +3107,7 @@ impl WorldStore {
     }
 
     pub fn apply_container_set_slot(&mut self, packet: ProtocolContainerSetSlot) -> bool {
+        self.tutorial_on_get_item(&packet.item);
         self.apply_creative_aware_container_set_slot(packet)
     }
 

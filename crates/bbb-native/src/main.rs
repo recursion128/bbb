@@ -403,6 +403,7 @@ fn main() -> Result<()> {
         .requests
         .install_sink(std::sync::Arc::new(simulation_mailbox.clone()));
     let mut world = WorldStore::new();
+    world.set_tutorial_step(args.tutorial_step.into());
     world.set_social_server_label(args.server.clone());
     world.set_dialog_link_options(args.client_chat_links, args.client_chat_links_prompt);
     world.set_chat_presentation_config(ChatPresentationConfig {

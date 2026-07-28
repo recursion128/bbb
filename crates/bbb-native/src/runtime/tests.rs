@@ -11744,6 +11744,88 @@ fn advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing()
 }
 
 #[test]
+fn tutorial_toast_uses_contiguous_slots_allows_later_small_toast_bypass_and_smooths_progress() {
+    let mut world = runtime_tutorial_world();
+    enqueue_runtime_advancement_toasts(&mut world, 4, AdvancementFrameType::Task);
+    world.advance_tutorial_ticks(1);
+    world.advance_tutorial_ticks(100);
+    enqueue_runtime_recipe_toast(&mut world, 1, 1, 2);
+
+    let mut glyphs = bbb_renderer::HudFontGlyphMap::new();
+    let glyph = bbb_renderer::HudAsciiGlyph {
+        width: 5,
+        height: 8,
+        advance: 6,
+        ..bbb_renderer::HudAsciiGlyph::default()
+    };
+    for ch in ' '..='~' {
+        glyphs.insert_first_wins(ch, glyph);
+    }
+    let start = Instant::now();
+    let mut state = ClientToastRuntime::default();
+    state.update_with_resources(&world, None, &glyphs, start);
+
+    assert_eq!(state.visible.len(), 5);
+    assert!(matches!(state.visible[4].toast, ClientToast::Recipe(_)));
+    assert_eq!(state.visible[4].slot, 4);
+    let ClientToast::Tutorial(queued_tutorial) = &state.queued[0] else {
+        panic!("two-slot tutorial remains queued behind four occupied slots");
+    };
+    assert_eq!(queued_tutorial.height.div_ceil(32), 2);
+    assert!(
+        queued_tutorial
+            .lines
+            .iter()
+            .flatten()
+            .any(|run| run.style.bold),
+        "Vanilla Tutorial.key placeholders remain bold through wrapping"
+    );
+    assert!(queued_tutorial
+        .lines
+        .first()
+        .expect("title line")
+        .iter()
+        .all(|run| run.color == Some(0x50_0050)));
+
+    let mut tutorial_only = runtime_tutorial_world();
+    tutorial_only.advance_tutorial_ticks(1);
+    tutorial_only.advance_tutorial_ticks(100);
+    let mut tutorial_runtime = ClientToastRuntime::default();
+    tutorial_runtime.update_with_resources(&tutorial_only, None, &glyphs, start);
+    tutorial_runtime.update_with_resources(&tutorial_only, None, &glyphs, start);
+    tutorial_runtime.update_with_resources(
+        &tutorial_only,
+        None,
+        &glyphs,
+        start + Duration::from_millis(600),
+    );
+    for _ in 0..20 {
+        tutorial_only.tutorial_on_input(true, false, false, false, false);
+        tutorial_only.advance_tutorial_ticks(1);
+    }
+    tutorial_runtime.update_with_resources(
+        &tutorial_only,
+        None,
+        &glyphs,
+        start + Duration::from_millis(650),
+    );
+    let projected = tutorial_runtime.project_tutorials();
+    assert_eq!(projected.len(), 1);
+    assert!((projected[0].progress.unwrap() - 0.25).abs() < 1.0e-6);
+
+    tutorial_only.set_tutorial_step(bbb_world::TutorialStep::None);
+    assert_eq!(
+        sound_locations(&tutorial_runtime.update_with_resources(
+            &tutorial_only,
+            None,
+            &glyphs,
+            start + Duration::from_millis(700),
+        )),
+        vec!["minecraft:ui.toast.out"]
+    );
+}
+
+#[test]
 fn advancement_toast_runtime_counts_retained_window_lag_and_consumes_once() {
     let mut world = WorldStore::new();
     enqueue_runtime_advancement_toasts(
@@ -11998,6 +12080,35 @@ fn enqueue_runtime_advancement_toasts(
         progress,
         show_advancements: true,
     });
+}
+
+fn runtime_tutorial_world() -> WorldStore {
+    let mut world = WorldStore::new();
+    world.apply_login(&PlayLogin {
+        player_id: 7,
+        hardcore: false,
+        levels: vec!["minecraft:overworld".to_string()],
+        max_players: 20,
+        chunk_radius: 8,
+        simulation_distance: 6,
+        reduced_debug_info: false,
+        show_death_screen: true,
+        do_limited_crafting: false,
+        common_spawn_info: CommonPlayerSpawnInfo {
+            dimension_type_id: 0,
+            dimension: "minecraft:overworld".to_string(),
+            seed: 0,
+            game_type: 0,
+            previous_game_type: -1,
+            is_debug: false,
+            is_flat: false,
+            last_death_location: None,
+            portal_cooldown: 0,
+            sea_level: 63,
+        },
+        enforces_secure_chat: false,
+    });
+    world
 }
 
 fn enqueue_runtime_recipe_toast(

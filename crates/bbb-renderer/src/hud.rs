@@ -720,7 +720,70 @@ pub struct HudRecipeToast {
     pub visible_portion: f32,
 }
 
+/// One visible Vanilla tutorial toast. Native owns the shared queue, slot
+/// allocation, localization, and progress smoothing; the renderer owns the
+/// sprite-backed variable-height draw.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HudTutorialToast {
+    pub icon: HudTutorialToastIcon,
+    pub lines: Vec<Vec<HudStyledTextRun>>,
+    pub slot: u8,
+    pub visible_portion: f32,
+    pub progress: Option<f32>,
+    pub progress_increasing: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HudTutorialToastIcon {
+    MovementKeys,
+    Mouse,
+    Tree,
+    RecipeBook,
+    WoodenPlanks,
+}
+
+impl HudTutorialToastIcon {
+    pub const COUNT: usize = 5;
+
+    const fn as_index(self) -> usize {
+        match self {
+            Self::MovementKeys => 0,
+            Self::Mouse => 1,
+            Self::Tree => 2,
+            Self::RecipeBook => 3,
+            Self::WoodenPlanks => 4,
+        }
+    }
+}
+
 pub const HUD_TOAST_SLOTS: usize = 5;
+
+fn hud_wrap_plain_text(text: &str, max_width: u32, glyphs: &HudFontGlyphMap) -> Vec<String> {
+    let mut lines = Vec::new();
+    for source_line in text.split('\n') {
+        let mut line = String::new();
+        for ch in source_line.chars() {
+            let mut candidate = line.clone();
+            candidate.push(ch);
+            if !line.is_empty() && hud_plain_text_width(&candidate, glyphs) > max_width {
+                lines.push(std::mem::take(&mut line));
+            }
+            line.push(ch);
+        }
+        lines.push(line);
+    }
+    lines
+}
+
+/// Wraps styled text with the renderer's exact bold-aware font advances while
+/// preserving the style and colour of each resulting line.
+pub fn hud_wrap_styled_text(
+    runs: &[HudStyledTextRun],
+    width: u32,
+    glyphs: &HudFontGlyphMap,
+) -> Vec<Vec<HudStyledTextRun>> {
+    hud_wrap_chat_runs(runs, width, glyphs)
+}
 
 /// Vanilla `DebugOptionsScreen` render-state shell: the searchable option list
 /// in vanilla category/path order, three status buttons per entry, and the
@@ -2987,6 +3050,10 @@ impl Renderer {
         self.hud_font_glyphs.clone()
     }
 
+    pub fn hud_text_measurements_ref(&self) -> &HudFontGlyphMap {
+        &self.hud_font_glyphs
+    }
+
     pub fn upload_hud_inventory_background(
         &mut self,
         width: u32,
@@ -3630,6 +3697,32 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_recipe_toast_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_tutorial_toast_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+        scaling: HudNineSliceScaling,
+    ) -> Result<()> {
+        self.hud_tutorial_toast_background = Some(HudNineSliceSprite {
+            gpu: self.upload_hud_sprite(width, height, rgba)?,
+            scaling,
+        });
+        Ok(())
+    }
+
+    pub fn upload_hud_tutorial_toast_icon(
+        &mut self,
+        icon: HudTutorialToastIcon,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_tutorial_toast_icons[icon.as_index()] =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
@@ -5364,6 +5457,14 @@ impl Renderer {
         self.hud_recipe_toasts = toasts
             .into_iter()
             .filter_map(sanitize_hud_recipe_toast)
+            .take(HUD_TOAST_SLOTS)
+            .collect();
+    }
+
+    pub fn set_hud_tutorial_toasts(&mut self, toasts: Vec<HudTutorialToast>) {
+        self.hud_tutorial_toasts = toasts
+            .into_iter()
+            .filter_map(sanitize_hud_tutorial_toast)
             .take(HUD_TOAST_SLOTS)
             .collect();
     }
@@ -7266,6 +7367,20 @@ impl Renderer {
             self.counters.frame_index,
             surface_size,
             &self.hud_recipe_toasts,
+        );
+        push_hud_tutorial_toasts(
+            &mut vertices,
+            &mut commands,
+            &mut post_gui_item_commands,
+            &self.hud_white_pixel,
+            self.hud_tutorial_toast_background.as_ref(),
+            &self.hud_tutorial_toast_icons,
+            self.hud_font_atlas.as_ref(),
+            &self.hud_font_glyphs,
+            &self.hud_obfuscated_glyph_pool,
+            self.counters.frame_index,
+            surface_size,
+            &self.hud_tutorial_toasts,
         );
 
         if let Some(overlay) = &self.hud_code_of_conduct_overlay {
@@ -10344,6 +10459,153 @@ fn hud_recipe_toast_unlocked_icon_rect(
 ) -> HudRect {
     let toast_rect = hud_recipe_toast_rect(surface_size, toast);
     absolute_hud_rect(toast_rect.x + 8.0, toast_rect.y + 8.0, 16, 16)
+}
+
+const HUD_TUTORIAL_TOAST_TEXT_WIDTH: u32 = 126;
+
+fn tutorial_toast_height(line_count: usize) -> u32 {
+    7u32.saturating_add(
+        u32::try_from(line_count.max(2))
+            .unwrap_or(u32::MAX)
+            .saturating_mul(11),
+    )
+    .saturating_add(3)
+}
+
+fn hud_tutorial_toast_rect(surface_size: PhysicalSize<u32>, toast: &HudTutorialToast) -> HudRect {
+    let height = tutorial_toast_height(toast.lines.len());
+    let x = surface_size.width as f32 - HUD_ADVANCEMENT_TOAST_WIDTH as f32 * toast.visible_portion;
+    absolute_hud_rect(
+        x,
+        f32::from(toast.slot) * height as f32,
+        HUD_ADVANCEMENT_TOAST_WIDTH,
+        height,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_tutorial_toasts<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    post_gui_item_commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    background: Option<&'a HudNineSliceSprite>,
+    icons: &'a [Option<HudSpriteGpu>; HudTutorialToastIcon::COUNT],
+    font_atlas: Option<&'a HudSpriteGpu>,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    toasts: &[HudTutorialToast],
+) {
+    let Some(font_atlas) = font_atlas else {
+        return;
+    };
+    for toast in toasts {
+        let rect = hud_tutorial_toast_rect(surface_size, toast);
+        if let Some(background) = background {
+            for segment in nine_slice_segments(rect, background.scaling) {
+                push_hud_draw_with_uv_and_tint(
+                    vertices,
+                    commands,
+                    &background.gpu,
+                    surface_size,
+                    segment.rect,
+                    segment.uv,
+                    HUD_TINT_WHITE,
+                );
+            }
+        } else {
+            push_hud_draw_with_uv_and_tint(
+                vertices,
+                commands,
+                white_pixel,
+                surface_size,
+                rect,
+                HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+                [0.15, 0.15, 0.15, 0.95],
+            );
+        }
+
+        if let Some(icon) = icons[toast.icon.as_index()].as_ref() {
+            push_hud_draw(
+                vertices,
+                commands,
+                icon,
+                surface_size,
+                absolute_hud_rect(rect.x + 6.0, rect.y + 6.0, 20, 20),
+            );
+        }
+
+        let text_height = u32::try_from(toast.lines.len())
+            .unwrap_or(u32::MAX)
+            .saturating_mul(11);
+        let content_height = tutorial_toast_height(toast.lines.len()).saturating_sub(10);
+        let text_top = 7u32.saturating_add(content_height.saturating_sub(text_height) / 2);
+        for (index, line) in toast.lines.iter().enumerate() {
+            let geometry = hud_styled_text_pass_geometry(
+                line,
+                glyphs,
+                obfuscated_pool,
+                frame_index,
+                (
+                    rect.x + 30.0,
+                    rect.y + text_top as f32 + index as f32 * 11.0,
+                ),
+                0.0,
+                false,
+                hud_argb_to_tint(0xFF00_0000),
+                Some(HUD_TUTORIAL_TOAST_TEXT_WIDTH),
+                1.0,
+            );
+            push_hud_styled_text_pass(
+                vertices,
+                post_gui_item_commands,
+                white_pixel,
+                font_atlas,
+                surface_size,
+                &geometry,
+            );
+        }
+
+        if let Some(progress) = toast.progress {
+            let y = rect.y + rect.height as f32 - 4.0;
+            push_hud_draw_with_uv_and_tint(
+                vertices,
+                commands,
+                white_pixel,
+                surface_size,
+                absolute_hud_rect(rect.x + 3.0, y, 154, 1),
+                HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+                HUD_TINT_WHITE,
+            );
+            let width = (154.0 * progress).floor() as u32;
+            if width > 0 {
+                push_hud_draw_with_uv_and_tint(
+                    vertices,
+                    commands,
+                    white_pixel,
+                    surface_size,
+                    absolute_hud_rect(rect.x + 3.0, y, width, 1),
+                    HudUvRect {
+                        min: [0.0, 0.0],
+                        max: [1.0, 1.0],
+                    },
+                    hud_argb_to_tint(if toast.progress_increasing {
+                        0xFF00_5500
+                    } else {
+                        0xFF55_0000
+                    }),
+                );
+            }
+        }
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -14483,23 +14745,6 @@ fn hud_action_bar_text_draw<'a>(
         scale: 1.0,
         tint: [red, green, blue, alpha as f32 / 255.0],
     })
-}
-
-fn hud_wrap_plain_text(text: &str, max_width: u32, glyphs: &HudFontGlyphMap) -> Vec<String> {
-    let mut lines = Vec::new();
-    for source_line in text.split('\n') {
-        let mut line = String::new();
-        for ch in source_line.chars() {
-            let mut candidate = line.clone();
-            candidate.push(ch);
-            if !line.is_empty() && hud_plain_text_width(&candidate, glyphs) > max_width {
-                lines.push(std::mem::take(&mut line));
-            }
-            line.push(ch);
-        }
-        lines.push(line);
-    }
-    lines
 }
 
 /// Resolves the title (4x) and subtitle (2x) overlay lines, mirroring
@@ -18970,6 +19215,40 @@ fn sanitize_hud_recipe_toast(toast: HudRecipeToast) -> Option<HudRecipeToast> {
     })
 }
 
+fn sanitize_hud_tutorial_toast(toast: HudTutorialToast) -> Option<HudTutorialToast> {
+    if !toast.visible_portion.is_finite()
+        || toast.progress.is_some_and(|progress| !progress.is_finite())
+        || usize::from(toast.slot) >= HUD_TOAST_SLOTS
+    {
+        return None;
+    }
+    let lines = toast
+        .lines
+        .into_iter()
+        .take(64)
+        .map(|runs| {
+            let fallback = runs.iter().map(|run| run.text.as_str()).collect::<String>();
+            let fallback = sanitize_hud_text_preserving_empty(fallback, 256);
+            sanitize_hud_styled_runs(runs, &fallback)
+        })
+        .collect::<Vec<_>>();
+    let height = tutorial_toast_height(lines.len());
+    let occupied_slots = height.div_ceil(HUD_ADVANCEMENT_TOAST_HEIGHT);
+    if usize::from(toast.slot).saturating_add(usize::try_from(occupied_slots).unwrap_or(usize::MAX))
+        > HUD_TOAST_SLOTS
+    {
+        return None;
+    }
+    Some(HudTutorialToast {
+        icon: toast.icon,
+        lines,
+        slot: toast.slot,
+        visible_portion: toast.visible_portion.clamp(0.0, 1.0),
+        progress: toast.progress.map(|progress| progress.clamp(0.0, 1.0)),
+        progress_increasing: toast.progress_increasing,
+    })
+}
+
 fn sanitize_hud_debug_options_screen(
     screen: HudDebugOptionsScreen,
 ) -> Option<HudDebugOptionsScreen> {
@@ -19920,6 +20199,46 @@ mod tests {
             absolute_hud_rect(288.0, 72.0, 16, 16)
         );
         assert!(sanitize_hud_recipe_toast(HudRecipeToast { slot: 5, ..toast }).is_none());
+    }
+
+    #[test]
+    fn tutorial_toast_height_slot_layout_and_progress_follow_vanilla() {
+        let toast = sanitize_hud_tutorial_toast(HudTutorialToast {
+            icon: HudTutorialToastIcon::MovementKeys,
+            lines: vec![
+                vec![
+                    HudStyledTextRun {
+                        text: "Move with W".to_string(),
+                        style: HudTextStyle {
+                            bold: true,
+                            ..HudTextStyle::default()
+                        },
+                        color: Some(0x50_0050),
+                    },
+                    HudStyledTextRun::plain("\u{7}"),
+                ],
+                vec![HudStyledTextRun::plain("continued")],
+                vec![HudStyledTextRun::plain("Jump with Space")],
+            ],
+            slot: 1,
+            visible_portion: 0.25,
+            progress: Some(1.5),
+            progress_increasing: true,
+        })
+        .unwrap();
+        assert_eq!(tutorial_toast_height(toast.lines.len()), 43);
+        assert!(toast.lines[0][0].style.bold);
+        assert_eq!(toast.lines[0][0].color, Some(0x50_0050));
+        assert_eq!(toast.lines[0].len(), 1, "control-only runs are removed");
+        assert_eq!(toast.progress, Some(1.0));
+        assert_eq!(
+            hud_tutorial_toast_rect(PhysicalSize::new(320, 240), &toast),
+            absolute_hud_rect(280.0, 43.0, 160, 43)
+        );
+        assert!(
+            sanitize_hud_tutorial_toast(HudTutorialToast { slot: 4, ..toast }).is_none(),
+            "a 43-pixel tutorial toast needs two contiguous slots"
+        );
     }
 
     #[test]

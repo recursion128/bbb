@@ -1738,7 +1738,7 @@ mod tests {
     }
 
     #[test]
-    fn play_set_player_inventory_keeps_tutorial_side_effect_open() {
+    fn play_set_player_inventory_closes_tutorial_side_effect() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -1747,14 +1747,10 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "CLIENTBOUND_SET_PLAYER_INVENTORY"
             })
             .expect("play set player inventory coverage row");
-        assert_eq!(
-            entry.coverage["canonical_apply"].status,
-            PacketCoverageStatus::Complete
-        );
-        assert_eq!(
-            entry.coverage["runtime_side_effect"].status,
-            PacketCoverageStatus::Partial
-        );
+        assert!(entry
+            .coverage
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]

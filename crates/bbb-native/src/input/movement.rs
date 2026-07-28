@@ -85,6 +85,17 @@ pub(crate) fn advance_player_input_for_client_ticks(
     // remain per-tick (0.05 s) even when synchronized tick rate slows wall time.
     // Preserve bbb's existing five-tick catch-up bound for a stalled frame.
     let client_ticks = client_ticks.min(5);
+    let tutorial_input = input.local_player_input();
+    world.tutorial_on_mouse(tutorial_input.mouse_delta_x, tutorial_input.mouse_delta_y);
+    for _ in 0..client_ticks {
+        world.tutorial_on_input(
+            tutorial_input.focused && tutorial_input.forward,
+            tutorial_input.focused && tutorial_input.backward,
+            tutorial_input.focused && tutorial_input.left,
+            tutorial_input.focused && tutorial_input.right,
+            tutorial_input.focused && tutorial_input.jump,
+        );
+    }
     let dt_seconds = f64::from(client_ticks) * LOCAL_PLAYER_MOVEMENT_TICK_SECONDS;
     input.advance_debug_crash_hold(world, now);
     input.advance_sprint_trigger(dt_seconds);
@@ -503,6 +514,36 @@ mod tests {
                 mouse_delta_x: 100.0,
                 mouse_delta_y: 1000.0,
             }
+        );
+    }
+
+    #[test]
+    fn client_tick_catch_up_preserves_each_tutorial_movement_sample() {
+        let mut input = ClientInputState::new(true);
+        input.forward = true;
+        input.mouse_delta_x = 1.0;
+        let mut world = WorldStore::new();
+        world.apply_login(&protocol_play_login(99));
+        world.advance_tutorial_ticks(1);
+        world.advance_tutorial_ticks(100);
+        let mut counters = NetCounters::default();
+        let commands = None;
+
+        advance_player_input_for_client_ticks(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            Instant::now(),
+            5,
+        );
+        world.advance_tutorial_ticks(5);
+
+        assert_eq!(
+            world
+                .active_tutorial_toast()
+                .and_then(|toast| toast.progress_millionths),
+            Some(125_000)
         );
     }
 

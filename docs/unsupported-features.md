@@ -940,8 +940,6 @@ back into a todo. Do not delete these.
   Mismatched property updates must remain ignored rather than creating a future
   synthetic menu or replacing the active one.
 - ContainerSetSlot also rejects mismatched nonzero menu ids.
-- SetPlayerInventory now limits canonical state to vanilla inventory/equipment
-  slots 0..42. Tutorial pickup presentation is still open.
 - PlayerCombatEnter is a strict unit packet whose 26.1 client handler is empty;
   its diagnostic counter is not evidence of an additional combat-mode runtime.
 - PlayerCombatEnd likewise has an empty 26.1 handler; its decoded duration may

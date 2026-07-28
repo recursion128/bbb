@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use bbb_protocol::packets::{AdvancementDisplaySummary, ItemStackSummary};
 use serde::{Deserialize, Serialize};
 
-use crate::WorldStore;
+use crate::{TutorialToastKind, WorldStore};
 
 pub const MAX_CLIENT_TOAST_EVENTS: usize = 4096;
 
@@ -32,6 +32,10 @@ pub enum ClientToastEventKind {
         category_item: ItemStackSummary,
         unlocked_item: ItemStackSummary,
     },
+    Tutorial {
+        toast_id: u64,
+        kind: TutorialToastKind,
+    },
 }
 
 impl ClientToastEvent {
@@ -41,7 +45,7 @@ impl ClientToastEvent {
                 advancement_id,
                 display,
             } => Some((advancement_id, display)),
-            ClientToastEventKind::Recipe { .. } => None,
+            ClientToastEventKind::Recipe { .. } | ClientToastEventKind::Tutorial { .. } => None,
         }
     }
 
@@ -52,7 +56,16 @@ impl ClientToastEvent {
                 category_item,
                 unlocked_item,
             } => Some((*recipe_id, category_item, unlocked_item)),
-            ClientToastEventKind::Advancement { .. } => None,
+            ClientToastEventKind::Advancement { .. } | ClientToastEventKind::Tutorial { .. } => {
+                None
+            }
+        }
+    }
+
+    pub fn tutorial(&self) -> Option<(u64, TutorialToastKind)> {
+        match self.kind {
+            ClientToastEventKind::Tutorial { toast_id, kind } => Some((toast_id, kind)),
+            ClientToastEventKind::Advancement { .. } | ClientToastEventKind::Recipe { .. } => None,
         }
     }
 }
@@ -92,6 +105,11 @@ impl WorldStore {
         });
     }
 
+    pub(crate) fn push_tutorial_toast_event(&mut self, toast_id: u64, kind: TutorialToastKind) {
+        self.push_client_toast_event(ClientToastEventKind::Tutorial { toast_id, kind });
+        self.counters.tutorial_toast_events = self.counters.tutorial_toast_events.saturating_add(1);
+    }
+
     pub(crate) fn reset_client_toasts_for_new_level(&mut self) {
         self.client_toasts = ClientToastState::default();
     }
@@ -115,6 +133,12 @@ impl WorldStore {
                     self.counters.recipe_book_notification_events_dropped = self
                         .counters
                         .recipe_book_notification_events_dropped
+                        .saturating_add(1);
+                }
+                Some(ClientToastEventKind::Tutorial { .. }) => {
+                    self.counters.tutorial_toast_events_dropped = self
+                        .counters
+                        .tutorial_toast_events_dropped
                         .saturating_add(1);
                 }
                 None => {}

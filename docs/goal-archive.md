@@ -649,3 +649,6 @@
 - **2026-07-28（实体专用裁剪与 section 可见性工程闭环）**：Guardian、
   EndCrystal、Shulker 现按 Vanilla 当前 tick 光束/过渡包围盒裁剪；terrain
   resident 精确发布纵向 section，实体门禁使用非插值当前位置。
+- **2026-07-28（原生 Tutorial 系统工程闭环）**：六步骤状态机、三条物品包、
+  输入/观察/破坏/背包回调与共享可变高度五槽 toast 已贯通 world、native 和
+  renderer；合同见 `docs/archive/tutorial-system-closure-design.md`。

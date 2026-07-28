@@ -25,7 +25,7 @@ use bbb_renderer::{
     HudSocialInteractionsScreen, HudSpectatorGui, HudSpectatorGuiSlot, HudSpectatorIcon,
     HudSpyglassScope, HudStatsScreen, HudStructureBlockEditorScreen, HudStyledTextRun,
     HudSystemToast, HudTestBlockEditorScreen, HudTestInstanceBlockEditorScreen, HudTextStyle,
-    HudTitleText, HudVehicleHealth, HudVignette, ItemEntityBillboard,
+    HudTitleText, HudTutorialToast, HudVehicleHealth, HudVignette, ItemEntityBillboard,
     ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture, ItemFrameMapSurface,
     ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh, ItemModelResidencyFrame, Renderer,
     SelectionOutline, SignTextSurface, WorldBorderRenderState,
@@ -2234,6 +2234,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) hud_system_toast: Option<HudSystemToast>,
     pub(crate) hud_advancement_toasts: Vec<HudAdvancementToast>,
     pub(crate) hud_recipe_toasts: Vec<HudRecipeToast>,
+    pub(crate) hud_tutorial_toasts: Vec<HudTutorialToast>,
     pub(crate) hud_debug_options_screen: Option<HudDebugOptionsScreen>,
     pub(crate) hud_action_bar_text: Option<HudActionBarText>,
     pub(crate) hud_title_text: Option<HudTitleText>,
@@ -2662,6 +2663,7 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_hud_system_toast(frame.hud_system_toast);
     renderer.set_hud_advancement_toasts(frame.hud_advancement_toasts);
     renderer.set_hud_recipe_toasts(frame.hud_recipe_toasts);
+    renderer.set_hud_tutorial_toasts(frame.hud_tutorial_toasts);
     renderer.set_hud_debug_options_screen(frame.hud_debug_options_screen);
     renderer.set_hud_action_bar_text(frame.hud_action_bar_text);
     renderer.set_hud_title_text(frame.hud_title_text);

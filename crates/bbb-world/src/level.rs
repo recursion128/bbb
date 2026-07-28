@@ -387,6 +387,7 @@ impl WorldStore {
         self.close_game_rules_screen();
         self.advance_client_level_generation();
         self.reset_client_toasts_for_new_level();
+        self.requeue_active_tutorial_toast();
         let dimension_changed = self
             .level
             .as_ref()
@@ -611,6 +612,7 @@ impl WorldStore {
 
     pub fn clear_client_level(&mut self) {
         self.advance_client_level_generation();
+        self.stop_tutorial_for_missing_level();
         // Login and configuration re-entry construct a fresh
         // ClientDebugSubscriber. Unlike a dimension-only dropLevel, the new
         // listener starts with an empty remote request set and resends the
@@ -1006,6 +1008,10 @@ impl WorldStore {
 
     pub fn local_player_is_adventure(&self) -> bool {
         self.gameplay.game_type == VANILLA_GAME_TYPE_ADVENTURE_ID
+    }
+
+    pub fn local_player_is_survival(&self) -> bool {
+        self.local_player_id.is_some() && self.gameplay.game_type == VANILLA_GAME_TYPE_SURVIVAL_ID
     }
 
     pub fn local_player_has_reduced_debug_info(&self) -> bool {

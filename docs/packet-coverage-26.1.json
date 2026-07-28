@@ -13295,12 +13295,14 @@
         },
         "runtime_side_effect": {
           "evidence": [
-            "crates/bbb-world/src/client/inventory/tests.rs#set_player_inventory_only_tracks_vanilla_inventory_and_equipment_slots",
-            "crates/bbb-world/src/client/inventory/tests.rs#component_rich_stacks_survive_inventory_equipment_and_pick_response_paths",
+            "crates/bbb-world/src/tutorial.rs#all_three_inventory_packets_notify_the_active_tutorial_before_apply",
+            "crates/bbb-world/src/tutorial.rs#find_punch_inventory_and_craft_steps_follow_vanilla_callbacks_and_delays",
+            "crates/bbb-native/src/runtime/tests.rs#tutorial_toast_uses_contiguous_slots_allows_later_small_toast_bypass_and_smooths_progress",
+            "crates/bbb-renderer/src/hud.rs#tutorial_toast_height_slot_layout_and_progress_follow_vanilla",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleSetPlayerInventory"
           ],
-          "gap": "docs/unsupported-features.md#native-input-movement-interaction-inventory-and-command-flows",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -13310,7 +13312,8 @@
             "crates/bbb-world/src/client/inventory/tests.rs#set_player_inventory_only_tracks_vanilla_inventory_and_equipment_slots",
             "crates/bbb-protocol/src/packets/inventory.rs#item_stack_packets_share_component_rich_patch_decode",
             "crates/bbb-world/src/client/inventory/tests.rs#component_rich_stacks_survive_inventory_equipment_and_pick_response_paths",
-            "crates/bbb-protocol/src/packet_coverage.rs#play_set_player_inventory_keeps_tutorial_side_effect_open",
+            "crates/bbb-protocol/src/packet_coverage.rs#play_set_player_inventory_closes_tutorial_side_effect",
+            "crates/bbb-world/src/tutorial.rs#all_three_inventory_packets_notify_the_active_tutorial_before_apply",
             "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#inventory_events_update_world_and_world_counters"
           ],
           "gap": null,

@@ -15,6 +15,7 @@ use bbb_renderer::{
     VANILLA_DEFAULT_RENDER_DISTANCE_CHUNKS, VANILLA_MAX_MENU_BACKGROUND_BLURRINESS,
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
 };
+use bbb_world::TutorialStep;
 use clap::{ArgAction, Parser, ValueEnum};
 use serde::{Deserialize, Serialize};
 use tokio::{runtime::Runtime, sync::mpsc};
@@ -145,6 +146,8 @@ pub(crate) struct Args {
     pub(crate) client_allow_server_listing: bool,
     #[arg(long = "client-particles", value_enum, default_value = "all")]
     pub(crate) client_particles: ClientParticleStatusArg,
+    #[arg(long = "tutorial-step", value_enum, default_value = "movement")]
+    pub(crate) tutorial_step: TutorialStepArg,
     #[arg(
         long = "render-distance",
         default_value_t = VANILLA_DEFAULT_RENDER_DISTANCE_CHUNKS,
@@ -302,6 +305,29 @@ pub(crate) enum ClientParticleStatusArg {
     All,
     Decreased,
     Minimal,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub(crate) enum TutorialStepArg {
+    Movement,
+    FindTree,
+    PunchTree,
+    OpenInventory,
+    CraftPlanks,
+    None,
+}
+
+impl From<TutorialStepArg> for TutorialStep {
+    fn from(value: TutorialStepArg) -> Self {
+        match value {
+            TutorialStepArg::Movement => Self::Movement,
+            TutorialStepArg::FindTree => Self::FindTree,
+            TutorialStepArg::PunchTree => Self::PunchTree,
+            TutorialStepArg::OpenInventory => Self::OpenInventory,
+            TutorialStepArg::CraftPlanks => Self::CraftPlanks,
+            TutorialStepArg::None => Self::None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -835,6 +861,23 @@ mod tests {
         assert_eq!(
             NarratorStatus::from(args.client_narrator),
             NarratorStatus::System
+        );
+    }
+
+    #[test]
+    fn tutorial_step_is_startup_configured_and_defaults_to_movement() {
+        let default_args = Args::try_parse_from(["bbb-native"]).unwrap();
+        assert_eq!(default_args.tutorial_step, TutorialStepArg::Movement);
+        assert_eq!(
+            TutorialStep::from(default_args.tutorial_step),
+            TutorialStep::Movement
+        );
+
+        let args = Args::try_parse_from(["bbb-native", "--tutorial-step", "craft-planks"]).unwrap();
+        assert_eq!(args.tutorial_step, TutorialStepArg::CraftPlanks);
+        assert_eq!(
+            TutorialStep::from(args.tutorial_step),
+            TutorialStep::CraftPlanks
         );
     }
 

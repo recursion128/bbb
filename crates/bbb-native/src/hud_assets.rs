@@ -7,7 +7,7 @@ use bbb_renderer::{
     HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite, HudAdvancementTabSprite,
     HudAdvancementWidgetFrameSprite, HudBossBarColor, HudBossBarOverlay, HudGuiSpriteScaling,
     HudHeartKind, HudLocatorStyle, HudNineSliceScaling, HudPlayerListPingSprite,
-    HudStatsScrollbarSprite, HudStatsSprite, VIGNETTE_TEXTURE_PATH,
+    HudStatsScrollbarSprite, HudStatsSprite, HudTutorialToastIcon, VIGNETTE_TEXTURE_PATH,
 };
 use bbb_world::vanilla_sign_wood_kinds;
 
@@ -264,6 +264,23 @@ pub(crate) fn try_load_hud_textures(
         recipe_toast.height,
         &recipe_toast.rgba,
     )?;
+    let tutorial_toast = hud_sprite(&sprites, "toast/tutorial")?;
+    renderer.upload_hud_tutorial_toast_background(
+        tutorial_toast.width,
+        tutorial_toast.height,
+        &tutorial_toast.rgba,
+        hud_nine_slice_scaling(tutorial_toast)?,
+    )?;
+    for (icon, sprite_name) in [
+        (HudTutorialToastIcon::MovementKeys, "toast/movement_keys"),
+        (HudTutorialToastIcon::Mouse, "toast/mouse"),
+        (HudTutorialToastIcon::Tree, "toast/tree"),
+        (HudTutorialToastIcon::RecipeBook, "toast/recipe_book"),
+        (HudTutorialToastIcon::WoodenPlanks, "toast/wooden_planks"),
+    ] {
+        let sprite = hud_sprite(&sprites, sprite_name)?;
+        renderer.upload_hud_tutorial_toast_icon(icon, sprite.width, sprite.height, &sprite.rgba)?;
+    }
     let generic_container = gui_texture(
         roots,
         "textures/gui/container/generic_54.png",
@@ -1752,7 +1769,8 @@ fn tooltip_style_sprite_pairs(
 }
 
 /// Extracts a HUD sprite's nine-slice scaling from its `gui.scaling` mcmeta, failing loudly if the
-/// sprite is not declared `nine_slice` (the tooltip and system-toast sprites used here are).
+/// sprite is not declared `nine_slice` (the tooltip, system-toast, and tutorial-toast sprites used
+/// here are).
 fn hud_nine_slice_scaling(sprite: &SpriteImage) -> Result<HudNineSliceScaling> {
     match sprite.gui_metadata.scaling {
         SpriteGuiScaling::NineSlice {
