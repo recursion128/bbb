@@ -646,3 +646,6 @@
 - **2026-07-28（稳定方块实体与调试投影缓存工程闭环）**：Bed、Sign、Lectern
   与 GameTest 高亮现按精确 world/resource/filter 修订边缘重建；动态方块实体继续
   逐帧提取，四类调试向量在 native/renderer 间循环复用并保持共享排序。
+- **2026-07-28（实体专用裁剪与 section 可见性工程闭环）**：Guardian、
+  EndCrystal、Shulker 现按 Vanilla 当前 tick 光束/过渡包围盒裁剪；terrain
+  resident 精确发布纵向 section，实体门禁使用非插值当前位置。

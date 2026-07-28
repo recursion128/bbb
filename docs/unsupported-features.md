@@ -45,10 +45,6 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
   resident-release tails. Any change must preserve exact phase/translucent
   order and the explicit bounded-owner fallback rather than dropping visible
   instances.
-- Narrow Guardian/EndCrystal/Shulker specialized culling to their exact
-  vanilla beam/interpolation/metadata boxes, and add section-granular compiled
-  visibility; follow `LevelRenderer.extractVisibleEntities` and the registered
-  renderer overrides without a parallel entity-type table.
 - Complete equal-load official Java 26.1 CPU p50/p95/p99, GPU-frame, 1%-low,
   and chunk-update comparison captures; report any losing scene by measured
   owner instead of reducing visible work.

@@ -424,12 +424,15 @@ during extraction; render does not clone its particle context vectors.
 Entity rendering uses a render-owned `EntityRenderExtractionScratch`. One hecs
 batch query fills narrow identity/transform/bounds/culling rows, and the native
 owner applies vanilla distance, frustum, compiled-terrain, camera/local-player,
-spectator, passenger, leash, and generated renderer-class exceptions before
-full model-source projection. Only survivors are projected. Candidate, survivor,
-id-index, model-source, and final entity-instance allocations are cleared and
-reused; the renderer swaps its previous instance allocation back to this owner.
-The latest/peak phase durations, row counts, and capacity-growth count are
-published in the next immutable generation's renderer telemetry.
+spectator, passenger, and leash rules before full model-source projection.
+Generated renderer/schema facts add a copy-only Guardian/EndCrystal/Shulker
+union; native evaluates their exact current-tick beam or teleport fallback after
+the ordinary dispatcher result. Compiled-terrain gating then uses the candidate's
+non-interpolated current section. Only survivors are projected. Candidate,
+survivor, id-index, model-source, and final entity-instance allocations are
+cleared and reused; the renderer swaps its previous instance allocation back to
+this owner. The latest/peak phase durations, row counts, and capacity-growth
+count are published in the next immutable generation's renderer telemetry.
 
 Heap-heavy non-entity extraction uses a separate render-thread scratch owner.
 Bed, sign board/text, and lectern-book projections are retained behind exact
@@ -472,6 +475,9 @@ resource reload advances every resident section revision, and translucent
 camera resort writes index buffers without retransmitting vertices. Logical
 section job/upload/resident counters cross through the non-waking backend
 telemetry path and are published with the next immutable generation.
+The same selected resident revisions publish exact chunk/section membership for
+player readiness and entity visibility; a compiled section never implies that
+another vertical section in its chunk is compiled.
 
 One lazy bounded terrain worker may consume only render-materialized immutable
 snapshot/atlas Arcs plus the exact dirty section id/revision rows. Its four-entry
