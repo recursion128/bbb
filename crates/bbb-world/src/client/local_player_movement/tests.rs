@@ -198,6 +198,12 @@ const TEST_DEFAULT_MOVEMENT_SPEED: f64 = 0.1;
 
 /// First-tick `travelInAir` displacement from rest on ground:
 /// modifyInput scale x getSpeed x (0.21600002 / friction^3).
+/// First-tick fluid `moveRelative` step: the `modifyInput` scale times the
+/// fluid-relative speed.
+fn first_fluid_step(speed: f64) -> f64 {
+    LOCAL_PLAYER_INPUT_SCALE * speed
+}
+
 fn first_ground_step(speed: f64, input_scale: f64) -> f64 {
     input_scale
         * LOCAL_PLAYER_INPUT_SCALE
@@ -2622,8 +2628,12 @@ fn local_player_in_water_uses_fluid_relative_acceleration_and_drag() {
         )
         .unwrap();
 
-    assert_f64_near(pose.position.z, 0.52, 0.000001);
-    assert_f64_near(pose.delta_movement.z, 0.016, 0.000001);
+    assert_f64_near(pose.position.z, 0.5 + first_fluid_step(0.02), 0.000001);
+    assert_f64_near(
+        pose.delta_movement.z,
+        first_fluid_step(0.02) * 0.8,
+        0.000001,
+    );
     assert_f64_near(pose.delta_movement.y, -0.005, 0.000001);
     assert_f64_near(pose.fall_distance, 0.0, 0.000001);
     assert!(!pose.on_ground);
@@ -2685,8 +2695,12 @@ fn local_player_water_movement_efficiency_half_applies_when_airborne() {
         )
         .unwrap();
 
-    assert_f64_near(pose.position.z, 0.56, 0.000001);
-    assert_f64_near(pose.delta_movement.z, 0.0403800018, 0.000001);
+    assert_f64_near(pose.position.z, 0.5 + first_fluid_step(0.06), 0.000001);
+    assert_f64_near(
+        pose.delta_movement.z,
+        first_fluid_step(0.06) * 0.67300003,
+        0.000001,
+    );
     assert_f64_near(pose.delta_movement.y, -0.005, 0.000001);
 }
 
@@ -2720,8 +2734,12 @@ fn local_player_water_movement_efficiency_fully_applies_on_ground() {
         )
         .unwrap();
 
-    assert_f64_near(pose.position.z, 0.6, 0.000001);
-    assert_f64_near(pose.delta_movement.z, 0.054600006, 0.000001);
+    assert_f64_near(pose.position.z, 0.5 + first_fluid_step(0.1), 0.000001);
+    assert_f64_near(
+        pose.delta_movement.z,
+        first_fluid_step(0.1) * 0.54600006,
+        0.000001,
+    );
     assert_f64_near(pose.delta_movement.y, -0.005, 0.000001);
 }
 
@@ -2752,8 +2770,12 @@ fn local_player_dolphins_grace_overrides_water_horizontal_drag() {
         )
         .unwrap();
 
-    assert_f64_near(pose.position.z, 0.52, 0.000001);
-    assert_f64_near(pose.delta_movement.z, 0.0192, 0.000001);
+    assert_f64_near(pose.position.z, 0.5 + first_fluid_step(0.02), 0.000001);
+    assert_f64_near(
+        pose.delta_movement.z,
+        first_fluid_step(0.02) * 0.96,
+        0.000001,
+    );
     assert_f64_near(pose.delta_movement.y, -0.005, 0.000001);
 }
 
@@ -2780,8 +2802,12 @@ fn local_player_no_gravity_metadata_suppresses_water_falling_gravity() {
         )
         .unwrap();
 
-    assert_f64_near(pose.position.z, 0.52, 0.000001);
-    assert_f64_near(pose.delta_movement.z, 0.016, 0.000001);
+    assert_f64_near(pose.position.z, 0.5 + first_fluid_step(0.02), 0.000001);
+    assert_f64_near(
+        pose.delta_movement.z,
+        first_fluid_step(0.02) * 0.8,
+        0.000001,
+    );
     assert_f64_near(pose.delta_movement.y, 0.0, 0.000001);
 }
 
@@ -2808,8 +2834,12 @@ fn local_player_bad_omen_does_not_apply_dolphins_grace_water_drag() {
         )
         .unwrap();
 
-    assert_f64_near(pose.position.z, 0.52, 0.000001);
-    assert_f64_near(pose.delta_movement.z, 0.016, 0.000001);
+    assert_f64_near(pose.position.z, 0.5 + first_fluid_step(0.02), 0.000001);
+    assert_f64_near(
+        pose.delta_movement.z,
+        first_fluid_step(0.02) * 0.8,
+        0.000001,
+    );
     assert_f64_near(pose.delta_movement.y, -0.005, 0.000001);
 }
 
@@ -2835,8 +2865,12 @@ fn local_player_sprinting_in_water_uses_vanilla_sprint_drag_without_sinking_grav
         )
         .unwrap();
 
-    assert_f64_near(pose.position.z, 0.52, 0.000001);
-    assert_f64_near(pose.delta_movement.z, 0.018, 0.000001);
+    assert_f64_near(pose.position.z, 0.5 + first_fluid_step(0.02), 0.000001);
+    assert_f64_near(
+        pose.delta_movement.z,
+        first_fluid_step(0.02) * 0.9,
+        0.000001,
+    );
     assert_f64_near(pose.delta_movement.y, 0.0, 0.000001);
 }
 
@@ -2864,8 +2898,12 @@ fn local_player_low_food_prevents_water_sprint_and_swimming_pose() {
         .unwrap();
 
     assert!(!pose.swimming);
-    assert_f64_near(pose.position.z, 0.52, 0.000001);
-    assert_f64_near(pose.delta_movement.z, 0.016, 0.000001);
+    assert_f64_near(pose.position.z, 0.5 + first_fluid_step(0.02), 0.000001);
+    assert_f64_near(
+        pose.delta_movement.z,
+        first_fluid_step(0.02) * 0.8,
+        0.000001,
+    );
     assert_f64_near(pose.delta_movement.y, -0.005, 0.000001);
 }
 
@@ -2896,8 +2934,12 @@ fn local_player_swimming_pitch_down_pulls_velocity_toward_look_y() {
     assert!(pose.swimming);
     assert_f64_near(pose.position.y, 1.0575, 0.000001);
     assert_f64_near(pose.delta_movement.y, -0.034, 0.000001);
-    assert_f64_near(pose.position.z, 0.52, 0.000001);
-    assert_f64_near(pose.delta_movement.z, 0.018, 0.000001);
+    assert_f64_near(pose.position.z, 0.5 + first_fluid_step(0.02), 0.000001);
+    assert_f64_near(
+        pose.delta_movement.z,
+        first_fluid_step(0.02) * 0.9,
+        0.000001,
+    );
 }
 
 #[test]
@@ -3208,8 +3250,12 @@ fn local_player_in_lava_uses_lava_drag_and_gravity() {
         )
         .unwrap();
 
-    assert_f64_near(pose.position.z, 0.52, 0.000001);
-    assert_f64_near(pose.delta_movement.z, 0.01, 0.000001);
+    assert_f64_near(pose.position.z, 0.5 + first_fluid_step(0.02), 0.000001);
+    assert_f64_near(
+        pose.delta_movement.z,
+        first_fluid_step(0.02) * 0.5,
+        0.000001,
+    );
     assert_f64_near(pose.delta_movement.y, -0.02, 0.000001);
 }
 
@@ -3236,8 +3282,12 @@ fn local_player_no_gravity_metadata_suppresses_lava_gravity() {
         )
         .unwrap();
 
-    assert_f64_near(pose.position.z, 0.52, 0.000001);
-    assert_f64_near(pose.delta_movement.z, 0.01, 0.000001);
+    assert_f64_near(pose.position.z, 0.5 + first_fluid_step(0.02), 0.000001);
+    assert_f64_near(
+        pose.delta_movement.z,
+        first_fluid_step(0.02) * 0.5,
+        0.000001,
+    );
     assert_f64_near(pose.delta_movement.y, 0.0, 0.000001);
 }
 
@@ -3271,8 +3321,12 @@ fn local_player_in_lava_ignores_water_movement_efficiency() {
         )
         .unwrap();
 
-    assert_f64_near(pose.position.z, 0.52, 0.000001);
-    assert_f64_near(pose.delta_movement.z, 0.01, 0.000001);
+    assert_f64_near(pose.position.z, 0.5 + first_fluid_step(0.02), 0.000001);
+    assert_f64_near(
+        pose.delta_movement.z,
+        first_fluid_step(0.02) * 0.5,
+        0.000001,
+    );
     assert_f64_near(pose.delta_movement.y, -0.02, 0.000001);
 }
 
@@ -5648,4 +5702,110 @@ fn local_player_settles_on_next_support_after_block_below_vanishes() {
         pose.position.y
     );
     assert!(pose.on_ground);
+}
+
+#[test]
+fn local_player_in_water_ladder_collision_applies_climb_impulse() {
+    let mut world = flat_collision_world();
+    set_test_block(&mut world, 0, 1, 0, LADDER_SOUTH_BLOCK_STATE_ID);
+    set_test_block(&mut world, 0, 2, 0, SOURCE_WATER_BLOCK_STATE_ID);
+    set_test_block(&mut world, 0, 1, 1, GRASS_BLOCK_STATE_ID);
+    set_test_block(&mut world, 0, 2, 1, GRASS_BLOCK_STATE_ID);
+    set_test_block(&mut world, 0, 3, 1, GRASS_BLOCK_STATE_ID);
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: vec3(0.5, 1.1, 0.69),
+        on_ground: false,
+        ..LocalPlayerPoseState::default()
+    });
+
+    let pose = world
+        .advance_local_player_input(
+            LocalPlayerInputState {
+                focused: true,
+                forward: true,
+                ..LocalPlayerInputState::default()
+            },
+            LOCAL_PHYSICS_TICK_SECONDS,
+        )
+        .unwrap();
+
+    // `travelInWater`: the horizontal collision on a climbable rebuilds the
+    // vertical delta to 0.2 before the 0.8 water drag and the falling
+    // adjustment (gravity / 16).
+    assert!(pose.horizontal_collision);
+    assert_f64_near(
+        pose.delta_movement.y,
+        LOCAL_PLAYER_CLIMBABLE_UPWARD_VELOCITY_PER_TICK * 0.8 - 0.005,
+        0.000001,
+    );
+}
+
+#[test]
+fn local_player_walking_on_water_bottom_steps_up_slab() {
+    let mut world = flat_collision_world();
+    set_test_block(&mut world, 0, 1, 0, SOURCE_WATER_BLOCK_STATE_ID);
+    set_test_block(&mut world, 0, 2, 0, SOURCE_WATER_BLOCK_STATE_ID);
+    set_test_block(&mut world, 0, 1, 1, OAK_BOTTOM_SLAB_BLOCK_STATE_ID);
+    set_test_block(&mut world, 0, 2, 1, SOURCE_WATER_BLOCK_STATE_ID);
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: vec3(0.5, 1.0, 0.5),
+        on_ground: true,
+        ..LocalPlayerPoseState::default()
+    });
+
+    // `Entity.move` steps up while grounded inside fluids too: walking along
+    // the water bottom into a half slab climbs it instead of stopping.
+    let mut pose = None;
+    for _ in 0..12 {
+        pose = Some(
+            world
+                .advance_local_player_input(
+                    LocalPlayerInputState {
+                        focused: true,
+                        forward: true,
+                        ..LocalPlayerInputState::default()
+                    },
+                    LOCAL_PHYSICS_TICK_SECONDS,
+                )
+                .unwrap(),
+        );
+    }
+    let pose = pose.unwrap();
+    assert!(
+        pose.position.z > 1.0 && pose.position.y >= 1.5,
+        "expected to step onto the slab, got {:?}",
+        pose.position
+    );
+}
+
+#[test]
+fn local_player_soul_sand_speed_factor_applies_under_water() {
+    let mut world = flat_collision_world();
+    set_test_block(&mut world, 0, 0, 0, SOUL_SAND_BLOCK_STATE_ID);
+    set_test_block(&mut world, 0, 1, 0, SOURCE_WATER_BLOCK_STATE_ID);
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: vec3(0.5, 0.875, 0.5),
+        on_ground: true,
+        ..LocalPlayerPoseState::default()
+    });
+
+    let pose = world
+        .advance_local_player_input(
+            LocalPlayerInputState {
+                focused: true,
+                forward: true,
+                ..LocalPlayerInputState::default()
+            },
+            LOCAL_PHYSICS_TICK_SECONDS,
+        )
+        .unwrap();
+
+    // `Entity.move` multiplies the carried delta by the block speed factor
+    // inside fluids as well; the water drag then applies on top.
+    assert_f64_near(pose.position.z, 0.5 + first_fluid_step(0.02), 0.000001);
+    assert_f64_near(
+        pose.delta_movement.z,
+        first_fluid_step(0.02) * 0.4 * 0.8,
+        0.000001,
+    );
 }

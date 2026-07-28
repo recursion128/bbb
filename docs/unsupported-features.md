@@ -625,9 +625,6 @@ Movement:
 - Cover the remaining vanilla survival physics beyond the synchronized local
   movement cadence.
 - Cover the remaining vanilla voxel collision shapes.
-- Align the fluid branch's legacy normalized direction input with
-  `LocalPlayer.modifyInput` (the follow-up left by the closed travel-ordering
-  contract, `docs/archive/local-player-travel-ordering-design.md`).
 - Add sprint-swim camera, animation, and presentation nuance.
 
 Commands:

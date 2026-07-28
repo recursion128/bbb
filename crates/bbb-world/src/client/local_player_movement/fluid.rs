@@ -8,8 +8,6 @@ pub(super) fn advance_local_player_fluid_physics_step(
     mut pose: LocalPlayerPoseState,
     input: LocalPlayerInputState,
     step_seconds: f64,
-    move_x: f64,
-    move_z: f64,
     initial_fluid_contact: EntityFluidContactState,
     stuck_multiplier: Option<EntityVec3>,
 ) -> (LocalPlayerPoseState, EntityBlockEffectMovement) {
@@ -30,6 +28,17 @@ pub(super) fn advance_local_player_fluid_physics_step(
         local_player_lava_current_push_per_tick(world),
         step_ticks,
     );
+
+    // Vanilla ordering: `LivingEntity.aiStep` applies the held-jump liquid
+    // rise and `LocalPlayer.aiStep` the sneak descend, then `Player.travel`
+    // steers the swimming vertical toward the look angle, and only then
+    // `travelInFluid` snapshots the falling flag before `moveRelative`.
+    if input.focused && input.jump {
+        pose.delta_movement.y += LOCAL_INPUT_LIQUID_JUMP_VELOCITY_PER_TICK * step_ticks;
+    }
+    if input.focused && input.sneak && initial_fluid_contact.in_water() {
+        pose.delta_movement.y -= LOCAL_INPUT_WATER_SNEAK_DESCEND_VELOCITY_PER_TICK * step_ticks;
+    }
     pose.delta_movement = local_player_swimming_vertical_velocity(
         world,
         pose,
@@ -37,39 +46,44 @@ pub(super) fn advance_local_player_fluid_physics_step(
         initial_fluid_contact,
         pose.delta_movement,
     );
-
-    if input.focused && input.jump {
-        pose.delta_movement.y += LOCAL_INPUT_LIQUID_JUMP_VELOCITY_PER_TICK * step_ticks;
-    }
-    if input.focused && input.sneak && initial_fluid_contact.in_water() {
-        pose.delta_movement.y -= LOCAL_INPUT_WATER_SNEAK_DESCEND_VELOCITY_PER_TICK * step_ticks;
-    }
+    let is_falling = pose.delta_movement.y <= 0.0;
 
     let fluid_relative_speed = if initial_fluid_contact.in_water() {
         local_player_water_relative_speed_per_tick(world, pose.on_ground)
     } else {
         LOCAL_INPUT_FLUID_SPEED_PER_TICK
     };
-    pose.delta_movement.x += move_x * fluid_relative_speed * step_ticks;
-    pose.delta_movement.z += move_z * fluid_relative_speed * step_ticks;
-    let is_falling = pose.delta_movement.y <= 0.0;
+    // `moveRelative` consumes the same `modifyInput`-shaped axes as the
+    // land chain and accumulates into the carried delta.
+    let (input_x, input_z) =
+        local_player_modified_input(world, pose, input, initial_fluid_contact.in_water());
+    let (acceleration_x, acceleration_z) =
+        local_player_input_acceleration(pose, input_x, input_z, fluid_relative_speed);
+    pose.delta_movement.x += acceleration_x * step_ticks;
+    pose.delta_movement.z += acceleration_z * step_ticks;
+
     let mut requested_x = pose.delta_movement.x * step_ticks;
     let mut requested_y = pose.delta_movement.y * step_ticks;
     let mut requested_z = pose.delta_movement.z * step_ticks;
-    // Vanilla `Entity.move` multiplies the requested vector by the consumed
-    // stuck-speed multiplier inside fluids too.
+    // Vanilla `Entity.move` consumes the stuck-speed multiplier (zeroing the
+    // stored delta) and edge-backs-off inside fluids too.
     if let Some(stuck) = stuck_multiplier {
         requested_x *= stuck.x;
         requested_y *= stuck.y;
         requested_z *= stuck.z;
+        pose.delta_movement = ProtocolVec3d::default();
+    }
+    if should_back_off_from_edge(world, pose, input, requested_y) {
+        (requested_x, requested_z) = back_off_from_edge(world, pose, requested_x, requested_z);
     }
     let collision_context = LocalPlayerCollisionContext::for_pose(world, pose, input.sneak);
-    let movement = clip_local_player_movement_without_step(
+    let movement = clip_local_player_movement(
         world,
         pose,
         requested_x,
         requested_y,
         requested_z,
+        pose.on_ground,
         collision_context,
     );
     let step_move = EntityBlockEffectMovement::clipped(
@@ -93,12 +107,16 @@ pub(super) fn advance_local_player_fluid_physics_step(
     pose.position.y += movement.y;
     pose.position.z += movement.z;
 
-    let tick_span = step_ticks.max(f64::EPSILON);
-    let horizontal_collision = (movement.x - requested_x).abs() > COLLISION_EPSILON
-        || (movement.z - requested_z).abs() > COLLISION_EPSILON;
+    let x_collision = (movement.x - requested_x).abs() > COLLISION_EPSILON;
+    let z_collision = (movement.z - requested_z).abs() > COLLISION_EPSILON;
+    let horizontal_collision = x_collision || z_collision;
     let vertical_collision = (movement.y - requested_y).abs() > COLLISION_EPSILON;
     let on_ground = vertical_collision && requested_y < 0.0
         || local_player_supported(world, pose, collision_context);
+    let bounced_on_slime = vertical_collision
+        && requested_y < 0.0
+        && !input.sneak
+        && local_player_standing_on_block(world, pose, "minecraft:slime_block");
     let fluid_contact = local_player_fluid_contact(world, pose);
     pose.fall_distance = if fluid_contact.in_water() {
         0.0
@@ -106,26 +124,34 @@ pub(super) fn advance_local_player_fluid_physics_step(
         next_local_player_fall_distance(pose.fall_distance, movement.y, on_ground)
     };
 
-    pose.delta_movement = ProtocolVec3d {
-        x: movement.x / tick_span,
-        y: movement.y / tick_span,
-        z: movement.z / tick_span,
-    };
-    if horizontal_collision {
-        if (movement.x - requested_x).abs() > COLLISION_EPSILON {
-            pose.delta_movement.x = 0.0;
-        }
-        if (movement.z - requested_z).abs() > COLLISION_EPSILON {
-            pose.delta_movement.z = 0.0;
-        }
+    // `Entity.move` tail on the carried delta: zero the collided horizontal
+    // axes, let the supporting block's `updateEntityMovementAfterFallOn`
+    // resolve the vertical axis, then multiply in the block speed factor.
+    if x_collision {
+        pose.delta_movement.x = 0.0;
+    }
+    if z_collision {
+        pose.delta_movement.z = 0.0;
     }
     if vertical_collision {
-        pose.delta_movement.y = 0.0;
+        pose.delta_movement.y = if bounced_on_slime && pose.delta_movement.y < 0.0 {
+            -pose.delta_movement.y
+        } else {
+            0.0
+        };
     }
-    // Vanilla zeroes the delta right after consuming the multiplier; the
-    // drag and gravity tail below rebuilds from that zero vector.
-    if stuck_multiplier.is_some() {
-        pose.delta_movement = ProtocolVec3d::default();
+    let block_speed_factor = local_player_block_speed_factor(world, pose);
+    pose.delta_movement.x *= block_speed_factor;
+    pose.delta_movement.z *= block_speed_factor;
+
+    // `travelInWater` post-move: a horizontal collision on a climbable sets
+    // the vertical delta to 0.2 before the drag multiply (the water branch
+    // keys on the collision alone, unlike `travelInAir`'s jump-or-collide).
+    if initial_fluid_contact.in_water()
+        && horizontal_collision
+        && local_player_climbable_kind(world, pose).is_some()
+    {
+        pose.delta_movement.y = LOCAL_PLAYER_CLIMBABLE_UPWARD_VELOCITY_PER_TICK;
     }
 
     if initial_fluid_contact.in_water() {

@@ -253,14 +253,11 @@ fn advance_local_player_physics_step(
     pose = local_player_update_body_pose(world, pose, input, flying);
     let initial_fluid_contact = local_player_fluid_contact(world, pose);
     if flying.is_none() && (initial_fluid_contact.in_water() || initial_fluid_contact.in_lava()) {
-        let (move_x, move_z) = local_player_legacy_direction_input(world, pose, input);
         return advance_local_player_fluid_physics_step(
             world,
             pose,
             input,
             step_seconds,
-            move_x,
-            move_z,
             initial_fluid_contact,
             stuck_multiplier,
         );
@@ -335,7 +332,8 @@ fn advance_local_player_physics_step(
     } else {
         LOCAL_PLAYER_AIR_ACCELERATION
     };
-    let (input_x, input_z) = local_player_modified_input(world, pose, input);
+    let (input_x, input_z) =
+        local_player_modified_input(world, pose, input, initial_fluid_contact.in_water());
     let (acceleration_x, acceleration_z) =
         local_player_input_acceleration(pose, input_x, input_z, acceleration);
     pose.delta_movement.x += acceleration_x * step_ticks;
@@ -469,38 +467,6 @@ fn advance_local_player_physics_step(
     (pose, step_move)
 }
 
-/// The pre-rewrite normalized direction input consumed by the fluid branch:
-/// yaw-rotated unit direction scaled by the item-use multiplier. The S5
-/// fluid-owner follow-up aligns this with `LocalPlayer.modifyInput`.
-fn local_player_legacy_direction_input(
-    world: &WorldStore,
-    pose: LocalPlayerPoseState,
-    input: LocalPlayerInputState,
-) -> (f64, f64) {
-    let forward_input = if input.focused {
-        axis(input.forward, input.backward)
-    } else {
-        0.0
-    };
-    let strafe_input = if input.focused {
-        axis(input.right, input.left)
-    } else {
-        0.0
-    };
-    let yaw = f64::from(pose.y_rot).to_radians();
-    let forward = (-yaw.sin(), yaw.cos());
-    let right = (-yaw.cos(), -yaw.sin());
-    let mut move_x = forward.0 * forward_input + right.0 * strafe_input;
-    let mut move_z = forward.1 * forward_input + right.1 * strafe_input;
-    let horizontal_len = (move_x * move_x + move_z * move_z).sqrt();
-    if horizontal_len > f64::EPSILON {
-        move_x /= horizontal_len;
-        move_z /= horizontal_len;
-    }
-    let use_speed_multiplier = local_player_using_item_speed_multiplier(world);
-    (move_x * use_speed_multiplier, move_z * use_speed_multiplier)
-}
-
 /// Vanilla `LocalPlayer.modifyInput`: the raw ±1 key axes scaled by 0.98,
 /// the item-use multiplier off-vehicle, the `SNEAKING_SPEED` attribute while
 /// moving slowly (crouching or visually crawling), then projected onto the
@@ -510,6 +476,7 @@ fn local_player_modified_input(
     world: &WorldStore,
     pose: LocalPlayerPoseState,
     input: LocalPlayerInputState,
+    in_water: bool,
 ) -> (f64, f64) {
     if !input.focused {
         return (0.0, 0.0);
@@ -521,7 +488,10 @@ fn local_player_modified_input(
     }
     let mut scale = LOCAL_PLAYER_INPUT_SCALE;
     scale *= local_player_using_item_speed_multiplier(world);
-    if pose.sneaking || pose.swimming {
+    // `LocalPlayer.isMovingSlowly`: crouching or visually crawling, where
+    // `isVisuallyCrawling` is the swimming pose out of water — swimming in
+    // water never applies the sneaking-speed attribute.
+    if pose.sneaking || (pose.swimming && !in_water) {
         scale *= local_player_attribute_value(world, VANILLA_ATTRIBUTE_SNEAKING_SPEED_ID)
             .unwrap_or(LOCAL_INPUT_SNEAKING_SPEED_MULTIPLIER)
             .clamp(0.0, 1.0);
