@@ -685,6 +685,70 @@ fn chat_render_cache_rebuilds_only_for_display_revision_or_level() {
 }
 
 #[test]
+fn hotbar_block_item_model_cache_requires_exact_world_and_input_resource_key() {
+    fn update(
+        runtime: &mut HudRenderRuntime,
+        stable_world_unchanged: bool,
+        key: HudHotbarBlockItemModelsCacheKey,
+        builds: &std::cell::Cell<u64>,
+    ) -> RendererFrameUpdate<Vec<Option<bbb_renderer::HudBlockItemModel>>> {
+        runtime.hotbar_block_item_models_update(stable_world_unchanged, key, || {
+            builds.set(builds.get() + 1);
+            Vec::new()
+        })
+    }
+
+    let mut runtime = HudRenderRuntime::default();
+    let builds = std::cell::Cell::new(0);
+    let base = HudHotbarBlockItemModelsCacheKey {
+        ordinary_hotbar: true,
+        ..Default::default()
+    };
+    let resources_loaded = HudHotbarBlockItemModelsCacheKey {
+        resources_loaded: true,
+        ..base
+    };
+    let reloaded = HudHotbarBlockItemModelsCacheKey {
+        resource_generation: 1,
+        ..resources_loaded
+    };
+    let shifted = HudHotbarBlockItemModelsCacheKey {
+        shift_down: true,
+        ..reloaded
+    };
+    let keybound = HudHotbarBlockItemModelsCacheKey {
+        keybind_context: ItemModelKeybindContext {
+            forward: true,
+            ..Default::default()
+        },
+        ..shifted
+    };
+    let spectator = HudHotbarBlockItemModelsCacheKey {
+        ordinary_hotbar: false,
+        ..keybound
+    };
+
+    for (stable_world_unchanged, key, replace) in [
+        (false, base, true),
+        (true, base, false),
+        (false, base, true),
+        (true, resources_loaded, true),
+        (true, reloaded, true),
+        (true, reloaded, false),
+        (true, shifted, true),
+        (true, keybound, true),
+        (true, spectator, true),
+    ] {
+        let update = update(&mut runtime, stable_world_unchanged, key, &builds);
+        assert_eq!(
+            matches!(update, RendererFrameUpdate::Replace(models) if models.is_empty()),
+            replace
+        );
+    }
+    assert_eq!(builds.get(), 7);
+}
+
+#[test]
 fn non_entity_render_observation_keeps_recent_and_peak_phase_costs() {
     let mut scratch = NonEntityRenderExtractionScratch::default();
     scratch.record_frame(

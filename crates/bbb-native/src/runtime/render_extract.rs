@@ -2366,6 +2366,10 @@ impl NonEntityRenderExtractionScratch {
             .stable_world
             .as_ref()
             .is_some_and(|previous| Arc::ptr_eq(previous, world));
+        // The exact immutable owner rejects stable hotbar block-item models,
+        // settled boss bars, and block-destroy overlays. Dynamic item poses,
+        // active boss interpolation, and every camera/partial-tick projection
+        // remain frame-local.
         if unchanged {
             self.observation.cache_hits = self.observation.cache_hits.saturating_add(3);
         } else {

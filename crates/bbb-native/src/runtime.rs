@@ -724,6 +724,7 @@ pub(crate) struct HudRenderRuntime {
     win_screen_lines: Arc<[HudWinScreenLine]>,
     last_ui_frame_at: Option<Instant>,
     chat_cache_key: Option<HudChatCacheKey>,
+    hotbar_block_item_models_cache_key: Option<HudHotbarBlockItemModelsCacheKey>,
     boss_connection_generation: Option<u64>,
     boss_progress: BTreeMap<uuid::Uuid, BossBarProgressPresentation>,
     contextual: waypoint_locator::HudContextualRuntime,
@@ -753,6 +754,15 @@ struct HudChatCacheKey {
     delivery_revision: u64,
     resource_generation: u64,
     resources_loaded: bool,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+struct HudHotbarBlockItemModelsCacheKey {
+    ordinary_hotbar: bool,
+    resource_generation: u64,
+    resources_loaded: bool,
+    shift_down: bool,
+    keybind_context: ItemModelKeybindContext,
 }
 
 impl ClientAnimationTickState {
@@ -892,6 +902,19 @@ impl HudRenderRuntime {
         }
         self.chat_cache_key = Some(key);
         RendererFrameUpdate::Replace(hud_chat_messages_from_world(world, item_runtime))
+    }
+
+    fn hotbar_block_item_models_update(
+        &mut self,
+        stable_world_unchanged: bool,
+        key: HudHotbarBlockItemModelsCacheKey,
+        project: impl FnOnce() -> Vec<Option<HudBlockItemModel>>,
+    ) -> RendererFrameUpdate<Vec<Option<HudBlockItemModel>>> {
+        if stable_world_unchanged && self.hotbar_block_item_models_cache_key == Some(key) {
+            return RendererFrameUpdate::Unchanged;
+        }
+        self.hotbar_block_item_models_cache_key = Some(key);
+        RendererFrameUpdate::Replace(project())
     }
 
     fn boss_bars_update(
@@ -3178,17 +3201,33 @@ pub(crate) fn update_renderer_from_publication(
     } else {
         std::array::from_fn(|_| None)
     };
-    let hud_hotbar_block_item_models = if !ordinary_hotbar {
-        RendererFrameUpdate::Replace(Vec::new())
-    } else {
-        RendererFrameUpdate::Replace(hotbar_block_item_models(
-            world,
-            item_runtime,
-            terrain_textures,
-            input.shift_down(),
-            item_model_keybind_context,
-        ))
-    };
+    // Vanilla `Gui.extractSlot` resolves the GUI item model after applying
+    // the partial-tick pop pose (Gui.java:1117-1139). Keep that pose in the
+    // frame-local icon projection above; only retain the static 3D block-item
+    // model while the exact world plus every model-selector input is stable.
+    let hud_hotbar_block_item_models = hud_render_runtime.hotbar_block_item_models_update(
+        stable_world_unchanged,
+        HudHotbarBlockItemModelsCacheKey {
+            ordinary_hotbar,
+            resource_generation: item_runtime.map_or(0, NativeItemRuntime::resource_generation),
+            resources_loaded: item_runtime.is_some(),
+            shift_down: input.shift_down(),
+            keybind_context: item_model_keybind_context,
+        },
+        || {
+            if ordinary_hotbar {
+                hotbar_block_item_models(
+                    world,
+                    item_runtime,
+                    terrain_textures,
+                    input.shift_down(),
+                    item_model_keybind_context,
+                )
+            } else {
+                Vec::new()
+            }
+        },
+    );
     let advancement_scroll_delta =
         input.advancement_scroll_delta(world.selected_advancements_tab());
     let advancement_hover_fade = input.advancement_hover_fade();
