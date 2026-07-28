@@ -952,6 +952,24 @@ class PlayableGateScriptContractTests(unittest.TestCase):
             interaction.index('"input.focus"'), interaction.index("_press_mouse(")
         )
 
+    def test_block_interaction_builds_deterministic_support_column(self):
+        source = MODULE_PATH.read_text(encoding="utf-8")
+        interaction = source[
+            source.index("def drive_block_interaction(") : source.index(
+                "def collect_live(",
+                source.index("def drive_block_interaction("),
+            )
+        ]
+
+        # Natural columns can hide decaying foliage below the destroy target;
+        # the scenario must replace the support cells with smooth stone before
+        # any synthetic click so the fall geometry is deterministic.
+        self.assertIn("minecraft:smooth_stone", interaction)
+        self.assertLess(
+            interaction.index("minecraft:smooth_stone"),
+            interaction.index("_press_mouse("),
+        )
+
     def test_block_centering_uses_server_authority_only_for_test_setup(self):
         source = MODULE_PATH.read_text(encoding="utf-8")
         centering = source[

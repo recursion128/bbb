@@ -5613,3 +5613,39 @@ fn assert_f64_near(actual: f64, expected: f64, epsilon: f64) {
         "expected {actual} to be within {epsilon} of {expected}"
     );
 }
+
+#[test]
+fn local_player_settles_on_next_support_after_block_below_vanishes() {
+    let mut world = flat_collision_world();
+    set_test_block(&mut world, 0, 1, 0, GRASS_BLOCK_STATE_ID);
+    // The live-gate landing pose: resting a clip epsilon above a vacated
+    // cell with the carried grounded gravity delta still applied each tick.
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: vec3(0.5, 3.000003, 0.5),
+        delta_movement: vec3(0.0, -0.0784, 0.0),
+        on_ground: true,
+        ..LocalPlayerPoseState::default()
+    });
+
+    let mut pose = None;
+    for _ in 0..40 {
+        pose = Some(
+            world
+                .advance_local_player_input(
+                    LocalPlayerInputState {
+                        focused: true,
+                        ..LocalPlayerInputState::default()
+                    },
+                    LOCAL_PHYSICS_TICK_SECONDS,
+                )
+                .unwrap(),
+        );
+    }
+    let pose = pose.unwrap();
+    assert!(
+        (pose.position.y - 2.0).abs() < 0.001,
+        "expected to settle on the block top at 2.0, got {:.9}",
+        pose.position.y
+    );
+    assert!(pose.on_ground);
+}

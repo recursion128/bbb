@@ -1183,28 +1183,39 @@ def drive_block_interaction(
     # destroy, and the jump placement all target the same cell.  The cell
     # below the target must also be solid: the player must fall exactly one
     # block so the placement ray hits its top face and restores the target.
-    target = None
-    initial = None
-    for _ in range(4):
-        pose = _center_on_block(address, server_command, deadline)
-        position = _object(pose.get("position"), "local_player.pose.position")
-        column_x = math.floor(float(position["x"]))
-        column_z = math.floor(float(position["z"]))
-        feet_y = math.floor(float(position["y"]))
-        supporting = _probe_block(address, column_x, feet_y - 1, column_z)
-        below = _probe_block(address, column_x, feet_y - 2, column_z)
-        if _block_is_solid(supporting) and _block_is_solid(below):
-            target = {"x": column_x, "y": feet_y - 1, "z": column_z}
-            initial = supporting
-            break
-        # Cavitied terrain under this column: step one block away and retry.
-        _press_key(address, "forward", True)
-        time.sleep(0.3)
-        _press_key(address, "forward", False)
-    if target is None or initial is None:
+    pose = _center_on_block(address, server_command, deadline)
+    position = _object(pose.get("position"), "local_player.pose.position")
+    column_x = math.floor(float(position["x"]))
+    column_z = math.floor(float(position["z"]))
+    feet_y = math.floor(float(position["y"]))
+    # Deterministic support: a natural column can pass the "not air, not
+    # fluid" probe check with foliage or snow that the server then decays or
+    # melts on its own once the cell above is vacated (live run: the player
+    # stood on a tree canopy, the destroy removed one leaf block, and leaf
+    # decay vacated the cell below mid-fall, dropping the feet two cells).
+    # Replace the three cells under the centered player with smooth stone so
+    # the destroy/fall/place geometry never depends on world randomness, in
+    # line with the screenshot scenario's platform fill.
+    _server_console_command(
+        server_command,
+        f"fill {column_x} {feet_y - 3} {column_z} {column_x} {feet_y - 1} "
+        f"{column_z} minecraft:smooth_stone",
+    )
+    _await_value(
+        deadline,
+        "smooth stone support column under the centered player",
+        lambda: _probe_block(address, column_x, feet_y - 1, column_z),
+        lambda probe: probe is not None
+        and probe.get("block_name") == "minecraft:smooth_stone",
+    )
+    supporting = _probe_block(address, column_x, feet_y - 1, column_z)
+    below = _probe_block(address, column_x, feet_y - 2, column_z)
+    if not (_block_is_solid(supporting) and _block_is_solid(below)):
         raise GateFailure(
-            "no centered column with two solid blocks below the player was found"
+            "smooth stone support column was not reflected below the player"
         )
+    target = {"x": column_x, "y": feet_y - 1, "z": column_z}
+    initial = supporting
 
     net_before = _object(_control_request(address, "net.counters"), "net.counters")
     _require_connected(net_before, "before block interaction")
