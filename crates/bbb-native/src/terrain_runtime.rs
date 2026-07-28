@@ -72,7 +72,7 @@ pub(crate) struct TerrainUploadState {
     reload_all_chunks_requested: bool,
     texture_animation_tick: u64,
     last_texture_animation_at: Option<Instant>,
-    compiled_and_visible_chunks: HashSet<(i32, i32)>,
+    compiled_and_visible_sections: HashSet<(i32, i32, i32)>,
     reported_readiness: Option<(u64, bool)>,
 }
 
@@ -93,8 +93,9 @@ impl TerrainUploadState {
         if !world.dimension().contains_y(block_y) {
             return false;
         }
-        self.compiled_and_visible_chunks.contains(&(
+        self.compiled_and_visible_sections.contains(&(
             (pose.position.x.floor() as i32).div_euclid(16),
+            block_y.div_euclid(16),
             (pose.position.z.floor() as i32).div_euclid(16),
         ))
     }
@@ -108,8 +109,9 @@ impl TerrainUploadState {
         if !world.dimension().contains_y(block_y) {
             return true;
         }
-        self.compiled_and_visible_chunks.contains(&(
+        self.compiled_and_visible_sections.contains(&(
             (position.x.floor() as i32).div_euclid(16),
+            block_y.div_euclid(16),
             (position.z.floor() as i32).div_euclid(16),
         ))
     }
@@ -235,7 +237,7 @@ pub(crate) fn maybe_upload_decoded_terrain(
         upload.mesh_atlas = None;
         upload.snapshots.clear();
         upload.meshes.clear();
-        upload.compiled_and_visible_chunks.clear();
+        upload.compiled_and_visible_sections.clear();
         upload.reload_all_chunks_requested = false;
     }
     upload
@@ -278,7 +280,7 @@ fn synchronize_terrain_level_generation(
     upload.snapshots.clear();
     upload.meshes.clear();
     upload.reload_all_chunks_requested = false;
-    upload.compiled_and_visible_chunks.clear();
+    upload.compiled_and_visible_sections.clear();
     clear_renderer
 }
 
@@ -290,7 +292,7 @@ fn synchronize_empty_terrain_upload(upload: &mut TerrainUploadState, world_revis
     upload.snapshots.clear();
     upload.meshes.clear();
     upload.reload_all_chunks_requested = false;
-    upload.compiled_and_visible_chunks.clear();
+    upload.compiled_and_visible_sections.clear();
     clear_renderer
 }
 
@@ -678,17 +680,12 @@ fn publish_mesh_worker_counters(
 }
 
 fn upload_cached_terrain(renderer: &mut bbb_renderer::Renderer, upload: &mut TerrainUploadState) {
-    let compiled_and_visible_chunks = upload
-        .selected_chunks
-        .iter()
-        .filter(|pos| upload.meshes.contains_key(pos))
-        .map(|pos| (pos.x, pos.z))
-        .collect();
     let cached: Vec<_> = upload
         .selected_chunks
         .iter()
         .filter_map(|pos| upload.meshes.get(pos).map(|cached| (*pos, cached)))
         .collect();
+    let compiled_and_visible_sections = selected_resident_sections(upload);
     let source_sections = cached
         .iter()
         .map(|(_, cached)| cached.layers.source_sections)
@@ -708,7 +705,21 @@ fn upload_cached_terrain(renderer: &mut bbb_renderer::Renderer, upload: &mut Ter
             )
         }),
     );
-    upload.compiled_and_visible_chunks = compiled_and_visible_chunks;
+    upload.compiled_and_visible_sections = compiled_and_visible_sections;
+}
+
+fn selected_resident_sections(upload: &TerrainUploadState) -> HashSet<(i32, i32, i32)> {
+    upload
+        .selected_chunks
+        .iter()
+        .filter_map(|pos| upload.meshes.get(pos).map(|cached| (*pos, cached)))
+        .flat_map(|(pos, cached)| {
+            cached
+                .resident_revisions
+                .iter()
+                .map(move |&(section_y, _)| (pos.x, section_y, pos.z))
+        })
+        .collect()
 }
 
 fn terrain_camera_position(world: &WorldStore) -> [f32; 3] {
@@ -1090,7 +1101,7 @@ mod tests {
                 },
             )]),
             next_resident_revision: 8,
-            compiled_and_visible_chunks: HashSet::from([(pos.x, pos.z)]),
+            compiled_and_visible_sections: HashSet::from([(pos.x, 4, pos.z)]),
             ..Default::default()
         };
 
@@ -1099,9 +1110,35 @@ mod tests {
         assert!(upload.selected_chunks.is_empty());
         assert!(upload.snapshots.is_empty());
         assert!(upload.meshes.is_empty());
-        assert!(upload.compiled_and_visible_chunks.is_empty());
+        assert!(upload.compiled_and_visible_sections.is_empty());
         assert_eq!(upload.next_resident_revision, 8);
         assert!(!synchronize_terrain_level_generation(&mut upload, 5));
+    }
+
+    #[test]
+    fn selected_resident_sections_publish_exact_vertical_mesh_membership() {
+        let selected = ChunkPos { x: -1, z: 2 };
+        let unselected = ChunkPos { x: 8, z: 9 };
+        let mesh = |resident_revisions| CachedTerrainMesh {
+            revision: 1,
+            section_mesh_revisions: Vec::new(),
+            resident_revisions,
+            camera_position: [0.0; 3],
+            layers: TerrainSectionMeshLayers::default(),
+        };
+        let upload = TerrainUploadState {
+            selected_chunks: vec![selected],
+            meshes: HashMap::from([
+                (selected, mesh(vec![(-4, 10), (3, 11)])),
+                (unselected, mesh(vec![(7, 12)])),
+            ]),
+            ..Default::default()
+        };
+
+        assert_eq!(
+            selected_resident_sections(&upload),
+            HashSet::from([(-1, -4, 2), (-1, 3, 2)])
+        );
     }
 
     #[test]
@@ -1478,7 +1515,7 @@ mod tests {
     }
 
     #[test]
-    fn player_section_ready_requires_an_uploaded_in_height_chunk() {
+    fn section_ready_distinguishes_vertical_meshes_and_height_policy() {
         let mut world = WorldStore::with_dimension(WorldDimension {
             min_y: -64,
             height: 384,
@@ -1494,8 +1531,37 @@ mod tests {
         let mut upload = TerrainUploadState::default();
 
         assert!(!upload.is_player_section_compiled_and_visible(&world));
-        upload.compiled_and_visible_chunks.insert((-1, 1));
+        upload.compiled_and_visible_sections.insert((-1, 4, 1));
         assert!(upload.is_player_section_compiled_and_visible(&world));
+        assert!(upload.is_entity_section_compiled_and_visible(
+            &world,
+            bbb_world::EntityVec3 {
+                x: -0.25,
+                y: 64.0,
+                z: 16.0,
+            }
+        ));
+
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: Vec3d {
+                x: -0.25,
+                y: 80.0,
+                z: 16.0,
+            },
+            ..LocalPlayerPoseState::default()
+        });
+        assert!(
+            !upload.is_player_section_compiled_and_visible(&world),
+            "another vertical section in the same chunk is not compiled"
+        );
+        assert!(!upload.is_entity_section_compiled_and_visible(
+            &world,
+            bbb_world::EntityVec3 {
+                x: -0.25,
+                y: 80.0,
+                z: 16.0,
+            }
+        ));
 
         world.set_local_player_pose(LocalPlayerPoseState {
             position: Vec3d {
@@ -1506,6 +1572,14 @@ mod tests {
             ..LocalPlayerPoseState::default()
         });
         assert!(!upload.is_player_section_compiled_and_visible(&world));
+        assert!(upload.is_entity_section_compiled_and_visible(
+            &world,
+            bbb_world::EntityVec3 {
+                x: -0.25,
+                y: 400.0,
+                z: 16.0,
+            }
+        ));
     }
 
     #[test]

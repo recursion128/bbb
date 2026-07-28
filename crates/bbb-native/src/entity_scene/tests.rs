@@ -410,6 +410,7 @@ fn render_candidate(
         is_sleeping: false,
         wears_dragon_head: false,
         display_culling: None,
+        special_culling: EntityRendererSpecialCullingState::None,
     }
 }
 
@@ -509,6 +510,184 @@ fn visibility_first_culling_applies_distance_frustum_and_leash_union() {
         frustum,
         12,
     ));
+}
+
+#[test]
+fn specialized_culling_uses_exact_guardian_crystal_and_shulker_fallbacks() {
+    let camera = CameraPose {
+        position: [0.0; 3],
+        y_rot: 0.0,
+        x_rot: 0.0,
+        eye_height: 0.0,
+    };
+    let frustum = CameraFrustum::from_pose(camera, 16.0 / 9.0, 70.0);
+
+    let mut guardian = render_candidate(20, VANILLA_ENTITY_TYPE_GUARDIAN_ID, [0.0, 0.0, -10.0]);
+    guardian.special_culling = EntityRendererSpecialCullingState::Guardian {
+        attack_target_id: 21,
+        eye_height: 1.5,
+    };
+    let target = render_candidate(21, VANILLA_ENTITY_TYPE_ZOMBIE_ID, [0.0, 0.0, 10.0]);
+    let candidates = [guardian, target];
+    let index = HashMap::from([(guardian.entity_id, 0), (target.entity_id, 1)]);
+    assert!(entity_renderer_should_render(
+        guardian,
+        &candidates,
+        &index,
+        camera,
+        frustum,
+        12,
+    ));
+
+    let non_living_target = render_candidate(21, VANILLA_ENTITY_TYPE_ITEM_ID, [0.0, 0.0, 10.0]);
+    let candidates = [guardian, non_living_target];
+    assert!(!entity_renderer_should_render(
+        guardian,
+        &candidates,
+        &index,
+        camera,
+        frustum,
+        12,
+    ));
+
+    let mut crystal = render_candidate(
+        30,
+        VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
+        [0.0, 0.0, -10_000.0],
+    );
+    crystal.special_culling = EntityRendererSpecialCullingState::EndCrystal {
+        has_beam_target: false,
+    };
+    assert!(!entity_renderer_should_render(
+        crystal,
+        &[crystal],
+        &HashMap::from([(crystal.entity_id, 0)]),
+        camera,
+        frustum,
+        12,
+    ));
+    crystal.special_culling = EntityRendererSpecialCullingState::EndCrystal {
+        has_beam_target: true,
+    };
+    assert!(entity_renderer_should_render(
+        crystal,
+        &[crystal],
+        &HashMap::from([(crystal.entity_id, 0)]),
+        camera,
+        frustum,
+        12,
+    ));
+
+    let mut shulker = render_candidate(40, VANILLA_ENTITY_TYPE_SHULKER_ID, [0.0, 0.0, -10.0]);
+    shulker.special_culling = EntityRendererSpecialCullingState::Shulker {
+        render_offset_at_zero: Some(EntityVec3 {
+            x: 0.0,
+            y: 0.0,
+            z: 10.0,
+        }),
+        half_width: 0.5,
+        half_height: 0.5,
+    };
+    assert!(entity_renderer_should_render(
+        shulker,
+        &[shulker],
+        &HashMap::from([(shulker.entity_id, 0)]),
+        camera,
+        frustum,
+        12,
+    ));
+    shulker.special_culling = EntityRendererSpecialCullingState::Shulker {
+        render_offset_at_zero: None,
+        half_width: 0.5,
+        half_height: 0.5,
+    };
+    assert!(!entity_renderer_should_render(
+        shulker,
+        &[shulker],
+        &HashMap::from([(shulker.entity_id, 0)]),
+        camera,
+        frustum,
+        12,
+    ));
+}
+
+#[test]
+fn specialized_culling_bounds_use_current_tick_vanilla_endpoints() {
+    let mut guardian = render_candidate(50, VANILLA_ENTITY_TYPE_GUARDIAN_ID, [2.0, 3.0, -10.0]);
+    guardian.special_culling = EntityRendererSpecialCullingState::Guardian {
+        attack_target_id: 51,
+        eye_height: 1.5,
+    };
+    let target = render_candidate(51, VANILLA_ENTITY_TYPE_ZOMBIE_ID, [-4.0, 5.0, 10.0]);
+    assert_eq!(
+        guardian_renderer_culling_bounds(
+            guardian,
+            &[guardian, target],
+            &HashMap::from([(guardian.entity_id, 0), (target.entity_id, 1)]),
+        ),
+        Some(([-4.0, 4.5, -10.0], [2.0, 6.0, 10.0]))
+    );
+    guardian.special_culling = EntityRendererSpecialCullingState::Guardian {
+        attack_target_id: 0,
+        eye_height: 1.5,
+    };
+    assert_eq!(
+        guardian_renderer_culling_bounds(
+            guardian,
+            &[guardian, target],
+            &HashMap::from([(guardian.entity_id, 0), (target.entity_id, 1)]),
+        ),
+        None
+    );
+    guardian.special_culling = EntityRendererSpecialCullingState::Guardian {
+        attack_target_id: 999,
+        eye_height: 1.5,
+    };
+    assert_eq!(
+        guardian_renderer_culling_bounds(
+            guardian,
+            &[guardian, target],
+            &HashMap::from([(guardian.entity_id, 0), (target.entity_id, 1)]),
+        ),
+        None
+    );
+
+    let mut shulker = render_candidate(60, VANILLA_ENTITY_TYPE_SHULKER_ID, [10.2, 64.9, -3.8]);
+    shulker.special_culling = EntityRendererSpecialCullingState::Shulker {
+        render_offset_at_zero: Some(EntityVec3 {
+            x: -2.0,
+            y: 1.0,
+            z: 4.0,
+        }),
+        half_width: 0.5,
+        half_height: 0.5,
+    };
+    assert_eq!(
+        shulker_renderer_culling_bounds(shulker),
+        Some(([-2.5, 1.0, -4.0], [11.0, 65.0, 4.5]))
+    );
+}
+
+#[test]
+fn visible_entity_source_orders_dispatcher_before_current_section_gate() {
+    let source = include_str!("../entity_scene.rs");
+    let body_start = source
+        .find("fn entity_render_candidate_is_visible")
+        .expect("visible-candidate source");
+    let body_end = source[body_start..]
+        .find("fn attached_camera_hides_entity")
+        .map(|offset| body_start + offset)
+        .expect("next source function");
+    let body = &source[body_start..body_end];
+    let dispatcher = body
+        .find("entity_renderer_should_render")
+        .expect("dispatcher visibility call");
+    let section = body
+        .find("is_entity_section_compiled_and_visible")
+        .expect("section visibility call");
+
+    assert!(dispatcher < section);
+    assert!(body.contains("candidate.current_position"));
 }
 
 #[test]

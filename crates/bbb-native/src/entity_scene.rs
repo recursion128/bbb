@@ -108,9 +108,10 @@ use bbb_world::{
     EnderDragonBeamSource as WorldEnderDragonBeamSource,
     EntityAttachmentFace as WorldEntityAttachmentFace, EntityModelSourceState,
     EntityNameTagRenderSourceState, EntityPickTargetState, EntityRenderCandidateState,
-    EntityShadowRenderSourceState, EquipmentAssetId as WorldEquipmentAssetId,
-    FarmAnimalVariantModel, FarmAnimalVariantPresentation, FishingHookRenderSourceState,
-    FrogVariantPresentation, GuardianBeamSource as WorldGuardianBeamSource,
+    EntityRendererSpecialCullingState, EntityShadowRenderSourceState,
+    EquipmentAssetId as WorldEquipmentAssetId, FarmAnimalVariantModel,
+    FarmAnimalVariantPresentation, FishingHookRenderSourceState, FrogVariantPresentation,
+    GuardianBeamSource as WorldGuardianBeamSource,
     GuardianEyeTrackingSource as WorldGuardianEyeTrackingSource,
     HappyGhastHarnessColor as WorldHappyGhastHarnessColor, ItemFrameFacing as WorldItemFrameFacing,
     LeashRopeSource as WorldLeashRopeSource, LlamaBodyDecorColor as WorldLlamaBodyDecorColor,
@@ -757,11 +758,9 @@ fn entity_render_candidate_is_visible(
         return false;
     }
 
-    // The current terrain owner records compiled chunks; phase 4 narrows this
-    // to section owners without changing this ordering contract.
     if !visibility
         .terrain_upload
-        .is_entity_section_compiled_and_visible(world, candidate.position)
+        .is_entity_section_compiled_and_visible(world, candidate.current_position)
     {
         return false;
     }
@@ -812,56 +811,133 @@ fn entity_renderer_should_render(
     {
         return false;
     }
-    if culling_kind == VanillaEntityRendererCullingKind::ConservativeSpecial {
-        // Shulker interpolation, guardian/end-crystal beams, and Display's
-        // metadata-owned no-cull box need data outside the narrow row. Keeping
-        // these catalog-derived exceptional families is conservative and never
-        // hides content; their exact specialized boxes remain a measured tail.
-        return true;
-    }
-    if !entity_passes_vanilla_render_distance(candidate, camera_pose, render_distance_chunks) {
-        return false;
-    }
-    if culling_kind == VanillaEntityRendererCullingKind::Display
-        && candidate
-            .display_culling
-            .is_some_and(|display| !display.affected_by_culling())
-    {
-        return true;
-    }
-    if culling_kind == VanillaEntityRendererCullingKind::NoFrustum {
-        return true;
+    if entity_passes_vanilla_render_distance(candidate, camera_pose, render_distance_chunks) {
+        if culling_kind == VanillaEntityRendererCullingKind::Display
+            && candidate
+                .display_culling
+                .is_some_and(|display| !display.affected_by_culling())
+        {
+            return true;
+        }
+        if culling_kind == VanillaEntityRendererCullingKind::NoFrustum {
+            return true;
+        }
+
+        let bounds = entity_renderer_culling_bounds(candidate, true);
+        if frustum.intersects_aabb(bounds.0, bounds.1) {
+            return true;
+        }
+        if let Some(holder) = candidate
+            .leash_holder_id
+            .and_then(|holder_id| candidate_index.get(&holder_id))
+            .and_then(|index| candidates.get(*index))
+            .copied()
+        {
+            let holder_bounds = entity_renderer_culling_bounds(holder, false);
+            if frustum.intersects_aabb(holder_bounds.0, holder_bounds.1)
+                || frustum.intersects_aabb(
+                    [
+                        bounds.0[0].min(holder_bounds.0[0]),
+                        bounds.0[1].min(holder_bounds.0[1]),
+                        bounds.0[2].min(holder_bounds.0[2]),
+                    ],
+                    [
+                        bounds.1[0].max(holder_bounds.1[0]),
+                        bounds.1[1].max(holder_bounds.1[1]),
+                        bounds.1[2].max(holder_bounds.1[2]),
+                    ],
+                )
+            {
+                return true;
+            }
+        }
     }
 
-    let bounds = entity_renderer_culling_bounds(candidate, true);
-    if frustum.intersects_aabb(bounds.0, bounds.1) {
-        return true;
+    entity_renderer_special_culling_is_visible(candidate, candidates, candidate_index, frustum)
+}
+
+fn entity_renderer_special_culling_is_visible(
+    candidate: EntityRenderCandidateState,
+    candidates: &[EntityRenderCandidateState],
+    candidate_index: &HashMap<i32, usize>,
+    frustum: CameraFrustum,
+) -> bool {
+    match candidate.special_culling {
+        EntityRendererSpecialCullingState::Guardian { .. } => {
+            guardian_renderer_culling_bounds(candidate, candidates, candidate_index)
+                .is_some_and(|(min, max)| frustum.intersects_aabb(min, max))
+        }
+        EntityRendererSpecialCullingState::EndCrystal { has_beam_target } => has_beam_target,
+        EntityRendererSpecialCullingState::Shulker { .. } => {
+            shulker_renderer_culling_bounds(candidate)
+                .is_some_and(|(min, max)| frustum.intersects_aabb(min, max))
+        }
+        EntityRendererSpecialCullingState::None => false,
     }
-    let Some(holder_id) = candidate.leash_holder_id else {
-        return false;
+}
+
+fn guardian_renderer_culling_bounds(
+    candidate: EntityRenderCandidateState,
+    candidates: &[EntityRenderCandidateState],
+    candidate_index: &HashMap<i32, usize>,
+) -> Option<([f64; 3], [f64; 3])> {
+    let EntityRendererSpecialCullingState::Guardian {
+        attack_target_id,
+        eye_height,
+    } = candidate.special_culling
+    else {
+        return None;
     };
-    let Some(holder) = candidate_index
-        .get(&holder_id)
+    if attack_target_id == 0 {
+        return None;
+    }
+    let target = candidate_index
+        .get(&attack_target_id)
         .and_then(|index| candidates.get(*index))
         .copied()
+        .filter(|target| vanilla_entity_type_is_living(target.entity_type_id))?;
+    let target_half_height = f64::from(target.bounds.max[1] - target.bounds.min[1]) * 0.5;
+    let start = [
+        candidate.current_position.x,
+        candidate.current_position.y + f64::from(eye_height),
+        candidate.current_position.z,
+    ];
+    let target = [
+        target.current_position.x,
+        target.current_position.y + target_half_height,
+        target.current_position.z,
+    ];
+    Some(aabb_between(start, target))
+}
+
+fn shulker_renderer_culling_bounds(
+    candidate: EntityRenderCandidateState,
+) -> Option<([f64; 3], [f64; 3])> {
+    let EntityRendererSpecialCullingState::Shulker {
+        render_offset_at_zero: Some(start),
+        half_width,
+        half_height,
+    } = candidate.special_culling
     else {
-        return false;
+        return None;
     };
-    let holder_bounds = entity_renderer_culling_bounds(holder, false);
-    if frustum.intersects_aabb(holder_bounds.0, holder_bounds.1) {
-        return true;
-    }
-    frustum.intersects_aabb(
-        [
-            bounds.0[0].min(holder_bounds.0[0]),
-            bounds.0[1].min(holder_bounds.0[1]),
-            bounds.0[2].min(holder_bounds.0[2]),
-        ],
-        [
-            bounds.1[0].max(holder_bounds.1[0]),
-            bounds.1[1].max(holder_bounds.1[1]),
-            bounds.1[2].max(holder_bounds.1[2]),
-        ],
+    let half_width = f64::from(half_width);
+    let half_height = f64::from(half_height);
+    let start = [start.x, start.y + half_height, start.z];
+    let target = [
+        candidate.current_position.x.floor() + 0.5,
+        candidate.current_position.y.floor() + half_height,
+        candidate.current_position.z.floor() + 0.5,
+    ];
+    let (mut min, mut max) = aabb_between(start, target);
+    inflate_aabb(&mut min, &mut max, [half_width, half_height, half_width]);
+    Some((min, max))
+}
+
+fn aabb_between(start: [f64; 3], end: [f64; 3]) -> ([f64; 3], [f64; 3]) {
+    (
+        std::array::from_fn(|axis| start[axis].min(end[axis])),
+        std::array::from_fn(|axis| start[axis].max(end[axis])),
     )
 }
 
