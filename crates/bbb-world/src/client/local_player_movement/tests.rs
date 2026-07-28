@@ -4382,6 +4382,75 @@ fn local_player_high_fall_distance_uses_powder_snow_falling_collision_shape() {
 }
 
 #[test]
+fn local_player_powder_snow_fall_sound_uses_vanilla_distance_thresholds() {
+    for (fall_distance, expected_big) in [(3.0, None), (4.0, Some(false)), (7.0, Some(true))] {
+        let mut world = flat_collision_world();
+        attach_local_player_entity(&mut world, 123);
+        set_test_block(&mut world, 0, 1, 0, POWDER_SNOW_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 2.1, 0.5),
+            delta_movement: vec3(0.0, -0.5, 0.0),
+            fall_distance,
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+        world.drain_entity_client_movement_effect_states();
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState::default(),
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert!(pose.on_ground, "fall distance {fall_distance}");
+        assert_f64_near(pose.position.y, 1.9, 0.0001);
+        assert_f64_near(pose.fall_distance, 0.0, 0.000001);
+        let sounds = world
+            .drain_entity_client_movement_effect_states()
+            .filter_map(|effect| match effect {
+                crate::entities::EntityClientMovementEffectState::Sound(sound) => Some(sound),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        match expected_big {
+            None => assert!(sounds.is_empty(), "fall distance {fall_distance}"),
+            Some(expected_big) => {
+                let [sound] = sounds.as_slice() else {
+                    panic!("expected one powder-snow fall sound, got {sounds:?}");
+                };
+                assert_eq!(sound.entity_id, 123);
+                assert_eq!(
+                    sound.kind,
+                    crate::entities::EntityClientMovementSoundKind::PlayerPowderSnowFall {
+                        big: expected_big,
+                    }
+                );
+                assert_f64_near(sound.position.x, pose.position.x, 0.000001);
+                assert_f64_near(sound.position.y, pose.position.y, 0.000001);
+                assert_f64_near(sound.position.z, pose.position.z, 0.000001);
+            }
+        }
+    }
+}
+
+#[test]
+fn powder_snow_fall_sound_thresholds_are_exact() {
+    for (fall_distance, expected) in [
+        (3.999_999, None),
+        (4.0, Some(false)),
+        (6.999_999, Some(false)),
+        (7.0, Some(true)),
+    ] {
+        assert_eq!(
+            player_powder_snow_fall_sound_size(fall_distance),
+            expected,
+            "fall distance {fall_distance}"
+        );
+    }
+}
+
+#[test]
 fn local_player_leather_boots_jump_climbs_out_of_powder_snow() {
     let mut world = flat_collision_world();
     set_test_block(&mut world, 0, 1, 0, POWDER_SNOW_BLOCK_STATE_ID);

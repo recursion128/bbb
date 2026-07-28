@@ -18,7 +18,8 @@ use super::local_player_collision::{
 };
 use super::local_player_fluid::local_player_fluid_contact;
 use crate::entities::{
-    vanilla_living_entity_type, EntityBlockEffectMovement, LocalPlayerBlockEffectStep,
+    vanilla_living_entity_type, EntityBlockEffectMovement, EntityClientMovementEffectState,
+    EntityClientMovementSoundKind, EntityClientMovementSoundState, LocalPlayerBlockEffectStep,
 };
 use crate::{block_name_is_trapdoor, BlockPos, BlockProbe, EntityVec3, WorldStore};
 
@@ -225,7 +226,7 @@ enum LocalPlayerBodyPose {
 }
 
 fn advance_local_player_physics_step(
-    world: &WorldStore,
+    world: &mut WorldStore,
     mut pose: LocalPlayerPoseState,
     input: LocalPlayerInputState,
     step_seconds: f64,
@@ -394,6 +395,8 @@ fn advance_local_player_physics_step(
     let vertical_collision = (movement.y - requested_y).abs() > COLLISION_EPSILON;
     let on_ground = vertical_collision && requested_y < 0.0
         || local_player_supported(world, pose, collision_context);
+    let landing_fall_distance =
+        on_ground.then_some(pose.fall_distance + if movement.y < 0.0 { -movement.y } else { 0.0 });
     let bounced_on_slime = flying.is_none()
         && vertical_collision
         && requested_y < 0.0
@@ -405,6 +408,9 @@ fn advance_local_player_physics_step(
     let powder_snow_upward_impulse =
         powder_snow_climb_out_before && (horizontal_collision || input.focused && input.jump);
     let fluid_contact = local_player_fluid_contact(world, pose);
+    if let Some(fall_distance) = landing_fall_distance {
+        append_local_player_powder_snow_fall_sound(world, pose, fall_distance);
+    }
     pose.fall_distance = if fluid_contact.in_water() || on_climbable_before || on_climbable_after {
         0.0
     } else {
@@ -623,6 +629,42 @@ fn next_local_player_fall_distance(previous: f64, vertical_movement: f64, on_gro
     } else {
         previous
     }
+}
+
+fn append_local_player_powder_snow_fall_sound(
+    world: &mut WorldStore,
+    pose: LocalPlayerPoseState,
+    fall_distance: f64,
+) {
+    let Some(big) = player_powder_snow_fall_sound_size(fall_distance) else {
+        return;
+    };
+    if !local_player_standing_on_block(world, pose, LOCAL_PLAYER_POWDER_SNOW_BLOCK_NAME) {
+        return;
+    }
+    let Some(entity_id) = world.local_player_id else {
+        return;
+    };
+    if world.entities.is_silent(entity_id).unwrap_or(false) {
+        return;
+    }
+    world.entities.push_entity_client_movement_effect_state(
+        EntityClientMovementEffectState::Sound(EntityClientMovementSoundState {
+            entity_id,
+            kind: EntityClientMovementSoundKind::PlayerPowderSnowFall { big },
+            position: EntityVec3 {
+                x: pose.position.x,
+                y: pose.position.y,
+                z: pose.position.z,
+            },
+        }),
+    );
+}
+
+/// Vanilla `PowderSnowBlock.fallOn`: distances below four are silent, then
+/// `LivingEntity.getFallSounds` switches from small to big at seven.
+fn player_powder_snow_fall_sound_size(fall_distance: f64) -> Option<bool> {
+    (fall_distance >= 4.0).then_some(fall_distance >= 7.0)
 }
 
 fn local_player_update_body_pose(

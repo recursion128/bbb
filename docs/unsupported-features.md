@@ -627,9 +627,6 @@ Movement:
 - Cover the remaining vanilla voxel collision shapes.
 - Implement full vanilla post-`Entity.move` `deltaMovement` travel ordering.
 - Add sprint-swim camera, animation, and presentation nuance.
-- Implement the `minecraft:powder_snow` fall-sound side effects (the
-  inside-block snowflake particle and extinguish effects are wired through the
-  block-effect evaluator and particle resolver).
 - Handle the remaining `MovePlayer.Rot` vehicle movement send edge cases.
 
 Commands:

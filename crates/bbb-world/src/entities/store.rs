@@ -2754,6 +2754,13 @@ impl EntityStore {
         self.pending_entity_client_movement_effects.drain(..)
     }
 
+    pub(crate) fn push_entity_client_movement_effect_state(
+        &mut self,
+        effect: EntityClientMovementEffectState,
+    ) {
+        self.pending_entity_client_movement_effects.push(effect);
+    }
+
     pub(crate) fn take_entity_client_movement_effect_states(
         &mut self,
     ) -> Vec<EntityClientMovementEffectState> {

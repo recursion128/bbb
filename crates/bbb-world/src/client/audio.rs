@@ -103,6 +103,8 @@ const ZOMBIE_NAUTILUS_DASH_READY_LAND_SOUND_EVENT: &str =
     "minecraft:entity.zombie_nautilus.dash_ready_land";
 const BREEZE_DEFLECT_SOUND_EVENT: &str = "minecraft:entity.breeze.deflect";
 const FIREWORK_ROCKET_LAUNCH_SOUND_EVENT: &str = "minecraft:entity.firework_rocket.launch";
+const PLAYER_BIG_FALL_SOUND_EVENT: &str = "minecraft:entity.player.big_fall";
+const PLAYER_SMALL_FALL_SOUND_EVENT: &str = "minecraft:entity.player.small_fall";
 const TRIDENT_RETURN_SOUND_EVENT: &str = "minecraft:item.trident.return";
 const GLOBAL_LEVEL_EVENT_SOUND_DISTANCE: f64 = 2.0;
 const VANILLA_VEC3_NORMALIZE_EPSILON: f64 = 1.0e-5;
@@ -2170,6 +2172,16 @@ impl WorldStore {
             EntityClientMovementSoundKind::FireworkRocketLaunch => {
                 (FIREWORK_ROCKET_LAUNCH_SOUND_EVENT, "ambient", 3.0, 1.0)
             }
+            EntityClientMovementSoundKind::PlayerPowderSnowFall { big } => (
+                if big {
+                    PLAYER_BIG_FALL_SOUND_EVENT
+                } else {
+                    PLAYER_SMALL_FALL_SOUND_EVENT
+                },
+                "player",
+                1.0,
+                1.0,
+            ),
             EntityClientMovementSoundKind::TridentReturn => {
                 (TRIDENT_RETURN_SOUND_EVENT, "neutral", 10.0, 1.0)
             }
@@ -5039,6 +5051,37 @@ mod tests {
             assert_eq!(sound.source, "hostile");
             assert_eq!(sound.volume, 1.6);
             assert_eq!(sound.pitch, 1.25);
+        }
+    }
+
+    #[test]
+    fn player_powder_snow_fall_sounds_use_player_category_and_size_variants() {
+        let mut store = WorldStore::new();
+        for (big, expected_event) in [
+            (false, "minecraft:entity.player.small_fall"),
+            (true, "minecraft:entity.player.big_fall"),
+        ] {
+            let sound = store.record_entity_client_movement_sound(EntityClientMovementSoundState {
+                entity_id: 19,
+                kind: EntityClientMovementSoundKind::PlayerPowderSnowFall { big },
+                position: crate::EntityVec3 {
+                    x: 4.5,
+                    y: 65.9,
+                    z: -5.5,
+                },
+            });
+            assert_eq!(sound.sound.location.as_deref(), Some(expected_event));
+            assert_eq!(sound.source, "player");
+            assert_eq!(sound.volume, 1.0);
+            assert_eq!(sound.pitch, 1.0);
+            assert_eq!(
+                sound.position,
+                ProtocolVec3d {
+                    x: 4.5,
+                    y: 65.9,
+                    z: -5.5,
+                }
+            );
         }
     }
 

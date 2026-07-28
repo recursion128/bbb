@@ -877,6 +877,9 @@ pub enum EntityClientMovementSoundKind {
     },
     BreezeDeflect,
     FireworkRocketLaunch,
+    PlayerPowderSnowFall {
+        big: bool,
+    },
     TridentReturn,
 }
 
