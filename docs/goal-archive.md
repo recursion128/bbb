@@ -195,52 +195,52 @@
   既有爆炸、轨迹及近远音频路径；矩阵第九类目 157 行翻为 complete。
 - **2026-07-22（157 entity family 矩阵全量闭环）**：equipment packet Living gate、8 个 wire slot、生成 `canUseSlot`、canonical query 与资源包装备 layer；passenger attachment/controller owner、当前 render-pose 投影与 first-mount side effect；leash 全 offset/rope-holder owner 与两条 rope strip 均有反向门禁。
   第十类目 157 行翻为 complete，矩阵只余 3 个 Vanilla NoopRenderer 的窄 not-applicable cell；工程合同见
-  `docs/entity-equipment-passenger-leash-closure-design.md`。
+  `docs/archive/entity-equipment-passenger-leash-closure-design.md`。
 - **2026-07-22（network HolderSet identity 全量闭环）**：十个 `ByteBufCodecs.holderSet`
   调用点完成固定/同步 registry 校验、Ingredient 原子应用、UpdateTags revision 与反向自定义顺序证明；账本 family 全部翻为 complete，合同见
-  `docs/registry-network-holder-set-closure-design.md`。
+  `docs/archive/registry-network-holder-set-closure-design.md`。
 - **2026-07-22（persistent HolderSet identity 全量闭环）**：48 个 `RegistryCodecs.homogeneousList`
   调用点由 registry-owned scalar/list/`#tag` 解析器统一收口；14 个客户端组件/谓词与 6 个同步附魔行翻为 complete，28 个服务端专属行以同步边界裁决为 not-applicable，合同见
-  `docs/persistent-holder-set-coverage-design.md`。
+  `docs/archive/persistent-holder-set-coverage-design.md`。
 - **2026-07-22（persistent Holder reference identity 全量闭环）**：38 个 named persistent
   Holder 调用点由 registry-owned resource identity 解析器统一收口；25 个客户端/同步 registry 行翻为 complete，13 个服务端专属行裁决为 not-applicable，DamageType 与 GameEvent 引用纳入同步附魔原子校验，合同见
-  `docs/persistent-holder-reference-coverage-design.md`。
+  `docs/archive/persistent-holder-reference-coverage-design.md`。
 - **2026-07-22（persistent Holder-or-inline 全量闭环）**：Instrument stream 保留完整 direct
   值并可精确持久化，TestEnvironment/Instrument/SoundEvent 三个客户端行共用 registry-owned named/direct 路由；20 个 worldgen/trial/loot 服务端行裁决为 not-applicable，合同见
-  `docs/persistent-holder-or-inline-coverage-design.md`。
+  `docs/archive/persistent-holder-or-inline-coverage-design.md`。
 - **2026-07-22（DimensionType.NETWORK_CODEC 全字段闭环）**：原子 typed revision 保留全部标量、
-  `infiniburn` hashed TagKey、七类有界 `IntProvider` 与 monster light settings，并将当前 session holder 投影到 level 快照；合同见 `docs/dimension-type-network-codec-design.md`。
-- **2026-07-22（registry holder/tag 194 行全量闭环）**：SlotDisplay 网络 item tag 保留规范身份并在每次配方展示时读取当前 UpdateTags 顺序，替换与删除都有 native 回归；其余 25 个 persistent/generic 调用点以 Vanilla 同步边界裁决为 not-applicable，账本归零 partial；合同见 `docs/registry-holder-tag-final-closure-design.md`。
-- **2026-07-22（configuration registry 双包闭环）**：RegistryData contents 与 UpdateTags 在 configuration pending candidate 中隔离，Play 转换时将 typed registry、tag、item defaults 与 native audio/presentation 原子发布；双包 packet coverage 全单元 complete，合同见 `docs/configuration-registry-packets-closure-design.md`。
-- **2026-07-22（SetEntityData 包闭环）**：43 个 Vanilla metadata serializer 与解码分支建立生成反向约束；schema、holder session identity、原子 canonical apply 及 157×10 entity consumer 矩阵共同封闭五类 packet coverage，合同见 `docs/set-entity-data-packet-closure-design.md`。
+  `infiniburn` hashed TagKey、七类有界 `IntProvider` 与 monster light settings，并将当前 session holder 投影到 level 快照；合同见 `docs/archive/dimension-type-network-codec-design.md`。
+- **2026-07-22（registry holder/tag 194 行全量闭环）**：SlotDisplay 网络 item tag 保留规范身份并在每次配方展示时读取当前 UpdateTags 顺序，替换与删除都有 native 回归；其余 25 个 persistent/generic 调用点以 Vanilla 同步边界裁决为 not-applicable，账本归零 partial；合同见 `docs/archive/registry-holder-tag-final-closure-design.md`。
+- **2026-07-22（configuration registry 双包闭环）**：RegistryData contents 与 UpdateTags 在 configuration pending candidate 中隔离，Play 转换时将 typed registry、tag、item defaults 与 native audio/presentation 原子发布；双包 packet coverage 全单元 complete，合同见 `docs/archive/configuration-registry-packets-closure-design.md`。
+- **2026-07-22（SetEntityData 包闭环）**：43 个 Vanilla metadata serializer 与解码分支建立生成反向约束；schema、holder session identity、原子 canonical apply 及 157×10 entity consumer 矩阵共同封闭五类 packet coverage，合同见 `docs/archive/set-entity-data-packet-closure-design.md`。
 - **2026-07-22（queued light 三包族闭环）**：LevelChunkWithLight/LightUpdate 共用
   world-owned FIFO 与 Vanilla 有界 frame poll，ForgetLevelChunk 原子清除 canonical
   与 pending light；三行 packet coverage 全单元 complete，合同见
-  `docs/queued-light-packet-family-closure-design.md`。
+  `docs/archive/queued-light-packet-family-closure-design.md`。
 - **2026-07-22（Explosion 包闭环）**：registry-dispatched 主粒子、sound holder 与
   weighted block-particle list 完整解码；世界层按 Vanilla 顺序记录定位音频、主粒子
   与击退，原生 `ClientExplosionTracker` 实现 512 上限、空气筛选、权重采样和 level
   generation 清理。packet coverage 全单元 complete，合同见
-  `docs/explosion-packet-closure-design.md`。
+  `docs/archive/explosion-packet-closure-design.md`。
 - **2026-07-22（BlockEvent 包闭环）**：固定 block holder 严格解码后按当前位置状态
   分派完整 `triggerEvent` 族；note block 音画与 piston 原子移动、碰撞、running tick、
   插值场景提交共用 world canonical 状态。packet coverage 全单元 complete，合同见
-  `docs/block-event-packet-closure-design.md`。
+  `docs/archive/block-event-packet-closure-design.md`。
 - **2026-07-22（BlockUpdate 双包族闭环）**：固定 29,873 项 block-state identity 与
   生成的 block→block-entity 映射驱动严格解码、预测协调和 Vanilla 移除/创建/铜族保留；
   原生地形仅替换脏 section 并复用稳定 mesh。双包 coverage 全单元 complete，合同见
-  `docs/block-update-packet-family-closure-design.md`。
+  `docs/archive/block-update-packet-family-closure-design.md`。
 - **2026-07-22（BlockDestruction 包闭环）**：同一 server/local 最高 stage 投影驱动
   任意 baked block quad 与 Vanilla 允许的 block-entity model submission；精确
   `SheetedDecalTextureGenerator` UV、render-type 筛选及共享 crumbling pass 均有语义
-  回归，合同见 `docs/block-destruction-packet-closure-design.md`。
+  回归，合同见 `docs/archive/block-destruction-packet-closure-design.md`。
 - **2026-07-22（BossEvent 包闭环）**：trusted rich Component 与 `LinkedHashMap` 顺序
   进入 canonical world，native HUD 复现 100ms `LerpingBossEvent`，三类环境 flag 覆盖
   lightmap/fog/sky 与 backend-telemetry 驱动的 End boss music；合同见
-  `docs/boss-event-packet-closure-design.md`。
+  `docs/archive/boss-event-packet-closure-design.md`。
 - **2026-07-22（UpdateAdvancements 包闭环）**：trusted rich display、按包顺序的
   canonical tree/progress 与有界 completion handoff 驱动 native 五槽 toast、Vanilla
-  滑动/淡入/音效及组件感知图标；合同见 `docs/update-advancements-packet-closure-design.md`。
+  滑动/淡入/音效及组件感知图标；合同见 `docs/archive/update-advancements-packet-closure-design.md`。
 - **2026-07-22（MerchantOffers 包闭环）**：`ItemCost` 精确组件谓词值进入 canonical
   display patch，商人菜单补齐七行按钮 hover/focus、完整交易栈装饰与 tooltip、折扣删除线、
   补货提示及权威结果槽驱动的 XP 结果段；五类 packet coverage 全部 complete，合同见
@@ -275,7 +275,7 @@
   全部闭环，双向 coverage 全单元 complete，合同见 `docs/archive/sign-editor-packet-closure-design.md`。
 - **2026-07-22（PlayerAction 八动作包闭环）**：START/ABORT/STOP 按预测顺序驱动方块替换、
   本地挥手、轮廓击中粒子及 redstone/dragon-egg attack 回调；drop/release/swap/STAB 保持各自
-  客户端守卫与服务端权威，五类 packet coverage 全部 complete，合同见 `docs/player-action-packet-closure-design.md`。
+  客户端守卫与服务端权威，五类 packet coverage 全部 complete，合同见 `docs/archive/player-action-packet-closure-design.md`。
 - **2026-07-22（实体 transform 五包族闭环）**：PositionSync、三类 MoveEntity 与 Teleport
   统一到递归 controlling-passenger 权威、loaded-section/4096 插值、碰撞目标 carry、旧姿态
   partial-tick 及乘客/车辆回显路径；五行 packet coverage 全单元 complete，沿用
