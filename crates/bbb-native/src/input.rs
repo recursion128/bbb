@@ -6521,10 +6521,28 @@ fn debug_push_living_entity_additional_save_data(
         ));
     }
 
-    // Do not synthesize `Brain.Packed`: most AI ticks are server-only, but
-    // client constructors and interactions can still install serializable
-    // memories (for example CopperGolem's randomized transport cooldown,
-    // Allay's liked player, and Villager's last-woken timestamp).
+    let mut brain_memories = Vec::new();
+    if let Some(brain) = entity.living_brain {
+        if let Some(player) = brain.liked_player {
+            brain_memories.push(format!(
+                "{}: {{value: {}}}",
+                debug_snbt_string("minecraft:liked_player"),
+                debug_snbt_uuid_int_array(player)
+            ));
+        }
+        if let Some(last_woken) = brain.last_woken {
+            brain_memories.push(format!(
+                "{}: {{value: {last_woken}L}}",
+                debug_snbt_string("minecraft:last_woken")
+            ));
+        }
+    }
+    // `LivingEntity.addAdditionalSaveData` stores `Brain.Packed`
+    // unconditionally, including an empty `memories` map.
+    fields.push(format!(
+        "Brain: {{memories: {{{}}}}}",
+        brain_memories.join(", ")
+    ));
 
     let context = PersistentSnbtContext {
         item_runtime,

@@ -87,12 +87,17 @@ native client:
   An unknown item or unsupported component omits the complete equipment value
   instead of emitting a partial map.
 
-`Brain.Packed` is deliberately omitted. It is not generally an empty client
-constant: Copper Golem installs a randomized transport cooldown in its
-constructor, Allay interaction can install `LIKED_PLAYER`, and Villager wake
-transitions install `LAST_WOKEN`. Those memories need their own client-owned
-runtime state before they can be encoded. Unretained last-attacker references,
-impulse context, and locator-icon state are likewise not synthesized here.
+`LivingEntity.Brain.Packed` is emitted unconditionally, including the exact
+empty `memories` map. Client-owned runtime retains the two codec-backed
+memories written by client-reachable behavior: Allay give/take interaction
+sets or erases `LIKED_PLAYER`, and a sleeping Villager's client death path
+invokes `stopSleeping` and sets `LAST_WOKEN`. Their UUID-int-array and long
+`ExpirableValue` shapes are projected without a `ttl`. Copper Golem's
+constructor installs a randomized `TRANSPORT_ITEMS_COOLDOWN_TICKS` memory, but
+that memory module has no codec and `Brain.pack` therefore excludes it.
+Server-side AI memories and ordinary server wake transitions are not visible
+to the external client. Unretained last-attacker references, impulse context,
+and locator-icon state are likewise not synthesized here.
 
 Registry-backed entity variants use the identity frozen onto each synchronized
 metadata value, including server-defined resources. Tropical fish keep their

@@ -567,6 +567,60 @@ fn living_death_event_stops_sleeping_at_vanilla_bed_position() {
 }
 
 #[test]
+fn sleeping_villager_death_records_and_round_trips_last_woken_brain_memory() {
+    let mut store = WorldStore::new();
+    store.apply_world_time(ProtocolPlayTime {
+        game_time: 4_321,
+        clock_updates: Vec::new(),
+    });
+    store.apply_add_entity(protocol_add_entity_with_type(
+        74,
+        VANILLA_ENTITY_TYPE_VILLAGER_ID,
+    ));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 74,
+        values: vec![living_sleeping_pos_data(
+            VANILLA_ENTITY_TYPE_VILLAGER_ID,
+            Some(ProtocolBlockPos { x: 2, y: 1, z: 2 }),
+        )],
+    }));
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 74,
+        event_id: 3,
+    }));
+
+    let state = store.probe_entity(74).unwrap();
+    assert_eq!(
+        state.living_brain,
+        Some(LivingEntityBrainState {
+            liked_player: None,
+            last_woken: Some(4_321),
+        })
+    );
+
+    let cloned = store.clone();
+    assert_eq!(
+        cloned.probe_entity(74).unwrap().living_brain,
+        state.living_brain
+    );
+    let restored: WorldStore =
+        serde_json::from_value(serde_json::to_value(&store).unwrap()).unwrap();
+    assert_eq!(
+        restored.probe_entity(74).unwrap().living_brain,
+        state.living_brain
+    );
+
+    store.apply_add_entity(protocol_add_entity_with_type(
+        74,
+        VANILLA_ENTITY_TYPE_VILLAGER_ID,
+    ));
+    assert_eq!(
+        store.probe_entity(74).unwrap().living_brain,
+        Some(LivingEntityBrainState::default())
+    );
+}
+
+#[test]
 fn spawner_minecart_event_resets_delegated_base_spawner_delay() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(

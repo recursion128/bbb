@@ -1,4 +1,5 @@
 use super::*;
+use crate::entities::LivingEntityBrainState;
 use bbb_protocol::{
     builtin_enum_component_values::VANILLA_DYE_COLOR_RED_ID,
     data_component_types::{
@@ -148,6 +149,8 @@ fn local_mob_interact_generated_owners_are_exhaustively_classified() {
 #[test]
 fn local_mob_interact_allay_give_and_take_mutate_equipment_inventory_and_sound() {
     let mut world = WorldStore::new();
+    let player_id = Uuid::from_u128(0x1122_3344_5566_7788);
+    world.set_local_player_profile_id(player_id);
     add_entity(&mut world, 1, VANILLA_ENTITY_TYPE_ALLAY_ID);
     set_main_hand(&mut world, stack(VANILLA_ITEM_STONE_ID, 2));
 
@@ -175,6 +178,13 @@ fn local_mob_interact_allay_give_and_take_mutate_equipment_inventory_and_sound()
             .count,
         1
     );
+    assert_eq!(
+        world.probe_entity(1).unwrap().living_brain,
+        Some(LivingEntityBrainState {
+            liked_player: Some(player_id),
+            last_woken: None,
+        })
+    );
 
     set_main_hand(&mut world, ItemStackSummary::empty());
     assert_eq!(
@@ -196,6 +206,10 @@ fn local_mob_interact_allay_give_and_take_mutate_equipment_inventory_and_sound()
             .unwrap()
             .item_id,
         Some(VANILLA_ITEM_STONE_ID)
+    );
+    assert_eq!(
+        world.probe_entity(1).unwrap().living_brain,
+        Some(LivingEntityBrainState::default())
     );
 }
 

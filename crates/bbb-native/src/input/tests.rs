@@ -4448,7 +4448,7 @@ fn shift_f3_i_with_permission_copies_local_creeper_save_nbt_to_clipboard() {
              CustomName: 'Bob \"Prime\"', \
              CustomNameVisible: 1b, Silent: 1b, NoGravity: 1b, Glowing: 1b, TicksFrozen: 42, \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, \
              powered: 1b, ignited: 1b}"
         )
@@ -4535,7 +4535,7 @@ fn shift_f3_i_with_permission_copies_local_mob_leash_save_nbt_to_clipboard() {
             "/summon minecraft:creeper 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              leash: {UUID: [I; 0, 0, 0, 60]}, powered: 0b, ignited: 0b}"
         )
     );
@@ -4611,7 +4611,7 @@ fn shift_f3_i_with_permission_copies_local_creaking_save_nbt_to_clipboard() {
             "/summon minecraft:creaking 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, home_pos: [I; 4, 5, 6]}"
         )
     );
@@ -4700,7 +4700,7 @@ fn shift_f3_i_with_permission_copies_local_shulker_save_nbt_to_clipboard() {
             "/summon minecraft:shulker 0.50 1.00 2.50 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, AttachFace: 5b, Peek: 30b, \
              Color: 11b}"
         )
@@ -4780,7 +4780,7 @@ fn shift_f3_i_with_permission_copies_local_slime_family_save_nbt_to_clipboard() 
             "/summon {} 0.00 0.00 3.00 \
              {{Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {{memories: {{}}}}, \
              LeftHanded: 1b, Size: 3}}",
             entity_type.resource_id
         );
@@ -4866,7 +4866,7 @@ fn shift_f3_i_with_permission_copies_local_snow_golem_save_nbt_to_clipboard() {
             "/summon minecraft:snow_golem 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, Pumpkin: 0b}"
         )
     );
@@ -4940,7 +4940,7 @@ fn shift_f3_i_with_permission_copies_local_bat_save_nbt_to_clipboard() {
             "/summon minecraft:bat 0.00 1.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, BatFlags: 1b}"
         )
     );
@@ -5015,7 +5015,7 @@ fn shift_f3_i_with_permission_copies_local_armadillo_save_nbt_to_clipboard() {
             "/summon minecraft:armadillo 0.00 1.35 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b, state: \"scared\"}"
         )
@@ -5101,7 +5101,7 @@ fn shift_f3_i_with_permission_copies_local_copper_golem_save_nbt_to_clipboard() 
             "/summon minecraft:copper_golem 0.00 1.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, \
              weather_state: \"weathered\"}"
         )
@@ -5194,7 +5194,7 @@ fn shift_f3_i_with_permission_copies_local_bee_save_nbt_to_clipboard() {
             "/summon minecraft:bee 0.00 1.35 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b, HasNectar: 1b, HasStung: 1b, \
              anger_end_time: 240L}"
@@ -5267,7 +5267,7 @@ fn shift_f3_i_with_permission_copies_local_blaze_save_nbt_to_clipboard() {
             "/summon minecraft:blaze 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b}"
         )
     );
@@ -5338,7 +5338,7 @@ fn shift_f3_i_with_permission_copies_local_breeze_save_nbt_to_clipboard() {
             "/summon minecraft:breeze 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b}"
         )
     );
@@ -5412,7 +5412,7 @@ fn shift_f3_i_with_permission_copies_local_cod_save_nbt_to_clipboard() {
             "/summon minecraft:cod 0.00 1.45 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, FromBucket: 1b}"
         )
     );
@@ -5487,7 +5487,7 @@ fn shift_f3_i_with_permission_copies_local_pufferfish_save_nbt_to_clipboard() {
             "/summon minecraft:pufferfish 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, \
              FromBucket: 1b, PuffState: 2}"
         )
@@ -5563,7 +5563,7 @@ fn shift_f3_i_with_permission_copies_local_salmon_save_nbt_to_clipboard() {
             "/summon minecraft:salmon 0.00 1.20 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, \
              FromBucket: 1b, type: \"large\"}"
         )
@@ -5639,7 +5639,7 @@ fn shift_f3_i_with_permission_copies_local_tropical_fish_save_nbt_to_clipboard()
             "/summon minecraft:tropical_fish 0.00 1.30 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, \
              FromBucket: 1b, Variant: 67436545}"
         )
@@ -5731,7 +5731,7 @@ fn shift_f3_i_with_permission_copies_local_turtle_save_nbt_to_clipboard() {
             "/summon minecraft:turtle 0.00 1.35 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b, \
              home_pos: [I; 0, 0, 0], \
@@ -5808,7 +5808,7 @@ fn shift_f3_i_with_permission_copies_local_tadpole_save_nbt_to_clipboard() {
             "/summon minecraft:tadpole 0.00 1.40 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b}"
         )
@@ -5886,7 +5886,7 @@ fn shift_f3_i_with_permission_copies_local_axolotl_save_nbt_to_clipboard() {
             "/summon minecraft:axolotl 0.00 1.50 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b, Variant: 0, FromBucket: 1b}"
         )
@@ -5963,7 +5963,7 @@ fn shift_f3_i_with_permission_copies_local_nautilus_save_nbt_to_clipboard() {
             "/summon minecraft:nautilus 0.00 1.50 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b, Sitting: 1b}"
         )
@@ -6060,7 +6060,7 @@ fn shift_f3_i_with_permission_copies_local_zombie_nautilus_save_nbt_to_clipboard
             "/summon minecraft:zombie_nautilus 0.00 1.50 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b, Sitting: 1b, \
              variant: \"minecraft:warm\"}"
@@ -6173,7 +6173,7 @@ fn shift_f3_i_with_permission_copies_local_dolphin_save_nbt_to_clipboard() {
             "/summon minecraft:dolphin 0.00 1.50 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b, GotFish: 1b, Moistness: 1234}"
         )
@@ -6269,7 +6269,7 @@ fn shift_f3_i_with_permission_copies_local_frog_save_nbt_to_clipboard() {
             "/summon minecraft:frog 0.00 1.50 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b, variant: \"minecraft:cold\"}"
         )
@@ -6366,7 +6366,7 @@ fn shift_f3_i_with_permission_copies_local_rabbit_save_nbt_to_clipboard() {
             "/summon minecraft:rabbit 0.00 1.30 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b, RabbitType: 99}"
         )
@@ -6443,7 +6443,7 @@ fn shift_f3_i_with_permission_copies_local_ocelot_save_nbt_to_clipboard() {
             "/summon minecraft:ocelot 0.00 1.30 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b, Trusting: 1b}"
         )
@@ -6520,7 +6520,7 @@ fn shift_f3_i_with_permission_copies_local_sheep_save_nbt_to_clipboard() {
             "/summon minecraft:sheep 0.00 1.20 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b, Sheared: 1b, Color: 14b}"
         )
@@ -6631,7 +6631,7 @@ fn shift_f3_i_with_permission_copies_local_pig_save_nbt_to_clipboard() {
             "/summon minecraft:pig 0.00 1.25 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b, variant: \"minecraft:cold\", \
              sound_variant: \"minecraft:big\"}"
@@ -6798,7 +6798,7 @@ fn shift_f3_i_with_permission_copies_local_chicken_save_nbt_to_clipboard() {
             "/summon minecraft:chicken 0.00 1.25 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b, variant: \"minecraft:warm\", \
              sound_variant: \"minecraft:picky\"}"
@@ -6938,7 +6938,7 @@ fn shift_f3_i_with_permission_copies_local_cow_save_nbt_to_clipboard() {
             "/summon minecraft:cow 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b, variant: \"minecraft:cold\", \
              sound_variant: \"minecraft:moody\"}"
@@ -7051,7 +7051,7 @@ fn shift_f3_i_with_permission_copies_local_mooshroom_save_nbt_to_clipboard() {
             "/summon minecraft:mooshroom 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b, Type: \"brown\"}"
         )
@@ -7146,7 +7146,7 @@ fn shift_f3_i_with_permission_copies_local_goat_save_nbt_to_clipboard() {
             "/summon minecraft:goat 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b, IsScreamingGoat: 1b, \
              HasLeftHorn: 0b, HasRightHorn: 1b}"
@@ -7233,7 +7233,7 @@ fn shift_f3_i_with_permission_copies_local_polar_bear_save_nbt_to_clipboard() {
             "/summon minecraft:polar_bear 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b}"
         )
@@ -7344,7 +7344,7 @@ fn shift_f3_i_with_permission_copies_local_panda_save_nbt_to_clipboard() {
             "/summon minecraft:panda 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b, MainGene: \"brown\", \
              HiddenGene: \"lazy\"}"
@@ -7425,7 +7425,7 @@ fn shift_f3_i_with_permission_copies_local_parrot_save_nbt_to_clipboard() {
             "/summon minecraft:parrot 0.00 1.20 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b, Sitting: 1b, Variant: 3}"
         )
@@ -7501,7 +7501,7 @@ fn shift_f3_i_with_permission_copies_local_allay_save_nbt_to_clipboard() {
             "/summon minecraft:allay 0.00 1.10 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b}"
         )
     );
@@ -7578,7 +7578,7 @@ fn shift_f3_i_with_permission_copies_local_sniffer_save_nbt_to_clipboard() {
             "/summon minecraft:sniffer 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b}"
         )
@@ -7660,7 +7660,7 @@ fn shift_f3_i_with_permission_copies_local_strider_save_nbt_to_clipboard() {
             "/summon minecraft:strider 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b}"
         )
@@ -7741,7 +7741,7 @@ fn shift_f3_i_with_permission_copies_local_hoglin_save_nbt_to_clipboard() {
             "/summon minecraft:hoglin 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b, \
              IsImmuneToZombification: 1b}"
@@ -7827,7 +7827,7 @@ fn shift_f3_i_with_permission_copies_local_horse_save_nbt_to_clipboard() {
             "/summon minecraft:horse 0.00 0.25 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b, EatingHaystack: 1b, \
              Bred: 1b, Tame: 1b, Variant: 516}"
@@ -7924,7 +7924,7 @@ fn shift_f3_i_with_permission_copies_local_camel_family_save_nbt_to_clipboard() 
             "/summon {} 0.00 0.00 3.00 \
              {{Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {{memories: {{}}}}, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b, EatingHaystack: 0b, \
              Bred: 0b, Tame: 1b, LastPoseTick: 140L}}",
@@ -8051,7 +8051,7 @@ fn shift_f3_i_with_permission_copies_local_cat_save_nbt_to_clipboard() {
             "/summon minecraft:cat 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b, Sitting: 1b, \
              variant: \"minecraft:calico\", sound_variant: \"minecraft:royal\", \
@@ -8206,7 +8206,7 @@ fn shift_f3_i_with_permission_copies_local_wolf_save_nbt_to_clipboard() {
             "/summon minecraft:wolf 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b, Sitting: 1b, \
              CollarColor: 11b, variant: \"minecraft:striped\", \
@@ -8341,7 +8341,7 @@ fn shift_f3_i_with_permission_copies_local_fox_save_nbt_to_clipboard() {
             "/summon minecraft:fox 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b, \
              Trusted: [[I; 1, 2, 3, 4], [I; 5, 6, 7, 8]], Sleeping: 1b, \
@@ -8431,6 +8431,7 @@ fn debug_save_data_abstract_chested_horse_class_dispatch_uses_generated_membersh
             "AbsorptionAmount: 0.0f".to_string(),
             "attributes: []".to_string(),
             "FallFlying: 0b".to_string(),
+            "Brain: {memories: {}}".to_string(),
             "LeftHanded: 1b".to_string(),
             "NoAI: 1b".to_string(),
             "AgeLocked: 1b".to_string(),
@@ -8519,7 +8520,7 @@ fn shift_f3_i_with_permission_copies_local_donkey_save_nbt_to_clipboard() {
             "/summon minecraft:donkey 0.00 0.25 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b, EatingHaystack: 1b, \
              Bred: 0b, Tame: 1b, ChestedHorse: 1b}"
@@ -8602,7 +8603,7 @@ fn shift_f3_i_with_permission_copies_local_mule_save_nbt_to_clipboard() {
             "/summon minecraft:mule 0.00 0.25 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b, EatingHaystack: 0b, \
              Bred: 1b, Tame: 0b}"
@@ -8699,7 +8700,7 @@ fn shift_f3_i_with_permission_copies_local_llama_save_nbt_to_clipboard() {
             "/summon minecraft:llama 0.00 0.25 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b, EatingHaystack: 0b, \
              Bred: 1b, Tame: 1b, ChestedHorse: 1b, \
@@ -8796,7 +8797,7 @@ fn shift_f3_i_with_permission_copies_local_trader_llama_save_nbt_to_clipboard() 
             "/summon minecraft:trader_llama 0.00 0.25 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b, EatingHaystack: 0b, \
              Bred: 0b, Tame: 1b, Variant: 3, \
@@ -8880,7 +8881,7 @@ fn shift_f3_i_with_permission_copies_local_skeleton_horse_save_nbt_to_clipboard(
             "/summon minecraft:skeleton_horse 0.00 0.25 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b, EatingHaystack: 0b, \
              Bred: 0b, Tame: 1b}"
@@ -8963,7 +8964,7 @@ fn shift_f3_i_with_permission_copies_local_zombie_horse_save_nbt_to_clipboard() 
             "/summon minecraft:zombie_horse 0.00 0.25 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b, EatingHaystack: 0b, \
              Bred: 1b, Tame: 0b}"
@@ -9043,7 +9044,7 @@ fn shift_f3_i_with_permission_copies_local_piglin_brute_save_nbt_to_clipboard() 
             "/summon minecraft:piglin_brute 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, \
              IsImmuneToZombification: 1b}"
         )
@@ -9127,7 +9128,7 @@ fn shift_f3_i_with_permission_copies_local_piglin_save_nbt_to_clipboard() {
             "/summon minecraft:piglin 0.00 1.00 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, \
              IsImmuneToZombification: 1b, \
              IsBaby: 1b}"
@@ -9202,7 +9203,7 @@ fn shift_f3_i_with_permission_copies_local_spider_family_save_nbt_to_clipboard()
             "/summon {entity_type} 0.00 1.25 3.00 \
              {{Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {{memories: {{}}}}, \
              LeftHanded: 1b, NoAI: 1b}}"
         );
         assert_eq!(clipboard.text.as_deref(), Some(expected.as_str()));
@@ -9274,7 +9275,7 @@ fn shift_f3_i_with_permission_copies_local_skeleton_save_nbt_to_clipboard() {
             "/summon minecraft:skeleton 0.00 1.25 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b}"
         )
     );
@@ -9351,7 +9352,7 @@ fn shift_f3_i_with_permission_copies_local_nonconverting_skeleton_family_save_nb
             "/summon {entity_type} 0.00 1.25 3.00 \
              {{Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {{memories: {{}}}}, \
              LeftHanded: 1b, NoAI: 1b}}"
         );
         assert_eq!(clipboard.text.as_deref(), Some(expected.as_str()));
@@ -9435,7 +9436,7 @@ fn shift_f3_i_with_permission_copies_local_zombie_family_save_nbt_to_clipboard()
             "/summon {entity_type} 0.00 1.25 3.00 \
              {{Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {{memories: {{}}}}, \
              LeftHanded: 1b, NoAI: 1b, \
              IsBaby: 1b}}"
         );
@@ -9519,7 +9520,7 @@ fn shift_f3_i_with_permission_copies_local_zombified_piglin_save_nbt_to_clipboar
             "/summon minecraft:zombified_piglin 0.00 1.25 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, \
              IsBaby: 1b}"
         )
@@ -9594,7 +9595,7 @@ fn shift_f3_i_with_permission_copies_local_bogged_save_nbt_to_clipboard() {
             "/summon minecraft:bogged 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, sheared: 1b}"
         )
     );
@@ -13867,7 +13868,7 @@ fn shift_f3_i_with_permission_copies_local_armor_stand_save_nbt_to_clipboard() {
             "/summon minecraft:armor_stand 0.00 1.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              Invisible: 1b, Small: 1b, \
              ShowArms: 1b, NoBasePlate: 1b, \
              Pose: {Body: [0.0f, 15.0f, 0.0f], LeftArm: [-30.0f, 0.0f, -20.0f]}}"
@@ -14030,7 +14031,7 @@ fn shift_f3_i_with_permission_copies_local_endermite_save_nbt_to_clipboard() {
             "/summon minecraft:endermite 0.00 1.50 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b}"
         )
     );
@@ -14101,7 +14102,7 @@ fn shift_f3_i_with_permission_copies_local_enderman_save_nbt_to_clipboard() {
             "/summon minecraft:enderman 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b}"
         )
     );
@@ -14172,7 +14173,7 @@ fn shift_f3_i_with_permission_copies_local_silverfish_save_nbt_to_clipboard() {
             "/summon minecraft:silverfish 0.00 1.50 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b}"
         )
     );
@@ -14248,7 +14249,7 @@ fn shift_f3_i_with_permission_copies_local_guardian_family_save_nbt_to_clipboard
             "/summon {} 0.00 1.00 3.00 \
              {{Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {{memories: {{}}}}, \
              LeftHanded: 1b, NoAI: 1b}}",
             entity_type.resource_id
         );
@@ -14328,7 +14329,7 @@ fn shift_f3_i_with_permission_copies_local_happy_ghast_save_nbt_to_clipboard() {
             "/summon minecraft:happy_ghast 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b}"
         )
@@ -14400,7 +14401,7 @@ fn shift_f3_i_with_permission_copies_local_ghast_save_nbt_to_clipboard() {
             "/summon minecraft:ghast 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b}"
         )
     );
@@ -14471,7 +14472,7 @@ fn shift_f3_i_with_permission_copies_local_giant_save_nbt_to_clipboard() {
             "/summon minecraft:giant 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b}"
         )
     );
@@ -14551,7 +14552,7 @@ fn shift_f3_i_with_permission_copies_local_glow_squid_save_nbt_to_clipboard() {
             "/summon minecraft:glow_squid 0.00 1.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b, DarkTicksRemaining: 77}"
         )
@@ -14627,7 +14628,7 @@ fn shift_f3_i_with_permission_copies_local_squid_save_nbt_to_clipboard() {
             "/summon minecraft:squid 0.00 1.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b}"
         )
@@ -14792,7 +14793,7 @@ fn shift_f3_i_with_permission_copies_local_iron_golem_save_nbt_to_clipboard() {
             "/summon minecraft:iron_golem 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, PlayerCreated: 1b}"
         )
     );
@@ -14866,7 +14867,7 @@ fn shift_f3_i_with_permission_copies_local_phantom_save_nbt_to_clipboard() {
             "/summon minecraft:phantom 0.00 1.50 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, size: 5}"
         )
     );
@@ -14945,7 +14946,7 @@ fn shift_f3_i_with_permission_copies_local_ravager_save_nbt_to_clipboard() {
             "/summon minecraft:ravager 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, AttackTick: 10, StunTick: 40, RoarTick: 0}"
         )
     );
@@ -15016,7 +15017,7 @@ fn shift_f3_i_with_permission_copies_local_pillager_save_nbt_to_clipboard() {
             "/summon minecraft:pillager 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b}"
         )
     );
@@ -15091,7 +15092,7 @@ fn shift_f3_i_with_permission_copies_local_wandering_trader_save_nbt_to_clipboar
             "/summon minecraft:wandering_trader 0.00 1.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b}"
         )
@@ -15166,7 +15167,7 @@ fn shift_f3_i_with_permission_copies_local_witch_save_nbt_to_clipboard() {
             "/summon minecraft:witch 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b}"
         )
     );
@@ -15250,7 +15251,7 @@ fn shift_f3_i_with_permission_copies_local_spellcaster_illager_save_nbt_to_clipb
             "/summon {entity_type} 0.00 0.00 3.00 \
              {{Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {{memories: {{}}}}, \
              LeftHanded: 1b, NoAI: 1b}}"
         );
         assert_eq!(clipboard.text.as_deref(), Some(expected.as_str()));
@@ -15329,7 +15330,7 @@ fn shift_f3_i_with_permission_copies_local_vindicator_save_nbt_to_clipboard() {
             "/summon minecraft:vindicator 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b}"
         )
     );
@@ -15400,7 +15401,7 @@ fn shift_f3_i_with_permission_copies_local_vex_save_nbt_to_clipboard() {
             "/summon minecraft:vex 0.00 1.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, NoAI: 1b}"
         )
     );
@@ -15474,7 +15475,7 @@ fn shift_f3_i_with_permission_copies_local_wither_save_nbt_to_clipboard() {
             "/summon minecraft:wither 0.00 0.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, Invul: 220}"
         )
     );
@@ -15548,7 +15549,7 @@ fn shift_f3_i_with_permission_copies_local_zoglin_save_nbt_to_clipboard() {
             "/summon minecraft:zoglin 0.00 1.00 3.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              Health: 1.0f, HurtTime: 0s, HurtByTimestamp: 0, DeathTime: 0s, \
-             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, \
+             AbsorptionAmount: 0.0f, attributes: [], FallFlying: 0b, Brain: {memories: {}}, \
              LeftHanded: 1b, IsBaby: 1b}"
         )
     );
@@ -28248,8 +28249,7 @@ fn living_entity_local_save_projects_observable_parent_state() {
         "active_effects: [{id: \"minecraft:poison\", amplifier: 2, duration: 200, \
          ambient: 1b, show_particles: 0b, show_icon: 1b}]"
     ));
-    assert!(snbt.contains("FallFlying: 1b, sleeping_pos: [I; 4, 70, -2]"));
-    assert!(!snbt.contains("Brain:"));
+    assert!(snbt.contains("FallFlying: 1b, sleeping_pos: [I; 4, 70, -2], Brain: {memories: {}}"));
     assert!(snbt.contains(
         "equipment: {mainhand: {id: \"minecraft:diamond\", count: 2, components: \
          {\"minecraft:custom_data\": {marker: 7}}}, \
@@ -28312,8 +28312,70 @@ fn living_entity_local_save_tracks_death_and_player_absorption() {
     let player = world.probe_entity(297).unwrap();
     let player_snbt = debug_local_entity_pretty_snbt(&world, None, &player).unwrap();
     assert!(player_snbt.contains("AbsorptionAmount: 6.0f"));
-    assert!(player_snbt.contains("attributes: [], FallFlying: 0b"));
-    assert!(!player_snbt.contains("Brain:"));
+    assert!(player_snbt.contains("attributes: [], FallFlying: 0b, Brain: {memories: {}}"));
+}
+
+#[test]
+fn living_brain_local_save_projects_client_allay_and_villager_memories() {
+    let item_runtime = diamond_item_runtime();
+    let mut world = WorldStore::new();
+    let player_id = Uuid::from_u128(1);
+    world.set_local_player_profile_id(player_id);
+    simple_probe_entity(&mut world, 296, VANILLA_ENTITY_TYPE_ALLAY_ID);
+    equip_player_slot(&mut world, 0, 0, 2);
+    let _ = world.predict_local_entity_interaction(
+        296,
+        bbb_protocol::packets::InteractionHand::MainHand,
+        false,
+    );
+
+    let allay = world.probe_entity(296).unwrap();
+    let allay_snbt = debug_local_entity_pretty_snbt(&world, Some(&item_runtime), &allay).unwrap();
+    assert!(allay_snbt.contains(
+        "Brain: {memories: {\"minecraft:liked_player\": \
+         {value: [I; 0, 0, 0, 1]}}}, equipment: {mainhand: {id: \"minecraft:diamond\"}}"
+    ));
+
+    equip_player_slot(&mut world, 0, 0, 0);
+    let _ = world.predict_local_entity_interaction(
+        296,
+        bbb_protocol::packets::InteractionHand::MainHand,
+        false,
+    );
+    let allay = world.probe_entity(296).unwrap();
+    let allay_snbt = debug_local_entity_pretty_snbt(&world, Some(&item_runtime), &allay).unwrap();
+    assert!(allay_snbt.contains("Brain: {memories: {}}"));
+    assert!(!allay_snbt.contains("minecraft:liked_player"));
+
+    world.apply_world_time(bbb_protocol::packets::PlayTime {
+        game_time: 4_321,
+        clock_updates: Vec::new(),
+    });
+    simple_probe_entity(&mut world, 295, VANILLA_ENTITY_TYPE_VILLAGER_ID);
+    let living_accessors =
+        bbb_world::vanilla_entity_metadata_living_entity_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_VILLAGER_ID,
+        )
+        .expect("villager LivingEntity accessors");
+    assert!(world.apply_set_entity_data(ProtocolSetEntityData {
+        id: 295,
+        values: vec![ProtocolEntityDataValue {
+            data_id: living_accessors.sleeping_pos_data_id,
+            serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
+            value: EntityDataValueKind::OptionalBlockPos(Some(ProtocolBlockPos {
+                x: 4,
+                y: 70,
+                z: -2,
+            })),
+        }],
+    }));
+    assert!(world.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 295,
+        event_id: 3,
+    }));
+    let villager = world.probe_entity(295).unwrap();
+    let villager_snbt = debug_local_entity_pretty_snbt(&world, None, &villager).unwrap();
+    assert!(villager_snbt.contains("Brain: {memories: {\"minecraft:last_woken\": {value: 4321L}}}"));
 }
 
 #[test]

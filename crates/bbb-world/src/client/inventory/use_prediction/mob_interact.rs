@@ -473,6 +473,9 @@ impl WorldStore {
             .equipment_item(entity_id, EquipmentSlot::MainHand);
         if allay_item.is_none() {
             if let Some(mut stack) = held_stack.cloned() {
+                let Some(player_uuid) = self.local_player_profile_id() else {
+                    return unsupported(ALLAY);
+                };
                 stack.count = 1;
                 if !self.consume_local_item_in_hand(hand, 1)
                     || !self.entities.set_local_equipment_item(
@@ -480,6 +483,9 @@ impl WorldStore {
                         EquipmentSlot::MainHand,
                         stack,
                     )
+                    || !self
+                        .entities
+                        .set_allay_liked_player(entity_id, Some(player_uuid))
                 {
                     return unsupported(ALLAY);
                 }
@@ -493,6 +499,7 @@ impl WorldStore {
             if !self
                 .entities
                 .clear_local_equipment_item(entity_id, EquipmentSlot::MainHand)
+                || !self.entities.set_allay_liked_player(entity_id, None)
             {
                 return unsupported(ALLAY);
             }

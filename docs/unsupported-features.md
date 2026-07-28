@@ -236,14 +236,11 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   `RegistryFixedCodec`s. Keep the remaining dispatch owned by the protocol
   generated-metadata/handler descriptor catalog and the native persistent SNBT
   encoder registry.
-  Remaining entity-specific constructor/default save values, client-owned
-  `LivingEntity.Brain.Packed`
-  memories (including Copper Golem's randomized transport cooldown, Allay's
-  liked player, and Villager's last-woken timestamp), unretained LivingEntity
-  impulse context, observable non-empty entity inventory/container projection
-  (including chest/hopper minecart `Items` / loot-table contents, and chest
-  boat/raft `Items` / loot-table contents), non-default furnace minecart
-  push/fuel fields,
+  Remaining entity-specific constructor/default save values, unretained
+  LivingEntity impulse context, observable non-empty entity
+  inventory/container projection (including chest/hopper minecart `Items` /
+  loot-table contents, and chest boat/raft `Items` / loot-table contents),
+  non-default furnace minecart push/fuel fields,
   spawner minecart server-loaded non-default delay/count/range fields and
   codec-backed `SpawnData` / `SpawnPotentials`, command-block minecart
   server-private non-default success/custom-name/last-execution fields, or

@@ -63,10 +63,10 @@ pub(crate) use client_movement::calculate_view_vector;
 pub(crate) use components::{
     EntityAbstractArrowRuntime, EntityAttributes, EntityClientAnimations, EntityDamage,
     EntityEquipment, EntityHurtingProjectile, EntityIdentity, EntityInterpolationCollisionInput,
-    EntityLeash, EntityLivingLifecycle, EntityMetadata, EntityMinecartCommandBlock,
-    EntityMinecartLerp, EntityMobEffects, EntityMount, EntityPlayerSleep,
-    EntityProjectileLifecycle, EntitySupportingBlock, EntityTransform, EntityTransientEvents,
-    LivingDeathWakeTransition,
+    EntityLeash, EntityLivingBrain, EntityLivingLifecycle, EntityMetadata,
+    EntityMinecartCommandBlock, EntityMinecartLerp, EntityMobEffects, EntityMount,
+    EntityPlayerSleep, EntityProjectileLifecycle, EntitySupportingBlock, EntityTransform,
+    EntityTransientEvents, LivingDeathWakeTransition,
 };
 pub(crate) use dimensions::vanilla_bounds_for_type;
 pub use dimensions::EntityPickBoundsState;
@@ -990,6 +990,20 @@ pub struct AbstractArrowRuntimeState {
     pub piercing_ignore_entity_ids: Vec<i32>,
 }
 
+/// Serializable client-owned entries from Vanilla `LivingEntity.brain`.
+///
+/// Client-side brains start empty. The two retained memories are the only
+/// codec-backed values written by client-reachable 26.1 behavior: Allay
+/// interaction owns `LIKED_PLAYER`, and Villager `stopSleeping` owns
+/// `LAST_WOKEN`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LivingEntityBrainState {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub liked_player: Option<Uuid>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_woken: Option<i64>,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EntityState {
     pub id: i32,
@@ -1036,6 +1050,9 @@ pub struct EntityState {
     /// true only after the guarded base `die` transition has run.
     #[serde(default, skip_serializing_if = "bool_is_false")]
     pub living_dead: bool,
+    /// `Some` for every living entity, including an empty Vanilla brain.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub living_brain: Option<LivingEntityBrainState>,
     /// Client-owned `Player.sleepCounter`. `None` identifies every non-player
     /// entity; player incarnations always project `Some(0..=109)`.
     #[serde(default, skip_serializing_if = "Option::is_none")]

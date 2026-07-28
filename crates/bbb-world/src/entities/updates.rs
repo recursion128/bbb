@@ -114,9 +114,12 @@ impl WorldStore {
             .apply_client_animation_entity_event(packet.entity_id, packet.event_id);
         if event_kind == Some(VanillaEntityEventKind::LivingDeath) {
             let wake = self.living_death_wake_transition(packet.entity_id);
-            let _ = self
-                .entities
-                .apply_client_living_death_entity_event(packet.entity_id, wake);
+            let game_time = self.world_time().map_or(0, |time| time.game_time);
+            let _ = self.entities.apply_client_living_death_entity_event(
+                packet.entity_id,
+                wake,
+                game_time,
+            );
         }
         if self
             .entities

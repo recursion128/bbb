@@ -113,8 +113,8 @@ use super::{
     EntityClientMovementParticleState, EntityClientMovementSimpleParticleKind,
     EntityClientMovementSimpleParticleState, EntityDamage, EntityDamageEventState, EntityEquipment,
     EntityHurtingProjectile, EntityIdentity, EntityInterpolationCollisionInput, EntityLeash,
-    EntityLivingLifecycle, EntityMetadata, EntityMinecartCommandBlock, EntityMinecartLerp,
-    EntityMobEffects, EntityModelSourceState, EntityMount, EntityPlayerSleep,
+    EntityLivingBrain, EntityLivingLifecycle, EntityMetadata, EntityMinecartCommandBlock,
+    EntityMinecartLerp, EntityMobEffects, EntityModelSourceState, EntityMount, EntityPlayerSleep,
     EntityProjectileLifecycle, EntityRuntimeReferenceState, EntityState, EntitySupportingBlock,
     EntityTransform, EntityTransformState, EntityTransientEvents, EntityVec3, EquipmentAssetId,
     EvokerFangsCritParticleState, FallingBlockModelState, FireworkRocketExplosionParticleState,
@@ -913,6 +913,14 @@ impl EntityStore {
             if let Ok(mut lifecycle) = self.ecs.get::<&mut EntityLivingLifecycle>(entity) {
                 *lifecycle = EntityLivingLifecycle::default();
             }
+            sync_derived_marker::<EntityLivingBrain>(
+                &mut self.ecs,
+                entity,
+                vanilla_entity_metadata_type_is_living(entity_type_id),
+            );
+            if let Ok(mut brain) = self.ecs.get::<&mut EntityLivingBrain>(entity) {
+                *brain = EntityLivingBrain::default();
+            }
             sync_derived_marker::<EntityPlayerSleep>(
                 &mut self.ecs,
                 entity,
@@ -1104,6 +1112,11 @@ impl EntityStore {
             entity,
             vanilla_entity_metadata_type_is_living(entity_type_id),
         );
+        sync_derived_marker::<EntityLivingBrain>(
+            &mut self.ecs,
+            entity,
+            vanilla_entity_metadata_type_is_living(entity_type_id),
+        );
         sync_derived_marker::<EntityPlayerSleep>(
             &mut self.ecs,
             entity,
@@ -1204,6 +1217,7 @@ impl EntityStore {
             let _ = self
                 .ecs
                 .insert_one(entity, EntityLivingLifecycle::from(&state));
+            let _ = self.ecs.insert_one(entity, EntityLivingBrain::from(&state));
         }
         if entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID {
             let _ = self.ecs.insert_one(entity, EntityPlayerSleep::from(&state));
@@ -1974,6 +1988,39 @@ impl EntityStore {
             .get::<&EntityLivingLifecycle>(entity)
             .ok()
             .map(|lifecycle| lifecycle.dead)
+    }
+
+    pub(crate) fn set_allay_liked_player(&mut self, id: i32, player: Option<Uuid>) -> bool {
+        let Some(entity) = self.by_protocol_id.get(&id).copied() else {
+            return false;
+        };
+        if self
+            .ecs
+            .get::<&EntityIdentity>(entity)
+            .ok()
+            .is_none_or(|identity| identity.entity_type_id != VANILLA_ENTITY_TYPE_ALLAY_ID)
+        {
+            return false;
+        }
+        let Ok(mut brain) = self.ecs.get::<&mut EntityLivingBrain>(entity) else {
+            return false;
+        };
+        brain.state.liked_player = player;
+        true
+    }
+
+    fn set_villager_last_woken(&mut self, entity: Entity, game_time: i64) -> Option<()> {
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        if identity.entity_type_id != VANILLA_ENTITY_TYPE_VILLAGER_ID {
+            return None;
+        }
+        drop(identity);
+        self.ecs
+            .get::<&mut EntityLivingBrain>(entity)
+            .ok()?
+            .state
+            .last_woken = Some(game_time);
+        Some(())
     }
 
     pub(crate) fn player_sleep_counter(&self, id: i32) -> Option<i32> {
@@ -7060,6 +7107,7 @@ impl EntityStore {
         &mut self,
         id: i32,
         wake: Option<LivingDeathWakeTransition>,
+        game_time: i64,
     ) -> Option<()> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let entity_type_id = self.ecs.get::<&EntityIdentity>(entity).ok()?.entity_type_id;
@@ -7129,6 +7177,8 @@ impl EntityStore {
                         value: EntityDataValueKind::OptionalBlockPos(None),
                     },
                 );
+                drop(metadata);
+                let _ = self.set_villager_last_woken(entity, game_time);
             }
 
             // `stopSleeping` temporarily writes STANDING. The immediately
@@ -9165,8 +9215,18 @@ impl EntityStore {
             if !updated {
                 let _ = self.ecs.insert_one(entity, lifecycle);
             }
+            let brain = EntityLivingBrain::from(state);
+            let updated = self
+                .ecs
+                .get::<&mut EntityLivingBrain>(entity)
+                .map(|mut existing| *existing = brain)
+                .is_ok();
+            if !updated {
+                let _ = self.ecs.insert_one(entity, brain);
+            }
         } else {
             let _ = self.ecs.remove_one::<EntityLivingLifecycle>(entity);
+            let _ = self.ecs.remove_one::<EntityLivingBrain>(entity);
         }
         if state.entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID {
             let sleep = EntityPlayerSleep::from(state);
@@ -9406,6 +9466,7 @@ impl EntityStore {
         let client_animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
         let damage = self.ecs.get::<&EntityDamage>(entity).ok()?;
         let living_lifecycle = self.ecs.get::<&EntityLivingLifecycle>(entity).ok();
+        let living_brain = self.ecs.get::<&EntityLivingBrain>(entity).ok();
         let player_sleep = self.ecs.get::<&EntityPlayerSleep>(entity).ok();
         let supporting_block = self.ecs.get::<&EntitySupportingBlock>(entity).ok()?;
         let minecart_lerp = self.ecs.get::<&EntityMinecartLerp>(entity).ok();
@@ -9444,6 +9505,7 @@ impl EntityStore {
             last_damage: None,
             damage_invulnerable_time: 0,
             living_dead: false,
+            living_brain: None,
             player_sleep_counter: None,
             minecart_lerp_pending_steps: Vec::new(),
             minecart_lerp_steps: Vec::new(),
@@ -9466,6 +9528,9 @@ impl EntityStore {
         (*damage).clone().write_to_state(&mut state);
         if let Some(lifecycle) = living_lifecycle {
             (*lifecycle).write_to_state(&mut state);
+        }
+        if let Some(brain) = living_brain {
+            (*brain).write_to_state(&mut state);
         }
         if let Some(sleep) = player_sleep {
             (*sleep).write_to_state(&mut state);
@@ -9581,6 +9646,9 @@ impl Clone for EntityStore {
             }
             if let Ok(lifecycle) = self.ecs.get::<&EntityLivingLifecycle>(entity) {
                 let _ = store.ecs.insert_one(cloned, *lifecycle);
+            }
+            if let Ok(brain) = self.ecs.get::<&EntityLivingBrain>(entity) {
+                let _ = store.ecs.insert_one(cloned, *brain);
             }
             if entity_type_id == VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID {
                 if let Ok(movement) = self.ecs.get::<&EntityExperienceOrbMovement>(entity) {

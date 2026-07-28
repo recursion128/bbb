@@ -13,7 +13,8 @@ use super::{
     AbstractArrowRuntimeState, EntityBlockEffectMovements, EntityBlockEffects,
     EntityClientAnimationState, EntityInterpolationState, EntityPickBoundsState,
     EntityRuntimeReferenceState, EntityState, EntityVec3, HurtingProjectileState,
-    ProjectileLifecycleState, VANILLA_COMMAND_BLOCK_MINECART_COMMAND_DATA_ID,
+    LivingEntityBrainState, ProjectileLifecycleState,
+    VANILLA_COMMAND_BLOCK_MINECART_COMMAND_DATA_ID,
     VANILLA_COMMAND_BLOCK_MINECART_LAST_OUTPUT_DATA_ID,
 };
 use crate::{BlockPos, PaintingVariantClientProjection, PublicationShared};
@@ -148,6 +149,15 @@ pub(crate) struct EntityDamage {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub(crate) struct EntityLivingLifecycle {
     pub(crate) dead: bool,
+}
+
+/// Client-owned codec-backed `LivingEntity.brain` memories.
+///
+/// This component is present for every living entity so an empty brain remains
+/// distinguishable from a non-living entity in canonical snapshots.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) struct EntityLivingBrain {
+    pub(crate) state: LivingEntityBrainState,
 }
 
 /// Client-owned `Player.sleepCounter`, scoped to one concrete player entity
@@ -448,6 +458,14 @@ impl From<&EntityState> for EntityLivingLifecycle {
     fn from(state: &EntityState) -> Self {
         Self {
             dead: state.living_dead,
+        }
+    }
+}
+
+impl From<&EntityState> for EntityLivingBrain {
+    fn from(state: &EntityState) -> Self {
+        Self {
+            state: state.living_brain.unwrap_or_default(),
         }
     }
 }
@@ -977,6 +995,12 @@ impl EntityDamage {
 impl EntityLivingLifecycle {
     pub(crate) fn write_to_state(self, state: &mut EntityState) {
         state.living_dead = self.dead;
+    }
+}
+
+impl EntityLivingBrain {
+    pub(crate) fn write_to_state(self, state: &mut EntityState) {
+        state.living_brain = Some(self.state);
     }
 }
 
