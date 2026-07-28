@@ -359,7 +359,7 @@ fn debug_options_status_button_narration(
     focused: bool,
 ) {
     let current_status = input.debug_screen_entry_status(entry);
-    let (current_key, current_fallback) = match current_status {
+    let (current_key, current_english) = match current_status {
         DebugScreenEntryStatus::AlwaysOn => (
             "debug.entry.currently.alwaysOn",
             "%1$s: Currently always on",
@@ -371,7 +371,7 @@ fn debug_options_status_button_narration(
         DebugScreenEntryStatus::Never => ("debug.entry.currently.never", "%1$s: Currently off"),
     };
     let current =
-        localized_gui_text_with_args(item_runtime, current_key, current_fallback, &[entry.path()]);
+        localized_gui_text_with_args(item_runtime, current_key, current_english, &[entry.path()]);
     let value = match status {
         DebugScreenEntryStatus::AlwaysOn => {
             localized_gui_text(item_runtime, "debug.entry.always", "Always")
