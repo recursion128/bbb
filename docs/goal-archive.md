@@ -661,3 +661,10 @@
 - **2026-07-28（Fast Leaves 图形选项工程闭环）**：启动配置、资源重载、区块
   邻面裁剪与 moving-block 现共享生成的 leaves membership；SOLID/CUTOUT/
   TRANSLUCENT terrain 管线分别使用 Vanilla 的无阈值、0.5 与 0.01 alpha 规则。
+- **2026-07-28（工作流 v6：机械自检落点）**：gate/playable-gate 通过后自动写
+  `.git/bbb/` stamp（last-gated、gate-log 各步耗时、playable 记录），
+  batch-gate 无参数默认 `<last-gated>..HEAD`，audit 步与流程验收改读 stamp；
+  新增 `scripts/coverage-status.py` 选片开放面板；docs-lint 增顶层 design doc
+  引用检查与 goal-archive 900 行上限，22 个闭环 design doc 迁 `docs/archive/`；
+  RegistryAccess 消费长尾整队列移出开放路线图（07-22 已全量闭环），权威来源
+  规则升格为结构不变量。

@@ -170,7 +170,8 @@ Every worker prompt should include:
 The authoritative per-slice, batch, and full-gate policy is defined in `goal.md`
 under “提交前门禁” and the checkpoint rules; do not copy the command list into
 other files. `scripts/cargo-dev.sh gate` runs exactly that full gate against
-`/tmp/bbb-target-main`; `scripts/cargo-dev.sh batch-gate <last-gated>..HEAD` is a
+`/tmp/bbb-target-main` and records the passing commit in `.git/bbb/last-gated`;
+`scripts/cargo-dev.sh batch-gate` (defaulting to `<last-gated>..HEAD`) is a
 failure-localization tool only.
 
 deny-warnings is baked into the workspace lints table; never set

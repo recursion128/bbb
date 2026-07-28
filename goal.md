@@ -38,8 +38,8 @@
   “有界”约束目标、非目标、完成标准和验证方式，不限制文件数、crate 数、提交数
   或实现规模。架构重构作为专门 refactor slice 立项，不与无关 parity 目标混合；
   重构落地时同步把新约定写成下方结构不变量，能加反向断言的加反向断言。
-- 每个 slice 必须更新 `docs/unsupported-features.md`；需要长期状态记录时
-  同步更新 memory。
+- 触及账本域的 slice 必须在同一 slice 同步 `docs/unsupported-features.md`；
+  需要长期状态记录时同步更新 memory。
 - 测试必须断言语义（submission metadata / 状态化断言 / deterministic pixel
   readback）或留明确手动对比记录；不得新增只验证 vertex count 的 textured
   regression。
@@ -67,6 +67,11 @@
 - 实体 type id 常量一律取自 `bbb_protocol::entity_types`；粒子 type id 常量
   一律取自 `bbb_protocol::particle_types` 的 generated catalog；均不得内联数字。
   非 Vanilla 注册表的本地粒子哨兵必须单独命名，不能冒充 catalog entry。
+- server 已下发的 dynamic registry 是该 session 的唯一权威顺序/内容来源；固定
+  catalog 只负责 clean/offline fallback 与 built-in registry，fallback 启用须
+  记录来源。新增 Holder/HolderSet 消费点接 resolver 并在同一 slice 登记进
+  `docs/registry-holder-consumer-coverage-26.1.json`；不得重建独立 resource
+  数组、生产裸 holder id 或绕开 resolver 的下标查询。
 - 实体热路径（spawn/apply/clone）只写窄组件；`EntityState` 投影仅限
   probe/serialize/debug 边界。
 - world→renderer 每帧状态经 `runtime/render_extract.rs` 的 `RendererFrame`
@@ -145,15 +150,16 @@ unused/dead-code lint。
 ### 每轮步骤
 
 1. **收尾**：确认工作树干净；已验证未提交的 slice 先提交。
-2. **audit**：`scripts/audit-p0.sh`；exit 0 且最近完整 gate 与 playable smoke
-   无回退迹象 ⇒ 无新 P0。exit 1 时人工归类新增命中，有明确非 P0 依据的附
-   注释写入 allowlist。不与历史计数对比。
+2. **audit**：`scripts/audit-p0.sh`；exit 0 且 `.git/bbb/` 的 last-gated 与
+   last-playable-* stamp（gate/playable-gate 通过时自动写入）无回退迹象 ⇒ 无新
+   P0；milestone 关闭后 live playable stamp 不得落后于该 milestone。exit 1 时
+   人工归类新增命中，有明确非 P0 依据的附注释写入 allowlist。不与历史计数对比。
 3. **P0 分支**：命中重开条件 → P0 regression slice 只修 blocker；未命中 →
    立即进入候选选择，不等待确认。
-4. **Hardest-ready 选择**：从 P1～P4 路线图与账本全部开放项建候选集（原子
-   与工程形态并列），在完整语义工程层面按五项评估难度：架构/协议/状态机
-   风险、跨边界集成范围、vanilla/wire 不确定性、验证复杂度、失败影响与
-   定位难度。默认选最难的 ready 工程；只有真实 blocker 或集成契约无法冻结
+4. **Hardest-ready 选择**：先跑 `scripts/coverage-status.py` 取账本开放面板，
+   与 P1～P4 路线图开放项合并建候选集（原子与工程形态并列），在完整语义工程
+   层面按五项评估难度：架构/协议/状态机风险、跨边界集成范围、vanilla/wire
+   不确定性、验证复杂度、失败影响与定位难度。默认选最难的 ready 工程；只有真实 blocker 或集成契约无法冻结
    时，才选择能解锁它的最难且 ready 的有界前置 slice。难度相当时依次看：
    解锁更多后续目标、更接近可玩交付闭环、下节裁决顺序。进度更新只需简记
    最终选择与一句难度依据、被排除的最强候选及其真实 blocker。
@@ -185,9 +191,10 @@ unused/dead-code lint。
    - gate 失败：先按失败项与 focused tests 定位；仍无法确定引入提交时才用
      `scripts/cargo-dev.sh batch-gate <last-gated>..HEAD`（它只是失败定位
      工具）。fix-forward 修复后重新 gate tip；通过前不得开始下一批或交付。
-   - 始终记录最近通过完整 gate 的 commit hash；进度更新与交付报告批次内
-     提交、focused test 结果、gate 结果与最近已门禁 commit。交付/合并的
-     HEAD 必须已通过完整 gate。
+   - 最近通过完整 gate 的 commit 由 gate 自动记录于 `.git/bbb/last-gated`
+     （gate-log.tsv 含各步耗时），batch-gate 无参数时默认以它为 `<good>`；
+     进度更新与交付报告批次内提交、focused test 结果与 gate 结果。交付/合并
+     的 HEAD 必须已通过完整 gate。
 7. **路线图维护**：P1～P4 记录依赖、里程碑、完成标准与裁决顺序，不是默认
    串行消化队列。新发现工作在账本立条目并参与下一轮候选；结转项只在重启
    判据满足后恢复为 ready 候选。
@@ -199,9 +206,9 @@ unused/dead-code lint。
    - 落地方式：积累到值得动手时立专门的工作流 slice（触及 scripts/ 按
      高风险门禁）。改规则必须同 slice 改 enforce 机制（docs-lint / gate /
      脚本）与 AGENTS.md 指针，删除被取代的条文，不留第二份表述。
-   - 验收判据可测：门禁耗时、goal.md 行数、每 slice 固定步骤数只许下降或
-     持平；新增或收紧规则须附真实事故依据。每次流程变更按 vN 版本号记入
-     `docs/goal-archive.md` 索引与 memory。
+   - 验收判据可测：门禁耗时（以 `.git/bbb/gate-log.tsv` 为准）、goal.md 行数、
+     每 slice 固定步骤数只许下降或持平；新增或收紧规则须附真实事故依据。
+     每次流程变更按 vN 版本号记入 `docs/goal-archive.md` 索引与 memory。
 
 ## P0 重新打开条件与 audit 分类
 
@@ -245,9 +252,10 @@ effect，不以“未崩溃”代替语义验证。狭义 P0 只按本节跨域�
 本节只列开放路线图。P1～P4 保留为依赖/里程碑说明与 hardest-ready 难度相当时的
 裁决依据，不要求按章节顺序串行消化。protocol/session、RegistryAccess typed
 foundation、entity matrix、playable session lifecycle 四个
-foundation milestone 均已闭环（见 goal-archive 索引），后续裁决顺序调整为：
+foundation milestone 均已闭环（见 goal-archive 索引；RegistryAccess 消费长尾
+整队列随之闭环，权威来源规则转入上方结构不变量维护），后续裁决顺序调整为：
 
-1. play packet family 与 registry consumer 长尾；
+1. play packet family 长尾；
 2. P2 非实体 closeout → P2 屏幕/HUD → P3 资源 → P4 健壮性/性能/平台。
 
 （playable 基础游玩交互与扩展失败证据两阶段均已闭环，见下节；playable 门禁
@@ -320,36 +328,6 @@ decode/encode、world apply 和 runtime side effect 保持手写。
 其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；
 unknown/custom packet 不流失步；账本只保留具体字段、状态转换或服务端能力
 阻塞。
-
-### P1：动态 RegistryAccess 消费长尾
-
-foundation（来源/lifecycle inventory、统一查询 API、session reset、typed
-revision phase 1–4）已闭环。服务器已下发某 dynamic registry 时，其顺序与
-内容是该 session 的唯一权威来源；固定 catalog 只负责 clean/offline fallback
-和 built-in registry。逐项状态见
-`docs/registry-holder-consumer-coverage-26.1.json`。
-
-开放工作：
-
-1. **typed entry decode**：按 ledger 仍 `partial` 且已有实际消费者的 dynamic
-   registry family，逐个实现所需 typed NBT/Codec 摘要；未消费 registry 保留
-   ordered key/raw NBT 即可，不为抽象完整度提前复制 Mojang Codec。
-2. **消费者迁移**：清除 component/item-model/entity-scene/audio/HUD 中已可由
-   session registry 解析的 bootstrap 数组和 numeric-id match；fixed fallback
-   只在服务器未下发对应 registry 时启用并记录来源。
-3. **重排与自定义覆盖测试**：focused tests 覆盖前插 custom entry、vanilla
-   entry 重排、删除/unknown entry、stub/inline data、duplicate packet、tag
-   更新、断线重连清空；每个迁移 family 保留一条端到端“numeric id 按服务器
-   顺序解析”的证明。
-4. **反向门禁**：结构测试或机械扫描阻止已迁移 registry 重新出现独立完整
-   resource 数组、生产裸 holder id 或绕开 resolver 的下标查询；fixture 数字
-   须标明 wire/session 样本，不被生产逻辑引用。
-
-完成标准：每个 Holder/HolderSet 消费点映射到 resolver consumer、带证据的
-`not-applicable` 或带重启判据的窄 `deferred`；服务器自定义插入/重排不会被
-解释成另一个 vanilla resource；连接切换不泄漏旧 registry；offline/fixture
-路径保留经测试的 26.1 fallback；ledger 只保留具体 registry、value variant
-和消费者。
 
 ### P1：消除可机械推导的 vanilla 手工维护（收尾审计）
 
