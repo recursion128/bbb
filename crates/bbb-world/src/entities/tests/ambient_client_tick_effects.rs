@@ -358,6 +358,96 @@ fn sitting_attacking_dragon_growls_even_when_silent_and_keeps_generation_rng_iso
     assert_eq!(resolved.pitch, pitch);
 }
 
+#[test]
+fn lightning_bolt_first_tick_queues_world_owned_thunder_then_impact() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        165,
+        VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID,
+    ));
+    let initial_sources = store.lightning_bolt_render_sources();
+    let [initial_source] = initial_sources.as_slice() else {
+        panic!("expected one lightning render source, got {initial_sources:?}");
+    };
+    assert_eq!(initial_source.entity_id, 165);
+    assert_eq!(
+        initial_source.position,
+        EntityVec3 {
+            x: 1.0,
+            y: 64.0,
+            z: -2.0,
+        }
+    );
+    let mut retained = store.publication_snapshot();
+    assert_eq!(
+        retained.lightning_bolt_render_sources(),
+        initial_sources,
+        "immutable publication clones the constructor RNG projection"
+    );
+
+    store.advance_entity_client_animations(1);
+    retained.advance_entity_client_animations(1);
+    let effects = store
+        .drain_entity_client_movement_effect_states()
+        .collect::<Vec<_>>();
+    let retained_effects = retained
+        .drain_entity_client_movement_effect_states()
+        .collect::<Vec<_>>();
+    assert_eq!(
+        retained_effects, effects,
+        "advancing the live generation does not consume retained lightning RNG"
+    );
+    let [EntityClientMovementEffectState::Sound(thunder), EntityClientMovementEffectState::Sound(impact)] =
+        effects.as_slice()
+    else {
+        panic!("expected ordered thunder and impact sounds, got {effects:?}");
+    };
+    assert_eq!(thunder.entity_id, 165);
+    assert_eq!(thunder.position, initial_source.position);
+    assert_eq!(impact.entity_id, 165);
+    assert_eq!(impact.position, initial_source.position);
+    let EntityClientMovementSoundKind::LightningBoltThunder {
+        pitch: thunder_pitch,
+    } = thunder.kind
+    else {
+        panic!("expected lightning thunder first, got {thunder:?}");
+    };
+    let EntityClientMovementSoundKind::LightningBoltImpact {
+        pitch: impact_pitch,
+    } = impact.kind
+    else {
+        panic!("expected lightning impact second, got {impact:?}");
+    };
+    assert!((0.8..1.0).contains(&thunder_pitch));
+    assert!((0.5..0.7).contains(&impact_pitch));
+
+    let resolved_thunder = store.record_entity_client_movement_sound(*thunder);
+    assert_eq!(
+        resolved_thunder.sound.location.as_deref(),
+        Some("minecraft:entity.lightning_bolt.thunder")
+    );
+    assert_eq!(resolved_thunder.source, "weather");
+    assert_eq!(resolved_thunder.volume, 10_000.0);
+    assert_eq!(resolved_thunder.pitch, thunder_pitch);
+    let resolved_impact = store.record_entity_client_movement_sound(*impact);
+    assert_eq!(
+        resolved_impact.sound.location.as_deref(),
+        Some("minecraft:entity.lightning_bolt.impact")
+    );
+    assert_eq!(resolved_impact.source, "weather");
+    assert_eq!(resolved_impact.volume, 2.0);
+    assert_eq!(resolved_impact.pitch, impact_pitch);
+
+    store.advance_entity_client_animations(1);
+    assert!(
+        store
+            .drain_entity_client_movement_effect_states()
+            .next()
+            .is_none(),
+        "later lightning ticks do not replay constructor sounds"
+    );
+}
+
 fn ender_ambient_effect(
     effects: &[EntityClientMovementEffectState],
     entity_id: i32,

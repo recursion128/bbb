@@ -169,3 +169,58 @@ fn ender_dragon_flap_reaches_native_audio_with_vanilla_mix() {
         .next()
         .is_none());
 }
+
+#[test]
+fn lightning_bolt_first_tick_reaches_native_weather_audio_in_order() {
+    let mut world = WorldStore::new();
+    world.apply_add_entity(protocol_add_entity_with_type(
+        165,
+        VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID,
+    ));
+    world.advance_entity_client_animations(1);
+
+    let mut batches = RecordingParticleBatches::default();
+    let mut particles = RecordingParticleSink::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+    let mut particle_events: Option<&mut dyn ParticleEventSink> = Some(&mut particles);
+    let mut audio_events: Option<&mut dyn crate::audio_runtime::AudioEventSink> = Some(&mut audio);
+    crate::runtime::submit_entity_client_tick_effects(
+        &mut batches,
+        &mut world,
+        &mut particle_events,
+        &mut audio_events,
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    let [AudioCommand::PlayPositionedSound(thunder), AudioCommand::PlayPositionedSound(impact)] =
+        audio.commands.as_slice()
+    else {
+        panic!(
+            "expected ordered positioned thunder and impact sounds: {:?}",
+            audio.commands
+        );
+    };
+    assert_eq!(
+        thunder.sound.event_id,
+        "minecraft:entity.lightning_bolt.thunder"
+    );
+    assert_eq!(thunder.category, AudioCategory::Weather);
+    assert_eq!(thunder.position, [1.0, 64.0, -2.0]);
+    assert_eq!(thunder.packet_volume, 10_000.0);
+    assert!((0.8..1.0).contains(&thunder.packet_pitch));
+    assert_eq!(
+        impact.sound.event_id,
+        "minecraft:entity.lightning_bolt.impact"
+    );
+    assert_eq!(impact.category, AudioCategory::Weather);
+    assert_eq!(impact.position, [1.0, 64.0, -2.0]);
+    assert_eq!(impact.packet_volume, 2.0);
+    assert!((0.5..0.7).contains(&impact.packet_pitch));
+    assert!(particles.entity_client_movement_states.is_empty());
+    assert_eq!(batches.batches.len(), 1);
+    assert!(batches.batches[0].commands.is_empty());
+    assert!(world
+        .drain_entity_client_movement_effect_states()
+        .next()
+        .is_none());
+}

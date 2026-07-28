@@ -122,12 +122,13 @@ use super::{
     FallingBlockModelState, FireworkRocketExplosionParticleState, FireworkRocketItemState,
     FishingHookRenderSourceState, FoxEatParticleState, GuardianAmbientParticleState,
     GuardianAttackParticleState, HappyGhastHarnessColor, ItemEntityStackState,
-    ItemFrameRenderState, LivingDeathWakeTransition, LlamaBodyDecorColor,
-    LocalPlayerAttackSwingState, MinecartDisplayBlockState, OminousItemSpawnerItemState,
-    OminousItemSpawnerParticleState, PowderSnowFlakeParticleState, RavagerRoarParticleState,
-    RavagerStunParticleState, SlimeLandingParticleState, VanillaEntityBlockEffectTickPolicy,
-    WolfArmorCrackiness, VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID,
-    VANILLA_ABSTRACT_NAUTILUS_DEFAULT_DASH, VANILLA_COMMAND_BLOCK_MINECART_COMMAND_DATA_ID,
+    ItemFrameRenderState, LightningBoltRenderSourceState, LivingDeathWakeTransition,
+    LlamaBodyDecorColor, LocalPlayerAttackSwingState, MinecartDisplayBlockState,
+    OminousItemSpawnerItemState, OminousItemSpawnerParticleState, PowderSnowFlakeParticleState,
+    RavagerRoarParticleState, RavagerStunParticleState, SlimeLandingParticleState,
+    VanillaEntityBlockEffectTickPolicy, WolfArmorCrackiness,
+    VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID, VANILLA_ABSTRACT_NAUTILUS_DEFAULT_DASH,
+    VANILLA_COMMAND_BLOCK_MINECART_COMMAND_DATA_ID,
     VANILLA_COMMAND_BLOCK_MINECART_LAST_OUTPUT_DATA_ID, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
     VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
     VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
@@ -6156,6 +6157,38 @@ impl EntityStore {
         transforms
     }
 
+    pub(crate) fn lightning_bolt_render_sources(&self) -> Vec<LightningBoltRenderSourceState> {
+        let mut sources = Vec::new();
+        for id in &self.order {
+            let Some(entity) = self.by_protocol_id.get(id).copied() else {
+                continue;
+            };
+            let Ok(mut query) =
+                self.ecs
+                    .query_one::<(&EntityIdentity, &EntityTransform, &EntityClientAnimations)>(
+                        entity,
+                    )
+            else {
+                continue;
+            };
+            let Some((identity, transform, animations)) = query.get() else {
+                continue;
+            };
+            if identity.entity_type_id != VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID {
+                continue;
+            }
+            let Some(seed) = animations.animations.lightning_bolt_render_seed else {
+                continue;
+            };
+            sources.push(LightningBoltRenderSourceState {
+                entity_id: identity.id,
+                position: transform.position,
+                seed,
+            });
+        }
+        sources
+    }
+
     pub(crate) fn item_entity_stacks(&self) -> Vec<ItemEntityStackState> {
         self.item_stacks_for_entity_types(&[VANILLA_ENTITY_TYPE_ITEM_ID])
     }
@@ -10138,6 +10171,26 @@ fn append_client_tick_particle_triggers(
             super::EntityClientMovementSoundState {
                 entity_id: identity.id,
                 kind: super::EntityClientMovementSoundKind::EnderDragonGrowl { pitch },
+                position: transform.position,
+            },
+        ));
+    }
+    if let Some(sounds) = triggers.lightning_bolt_sounds {
+        pending_entity_client_movement_effects.push(EntityClientMovementEffectState::Sound(
+            super::EntityClientMovementSoundState {
+                entity_id: identity.id,
+                kind: super::EntityClientMovementSoundKind::LightningBoltThunder {
+                    pitch: sounds.thunder_pitch,
+                },
+                position: transform.position,
+            },
+        ));
+        pending_entity_client_movement_effects.push(EntityClientMovementEffectState::Sound(
+            super::EntityClientMovementSoundState {
+                entity_id: identity.id,
+                kind: super::EntityClientMovementSoundKind::LightningBoltImpact {
+                    pitch: sounds.impact_pitch,
+                },
                 position: transform.position,
             },
         ));

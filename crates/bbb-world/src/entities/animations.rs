@@ -287,6 +287,10 @@ const SLIME_CLIENT_RANDOM_SALT: u64 = 0x736c_696d_655f_726e;
 /// Shared client-local `EnderDragon.random` cursor for flap, ambient growl,
 /// sitting-attack growl, and death-particle draws in Java tick order.
 const ENDER_DRAGON_CLIENT_RANDOM_SALT: u64 = 0x6472_6167_6f6e_5f72;
+/// Shared client-local `LightningBolt.random` cursor. Construction consumes
+/// render seed then flash count; the first tick consumes thunder and impact
+/// pitch in that order.
+const LIGHTNING_BOLT_CLIENT_RANDOM_SALT: u64 = 0x6c69_6768_746e_696e;
 /// Client-local Warden RNG cursor for `LivingEntity.getVoicePitch()` on each
 /// heartbeat. The server does not synchronize the entity RNG seed.
 const WARDEN_CLIENT_RANDOM_SALT: u64 = 0x7761_7264_656e_5f72;
@@ -328,6 +332,9 @@ pub(crate) struct EntityClientTickParticleTriggers {
     /// Ordered `EnderDragon.aiStep` sound edges. Flap always precedes the
     /// mutually-exclusive ambient or sitting-attack growl.
     pub(crate) ender_dragon_sounds: EnderDragonClientSoundTriggers,
+    /// Vanilla `LightningBolt.tick` emits thunder then impact on its first
+    /// client tick (`life == 2` before decrement).
+    pub(crate) lightning_bolt_sounds: Option<LightningBoltSoundParameters>,
     /// Vanilla Enderman/Endermite `aiStep`: two portal particles per tick.
     pub(crate) ender_portal: Option<[EnderAmbientParticleOffset; 2]>,
     /// Vanilla moving, submerged Guardian: two bubbles behind its view vector.
@@ -376,6 +383,12 @@ pub(crate) struct BlazeSmokeParticleOffset {
 pub(crate) struct BlazeBurnSoundParameters {
     pub(crate) volume: f32,
     pub(crate) pitch: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct LightningBoltSoundParameters {
+    pub(crate) thunder_pitch: f32,
+    pub(crate) impact_pitch: f32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -642,6 +655,14 @@ pub struct EntityClientAnimationState {
     /// death-particle draw sequence without exposing a fabricated wire seed.
     #[serde(skip)]
     pub(crate) ender_dragon_client_random_seed: Option<u64>,
+    /// Shared client-local LightningBolt RNG cursor after constructor seed and
+    /// flash-count draws.
+    #[serde(skip)]
+    pub(crate) lightning_bolt_client_random_seed: Option<u64>,
+    /// Vanilla `LightningBolt.seed`, projected to the renderer from the same
+    /// constructor RNG owner used by first-tick audio.
+    #[serde(skip)]
+    pub(crate) lightning_bolt_render_seed: Option<i64>,
     /// Client-local Camel voice-pitch cursor. Vanilla does not synchronize the
     /// entity RandomSource; the retained cursor preserves the two-float pitch
     /// distribution and old-generation isolation without a parallel owner.
@@ -3667,6 +3688,12 @@ pub(super) fn java_random_next_bits(state: &mut u64, bits: u32) -> u32 {
     (*state >> (48 - bits)) as u32
 }
 
+fn java_random_next_long(state: &mut u64) -> i64 {
+    let high = i64::from(java_random_next_bits(state, 32) as i32);
+    let low = i64::from(java_random_next_bits(state, 32) as i32);
+    (high << 32).wrapping_add(low)
+}
+
 pub(super) fn java_random_next_int_bound(state: &mut u64, bound: i32) -> i32 {
     debug_assert!(bound > 0);
     if (bound & (bound - 1)) == 0 {
@@ -3690,6 +3717,16 @@ fn java_random_next_double(state: &mut u64) -> f64 {
 
 pub(super) fn java_random_next_float(state: &mut u64) -> f32 {
     java_random_next_bits(state, 24) as f32 / ((1_u32 << 24) as f32)
+}
+
+fn lightning_bolt_spawn_random(uuid: Uuid, entity_type_id: i32) -> (u64, i64) {
+    let mut random_seed = java_random_seed(spawn_random_bits(
+        uuid,
+        LIGHTNING_BOLT_CLIENT_RANDOM_SALT ^ entity_type_id as u64,
+    ) as i64);
+    let render_seed = java_random_next_long(&mut random_seed);
+    java_random_next_int_bound(&mut random_seed, 3);
+    (random_seed, render_seed)
 }
 
 /// Vanilla `AbstractHorse.tailCounter`, with the random idle start driven from a repo-local
@@ -4651,6 +4688,14 @@ impl EntityClientAnimationState {
                     ENDER_DRAGON_CLIENT_RANDOM_SALT ^ entity_type_id as u64,
                 ) as i64)
             });
+        if entity_type_id == VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID {
+            let (random_seed, render_seed) = lightning_bolt_spawn_random(uuid, entity_type_id);
+            self.lightning_bolt_client_random_seed = Some(random_seed);
+            self.lightning_bolt_render_seed = Some(render_seed);
+        } else {
+            self.lightning_bolt_client_random_seed = None;
+            self.lightning_bolt_render_seed = None;
+        }
         self.camel_voice_random_seed =
             vanilla_entity_metadata_type_is_camel(entity_type_id).then(|| {
                 java_random_seed(spawn_random_bits(
@@ -6637,6 +6682,22 @@ impl EntityClientAnimationState {
         self.advance_age_lock_particle_timer_tick();
         self.spawn_body_y_rot = None;
         let mut particle_triggers = EntityClientTickParticleTriggers::default();
+        if entity_type_id == VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID && self.age_ticks == 1 {
+            let random_seed = self
+                .lightning_bolt_client_random_seed
+                .get_or_insert_with(|| {
+                    let mut random_seed = java_random_seed(
+                        i64::from(entity_id).wrapping_add(LIGHTNING_BOLT_CLIENT_RANDOM_SALT as i64),
+                    );
+                    java_random_next_long(&mut random_seed);
+                    java_random_next_int_bound(&mut random_seed, 3);
+                    random_seed
+                });
+            particle_triggers.lightning_bolt_sounds = Some(LightningBoltSoundParameters {
+                thunder_pitch: 0.8 + java_random_next_float(random_seed) * 0.2,
+                impact_pitch: 0.5 + java_random_next_float(random_seed) * 0.2,
+            });
+        }
         // AbstractArrow owns the ordering-sensitive shake decrement in the
         // direct movement pass: an initial containment hit precedes it, while
         // `onHitBlock` installs a fresh seven-tick shake after it.

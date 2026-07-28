@@ -8287,6 +8287,10 @@ fn weather_render_state_projects_lightning_bolts_without_rain() {
         z: -3.0,
     };
     world.apply_add_entity(lightning);
+    let projected_sources = world.lightning_bolt_render_sources();
+    let [projected] = projected_sources.as_slice() else {
+        panic!("expected one world-owned lightning render source");
+    };
 
     let state = weather_render_state_for_world(
         &world,
@@ -8300,10 +8304,7 @@ fn weather_render_state_projects_lightning_bolts_without_rain() {
     assert_eq!(state.snow_column_count(), 0);
     assert_eq!(state.lightning_bolt_count(), 1);
     assert_eq!(state.lightning_bolts[0].position, [8.0, 65.0, -3.0]);
-    assert_eq!(
-        state.lightning_bolts[0].seed,
-        lightning_bolt_seed(uuid::Uuid::from_u128(0x1234_5678_9abc_def0))
-    );
+    assert_eq!(state.lightning_bolts[0].seed, projected.seed);
 }
 
 fn apply_static_border(world: &mut WorldStore, center: (f64, f64), size: f64) {

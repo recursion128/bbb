@@ -91,6 +91,8 @@ const BLAZE_BURN_SOUND_EVENT: &str = "minecraft:entity.blaze.burn";
 const WARDEN_HEARTBEAT_SOUND_EVENT: &str = "minecraft:entity.warden.heartbeat";
 const ENDER_DRAGON_FLAP_SOUND_EVENT: &str = "minecraft:entity.ender_dragon.flap";
 const ENDER_DRAGON_GROWL_SOUND_EVENT: &str = "minecraft:entity.ender_dragon.growl";
+const LIGHTNING_BOLT_THUNDER_SOUND_EVENT: &str = "minecraft:entity.lightning_bolt.thunder";
+const LIGHTNING_BOLT_IMPACT_SOUND_EVENT: &str = "minecraft:entity.lightning_bolt.impact";
 const GUARDIAN_FLOP_SOUND_EVENT: &str = "minecraft:entity.guardian.flop";
 const ELDER_GUARDIAN_FLOP_SOUND_EVENT: &str = "minecraft:entity.elder_guardian.flop";
 const SLIME_SQUISH_SOUND_EVENT: &str = "minecraft:entity.slime.squish";
@@ -2146,6 +2148,15 @@ impl WorldStore {
             }
             EntityClientMovementSoundKind::EnderDragonGrowl { pitch } => {
                 (ENDER_DRAGON_GROWL_SOUND_EVENT, "hostile", 2.5, pitch)
+            }
+            EntityClientMovementSoundKind::LightningBoltThunder { pitch } => (
+                LIGHTNING_BOLT_THUNDER_SOUND_EVENT,
+                "weather",
+                10_000.0,
+                pitch,
+            ),
+            EntityClientMovementSoundKind::LightningBoltImpact { pitch } => {
+                (LIGHTNING_BOLT_IMPACT_SOUND_EVENT, "weather", 2.0, pitch)
             }
             EntityClientMovementSoundKind::GuardianFlop { elder } => (
                 if elder {

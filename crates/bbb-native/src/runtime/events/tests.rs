@@ -1108,6 +1108,12 @@ fn test_sound_catalog() -> SoundCatalog {
             "entity.ender_dragon.growl": {
                 "sounds": ["mob/enderdragon/growl"]
             },
+            "entity.lightning_bolt.thunder": {
+                "sounds": ["ambient/weather/thunder1"]
+            },
+            "entity.lightning_bolt.impact": {
+                "sounds": ["ambient/weather/thunder2"]
+            },
             "entity.magma_cube.squish": {
                 "sounds": ["mob/slime/big2"]
             },

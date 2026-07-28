@@ -1095,21 +1095,20 @@ pub(crate) fn world_border_render_state_for_world(
 
 pub(crate) fn lightning_bolts_for_world(world: &WorldStore) -> Vec<LightningBoltRenderState> {
     world
-        .entity_transforms()
+        .lightning_bolt_render_sources()
         .into_iter()
-        .filter(|entity| entity.entity_type_id == VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID)
-        .filter_map(|entity| {
+        .filter_map(|source| {
             let position = [
-                entity.position.x as f32,
-                entity.position.y as f32,
-                entity.position.z as f32,
+                source.position.x as f32,
+                source.position.y as f32,
+                source.position.z as f32,
             ];
             position
                 .into_iter()
                 .all(f32::is_finite)
                 .then(|| LightningBoltRenderState {
                     position,
-                    seed: lightning_bolt_seed(entity.uuid),
+                    seed: source.seed,
                 })
         })
         .collect()

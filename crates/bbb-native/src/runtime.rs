@@ -17272,12 +17272,6 @@ enum WeatherPrecipitation {
     Snow,
 }
 
-fn lightning_bolt_seed(uuid: uuid::Uuid) -> i64 {
-    // Vanilla keeps LightningBolt.seed client-local and does not sync it in AddEntity.
-    let bytes = uuid.as_u128().to_le_bytes();
-    i64::from_le_bytes(bytes[..8].try_into().expect("uuid lower 64 bits"))
-}
-
 fn world_can_have_weather(world: &WorldStore) -> bool {
     world
         .level_info()

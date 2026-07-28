@@ -864,6 +864,12 @@ pub enum EntityClientMovementSoundKind {
     EnderDragonGrowl {
         pitch: f32,
     },
+    LightningBoltThunder {
+        pitch: f32,
+    },
+    LightningBoltImpact {
+        pitch: f32,
+    },
     GuardianFlop {
         elder: bool,
     },
@@ -1179,6 +1185,15 @@ pub struct EntityTransformState {
     pub x_rot: f32,
     pub y_head_rot: f32,
     pub on_ground: Option<bool>,
+}
+
+/// Client-owned LightningBolt render source. Vanilla constructs `seed` from
+/// the same entity RNG that later supplies first-tick thunder/impact pitch.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct LightningBoltRenderSourceState {
+    pub entity_id: i32,
+    pub position: EntityVec3,
+    pub seed: i64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -4859,6 +4874,10 @@ impl WorldStore {
 
     pub fn entity_transforms(&self) -> Vec<EntityTransformState> {
         self.entities.transform_states()
+    }
+
+    pub fn lightning_bolt_render_sources(&self) -> Vec<LightningBoltRenderSourceState> {
+        self.entities.lightning_bolt_render_sources()
     }
 
     pub fn item_entity_stacks(&self) -> Vec<ItemEntityStackState> {

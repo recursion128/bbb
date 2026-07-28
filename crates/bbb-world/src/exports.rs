@@ -19,6 +19,7 @@ pub use crate::entities::EntityNameTagVisibilityPolicy;
 pub use crate::entities::EntityRenderCandidateState;
 pub use crate::entities::EntityRendererSpecialCullingState;
 pub use crate::entities::FishingHookRenderSourceState;
+pub use crate::entities::LightningBoltRenderSourceState;
 pub use crate::entities::VanillaAbstractBoatMetadataAccessors;
 pub use crate::entities::VanillaAbstractHorseMetadataAccessors;
 pub use crate::entities::VanillaAbstractMinecartMetadataAccessors;
