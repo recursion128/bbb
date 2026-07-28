@@ -2483,6 +2483,7 @@ pub(crate) fn advance_simulation(
     terrain_textures: &mut TerrainTextureState,
     item_runtime: &mut Option<NativeItemRuntime>,
     code_of_conduct: &mut CodeOfConductAcceptance,
+    server_list: &mut Option<crate::server_list::ServerListPersistence>,
     commands: Vec<crate::simulation::commands::SequencedSimulationCommand>,
     input_runtime: &mut crate::simulation::input_commands::SimulationInputRuntime,
     level_load_runtime: &mut LevelLoadRuntime,
@@ -2514,6 +2515,7 @@ pub(crate) fn advance_simulation(
             item_runtime.as_ref(),
             Some(hud_debug_network_sampler),
             Some(hud_debug_tps_sampler),
+            server_list.as_mut(),
             level_event_sound_random,
             Some(&mut network_terminated),
         );

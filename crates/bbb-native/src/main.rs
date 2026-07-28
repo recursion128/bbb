@@ -58,6 +58,7 @@ mod remote_debug;
 mod resource_pack_runtime;
 mod resource_reload;
 mod runtime;
+mod server_list;
 mod shulker_box_scene;
 mod sign_scene;
 mod simulation;
@@ -106,6 +107,7 @@ use runtime::{
     HudDebugNetworkSampler, HudDebugTpsSampler, HudRenderRuntime, LevelEventSoundRandomState,
     LightmapTickState,
 };
+use server_list::ServerListPersistence;
 use simulation::{
     commands::{DebugProfilingLifecycle, SimulationCommand, SimulationMailbox},
     effects::{
@@ -455,6 +457,19 @@ fn main() -> Result<()> {
                 CodeOfConductAcceptance::empty(code_of_conduct_store_path)
             }
         };
+    let server_list = args
+        .server_list_store
+        .as_ref()
+        .map(|path| {
+            ServerListPersistence::new(
+                path,
+                args.server_list_name
+                    .as_deref()
+                    .expect("clap requires --server-list-name with --server-list-store"),
+                &args.server,
+            )
+        })
+        .transpose()?;
     let NetworkHandles {
         events: net_events,
         commands: net_commands,
@@ -822,6 +837,7 @@ fn main() -> Result<()> {
         terrain_textures: terrain_textures.clone(),
         item_runtime: simulation_item_runtime,
         code_of_conduct: code_of_conduct_acceptance,
+        server_list,
         command_mailbox: simulation_mailbox.clone(),
         input_runtime: simulation_input_runtime,
         level_load_runtime: LevelLoadRuntime::default(),

@@ -9,6 +9,7 @@ use bbb_protocol::packets::{
     ServerLinkType as ProtocolServerLinkType, ServerLinks as ProtocolServerLinks,
     Transfer as ProtocolTransfer,
 };
+use bbb_protocol::RichTextComponent;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -38,13 +39,36 @@ pub struct ServerPresentationState {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ServerDataState {
-    pub motd: String,
+    pub motd: RichTextComponent,
     pub icon_bytes: Option<Vec<u8>>,
 }
 
 impl ServerDataState {
     pub fn icon_byte_len(&self) -> Option<usize> {
         self.icon_bytes.as_ref().map(Vec::len)
+    }
+}
+
+/// Vanilla `ServerData.validateIcon`: parse the PNG signature and IHDR header
+/// (`PngInfo.fromBytes`) and keep the bytes only when both dimensions are at
+/// most 1024; a bad signature, header, or oversized image yields `None`.
+fn validated_server_icon(bytes: Vec<u8>) -> Option<Vec<u8>> {
+    const PNG_SIGNATURE: [u8; 8] = [0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a];
+    const IHDR_SIZE: u32 = 13;
+    if bytes.len() < 24
+        || bytes[0..8] != PNG_SIGNATURE
+        || u32::from_be_bytes(bytes[8..12].try_into().expect("4-byte slice")) != IHDR_SIZE
+        || &bytes[12..16] != b"IHDR"
+    {
+        return None;
+    }
+    // Vanilla reads the dimensions as signed ints and only checks `<= 1024`.
+    let width = i32::from_be_bytes(bytes[16..20].try_into().expect("4-byte slice"));
+    let height = i32::from_be_bytes(bytes[20..24].try_into().expect("4-byte slice"));
+    if width <= 1024 && height <= 1024 {
+        Some(bytes)
+    } else {
+        None
     }
 }
 
@@ -163,14 +187,21 @@ impl WorldStore {
             .expect("last transfer was just stored")
     }
 
+    /// Vanilla `ClientPacketListener.handleServerData`: the trusted MOTD
+    /// component replaces the stored one, while
+    /// `packet.iconBytes().map(ServerData::validateIcon).ifPresent(...)` keeps
+    /// the prior icon when the update omits one or carries an invalid PNG.
     pub fn apply_server_data(&mut self, packet: ProtocolServerData) {
         self.counters.server_data_packets += 1;
-        let icon_bytes = packet.icon_bytes.or_else(|| {
-            self.presentation
-                .server_data
-                .as_ref()
-                .and_then(|server_data| server_data.icon_bytes.clone())
-        });
+        let icon_bytes = packet
+            .icon_bytes
+            .and_then(validated_server_icon)
+            .or_else(|| {
+                self.presentation
+                    .server_data
+                    .as_ref()
+                    .and_then(|server_data| server_data.icon_bytes.clone())
+            });
         self.presentation.server_data = Some(ServerDataState {
             motd: packet.motd,
             icon_bytes,
@@ -553,34 +584,107 @@ mod tests {
         assert_eq!(store.counters().transfer_packets, 2);
     }
 
+    fn png_icon(width: i32, height: i32) -> Vec<u8> {
+        let mut bytes = vec![0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a];
+        bytes.extend_from_slice(&13i32.to_be_bytes());
+        bytes.extend_from_slice(b"IHDR");
+        bytes.extend_from_slice(&width.to_be_bytes());
+        bytes.extend_from_slice(&height.to_be_bytes());
+        bytes
+    }
+
     #[test]
     fn server_data_stores_motd_icon_and_counter() {
         let mut store = WorldStore::new();
+        let icon = png_icon(64, 64);
+        let motd = RichTextComponent::try_from_component_nbt(
+            bbb_protocol::NbtSummaryValue::Compound(vec![
+                bbb_protocol::NbtSummaryEntry {
+                    name: "text".to_string(),
+                    value: bbb_protocol::NbtSummaryValue::String("Welcome to BBB".to_string()),
+                },
+                bbb_protocol::NbtSummaryEntry {
+                    name: "bold".to_string(),
+                    value: bbb_protocol::NbtSummaryValue::Byte(1),
+                },
+            ]),
+        )
+        .unwrap();
 
         store.apply_server_data(ProtocolServerData {
-            motd: "Welcome to BBB".to_string(),
-            icon_bytes: Some(vec![137, 80, 78, 71]),
+            motd: motd.clone(),
+            icon_bytes: Some(icon.clone()),
         });
 
         let server_data = store.server_data().expect("server data is stored");
-        assert_eq!(server_data.motd, "Welcome to BBB");
-        assert_eq!(server_data.icon_byte_len(), Some(4));
-        assert_eq!(
-            server_data.icon_bytes.as_deref(),
-            Some(&[137, 80, 78, 71][..])
-        );
+        assert_eq!(server_data.motd, motd);
+        assert_eq!(server_data.motd.styled()[0].style.bold, Some(true));
+        assert_eq!(server_data.icon_byte_len(), Some(icon.len()));
+        assert_eq!(server_data.icon_bytes.as_deref(), Some(&icon[..]));
 
         store.apply_server_data(ProtocolServerData {
-            motd: "Updated MOTD".to_string(),
+            motd: RichTextComponent::plain("Updated MOTD"),
             icon_bytes: None,
         });
         let server_data = store.server_data().expect("server data is updated");
-        assert_eq!(server_data.motd, "Updated MOTD");
-        assert_eq!(
-            server_data.icon_bytes.as_deref(),
-            Some(&[137, 80, 78, 71][..])
-        );
+        assert_eq!(server_data.motd.text(), "Updated MOTD");
+        assert_eq!(server_data.icon_bytes.as_deref(), Some(&icon[..]));
         assert_eq!(store.counters().server_data_packets, 2);
+    }
+
+    #[test]
+    fn server_data_icon_validation_matches_vanilla_validate_icon() {
+        let mut store = WorldStore::new();
+        let good = png_icon(1024, 1024);
+
+        store.apply_server_data(ProtocolServerData {
+            motd: RichTextComponent::plain("A"),
+            icon_bytes: Some(good.clone()),
+        });
+        assert_eq!(
+            store.server_data().unwrap().icon_bytes.as_deref(),
+            Some(&good[..])
+        );
+
+        // An oversized or malformed icon keeps the previously stored bytes.
+        store.apply_server_data(ProtocolServerData {
+            motd: RichTextComponent::plain("B"),
+            icon_bytes: Some(png_icon(1025, 64)),
+        });
+        assert_eq!(
+            store.server_data().unwrap().icon_bytes.as_deref(),
+            Some(&good[..])
+        );
+        store.apply_server_data(ProtocolServerData {
+            motd: RichTextComponent::plain("C"),
+            icon_bytes: Some(vec![137, 80, 78, 71]),
+        });
+        assert_eq!(
+            store.server_data().unwrap().icon_bytes.as_deref(),
+            Some(&good[..])
+        );
+        let mut bad_type = png_icon(64, 64);
+        bad_type[12..16].copy_from_slice(b"IDAT");
+        store.apply_server_data(ProtocolServerData {
+            motd: RichTextComponent::plain("D"),
+            icon_bytes: Some(bad_type),
+        });
+        assert_eq!(
+            store.server_data().unwrap().icon_bytes.as_deref(),
+            Some(&good[..])
+        );
+
+        // Vanilla reads signed dimensions, so negative values pass `<= 1024`.
+        let negative = png_icon(-1, 64);
+        store.apply_server_data(ProtocolServerData {
+            motd: RichTextComponent::plain("E"),
+            icon_bytes: Some(negative.clone()),
+        });
+        assert_eq!(
+            store.server_data().unwrap().icon_bytes.as_deref(),
+            Some(&negative[..])
+        );
+        assert_eq!(store.counters().server_data_packets, 5);
     }
 
     #[test]

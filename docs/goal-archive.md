@@ -677,3 +677,6 @@
   重建、onClimbable/blockSpeedFactor 飞行门），legacy 位移模型删除。已知偏差
   =碰撞 epsilon 1e-7 与流体分支 legacy 方向输入（后者留在 movement 队列）；
   合同见 `docs/archive/local-player-travel-ordering-design.md`。
+- **2026-07-28（ServerData 表现与持久化工程闭环）**：trusted MOTD Component、
+  Vanilla `validateIcon` 与显式启动配置的 `servers.dat` owner 已贯通共享 packet
+  apply；合同见 `docs/archive/server-data-persistence-design.md`。

@@ -329,6 +329,7 @@ dependencies = [
  "anyhow",
  "arboard",
  "arc-swap",
+ "base64",
  "bbb-audio",
  "bbb-control",
  "bbb-item-model",

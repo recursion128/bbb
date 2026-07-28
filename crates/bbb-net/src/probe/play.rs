@@ -1652,10 +1652,15 @@ mod tests {
         let (client, mut server) = raw_connection_pair().await;
         let mut probe = ProbeContext::new(client);
 
+        let mut server_icon = vec![0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a];
+        server_icon.extend_from_slice(&13i32.to_be_bytes());
+        server_icon.extend_from_slice(b"IHDR");
+        server_icon.extend_from_slice(&64i32.to_be_bytes());
+        server_icon.extend_from_slice(&64i32.to_be_bytes());
         probe
             .handle_play_packet(PlayClientbound::ServerData(ServerData {
-                motd: "Native test server".to_string(),
-                icon_bytes: Some(vec![1, 2, 3, 4]),
+                motd: bbb_protocol::RichTextComponent::plain("Native test server"),
+                icon_bytes: Some(server_icon.clone()),
             }))
             .await
             .unwrap();
@@ -1714,8 +1719,8 @@ mod tests {
             .world
             .server_data()
             .expect("server data should be tracked");
-        assert_eq!(server_data.motd, "Native test server");
-        assert_eq!(server_data.icon_byte_len(), Some(4));
+        assert_eq!(server_data.motd.text(), "Native test server");
+        assert_eq!(server_data.icon_byte_len(), Some(server_icon.len()));
         assert!(report.world.resource_packs().is_empty());
         assert_eq!(report.world_counters.server_data_packets, 1);
         assert_eq!(report.world_counters.resource_pack_push_packets, 1);

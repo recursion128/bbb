@@ -900,13 +900,6 @@ back into a todo. Do not delete these.
 
 ## Screens and presentation
 
-- **Server-data MOTD/icon parity.** Preserve the full trusted MOTD Component,
-  validate optional icon bytes like `ServerData.validateIcon`, and update the
-  persisted multiplayer server-list entry when that owner exists. The current
-  client stores a readable MOTD plus bounded raw icon bytes and correctly keeps
-  the prior icon when an update omits it. Restart with repo-native rich text and
-  multiplayer server-list persistence rather than treating packet receipt as UI
-  completion.
 - **Code of Conduct screen presentation parity.** Canonical UI state and control
   requests are covered. Restart when the renderer UI stack grows fuller vanilla
   screen and font rendering.

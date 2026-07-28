@@ -89,6 +89,7 @@ pub enum EntityTrackingEmitterParticleKind {
 /// identical canonical mutations and consume the identical deterministic random
 /// stream as the online dispatcher.
 pub trait PlayApplyEffects {
+    fn server_data_updated(&mut self, _world: &WorldStore) {}
     fn positioned_sound(&mut self, _state: &SoundEventState) {}
     fn note_block_particle(&mut self, _world: &WorldStore, _state: crate::NoteBlockParticleState) {}
     fn local_sound(&mut self, _state: &LocalSoundEventState) {}
@@ -1024,6 +1025,7 @@ impl WorldStore {
             }
             PlayClientbound::ServerData(update) => {
                 self.apply_server_data(update);
+                effects.server_data_updated(self);
             }
             PlayClientbound::ResourcePackPop(update) => {
                 self.apply_resource_pack_pop(update);

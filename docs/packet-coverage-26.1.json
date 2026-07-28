@@ -12015,10 +12015,11 @@
         "canonical_apply": {
           "evidence": [
             "crates/bbb-world/src/client/server_presentation.rs#apply_server_data",
+            "crates/bbb-world/src/client/server_presentation.rs#server_data_icon_validation_matches_vanilla_validate_icon",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleServerData"
           ],
-          "gap": "docs/unsupported-features.md#screens-and-presentation",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
@@ -12037,18 +12038,23 @@
         },
         "runtime_side_effect": {
           "evidence": [
-            "crates/bbb-world/src/client/server_presentation.rs#server_data",
-            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#server_presentation_events_update_world_and_world_counters"
+            "crates/bbb-native/src/server_list.rs#persist_current_server_data",
+            "crates/bbb-native/src/server_list.rs#configured_owner_persists_valid_icon_in_vanilla_servers_dat_shape",
+            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#server_data_event_persists_configured_vanilla_server_list_owner",
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleServerData",
+            "vanilla:net/minecraft/client/multiplayer/ServerList.java#saveSingleServer"
           ],
-          "gap": "docs/unsupported-features.md#screens-and-presentation",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/server_presentation.rs#decodes_server_data_packet_with_icon",
             "crates/bbb-world/src/client/server_presentation.rs#server_data_stores_motd_icon_and_counter",
+            "crates/bbb-world/src/client/server_presentation.rs#server_data_icon_validation_matches_vanilla_validate_icon",
             "crates/bbb-net/src/probe/play.rs#probe_play_server_presentation_packets_update_world_and_decline_resource_pack",
-            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#server_presentation_events_update_world_and_world_counters"
+            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#server_presentation_events_update_world_and_world_counters",
+            "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#server_data_event_persists_configured_vanilla_server_list_owner"
           ],
           "gap": null,
           "status": "complete"

@@ -2191,7 +2191,7 @@ mod tests {
         );
 
         let server_data = packets::ServerData {
-            motd: "Offline play server".to_string(),
+            motd: bbb_protocol::RichTextComponent::plain("Offline play server"),
             icon_bytes: Some(vec![0x89, b'P', b'N', b'G']),
         };
         stream

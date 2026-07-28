@@ -58,6 +58,30 @@ pub fn decode_nbt_summary(bytes: &[u8]) -> Result<Option<NbtSummaryValue>> {
     Ok(value)
 }
 
+/// Decodes the named-root NBT shape used by Vanilla files such as
+/// `servers.dat`. Network NBT omits the root name and continues to use
+/// [`decode_nbt_summary`].
+pub fn decode_named_nbt_summary(bytes: &[u8]) -> Result<Option<(String, NbtSummaryValue)>> {
+    let mut decoder = Decoder::new(bytes);
+    let tag_id = decoder.read_u8()?;
+    if tag_id == 0 {
+        if !decoder.is_empty() {
+            return Err(ProtocolError::InvalidData(
+                "trailing bytes after named nbt end root".to_string(),
+            ));
+        }
+        return Ok(None);
+    }
+    let name = read_modified_utf8(&mut decoder)?;
+    let value = read_nbt_payload(&mut decoder, tag_id, 0)?;
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after named nbt root".to_string(),
+        ));
+    }
+    Ok(Some((name, value)))
+}
+
 fn read_nbt_payload(
     decoder: &mut Decoder<'_>,
     tag_id: u8,
@@ -232,6 +256,20 @@ pub(crate) fn encode_nbt_summary_bounded(
         }
         None => encoder.write_u8(0)?,
     }
+    Ok(encoder.into_inner())
+}
+
+/// Encodes the named-root NBT shape used by Vanilla files while retaining the
+/// same bounded collection and depth rules as protocol NBT.
+pub fn encode_named_nbt_summary(
+    root_name: &str,
+    value: &NbtSummaryValue,
+    max_len: usize,
+) -> Result<Vec<u8>> {
+    let mut encoder = BoundedNbtEncoder::new(max_len);
+    encoder.write_u8(nbt_tag_id(value))?;
+    encode_modified_utf8(&mut encoder, root_name)?;
+    encode_nbt_payload(&mut encoder, value, 0, MAX_NBT_DEPTH)?;
     Ok(encoder.into_inner())
 }
 
@@ -567,6 +605,36 @@ mod tests {
             decode_nbt_summary(&duplicate_wire).unwrap(),
             decode_nbt_summary(&encoded).unwrap()
         );
+    }
+
+    #[test]
+    fn named_nbt_root_roundtrips_vanilla_file_shape() {
+        let value = NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+            name: "servers".to_string(),
+            value: NbtSummaryValue::List(vec![NbtSummaryValue::Compound(vec![
+                NbtSummaryEntry {
+                    name: "name".to_string(),
+                    value: NbtSummaryValue::String("Native".to_string()),
+                },
+                NbtSummaryEntry {
+                    name: "hidden".to_string(),
+                    value: NbtSummaryValue::Byte(0),
+                },
+            ])]),
+        }]);
+        let encoded = encode_named_nbt_summary("", &value, 4096).unwrap();
+        assert_eq!(
+            decode_named_nbt_summary(&encoded).unwrap(),
+            Some(("".to_string(), value))
+        );
+    }
+
+    #[test]
+    fn named_nbt_root_rejects_trailing_bytes() {
+        assert!(decode_named_nbt_summary(&[10, 0, 0, 0, 1])
+            .unwrap_err()
+            .to_string()
+            .contains("trailing bytes after named nbt root"));
     }
 
     #[test]

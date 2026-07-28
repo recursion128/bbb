@@ -1267,24 +1267,26 @@ mod tests {
     }
 
     #[test]
-    fn play_server_data_keeps_rich_motd_and_server_list_persistence_open() {
+    fn play_server_data_closes_rich_motd_icon_validation_and_server_list_persistence() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
             .iter()
             .find(|entry| entry.state == "play" && entry.constant_name == "CLIENTBOUND_SERVER_DATA")
             .expect("server data coverage row");
-        let partial: BTreeSet<_> = entry
-            .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "runtime_side_effect"])
-        );
+        for dimension in [
+            "canonical_apply",
+            "decode",
+            "ownership",
+            "runtime_side_effect",
+            "tests",
+        ] {
+            assert_eq!(
+                entry.coverage[dimension].status,
+                PacketCoverageStatus::Complete,
+                "{dimension}"
+            );
+        }
     }
 
     #[test]

@@ -66,6 +66,18 @@ pub(crate) struct Args {
     pub(crate) exit_after_screenshot: bool,
     #[arg(long, value_name = "PATH")]
     pub(crate) code_of_conduct_store: Option<PathBuf>,
+    #[arg(
+        long,
+        value_name = "PATH",
+        requires_all = ["server_list_name", "connect_server"]
+    )]
+    pub(crate) server_list_store: Option<PathBuf>,
+    #[arg(
+        long,
+        value_name = "NAME",
+        requires_all = ["server_list_store", "connect_server"]
+    )]
+    pub(crate) server_list_name: Option<String>,
     #[arg(long = "resource-pack-dir", value_name = "PATH")]
     pub(crate) resource_pack_dirs: Vec<PathBuf>,
     #[arg(
@@ -725,6 +737,33 @@ mod tests {
             "--probe-server",
         ])
         .is_err());
+    }
+
+    #[test]
+    fn server_list_owner_requires_explicit_store_name_and_live_connection() {
+        assert!(
+            Args::try_parse_from(["bbb-native", "--server-list-store", "/tmp/servers.dat"])
+                .is_err()
+        );
+        assert!(
+            Args::try_parse_from(["bbb-native", "--server-list-name", "Native Server"]).is_err()
+        );
+        let args = Args::try_parse_from([
+            "bbb-native",
+            "--connect-server",
+            "--server",
+            "example.org:25565",
+            "--server-list-store",
+            "/tmp/servers.dat",
+            "--server-list-name",
+            "Native Server",
+        ])
+        .unwrap();
+        assert_eq!(
+            args.server_list_store,
+            Some(PathBuf::from("/tmp/servers.dat"))
+        );
+        assert_eq!(args.server_list_name.as_deref(), Some("Native Server"));
     }
 
     #[test]

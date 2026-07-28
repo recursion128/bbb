@@ -18,7 +18,9 @@ pub(super) use dispatcher::drain_net_events_with_sinks_and_debug;
 use dispatcher::level_event_particle_context;
 pub(crate) use dispatcher::queue_chat_acknowledgement;
 #[cfg(test)]
-pub(super) use dispatcher::{drain_net_events, drain_net_events_with_audio};
+pub(super) use dispatcher::{
+    drain_net_events, drain_net_events_with_audio, drain_net_events_with_server_list,
+};
 
 #[cfg(test)]
 mod tests;

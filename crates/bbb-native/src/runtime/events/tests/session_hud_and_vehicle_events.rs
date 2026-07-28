@@ -679,10 +679,15 @@ fn player_info_events_update_world_and_world_counters() {
 fn server_presentation_events_update_world_and_world_counters() {
     let pack_id = Uuid::from_u128(0x12345678_1234_5678_90ab_cdef12345678);
     let (tx, mut rx) = mpsc::channel(5);
+    let mut server_icon = vec![0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a];
+    server_icon.extend_from_slice(&13i32.to_be_bytes());
+    server_icon.extend_from_slice(b"IHDR");
+    server_icon.extend_from_slice(&64i32.to_be_bytes());
+    server_icon.extend_from_slice(&64i32.to_be_bytes());
     tx.try_send(NetEvent::Play(PlayClientbound::ServerData(
         bbb_protocol::packets::ServerData {
-            motd: "Native test server".to_string(),
-            icon_bytes: Some(vec![1, 2, 3, 4]),
+            motd: bbb_protocol::RichTextComponent::plain("Native test server"),
+            icon_bytes: Some(server_icon.clone()),
         },
     )))
     .unwrap();
@@ -719,8 +724,8 @@ fn server_presentation_events_update_world_and_world_counters() {
     );
 
     let server_data = world.server_data().unwrap();
-    assert_eq!(server_data.motd, "Native test server");
-    assert_eq!(server_data.icon_byte_len(), Some(4));
+    assert_eq!(server_data.motd.text(), "Native test server");
+    assert_eq!(server_data.icon_byte_len(), Some(server_icon.len()));
     assert!(world.resource_packs().is_empty());
 
     let world_counters = world.counters();
@@ -734,6 +739,69 @@ fn server_presentation_events_update_world_and_world_counters() {
     assert_eq!(world_counters.resource_pack_pop_updates_applied, 1);
     assert_eq!(world_counters.resource_pack_pop_updates_ignored, 1);
     assert_eq!(world_counters.resource_packs_tracked, 0);
+}
+
+#[test]
+fn server_data_event_persists_configured_vanilla_server_list_owner() {
+    use base64::{engine::general_purpose::STANDARD, Engine as _};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let path = std::env::temp_dir().join(format!(
+        "bbb-server-data-runtime-{}-{nanos}.dat",
+        std::process::id()
+    ));
+    let mut icon = vec![0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a];
+    icon.extend_from_slice(&13i32.to_be_bytes());
+    icon.extend_from_slice(b"IHDR");
+    icon.extend_from_slice(&64i32.to_be_bytes());
+    icon.extend_from_slice(&64i32.to_be_bytes());
+
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::Play(PlayClientbound::ServerData(
+        bbb_protocol::packets::ServerData {
+            motd: bbb_protocol::RichTextComponent::plain("Native test server"),
+            icon_bytes: Some(icon.clone()),
+        },
+    )))
+    .unwrap();
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut server_list =
+        crate::server_list::ServerListPersistence::new(&path, "Native", "example.org:25565")
+            .unwrap();
+    assert_eq!(
+        drain_net_events_with_server_list(&mut rx, &mut world, &mut counters, &mut server_list),
+        1
+    );
+    server_list.flush().unwrap();
+
+    let (_, bbb_protocol::NbtSummaryValue::Compound(root)) =
+        bbb_protocol::decode_named_nbt_summary(&std::fs::read(&path).unwrap())
+            .unwrap()
+            .unwrap()
+    else {
+        panic!("server-list compound root");
+    };
+    let bbb_protocol::NbtSummaryValue::List(servers) = root
+        .into_iter()
+        .find(|entry| entry.name == "servers")
+        .unwrap()
+        .value
+    else {
+        panic!("servers list");
+    };
+    let bbb_protocol::NbtSummaryValue::Compound(entry) = &servers[0] else {
+        panic!("server entry");
+    };
+    assert!(entry.iter().any(|field| {
+        field.name == "icon"
+            && field.value == bbb_protocol::NbtSummaryValue::String(STANDARD.encode(icon.clone()))
+    }));
+    let _ = std::fs::remove_file(path);
 }
 
 #[test]

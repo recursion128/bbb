@@ -4,7 +4,7 @@ use uuid::Uuid;
 pub use crate::resource_pack_response_actions::ResourcePackResponseAction;
 use crate::{
     codec::{Decoder, Encoder, ProtocolError, Result},
-    component::{decode_component_summary_from_decoder, decode_rich_text_component_from_decoder},
+    component::decode_rich_text_component_from_decoder,
     ids, RichTextComponent,
 };
 
@@ -35,7 +35,7 @@ pub struct ResourcePackPop {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ServerData {
-    pub motd: String,
+    pub motd: RichTextComponent,
     pub icon_bytes: Option<Vec<u8>>,
 }
 
@@ -96,7 +96,7 @@ pub(super) fn decode_resource_pack_push(decoder: &mut Decoder<'_>) -> Result<Res
 
 pub(super) fn decode_server_data(decoder: &mut Decoder<'_>) -> Result<ServerData> {
     let update = ServerData {
-        motd: decode_component_summary_from_decoder(decoder)?,
+        motd: decode_rich_text_component_from_decoder(decoder)?,
         icon_bytes: decode_optional_byte_array(decoder, MAX_SERVER_ICON_BYTES, "server icon")?,
     };
     if !decoder.is_empty() {
@@ -254,21 +254,26 @@ mod tests {
     fn decodes_server_data_packet_with_icon() {
         let icon_bytes = vec![0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a];
         let mut payload = Encoder::new();
-        payload.write_bytes(&nbt_string_root("A native test server"));
+        payload.write_bytes(&nbt_styled_text_root("A native test server", "red"));
         payload.write_bool(true);
         payload.write_var_i32(icon_bytes.len() as i32);
         payload.write_bytes(&icon_bytes);
 
-        let packet =
+        let PlayClientbound::ServerData(packet) =
             decode_play_clientbound(ids::play::CLIENTBOUND_SERVER_DATA, &payload.into_inner())
-                .unwrap();
-        assert_eq!(
-            packet,
-            PlayClientbound::ServerData(ServerData {
-                motd: "A native test server".to_string(),
-                icon_bytes: Some(icon_bytes),
-            })
-        );
+                .unwrap()
+        else {
+            panic!("expected server-data packet");
+        };
+        assert_eq!(packet.motd.text(), "A native test server");
+        assert_eq!(packet.motd.styled().len(), 1);
+        assert_eq!(packet.motd.styled()[0].style.bold, Some(true));
+        assert_eq!(packet.motd.styled()[0].style.color, Some(0xFF_55_55));
+        assert!(matches!(
+            packet.motd.component(),
+            crate::NbtSummaryValue::Compound(_)
+        ));
+        assert_eq!(packet.icon_bytes, Some(icon_bytes));
 
         let mut payload = Encoder::new();
         payload.write_bytes(&nbt_string_root("No icon"));
@@ -277,7 +282,7 @@ mod tests {
             decode_play_clientbound(ids::play::CLIENTBOUND_SERVER_DATA, &payload.into_inner())
                 .unwrap(),
             PlayClientbound::ServerData(ServerData {
-                motd: "No icon".to_string(),
+                motd: RichTextComponent::plain("No icon"),
                 icon_bytes: None,
             })
         );

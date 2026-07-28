@@ -17,6 +17,7 @@ path = "src/main.rs"
 anyhow = { workspace = true }
 arc-swap = { workspace = true }
 arboard = { workspace = true }
+base64 = { workspace = true }
 bbb-audio = { path = "../bbb-audio", features = ["device"] }
 bbb-control = { path = "../bbb-control" }
 bbb-item-model = { path = "../bbb-item-model" }

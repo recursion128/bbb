@@ -36,6 +36,7 @@ use crate::particle_runtime::{
     LevelEventParticleContext, LevelParticleEntityPosition, LevelParticleSpawnContext,
     ParticleBiomeSampler, ParticleEventSink, TrackingEmitterParticleState,
 };
+use crate::server_list::ServerListPersistence;
 use crate::simulation::effects::ParticleBatchSink;
 
 use super::control_state::apply_control_projection_event;
@@ -92,6 +93,33 @@ pub(in crate::runtime) fn drain_net_events_with_audio(
 }
 
 #[cfg(test)]
+pub(in crate::runtime) fn drain_net_events_with_server_list(
+    rx: &mut mpsc::Receiver<NetEvent>,
+    world: &mut WorldStore,
+    counters: &mut NetCounters,
+    server_list: &mut ServerListPersistence,
+) -> usize {
+    let mut play_session_encrypted = false;
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+    drain_net_events_with_sinks_and_debug(
+        rx,
+        world,
+        counters,
+        &mut play_session_encrypted,
+        &None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        Some(server_list),
+        &mut level_event_sound_random,
+        None,
+    )
+}
+
+#[cfg(test)]
 pub(in crate::runtime) fn drain_net_events_with_sinks(
     rx: &mut mpsc::Receiver<NetEvent>,
     world: &mut WorldStore,
@@ -117,6 +145,7 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
         item_runtime,
         None,
         None,
+        None,
         level_event_sound_random,
         None,
     )
@@ -134,6 +163,7 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
     item_runtime: Option<&NativeItemRuntime>,
     mut hud_debug_network_sampler: Option<&mut HudDebugNetworkSampler>,
     mut hud_debug_tps_sampler: Option<&mut HudDebugTpsSampler>,
+    mut server_list: Option<&mut ServerListPersistence>,
     level_event_sound_random: &mut LevelEventSoundRandomState,
     mut network_terminal: Option<&mut bool>,
 ) -> usize {
@@ -176,6 +206,7 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
                     particle_events: &mut particle_events,
                     particle_target: &mut particle_target,
                     item_runtime,
+                    server_list: &mut server_list,
                 };
                 let _ = world.apply_play_packet(
                     bbb_protocol::packets::PlayClientbound::PlayerPosition(update),
@@ -201,6 +232,7 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
                     particle_events: &mut particle_events,
                     particle_target: &mut particle_target,
                     item_runtime,
+                    server_list: &mut server_list,
                 };
                 // Other connection-owned leftovers (rotation/movement
                 // responses and resource-pack replies) are already handled by
@@ -355,16 +387,26 @@ fn queue_connection_answer(net_commands: &Option<mpsc::Sender<NetCommand>>, comm
 }
 
 /// Runtime sink routing for `WorldStore::apply_play_packet`.
-struct NativePlayEffects<'a, 'b, 'c, 'audio, 'particle, 'renderer> {
+struct NativePlayEffects<'a, 'b, 'c, 'audio, 'particle, 'renderer, 'server> {
     counters: &'a mut NetCounters,
     net_commands: &'b Option<mpsc::Sender<NetCommand>>,
     audio_events: &'c mut Option<&'audio mut dyn AudioEventSink>,
     particle_events: &'c mut Option<&'particle mut dyn ParticleEventSink>,
     particle_target: &'c mut Option<&'renderer mut dyn ParticleBatchSink>,
     item_runtime: Option<&'c NativeItemRuntime>,
+    server_list: &'c mut Option<&'server mut ServerListPersistence>,
 }
 
-impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
+impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_, '_> {
+    fn server_data_updated(&mut self, world: &WorldStore) {
+        let Some(server_list) = self.server_list.as_deref_mut() else {
+            return;
+        };
+        if let Err(err) = server_list.persist_current_server_data(world) {
+            tracing::error!(?err, "failed to persist server-data update");
+        }
+    }
+
     fn positioned_sound(&mut self, state: &bbb_world::SoundEventState) {
         emit_positioned_sound(self.audio_events, state);
     }
@@ -1795,6 +1837,7 @@ mod terminal_tests {
             None,
             None,
             None,
+            None,
             &mut random,
             None,
         );
@@ -1810,6 +1853,7 @@ mod terminal_tests {
                 &mut counters,
                 &mut play_session_encrypted,
                 &None,
+                None,
                 None,
                 None,
                 None,
@@ -1832,6 +1876,7 @@ mod terminal_tests {
                 &mut counters,
                 &mut play_session_encrypted,
                 &None,
+                None,
                 None,
                 None,
                 None,
@@ -1864,6 +1909,7 @@ mod terminal_tests {
             &mut counters,
             &mut play_session_encrypted,
             &None,
+            None,
             None,
             None,
             None,
