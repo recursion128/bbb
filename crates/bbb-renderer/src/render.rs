@@ -3530,6 +3530,9 @@ impl Renderer {
             .index_bytes
             .saturating_add(resident_upload.index_bytes);
         self.counters.item_instance_upload_bytes = resident_upload.instance_bytes;
+        self.counters.item_instance_upload_writes = resident_upload.instance_writes;
+        self.counters.item_instance_buffer_replacements =
+            resident_upload.instance_buffer_replacements;
         self.counters.opaque_draw_calls = stats.opaque_draw_calls;
         self.counters.cutout_draw_calls = stats.cutout_draw_calls;
         self.counters.translucent_draw_calls = stats.translucent_draw_calls;

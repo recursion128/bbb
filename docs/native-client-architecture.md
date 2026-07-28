@@ -449,9 +449,12 @@ visibility, ordered targets and narrow transform/tint/light/overlay/foil
 instances. `bbb-renderer` keys immutable model-space CPU geometry and persistent
 vertex/index owners by the exact resource generation, atlas generation, model
 identity, material/geometry class and static phase. Entity and level ids never
-identify a mesh. Dynamic pose, camera, partial tick and glint time update only a
-grow-only instance stream. Special sheeted-decal foil derives UVs in the shader
-from retained model-space coordinates and instance scale.
+identify a mesh. Dynamic pose, camera, partial tick and glint time update only an
+instance stream backed by grow-only buffer capacity. That stream keeps exact
+record order and writes only bounded contiguous dirty ranges when capacity is
+already sufficient; growth replaces the buffer and initializes the complete
+payload. Special sheeted-decal foil derives UVs in the shader from retained
+model-space coordinates and instance scale.
 
 Canonical map colors remain publication-shared world data with a content
 revision and exact patch. The renderer owns bounded fixed-page GPU texture

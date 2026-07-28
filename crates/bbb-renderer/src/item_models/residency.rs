@@ -5,6 +5,7 @@
 
 use std::{
     collections::{BTreeMap, BTreeSet},
+    ops::Range,
     sync::Arc,
     time::Instant,
 };
@@ -34,6 +35,7 @@ use super::{
 
 const DEFAULT_MAX_RESIDENT_OWNERS: usize = 4_096;
 const DEFAULT_MAX_RESIDENT_BYTES: u64 = 256 * 1024 * 1024;
+const MAX_CHANGED_INSTANCE_UPLOAD_RANGES: usize = 16;
 
 /// Renderer-owned resource generation. A reload advances this value; keys from
 /// an older generation are rejected rather than aliases for new resources.
@@ -471,6 +473,7 @@ pub(crate) struct ItemModelResidency {
     pinned: BTreeSet<ItemModelAssetKey>,
     instances: Vec<ItemModelInstanceRecord>,
     gpu_instances: Vec<ItemModelGpuInstance>,
+    changed_instance_byte_ranges: Vec<Range<usize>>,
     draws: Vec<ResidentItemModelDraw>,
     instance_buffer: FrameDataBuffer,
     frame_index: u64,
@@ -480,6 +483,8 @@ pub(crate) struct ItemModelResidency {
     pending_vertex_upload_bytes: u64,
     pending_index_upload_bytes: u64,
     pending_instance_upload_bytes: u64,
+    pending_instance_upload_writes: u64,
+    pending_instance_buffer_replacements: u64,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -487,6 +492,8 @@ pub(crate) struct ItemModelUploadObservation {
     pub(crate) vertex_bytes: u64,
     pub(crate) index_bytes: u64,
     pub(crate) instance_bytes: u64,
+    pub(crate) instance_writes: u64,
+    pub(crate) instance_buffer_replacements: u64,
     pub(crate) instances: usize,
 }
 
@@ -507,6 +514,7 @@ impl ItemModelResidency {
             pinned: BTreeSet::new(),
             instances: Vec::new(),
             gpu_instances: Vec::new(),
+            changed_instance_byte_ranges: Vec::new(),
             draws: Vec::new(),
             instance_buffer: FrameDataBuffer::vertex("bbb-item-model-frame-instances"),
             frame_index: 0,
@@ -516,6 +524,8 @@ impl ItemModelResidency {
             pending_vertex_upload_bytes: 0,
             pending_index_upload_bytes: 0,
             pending_instance_upload_bytes: 0,
+            pending_instance_upload_writes: 0,
+            pending_instance_buffer_replacements: 0,
         }
     }
 
@@ -575,6 +585,8 @@ impl ItemModelResidency {
         counters.item_model_vertex_upload_bytes = 0;
         counters.item_model_index_upload_bytes = 0;
         counters.item_instance_upload_bytes = 0;
+        counters.item_instance_upload_writes = 0;
+        counters.item_instance_buffer_replacements = 0;
         counters.item_model_instances = 0;
     }
 
@@ -732,20 +744,60 @@ impl ItemModelResidency {
         }
 
         let apply_started = Instant::now();
-        let previous_instance_count = self.gpu_instances.len();
-        let mut instance_upload_required = instances.len() > previous_instance_count;
+        let instance_size = std::mem::size_of::<ItemModelGpuInstance>();
+        self.changed_instance_byte_ranges.clear();
         for (index, instance) in instances.iter().enumerate() {
             let next = ItemModelGpuInstance::from_record(instance);
-            if let Some(current) = self.gpu_instances.get_mut(index) {
+            let changed = if let Some(current) = self.gpu_instances.get_mut(index) {
                 if bytemuck::bytes_of(current) != bytemuck::bytes_of(&next) {
-                    instance_upload_required = true;
                     *current = next;
+                    true
+                } else {
+                    false
                 }
             } else {
                 self.gpu_instances.push(next);
+                true
+            };
+            if changed {
+                let start = index
+                    .checked_mul(instance_size)
+                    .expect("instance byte offset overflow");
+                let end = start
+                    .checked_add(instance_size)
+                    .expect("instance byte range overflow");
+                if self
+                    .changed_instance_byte_ranges
+                    .last_mut()
+                    .is_some_and(|range| {
+                        if range.end == start {
+                            range.end = end;
+                            true
+                        } else {
+                            false
+                        }
+                    })
+                {
+                    continue;
+                }
+                self.changed_instance_byte_ranges.push(start..end);
             }
         }
         self.gpu_instances.truncate(instances.len());
+        if self.changed_instance_byte_ranges.len() > MAX_CHANGED_INSTANCE_UPLOAD_RANGES {
+            let start = self
+                .changed_instance_byte_ranges
+                .first()
+                .expect("range count checked above")
+                .start;
+            let end = self
+                .changed_instance_byte_ranges
+                .last()
+                .expect("range count checked above")
+                .end;
+            self.changed_instance_byte_ranges.clear();
+            self.changed_instance_byte_ranges.push(start..end);
+        }
         self.draws.clear();
         for (index, instance) in instances.iter().enumerate() {
             let index = u32::try_from(index).expect("instance count checked above");
@@ -774,18 +826,29 @@ impl ItemModelResidency {
         }
         let previous_capacity = self.instance_buffer.capacity();
         let bytes = bytemuck::cast_slice(&self.gpu_instances);
-        let uploaded =
-            instance_upload_required && self.instance_buffer.upload(device, queue, bytes);
+        let uploaded = self.instance_buffer.upload_changed_ranges(
+            device,
+            queue,
+            bytes,
+            &self.changed_instance_byte_ranges,
+        );
         if self.instance_buffer.capacity() > previous_capacity {
             counters.item_extraction_scratch_capacity_growths = counters
                 .item_extraction_scratch_capacity_growths
                 .saturating_add(1);
         }
-        let uploaded_bytes = if uploaded { bytes.len() as u64 } else { 0 };
-        counters.item_instance_upload_bytes = uploaded_bytes;
+        counters.item_instance_upload_bytes = uploaded.bytes;
+        counters.item_instance_upload_writes = uploaded.writes;
+        counters.item_instance_buffer_replacements = u64::from(uploaded.buffer_replaced);
         self.pending_instance_upload_bytes = self
             .pending_instance_upload_bytes
-            .saturating_add(uploaded_bytes);
+            .saturating_add(uploaded.bytes);
+        self.pending_instance_upload_writes = self
+            .pending_instance_upload_writes
+            .saturating_add(uploaded.writes);
+        self.pending_instance_buffer_replacements = self
+            .pending_instance_buffer_replacements
+            .saturating_add(u64::from(uploaded.buffer_replaced));
         counters.item_model_instances = instances.len();
         self.instances = instances;
         record_apply_time(counters, apply_started);
@@ -905,11 +968,15 @@ impl ItemModelResidency {
             vertex_bytes: self.pending_vertex_upload_bytes,
             index_bytes: self.pending_index_upload_bytes,
             instance_bytes: self.pending_instance_upload_bytes,
+            instance_writes: self.pending_instance_upload_writes,
+            instance_buffer_replacements: self.pending_instance_buffer_replacements,
             instances: self.instances.len(),
         };
         self.pending_vertex_upload_bytes = 0;
         self.pending_index_upload_bytes = 0;
         self.pending_instance_upload_bytes = 0;
+        self.pending_instance_upload_writes = 0;
+        self.pending_instance_buffer_replacements = 0;
         observation
     }
 
@@ -2442,6 +2509,130 @@ mod tests {
     }
 
     #[test]
+    fn sparse_instance_mutations_upload_bounded_changed_ranges() {
+        let Some(mut renderer) = Renderer::new_offscreen(16, 16) else {
+            return;
+        };
+        assert_eq!(std::mem::size_of::<ItemModelGpuInstance>(), 160);
+        renderer.begin_item_model_frame();
+        let key = renderer.item_model_asset_key(
+            identity("minecraft:diamond"),
+            ItemModelAtlasKind::Items,
+            ItemModelGeometryClass::Solid,
+        );
+        assert_eq!(
+            renderer.ensure_item_model_resident(key.clone(), || vec![quad(false)]),
+            ItemModelResidencyOutcome::Created
+        );
+        let mut instances = (0..64)
+            .map(|index| {
+                ItemModelInstanceRecord::new(
+                    key.clone(),
+                    Mat4::from_translation(glam::Vec3::new(index as f32, 0.0, 0.0)),
+                    [1.0; 4],
+                    [1.0; 2],
+                    [0.0, 10.0],
+                    ItemModelFoil::None,
+                    ItemModelDrawTarget::World,
+                    ItemModelDrawPhase::Solid,
+                    index,
+                )
+            })
+            .collect::<Vec<_>>();
+        renderer
+            .set_resident_item_model_instances(instances.clone())
+            .unwrap();
+        let full_frame_bytes =
+            (instances.len() * std::mem::size_of::<ItemModelGpuInstance>()) as u64;
+        assert_eq!(
+            renderer.counters().item_instance_upload_bytes,
+            full_frame_bytes
+        );
+        assert_eq!(renderer.counters().item_instance_upload_writes, 1);
+        assert_eq!(renderer.counters().item_instance_buffer_replacements, 1);
+
+        renderer.begin_item_model_frame();
+        assert_eq!(
+            renderer.ensure_item_model_resident(key.clone(), Vec::new),
+            ItemModelResidencyOutcome::Reused
+        );
+        renderer
+            .set_resident_item_model_instances(instances[..32].to_vec())
+            .unwrap();
+        assert_eq!(renderer.counters().item_instance_upload_bytes, 0);
+        assert_eq!(renderer.counters().item_instance_upload_writes, 0);
+        assert_eq!(renderer.counters().item_instance_buffer_replacements, 0);
+
+        renderer.begin_item_model_frame();
+        assert_eq!(
+            renderer.ensure_item_model_resident(key, Vec::new),
+            ItemModelResidencyOutcome::Reused
+        );
+        renderer
+            .set_resident_item_model_instances(instances.clone())
+            .unwrap();
+        assert_eq!(
+            renderer.counters().item_instance_upload_bytes,
+            (32 * std::mem::size_of::<ItemModelGpuInstance>()) as u64
+        );
+        assert_eq!(renderer.counters().item_instance_upload_writes, 1);
+        assert_eq!(renderer.counters().item_instance_buffer_replacements, 0);
+
+        renderer.begin_item_model_frame();
+        assert_eq!(
+            renderer.ensure_item_model_resident(instances[0].asset.clone(), Vec::new,),
+            ItemModelResidencyOutcome::Reused
+        );
+        instances[31].transform *= Mat4::from_translation(glam::Vec3::Y);
+        renderer
+            .set_resident_item_model_instances(instances.clone())
+            .unwrap();
+        assert_eq!(
+            renderer.counters().item_instance_upload_bytes,
+            std::mem::size_of::<ItemModelGpuInstance>() as u64
+        );
+        assert_eq!(renderer.counters().item_instance_upload_writes, 1);
+        assert_eq!(renderer.counters().item_instance_buffer_replacements, 0);
+
+        renderer.begin_item_model_frame();
+        assert_eq!(
+            renderer.ensure_item_model_resident(instances[0].asset.clone(), Vec::new,),
+            ItemModelResidencyOutcome::Reused
+        );
+        instances[10].transform *= Mat4::from_translation(glam::Vec3::Y);
+        instances[50].transform *= Mat4::from_translation(glam::Vec3::Y);
+        renderer
+            .set_resident_item_model_instances(instances.clone())
+            .unwrap();
+        assert_eq!(
+            renderer.counters().item_instance_upload_bytes,
+            (2 * std::mem::size_of::<ItemModelGpuInstance>()) as u64
+        );
+        assert_eq!(renderer.counters().item_instance_upload_writes, 2);
+
+        renderer.begin_item_model_frame();
+        assert_eq!(
+            renderer.ensure_item_model_resident(instances[0].asset.clone(), Vec::new,),
+            ItemModelResidencyOutcome::Reused
+        );
+        for index in (0..36).step_by(2) {
+            instances[index].transform *= Mat4::from_translation(glam::Vec3::Y);
+        }
+        renderer
+            .set_resident_item_model_instances(instances)
+            .unwrap();
+        assert_eq!(
+            renderer.counters().item_instance_upload_bytes,
+            (35 * std::mem::size_of::<ItemModelGpuInstance>()) as u64
+        );
+        assert_eq!(
+            renderer.counters().item_instance_upload_writes,
+            1,
+            "more than the write-call budget collapses to one enclosing span"
+        );
+    }
+
+    #[test]
     fn special_foil_resident_decal_uv_matches_legacy_world_bake() {
         let source = [quad(false)];
         let transform = Mat4::from_translation(glam::Vec3::new(2.0, -1.0, 4.0))
@@ -2485,6 +2676,8 @@ mod tests {
         assert!(renderer.counters().item_model_vertex_upload_bytes > 0);
         assert!(renderer.counters().item_model_index_upload_bytes > 0);
         assert!(renderer.counters().item_instance_upload_bytes > 0);
+        assert_eq!(renderer.counters().item_instance_upload_writes, 1);
+        assert_eq!(renderer.counters().item_instance_buffer_replacements, 1);
 
         renderer
             .set_item_model_residency_frame(block_frame(Mat4::from_translation(glam::Vec3::new(
@@ -2495,11 +2688,15 @@ mod tests {
         assert_eq!(renderer.counters().item_model_vertex_upload_bytes, 0);
         assert_eq!(renderer.counters().item_model_index_upload_bytes, 0);
         assert!(renderer.counters().item_instance_upload_bytes > 0);
+        assert_eq!(renderer.counters().item_instance_upload_writes, 1);
+        assert_eq!(renderer.counters().item_instance_buffer_replacements, 0);
 
         renderer.render_offscreen_frame().unwrap();
         assert_eq!(renderer.counters().item_model_vertex_upload_bytes, 0);
         assert_eq!(renderer.counters().item_model_index_upload_bytes, 0);
         assert_eq!(renderer.counters().item_instance_upload_bytes, 0);
+        assert_eq!(renderer.counters().item_instance_upload_writes, 0);
+        assert_eq!(renderer.counters().item_instance_buffer_replacements, 0);
     }
 
     #[test]

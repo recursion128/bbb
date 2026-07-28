@@ -18166,6 +18166,8 @@ pub(crate) fn control_renderer_counters(
         item_model_vertex_upload_bytes: counters.item_model_vertex_upload_bytes,
         item_model_index_upload_bytes: counters.item_model_index_upload_bytes,
         item_instance_upload_bytes: counters.item_instance_upload_bytes,
+        item_instance_upload_writes: counters.item_instance_upload_writes,
+        item_instance_buffer_replacements: counters.item_instance_buffer_replacements,
         item_map_upload_bytes: counters.item_map_upload_bytes,
         item_transient_buffer_creations: counters.item_transient_buffer_creations,
         item_full_residency_replacements: counters.item_full_residency_replacements,

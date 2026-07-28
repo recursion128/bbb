@@ -41,10 +41,9 @@ code, its tests, `docs/goal-archive.md`, and `git log`.
 Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
 
 - Measure and reduce the remaining dynamic item-model property-selection,
-  changed-instance upload, draw/pipeline state churn, and driver-deferred
-  resident-release tails. Any change must preserve exact phase/translucent
-  order and the explicit bounded-owner fallback rather than dropping visible
-  instances.
+  draw/pipeline state churn, and driver-deferred resident-release tails. Any
+  change must preserve exact phase/translucent order and the explicit
+  bounded-owner fallback rather than dropping visible instances.
 - Complete equal-load official Java 26.1 CPU p50/p95/p99, GPU-frame, 1%-low,
   and chunk-update comparison captures; report any losing scene by measured
   owner instead of reducing visible work.

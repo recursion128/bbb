@@ -605,15 +605,25 @@ capacity growth. The exact-world-`Arc` projection cache may reject upper-layer
 work, but disabling it still leaves this residency boundary and all zero-static-
 upload assertions intact.
 
+Changed-instance upload now compares the exact 160-byte GPU records and writes
+only their contiguous dirty ranges while the grow-only buffer still fits. The
+deterministic 64-instance regression moves a one-record change from 10,240 bytes
+to 160 bytes and two separated changes to 320 bytes. At most 16 sparse writes
+are submitted; a more fragmented frame collapses to one enclosing span, while
+buffer growth still uploads the complete payload. Recent upload bytes, write
+count, and buffer replacements cross the existing renderer telemetry boundary.
+Instance order, draw coalescing, phase/translucent order, and capacity fallback
+do not change.
+
 Remaining measured boundaries are dynamic/special model selection and property
-evaluation before an identity is known, changed-instance uploads, draw/pipeline
-state churn, and driver-owned deferred-release memory. Item model residency and
-persistent map pixels each allow 256 MiB logical ownership, while a frame that
-pins more owners than the bound can temporarily retain explicit
-fallback/overflow storage. These are not hidden inside the reported logical
-peak. A strict equal-load official Java 26.1 CPU/GPU capture was not produced
-by this microbenchmark slice and remains subject to the comparison protocol
-below; no isolated section number is used to claim overall client superiority.
+evaluation before an identity is known, draw/pipeline state churn, and
+driver-owned deferred-release memory. Item model residency and persistent map
+pixels each allow 256 MiB logical ownership, while a frame that pins more owners
+than the bound can temporarily retain explicit fallback/overflow storage. These
+are not hidden inside the reported logical peak. A strict equal-load official
+Java 26.1 CPU/GPU capture was not produced by this microbenchmark slice and
+remains subject to the comparison protocol below; no isolated section number is
+used to claim overall client superiority.
 
 Every phase is a normal reviewable commit with affected-crate focused tests,
 `cargo fmt --all --check`, `git diff --check`, documentation lint when needed,

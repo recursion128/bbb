@@ -61,6 +61,8 @@ pub struct RendererCounters {
     pub item_model_vertex_upload_bytes: u64,
     pub item_model_index_upload_bytes: u64,
     pub item_instance_upload_bytes: u64,
+    pub item_instance_upload_writes: u64,
+    pub item_instance_buffer_replacements: u64,
     pub item_map_upload_bytes: u64,
     pub item_transient_buffer_creations: u64,
     pub item_full_residency_replacements: u64,

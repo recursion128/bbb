@@ -65,6 +65,10 @@ pub struct RendererCounters {
     #[serde(default)]
     pub item_instance_upload_bytes: u64,
     #[serde(default)]
+    pub item_instance_upload_writes: u64,
+    #[serde(default)]
+    pub item_instance_buffer_replacements: u64,
+    #[serde(default)]
     pub item_map_upload_bytes: u64,
     #[serde(default)]
     pub item_transient_buffer_creations: u64,
@@ -298,10 +302,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn dynamic_texture_byte_observations_default_for_older_payloads() {
+    fn recent_renderer_observations_default_for_older_payloads() {
         let mut value = serde_json::to_value(RendererCounters::default()).unwrap();
         let object = value.as_object_mut().unwrap();
         for field in [
+            "item_instance_upload_writes",
+            "item_instance_buffer_replacements",
             "dynamic_texture_cache_max_resident_bytes",
             "dynamic_texture_cache_resident_evictions",
             "dynamic_texture_cache_resident_rejections",
@@ -314,6 +320,8 @@ mod tests {
         }
 
         let counters: RendererCounters = serde_json::from_value(value).unwrap();
+        assert_eq!(counters.item_instance_upload_writes, 0);
+        assert_eq!(counters.item_instance_buffer_replacements, 0);
         assert_eq!(counters.dynamic_texture_cache_max_resident_bytes, 0);
         assert_eq!(counters.dynamic_texture_cache_resident_evictions, 0);
         assert_eq!(counters.dynamic_texture_cache_resident_rejections, 0);
