@@ -758,11 +758,11 @@ fn stonecutter_result_display(result: SlotDisplaySummary) -> RecipeDisplaySummar
         raw_body: Vec::new(),
         crafting: None,
         furnace: None,
-        stonecutter: Some(StonecutterRecipeDisplaySummary {
+        stonecutter: Some(Box::new(StonecutterRecipeDisplaySummary {
             input: encoded_unit_display(VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID),
             result,
             crafting_station: encoded_unit_display(VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID),
-        }),
+        })),
         smithing: None,
     }
 }

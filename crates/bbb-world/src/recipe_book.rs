@@ -295,11 +295,11 @@ mod tests {
             RecipeDisplaySummary {
                 display_type: RecipeDisplayType::CraftingShapeless,
                 raw_body: Vec::new(),
-                crafting: Some(CraftingRecipeDisplaySummary::Shapeless {
+                crafting: Some(Box::new(CraftingRecipeDisplaySummary::Shapeless {
                     ingredients: Vec::new(),
                     result: item_display(2),
                     crafting_station: item_display(1),
-                }),
+                })),
                 furnace: None,
                 stonecutter: None,
                 smithing: None,
@@ -307,13 +307,13 @@ mod tests {
             RecipeDisplaySummary {
                 display_type: RecipeDisplayType::CraftingShaped,
                 raw_body: Vec::new(),
-                crafting: Some(CraftingRecipeDisplaySummary::Shaped {
+                crafting: Some(Box::new(CraftingRecipeDisplaySummary::Shaped {
                     width: 1,
                     height: 1,
                     ingredients: vec![item_display(42)],
                     result: item_display(4),
                     crafting_station: item_display(3),
-                }),
+                })),
                 furnace: None,
                 stonecutter: None,
                 smithing: None,
@@ -322,14 +322,14 @@ mod tests {
                 display_type: RecipeDisplayType::Furnace,
                 raw_body: Vec::new(),
                 crafting: None,
-                furnace: Some(FurnaceRecipeDisplaySummary {
+                furnace: Some(Box::new(FurnaceRecipeDisplaySummary {
                     ingredient: item_display(42),
                     fuel: item_display(1),
                     result: item_display(6),
                     crafting_station: item_display(5),
                     duration: 200,
                     experience_bits: 0,
-                }),
+                })),
                 stonecutter: None,
                 smithing: None,
             },
@@ -338,11 +338,11 @@ mod tests {
                 raw_body: Vec::new(),
                 crafting: None,
                 furnace: None,
-                stonecutter: Some(StonecutterRecipeDisplaySummary {
+                stonecutter: Some(Box::new(StonecutterRecipeDisplaySummary {
                     input: item_display(42),
                     result: item_display(8),
                     crafting_station: item_display(7),
-                }),
+                })),
                 smithing: None,
             },
             RecipeDisplaySummary {
@@ -351,13 +351,13 @@ mod tests {
                 crafting: None,
                 furnace: None,
                 stonecutter: None,
-                smithing: Some(SmithingRecipeDisplaySummary {
+                smithing: Some(Box::new(SmithingRecipeDisplaySummary {
                     template: item_display(42),
                     base: item_display(1),
                     addition: item_display(2),
                     result: item_display(10),
                     crafting_station: item_display(9),
-                }),
+                })),
             },
         ];
         let entries = displays

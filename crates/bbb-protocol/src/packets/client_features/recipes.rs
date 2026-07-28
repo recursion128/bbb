@@ -167,12 +167,15 @@ pub struct RecipeDisplayEntry {
 pub struct RecipeDisplaySummary {
     pub display_type: RecipeDisplayType,
     pub raw_body: Vec<u8>,
-    pub crafting: Option<CraftingRecipeDisplaySummary>,
-    pub furnace: Option<FurnaceRecipeDisplaySummary>,
+    // The typed branches stay boxed: inline they sum to ~53KB per summary,
+    // which blows up every embedder (`PlayClientbound`, `NetEvent`, the tokio
+    // mpsc block, the event-stream poll frame) far past worker stack budgets.
+    pub crafting: Option<Box<CraftingRecipeDisplaySummary>>,
+    pub furnace: Option<Box<FurnaceRecipeDisplaySummary>>,
     #[serde(default)]
-    pub stonecutter: Option<StonecutterRecipeDisplaySummary>,
+    pub stonecutter: Option<Box<StonecutterRecipeDisplaySummary>>,
     #[serde(default)]
-    pub smithing: Option<SmithingRecipeDisplaySummary>,
+    pub smithing: Option<Box<SmithingRecipeDisplaySummary>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -227,7 +230,7 @@ impl RecipeDisplaySummary {
     pub fn crafting_station(&self) -> Option<&SlotDisplaySummary> {
         match self.display_type {
             RecipeDisplayType::CraftingShapeless | RecipeDisplayType::CraftingShaped => {
-                match self.crafting.as_ref()? {
+                match self.crafting.as_deref()? {
                     CraftingRecipeDisplaySummary::Shapeless {
                         crafting_station, ..
                     }
@@ -245,7 +248,7 @@ impl RecipeDisplaySummary {
     pub fn result(&self) -> Option<&SlotDisplaySummary> {
         match self.display_type {
             RecipeDisplayType::CraftingShapeless | RecipeDisplayType::CraftingShaped => {
-                match self.crafting.as_ref()? {
+                match self.crafting.as_deref()? {
                     CraftingRecipeDisplaySummary::Shapeless { result, .. }
                     | CraftingRecipeDisplaySummary::Shaped { result, .. } => Some(result),
                 }
@@ -259,7 +262,7 @@ impl RecipeDisplaySummary {
     pub fn slot_displays(&self) -> Option<Vec<&SlotDisplaySummary>> {
         match self.display_type {
             RecipeDisplayType::CraftingShapeless | RecipeDisplayType::CraftingShaped => {
-                match self.crafting.as_ref()? {
+                match self.crafting.as_deref()? {
                     CraftingRecipeDisplaySummary::Shapeless {
                         ingredients,
                         result,
@@ -586,10 +589,10 @@ fn decode_recipe_display_summary(decoder: &mut Decoder<'_>) -> Result<RecipeDisp
     Ok(RecipeDisplaySummary {
         display_type,
         raw_body: display_start[..consumed].to_vec(),
-        crafting,
-        furnace,
-        stonecutter,
-        smithing,
+        crafting: crafting.map(Box::new),
+        furnace: furnace.map(Box::new),
+        stonecutter: stonecutter.map(Box::new),
+        smithing: smithing.map(Box::new),
     })
 }
 

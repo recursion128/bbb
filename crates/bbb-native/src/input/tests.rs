@@ -24561,7 +24561,7 @@ fn recipe_book_uncraftable_recipe_button_retry_is_guarded() {
         recipe_display: bbb_protocol::packets::RecipeDisplaySummary {
             display_type: bbb_protocol::packets::RecipeDisplayType::CraftingShapeless,
             raw_body: Vec::new(),
-            crafting: Some(
+            crafting: Some(Box::new(
                 bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
                     ingredients: Vec::new(),
                     result: recipe_book_slot_display_stack(1, 1),
@@ -24572,7 +24572,7 @@ fn recipe_book_uncraftable_recipe_button_retry_is_guarded() {
                         tag: None,
                     },
                 },
-            ),
+            )),
             furnace: None,
             stonecutter: None,
             smithing: None,
@@ -27492,7 +27492,7 @@ fn recipe_book_shapeless_entry_with_group(
             display: bbb_protocol::packets::RecipeDisplaySummary {
                 display_type: bbb_protocol::packets::RecipeDisplayType::CraftingShapeless,
                 raw_body: Vec::new(),
-                crafting: Some(
+                crafting: Some(Box::new(
                     bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
                         ingredients: Vec::new(),
                         result: bbb_protocol::packets::SlotDisplaySummary {
@@ -27508,7 +27508,7 @@ fn recipe_book_shapeless_entry_with_group(
                             tag: None,
                         },
                     },
-                ),
+                )),
                 furnace: None,
                 stonecutter: None,
                 smithing: None,
@@ -27535,24 +27535,26 @@ fn recipe_book_furnace_entry(
                 display_type: bbb_protocol::packets::RecipeDisplayType::Furnace,
                 raw_body: Vec::new(),
                 crafting: None,
-                furnace: Some(bbb_protocol::packets::FurnaceRecipeDisplaySummary {
-                    ingredient: recipe_book_slot_display_item(1),
-                    fuel: bbb_protocol::packets::SlotDisplaySummary {
-                        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ANY_FUEL_ID,
-                        raw_payload: vec![1],
-                        item_stack: None,
-                        tag: None,
+                furnace: Some(Box::new(
+                    bbb_protocol::packets::FurnaceRecipeDisplaySummary {
+                        ingredient: recipe_book_slot_display_item(1),
+                        fuel: bbb_protocol::packets::SlotDisplaySummary {
+                            display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ANY_FUEL_ID,
+                            raw_payload: vec![1],
+                            item_stack: None,
+                            tag: None,
+                        },
+                        result: recipe_book_slot_display_stack(result_item_id, 1),
+                        crafting_station: bbb_protocol::packets::SlotDisplaySummary {
+                            display_type_id: VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
+                            raw_payload: vec![0],
+                            item_stack: None,
+                            tag: None,
+                        },
+                        duration: 200,
+                        experience_bits: 0.0_f32.to_bits(),
                     },
-                    result: recipe_book_slot_display_stack(result_item_id, 1),
-                    crafting_station: bbb_protocol::packets::SlotDisplaySummary {
-                        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
-                        raw_payload: vec![0],
-                        item_stack: None,
-                        tag: None,
-                    },
-                    duration: 200,
-                    experience_bits: 0.0_f32.to_bits(),
-                }),
+                )),
                 stonecutter: None,
                 smithing: None,
             },

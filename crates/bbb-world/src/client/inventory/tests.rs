@@ -11169,7 +11169,7 @@ fn recipe_book_crafting_entry(
             display: RecipeDisplaySummary {
                 display_type,
                 raw_body: Vec::new(),
-                crafting: Some(crafting),
+                crafting: Some(Box::new(crafting)),
                 furnace: None,
                 stonecutter: None,
                 smithing: None,

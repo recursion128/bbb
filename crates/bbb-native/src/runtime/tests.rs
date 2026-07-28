@@ -15807,7 +15807,7 @@ fn hud_inventory_screen_projects_crafting_table_ghost_recipe_slots() {
         recipe_display: bbb_protocol::packets::RecipeDisplaySummary {
             display_type: bbb_protocol::packets::RecipeDisplayType::CraftingShaped,
             raw_body: Vec::new(),
-            crafting: Some(
+            crafting: Some(Box::new(
                 bbb_protocol::packets::CraftingRecipeDisplaySummary::Shaped {
                     width: 2,
                     height: 1,
@@ -15818,7 +15818,7 @@ fn hud_inventory_screen_projects_crafting_table_ghost_recipe_slots() {
                     result: stonecutter_item_stack_display(4, 2),
                     crafting_station: slot_display_empty(),
                 },
-            ),
+            )),
             furnace: None,
             stonecutter: None,
             smithing: None,
@@ -15897,13 +15897,13 @@ fn hud_inventory_screen_projects_crafting_table_ghost_recipe_slots() {
         recipe_display: bbb_protocol::packets::RecipeDisplaySummary {
             display_type: bbb_protocol::packets::RecipeDisplayType::CraftingShapeless,
             raw_body: Vec::new(),
-            crafting: Some(
+            crafting: Some(Box::new(
                 bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
                     ingredients: vec![stonecutter_item_display(1)],
                     result: stonecutter_item_display(4),
                     crafting_station: slot_display_empty(),
                 },
-            ),
+            )),
             furnace: None,
             stonecutter: None,
             smithing: None,
@@ -16042,11 +16042,13 @@ fn hud_inventory_screen_projects_all_builtin_slot_display_ghost_recipe_candidate
                 raw_body: Vec::new(),
                 crafting: None,
                 furnace: None,
-                stonecutter: Some(bbb_protocol::packets::StonecutterRecipeDisplaySummary {
-                    input: slot_display_empty(),
-                    result,
-                    crafting_station: slot_display_empty(),
-                }),
+                stonecutter: Some(Box::new(
+                    bbb_protocol::packets::StonecutterRecipeDisplaySummary {
+                        input: slot_display_empty(),
+                        result,
+                        crafting_station: slot_display_empty(),
+                    },
+                )),
                 smithing: None,
             },
         });
@@ -16071,13 +16073,13 @@ fn hud_inventory_screen_resolves_tag_ghost_recipe_ingredients() {
         recipe_display: bbb_protocol::packets::RecipeDisplaySummary {
             display_type: bbb_protocol::packets::RecipeDisplayType::CraftingShapeless,
             raw_body: Vec::new(),
-            crafting: Some(
+            crafting: Some(Box::new(
                 bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
                     ingredients: vec![slot_display_tag("minecraft:planks")],
                     result: stonecutter_item_display(4),
                     crafting_station: slot_display_empty(),
                 },
-            ),
+            )),
             furnace: None,
             stonecutter: None,
             smithing: None,
@@ -16111,13 +16113,13 @@ fn hud_inventory_screen_cycles_tag_ghost_recipe_ingredients() {
         recipe_display: bbb_protocol::packets::RecipeDisplaySummary {
             display_type: bbb_protocol::packets::RecipeDisplayType::CraftingShapeless,
             raw_body: Vec::new(),
-            crafting: Some(
+            crafting: Some(Box::new(
                 bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
                     ingredients: vec![slot_display_tag("minecraft:planks")],
                     result: stonecutter_item_display(4),
                     crafting_station: slot_display_empty(),
                 },
-            ),
+            )),
             furnace: None,
             stonecutter: None,
             smithing: None,
@@ -16157,13 +16159,13 @@ fn hud_inventory_screen_keeps_resolved_tag_ghost_recipe_snapshot() {
         recipe_display: bbb_protocol::packets::RecipeDisplaySummary {
             display_type: bbb_protocol::packets::RecipeDisplayType::CraftingShapeless,
             raw_body: Vec::new(),
-            crafting: Some(
+            crafting: Some(Box::new(
                 bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
                     ingredients: vec![slot_display_tag("minecraft:planks")],
                     result: stonecutter_item_display(4),
                     crafting_station: slot_display_empty(),
                 },
-            ),
+            )),
             furnace: None,
             stonecutter: None,
             smithing: None,
@@ -16204,13 +16206,13 @@ fn hud_inventory_screen_ghost_recipe_tooltip_wins_only_while_recipe_book_is_visi
         recipe_display: bbb_protocol::packets::RecipeDisplaySummary {
             display_type: bbb_protocol::packets::RecipeDisplayType::CraftingShapeless,
             raw_body: Vec::new(),
-            crafting: Some(
+            crafting: Some(Box::new(
                 bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
                     ingredients: vec![stonecutter_item_display(1)],
                     result: stonecutter_item_display(4),
                     crafting_station: slot_display_empty(),
                 },
-            ),
+            )),
             furnace: None,
             stonecutter: None,
             smithing: None,
@@ -16265,7 +16267,7 @@ fn hud_inventory_screen_cycles_composite_ghost_recipe_ingredients() {
         recipe_display: bbb_protocol::packets::RecipeDisplaySummary {
             display_type: bbb_protocol::packets::RecipeDisplayType::CraftingShapeless,
             raw_body: Vec::new(),
-            crafting: Some(
+            crafting: Some(Box::new(
                 bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
                     ingredients: vec![slot_display_composite(vec![
                         slot_display_with_remainder(
@@ -16277,7 +16279,7 @@ fn hud_inventory_screen_cycles_composite_ghost_recipe_ingredients() {
                     result: stonecutter_item_display(4),
                     crafting_station: slot_display_empty(),
                 },
-            ),
+            )),
             furnace: None,
             stonecutter: None,
             smithing: None,
@@ -16317,13 +16319,13 @@ fn hud_inventory_screen_projects_local_inventory_ghost_recipe_result_without_big
         recipe_display: bbb_protocol::packets::RecipeDisplaySummary {
             display_type: bbb_protocol::packets::RecipeDisplayType::CraftingShapeless,
             raw_body: Vec::new(),
-            crafting: Some(
+            crafting: Some(Box::new(
                 bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
                     ingredients: vec![stonecutter_item_display(1)],
                     result: stonecutter_item_display(4),
                     crafting_station: slot_display_empty(),
                 },
-            ),
+            )),
             furnace: None,
             stonecutter: None,
             smithing: None,
@@ -16575,7 +16577,7 @@ fn hud_inventory_screen_projects_crafting_recipe_book_buttons() {
                 display: bbb_protocol::packets::RecipeDisplaySummary {
                     display_type: bbb_protocol::packets::RecipeDisplayType::CraftingShapeless,
                     raw_body: Vec::new(),
-                    crafting: Some(
+                    crafting: Some(Box::new(
                         bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
                             ingredients: Vec::new(),
                             result: bbb_protocol::packets::SlotDisplaySummary {
@@ -16591,7 +16593,7 @@ fn hud_inventory_screen_projects_crafting_recipe_book_buttons() {
                                 tag: None,
                             },
                         },
-                    ),
+                    )),
                     furnace: None,
                     stonecutter: None,
                     smithing: None,
@@ -24161,7 +24163,7 @@ fn shapeless_crafting_recipe_book_entry_with_display_ingredients(
     if let Some(bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
         ingredients,
         ..
-    }) = entry.contents.display.crafting.as_mut()
+    }) = entry.contents.display.crafting.as_deref_mut()
     {
         *ingredients = display_ingredients;
     }
@@ -24203,7 +24205,7 @@ fn shapeless_crafting_recipe_book_entry_with_requirement_summaries(
             display: bbb_protocol::packets::RecipeDisplaySummary {
                 display_type: bbb_protocol::packets::RecipeDisplayType::CraftingShapeless,
                 raw_body: Vec::new(),
-                crafting: Some(
+                crafting: Some(Box::new(
                     bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
                         ingredients: Vec::new(),
                         result: bbb_protocol::packets::SlotDisplaySummary {
@@ -24219,7 +24221,7 @@ fn shapeless_crafting_recipe_book_entry_with_requirement_summaries(
                             tag: None,
                         },
                     },
-                ),
+                )),
                 furnace: None,
                 stonecutter: None,
                 smithing: None,
@@ -24257,7 +24259,7 @@ fn furnace_recipe_book_entry_with_requirements(
                 display_type: bbb_protocol::packets::RecipeDisplayType::Furnace,
                 raw_body: Vec::new(),
                 crafting: None,
-                furnace: Some(furnace_recipe_display_body(2, 1, result_item_id)),
+                furnace: Some(Box::new(furnace_recipe_display_body(2, 1, result_item_id))),
                 stonecutter: None,
                 smithing: None,
             },
@@ -24288,11 +24290,11 @@ fn furnace_recipe_display(
         display_type: bbb_protocol::packets::RecipeDisplayType::Furnace,
         raw_body: Vec::new(),
         crafting: None,
-        furnace: Some(furnace_recipe_display_body(
+        furnace: Some(Box::new(furnace_recipe_display_body(
             ingredient_item_id,
             fuel_item_id,
             result_item_id,
-        )),
+        ))),
         stonecutter: None,
         smithing: None,
     }

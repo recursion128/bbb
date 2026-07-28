@@ -8773,7 +8773,7 @@ fn crafting_recipe_book_entry_with_requirement_summaries(
             display: bbb_protocol::packets::RecipeDisplaySummary {
                 display_type: bbb_protocol::packets::RecipeDisplayType::CraftingShapeless,
                 raw_body: Vec::new(),
-                crafting: Some(
+                crafting: Some(Box::new(
                     bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
                         ingredients: Vec::new(),
                         result: SlotDisplaySummary {
@@ -8789,7 +8789,7 @@ fn crafting_recipe_book_entry_with_requirement_summaries(
                             tag: None,
                         },
                     },
-                ),
+                )),
                 furnace: None,
                 stonecutter: None,
                 smithing: None,

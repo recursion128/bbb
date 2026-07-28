@@ -95,11 +95,11 @@ fn decodes_place_ghost_recipe_packet_wire_prefix() {
                 raw_body: vec![3, 4, 100, 4, 101, 4, 102],
                 crafting: None,
                 furnace: None,
-                stonecutter: Some(StonecutterRecipeDisplaySummary {
+                stonecutter: Some(Box::new(StonecutterRecipeDisplaySummary {
                     input: item_slot_display_summary(100),
                     result: item_slot_display_summary(101),
                     crafting_station: item_slot_display_summary(102),
-                }),
+                })),
                 smithing: None,
             },
         })
@@ -195,11 +195,11 @@ fn decodes_recipe_book_add_packet_wire_order() {
                         raw_body: vec![3, 0, 0, 0],
                         crafting: None,
                         furnace: None,
-                        stonecutter: Some(StonecutterRecipeDisplaySummary {
+                        stonecutter: Some(Box::new(StonecutterRecipeDisplaySummary {
                             input: empty_slot_display_summary(),
                             result: empty_slot_display_summary(),
                             crafting_station: empty_slot_display_summary(),
-                        }),
+                        })),
                         smithing: None,
                     },
                     group: Some(7),
@@ -267,8 +267,8 @@ fn decodes_recipe_book_add_with_structured_shaped_crafting_display() {
         RecipeDisplayType::CraftingShaped
     );
     assert_eq!(
-        entry.display.crafting,
-        Some(CraftingRecipeDisplaySummary::Shaped {
+        entry.display.crafting.as_deref(),
+        Some(&CraftingRecipeDisplaySummary::Shaped {
             width: 2,
             height: 1,
             ingredients: vec![
@@ -330,8 +330,8 @@ fn decodes_recipe_book_add_with_structured_shapeless_crafting_display() {
     };
     let entry = &packet.entries[0].contents;
     assert_eq!(
-        entry.display.crafting,
-        Some(CraftingRecipeDisplaySummary::Shapeless {
+        entry.display.crafting.as_deref(),
+        Some(&CraftingRecipeDisplaySummary::Shapeless {
             ingredients: vec![
                 SlotDisplaySummary {
                     display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID,
@@ -396,8 +396,8 @@ fn decodes_recipe_book_add_with_structured_furnace_display() {
     assert_eq!(entry.display.display_type, RecipeDisplayType::Furnace);
     assert_eq!(entry.display.crafting, None);
     assert_eq!(
-        entry.display.furnace,
-        Some(FurnaceRecipeDisplaySummary {
+        entry.display.furnace.as_deref(),
+        Some(&FurnaceRecipeDisplaySummary {
             ingredient: SlotDisplaySummary {
                 display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID,
                 raw_payload: vec![4, 42],
@@ -1769,4 +1769,15 @@ fn styled_component_root(text: &str, color: &str, bold: bool, extra: &str) -> Ve
 fn write_mutf8(out: &mut Vec<u8>, value: &str) {
     out.extend_from_slice(&(value.len() as u16).to_be_bytes());
     out.extend_from_slice(value.as_bytes());
+}
+
+#[test]
+fn recipe_display_summary_stays_compact() {
+    // Regression guard: the typed recipe display branches once lived inline
+    // and summed to ~53KB per summary, which propagated into every
+    // `PlayClientbound`/net-event embedder and overflowed the client
+    // event-stream worker stack (tokio mpsc blocks and async poll frames are
+    // materialized on the stack before landing on the heap).
+    assert!(std::mem::size_of::<RecipeDisplaySummary>() <= 128);
+    assert!(std::mem::size_of::<crate::packets::PlayClientbound>() <= 4096);
 }

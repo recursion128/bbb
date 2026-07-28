@@ -935,7 +935,7 @@ impl WorldStore {
                 grid_height,
             } => {
                 assignments.push((0, result, true));
-                match display.crafting.as_ref() {
+                match display.crafting.as_deref() {
                     Some(CraftingRecipeDisplaySummary::Shapeless { ingredients, .. }) => {
                         let slot_count = ingredients
                             .len()
@@ -3517,13 +3517,13 @@ mod tests {
         bbb_protocol::packets::RecipeDisplaySummary {
             display_type: bbb_protocol::packets::RecipeDisplayType::CraftingShapeless,
             raw_body: Vec::new(),
-            crafting: Some(
+            crafting: Some(Box::new(
                 bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
                     ingredients,
                     result: item_slot_display(result),
                     crafting_station: empty_slot_display(),
                 },
-            ),
+            )),
             furnace: None,
             stonecutter: None,
             smithing: None,
@@ -3543,7 +3543,7 @@ mod tests {
         bbb_protocol::packets::RecipeDisplaySummary {
             display_type: bbb_protocol::packets::RecipeDisplayType::CraftingShaped,
             raw_body: Vec::new(),
-            crafting: Some(
+            crafting: Some(Box::new(
                 bbb_protocol::packets::CraftingRecipeDisplaySummary::Shaped {
                     width,
                     height,
@@ -3551,7 +3551,7 @@ mod tests {
                     result: item_slot_display(result),
                     crafting_station: empty_slot_display(),
                 },
-            ),
+            )),
             furnace: None,
             stonecutter: None,
             smithing: None,
@@ -3567,14 +3567,16 @@ mod tests {
             display_type: bbb_protocol::packets::RecipeDisplayType::Furnace,
             raw_body: Vec::new(),
             crafting: None,
-            furnace: Some(bbb_protocol::packets::FurnaceRecipeDisplaySummary {
-                ingredient: item_slot_display(ingredient),
-                fuel: item_slot_display(fuel),
-                result: item_slot_display(result),
-                crafting_station: empty_slot_display(),
-                duration: 200,
-                experience_bits: 0.35_f32.to_bits(),
-            }),
+            furnace: Some(Box::new(
+                bbb_protocol::packets::FurnaceRecipeDisplaySummary {
+                    ingredient: item_slot_display(ingredient),
+                    fuel: item_slot_display(fuel),
+                    result: item_slot_display(result),
+                    crafting_station: empty_slot_display(),
+                    duration: 200,
+                    experience_bits: 0.35_f32.to_bits(),
+                },
+            )),
             stonecutter: None,
             smithing: None,
         }
@@ -3598,11 +3600,13 @@ mod tests {
             raw_body: raw_body.into_inner(),
             crafting: None,
             furnace: None,
-            stonecutter: Some(bbb_protocol::packets::StonecutterRecipeDisplaySummary {
-                input,
-                result,
-                crafting_station,
-            }),
+            stonecutter: Some(Box::new(
+                bbb_protocol::packets::StonecutterRecipeDisplaySummary {
+                    input,
+                    result,
+                    crafting_station,
+                },
+            )),
             smithing: None,
         }
     }

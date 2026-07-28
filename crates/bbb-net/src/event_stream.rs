@@ -2395,11 +2395,11 @@ mod tests {
                 raw_body: vec![3, 4, 100, 4, 101, 4, 102],
                 crafting: None,
                 furnace: None,
-                stonecutter: Some(packets::StonecutterRecipeDisplaySummary {
+                stonecutter: Some(Box::new(packets::StonecutterRecipeDisplaySummary {
                     input: item_display(100),
                     result: item_display(101),
                     crafting_station: item_display(102),
-                }),
+                })),
                 smithing: None,
             },
         };

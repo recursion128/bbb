@@ -391,7 +391,7 @@ fn recipe_book_overlay_items_for_entry<'a>(
     slot_select_index: usize,
 ) -> Vec<RecipeBookOverlayItem<'a>> {
     let mut items = Vec::new();
-    if let Some(crafting) = entry.display.crafting.as_ref() {
+    if let Some(crafting) = entry.display.crafting.as_deref() {
         match crafting {
             CraftingRecipeDisplaySummary::Shapeless { ingredients, .. } => {
                 for (index, ingredient) in ingredients.iter().enumerate() {
@@ -466,7 +466,7 @@ fn push_recipe_book_overlay_item<'a>(
 pub(crate) fn recipe_book_crafting_result_stack(
     entry: &RecipeDisplayEntry,
 ) -> Option<&ItemStackSummary> {
-    match entry.display.crafting.as_ref()? {
+    match entry.display.crafting.as_deref()? {
         CraftingRecipeDisplaySummary::Shapeless { result, .. }
         | CraftingRecipeDisplaySummary::Shaped { result, .. } => result.item_stack.as_ref(),
     }
@@ -759,7 +759,7 @@ fn recipe_book_tab_categories(
 }
 
 fn crafting_recipe_fits_grid(entry: &RecipeDisplayEntry, grid: RecipeBookCraftingGrid) -> bool {
-    match entry.display.crafting.as_ref() {
+    match entry.display.crafting.as_deref() {
         Some(CraftingRecipeDisplaySummary::Shapeless { ingredients, .. }) => {
             i32::try_from(ingredients.len()).is_ok_and(|count| count <= grid.width * grid.height)
         }
