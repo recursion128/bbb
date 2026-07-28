@@ -100,7 +100,9 @@ pub(crate) fn decode_explosion(decoder: &mut Decoder<'_>) -> Result<Explosion> {
             MAX_EXPLOSION_BLOCK_PARTICLES,
         ));
     }
-    let mut block_particles = Vec::with_capacity(block_particle_count);
+    let mut block_particles = Vec::with_capacity(
+        crate::codec::bounded_collection_initial_capacity(block_particle_count),
+    );
     let mut total_weight = 0_i64;
     for _ in 0..block_particle_count {
         let particle = decode_particle_payload(decoder)?;

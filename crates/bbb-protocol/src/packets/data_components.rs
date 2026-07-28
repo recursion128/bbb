@@ -1027,7 +1027,8 @@ pub(crate) fn decode_data_component_patch_summary(
     }
 
     let mut summary = decode_typed_data_component_patch_summary(decoder, added)?;
-    let mut removed_type_ids = Vec::with_capacity(removed);
+    let mut removed_type_ids =
+        Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(removed));
     for _ in 0..removed {
         removed_type_ids.push(decoder.read_var_i32()?);
     }
@@ -1667,7 +1668,9 @@ fn decode_typed_data_component_patch_summary(
     count: usize,
 ) -> Result<DataComponentPatchSummary> {
     let mut summary = DataComponentPatchSummary {
-        added_type_ids: Vec::with_capacity(count),
+        added_type_ids: Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(
+            count,
+        )),
         ..DataComponentPatchSummary::default()
     };
     for _ in 0..count {
@@ -1757,7 +1760,8 @@ fn decode_holder_set_summary(
             MAX_DATA_COMPONENT_LIST_ITEMS,
         ));
     }
-    let mut registry_ids = Vec::with_capacity(count);
+    let mut registry_ids =
+        Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
     for _ in 0..count {
         registry_ids.push(registry.validate_holder_id(decoder.read_var_i32()?)?);
     }
@@ -1822,8 +1826,12 @@ fn decode_lore(
     decoder: &mut Decoder<'_>,
 ) -> Result<(Vec<Vec<StyledTextRun>>, Vec<NbtSummaryValue>)> {
     let line_count = read_bounded_len(decoder, MAX_LORE_LINES)?;
-    let mut lines = Vec::with_capacity(line_count);
-    let mut component_nbt = Vec::with_capacity(line_count);
+    let mut lines = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(
+        line_count,
+    ));
+    let mut component_nbt = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(
+        line_count,
+    ));
     for _ in 0..line_count {
         let (runs, nbt) = decode_styled_component_summary_with_nbt_from_decoder(decoder)?;
         lines.push(runs);
@@ -1840,7 +1848,8 @@ fn decode_item_rarity(decoder: &mut Decoder<'_>) -> Result<ItemRaritySummary> {
 
 fn decode_varint_map(decoder: &mut Decoder<'_>) -> Result<Vec<ItemEnchantmentSummary>> {
     let count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
-    let mut entries: Vec<ItemEnchantmentSummary> = Vec::with_capacity(count);
+    let mut entries: Vec<ItemEnchantmentSummary> =
+        Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
     let mut positions: BTreeMap<i32, usize> = BTreeMap::new();
     for _ in 0..count {
         let holder_id = decode_holder_registry_id(decoder)?;
@@ -1882,7 +1891,8 @@ fn decode_adventure_mode_predicate_summary(
         |decoder| {
             let count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
             let mut summary = AdventureModePredicateSummary::default();
-            let mut predicates = Vec::with_capacity(count);
+            let mut predicates =
+                Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
             for _ in 0..count {
                 let predicate = decode_block_predicate_summary(decoder)?;
                 let Some(blocks) = &predicate.blocks else {
@@ -1946,7 +1956,8 @@ fn decode_state_properties_predicate(
     decoder: &mut Decoder<'_>,
 ) -> Result<Vec<StatePropertyMatcherSummary>> {
     let count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
-    let mut properties = Vec::with_capacity(count);
+    let mut properties =
+        Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
     for _ in 0..count {
         properties.push(StatePropertyMatcherSummary {
             name: decoder.read_string(MAX_STRING_CHARS)?,
@@ -1987,7 +1998,9 @@ fn decode_data_component_matchers(
     };
 
     let partial_count = read_bounded_len(decoder, MAX_PARTIAL_DATA_COMPONENT_PREDICATES)?;
-    let mut partial_components = Vec::with_capacity(partial_count);
+    let mut partial_components = Vec::with_capacity(
+        crate::codec::bounded_collection_initial_capacity(partial_count),
+    );
     let mut partial_types = BTreeSet::new();
     for _ in 0..partial_count {
         let concrete = decoder.read_bool()?;
@@ -2024,7 +2037,8 @@ fn decode_data_component_matchers(
 
 fn decode_attribute_modifiers(decoder: &mut Decoder<'_>) -> Result<Vec<AttributeModifierSummary>> {
     let count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
-    let mut modifiers = Vec::with_capacity(count);
+    let mut modifiers =
+        Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
     for _ in 0..count {
         let attribute_id = entities::decode_attribute_holder_id(decoder)?;
         let modifier_id = read_resource_location(decoder)?;
@@ -2088,25 +2102,31 @@ fn decode_custom_model_data(
     decoder: &mut Decoder<'_>,
 ) -> Result<(Vec<f32>, Vec<bool>, Vec<String>, Vec<i32>)> {
     let float_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
-    let mut float_values = Vec::with_capacity(float_count);
+    let mut float_values = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(
+        float_count,
+    ));
     for _ in 0..float_count {
         float_values.push(decoder.read_f32()?);
     }
 
     let flag_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
-    let mut flag_values = Vec::with_capacity(flag_count);
+    let mut flag_values = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(
+        flag_count,
+    ));
     for _ in 0..flag_count {
         flag_values.push(decoder.read_bool()?);
     }
 
     let strings = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
-    let mut string_values = Vec::with_capacity(strings);
+    let mut string_values =
+        Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(strings));
     for _ in 0..strings {
         string_values.push(decode_java_string(decoder, MAX_STRING_CHARS)?);
     }
 
     let colors = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
-    let mut color_values = Vec::with_capacity(colors);
+    let mut color_values =
+        Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(colors));
     for _ in 0..colors {
         color_values.push(decoder.read_i32()?);
     }
@@ -2140,7 +2160,9 @@ fn decode_consumable_component_summary(
     let has_consume_particles = decoder.read_bool()?;
 
     let effect_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
-    let mut effects = Vec::with_capacity(effect_count);
+    let mut effects = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(
+        effect_count,
+    ));
     for _ in 0..effect_count {
         effects.push(decode_consume_effect_summary(decoder)?);
     }
@@ -2168,7 +2190,9 @@ fn decode_consume_effect_summary(decoder: &mut Decoder<'_>) -> Result<ConsumeEff
     match effect_type {
         ConsumeEffectType::ApplyEffects => {
             let effect_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
-            let mut effects = Vec::with_capacity(effect_count);
+            let mut effects = Vec::with_capacity(
+                crate::codec::bounded_collection_initial_capacity(effect_count),
+            );
             for _ in 0..effect_count {
                 effects.push(decode_mob_effect_instance(decoder)?);
             }
@@ -2198,7 +2222,9 @@ fn decode_consume_effect_list_summary(
     decoder: &mut Decoder<'_>,
 ) -> Result<Vec<ConsumeEffectSummary>> {
     let effect_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
-    let mut effects = Vec::with_capacity(effect_count);
+    let mut effects = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(
+        effect_count,
+    ));
     for _ in 0..effect_count {
         effects.push(decode_consume_effect_summary(decoder)?);
     }
@@ -2407,7 +2433,7 @@ fn decode_item_stack_template_list(
     max: usize,
 ) -> Result<Vec<ItemStackTemplateSummary>> {
     let count = read_bounded_len(decoder, max)?;
-    let mut items = Vec::with_capacity(count);
+    let mut items = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
     for _ in 0..count {
         items.push(decode_item_stack_template(decoder)?);
     }
@@ -2451,7 +2477,9 @@ fn decode_item_container_contents(
 
 fn decode_tool(decoder: &mut Decoder<'_>) -> Result<ToolSummary> {
     let rule_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
-    let mut rules = Vec::with_capacity(rule_count);
+    let mut rules = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(
+        rule_count,
+    ));
     for _ in 0..rule_count {
         let blocks = decode_holder_set_summary(decoder, NetworkHolderSetRegistry::Block)?;
         rules.push(ToolRuleSummary {
@@ -2504,7 +2532,9 @@ fn decode_blocks_attacks(decoder: &mut Decoder<'_>) -> Result<BlocksAttacksSumma
     let disable_cooldown_scale_bits = decoder.read_f32()?.to_bits();
 
     let reduction_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
-    let mut damage_reductions = Vec::with_capacity(reduction_count);
+    let mut damage_reductions = Vec::with_capacity(
+        crate::codec::bounded_collection_initial_capacity(reduction_count),
+    );
     for _ in 0..reduction_count {
         damage_reductions.push(decode_damage_reduction(decoder)?);
     }
@@ -2934,7 +2964,9 @@ fn decode_game_profile_properties(
     decoder: &mut Decoder<'_>,
 ) -> Result<Vec<GameProfilePropertySummary>> {
     let property_count = read_bounded_len(decoder, MAX_PROFILE_PROPERTIES)?;
-    let mut properties = Vec::with_capacity(property_count);
+    let mut properties = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(
+        property_count,
+    ));
     for _ in 0..property_count {
         properties.push(GameProfilePropertySummary {
             name: decode_java_string(decoder, MAX_PROFILE_PROPERTY_NAME_CHARS)?,
@@ -3089,7 +3121,9 @@ fn decode_banner_pattern_layers_summary(
     decoder: &mut Decoder<'_>,
 ) -> Result<Vec<BannerPatternLayerSummary>> {
     let layer_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
-    let mut layers = Vec::with_capacity(layer_count);
+    let mut layers = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(
+        layer_count,
+    ));
     for _ in 0..layer_count {
         let pattern = decode_banner_pattern_holder(decoder)?;
         let color_id = decoder.read_var_i32()?;
@@ -3148,7 +3182,7 @@ fn decode_pot_decorations_item_ids(decoder: &mut Decoder<'_>) -> Result<Vec<i32>
 
 fn decode_bees(decoder: &mut Decoder<'_>) -> Result<Vec<BeeOccupantSummary>> {
     let bee_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
-    let mut bees = Vec::with_capacity(bee_count);
+    let mut bees = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(bee_count));
     for _ in 0..bee_count {
         let entity_data = decode_typed_entity_data_summary(
             decoder,
@@ -3245,7 +3279,9 @@ fn decode_potion_contents(decoder: &mut Decoder<'_>) -> Result<PotionContentsSum
     };
     let custom_color = decode_optional_i32_value(decoder)?;
     let effect_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
-    let mut custom_effects = Vec::with_capacity(effect_count);
+    let mut custom_effects = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(
+        effect_count,
+    ));
     for _ in 0..effect_count {
         custom_effects.push(decode_mob_effect_instance(decoder)?);
     }
@@ -3262,7 +3298,8 @@ fn decode_suspicious_stew_effects(
     decoder: &mut Decoder<'_>,
 ) -> Result<Vec<SuspiciousStewEffectSummary>> {
     let effects = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
-    let mut summaries = Vec::with_capacity(effects);
+    let mut summaries =
+        Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(effects));
     for _ in 0..effects {
         summaries.push(SuspiciousStewEffectSummary {
             effect_id: client_state::decode_mob_effect_holder_id(decoder)?,
@@ -3323,8 +3360,8 @@ struct WritableBookContentSummary {
 fn decode_writable_book_content(decoder: &mut Decoder<'_>) -> Result<WritableBookContentSummary> {
     let pages = read_bounded_len(decoder, MAX_BOOK_PAGES)?;
     let mut out = WritableBookContentSummary {
-        pages: Vec::with_capacity(pages),
-        page_filters: Vec::with_capacity(pages),
+        pages: Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(pages)),
+        page_filters: Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(pages)),
     };
     for _ in 0..pages {
         let page = decode_filterable_string_summary(decoder, MAX_WRITABLE_BOOK_PAGE_CHARS)?;
@@ -3350,10 +3387,14 @@ fn decode_written_book_content(decoder: &mut Decoder<'_>) -> Result<DecodedWritt
         )));
     }
     let pages = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
-    let mut page_values = Vec::with_capacity(pages);
-    let mut page_filters = Vec::with_capacity(pages);
-    let mut pages_nbt = Vec::with_capacity(pages);
-    let mut page_filters_nbt = Vec::with_capacity(pages);
+    let mut page_values =
+        Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(pages));
+    let mut page_filters =
+        Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(pages));
+    let mut pages_nbt =
+        Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(pages));
+    let mut page_filters_nbt =
+        Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(pages));
     for _ in 0..pages {
         let page = decode_filterable_component_summary(decoder)?;
         page_values.push(page.raw);
@@ -3440,7 +3481,9 @@ struct FireworksComponentSummary {
 fn decode_fireworks(decoder: &mut Decoder<'_>) -> Result<FireworksComponentSummary> {
     let flight_duration = decoder.read_var_i32()?;
     let explosion_count = read_bounded_len(decoder, MAX_FIREWORK_EXPLOSIONS)?;
-    let mut explosions = Vec::with_capacity(explosion_count);
+    let mut explosions = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(
+        explosion_count,
+    ));
     for _ in 0..explosion_count {
         explosions.push(decode_firework_explosion(decoder)?);
     }
@@ -3467,7 +3510,7 @@ fn decode_firework_explosion(decoder: &mut Decoder<'_>) -> Result<FireworkExplos
 
 fn decode_int_list(decoder: &mut Decoder<'_>, max: usize) -> Result<Vec<i32>> {
     let count = read_bounded_len(decoder, max)?;
-    let mut values = Vec::with_capacity(count);
+    let mut values = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
     for _ in 0..count {
         values.push(decoder.read_i32()?);
     }
@@ -3498,7 +3541,9 @@ fn decode_optional_string_value(
 fn decode_tooltip_display_summary(decoder: &mut Decoder<'_>) -> Result<(bool, Vec<i32>)> {
     let hide_tooltip = decoder.read_bool()?;
     let hidden_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
-    let mut hidden_components = Vec::with_capacity(hidden_count);
+    let mut hidden_components = Vec::with_capacity(
+        crate::codec::bounded_collection_initial_capacity(hidden_count),
+    );
     let mut seen = BTreeSet::new();
     for _ in 0..hidden_count {
         let type_id = decoder.read_var_i32()?;

@@ -70,19 +70,25 @@ pub(crate) fn decode_update_advancements(decoder: &mut Decoder<'_>) -> Result<Up
     let reset = decoder.read_bool()?;
 
     let added_count = read_bounded_len(decoder, MAX_ADVANCEMENT_LIST, "advancements added")?;
-    let mut added = Vec::with_capacity(added_count);
+    let mut added = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(
+        added_count,
+    ));
     for _ in 0..added_count {
         added.push(decode_advancement_summary(decoder)?);
     }
 
     let removed_count = read_bounded_len(decoder, MAX_ADVANCEMENT_LIST, "advancements removed")?;
-    let mut removed = Vec::with_capacity(removed_count);
+    let mut removed = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(
+        removed_count,
+    ));
     for _ in 0..removed_count {
         removed.push(read_identifier(decoder)?);
     }
 
     let progress_count = read_bounded_len(decoder, MAX_ADVANCEMENT_LIST, "advancement progress")?;
-    let mut progress = Vec::with_capacity(progress_count);
+    let mut progress = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(
+        progress_count,
+    ));
     for _ in 0..progress_count {
         progress.push(decode_advancement_progress_summary(decoder)?);
     }
@@ -170,14 +176,18 @@ fn decode_advancement_requirements(decoder: &mut Decoder<'_>) -> Result<Vec<Vec<
         MAX_ADVANCEMENT_REQUIREMENT_GROUPS,
         "advancement requirement groups",
     )?;
-    let mut requirements = Vec::with_capacity(group_count);
+    let mut requirements = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(
+        group_count,
+    ));
     for _ in 0..group_count {
         let name_count = read_bounded_len(
             decoder,
             MAX_ADVANCEMENT_REQUIREMENT_NAMES,
             "advancement requirement names",
         )?;
-        let mut names = Vec::with_capacity(name_count);
+        let mut names = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(
+            name_count,
+        ));
         for _ in 0..name_count {
             names.push(decoder.read_string(MAX_ADVANCEMENT_STRING_CHARS)?);
         }
@@ -195,7 +205,9 @@ fn decode_advancement_progress_summary(
         MAX_ADVANCEMENT_CRITERIA,
         "advancement progress criteria",
     )?;
-    let mut criteria = Vec::with_capacity(criterion_count);
+    let mut criteria = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(
+        criterion_count,
+    ));
     for _ in 0..criterion_count {
         let name = decoder.read_string(MAX_ADVANCEMENT_STRING_CHARS)?;
         let obtained_epoch_millis = if decoder.read_bool()? {

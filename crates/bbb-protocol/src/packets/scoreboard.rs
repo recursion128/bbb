@@ -325,7 +325,7 @@ fn decode_player_team_player_list(decoder: &mut Decoder<'_>) -> Result<Vec<Strin
         ));
     }
 
-    let mut players = Vec::with_capacity(count);
+    let mut players = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
     for _ in 0..count {
         players.push(decoder.read_string(32767)?);
     }

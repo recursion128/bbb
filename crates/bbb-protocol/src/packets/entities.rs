@@ -612,7 +612,9 @@ pub(super) fn decode_move_minecart_along_track(
         ));
     }
 
-    let mut lerp_steps = Vec::with_capacity(step_count);
+    let mut lerp_steps = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(
+        step_count,
+    ));
     for _ in 0..step_count {
         lerp_steps.push(MinecartStep {
             position: decode_vec3d(decoder)?,
@@ -640,7 +642,8 @@ pub(super) fn decode_remove_entities(decoder: &mut Decoder<'_>) -> Result<Remove
     if count > MAX_ENTITY_ID_LIST {
         return Err(ProtocolError::PacketTooLarge(count, MAX_ENTITY_ID_LIST));
     }
-    let mut entity_ids = Vec::with_capacity(count);
+    let mut entity_ids =
+        Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
     for _ in 0..count {
         entity_ids.push(decoder.read_var_i32()?);
     }
@@ -712,7 +715,8 @@ pub(super) fn decode_set_passengers(decoder: &mut Decoder<'_>) -> Result<SetPass
     if count > MAX_ENTITY_ID_LIST {
         return Err(ProtocolError::PacketTooLarge(count, MAX_ENTITY_ID_LIST));
     }
-    let mut passenger_ids = Vec::with_capacity(count);
+    let mut passenger_ids =
+        Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
     for _ in 0..count {
         passenger_ids.push(decoder.read_var_i32()?);
     }
@@ -885,7 +889,8 @@ fn decode_entity_data_value(
                     MAX_ENTITY_DATA_PARTICLES,
                 ));
             }
-            let mut particles = Vec::with_capacity(count);
+            let mut particles =
+                Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
             for _ in 0..count {
                 particles.push(decode_particle_payload(decoder)?);
             }
@@ -1068,7 +1073,9 @@ pub(super) fn decode_update_attributes(decoder: &mut Decoder<'_>) -> Result<Upda
             "attribute list has {attribute_count} entries, max is {MAX_ENTITY_ATTRIBUTES}"
         )));
     }
-    let mut attributes = Vec::with_capacity(attribute_count);
+    let mut attributes = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(
+        attribute_count,
+    ));
     for _ in 0..attribute_count {
         // RegistryFriendlyByteBuf resolves this holder through the connection's
         // RegistryAccess in Vanilla. The protocol crate deliberately has no
@@ -1082,7 +1089,9 @@ pub(super) fn decode_update_attributes(decoder: &mut Decoder<'_>) -> Result<Upda
                 "attribute modifier list has {modifier_count} entries, max is {MAX_ATTRIBUTE_MODIFIERS}"
             )));
         }
-        let mut modifiers = Vec::with_capacity(modifier_count);
+        let mut modifiers = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(
+            modifier_count,
+        ));
         for _ in 0..modifier_count {
             modifiers.push(AttributeModifier {
                 id: read_resource_location(decoder)?,

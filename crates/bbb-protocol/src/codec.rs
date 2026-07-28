@@ -31,6 +31,19 @@ pub enum ProtocolError {
 
 pub type Result<T> = std::result::Result<T, ProtocolError>;
 
+const MAX_COLLECTION_INITIAL_CAPACITY: usize = 65_536;
+
+/// Mirrors Vanilla `ByteBufCodecs.collection`: the declared element count still
+/// controls decoding, but an untrusted count cannot force a larger eager
+/// allocation before the element codec validates the payload.
+pub(crate) const fn bounded_collection_initial_capacity(count: usize) -> usize {
+    if count < MAX_COLLECTION_INITIAL_CAPACITY {
+        count
+    } else {
+        MAX_COLLECTION_INITIAL_CAPACITY
+    }
+}
+
 #[derive(Clone, Default)]
 pub struct Encoder {
     bytes: Vec<u8>,
@@ -356,5 +369,13 @@ mod tests {
         decoder
             .with_recursion_limit(1, "test value", |_| Ok(()))
             .unwrap();
+    }
+
+    #[test]
+    fn collection_initial_capacity_matches_vanilla_allocation_ceiling() {
+        assert_eq!(bounded_collection_initial_capacity(0), 0);
+        assert_eq!(bounded_collection_initial_capacity(65_535), 65_535);
+        assert_eq!(bounded_collection_initial_capacity(65_536), 65_536);
+        assert_eq!(bounded_collection_initial_capacity(usize::MAX), 65_536);
     }
 }

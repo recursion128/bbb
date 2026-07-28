@@ -67,7 +67,9 @@ pub(super) fn decode_merchant_offers(decoder: &mut Decoder<'_>) -> Result<Mercha
         ));
     }
 
-    let mut offers = Vec::with_capacity(offer_count);
+    let mut offers = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(
+        offer_count,
+    ));
     for _ in 0..offer_count {
         offers.push(decode_merchant_offer(decoder)?);
     }

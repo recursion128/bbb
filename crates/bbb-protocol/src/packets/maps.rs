@@ -61,7 +61,8 @@ fn decode_optional_decorations(decoder: &mut Decoder<'_>) -> Result<Option<Vec<M
     if count > MAX_MAP_DECORATIONS {
         return Err(ProtocolError::PacketTooLarge(count, MAX_MAP_DECORATIONS));
     }
-    let mut decorations = Vec::with_capacity(count);
+    let mut decorations =
+        Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
     for _ in 0..count {
         decorations.push(decode_map_decoration(decoder)?);
     }

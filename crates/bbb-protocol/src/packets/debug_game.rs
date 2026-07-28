@@ -656,7 +656,7 @@ fn decode_list<T>(
             MAX_DEBUG_COLLECTION_VALUES,
         ));
     }
-    let mut values = Vec::with_capacity(len);
+    let mut values = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(len));
     for _ in 0..len {
         values.push(decode(decoder)?);
     }
@@ -730,7 +730,7 @@ pub(crate) fn decode_debug_sample(decoder: &mut Decoder<'_>) -> Result<DebugSamp
         return Err(ProtocolError::PacketTooLarge(count, MAX_DEBUG_SAMPLE_LONGS));
     }
 
-    let mut sample = Vec::with_capacity(count);
+    let mut sample = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
     for _ in 0..count {
         sample.push(decoder.read_i64()?);
     }
@@ -758,7 +758,7 @@ pub(crate) fn decode_game_rule_values(decoder: &mut Decoder<'_>) -> Result<GameR
         return Err(ProtocolError::PacketTooLarge(count, MAX_GAME_RULE_VALUES));
     }
 
-    let mut values = Vec::with_capacity(count);
+    let mut values = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
     for _ in 0..count {
         values.push(GameRuleValue {
             rule: read_resource_location(decoder)?,

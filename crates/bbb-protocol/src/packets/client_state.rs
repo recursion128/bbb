@@ -525,7 +525,9 @@ pub(super) fn decode_play_time(decoder: &mut Decoder<'_>) -> Result<PlayTime> {
             MAX_CLOCK_UPDATES,
         ));
     }
-    let mut clock_updates = Vec::with_capacity(clock_count);
+    let mut clock_updates = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(
+        clock_count,
+    ));
     for _ in 0..clock_count {
         clock_updates.push(ClockUpdate {
             clock_id: decoder.read_var_i32()?,

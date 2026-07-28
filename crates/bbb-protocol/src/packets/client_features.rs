@@ -65,7 +65,7 @@ pub(crate) fn decode_custom_chat_completions(
         ));
     }
 
-    let mut entries = Vec::with_capacity(count);
+    let mut entries = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
     for _ in 0..count {
         entries.push(decoder.read_string(32767)?);
     }

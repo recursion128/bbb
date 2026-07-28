@@ -352,7 +352,9 @@ pub(crate) fn decode_place_ghost_recipe(decoder: &mut Decoder<'_>) -> Result<Pla
 
 pub(crate) fn decode_recipe_book_add(decoder: &mut Decoder<'_>) -> Result<RecipeBookAdd> {
     let entry_count = read_bounded_len(decoder, MAX_RECIPE_BOOK_ENTRIES, "recipe book entries")?;
-    let mut entries = Vec::with_capacity(entry_count);
+    let mut entries = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(
+        entry_count,
+    ));
     for _ in 0..entry_count {
         let contents = decode_recipe_display_entry(decoder)?;
         let flags = decoder.read_u8()?;
@@ -373,7 +375,8 @@ pub(crate) fn decode_recipe_book_add(decoder: &mut Decoder<'_>) -> Result<Recipe
 
 pub(crate) fn decode_recipe_book_remove(decoder: &mut Decoder<'_>) -> Result<RecipeBookRemove> {
     let count = read_bounded_len(decoder, MAX_RECIPE_BOOK_ENTRIES, "recipe book remove ids")?;
-    let mut recipe_ids = Vec::with_capacity(count);
+    let mut recipe_ids =
+        Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
     for _ in 0..count {
         recipe_ids.push(decode_recipe_display_id(decoder)?);
     }
@@ -405,7 +408,9 @@ fn reject_recipe_book_trailing(decoder: &Decoder<'_>, packet_name: &'static str)
 pub(crate) fn decode_update_recipes(decoder: &mut Decoder<'_>) -> Result<UpdateRecipes> {
     let property_set_count =
         read_bounded_len(decoder, MAX_RECIPE_PROPERTY_SETS, "recipe property set map")?;
-    let mut property_sets = Vec::with_capacity(property_set_count);
+    let mut property_sets = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(
+        property_set_count,
+    ));
     for _ in 0..property_set_count {
         let key = read_resource_location(decoder)?;
         let item_count = read_bounded_len(
@@ -413,7 +418,9 @@ pub(crate) fn decode_update_recipes(decoder: &mut Decoder<'_>) -> Result<UpdateR
             MAX_RECIPE_PROPERTY_SET_ITEMS,
             "recipe property set items",
         )?;
-        let mut item_ids = Vec::with_capacity(item_count);
+        let mut item_ids = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(
+            item_count,
+        ));
         for _ in 0..item_count {
             item_ids.push(inventory::decode_item_holder_id(decoder)?);
         }
@@ -425,7 +432,9 @@ pub(crate) fn decode_update_recipes(decoder: &mut Decoder<'_>) -> Result<UpdateR
         MAX_STONECUTTER_RECIPE_ENTRIES,
         "stonecutter selectable recipes",
     )?;
-    let mut stonecutter_recipes = Vec::with_capacity(stonecutter_count);
+    let mut stonecutter_recipes = Vec::with_capacity(
+        crate::codec::bounded_collection_initial_capacity(stonecutter_count),
+    );
     for _ in 0..stonecutter_count {
         stonecutter_recipes.push(StonecutterSelectableRecipeSummary {
             input: decode_ingredient_summary(decoder)?,
@@ -611,7 +620,8 @@ fn decode_optional_ingredient_list(
         MAX_RECIPE_BOOK_NESTED_LIST,
         "recipe book ingredient list",
     )?;
-    let mut ingredients = Vec::with_capacity(count);
+    let mut ingredients =
+        Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
     for _ in 0..count {
         ingredients.push(decode_ingredient_summary(decoder)?);
     }
@@ -644,7 +654,7 @@ fn decode_ingredient_summary(decoder: &mut Decoder<'_>) -> Result<IngredientSumm
             MAX_RECIPE_BOOK_NESTED_LIST,
         ));
     }
-    let mut item_ids = Vec::with_capacity(count);
+    let mut item_ids = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
     for _ in 0..count {
         item_ids.push(inventory::decode_non_empty_item_holder_id(decoder)?);
     }
@@ -681,7 +691,7 @@ fn decode_slot_display_list(decoder: &mut Decoder<'_>) -> Result<Vec<SlotDisplay
         MAX_RECIPE_BOOK_NESTED_LIST,
         "recipe book slot display list",
     )?;
-    let mut displays = Vec::with_capacity(count);
+    let mut displays = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
     for _ in 0..count {
         displays.push(decode_slot_display_summary(decoder)?);
     }
@@ -809,7 +819,7 @@ fn decode_nested_slot_display_list(
         "nested slot display list",
     )?;
     budget.check(decoder)?;
-    let mut displays = Vec::with_capacity(count);
+    let mut displays = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
     for _ in 0..count {
         displays.push(decode_nested_slot_display(decoder, parent_depth, budget)?);
     }

@@ -34,7 +34,9 @@ pub(crate) fn decode_update_tags(decoder: &mut Decoder<'_>) -> Result<UpdateTags
         ));
     }
 
-    let mut registries = Vec::with_capacity(registry_count);
+    let mut registries = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(
+        registry_count,
+    ));
     for _ in 0..registry_count {
         registries.push(decode_registry_tags(decoder)?);
     }
@@ -57,7 +59,7 @@ fn decode_registry_tags(decoder: &mut Decoder<'_>) -> Result<RegistryTags> {
         ));
     }
 
-    let mut tags = Vec::with_capacity(tag_count);
+    let mut tags = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(tag_count));
     for _ in 0..tag_count {
         tags.push(decode_tag_payload(decoder)?);
     }
@@ -71,7 +73,9 @@ fn decode_tag_payload(decoder: &mut Decoder<'_>) -> Result<TagNetworkPayload> {
         return Err(ProtocolError::PacketTooLarge(entry_count, MAX_TAG_ENTRIES));
     }
 
-    let mut entries = Vec::with_capacity(entry_count);
+    let mut entries = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(
+        entry_count,
+    ));
     for _ in 0..entry_count {
         entries.push(decoder.read_var_i32()?);
     }

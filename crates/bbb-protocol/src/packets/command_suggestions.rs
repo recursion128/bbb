@@ -68,7 +68,8 @@ pub(super) fn decode_command_suggestions(decoder: &mut Decoder<'_>) -> Result<Co
         ));
     }
 
-    let mut suggestions = Vec::with_capacity(count);
+    let mut suggestions =
+        Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
     for _ in 0..count {
         let text = decoder.read_string(32767)?;
         let (tooltip_styled, tooltip_component) = if decoder.read_bool()? {

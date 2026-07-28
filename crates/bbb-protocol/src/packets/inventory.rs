@@ -153,7 +153,9 @@ pub(super) fn decode_container_set_content(
             MAX_CONTAINER_ITEMS,
         ));
     }
-    let mut items = Vec::with_capacity(item_count);
+    let mut items = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(
+        item_count,
+    ));
     for _ in 0..item_count {
         items.push(decode_item_stack_summary(decoder)?);
     }

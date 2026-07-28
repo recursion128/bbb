@@ -105,7 +105,7 @@ pub(super) fn decode_commands(decoder: &mut Decoder<'_>) -> Result<Commands> {
         return Err(ProtocolError::PacketTooLarge(count, MAX_COMMAND_NODES));
     }
 
-    let mut nodes = Vec::with_capacity(count);
+    let mut nodes = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
     for _ in 0..count {
         nodes.push(decode_command_node(decoder)?);
     }
@@ -138,7 +138,9 @@ fn decode_command_node(decoder: &mut Decoder<'_>) -> Result<CommandNode> {
         ));
     }
 
-    let mut children = Vec::with_capacity(child_count);
+    let mut children = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(
+        child_count,
+    ));
     for _ in 0..child_count {
         children.push(decoder.read_var_i32()?);
     }

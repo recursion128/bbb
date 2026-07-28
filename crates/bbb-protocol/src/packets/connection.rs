@@ -33,7 +33,6 @@ const MAX_REGISTRY_DATA_ENTRIES: usize = 131_072;
 const MAX_REGISTRY_DATA_NBT_BYTES: usize = 2 * 1024 * 1024;
 const MAX_REGISTRY_DATA_NBT_DEPTH: usize = 512;
 const MAX_REGISTRY_DATA_NBT_LIST_ITEMS: usize = 1_000_000;
-const MAX_SERVER_LINKS_INITIAL_CAPACITY: usize = 65_536;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[repr(i32)]
@@ -693,7 +692,7 @@ pub fn decode_configuration_clientbound(
 
 fn decode_known_packs(decoder: &mut Decoder<'_>) -> Result<Vec<KnownPack>> {
     let count = decoder.read_len()?;
-    let mut packs = Vec::with_capacity(count.min(65_536));
+    let mut packs = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
     for _ in 0..count {
         packs.push(KnownPack {
             namespace: decoder.read_string(32767)?,
@@ -706,7 +705,7 @@ fn decode_known_packs(decoder: &mut Decoder<'_>) -> Result<Vec<KnownPack>> {
 
 fn decode_update_enabled_features(decoder: &mut Decoder<'_>) -> Result<UpdateEnabledFeatures> {
     let count = decoder.read_len()?;
-    let mut features = Vec::with_capacity(count.min(65_536));
+    let mut features = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
     for _ in 0..count {
         features.push(read_resource_location(decoder)?);
     }
@@ -725,7 +724,7 @@ fn decode_registry_data(decoder: &mut Decoder<'_>, raw_payload_len: usize) -> Re
         ));
     }
 
-    let mut entries = Vec::with_capacity(count);
+    let mut entries = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
     for _ in 0..count {
         let id = read_resource_location(decoder)?;
         let raw_data = if decoder.read_bool()? {
@@ -955,7 +954,7 @@ pub(super) fn decode_custom_report_details(
 
 pub(super) fn decode_server_links(decoder: &mut Decoder<'_>) -> Result<ServerLinks> {
     let count = decoder.read_len()?;
-    let mut links = Vec::with_capacity(count.min(MAX_SERVER_LINKS_INITIAL_CAPACITY));
+    let mut links = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
     for _ in 0..count {
         links.push(decode_server_link_entry(decoder)?);
     }
@@ -1015,7 +1014,9 @@ fn decode_game_profile(decoder: &mut Decoder<'_>) -> Result<GameProfile> {
             MAX_GAME_PROFILE_PROPERTIES,
         ));
     }
-    let mut properties = Vec::with_capacity(property_count);
+    let mut properties = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(
+        property_count,
+    ));
     for _ in 0..property_count {
         let name = decoder.read_string(64)?;
         let value = decoder.read_string(32767)?;

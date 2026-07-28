@@ -256,7 +256,7 @@ pub(crate) fn decode_chunks_biomes(decoder: &mut Decoder<'_>) -> Result<ChunksBi
             MAX_CHUNKS_BIOMES_UPDATES,
         ));
     }
-    let mut chunks = Vec::with_capacity(count);
+    let mut chunks = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
     for _ in 0..count {
         let pos = decode_chunk_pos(decoder.read_i64()?);
         let len = decoder.read_len()?;
@@ -367,7 +367,8 @@ fn decode_heightmaps(decoder: &mut Decoder<'_>) -> Result<Vec<ChunkHeightmapData
             VANILLA_HEIGHTMAP_TYPES.len(),
         ));
     }
-    let mut heightmaps = Vec::with_capacity(count);
+    let mut heightmaps =
+        Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
     for _ in 0..count {
         let kind_id = decoder.read_var_i32()?;
         if vanilla_heightmap_type(kind_id).is_none() {
@@ -399,7 +400,7 @@ fn decode_level_chunk_block_entities(
             "level chunk block entity count {count} exceeds remaining packet bytes"
         )));
     }
-    let mut out = Vec::with_capacity(count);
+    let mut out = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
     for _ in 0..count {
         let packed_xz = decoder.read_u8()?;
         let y = decoder.read_i16()?;
@@ -450,7 +451,7 @@ fn read_bounded_long_array(decoder: &mut Decoder<'_>, max: usize, label: &str) -
             "{label} count {count} exceeds remaining packet bytes"
         )));
     }
-    let mut out = Vec::with_capacity(count);
+    let mut out = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
     for _ in 0..count {
         out.push(decoder.read_i64()?);
     }
@@ -462,7 +463,7 @@ fn read_light_array_list(decoder: &mut Decoder<'_>) -> Result<Vec<Vec<u8>>> {
     if count > MAX_LIGHT_SECTIONS {
         return Err(ProtocolError::PacketTooLarge(count, MAX_LIGHT_SECTIONS));
     }
-    let mut out = Vec::with_capacity(count);
+    let mut out = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
     for _ in 0..count {
         let len = decoder.read_len()?;
         if len != LIGHT_ARRAY_BYTES {
@@ -653,7 +654,7 @@ pub(crate) fn decode_section_blocks_update(
             MAX_SECTION_BLOCK_UPDATES,
         ));
     }
-    let mut updates = Vec::with_capacity(count);
+    let mut updates = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
     for _ in 0..count {
         let packed_change = decoder.read_var_i64()? as u64;
         let packed_pos = (packed_change & 0x0fff) as u16;

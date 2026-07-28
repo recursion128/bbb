@@ -57,7 +57,8 @@ Owner: `bbb-protocol`
   `<MC_CODE_ROOT>/sources/26.1/`, adding focused encode/decode tests with each
   packet slice, including strict unit-payload, terminal packet/component roots,
   remaining bounded strings/byte arrays, typed resource-id normalization,
-  bounded map count/key/value, untrusted URI validation and
+  Vanilla-declared semantic collection/map count and key/value limits,
+  untrusted URI validation and
   NBT-root/depth/count boundaries;
   keep handwritten handler coverage aligned with the generated packet catalog
   as unsupported families are implemented.

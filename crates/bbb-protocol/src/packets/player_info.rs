@@ -71,7 +71,8 @@ pub(super) fn decode_player_info_remove(decoder: &mut Decoder<'_>) -> Result<Pla
         ));
     }
 
-    let mut profile_ids = Vec::with_capacity(count);
+    let mut profile_ids =
+        Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
     for _ in 0..count {
         profile_ids.push(decoder.read_uuid()?);
     }
@@ -94,7 +95,7 @@ pub(super) fn decode_player_info_update(decoder: &mut Decoder<'_>) -> Result<Pla
         ));
     }
 
-    let mut entries = Vec::with_capacity(count);
+    let mut entries = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
     for _ in 0..count {
         let profile_id = decoder.read_uuid()?;
         let mut entry = PlayerInfoEntry::new(profile_id);
@@ -171,7 +172,8 @@ fn decode_game_profile_properties(decoder: &mut Decoder<'_>) -> Result<Vec<GameP
         ));
     }
 
-    let mut properties = Vec::with_capacity(count);
+    let mut properties =
+        Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
     for _ in 0..count {
         let name = decoder.read_string(32767)?;
         let value = decoder.read_string(32767)?;

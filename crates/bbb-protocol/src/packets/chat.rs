@@ -227,7 +227,9 @@ fn decode_signed_message_body(decoder: &mut Decoder<'_>) -> Result<SignedMessage
         ));
     }
 
-    let mut last_seen = Vec::with_capacity(last_seen_count);
+    let mut last_seen = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(
+        last_seen_count,
+    ));
     for _ in 0..last_seen_count {
         last_seen.push(decode_packed_message_signature(decoder)?);
     }
@@ -251,7 +253,7 @@ fn decode_filter_mask(decoder: &mut Decoder<'_>) -> Result<FilterMask> {
         if len > MAX_FILTER_MASK_LONGS {
             return Err(ProtocolError::PacketTooLarge(len, MAX_FILTER_MASK_LONGS));
         }
-        let mut words = Vec::with_capacity(len);
+        let mut words = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(len));
         for _ in 0..len {
             words.push(decoder.read_i64()?);
         }
@@ -305,7 +307,9 @@ fn decode_chat_type_decoration(decoder: &mut Decoder<'_>) -> Result<ChatTypeDeco
             MAX_CHAT_TYPE_DECORATION_PARAMETERS,
         ));
     }
-    let mut parameters = Vec::with_capacity(parameter_count);
+    let mut parameters = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(
+        parameter_count,
+    ));
     for _ in 0..parameter_count {
         parameters.push(decoder.read_var_i32()?);
     }

@@ -15,7 +15,7 @@ pub(super) fn decode_award_stats(decoder: &mut Decoder<'_>) -> Result<AwardStats
         return Err(ProtocolError::PacketTooLarge(count, MAX_AWARD_STATS));
     }
 
-    let mut stats = Vec::with_capacity(count);
+    let mut stats = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(count));
     for _ in 0..count {
         stats.push(StatUpdate {
             stat_type_id: decoder.read_var_i32()?,
@@ -36,7 +36,9 @@ pub(super) fn decode_play_login(decoder: &mut Decoder<'_>) -> Result<PlayLogin> 
     let player_id = decoder.read_i32()?;
     let hardcore = decoder.read_bool()?;
     let level_count = decoder.read_len()?;
-    let mut levels = Vec::with_capacity(level_count);
+    let mut levels = Vec::with_capacity(crate::codec::bounded_collection_initial_capacity(
+        level_count,
+    ));
     for _ in 0..level_count {
         levels.push(read_resource_location(decoder)?);
     }
