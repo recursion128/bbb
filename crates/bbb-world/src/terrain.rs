@@ -160,6 +160,10 @@ pub struct TerrainBlockCell {
     pub block_properties: BTreeMap<String, String>,
     pub biome_id: Option<i32>,
     pub material: TerrainMaterialClass,
+    /// Exact Vanilla 26.1 `BlockState.isSolidRender()` fact consumed by the
+    /// client section visibility flood fill.
+    #[serde(default)]
+    pub solid_render: bool,
     #[serde(default)]
     pub skip_rendering: TerrainSkipRendering,
     pub fluid: Option<TerrainFluidState>,
@@ -1446,6 +1450,7 @@ mod tests {
             block_properties: BTreeMap::new(),
             biome_id: None,
             material,
+            solid_render: false,
             skip_rendering: TerrainSkipRendering::NONE,
             fluid,
             light: TerrainLight::FULL_BRIGHT,

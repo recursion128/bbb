@@ -651,6 +651,13 @@ fn merge_terrain_section_layers(
         replacement.translucent,
         dirty_section_ys,
     );
+    cached
+        .visibility
+        .retain(|section| !dirty_section_ys.contains(&section.section_y));
+    cached.visibility.extend(replacement.visibility);
+    cached
+        .visibility
+        .sort_unstable_by_key(|section| section.section_y);
 }
 
 fn cancel_queued_terrain_mesh_jobs(upload: &mut TerrainUploadState) {
@@ -846,6 +853,7 @@ fn convert_terrain_snapshot(
                 fluid.and_then(|fluid| textures.fluid_overlay_texture_index(fluid.kind));
             TerrainCell {
                 block_state_id: cell.block_state_id,
+                solid_render: cell.solid_render,
                 fluid,
                 fluid_texture_indices,
                 fluid_overlay_texture_index,

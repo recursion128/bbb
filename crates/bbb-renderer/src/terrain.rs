@@ -160,6 +160,9 @@ impl TerrainFluid {
 pub struct TerrainCell {
     pub block_state_id: i32,
     pub material: TerrainMaterialClass,
+    /// Exact Vanilla 26.1 `BlockState.isSolidRender()` input for `VisGraph`.
+    #[serde(default)]
+    pub solid_render: bool,
     pub fluid: Option<TerrainFluid>,
     pub fluid_texture_indices: [u32; 6],
     pub fluid_overlay_texture_index: Option<u32>,
@@ -295,6 +298,7 @@ impl TerrainCell {
     pub const EMPTY: Self = Self {
         block_state_id: Self::NO_BLOCK_STATE_ID,
         material: TerrainMaterialClass::Empty,
+        solid_render: false,
         fluid: None,
         fluid_texture_indices: [0; 6],
         fluid_overlay_texture_index: None,
@@ -317,6 +321,7 @@ impl TerrainCell {
         Self {
             block_state_id,
             material,
+            solid_render: material.occludes_terrain(),
             fluid: None,
             fluid_texture_indices: [texture_index; 6],
             fluid_overlay_texture_index: None,
@@ -341,6 +346,7 @@ impl TerrainCell {
         Self {
             block_state_id,
             material,
+            solid_render: material.occludes_terrain(),
             fluid: None,
             fluid_texture_indices: [texture_index; 6],
             fluid_overlay_texture_index: None,
@@ -603,7 +609,45 @@ pub struct TerrainSectionMeshLayers {
     pub opaque: Vec<TerrainSectionMesh>,
     pub cutout: Vec<TerrainSectionMesh>,
     pub translucent: Vec<TerrainSectionMesh>,
+    /// One entry for every compiled section, including empty render layers.
+    pub visibility: Vec<TerrainSectionVisibility>,
     pub source_sections: usize,
+}
+
+/// Vanilla `CompiledSectionMesh` visibility and renderability projection.
+///
+/// Bits use `TerrainFace::ALL` order in a row-major six-by-six matrix:
+/// `from + to * 6`, matching `VisibilitySet`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TerrainSectionVisibility {
+    pub section_y: i32,
+    visible_faces: u64,
+    pub has_renderable_layers: bool,
+}
+
+impl TerrainSectionVisibility {
+    const FACE_COUNT: usize = 6;
+    const ALL_VISIBLE_BITS: u64 = (1_u64 << (Self::FACE_COUNT * Self::FACE_COUNT)) - 1;
+
+    pub fn all_visible(section_y: i32, has_renderable_layers: bool) -> Self {
+        Self {
+            section_y,
+            visible_faces: Self::ALL_VISIBLE_BITS,
+            has_renderable_layers,
+        }
+    }
+
+    pub fn faces_can_see_each_other(self, from: TerrainFace, to: TerrainFace) -> bool {
+        self.visible_faces & Self::face_bit(from, to) != 0
+    }
+
+    fn set_visible(&mut self, from: TerrainFace, to: TerrainFace) {
+        self.visible_faces |= Self::face_bit(from, to) | Self::face_bit(to, from);
+    }
+
+    fn face_bit(from: TerrainFace, to: TerrainFace) -> u64 {
+        1_u64 << (from.index() + to.index() * Self::FACE_COUNT)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -890,13 +934,154 @@ pub fn build_terrain_chunk_section_subset_mesh_layers_with_atlas_and_camera<'a>(
     for section in &mut translucent {
         mesh::sort_translucent_quads_by_distance(&mut section.mesh, camera_position);
     }
+    let visibility = section_ys
+        .iter()
+        .copied()
+        .filter(|section_y| section_is_in_snapshot(target, *section_y))
+        .map(|section_y| {
+            let has_renderable_layers = [&opaque, &cutout, &translucent].into_iter().any(|layer| {
+                layer.iter().any(|section| {
+                    section.section_y == section_y
+                        && !section.mesh.vertices.is_empty()
+                        && !section.mesh.indices.is_empty()
+                })
+            });
+            resolve_section_visibility(target, section_y, has_renderable_layers)
+        })
+        .collect();
 
     TerrainSectionMeshLayers {
         source_sections: opaque.len(),
         opaque,
         cutout,
         translucent,
+        visibility,
     }
+}
+
+fn section_is_in_snapshot(target: &TerrainChunkSnapshot, section_y: i32) -> bool {
+    let start_y = section_y.saturating_mul(16).saturating_sub(target.min_y);
+    start_y >= 0 && start_y < target.height as i32
+}
+
+/// Vanilla `VisGraph.resolve`, including its `< 256` opaque fast path.
+fn resolve_section_visibility(
+    target: &TerrainChunkSnapshot,
+    section_y: i32,
+    has_renderable_layers: bool,
+) -> TerrainSectionVisibility {
+    const SECTION_EDGE: usize = 16;
+    const CELL_COUNT: usize = SECTION_EDGE * SECTION_EDGE * SECTION_EDGE;
+    let section_min_y = section_y.saturating_mul(16);
+    let mut blocked = [false; CELL_COUNT];
+    let mut opaque_count = 0;
+    for local_y in 0..SECTION_EDGE {
+        for local_z in 0..SECTION_EDGE {
+            for local_x in 0..SECTION_EDGE {
+                let snapshot_y = section_min_y
+                    .saturating_add(local_y as i32)
+                    .saturating_sub(target.min_y);
+                let solid_render = target
+                    .cell(local_x as i32, snapshot_y, local_z as i32)
+                    .is_some_and(|cell| cell.solid_render);
+                let index = section_cell_index(local_x, local_y, local_z);
+                blocked[index] = solid_render;
+                opaque_count += usize::from(solid_render);
+            }
+        }
+    }
+
+    if opaque_count < 256 {
+        return TerrainSectionVisibility::all_visible(section_y, has_renderable_layers);
+    }
+    let mut visibility = TerrainSectionVisibility {
+        section_y,
+        visible_faces: 0,
+        has_renderable_layers,
+    };
+    if opaque_count == CELL_COUNT {
+        return visibility;
+    }
+
+    for x in 0..SECTION_EDGE {
+        for y in 0..SECTION_EDGE {
+            for z in 0..SECTION_EDGE {
+                if x != 0
+                    && x != SECTION_EDGE - 1
+                    && y != 0
+                    && y != SECTION_EDGE - 1
+                    && z != 0
+                    && z != SECTION_EDGE - 1
+                {
+                    continue;
+                }
+                let start = section_cell_index(x, y, z);
+                if blocked[start] {
+                    continue;
+                }
+                let connected = flood_section_component(&mut blocked, start);
+                for from in connected.iter().copied() {
+                    for to in connected.iter().copied() {
+                        visibility.set_visible(from, to);
+                    }
+                }
+            }
+        }
+    }
+    visibility
+}
+
+fn flood_section_component(blocked: &mut [bool; 4096], start: usize) -> Vec<TerrainFace> {
+    use std::collections::VecDeque;
+
+    let mut connected = [false; 6];
+    let mut queue = VecDeque::from([start]);
+    blocked[start] = true;
+    while let Some(index) = queue.pop_front() {
+        let x = index & 15;
+        let z = (index >> 4) & 15;
+        let y = (index >> 8) & 15;
+        if x == 0 {
+            connected[TerrainFace::West.index()] = true;
+        } else if x == 15 {
+            connected[TerrainFace::East.index()] = true;
+        }
+        if y == 0 {
+            connected[TerrainFace::Down.index()] = true;
+        } else if y == 15 {
+            connected[TerrainFace::Up.index()] = true;
+        }
+        if z == 0 {
+            connected[TerrainFace::North.index()] = true;
+        } else if z == 15 {
+            connected[TerrainFace::South.index()] = true;
+        }
+        for face in TerrainFace::ALL {
+            let neighbor = match face {
+                TerrainFace::Down if y > 0 => Some(index - 256),
+                TerrainFace::Up if y < 15 => Some(index + 256),
+                TerrainFace::North if z > 0 => Some(index - 16),
+                TerrainFace::South if z < 15 => Some(index + 16),
+                TerrainFace::West if x > 0 => Some(index - 1),
+                TerrainFace::East if x < 15 => Some(index + 1),
+                _ => None,
+            };
+            if let Some(neighbor) = neighbor {
+                if !blocked[neighbor] {
+                    blocked[neighbor] = true;
+                    queue.push_back(neighbor);
+                }
+            }
+        }
+    }
+    TerrainFace::ALL
+        .into_iter()
+        .filter(|face| connected[face.index()])
+        .collect()
+}
+
+fn section_cell_index(x: usize, y: usize, z: usize) -> usize {
+    x | (z << 4) | (y << 8)
 }
 
 #[cfg(test)]
@@ -996,5 +1181,83 @@ mod section_mesh_tests {
             subset.translucent,
             vec![full.translucent[0].clone(), full.translucent[2].clone()]
         );
+    }
+
+    #[test]
+    fn section_visibility_sparse_and_empty_sections_are_all_visible() {
+        let empty = TerrainChunkSnapshot::new(0, 0, 0, 16, vec![TerrainCell::EMPTY; 16 * 16 * 16]);
+        let empty_layers = build_terrain_chunk_section_mesh_layers_with_atlas_and_camera(
+            &empty,
+            std::iter::empty(),
+            &TerrainTextureAtlas::unit(),
+            [0.0; 3],
+        );
+        let empty_visibility = empty_layers.visibility[0];
+        assert!(!empty_visibility.has_renderable_layers);
+        for from in TerrainFace::ALL {
+            for to in TerrainFace::ALL {
+                assert!(empty_visibility.faces_can_see_each_other(from, to));
+            }
+        }
+
+        let mut sparse_cells = vec![TerrainCell::EMPTY; 16 * 16 * 16];
+        for index in 0..255 {
+            sparse_cells[index] = TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0);
+        }
+        let sparse = TerrainChunkSnapshot::new(0, 0, 0, 16, sparse_cells);
+        let sparse_layers = build_terrain_chunk_section_mesh_layers_with_atlas_and_camera(
+            &sparse,
+            std::iter::empty(),
+            &TerrainTextureAtlas::unit(),
+            [0.0; 3],
+        );
+        assert!(sparse_layers.visibility[0]
+            .faces_can_see_each_other(TerrainFace::West, TerrainFace::East));
+    }
+
+    #[test]
+    fn section_visibility_fully_solid_section_blocks_every_face_pair() {
+        let full = TerrainChunkSnapshot::new(
+            0,
+            0,
+            0,
+            16,
+            vec![TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0); 16 * 16 * 16],
+        );
+        let layers = build_terrain_chunk_section_mesh_layers_with_atlas_and_camera(
+            &full,
+            std::iter::empty(),
+            &TerrainTextureAtlas::unit(),
+            [0.0; 3],
+        );
+        let visibility = layers.visibility[0];
+        assert!(visibility.has_renderable_layers);
+        for from in TerrainFace::ALL {
+            for to in TerrainFace::ALL {
+                assert!(!visibility.faces_can_see_each_other(from, to));
+            }
+        }
+    }
+
+    #[test]
+    fn section_visibility_solid_wall_separates_west_from_east() {
+        let mut cells = vec![TerrainCell::EMPTY; 16 * 16 * 16];
+        for y in 0..16 {
+            for z in 0..16 {
+                cells[mesh::cell_index(8, y, z, 16)] =
+                    TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0);
+            }
+        }
+        let split = TerrainChunkSnapshot::new(0, 0, 0, 16, cells);
+        let layers = build_terrain_chunk_section_mesh_layers_with_atlas_and_camera(
+            &split,
+            std::iter::empty(),
+            &TerrainTextureAtlas::unit(),
+            [0.0; 3],
+        );
+        let visibility = layers.visibility[0];
+        assert!(!visibility.faces_can_see_each_other(TerrainFace::West, TerrainFace::East));
+        assert!(visibility.faces_can_see_each_other(TerrainFace::West, TerrainFace::North));
+        assert!(visibility.faces_can_see_each_other(TerrainFace::East, TerrainFace::South));
     }
 }

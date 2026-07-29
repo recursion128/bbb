@@ -88,7 +88,8 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   `SectionOcclusionGraph`/octree and compiled-section face-visibility matrix.
   Wire the stable resident section owners into vanilla node step/source
   directions, octree node bounds/depth/frustum state, and
-  `facesCanSeeEachother` without reconstructing them heuristically.
+  `facesCanSeeEachother` without reconstructing them heuristically. Engineering
+  contract: `docs/chunk-section-occlusion-closeout-design.md`.
 - `visualize_chunks_on_server` is `not-needed`: vanilla 26.1
   `ChunkDebugRenderer.emitGizmos` refreshes data only when
   `Minecraft.getSingleplayerServer()` returns an `IntegratedServer`, and its

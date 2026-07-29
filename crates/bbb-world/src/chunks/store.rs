@@ -1,5 +1,6 @@
 use bbb_protocol::{
     block_entity_types::{VANILLA_BLOCK_ENTITY_TYPE_SKULL_ID, VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID},
+    block_state_types::vanilla_block_state_support_facts,
     block_types::{
         vanilla_block_type_for_resource_id, VANILLA_BLOCK_COPPER_CHEST_ID,
         VANILLA_BLOCK_COPPER_GOLEM_STATUE_ID, VANILLA_BLOCK_WAXED_OXIDIZED_COPPER_CHEST_ID,
@@ -829,6 +830,8 @@ impl WorldStore {
                         block_state_id: block_value.global_id,
                         biome_id,
                         material: classify_terrain_material(block_name.as_deref()),
+                        solid_render: vanilla_block_state_support_facts(block_value.global_id)
+                            .is_some_and(|facts| facts.solid_render()),
                         skip_rendering: classify_terrain_skip_rendering(
                             block_name.as_deref(),
                             &block_properties,
