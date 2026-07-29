@@ -32,6 +32,7 @@ mod ui;
 mod waypoints;
 mod world_border;
 
+pub use dialog::decode_persistent_component_select_value;
 pub(crate) use dialog::{
     decode_command_item_stack_template_summary, validate_command_dialog,
     validate_command_item_component, validate_command_item_predicate_value,

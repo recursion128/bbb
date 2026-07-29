@@ -5,7 +5,8 @@
 // Wire codecs remain hand-bound in packets/data_components/catalog.rs.
 
 pub use crate::packets::data_components::catalog::{
-    vanilla_data_component_descriptor, vanilla_data_component_descriptors, DataComponentDescriptor,
+    encode_data_component_value_summary, vanilla_data_component_descriptor,
+    vanilla_data_component_descriptors, DataComponentDescriptor,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

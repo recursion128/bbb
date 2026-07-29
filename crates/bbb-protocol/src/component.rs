@@ -530,6 +530,18 @@ pub fn styled_component_runs_from_nbt_value(value: &NbtSummaryValue) -> Vec<Styl
     runs.runs
 }
 
+/// Compares two serialized Component codec values after decoding and canonical
+/// re-encoding them. This mirrors `Component.equals`: JSON/NBT shorthand may
+/// differ while content, sibling structure, and style remain identity-bearing.
+pub fn component_codec_values_equal(
+    left: &NbtSummaryValue,
+    right: &NbtSummaryValue,
+) -> Result<bool> {
+    let left = canonical_component_codec_value(left).map_err(ProtocolError::InvalidData)?;
+    let right = canonical_component_codec_value(right).map_err(ProtocolError::InvalidData)?;
+    Ok(left == right)
+}
+
 pub(crate) fn decode_component_summary_from_decoder(decoder: &mut Decoder<'_>) -> Result<String> {
     let runs = decode_styled_component_summary_from_decoder(decoder)?;
     Ok(styled_runs_summary_text(&runs))
@@ -645,53 +657,11 @@ pub(crate) fn decode_json_component_summary(raw_json: &str) -> Result<String> {
             "component json root must be a string, array, or object".to_string(),
         ));
     }
-    let value = component_json_value_to_nbt(value)?;
+    let value = crate::json_value_to_nbt_summary(&value)?;
     validate_component_nbt(&value, "component json").map_err(ProtocolError::InvalidData)?;
     let mut runs = RunCollector::default();
     append_component_runs(&value, &ComponentStyle::default(), &mut runs);
     Ok(styled_runs_summary_text(&runs.runs))
-}
-
-fn component_json_value_to_nbt(value: serde_json::Value) -> Result<NbtSummaryValue> {
-    Ok(match value {
-        serde_json::Value::Null => {
-            return Err(ProtocolError::InvalidData(
-                "component json cannot contain null".to_string(),
-            ));
-        }
-        serde_json::Value::Bool(value) => NbtSummaryValue::Byte(i8::from(value)),
-        serde_json::Value::Number(value) => {
-            if let Some(value) = value.as_i64() {
-                if let Ok(value) = i32::try_from(value) {
-                    NbtSummaryValue::Int(value)
-                } else {
-                    NbtSummaryValue::Long(value)
-                }
-            } else if let Some(value) = value.as_u64().and_then(|value| i64::try_from(value).ok()) {
-                NbtSummaryValue::Long(value)
-            } else {
-                NbtSummaryValue::Double(value.as_f64().unwrap_or_default().to_bits())
-            }
-        }
-        serde_json::Value::String(value) => NbtSummaryValue::String(value),
-        serde_json::Value::Array(values) => NbtSummaryValue::List(
-            values
-                .into_iter()
-                .map(component_json_value_to_nbt)
-                .collect::<Result<_>>()?,
-        ),
-        serde_json::Value::Object(entries) => NbtSummaryValue::Compound(
-            entries
-                .into_iter()
-                .map(|(name, value)| {
-                    Ok(NbtSummaryEntry {
-                        name,
-                        value: component_json_value_to_nbt(value)?,
-                    })
-                })
-                .collect::<Result<_>>()?,
-        ),
-    })
 }
 
 /// Decodes a network chat component into flattened styled runs. The companion
@@ -1067,6 +1037,19 @@ mod tests {
                 style: ComponentStyle::default(),
             }]
         );
+    }
+
+    #[test]
+    fn component_codec_equality_normalizes_shorthand_and_preserves_style_identity() {
+        let shorthand = NbtSummaryValue::String("Hello".to_string());
+        let object =
+            crate::json_value_to_nbt_summary(&serde_json::json!({"text": "Hello"})).unwrap();
+        let bold =
+            crate::json_value_to_nbt_summary(&serde_json::json!({"text": "Hello", "bold": true}))
+                .unwrap();
+
+        assert!(component_codec_values_equal(&shorthand, &object).unwrap());
+        assert!(!component_codec_values_equal(&shorthand, &bold).unwrap());
     }
 
     #[test]

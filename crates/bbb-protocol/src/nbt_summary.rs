@@ -37,6 +37,94 @@ pub struct NbtSummaryEntry {
     pub value: NbtSummaryValue,
 }
 
+/// Projects a `JsonOps` value into the primitive NBT shape used when a
+/// persistent Vanilla codec is parsed from resource-pack JSON.
+///
+/// The conversion keeps integer and floating-point domains distinct and
+/// applies the same depth/collection bounds as network NBT. Codec owners still
+/// validate the resulting value; this helper only owns the shared ops bridge.
+pub fn json_value_to_nbt_summary(value: &serde_json::Value) -> Result<NbtSummaryValue> {
+    json_value_to_nbt_summary_at_depth(value, 0)
+}
+
+fn json_value_to_nbt_summary_at_depth(
+    value: &serde_json::Value,
+    depth: usize,
+) -> Result<NbtSummaryValue> {
+    if depth > MAX_NBT_DEPTH {
+        return Err(ProtocolError::InvalidData(
+            "json-to-nbt value exceeded max depth".to_string(),
+        ));
+    }
+    Ok(match value {
+        serde_json::Value::Null => {
+            return Err(ProtocolError::InvalidData(
+                "null has no NBT value representation".to_string(),
+            ));
+        }
+        serde_json::Value::Bool(value) => NbtSummaryValue::Byte(i8::from(*value)),
+        serde_json::Value::Number(value) => {
+            if let Some(value) = value.as_i64() {
+                match i32::try_from(value) {
+                    Ok(value) => NbtSummaryValue::Int(value),
+                    Err(_) => NbtSummaryValue::Long(value),
+                }
+            } else if let Some(value) = value.as_u64() {
+                let value = i64::try_from(value).map_err(|_| {
+                    ProtocolError::InvalidData(
+                        "json integer exceeds the signed NBT domain".to_string(),
+                    )
+                })?;
+                match i32::try_from(value) {
+                    Ok(value) => NbtSummaryValue::Int(value),
+                    Err(_) => NbtSummaryValue::Long(value),
+                }
+            } else {
+                let value = value.as_f64().ok_or_else(|| {
+                    ProtocolError::InvalidData(
+                        "json number has no finite f64 representation".to_string(),
+                    )
+                })?;
+                NbtSummaryValue::Double(value.to_bits())
+            }
+        }
+        serde_json::Value::String(value) => NbtSummaryValue::String(value.clone()),
+        serde_json::Value::Array(values) => {
+            if values.len() > MAX_NBT_LIST_ITEMS {
+                return Err(ProtocolError::PacketTooLarge(
+                    values.len(),
+                    MAX_NBT_LIST_ITEMS,
+                ));
+            }
+            NbtSummaryValue::List(
+                values
+                    .iter()
+                    .map(|value| json_value_to_nbt_summary_at_depth(value, depth + 1))
+                    .collect::<Result<_>>()?,
+            )
+        }
+        serde_json::Value::Object(entries) => {
+            if entries.len() > MAX_NBT_COMPOUND_ENTRIES {
+                return Err(ProtocolError::PacketTooLarge(
+                    entries.len(),
+                    MAX_NBT_COMPOUND_ENTRIES,
+                ));
+            }
+            NbtSummaryValue::Compound(
+                entries
+                    .iter()
+                    .map(|(name, value)| {
+                        Ok(NbtSummaryEntry {
+                            name: name.clone(),
+                            value: json_value_to_nbt_summary_at_depth(value, depth + 1)?,
+                        })
+                    })
+                    .collect::<Result<_>>()?,
+            )
+        }
+    })
+}
+
 pub(crate) fn decode_nbt_summary_from_decoder(
     decoder: &mut Decoder<'_>,
 ) -> Result<Option<NbtSummaryValue>> {
@@ -648,6 +736,54 @@ mod tests {
             decode_nbt_summary(&bytes),
             Err(ProtocolError::PacketTooLarge(actual, max))
                 if actual == MAX_NBT_COMPOUND_ENTRIES + 1 && max == MAX_NBT_COMPOUND_ENTRIES
+        ));
+    }
+
+    #[test]
+    fn json_ops_bridge_preserves_numeric_domains_and_bounds_collections() {
+        let value = serde_json::json!({
+            "integer": 42,
+            "long": 4_294_967_296_u64,
+            "fraction": 1.5,
+            "enabled": true,
+            "items": ["a", "b"]
+        });
+        assert_eq!(
+            json_value_to_nbt_summary(&value).unwrap(),
+            NbtSummaryValue::Compound(vec![
+                NbtSummaryEntry {
+                    name: "enabled".to_string(),
+                    value: NbtSummaryValue::Byte(1),
+                },
+                NbtSummaryEntry {
+                    name: "fraction".to_string(),
+                    value: NbtSummaryValue::Double(1.5_f64.to_bits()),
+                },
+                NbtSummaryEntry {
+                    name: "integer".to_string(),
+                    value: NbtSummaryValue::Int(42),
+                },
+                NbtSummaryEntry {
+                    name: "items".to_string(),
+                    value: NbtSummaryValue::List(vec![
+                        NbtSummaryValue::String("a".to_string()),
+                        NbtSummaryValue::String("b".to_string()),
+                    ]),
+                },
+                NbtSummaryEntry {
+                    name: "long".to_string(),
+                    value: NbtSummaryValue::Long(4_294_967_296),
+                },
+            ])
+        );
+        assert!(json_value_to_nbt_summary(&serde_json::Value::Null).is_err());
+        assert!(matches!(
+            json_value_to_nbt_summary(&serde_json::Value::Array(vec![
+                serde_json::Value::Null;
+                MAX_NBT_LIST_ITEMS + 1
+            ])),
+            Err(ProtocolError::PacketTooLarge(actual, max))
+                if actual == MAX_NBT_LIST_ITEMS + 1 && max == MAX_NBT_LIST_ITEMS
         ));
     }
 }

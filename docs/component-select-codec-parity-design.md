@@ -95,7 +95,7 @@ loading, `RegistryContextSwapper` codec-round-trips every key into the active
    add scalar, object/list, float, styled Component, holder, and transient
    rejection tests. Focused tests:
    `scripts/cargo-dev.sh test -p bbb-protocol data_component` and
-   `scripts/cargo-dev.sh test -p bbb-world persistent_data_component`.
+   `scripts/cargo-dev.sh test -p bbb-world persistent_component_select`.
 2. **Generic select resolver** (`bbb-item-model`): replace the closed enum,
    preserve validated case values, and test explicit patches/removals across
    every persistent descriptor, including nested Component equality and

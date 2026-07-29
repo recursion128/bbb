@@ -275,6 +275,25 @@ pub fn vanilla_data_component_descriptor(type_id: i32) -> Option<&'static DataCo
     (descriptor.type_id() == type_id).then_some(descriptor)
 }
 
+/// Encodes exactly one component value through the descriptor's Vanilla
+/// network codec, without the surrounding patch counts/type id.
+///
+/// Component-select equality uses this only after its persistent case value
+/// has been decoded into the same typed summary. The component catalog remains
+/// the single dispatch table for both ordinary packet encoding and this
+/// value-level projection.
+pub fn encode_data_component_value_summary(
+    type_id: i32,
+    summary: &DataComponentPatchSummary,
+) -> Result<Vec<u8>> {
+    let descriptor = vanilla_data_component_descriptor(type_id).ok_or_else(|| {
+        ProtocolError::InvalidData(format!("unknown data component type id {type_id}"))
+    })?;
+    let mut out = Encoder::new();
+    descriptor.encode(summary, &mut out)?;
+    Ok(out.into_inner())
+}
+
 const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
     match type_id {
         VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID => Some(encode_custom_data),
@@ -14062,5 +14081,48 @@ mod tests {
         assert_eq!(summary.max_stack_size, Some(64));
         assert_eq!(summary.removed_type_ids, vec![20]);
         assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn value_level_encoder_delegates_to_scalar_object_list_and_float_descriptors() {
+        assert_eq!(
+            encode_data_component_value_summary(
+                VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+                &DataComponentPatchSummary {
+                    max_stack_size: Some(16),
+                    ..DataComponentPatchSummary::default()
+                }
+            )
+            .unwrap(),
+            [16]
+        );
+        assert_eq!(
+            encode_data_component_value_summary(
+                VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
+                &DataComponentPatchSummary {
+                    potion_duration_scale_bits: Some(0.125_f32.to_bits()),
+                    ..DataComponentPatchSummary::default()
+                }
+            )
+            .unwrap(),
+            0.125_f32.to_be_bytes()
+        );
+
+        let custom_data = NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+            name: "values".to_string(),
+            value: NbtSummaryValue::List(vec![NbtSummaryValue::Int(1), NbtSummaryValue::Int(2)]),
+        }]);
+        let encoded = encode_data_component_value_summary(
+            VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
+            &DataComponentPatchSummary {
+                custom_data: Some(custom_data.clone()),
+                ..DataComponentPatchSummary::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            crate::decode_nbt_summary(&encoded).unwrap(),
+            Some(custom_data)
+        );
     }
 }

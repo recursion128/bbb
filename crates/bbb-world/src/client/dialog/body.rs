@@ -101,6 +101,27 @@ pub(crate) fn decode_persistent_data_component_patch_entry(
     value: &NbtSummaryValue,
     registries: &RegistrySet,
 ) -> Result<Option<DataComponentPatchSummary>, String> {
+    decode_persistent_data_component_patch_entry_with_context(type_id, value, Some(registries))
+}
+
+/// Decodes one component-select `when` value through the selected persistent
+/// component codec. The optional registry owner mirrors Vanilla's model-load
+/// placeholder context versus a live `ClientLevel.registryAccess()`.
+pub fn decode_persistent_component_select_value(
+    type_id: i32,
+    value: &serde_json::Value,
+    registries: Option<&RegistrySet>,
+) -> Result<Option<DataComponentPatchSummary>, String> {
+    let value = bbb_protocol::json_value_to_nbt_summary(value)
+        .map_err(|error| format!("component select value is not representable as NBT: {error}"))?;
+    decode_persistent_data_component_patch_entry_with_context(type_id, &value, registries)
+}
+
+fn decode_persistent_data_component_patch_entry_with_context(
+    type_id: i32,
+    value: &NbtSummaryValue,
+    registries: Option<&RegistrySet>,
+) -> Result<Option<DataComponentPatchSummary>, String> {
     let component_type = vanilla_data_component_type(type_id)
         .ok_or_else(|| format!("unknown persistent data component type id {type_id}"))?;
     if !component_type.persistent {
@@ -113,7 +134,7 @@ pub(crate) fn decode_persistent_data_component_patch_entry(
         type_id,
         component_type.resource_id,
         value,
-        DialogDecodeContext::new(Some(registries), 0),
+        DialogDecodeContext::new(registries, 0),
     )?
     else {
         return Ok(None);

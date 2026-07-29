@@ -38,6 +38,89 @@ use super::trim::{DialogTrimMaterialState, DialogTrimPatternState};
 use super::*;
 
 #[test]
+fn persistent_component_select_bridge_decodes_semantic_values_and_rejects_transients() {
+    let scalar = crate::decode_persistent_component_select_value(
+        VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+        &serde_json::json!(16),
+        None,
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(scalar.max_stack_size, Some(16));
+
+    let object_list = crate::decode_persistent_component_select_value(
+        VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID,
+        &serde_json::json!({
+            "floats": [0.25, 1.5],
+            "flags": [true, false],
+            "strings": ["first", "second"],
+            "colors": [1193046]
+        }),
+        None,
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(
+        object_list.custom_model_data_floats.to_vec(),
+        vec![0.25, 1.5]
+    );
+    assert_eq!(object_list.custom_model_data_flags, [true, false]);
+    assert_eq!(object_list.custom_model_data_strings, ["first", "second"]);
+    assert_eq!(object_list.custom_model_data_colors, [1_193_046]);
+
+    let float = crate::decode_persistent_component_select_value(
+        VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
+        &serde_json::json!(0.125),
+        None,
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(float.minimum_attack_charge_bits, Some(0.125_f32.to_bits()));
+
+    let styled = crate::decode_persistent_component_select_value(
+        VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+        &serde_json::json!({"text": "Styled", "bold": true}),
+        None,
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(styled.custom_name.as_deref(), Some("Styled"));
+    assert_eq!(
+        styled
+            .custom_name_styled
+            .as_deref()
+            .and_then(|runs| runs.first())
+            .and_then(|run| run.style.bold),
+        Some(true)
+    );
+
+    let registry = "minecraft:damage_type";
+    let mut registries = RegistrySet::default();
+    let mut contents = crate::RegistryContentState::new(registry);
+    contents.entries = vec![
+        crate::RegistryPacketEntry::stub("minecraft:in_fire"),
+        crate::RegistryPacketEntry::stub("example:custom"),
+    ];
+    registries.contents.insert(registry.to_string(), contents);
+    let holder = crate::decode_persistent_component_select_value(
+        VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
+        &serde_json::json!("example:custom"),
+        Some(&registries),
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(holder.damage_type_id, Some(1));
+
+    let error = crate::decode_persistent_component_select_value(
+        VANILLA_DATA_COMPONENT_CREATIVE_SLOT_LOCK_TYPE_ID,
+        &serde_json::json!({}),
+        None,
+    )
+    .unwrap_err();
+    assert!(error.contains("is not persistent"), "{error}");
+}
+
+#[test]
 fn decodes_primitive_component_value_codecs() {
     for (type_id, resource_id, input, expected) in [
         (
