@@ -766,3 +766,7 @@
   现进入 FOV，Camera 眼高按 tick 半步缓动并随 publication 插值；既有 avatar
   walk/bob 以精确矩阵顺序贯通 world/HUD，合同见
   `docs/archive/sprint-swim-camera-presentation-design.md`。
+- **2026-07-29（同步附魔客户端效果工程闭环）**：六类 value effect、持有者
+  LegacyRandom 游标、Riptide 预测及弩的第一/第三人称与物品模型蓄力时长均已
+  贯通；客户端/服务端组件分区由源码守卫锁定，合同见
+  `docs/archive/synchronized-enchantment-client-effects-design.md`。

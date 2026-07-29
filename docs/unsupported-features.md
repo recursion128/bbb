@@ -149,13 +149,12 @@ resolver by adding a value provider. No new selection machinery is required.
   consumers that render component-bearing generated stacks where vanilla
   resolves registry-backed item-model properties. No-registry consumers still
   fall back.
-- Parse and apply the remaining synchronized enchantment effect component
-  families beyond attribute modifiers and deterministic
-  `minecraft:crossbow_charge_time`: conditional value/entity/location effects
-  still need their loot-context requirements, and `remove_binomial` needs the
-  holder entity's mutable `RandomSource` rather than a fabricated random result.
-  Active contract:
-  [`synchronized-enchantment-client-effects-design.md`](synchronized-enchantment-client-effects-design.md).
+- `not-needed`: synchronized conditional value/entity/location enchantment
+  effects, damage immunity, equipment-drop prevention, and crossbow charging
+  sounds remain server-owned in Vanilla 26.1. Conditional execution enters
+  through `ServerLevel`; crossbow loading sounds run only under
+  `!level.isClientSide()`. Reopen if
+  `test_enchantment_client_effect_partition.py` finds a client-side consumer.
 
 ## Audio runtime parity
 
