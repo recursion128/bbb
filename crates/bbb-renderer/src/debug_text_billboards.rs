@@ -6,6 +6,7 @@ use crate::{
     pipeline_builder::{depth_stencil_state, RenderPipelineBuilder},
     CameraPose, HudAsciiGlyph, HudFontGlyphMap, HudTextStyle,
 };
+use bbb_render_types::visual_order;
 
 const DEBUG_TEXT_REPLACEMENT_GLYPH: char = '?';
 const DEBUG_TEXT_FULL_BRIGHT_LIGHT: [f32; 2] = [1.0, 1.0];
@@ -216,12 +217,25 @@ pub(super) fn build_debug_text_mesh_for_layer<'a>(
         let width = billboard.text.chars().fold(0_u32, |width, ch| {
             width.saturating_add(debug_text_glyph(ch, glyphs).advance)
         });
+        let logical = billboard
+            .text
+            .chars()
+            .map(|ch| (ch, ()))
+            .collect::<Vec<_>>();
+        // DrawableGizmoPrimitives calls Font.drawInBatch(String): centering
+        // uses the logical String width, and Font only applies its
+        // bidirectional shaping path when the selected language is RTL.
+        let visual = if glyphs.default_right_to_left() {
+            visual_order(&logical, true)
+        } else {
+            logical
+        };
         let mut pen_x = billboard
             .adjust_left
             .map_or(-(width as f32) / 2.0, |adjust| -adjust / billboard.scale);
         let pixel_scale = billboard.scale / 16.0;
         let origin = Vec3::from_array(billboard.position);
-        for ch in billboard.text.chars() {
+        for (ch, ()) in visual {
             let glyph = debug_text_glyph(ch, glyphs);
             if glyph.width > 0 && glyph.height > 0 {
                 for quad in glyph.styled_quads(pen_x, 0.0, HudTextStyle::default(), false) {
@@ -319,6 +333,26 @@ mod tests {
         glyphs
     }
 
+    fn bidirectional_glyphs() -> HudFontGlyphMap {
+        let mut glyphs = HudFontGlyphMap::new();
+        for (ch, min_x) in [('1', 0.1), ('2', 0.2), ('3', 0.3), ('-', 0.4), ('?', 0.5)] {
+            glyphs.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    uv: HudUvRect {
+                        min: [min_x, 0.0],
+                        max: [min_x + 0.05, 0.5],
+                    },
+                    width: 5,
+                    height: 8,
+                    advance: 6,
+                    ascent: 7,
+                },
+            );
+        }
+        glyphs
+    }
+
     fn camera() -> CameraPose {
         CameraPose {
             position: [0.0; 3],
@@ -388,6 +422,33 @@ mod tests {
         assert!(mesh.vertices.iter().all(|vertex| {
             vertex.color == [10, 20, 30, 40] && vertex.light == DEBUG_TEXT_FULL_BRIGHT_LIGHT
         }));
+    }
+
+    #[test]
+    fn debug_string_reorders_only_for_a_selected_rtl_language() {
+        let billboard = DebugTextBillboard::centered([0.0; 3], "123-", [255; 4]);
+        let mut glyphs = bidirectional_glyphs();
+        let logical =
+            build_debug_text_mesh_for_layer([billboard.clone()].iter(), &glyphs, camera(), false);
+        let logical_uvs = logical
+            .vertices
+            .chunks_exact(4)
+            .map(|vertices| vertices[0].uv[0])
+            .collect::<Vec<_>>();
+        assert_eq!(logical_uvs, [0.1, 0.2, 0.3, 0.4]);
+
+        glyphs.set_default_right_to_left(true);
+        let visual = build_debug_text_mesh_for_layer([billboard].iter(), &glyphs, camera(), false);
+        let visual_uvs = visual
+            .vertices
+            .chunks_exact(4)
+            .map(|vertices| vertices[0].uv[0])
+            .collect::<Vec<_>>();
+        assert_eq!(visual_uvs, [0.4, 0.1, 0.2, 0.3]);
+        assert_eq!(
+            logical.vertices[0].position, visual.vertices[0].position,
+            "Font.width(String) keeps logical centering in either direction"
+        );
     }
 
     #[test]

@@ -162,6 +162,15 @@ fn load_map_text_fonts(roots: &PackRoots) -> Result<HudFontGlyphBook> {
     Ok(load_hud_font_atlas(roots)?.fonts)
 }
 
+fn set_map_text_direction(
+    map_text_fonts: &mut Option<HudFontGlyphBook>,
+    default_right_to_left: bool,
+) {
+    if let Some(fonts) = map_text_fonts.as_mut() {
+        fonts.set_default_right_to_left(default_right_to_left);
+    }
+}
+
 #[cfg(any(test, feature = "test-support"))]
 fn test_map_text_fonts() -> HudFontGlyphBook {
     let mut glyphs = HudFontGlyphMap::new();
@@ -819,13 +828,14 @@ impl NativeItemRuntime {
                 err
             })
             .unwrap_or_default();
-        let map_text_fonts = load_map_text_fonts(roots)
+        let mut map_text_fonts = load_map_text_fonts(roots)
             .context("load shared world-text font metrics")
             .map_err(|err| {
                 tracing::warn!(?err, "continuing without native world text");
                 err
             })
             .ok();
+        set_map_text_direction(&mut map_text_fonts, language.is_bidirectional());
         Self::from_loaded(
             item_models,
             cuboid_models,

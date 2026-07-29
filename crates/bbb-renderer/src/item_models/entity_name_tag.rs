@@ -13,7 +13,7 @@ use crate::{CameraPose, EntityModelInstance, Renderer, WorldTextRun};
 
 use super::display_text::{
     append_mesh, append_quad, append_untextured_rect, argb_to_color, display_text_glyph,
-    display_text_runs_width, text_argb,
+    display_text_runs_width, text_argb, visual_world_text_runs,
 };
 use super::{ItemModelMesh, ItemModelVertex};
 
@@ -181,7 +181,10 @@ fn bake_entity_name_tag_line(
     fonts: &HudFontGlyphBook,
     obfuscated_seed: u64,
 ) -> Option<EntityNameTagSurface> {
+    // NameTagFeatureRenderer centers from `Font.width(Component)` (logical
+    // order), then Font draws the Component's visual-order sequence.
     let width = display_text_runs_width(runs, fonts);
+    let visual_runs = visual_world_text_runs(runs, fonts);
     let name_lift = if lift_for_below_name {
         ENTITY_NAME_TAG_SCORE_TO_NAME_WORLD_LIFT
     } else {
@@ -226,16 +229,24 @@ fn bake_entity_name_tag_line(
     let line_seed = obfuscated_seed.wrapping_add(submit_sequence);
     let normal = bake_layer_mesh(
         transform,
-        runs,
+        &visual_runs,
         width,
         line_offset,
         &normal_layer,
         fonts,
         line_seed,
     );
-    let see_through = see_through_layer
-        .as_ref()
-        .map(|layer| bake_layer_mesh(transform, runs, width, line_offset, layer, fonts, line_seed));
+    let see_through = see_through_layer.as_ref().map(|layer| {
+        bake_layer_mesh(
+            transform,
+            &visual_runs,
+            width,
+            line_offset,
+            layer,
+            fonts,
+            line_seed,
+        )
+    });
     let surface = EntityNameTagSurface {
         submission: EntityNameTagSubmission {
             entity_id,
@@ -434,6 +445,31 @@ mod tests {
         )
     }
 
+    fn bidirectional_fonts() -> HudFontGlyphBook {
+        let mut glyphs = HudFontGlyphMap::new();
+        for (ch, min_x) in [('1', 0.1), ('2', 0.2), ('3', 0.3), ('-', 0.4), ('?', 0.5)] {
+            glyphs.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    uv: HudUvRect {
+                        min: [min_x, 0.0],
+                        max: [min_x + 0.05, 0.5],
+                    },
+                    width: 5,
+                    height: 8,
+                    advance: 6,
+                    ascent: 7,
+                },
+            );
+        }
+        let mut fonts = HudFontGlyphBook::from_fonts(
+            "minecraft:default",
+            BTreeMap::from([("minecraft:default".to_string(), glyphs)]),
+        );
+        fonts.set_default_right_to_left(true);
+        fonts
+    }
+
     fn camera() -> CameraPose {
         CameraPose {
             position: [0.0, 0.0, 0.0],
@@ -476,6 +512,35 @@ mod tests {
         assert_eq!(see.background_argb, 0x3F00_0000);
         assert_eq!(see.light, [1.0 / 15.0, 0.6]);
         assert!((surface.submission.transform.w_axis.y - 4.3).abs() < 1.0e-6);
+    }
+
+    #[test]
+    fn entity_name_tag_centers_logical_width_and_draws_visual_glyph_order() {
+        let surfaces = bake_entity_name_tag_surfaces(
+            7,
+            0,
+            [0.0; 3],
+            1.0,
+            0,
+            4.0,
+            false,
+            &[run("123-")],
+            None,
+            15 << 20,
+            camera(),
+            &bidirectional_fonts(),
+            0,
+        );
+        let surface = &surfaces[0];
+        assert_eq!(surface.submission.runs[0].text, "123-");
+        assert_eq!(surface.submission.width, 24);
+        let glyph_uvs = surface
+            .normal
+            .vertices
+            .chunks_exact(4)
+            .map(|vertices| vertices[0].uv[0])
+            .collect::<Vec<_>>();
+        assert_eq!(glyph_uvs, [0.4, 0.1, 0.2, 0.3]);
     }
 
     #[test]

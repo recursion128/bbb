@@ -17,7 +17,7 @@ use super::ITEM_MODEL_PIPELINE_CULL_MODE;
 #[cfg(test)]
 use super::{ItemModelMesh, ItemModelVertex};
 
-use bbb_render_types::vanilla_map_decoration_type;
+use bbb_render_types::{vanilla_map_decoration_type, visual_order};
 pub use bbb_render_types::{
     FirstPersonMapBackgroundKind, FirstPersonMapBackgroundTexture, ItemFrameMapDecorationTexture,
     VanillaMapDecorationType as ItemFrameMapDecorationType,
@@ -1213,6 +1213,10 @@ fn bake_map_text_surface(
     }
     let text = text.into();
     let width = item_frame_map_text_width(&text, glyphs)? as f32;
+    // MapRenderer positions/scales from `Font.width(Component)` in logical
+    // order, then submits `Component.getVisualOrderText()` for glyph output.
+    let logical = text.chars().map(|ch| (ch, ())).collect::<Vec<_>>();
+    let visual = visual_order(&logical, glyphs.default_right_to_left());
     let scale = (25.0 / width).clamp(0.0, 6.0 / 9.0);
     let transform = map_transform
         * Mat4::from_translation(Vec3::new(
@@ -1223,11 +1227,11 @@ fn bake_map_text_surface(
         * Mat4::from_scale(Vec3::new(scale, scale, -1.0))
         * Mat4::from_translation(Vec3::new(0.0, 0.0, 0.1));
 
-    let mut glyph_instances = Vec::with_capacity(text.chars().count());
+    let mut glyph_instances = Vec::with_capacity(visual.len());
     #[cfg(test)]
     let mut mesh = ItemModelMesh::new();
     let mut pen_x = 0.0;
-    for ch in text.chars() {
+    for (ch, ()) in visual {
         let glyph = item_frame_map_text_glyph(ch, glyphs);
         if glyph.width > 0 && glyph.height > 0 {
             let x0 = pen_x;
@@ -3237,6 +3241,48 @@ mod tests {
         // CJK stays outside the bitmap pages (unihex deferred): still `?`.
         assert_eq!(item_frame_map_text_width("钻", &glyphs), Some(5));
         assert_eq!(item_frame_map_text_width("", &glyphs), None);
+    }
+
+    #[test]
+    fn map_text_positions_from_logical_width_and_draws_visual_glyph_order() {
+        let mut glyphs = HudFontGlyphMap::new();
+        for (ch, min_x) in [('1', 0.1), ('2', 0.2), ('3', 0.3), ('-', 0.4), ('?', 0.5)] {
+            glyphs.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    uv: crate::HudUvRect {
+                        min: [min_x, 0.0],
+                        max: [min_x + 0.05, 0.5],
+                    },
+                    width: 5,
+                    height: 8,
+                    advance: 6,
+                    ascent: 7,
+                },
+            );
+        }
+        glyphs.set_default_right_to_left(true);
+
+        let surface = bake_item_frame_map_text_surface(
+            1,
+            "123-",
+            0,
+            0,
+            0,
+            Mat4::IDENTITY,
+            ITEM_MODEL_FULL_BRIGHT_LIGHT,
+            0,
+            &glyphs,
+        )
+        .unwrap();
+        assert_eq!(surface.submission.text, "123-");
+        assert_eq!(surface.submission.width, 24.0);
+        let glyph_uvs = surface
+            .glyphs
+            .iter()
+            .map(|glyph| glyph.uv.min[0])
+            .collect::<Vec<_>>();
+        assert_eq!(glyph_uvs, [0.4, 0.1, 0.2, 0.3]);
     }
 
     #[test]

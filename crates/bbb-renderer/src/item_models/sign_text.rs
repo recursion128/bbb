@@ -12,7 +12,7 @@
 
 use glam::{Mat4, Vec3};
 
-use bbb_render_types::HudStyledTextRun;
+use bbb_render_types::{visual_order, HudStyledTextRun};
 
 use crate::entity_models::{sign_base_transformation, SignModelAttachment};
 use crate::{HudAsciiGlyph, HudFontGlyphMap, Renderer};
@@ -226,6 +226,17 @@ fn sign_text_glyph(ch: char, glyphs: &HudFontGlyphMap) -> HudAsciiGlyph {
         .unwrap_or_default()
 }
 
+fn visual_sign_line<'a>(
+    runs: &'a [HudStyledTextRun],
+    glyphs: &HudFontGlyphMap,
+) -> Vec<(char, &'a HudStyledTextRun)> {
+    let logical = runs
+        .iter()
+        .flat_map(|run| run.text.chars().map(move |ch| (ch, run)))
+        .collect::<Vec<_>>();
+    visual_order(&logical, glyphs.default_right_to_left())
+}
+
 /// Bakes one sign face's text into world-space glyph quads, transcribing
 /// `AbstractSignRenderer.submitSignText`:
 /// - each line is width-truncated to `getMaxTextLineWidth()` and centred at
@@ -263,7 +274,10 @@ pub fn bake_sign_text_surface(
     let mut mesh = ItemModelMesh::new();
     for (line_index, line) in lines.iter().enumerate() {
         let runs = truncate_sign_line_runs_to_width(line, max_width, glyphs);
-        let width = sign_line_runs_width(&runs, glyphs);
+        let visual = visual_sign_line(&runs, glyphs);
+        let width = visual.iter().fold(0_u32, |width, (ch, run)| {
+            width.saturating_add(sign_text_glyph(*ch, glyphs).styled_advance(run.style))
+        });
         if width == 0 {
             continue;
         }
@@ -271,31 +285,29 @@ pub fn bake_sign_text_surface(
         // division before the float widening).
         let mut pen_x = (-(width as i32) / 2) as f32;
         let y = (line_index as i32 * line_height - sign_midpoint) as f32;
-        for run in &runs {
+        for (ch, run) in visual {
             let color = rgb_to_color(run.color.unwrap_or(base_color));
-            for ch in run.text.chars() {
-                let glyph = sign_text_glyph(ch, glyphs);
-                if glyph.width > 0 && glyph.height > 0 {
-                    for quad in glyph.styled_quads(pen_x, y, run.style, false) {
-                        // `styled_quads` corners are [TL, BL, BR, TR].
-                        let corners = quad.corners.map(|[x, y]| {
-                            transform.transform_point3(Vec3::new(x, y, 0.0)).to_array()
-                        });
-                        mesh.append_raw_textured_quad(
-                            corners,
-                            [
-                                [quad.uv.min[0], quad.uv.min[1]],
-                                [quad.uv.min[0], quad.uv.max[1]],
-                                [quad.uv.max[0], quad.uv.max[1]],
-                                [quad.uv.max[0], quad.uv.min[1]],
-                            ],
-                            color,
-                            light,
-                        );
-                    }
+            let glyph = sign_text_glyph(ch, glyphs);
+            if glyph.width > 0 && glyph.height > 0 {
+                for quad in glyph.styled_quads(pen_x, y, run.style, false) {
+                    // `styled_quads` corners are [TL, BL, BR, TR].
+                    let corners = quad
+                        .corners
+                        .map(|[x, y]| transform.transform_point3(Vec3::new(x, y, 0.0)).to_array());
+                    mesh.append_raw_textured_quad(
+                        corners,
+                        [
+                            [quad.uv.min[0], quad.uv.min[1]],
+                            [quad.uv.min[0], quad.uv.max[1]],
+                            [quad.uv.max[0], quad.uv.max[1]],
+                            [quad.uv.max[0], quad.uv.min[1]],
+                        ],
+                        color,
+                        light,
+                    );
                 }
-                pen_x += glyph.styled_advance(run.style) as f32;
             }
+            pen_x += glyph.styled_advance(run.style) as f32;
         }
     }
     if mesh.is_empty() {
@@ -404,6 +416,27 @@ mod tests {
                 },
             );
         }
+        glyphs
+    }
+
+    fn bidirectional_glyphs() -> HudFontGlyphMap {
+        let mut glyphs = HudFontGlyphMap::new();
+        for (ch, min_x) in [('1', 0.1), ('2', 0.2), ('3', 0.3), ('-', 0.4), ('?', 0.5)] {
+            glyphs.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    uv: HudUvRect {
+                        min: [min_x, 0.0],
+                        max: [min_x + 0.05, 0.5],
+                    },
+                    width: 5,
+                    height: 8,
+                    advance: 6,
+                    ascent: 7,
+                },
+            );
+        }
+        glyphs.set_default_right_to_left(true);
         glyphs
     }
 
@@ -564,6 +597,36 @@ mod tests {
             line2_tl,
             Vec3::new(0.5 - 3.0 * 0.010_416_667, 0.833_333_34, 0.546_666_67),
         );
+    }
+
+    #[test]
+    fn sign_text_truncates_logically_then_draws_the_completed_line_in_visual_order() {
+        let glyphs = bidirectional_glyphs();
+        let logical = plain_runs("123-");
+        assert_eq!(
+            truncate_sign_line_runs_to_width(&logical, SIGN_MAX_TEXT_LINE_WIDTH, &glyphs)[0].text,
+            "123-"
+        );
+
+        let surface = bake_sign_text_surface(
+            [0.0; 3],
+            SignModelAttachment::Standing,
+            0.0,
+            true,
+            &[logical, Vec::new(), Vec::new(), Vec::new()],
+            0,
+            false,
+            [0.0, 1.0],
+            &glyphs,
+        )
+        .unwrap();
+        let glyph_uvs = surface
+            .mesh
+            .vertices
+            .chunks_exact(4)
+            .map(|vertices| vertices[0].uv[0])
+            .collect::<Vec<_>>();
+        assert_eq!(glyph_uvs, [0.4, 0.1, 0.2, 0.3]);
     }
 
     #[test]

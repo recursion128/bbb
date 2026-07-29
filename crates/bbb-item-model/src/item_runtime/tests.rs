@@ -31,6 +31,18 @@ use std::{
 };
 
 #[test]
+fn world_text_font_direction_tracks_the_selected_language_owner() {
+    let mut fonts = Some(test_map_text_fonts());
+    assert!(!fonts.as_ref().unwrap().default_right_to_left());
+
+    set_map_text_direction(&mut fonts, true);
+    assert!(fonts.as_ref().unwrap().default_right_to_left());
+
+    set_map_text_direction(&mut fonts, false);
+    assert!(!fonts.as_ref().unwrap().default_right_to_left());
+}
+
+#[test]
 fn client_item_swap_properties_follow_effective_stack_model_and_projection() {
     let mut runtime = NativeItemRuntime::empty_for_test().with_vanilla_item_registry_for_test();
     runtime.client_item_properties.insert(

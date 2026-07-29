@@ -5,7 +5,7 @@
 //! untextured background before font glyphs. Normal text uses the
 //! `text_polygon_offset` depth state; see-through text disables depth and fog.
 
-use bbb_render_types::{HudFontGlyphBook, HudObfuscatedRandom};
+use bbb_render_types::{visual_order, HudFontGlyphBook, HudObfuscatedRandom};
 use glam::{Mat4, Vec3};
 
 use crate::pipeline_builder::{depth_stencil_state, RenderPipelineBuilder};
@@ -174,6 +174,23 @@ fn push_styled_char(output: &mut Vec<WorldTextRun>, source: &WorldTextRun, ch: c
     }
 }
 
+/// Applies vanilla `FormattedBidiReorder` to one completed Component line
+/// while retaining the source style/font metadata on each visual codepoint.
+pub(super) fn visual_world_text_runs(
+    runs: &[WorldTextRun],
+    fonts: &HudFontGlyphBook,
+) -> Vec<WorldTextRun> {
+    let logical = runs
+        .iter()
+        .flat_map(|run| run.text.chars().map(move |ch| (ch, run)))
+        .collect::<Vec<_>>();
+    let mut visual_runs = Vec::new();
+    for (ch, source) in visual_order(&logical, fonts.default_right_to_left()) {
+        push_styled_char(&mut visual_runs, source, ch);
+    }
+    visual_runs
+}
+
 /// Style-preserving transcription of `StringSplitter.splitLines` for the
 /// already flattened component runs used by the native renderer. The width is
 /// clamped to one pixel, spaces/newlines at a break are consumed, the first
@@ -324,7 +341,14 @@ pub fn bake_display_text_surface(
     fonts: &HudFontGlyphBook,
     obfuscated_seed: u64,
 ) -> Option<DisplayTextSurface> {
-    let lines = split_display_text_lines(runs, line_width, fonts);
+    let lines = split_display_text_lines(runs, line_width, fonts)
+        .into_iter()
+        .map(|line| {
+            let runs = visual_world_text_runs(&line.runs, fonts);
+            let width = display_text_runs_width(&runs, fonts);
+            DisplayTextLine { runs, width }
+        })
+        .collect::<Vec<_>>();
     if lines.is_empty() {
         return None;
     }
@@ -876,6 +900,31 @@ mod tests {
         )
     }
 
+    fn bidirectional_fonts() -> HudFontGlyphBook {
+        let mut glyphs = HudFontGlyphMap::new();
+        for (ch, min_x) in [('1', 0.1), ('2', 0.2), ('3', 0.3), ('-', 0.4), ('?', 0.5)] {
+            glyphs.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    uv: HudUvRect {
+                        min: [min_x, 0.0],
+                        max: [min_x + 0.05, 0.5],
+                    },
+                    width: 5,
+                    height: 8,
+                    advance: 6,
+                    ascent: 7,
+                },
+            );
+        }
+        let mut fonts = HudFontGlyphBook::from_fonts(
+            "minecraft:default",
+            BTreeMap::from([("minecraft:default".to_string(), glyphs)]),
+        );
+        fonts.set_default_right_to_left(true);
+        fonts
+    }
+
     #[test]
     fn display_text_wraps_spaces_hard_breaks_and_terminal_newlines() {
         let fonts = fonts();
@@ -893,6 +942,39 @@ mod tests {
         let lines = split_display_text_lines(&[WorldTextRun::plain("a\n")], 100, &fonts);
         assert_eq!(lines.len(), 2);
         assert!(lines[1].runs.is_empty());
+    }
+
+    #[test]
+    fn display_text_wraps_logically_then_measures_and_draws_visual_lines() {
+        let fonts = bidirectional_fonts();
+        let logical = [WorldTextRun::plain("123-")];
+        let split = split_display_text_lines(&logical, 200, &fonts);
+        assert_eq!(split[0].runs[0].text, "123-");
+
+        let surface = bake_display_text_surface(
+            1,
+            0,
+            None,
+            Mat4::IDENTITY,
+            &logical,
+            200,
+            0,
+            -1,
+            0,
+            [0.0, 1.0],
+            &fonts,
+            0,
+        )
+        .unwrap();
+        assert_eq!(surface.submission.lines[0].runs[0].text, "-123");
+        assert_eq!(surface.submission.lines[0].width, 24);
+        let glyph_uvs = surface
+            .text
+            .vertices
+            .chunks_exact(4)
+            .map(|vertices| vertices[0].uv[0])
+            .collect::<Vec<_>>();
+        assert_eq!(glyph_uvs, [0.4, 0.1, 0.2, 0.3]);
     }
 
     #[test]
