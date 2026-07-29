@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use bbb_item_model::NativeItemRuntime;
 use bbb_protocol::{
     heightmap_types::VANILLA_HEIGHTMAP_MOTION_BLOCKING_NO_LEAVES_ID,
@@ -13,6 +15,7 @@ use crate::{
     audio_runtime::AudioEventSink,
     environment_audio_runtime::sound_holder_state,
     particle_runtime::{
+        pointed_dripstone_drip_context, pointed_dripstone_particle_position,
         simple_client_particle_options, EnvironmentParticleSpawn, LevelParticleSpawnContext,
         ParticleBiomeSampler, ParticleEventSink,
     },
@@ -318,6 +321,15 @@ impl EnvironmentAnimateRuntime {
                         .is_some_and(|value| value == "true"),
                     animate_random,
                     audio,
+                    spawns,
+                );
+            }
+            "minecraft:pointed_dripstone" => {
+                append_pointed_dripstone_animate_effect(
+                    world,
+                    pos,
+                    &block.block_properties,
+                    animate_random,
                     spawns,
                 );
             }
@@ -1238,6 +1250,39 @@ fn append_dried_ghast_animate_effects(
         });
     }
     sound
+}
+
+fn append_pointed_dripstone_animate_effect(
+    world: &WorldStore,
+    pos: BlockPos,
+    properties: &BTreeMap<String, String>,
+    random: &mut LevelEventSoundRandomState,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) {
+    if properties.get("vertical_direction").map(String::as_str) != Some("down")
+        || properties.get("thickness").map(String::as_str) != Some("tip")
+        || properties.get("waterlogged").map(String::as_str) != Some("false")
+    {
+        return;
+    }
+
+    let random_value = random.next_float();
+    if random_value > 0.12 {
+        return;
+    }
+    let Some(context) = pointed_dripstone_drip_context(world, pos) else {
+        return;
+    };
+    if random_value >= 0.02 && context.fluid_kind.is_none() {
+        return;
+    }
+
+    spawns.push(EnvironmentParticleSpawn {
+        particle: context.particle,
+        position: pointed_dripstone_particle_position(pos),
+        velocity: [0.0; 3],
+        always_show: false,
+    });
 }
 
 fn append_ambient_particle_spawns(
@@ -2569,6 +2614,236 @@ mod tests {
             runtime.level_random.next_long(),
             expected_level_random.next_long(),
             "dried-ghast playLocalSound consumes the shared level seed without an audio sink"
+        );
+    }
+
+    #[test]
+    fn pointed_dripstone_animate_effects_preserve_fluid_scan_threshold_and_random_order() {
+        let mut world = world_with_ambient_particles();
+        let pos = BlockPos { x: 8, y: 32, z: 8 };
+        let tip_properties = BTreeMap::from([
+            ("thickness".to_string(), "tip".to_string()),
+            ("vertical_direction".to_string(), "down".to_string()),
+            ("waterlogged".to_string(), "false".to_string()),
+        ]);
+        let tip_id = block_state_id(
+            "minecraft:pointed_dripstone",
+            &[
+                ("thickness", "tip"),
+                ("vertical_direction", "down"),
+                ("waterlogged", "false"),
+            ],
+        );
+        let body_id = block_state_id(
+            "minecraft:pointed_dripstone",
+            &[
+                ("thickness", "middle"),
+                ("vertical_direction", "down"),
+                ("waterlogged", "false"),
+            ],
+        );
+        let waterlogged_tip_id = block_state_id(
+            "minecraft:pointed_dripstone",
+            &[
+                ("thickness", "tip"),
+                ("vertical_direction", "down"),
+                ("waterlogged", "true"),
+            ],
+        );
+        let stone_id = block_state_id("minecraft:stone", &[]);
+        let water_id = block_state_id("minecraft:water", &[("level", "0")]);
+        let lava_id = block_state_id("minecraft:lava", &[("level", "0")]);
+        let mud_id = block_state_id("minecraft:mud", &[]);
+        let fluid_seed = (0..100_000)
+            .find(|seed| {
+                let value = LevelEventSoundRandomState::with_seed(*seed).next_float();
+                (0.02..=0.12).contains(&value)
+            })
+            .expect("deterministic fluid-backed dripstone particle seed");
+        let rare_seed = (0..100_000)
+            .find(|seed| LevelEventSoundRandomState::with_seed(*seed).next_float() < 0.02)
+            .expect("deterministic empty-fluid dripstone particle seed");
+        let no_effect_seed = (0..100_000)
+            .find(|seed| LevelEventSoundRandomState::with_seed(*seed).next_float() > 0.12)
+            .expect("deterministic dripstone no-effect seed");
+
+        set_block(&mut world, pos, tip_id);
+        set_block(&mut world, BlockPos { y: 33, ..pos }, body_id);
+        set_block(&mut world, BlockPos { y: 34, ..pos }, stone_id);
+        set_block(&mut world, BlockPos { y: 35, ..pos }, water_id);
+        let mut water_actual = LevelEventSoundRandomState::with_seed(fluid_seed);
+        let mut water_expected = LevelEventSoundRandomState::with_seed(fluid_seed);
+        let mut water_spawns = Vec::new();
+        append_pointed_dripstone_animate_effect(
+            &world,
+            pos,
+            &tip_properties,
+            &mut water_actual,
+            &mut water_spawns,
+        );
+        assert!((0.02..=0.12).contains(&water_expected.next_float()));
+        assert_eq!(water_spawns.len(), 1);
+        assert_eq!(
+            water_spawns[0].particle.resource_id,
+            "minecraft:dripping_dripstone_water"
+        );
+        assert_eq!(
+            water_spawns[0].position,
+            pointed_dripstone_particle_position(pos)
+        );
+        assert_eq!(water_spawns[0].velocity, [0.0; 3]);
+        assert!(!water_spawns[0].always_show);
+        assert_eq!(water_actual.next_long(), water_expected.next_long());
+
+        set_block(&mut world, BlockPos { y: 35, ..pos }, lava_id);
+        let mut lava_actual = LevelEventSoundRandomState::with_seed(fluid_seed);
+        let mut lava_expected = LevelEventSoundRandomState::with_seed(fluid_seed);
+        let mut lava_spawns = Vec::new();
+        append_pointed_dripstone_animate_effect(
+            &world,
+            pos,
+            &tip_properties,
+            &mut lava_actual,
+            &mut lava_spawns,
+        );
+        let _ = lava_expected.next_float();
+        assert_eq!(lava_spawns.len(), 1);
+        assert_eq!(
+            lava_spawns[0].particle.resource_id,
+            "minecraft:dripping_dripstone_lava"
+        );
+        assert_eq!(lava_actual.next_long(), lava_expected.next_long());
+
+        set_block(&mut world, BlockPos { y: 35, ..pos }, mud_id);
+        let mut mud_actual = LevelEventSoundRandomState::with_seed(fluid_seed);
+        let mut mud_expected = LevelEventSoundRandomState::with_seed(fluid_seed);
+        let mut mud_spawns = Vec::new();
+        append_pointed_dripstone_animate_effect(
+            &world,
+            pos,
+            &tip_properties,
+            &mut mud_actual,
+            &mut mud_spawns,
+        );
+        let _ = mud_expected.next_float();
+        assert_eq!(mud_spawns.len(), 1);
+        assert_eq!(
+            mud_spawns[0].particle.resource_id,
+            "minecraft:dripping_dripstone_water"
+        );
+        assert_eq!(mud_actual.next_long(), mud_expected.next_long());
+
+        set_block(&mut world, BlockPos { y: 35, ..pos }, 0);
+        let mut common_actual = LevelEventSoundRandomState::with_seed(fluid_seed);
+        let mut common_expected = LevelEventSoundRandomState::with_seed(fluid_seed);
+        let mut common_spawns = Vec::new();
+        append_pointed_dripstone_animate_effect(
+            &world,
+            pos,
+            &tip_properties,
+            &mut common_actual,
+            &mut common_spawns,
+        );
+        let common_value = common_expected.next_float();
+        assert!((0.02..=0.12).contains(&common_value));
+        assert!(common_spawns.is_empty());
+        assert_eq!(common_actual.next_long(), common_expected.next_long());
+
+        let mut rare_actual = LevelEventSoundRandomState::with_seed(rare_seed);
+        let mut rare_expected = LevelEventSoundRandomState::with_seed(rare_seed);
+        let mut rare_spawns = Vec::new();
+        append_pointed_dripstone_animate_effect(
+            &world,
+            pos,
+            &tip_properties,
+            &mut rare_actual,
+            &mut rare_spawns,
+        );
+        assert!(rare_expected.next_float() < 0.02);
+        assert_eq!(rare_spawns.len(), 1);
+        assert_eq!(
+            rare_spawns[0].particle.resource_id,
+            "minecraft:dripping_dripstone_water"
+        );
+        assert_eq!(rare_actual.next_long(), rare_expected.next_long());
+
+        let mut no_effect_actual = LevelEventSoundRandomState::with_seed(no_effect_seed);
+        let mut no_effect_expected = LevelEventSoundRandomState::with_seed(no_effect_seed);
+        let mut no_effect_spawns = Vec::new();
+        append_pointed_dripstone_animate_effect(
+            &world,
+            pos,
+            &tip_properties,
+            &mut no_effect_actual,
+            &mut no_effect_spawns,
+        );
+        assert!(no_effect_expected.next_float() > 0.12);
+        assert!(no_effect_spawns.is_empty());
+        assert_eq!(
+            no_effect_actual.next_long(),
+            no_effect_expected.next_long(),
+            "eligible states always consume exactly one threshold draw"
+        );
+
+        let waterlogged_properties = BTreeMap::from([
+            ("thickness".to_string(), "tip".to_string()),
+            ("vertical_direction".to_string(), "down".to_string()),
+            ("waterlogged".to_string(), "true".to_string()),
+        ]);
+        set_block(&mut world, pos, waterlogged_tip_id);
+        let mut waterlogged_actual = LevelEventSoundRandomState::with_seed(rare_seed);
+        let mut waterlogged_expected = LevelEventSoundRandomState::with_seed(rare_seed);
+        let mut waterlogged_spawns = Vec::new();
+        append_pointed_dripstone_animate_effect(
+            &world,
+            pos,
+            &waterlogged_properties,
+            &mut waterlogged_actual,
+            &mut waterlogged_spawns,
+        );
+        assert!(waterlogged_spawns.is_empty());
+        assert_eq!(
+            waterlogged_actual.next_long(),
+            waterlogged_expected.next_long(),
+            "ineligible states consume no animate random"
+        );
+
+        set_block(&mut world, pos, tip_id);
+        for y in 33..42 {
+            set_block(&mut world, BlockPos { y, ..pos }, body_id);
+        }
+        set_block(&mut world, BlockPos { y: 42, ..pos }, stone_id);
+        set_block(&mut world, BlockPos { y: 43, ..pos }, water_id);
+        let mut boundary_actual = LevelEventSoundRandomState::with_seed(fluid_seed);
+        let mut boundary_spawns = Vec::new();
+        append_pointed_dripstone_animate_effect(
+            &world,
+            pos,
+            &tip_properties,
+            &mut boundary_actual,
+            &mut boundary_spawns,
+        );
+        assert_eq!(
+            boundary_spawns.len(),
+            1,
+            "the first non-dripstone root at search step ten is included"
+        );
+
+        set_block(&mut world, BlockPos { y: 42, ..pos }, body_id);
+        set_block(&mut world, BlockPos { y: 43, ..pos }, stone_id);
+        set_block(&mut world, BlockPos { y: 44, ..pos }, water_id);
+        let mut beyond_actual = LevelEventSoundRandomState::with_seed(fluid_seed);
+        let mut beyond_spawns = Vec::new();
+        append_pointed_dripstone_animate_effect(
+            &world,
+            pos,
+            &tip_properties,
+            &mut beyond_actual,
+            &mut beyond_spawns,
+        );
+        assert!(
+            beyond_spawns.is_empty(),
+            "a root beyond Vanilla's exclusive maxSteps bound is ignored"
         );
     }
 

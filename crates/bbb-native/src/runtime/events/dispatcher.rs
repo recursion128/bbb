@@ -20,8 +20,8 @@ use bbb_world::{
     LivingEntityDrownParticleState, LivingEntityItemBreakState, LivingEntityPoofParticleState,
     LivingEntityPortalParticleState, LlamaSpitRecreationParticleState, NoteBlockParticleState,
     PlayApplyEffects, RabbitSprintParticleState, RavagerRoarParticleState,
-    SnowballHitParticleState, TakeItemEntityPickupParticleState, TerrainFluidKind,
-    ThrownEggHitParticleState, VillagerParticleState, WitchMagicParticleState, WorldStore,
+    SnowballHitParticleState, TakeItemEntityPickupParticleState, ThrownEggHitParticleState,
+    VillagerParticleState, WitchMagicParticleState, WorldStore,
 };
 use tokio::sync::mpsc;
 
@@ -31,7 +31,7 @@ use crate::input::{
     queue_vehicle_move_command,
 };
 use crate::particle_runtime::{
-    simple_client_particle_options, vibration_entity_position_source_from_options,
+    pointed_dripstone_drip_context, vibration_entity_position_source_from_options,
     LevelEventGrowthParticleContext, LevelEventGrowthParticleMode, LevelEventGrowthParticleSupport,
     LevelEventParticleContext, LevelParticleEntityPosition, LevelParticleSpawnContext,
     ParticleBiomeSampler, ParticleEventSink, TrackingEmitterParticleState,
@@ -48,7 +48,6 @@ const PLANT_GROWTH_LEVEL_EVENT: i32 = 1505;
 const BEE_GROWTH_PARTICLES_LEVEL_EVENT: i32 = 2011;
 const TURTLE_EGG_PLACEMENT_PARTICLES_LEVEL_EVENT: i32 = 2012;
 const VAULT_ACTIVATE_LEVEL_EVENT: i32 = 3015;
-const POINTED_DRIPSTONE_ROOT_SEARCH_LENGTH: i32 = 11;
 #[cfg(test)]
 pub(in crate::runtime) fn drain_net_events(
     rx: &mut mpsc::Receiver<NetEvent>,
@@ -1674,119 +1673,15 @@ fn dripstone_drip_particle_context(
     if event.event_type != DRIPSTONE_DRIP_LEVEL_EVENT {
         return None;
     }
-    let tip_pos = bbb_world::BlockPos {
-        x: event.pos.x,
-        y: event.pos.y,
-        z: event.pos.z,
-    };
-    let tip = world.probe_block(tip_pos)?;
-    if !block_probe_can_drip(&tip) {
-        return None;
-    }
-    let root_pos = pointed_dripstone_root_pos(world, tip_pos)?;
-    let above_root_pos = block_pos_above(root_pos)?;
-    let above_root = world.probe_block(above_root_pos)?;
-
-    if above_root.block_name.as_deref() == Some("minecraft:mud")
-        && !level_water_evaporates(world, above_root_pos)
-    {
-        return Some(simple_client_particle_options(
-            "minecraft:dripping_dripstone_water",
-        ));
-    }
-
-    match above_root.fluid.map(|fluid| fluid.kind) {
-        Some(TerrainFluidKind::Lava) => Some(simple_client_particle_options(
-            "minecraft:dripping_dripstone_lava",
-        )),
-        Some(TerrainFluidKind::Water) => Some(simple_client_particle_options(
-            "minecraft:dripping_dripstone_water",
-        )),
-        None => Some(default_dripstone_drip_particle(world, above_root_pos)),
-    }
-}
-
-fn pointed_dripstone_root_pos(
-    world: &WorldStore,
-    tip_pos: bbb_world::BlockPos,
-) -> Option<bbb_world::BlockPos> {
-    for step in 1..POINTED_DRIPSTONE_ROOT_SEARCH_LENGTH {
-        let pos = bbb_world::BlockPos {
-            x: tip_pos.x,
-            y: tip_pos.y.checked_add(step)?,
-            z: tip_pos.z,
-        };
-        let probe = world.probe_block(pos)?;
-        if probe.block_name.as_deref() != Some("minecraft:pointed_dripstone") {
-            return Some(pos);
-        }
-        if !block_probe_is_down_pointed_dripstone(&probe) {
-            return None;
-        }
-    }
-    None
-}
-
-fn block_probe_can_drip(probe: &bbb_world::BlockProbe) -> bool {
-    block_probe_is_down_pointed_dripstone(probe)
-        && probe.block_properties.get("thickness").map(String::as_str) == Some("tip")
-        && probe
-            .block_properties
-            .get("waterlogged")
-            .map(String::as_str)
-            == Some("false")
-}
-
-fn block_probe_is_down_pointed_dripstone(probe: &bbb_world::BlockProbe) -> bool {
-    probe.block_name.as_deref() == Some("minecraft:pointed_dripstone")
-        && probe
-            .block_properties
-            .get("vertical_direction")
-            .map(String::as_str)
-            == Some("down")
-}
-
-fn block_pos_above(pos: bbb_world::BlockPos) -> Option<bbb_world::BlockPos> {
-    Some(bbb_world::BlockPos {
-        x: pos.x,
-        y: pos.y.checked_add(1)?,
-        z: pos.z,
-    })
-}
-
-fn default_dripstone_drip_particle(
-    world: &WorldStore,
-    position: bbb_world::BlockPos,
-) -> ClientParticleOptions {
-    if let Some(particle) = world
-        .sampled_client_environment_attributes_at(
-            [
-                f64::from(position.x),
-                f64::from(position.y),
-                f64::from(position.z),
-            ],
-            bbb_world::EnvironmentBiomeSampling::Direct,
-        )
-        .ok()
-        .and_then(|attributes| attributes.default_dripstone_particle)
-    {
-        return particle;
-    }
-    if world
-        .registry_content(bbb_world::DIMENSION_TYPE_REGISTRY)
-        .is_some()
-    {
-        return simple_client_particle_options("minecraft:dripping_dripstone_water");
-    }
-    if level_water_evaporates(world, position) {
-        simple_client_particle_options("minecraft:dripping_dripstone_lava")
-    } else {
-        simple_client_particle_options("minecraft:dripping_dripstone_water")
-    }
-}
-
-fn level_water_evaporates(world: &WorldStore, position: bbb_world::BlockPos) -> bool {
-    world.water_evaporates_at(position)
+    pointed_dripstone_drip_context(
+        world,
+        bbb_world::BlockPos {
+            x: event.pos.x,
+            y: event.pos.y,
+            z: event.pos.z,
+        },
+    )
+    .map(|context| context.particle)
 }
 
 fn camera_audio_position_from_world(world: &WorldStore) -> Option<ProtocolVec3d> {

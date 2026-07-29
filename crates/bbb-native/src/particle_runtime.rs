@@ -1406,35 +1406,12 @@ fn growth_particle_support_bit(dx: i32, dz: i32) -> Option<u64> {
 }
 
 fn pointed_dripstone_drip_position(event: &LevelEvent) -> Vec3d {
-    let (x_offset, z_offset) = pointed_dripstone_xz_offset(event.pos.x, event.pos.z);
-    Vec3d {
-        x: f64::from(event.pos.x) + 0.5 + x_offset,
-        y: f64::from(event.pos.y) + POINTED_DRIPSTONE_DRIP_Y_OFFSET,
-        z: f64::from(event.pos.z) + 0.5 + z_offset,
-    }
-}
-
-fn pointed_dripstone_xz_offset(x: i32, z: i32) -> (f64, f64) {
-    let seed = java_block_position_seed(x, 0, z);
-    let x_offset = ((((seed & 15) as f32) / 15.0 - 0.5) * 0.5).clamp(
-        -POINTED_DRIPSTONE_MAX_HORIZONTAL_OFFSET,
-        POINTED_DRIPSTONE_MAX_HORIZONTAL_OFFSET,
-    );
-    let z_offset = ((((seed >> 8 & 15) as f32) / 15.0 - 0.5) * 0.5).clamp(
-        -POINTED_DRIPSTONE_MAX_HORIZONTAL_OFFSET,
-        POINTED_DRIPSTONE_MAX_HORIZONTAL_OFFSET,
-    );
-    (f64::from(x_offset), f64::from(z_offset))
-}
-
-fn java_block_position_seed(x: i32, y: i32, z: i32) -> i64 {
-    let seed = i64::from(x.wrapping_mul(3_129_871))
-        ^ i64::from(z).wrapping_mul(116_129_781)
-        ^ i64::from(y);
-    seed.wrapping_mul(seed)
-        .wrapping_mul(42_317_861)
-        .wrapping_add(seed.wrapping_mul(11))
-        >> 16
+    let [x, y, z] = pointed_dripstone_particle_position(WorldBlockPos {
+        x: event.pos.x,
+        y: event.pos.y,
+        z: event.pos.z,
+    });
+    Vec3d { x, y, z }
 }
 
 const BLOCK_FACE_DIRECTIONS: &[(i32, i32, i32)] = &[
@@ -1498,8 +1475,6 @@ const SCULK_SHRIEK_PARTICLE_COUNT: u32 = 10;
 const SCULK_SHRIEK_DELAY_STEP_TICKS: u32 = 5;
 const SMASH_ATTACK_CENTER_SPEED_SCALE: f64 = 0.2_f32 as f64;
 const SMASH_ATTACK_RING_SPEED_SCALE: f64 = 0.05_f32 as f64;
-const POINTED_DRIPSTONE_DRIP_Y_OFFSET: f64 = 0.25;
-const POINTED_DRIPSTONE_MAX_HORIZONTAL_OFFSET: f32 = 0.125;
 const GROWTH_PARTICLE_WIDE_SPREAD: f64 = 3.0;
 const GROWTH_PARTICLE_WIDE_HEIGHT: f64 = 1.0;
 const GROWTH_PARTICLE_WIDE_START_OFFSET: f64 = 0.5 - GROWTH_PARTICLE_WIDE_SPREAD;
@@ -1603,6 +1578,8 @@ impl LegacyRandom {
 
 mod atlas;
 mod block_map_color;
+mod dripstone;
+pub(crate) use dripstone::{pointed_dripstone_drip_context, pointed_dripstone_particle_position};
 mod environment;
 pub(crate) use environment::simple_client_particle_options;
 mod explosion;
