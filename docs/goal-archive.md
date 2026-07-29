@@ -754,3 +754,7 @@
   major collision 冲刺停止、摔落重置射线、床反弹与蜂蜜块落地音效已按
   Vanilla tick/move 顺序贯通，合同见
   `docs/archive/local-player-survival-physics-closeout-design.md`。
+- **2026-07-29（认证 Services 与玩家举报工程闭环）**：版本化用户 API、
+  代际安全的账号屏蔽同步、三类规范报告构建器、原生举报/草稿 UI、renderer
+  表面及可取消的异步提交已贯通；合同见
+  `docs/archive/player-reporting-services-design.md`。

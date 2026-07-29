@@ -46,6 +46,7 @@ pub(crate) enum PlatformEffect {
     StatsScreenInput(ScreenNarrationScheduleInput),
     RecipeBookInput(ScreenNarrationScheduleInput),
     SocialInteractionsInput(ScreenNarrationScheduleInput),
+    PlayerReportingInput(ScreenNarrationScheduleInput),
     GameEventScreenInput(ScreenNarrationScheduleInput),
     DeathScreenInput(ScreenNarrationScheduleInput),
     ChatNarration {

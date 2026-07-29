@@ -119,7 +119,9 @@ mod tests {
         EntityPlayerSkin, HudAsciiGlyph, HudComponentTextRun, HudDeathLinkConfirmationScreen,
         HudDeathMainScreen, HudDeathQuitConfirmationScreen, HudDeathScreen, HudDeathScreenButton,
         HudDemoPopupScreen, HudFontGlyphMap, HudGameEventButton, HudGameEventScreen,
-        HudNineSliceScaling, HudSocialInteractionsFocus,
+        HudNineSliceScaling, HudPlayerReportingControl, HudPlayerReportingControlKind,
+        HudPlayerReportingControlPlacement, HudPlayerReportingFocus, HudPlayerReportingRow,
+        HudPlayerReportingScreen, HudPlayerReportingScreenKind, HudSocialInteractionsFocus,
         HudSocialInteractionsLinkConfirmationScreen, HudSocialInteractionsMainScreen,
         HudSocialInteractionsPage, HudSocialInteractionsPlayer, HudSocialInteractionsPlayerAction,
         HudSocialInteractionsScreen, HudStyledTextRun, HudVignette, HudWinScreen, Renderer,
@@ -569,6 +571,8 @@ mod tests {
             removed,
             hidden,
             blocked: false,
+            reporting_enabled: true,
+            has_report_draft: id == 1,
             action: Some(if hidden {
                 HudSocialInteractionsPlayerAction::Show
             } else {
@@ -733,6 +737,99 @@ mod tests {
         assert!(
             first_link_button[0] > 80 && first_link_button[1] > 80,
             "link confirmation must draw its highlighted first button, got {first_link_button:?}"
+        );
+    }
+
+    #[test]
+    fn offscreen_player_reporting_draws_rows_and_shared_footer_controls() {
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer
+            .upload_hud_widget_button(1, 1, &[0, 220, 0, 255])
+            .expect("report button");
+        renderer
+            .upload_hud_widget_button_highlighted(1, 1, &[220, 220, 0, 255])
+            .expect("highlighted report button");
+        let mut glyphs = HudFontGlyphMap::new();
+        for ch in "ReportPlayerChatSkinNameCancel".chars() {
+            glyphs.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    width: 1,
+                    height: 1,
+                    advance: 2,
+                    ..HudAsciiGlyph::default()
+                },
+            );
+        }
+        renderer
+            .upload_hud_font_atlas(1, 1, &[255, 255, 255, 255], glyphs)
+            .expect("report font");
+        renderer.set_hud_player_reporting_screen(Some(HudPlayerReportingScreen {
+            generation: 12,
+            kind: HudPlayerReportingScreenKind::TypeChooser,
+            title: "Report Player".to_string(),
+            message: None,
+            status: None,
+            rows: vec![
+                HudPlayerReportingRow {
+                    focus: HudPlayerReportingFocus::ReportType(0),
+                    title: "Chat".to_string(),
+                    detail: None,
+                    selected: false,
+                    enabled: true,
+                },
+                HudPlayerReportingRow {
+                    focus: HudPlayerReportingFocus::ReportType(1),
+                    title: "Skin".to_string(),
+                    detail: None,
+                    selected: false,
+                    enabled: true,
+                },
+                HudPlayerReportingRow {
+                    focus: HudPlayerReportingFocus::ReportType(2),
+                    title: "Name".to_string(),
+                    detail: None,
+                    selected: false,
+                    enabled: true,
+                },
+            ],
+            controls: vec![HudPlayerReportingControl {
+                focus: HudPlayerReportingFocus::Cancel,
+                label: "Cancel".to_string(),
+                enabled: true,
+                placement: HudPlayerReportingControlPlacement::Footer,
+                kind: HudPlayerReportingControlKind::Button,
+            }],
+            scroll_amount: 0,
+            focus: HudPlayerReportingFocus::ReportType(0),
+            hovered: None,
+        }));
+
+        let pixels = renderer
+            .render_offscreen_frame()
+            .expect("player-reporting frame");
+        let outside = pixels.pixel(4, 4);
+        let focused_row = pixels.pixel(WIDTH / 2, 62);
+        let footer = pixels.pixel(WIDTH / 2, HEIGHT - 28);
+        assert!(
+            outside[2] < 100,
+            "reporting background must replace the ordinary clear color, got {outside:?}"
+        );
+        assert!(
+            focused_row[0] > outside[0].saturating_add(30),
+            "focused report row must draw over the background, got {focused_row:?}"
+        );
+        assert!(
+            footer[1] > footer[0].saturating_add(80),
+            "shared footer button geometry must render the normal sprite, got {footer:?}"
         );
     }
 

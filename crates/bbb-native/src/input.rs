@@ -186,6 +186,7 @@ mod minecart_command_block;
 mod mouse;
 mod movement;
 mod pause_screen;
+pub(crate) mod reporting;
 pub(crate) mod social;
 pub(crate) mod spectator_menu;
 mod structure_block;
@@ -742,6 +743,7 @@ pub(crate) struct ClientInputState {
     spectator_gui: spectator_menu::SpectatorGuiInputState,
     death_screen: death_screen::DeathScreenInputState,
     game_event_screen: game_event_screen::GameEventScreenInputState,
+    player_reporting: reporting::PlayerReportingInputState,
     social_interactions: social::SocialInteractionsInputState,
 }
 
@@ -1168,6 +1170,7 @@ impl ClientInputState {
             || world.current_book().is_some()
             || world.advancements_screen_is_open()
             || world.stats_screen_is_open()
+            || world.player_reporting_screen().is_some()
             || world.social_interactions_screen().is_some()
             || world.game_rules_screen().is_some()
             || world.death_screen().is_some()
@@ -1324,6 +1327,8 @@ impl ClientInputState {
             spectator_gui: self.spectator_gui.clone(),
             death_screen: self.death_screen.clone(),
             game_event_screen: self.game_event_screen.clone(),
+            player_reporting: self.player_reporting.clone(),
+            social_interactions: self.social_interactions.clone(),
             ..Self::default()
         })
     }
@@ -11547,6 +11552,10 @@ pub(crate) fn handle_key_input_with_item_runtime(
         return;
     }
 
+    if input.handle_player_reporting_key(world, code, just_pressed) {
+        return;
+    }
+
     if input.handle_social_interactions_key(world, code, just_pressed) {
         return;
     }
@@ -11995,6 +12004,7 @@ pub(crate) fn handle_text_input_with_item_runtime(
         || world.game_event_screen().is_some()
         || world.advancements_screen_is_open()
         || world.stats_screen_is_open()
+        || world.player_reporting_screen().is_some()
         || world.social_interactions_screen().is_some()
         || world.game_rules_screen().is_some()
     {

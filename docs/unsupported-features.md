@@ -52,13 +52,6 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
 
 Owner: `bbb-protocol` + `bbb-net` + `bbb-world` + `bbb-native`
 
-- Authenticated Services block-list synchronization and player-report
-  composition/submission remain external account/social boundaries. The native
-  `ChatListener` now owns receive-ability and secure-only gates, bounded delayed
-  delivery, trust tags, the 1,024-entry reporting log, rich HUD interaction, and
-  narrator delivery; startup hidden/blocked UUIDs are not a substitute for a
-  signed-in Services client or reporting UI. Active engineering contract:
-  `docs/player-reporting-services-design.md`.
 - Exact `show_item` / `show_entity` hover payloads and custom font ids are
   retained in canonical Components, but chat currently renders bounded
   name/id/count hover fallbacks and the active default font when a custom font

@@ -52,6 +52,7 @@ pub enum HudSocialInteractionsPage {
 pub enum HudSocialInteractionsPlayerAction {
     Hide,
     Show,
+    Report,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -91,6 +92,8 @@ pub struct HudSocialInteractionsPlayer {
     pub blocked: bool,
     /// Local-player rows have no hide/show control, matching Vanilla.
     pub action: Option<HudSocialInteractionsPlayerAction>,
+    pub reporting_enabled: bool,
+    pub has_report_draft: bool,
     pub status: Option<String>,
 }
 
@@ -352,6 +355,15 @@ fn row_action_rect(row: HudSocialInteractionsRect) -> HudSocialInteractionsRect 
     }
 }
 
+fn row_report_rect(row: HudSocialInteractionsRect) -> HudSocialInteractionsRect {
+    HudSocialInteractionsRect {
+        x: row.x + row.width - ACTION_SIZE - 4,
+        y: row.y + (row.height - ACTION_SIZE) / 2,
+        width: ACTION_SIZE,
+        height: ACTION_SIZE,
+    }
+}
+
 fn scrollbar_scroll_amount(layout: HudSocialInteractionsLayout, position: (f64, f64)) -> i32 {
     let Some(scrollbar) = layout.scrollbar else {
         return 0;
@@ -486,15 +498,25 @@ pub(super) fn hud_social_interactions_hit_target_at(
                 });
             } else {
                 screen.rows.iter().enumerate().find_map(|(index, player)| {
-                    let action = player.action?;
                     let row = row_rect(index, scroll_amount, surface_size);
-                    (row.intersects(layout.list_scissor)
-                        && layout.list_scissor.contains(position)
-                        && row_action_rect(row).contains(position))
-                    .then_some(HudSocialInteractionsFocus::Player {
-                        profile_id: player.profile_id,
-                        action,
-                    })
+                    if !row.intersects(layout.list_scissor)
+                        || !layout.list_scissor.contains(position)
+                    {
+                        return None;
+                    }
+                    if player.reporting_enabled && row_report_rect(row).contains(position) {
+                        return Some(HudSocialInteractionsFocus::Player {
+                            profile_id: player.profile_id,
+                            action: HudSocialInteractionsPlayerAction::Report,
+                        });
+                    }
+                    let action = player.action?;
+                    row_action_rect(row).contains(position).then_some(
+                        HudSocialInteractionsFocus::Player {
+                            profile_id: player.profile_id,
+                            action,
+                        },
+                    )
                 })?
             }
         }
@@ -1115,62 +1137,122 @@ fn push_player_row<'a>(
             [1.0, 1.0, 1.0, 140.0 / 255.0],
         );
     }
-    let Some(action) = player.action else {
+    if let Some(action) = player.action {
+        let focus = HudSocialInteractionsFocus::Player {
+            profile_id: player.profile_id,
+            action,
+        };
+        let highlighted = screen.focus == focus || screen.hovered == Some(focus);
+        let sprite = match (action, highlighted) {
+            (HudSocialInteractionsPlayerAction::Hide, false) => mute,
+            (HudSocialInteractionsPlayerAction::Hide, true) => mute_highlighted.or(mute),
+            (HudSocialInteractionsPlayerAction::Show, false) => unmute,
+            (HudSocialInteractionsPlayerAction::Show, true) => unmute_highlighted.or(unmute),
+            (HudSocialInteractionsPlayerAction::Report, _) => None,
+        };
+        let action_rect = row_action_rect(row);
+        if let Some(sprite) = sprite {
+            push_hud_draw(
+                vertices,
+                commands,
+                sprite,
+                surface_size,
+                rect_to_hud(action_rect),
+            );
+        } else {
+            push_action_fallback(
+                vertices,
+                commands,
+                white_pixel,
+                font_atlas,
+                glyphs,
+                obfuscated_pool,
+                frame_index,
+                surface_size,
+                action_rect,
+                match action {
+                    HudSocialInteractionsPlayerAction::Hide => "×",
+                    HudSocialInteractionsPlayerAction::Show => "✓",
+                    HudSocialInteractionsPlayerAction::Report => "!",
+                },
+                highlighted,
+                true,
+            );
+        }
+    }
+    let Some(_) = player.action else {
         return;
     };
-    let focus = HudSocialInteractionsFocus::Player {
+    let report_focus = HudSocialInteractionsFocus::Player {
         profile_id: player.profile_id,
-        action,
+        action: HudSocialInteractionsPlayerAction::Report,
     };
-    let highlighted = screen.focus == focus || screen.hovered == Some(focus);
-    let sprite = match (action, highlighted) {
-        (HudSocialInteractionsPlayerAction::Hide, false) => mute,
-        (HudSocialInteractionsPlayerAction::Hide, true) => mute_highlighted.or(mute),
-        (HudSocialInteractionsPlayerAction::Show, false) => unmute,
-        (HudSocialInteractionsPlayerAction::Show, true) => unmute_highlighted.or(unmute),
-    };
-    let action_rect = row_action_rect(row);
-    if let Some(sprite) = sprite {
-        push_hud_draw(
-            vertices,
-            commands,
-            sprite,
-            surface_size,
-            rect_to_hud(action_rect),
-        );
-    } else {
-        push_hud_draw_with_uv_and_tint(
-            vertices,
-            commands,
-            white_pixel,
-            surface_size,
-            rect_to_hud(action_rect),
-            full_uv(),
-            if highlighted {
-                [0.95, 0.95, 0.55, 1.0]
-            } else {
-                [0.32, 0.32, 0.32, 1.0]
-            },
-        );
-        push_hud_debug_options_centered_text_in_width(
-            vertices,
-            commands,
-            white_pixel,
-            font_atlas,
-            glyphs,
-            obfuscated_pool,
-            frame_index,
-            surface_size,
-            match action {
-                HudSocialInteractionsPlayerAction::Hide => "×",
-                HudSocialInteractionsPlayerAction::Show => "✓",
-            },
-            action_rect.x,
-            action_rect.width,
-            action_rect.y + 6,
-            HUD_TINT_WHITE,
-        );
-    }
+    let report_highlighted = screen.focus == report_focus || screen.hovered == Some(report_focus);
+    push_action_fallback(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        row_report_rect(row),
+        if player.has_report_draft { "D" } else { "!" },
+        report_highlighted,
+        player.reporting_enabled,
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_action_fallback<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    rect: HudSocialInteractionsRect,
+    label: &str,
+    highlighted: bool,
+    active: bool,
+) {
+    push_hud_draw_with_uv_and_tint(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        rect_to_hud(rect),
+        full_uv(),
+        if !active {
+            [0.18, 0.18, 0.18, 1.0]
+        } else if highlighted {
+            [0.95, 0.95, 0.55, 1.0]
+        } else {
+            [0.32, 0.32, 0.32, 1.0]
+        },
+    );
+    push_hud_debug_options_centered_text_in_width(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        label,
+        rect.x,
+        rect.width,
+        rect.y + 6,
+        if active {
+            HUD_TINT_WHITE
+        } else {
+            [0.55, 0.55, 0.55, 1.0]
+        },
+    );
 }
 
 fn push_scrollbar<'a>(
@@ -1544,6 +1626,8 @@ mod tests {
             hidden: action == Some(HudSocialInteractionsPlayerAction::Show),
             blocked: false,
             action,
+            reporting_enabled: action.is_some(),
+            has_report_draft: false,
             status: None,
         }
     }

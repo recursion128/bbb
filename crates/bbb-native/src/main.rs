@@ -224,6 +224,7 @@ struct NativeRenderEffectSink<'a> {
     stats_screen_narration: &'a mut ScreenNarrationRuntime,
     recipe_book_narration: &'a mut ScreenNarrationRuntime,
     social_interactions_narration: &'a mut ScreenNarrationRuntime,
+    player_reporting_narration: &'a mut ScreenNarrationRuntime,
     death_screen_narration: &'a mut ScreenNarrationRuntime,
     game_event_screen_narration: &'a mut ScreenNarrationRuntime,
     narrator: Option<&'a mut dyn narrator_runtime::SystemNarrator>,
@@ -364,6 +365,18 @@ impl PlatformEffectSink for NativeRenderEffectSink<'_> {
                     }
                 };
                 self.social_interactions_narration
+                    .after_input(input, Instant::now());
+            }
+            PlatformEffect::PlayerReportingInput(input) => {
+                let input = match input {
+                    ScreenNarrationScheduleInput::Immediate => ScreenNarrationInput::Immediate,
+                    ScreenNarrationScheduleInput::MouseMove => ScreenNarrationInput::MouseMove,
+                    ScreenNarrationScheduleInput::MouseAction => ScreenNarrationInput::MouseAction,
+                    ScreenNarrationScheduleInput::KeyboardAction => {
+                        ScreenNarrationInput::KeyboardAction
+                    }
+                };
+                self.player_reporting_narration
                     .after_input(input, Instant::now());
             }
             PlatformEffect::GameEventScreenInput(input) => {
@@ -782,6 +795,7 @@ fn main() -> Result<()> {
     let mut stats_screen_narration = ScreenNarrationRuntime::default();
     let mut recipe_book_narration = ScreenNarrationRuntime::default();
     let mut social_interactions_narration = ScreenNarrationRuntime::default();
+    let mut player_reporting_narration = ScreenNarrationRuntime::default();
     let mut death_screen_narration = ScreenNarrationRuntime::default();
     let mut game_event_screen_narration = ScreenNarrationRuntime::default();
     let mut pending_control_screenshots = std::collections::VecDeque::new();
@@ -902,6 +916,7 @@ fn main() -> Result<()> {
                     stats_screen_narration: &mut stats_screen_narration,
                     recipe_book_narration: &mut recipe_book_narration,
                     social_interactions_narration: &mut social_interactions_narration,
+                    player_reporting_narration: &mut player_reporting_narration,
                     death_screen_narration: &mut death_screen_narration,
                     game_event_screen_narration: &mut game_event_screen_narration,
                     narrator: narrator_runtime
@@ -1106,6 +1121,18 @@ fn main() -> Result<()> {
                             .social_interactions_screen()
                             .is_some()
                             .then(|| hud_render_runtime.social_interactions_narration())
+                            .flatten(),
+                        Instant::now(),
+                        narrator_runtime
+                            .as_mut()
+                            .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
+                    );
+                    player_reporting_narration.tick(
+                        render_publication
+                            .world
+                            .player_reporting_screen()
+                            .is_some()
+                            .then(|| hud_render_runtime.player_reporting_narration())
                             .flatten(),
                         Instant::now(),
                         narrator_runtime
@@ -1519,6 +1546,9 @@ fn enqueue_simulation_window_event(
                         .hud_social_interactions_hit_target_at((position.x, position.y))
                         .is_some()
                     || renderer
+                        .hud_player_reporting_hit_target_at((position.x, position.y))
+                        .is_some()
+                    || renderer
                         .hud_book_hit_target_at((position.x, position.y))
                         .is_some()
                 {
@@ -1532,6 +1562,8 @@ fn enqueue_simulation_window_event(
                 death_screen_target: renderer
                     .hud_death_screen_hit_target_at((position.x, position.y)),
                 game_event_target: renderer.hud_game_event_hit_target_at((position.x, position.y)),
+                player_reporting_target: renderer
+                    .hud_player_reporting_hit_target_at((position.x, position.y)),
                 social_interactions_target: renderer
                     .hud_social_interactions_hit_target_at((position.x, position.y)),
             }
@@ -1597,6 +1629,16 @@ fn enqueue_simulation_window_event(
             .then(|| {
                 (*cursor_position).and_then(|position| {
                     renderer.hud_game_event_hit_target_at((position.x, position.y))
+                })
+            })
+            .flatten(),
+            player_reporting_target: (matches!(
+                (*button, *state),
+                (winit::event::MouseButton::Left, ElementState::Pressed)
+            ))
+            .then(|| {
+                (*cursor_position).and_then(|position| {
+                    renderer.hud_player_reporting_hit_target_at((position.x, position.y))
                 })
             })
             .flatten(),

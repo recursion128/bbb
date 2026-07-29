@@ -534,3 +534,32 @@ mod tests {
         assert!(!publication.contains("input.input.clone()"));
     }
 }
+
+#[cfg(test)]
+mod mailbox {
+    use super::commands::{SimulationCommand, SimulationMailbox};
+
+    #[test]
+    fn discrete_commands_keep_global_fifo_order_through_the_barrier() {
+        let mailbox = SimulationMailbox::default();
+        let first = mailbox.enqueue(SimulationCommand::FocusChanged(true));
+        let second = mailbox.enqueue(SimulationCommand::FocusChanged(false));
+
+        let drained = mailbox.drain_through_barrier();
+        assert_eq!(
+            drained
+                .iter()
+                .map(|command| command.sequence)
+                .collect::<Vec<_>>(),
+            vec![first, second]
+        );
+        assert!(matches!(
+            drained[0].command,
+            SimulationCommand::FocusChanged(true)
+        ));
+        assert!(matches!(
+            drained[1].command,
+            SimulationCommand::FocusChanged(false)
+        ));
+    }
+}

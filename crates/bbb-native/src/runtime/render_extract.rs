@@ -18,17 +18,20 @@ use bbb_renderer::{
     HudDeathMainScreen, HudDeathQuitConfirmationScreen, HudDeathScreen, HudDebugOptionsScreen,
     HudDebugOverlay, HudFoodEffect, HudGameEventScreen, HudGameRulesScreen, HudHotbarMode,
     HudInventoryScreen, HudJigsawBlockEditorScreen, HudMobEffect, HudPauseScreen, HudPlayerHealth,
-    HudPlayerList, HudPlayerListEntry, HudPlayerListScore, HudRecipeToast, HudScoreboardSidebar,
-    HudScoreboardSidebarEntry, HudSignEditorScreen, HudSleepOverlay, HudSocialInteractionsFocus,
-    HudSocialInteractionsLinkConfirmationScreen, HudSocialInteractionsMainScreen,
-    HudSocialInteractionsPage, HudSocialInteractionsPlayer, HudSocialInteractionsPlayerAction,
-    HudSocialInteractionsScreen, HudSpectatorGui, HudSpectatorGuiSlot, HudSpectatorIcon,
-    HudSpyglassScope, HudStatsScreen, HudStructureBlockEditorScreen, HudStyledTextRun,
-    HudSystemToast, HudTestBlockEditorScreen, HudTestInstanceBlockEditorScreen, HudTextStyle,
-    HudTitleText, HudTutorialToast, HudVehicleHealth, HudVignette, ItemEntityBillboard,
-    ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture, ItemFrameMapSurface,
-    ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh, ItemModelResidencyFrame, Renderer,
-    SelectionOutline, SignTextSurface, WorldBorderRenderState,
+    HudPlayerList, HudPlayerListEntry, HudPlayerListScore, HudPlayerReportingControl,
+    HudPlayerReportingControlKind, HudPlayerReportingControlPlacement, HudPlayerReportingFocus,
+    HudPlayerReportingRow, HudPlayerReportingScreen, HudPlayerReportingScreenKind, HudRecipeToast,
+    HudScoreboardSidebar, HudScoreboardSidebarEntry, HudSignEditorScreen, HudSleepOverlay,
+    HudSocialInteractionsFocus, HudSocialInteractionsLinkConfirmationScreen,
+    HudSocialInteractionsMainScreen, HudSocialInteractionsPage, HudSocialInteractionsPlayer,
+    HudSocialInteractionsPlayerAction, HudSocialInteractionsScreen, HudSpectatorGui,
+    HudSpectatorGuiSlot, HudSpectatorIcon, HudSpyglassScope, HudStatsScreen,
+    HudStructureBlockEditorScreen, HudStyledTextRun, HudSystemToast, HudTestBlockEditorScreen,
+    HudTestInstanceBlockEditorScreen, HudTextStyle, HudTitleText, HudTutorialToast,
+    HudVehicleHealth, HudVignette, ItemEntityBillboard, ItemFrameMapDecorationSurface,
+    ItemFrameMapDecorationTexture, ItemFrameMapSurface, ItemFrameMapTextSurface,
+    ItemFrameMapTexture, ItemModelMesh, ItemModelResidencyFrame, Renderer, SelectionOutline,
+    SignTextSurface, WorldBorderRenderState,
 };
 
 use crate::component_text::{
@@ -239,6 +242,13 @@ pub(crate) fn hud_social_interactions_screen(
                 removed: player.removed,
                 hidden: player.hidden,
                 blocked: player.blocked,
+                reporting_enabled: action.is_some()
+                    && world.player_reporting().environment.is_some(),
+                has_report_draft: world
+                    .player_reporting()
+                    .draft
+                    .as_ref()
+                    .is_some_and(|draft| draft.common().reported_profile_id == player.profile.uuid),
                 action,
                 status: social_player_status(player, item_runtime),
             }
@@ -288,10 +298,14 @@ pub(crate) fn hud_social_interactions_screen(
                         HudSocialInteractionsPlayerAction::Show => {
                             "gui.socialInteractions.tooltip.show"
                         }
+                        HudSocialInteractionsPlayerAction::Report => {
+                            "gui.socialInteractions.tooltip.report"
+                        }
                     },
                     match action {
                         HudSocialInteractionsPlayerAction::Hide => "Hide messages",
                         HudSocialInteractionsPlayerAction::Show => "Show messages",
+                        HudSocialInteractionsPlayerAction::Report => "Report player",
                     },
                 ),
                 x,
@@ -342,6 +356,501 @@ pub(crate) fn hud_social_interactions_screen(
             tooltip,
         },
     ))
+}
+
+pub(crate) fn hud_player_reporting_screen(
+    input: &ClientInputState,
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    frame_index: u64,
+) -> Option<HudPlayerReportingScreen> {
+    use crate::input::reporting::PlayerReportingRuntimeScreen;
+    use bbb_world::{
+        player_report_reasons, PlayerReportDraft, PlayerReportType, MAX_SELECTED_REPORT_MESSAGES,
+    };
+
+    let runtime = input.player_reporting_runtime()?;
+    world
+        .player_reporting_screen()
+        .filter(|screen| screen.generation == runtime.generation())?;
+    let draft = world.player_reporting().draft.as_ref();
+    let common = draft.map(PlayerReportDraft::common);
+    let button = |focus, key, default_text, enabled, placement| HudPlayerReportingControl {
+        focus,
+        label: localized_gui_text(item_runtime, key, default_text),
+        enabled,
+        placement,
+        kind: HudPlayerReportingControlKind::Button,
+    };
+    let footer = HudPlayerReportingControlPlacement::Footer;
+    let body = HudPlayerReportingControlPlacement::Body;
+    let back = || {
+        button(
+            HudPlayerReportingFocus::Back,
+            "gui.back",
+            "Back",
+            true,
+            footer,
+        )
+    };
+    let cancel = || {
+        button(
+            HudPlayerReportingFocus::Cancel,
+            "gui.cancel",
+            "Cancel",
+            true,
+            footer,
+        )
+    };
+    let mut rows = Vec::new();
+    let mut controls = Vec::new();
+    let (kind, title, message, status) = match runtime.screen() {
+        PlayerReportingRuntimeScreen::TypeChooser => {
+            for (index, report_type, key, default_text) in [
+                (
+                    0,
+                    PlayerReportType::Chat,
+                    "gui.abuseReport.type.chat",
+                    "Chat Messages",
+                ),
+                (
+                    1,
+                    PlayerReportType::Skin,
+                    "gui.abuseReport.type.skin",
+                    "Player Skin",
+                ),
+                (
+                    2,
+                    PlayerReportType::Username,
+                    "gui.abuseReport.type.name",
+                    "Player Name",
+                ),
+            ] {
+                rows.push(HudPlayerReportingRow {
+                    focus: HudPlayerReportingFocus::ReportType(index),
+                    title: localized_gui_text(item_runtime, key, default_text),
+                    detail: None,
+                    selected: false,
+                    enabled: report_type != PlayerReportType::Chat || runtime.target().chat_enabled,
+                });
+            }
+            controls.push(cancel());
+            (
+                HudPlayerReportingScreenKind::TypeChooser,
+                localized_gui_text(item_runtime, "gui.abuseReport.title", "Report Player"),
+                Some(localized_gui_text(
+                    item_runtime,
+                    "gui.abuseReport.message",
+                    "Where did you observe the bad behavior?\nThis will help us in researching your case.",
+                )),
+                None,
+            )
+        }
+        PlayerReportingRuntimeScreen::Editor(report_type) => {
+            if *report_type == PlayerReportType::Chat {
+                let selected_count = match draft {
+                    Some(PlayerReportDraft::Chat {
+                        selected_message_ids,
+                        ..
+                    }) => selected_message_ids.len(),
+                    _ => 0,
+                };
+                controls.push(button(
+                    HudPlayerReportingFocus::SelectMessages,
+                    "gui.chatReport.select_chat",
+                    "Select Chat Messages",
+                    true,
+                    body,
+                ));
+                controls.last_mut().expect("inserted control").label = localized_gui_text_with_args(
+                    item_runtime,
+                    "gui.chatReport.selected_chat",
+                    "%s Chat Message(s) Selected to Report",
+                    &[&selected_count.to_string()],
+                );
+            }
+            if *report_type != PlayerReportType::Username {
+                let reason =
+                    selected_report_reason_label(draft, item_runtime).unwrap_or_else(|| {
+                        localized_gui_text(
+                            item_runtime,
+                            "gui.abuseReport.select_reason",
+                            "Select Report Reason",
+                        )
+                    });
+                controls.push(HudPlayerReportingControl {
+                    focus: HudPlayerReportingFocus::SelectReason,
+                    label: reason,
+                    enabled: true,
+                    placement: body,
+                    kind: HudPlayerReportingControlKind::Button,
+                });
+            }
+            let comments = common.map_or("", |common| common.comments.as_str());
+            controls.push(HudPlayerReportingControl {
+                focus: HudPlayerReportingFocus::Comments,
+                label: if *report_type == PlayerReportType::Username {
+                    localized_gui_text(
+                        item_runtime,
+                        "gui.abuseReport.name.comment_box_label",
+                        "Please describe why you want to report this name:",
+                    )
+                } else {
+                    localized_gui_text(
+                        item_runtime,
+                        "gui.abuseReport.more_comments",
+                        "More Comments",
+                    )
+                },
+                enabled: true,
+                placement: body,
+                kind: HudPlayerReportingControlKind::TextInput {
+                    value: comments.to_string(),
+                    placeholder: localized_gui_text(
+                        item_runtime,
+                        "gui.abuseReport.describe",
+                        "Describe what happened",
+                    ),
+                    cursor: runtime.comments_cursor(),
+                    selection: runtime.comments_selection(),
+                    cursor_visible: frame_index % 20 < 10,
+                },
+            });
+            controls.push(HudPlayerReportingControl {
+                focus: HudPlayerReportingFocus::Attestation,
+                label: localized_gui_text(
+                    item_runtime,
+                    "gui.abuseReport.attestation",
+                    "I confirm this report is accurate",
+                ),
+                enabled: true,
+                placement: body,
+                kind: HudPlayerReportingControlKind::Checkbox {
+                    selected: common.is_some_and(|common| common.attested),
+                },
+            });
+            controls.push(back());
+            controls.push(button(
+                HudPlayerReportingFocus::Send,
+                "gui.abuseReport.send",
+                "Send Report",
+                world.build_player_report().is_ok(),
+                footer,
+            ));
+            let (kind, key, default_text) = match report_type {
+                PlayerReportType::Chat => (
+                    HudPlayerReportingScreenKind::ChatEditor,
+                    "gui.chatReport.title",
+                    "Report Player Chat",
+                ),
+                PlayerReportType::Skin => (
+                    HudPlayerReportingScreenKind::SkinEditor,
+                    "gui.abuseReport.skin.title",
+                    "Report Skin",
+                ),
+                PlayerReportType::Username => (
+                    HudPlayerReportingScreenKind::UsernameEditor,
+                    "gui.abuseReport.name.title",
+                    "Report Inappropriate Player Name",
+                ),
+            };
+            (
+                kind,
+                localized_gui_text(item_runtime, key, default_text),
+                (*report_type == PlayerReportType::Username).then(|| {
+                    localized_gui_text_with_args(
+                        item_runtime,
+                        "gui.abuseReport.name.reporting",
+                        "You are reporting \"%s\".",
+                        &[&runtime.target().name],
+                    )
+                }),
+                None,
+            )
+        }
+        PlayerReportingRuntimeScreen::ReasonSelection {
+            editor_type,
+            pending,
+        } => {
+            for (index, reason) in player_report_reasons(*editor_type).into_iter().enumerate() {
+                let Some(index) = u8::try_from(index).ok() else {
+                    continue;
+                };
+                rows.push(HudPlayerReportingRow {
+                    focus: HudPlayerReportingFocus::Reason(index),
+                    title: report_reason_text(reason, item_runtime, false),
+                    detail: Some(report_reason_text(reason, item_runtime, true)),
+                    selected: *pending == Some(reason),
+                    enabled: true,
+                });
+            }
+            controls.extend([
+                button(
+                    HudPlayerReportingFocus::ReadInfo,
+                    "gui.abuseReport.read_info",
+                    "Learn About Reporting",
+                    true,
+                    footer,
+                ),
+                button(
+                    HudPlayerReportingFocus::Done,
+                    "gui.done",
+                    "Done",
+                    true,
+                    footer,
+                ),
+                back(),
+            ]);
+            (
+                HudPlayerReportingScreenKind::ReasonSelection,
+                localized_gui_text(
+                    item_runtime,
+                    "gui.abuseReport.reason.title",
+                    "Select Report Category",
+                ),
+                None,
+                None,
+            )
+        }
+        PlayerReportingRuntimeScreen::ChatSelection { pending } => {
+            for event in &world.client_chat().report_log.events {
+                let enabled = event.signed_message.as_ref().is_some_and(|message| {
+                    message.sender == runtime.target().profile_id && message.signature.is_some()
+                });
+                if !enabled {
+                    continue;
+                }
+                rows.push(HudPlayerReportingRow {
+                    focus: HudPlayerReportingFocus::Message(event.id),
+                    title: event
+                        .sender_name
+                        .clone()
+                        .unwrap_or_else(|| runtime.target().name.clone()),
+                    detail: Some(event.displayed_content.clone()),
+                    selected: pending.contains(&event.id),
+                    enabled: pending.contains(&event.id)
+                        || pending.len() < MAX_SELECTED_REPORT_MESSAGES,
+                });
+            }
+            let max_selected = MAX_SELECTED_REPORT_MESSAGES.to_string();
+            controls.extend([
+                button(
+                    HudPlayerReportingFocus::Done,
+                    "gui.done",
+                    "Done",
+                    !pending.is_empty(),
+                    footer,
+                ),
+                back(),
+            ]);
+            (
+                HudPlayerReportingScreenKind::ChatSelection,
+                localized_gui_text(
+                    item_runtime,
+                    "gui.chatSelection.title",
+                    "Select Chat Messages to Report",
+                ),
+                None,
+                Some(localized_gui_text_with_args(
+                    item_runtime,
+                    "gui.chatSelection.selected",
+                    "%s/%s message(s) selected",
+                    &[&pending.len().to_string(), &max_selected],
+                )),
+            )
+        }
+        PlayerReportingRuntimeScreen::DraftChoice => {
+            controls.extend([
+                button(
+                    HudPlayerReportingFocus::DraftEdit,
+                    "gui.abuseReport.draft.edit",
+                    "Edit Draft",
+                    true,
+                    body,
+                ),
+                button(
+                    HudPlayerReportingFocus::DraftDiscard,
+                    "gui.abuseReport.draft.discard",
+                    "Discard Draft",
+                    true,
+                    body,
+                ),
+                cancel(),
+            ]);
+            (
+                HudPlayerReportingScreenKind::DraftChoice,
+                localized_gui_text(
+                    item_runtime,
+                    "gui.abuseReport.draft.title",
+                    "Edit draft chat report?",
+                ),
+                Some(localized_gui_text(
+                    item_runtime,
+                    "gui.abuseReport.draft.content",
+                    "Would you like to continue editing the existing report or discard it and create a new one?",
+                )),
+                None,
+            )
+        }
+        PlayerReportingRuntimeScreen::DiscardWarning(_) => {
+            controls.extend([
+                button(
+                    HudPlayerReportingFocus::WarningReturn,
+                    "gui.abuseReport.discard.return",
+                    "Continue Editing",
+                    true,
+                    body,
+                ),
+                button(
+                    HudPlayerReportingFocus::WarningSaveDraft,
+                    "gui.abuseReport.discard.draft",
+                    "Save as Draft",
+                    true,
+                    body,
+                ),
+                button(
+                    HudPlayerReportingFocus::WarningDiscard,
+                    "gui.abuseReport.discard.discard",
+                    "Leave and Discard Report",
+                    true,
+                    body,
+                ),
+            ]);
+            (
+                HudPlayerReportingScreenKind::DiscardWarning,
+                localized_gui_text(
+                    item_runtime,
+                    "gui.abuseReport.discard.title",
+                    "Discard report and comments?",
+                ),
+                Some(localized_gui_text(
+                    item_runtime,
+                    "gui.abuseReport.discard.content",
+                    "If you leave, you'll lose this report and your comments.\nAre you sure you want to leave?",
+                )),
+                None,
+            )
+        }
+        PlayerReportingRuntimeScreen::Sending {
+            report_type: _,
+            report_id: _,
+            attempt: _,
+        } => {
+            controls.push(cancel());
+            (
+                HudPlayerReportingScreenKind::Sending,
+                localized_gui_text(
+                    item_runtime,
+                    "gui.abuseReport.sending.title",
+                    "Sending your report...",
+                ),
+                None,
+                Some(localized_gui_text(
+                    item_runtime,
+                    "gui.loading",
+                    "Loading...",
+                )),
+            )
+        }
+        PlayerReportingRuntimeScreen::Success => {
+            controls.push(button(
+                HudPlayerReportingFocus::Done,
+                "gui.done",
+                "Done",
+                true,
+                footer,
+            ));
+            (
+                HudPlayerReportingScreenKind::Success,
+                localized_gui_text(item_runtime, "gui.abuseReport.sent.title", "Report Sent"),
+                Some(localized_gui_text(
+                    item_runtime,
+                    "gui.abuseReport.report_sent_msg",
+                    "We've successfully received your report. Thank you!\n\nOur team will review it as soon as possible.",
+                )),
+                None,
+            )
+        }
+        PlayerReportingRuntimeScreen::Failure => {
+            controls.extend([
+                button(
+                    HudPlayerReportingFocus::Retry,
+                    "gui.abuseReport.send.retry",
+                    "Try Again",
+                    true,
+                    footer,
+                ),
+                back(),
+            ]);
+            (
+                HudPlayerReportingScreenKind::Failure,
+                localized_gui_text(
+                    item_runtime,
+                    "gui.abuseReport.error.title",
+                    "Problem sending your report",
+                ),
+                Some(localized_gui_text(
+                    item_runtime,
+                    "gui.abuseReport.send.generic_error",
+                    "Encountered an unexpected error while sending your report.",
+                )),
+                None,
+            )
+        }
+    };
+    Some(HudPlayerReportingScreen {
+        generation: runtime.generation(),
+        kind,
+        title,
+        message,
+        status,
+        rows,
+        controls,
+        scroll_amount: runtime.scroll_amount(),
+        focus: runtime.focus(),
+        hovered: runtime.hovered(),
+    })
+}
+
+fn selected_report_reason_label(
+    draft: Option<&bbb_world::PlayerReportDraft>,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Option<String> {
+    let reason = match draft? {
+        bbb_world::PlayerReportDraft::Chat { reason, .. }
+        | bbb_world::PlayerReportDraft::Skin { reason, .. } => *reason,
+        bbb_world::PlayerReportDraft::Username { .. } => None,
+    }?;
+    Some(report_reason_text(reason, item_runtime, false))
+}
+
+fn report_reason_text(
+    reason: bbb_world::PlayerReportReason,
+    item_runtime: Option<&NativeItemRuntime>,
+    description: bool,
+) -> String {
+    let suffix = reason.backend_name().to_ascii_lowercase();
+    let key = if description {
+        format!("gui.abuseReport.reason.{suffix}.description")
+    } else {
+        format!("gui.abuseReport.reason.{suffix}")
+    };
+    localized_gui_text(
+        item_runtime,
+        &key,
+        &reason
+            .backend_name()
+            .split('_')
+            .map(|part| {
+                let mut chars = part.chars();
+                chars
+                    .next()
+                    .map(|first| first.to_ascii_uppercase().to_string() + chars.as_str())
+                    .unwrap_or_default()
+            })
+            .collect::<Vec<_>>()
+            .join(" "),
+    )
 }
 
 fn social_player_status(
@@ -2230,6 +2739,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) hud_death_screen: Option<HudDeathScreen>,
     pub(crate) hud_game_event_screen: Option<HudGameEventScreen>,
     pub(crate) hud_social_interactions_screen: Option<HudSocialInteractionsScreen>,
+    pub(crate) hud_player_reporting_screen: Option<HudPlayerReportingScreen>,
     pub(crate) hud_stats_screen: Option<HudStatsScreen>,
     pub(crate) hud_system_toast: Option<HudSystemToast>,
     pub(crate) hud_advancement_toasts: Vec<HudAdvancementToast>,
@@ -2660,6 +3170,7 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_hud_death_screen(frame.hud_death_screen);
     renderer.set_hud_game_event_screen(frame.hud_game_event_screen);
     renderer.set_hud_social_interactions_screen(frame.hud_social_interactions_screen);
+    renderer.set_hud_player_reporting_screen(frame.hud_player_reporting_screen);
     renderer.set_hud_stats_screen(frame.hud_stats_screen);
     renderer.set_hud_system_toast(frame.hud_system_toast);
     renderer.set_hud_advancement_toasts(frame.hud_advancement_toasts);

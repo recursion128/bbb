@@ -10950,6 +10950,92 @@ fn social_interactions_pause_screen_projects_player_reporting_hover() {
 }
 
 #[test]
+fn player_reporting_projection_exposes_generation_rows_and_username_editor_controls() {
+    let local = uuid::Uuid::from_u128(41);
+    let remote = uuid::Uuid::from_u128(42);
+    let mut world = WorldStore::new();
+    world.set_local_player_profile_id(local);
+    world.set_player_report_environment(Some(bbb_world::PlayerReportEnvironment::third_party(
+        "26.1",
+        "en-US",
+        "example.org:25565",
+    )));
+    world.apply_player_info_update(bbb_protocol::packets::PlayerInfoUpdate {
+        actions: vec![bbb_protocol::packets::PlayerInfoAction::AddPlayer],
+        entries: [(local, "Local"), (remote, "Remote")]
+            .into_iter()
+            .map(
+                |(profile_id, name)| bbb_protocol::packets::PlayerInfoEntry {
+                    profile_id,
+                    profile: Some(bbb_protocol::packets::GameProfile {
+                        uuid: profile_id,
+                        name: name.to_string(),
+                        properties: Vec::new(),
+                    }),
+                    listed: true,
+                    latency: 0,
+                    game_mode: bbb_protocol::packets::GameType::Survival,
+                    display_name: None,
+                    show_hat: true,
+                    list_order: 0,
+                    chat_session: None,
+                },
+            )
+            .collect(),
+    });
+    let mut input = ClientInputState::new(true);
+    assert!(input.open_social_interactions_screen(&mut world, false));
+    assert!(input.open_player_reporting_screen(&mut world, remote));
+
+    let chooser =
+        hud_player_reporting_screen(&input, &world, None, 0).expect("reporting chooser projection");
+    assert_eq!(
+        chooser.kind,
+        bbb_renderer::HudPlayerReportingScreenKind::TypeChooser
+    );
+    assert_eq!(
+        chooser.generation,
+        input.player_reporting_runtime().unwrap().generation()
+    );
+    assert_eq!(chooser.rows.len(), 3);
+    assert!(!chooser.rows[0].enabled);
+    assert_eq!(
+        chooser.message.as_deref(),
+        Some(
+            "Where did you observe the bad behavior?\nThis will help us in researching your case."
+        )
+    );
+
+    let generation = chooser.generation;
+    assert!(input.handle_player_reporting_mouse_input(
+        &mut world,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(bbb_renderer::HudPlayerReportingHitTarget {
+            generation,
+            focus: bbb_renderer::HudPlayerReportingFocus::ReportType(2),
+        }),
+    ));
+    let editor =
+        hud_player_reporting_screen(&input, &world, None, 0).expect("username editor projection");
+    assert_eq!(
+        editor.kind,
+        bbb_renderer::HudPlayerReportingScreenKind::UsernameEditor
+    );
+    assert_eq!(
+        editor.message.as_deref(),
+        Some("You are reporting \"Remote\".")
+    );
+    assert!(editor
+        .controls
+        .iter()
+        .any(|control| { control.focus == bbb_renderer::HudPlayerReportingFocus::Comments }));
+    assert!(editor.controls.iter().any(|control| {
+        control.focus == bbb_renderer::HudPlayerReportingFocus::Send && !control.enabled
+    }));
+}
+
+#[test]
 fn hud_pause_screen_projects_disconnect_hover_and_disabled_after_click() {
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();

@@ -114,6 +114,12 @@ pub struct ClientUiState {
     #[serde(default)]
     pub social_interactions_screen_generation: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub current_player_reporting_screen: Option<crate::PlayerReportingScreenState>,
+    #[serde(default)]
+    pub player_reporting_screen_generation: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub player_reporting_previous_social_screen: Option<crate::SocialInteractionsScreenState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub current_game_rules_screen: Option<crate::GameRulesScreenState>,
     #[serde(default)]
     pub game_rules_screen_generation: u64,
@@ -149,6 +155,9 @@ pub enum DialogPreviousScreenState {
     Stats,
     SocialInteractions {
         screen: crate::SocialInteractionsScreenState,
+    },
+    PlayerReporting {
+        screen: crate::PlayerReportingScreenState,
     },
 }
 
@@ -253,6 +262,8 @@ impl ClientUiState {
                 Some(DialogPreviousScreenState::Stats)
             } else if let Some(screen) = self.current_social_interactions_screen.take() {
                 Some(DialogPreviousScreenState::SocialInteractions { screen })
+            } else if let Some(screen) = self.current_player_reporting_screen.take() {
+                Some(DialogPreviousScreenState::PlayerReporting { screen })
             } else {
                 None
             };
@@ -356,6 +367,9 @@ impl ClientUiState {
             Some(DialogPreviousScreenState::SocialInteractions { screen }) => {
                 self.current_social_interactions_screen = Some(screen);
             }
+            Some(DialogPreviousScreenState::PlayerReporting { screen }) => {
+                self.current_player_reporting_screen = Some(screen);
+            }
             None => {}
         }
     }
@@ -451,6 +465,8 @@ impl ClientUiState {
         self.current_advancements_screen = false;
         self.current_stats_screen = false;
         self.current_social_interactions_screen = None;
+        self.current_player_reporting_screen = None;
+        self.player_reporting_previous_social_screen = None;
         self.current_game_rules_screen = None;
         self.current_game_event_screen = None;
         self.current_death_screen = None;

@@ -13,7 +13,8 @@ use bbb_net::NetCommand;
 use bbb_protocol::{packets::CustomClickAction, ComponentClickEvent};
 use bbb_renderer::{
     HudBookHitTarget, HudChatHitTarget, HudChatHitTargetKind, HudDeathScreenHitTarget,
-    HudFontGlyphMap, HudGameEventHitTarget, HudSocialInteractionsHitTarget,
+    HudFontGlyphMap, HudGameEventHitTarget, HudPlayerReportingHitTarget,
+    HudSocialInteractionsHitTarget,
 };
 use bbb_world::WorldStore;
 use tokio::sync::mpsc;
@@ -45,9 +46,10 @@ use crate::{
         handle_mouse_wheel, handle_text_input_with_item_runtime, inventory_screen_layout,
         queue_chat_command, queue_debug_recreate_server_query_request,
         recipe_book_type_for_background, recipe_book_type_settings, release_active_input,
-        social::SocialInteractionsPlatformRequest, CommandSuggestionTextMeasurer, DebugClipboard,
-        DebugFeatureCountRequest, DebugFrustumRequest, DebugOptionsSearchTextMeasurer,
-        DebugProfilingToggleRequest, PauseScreenLinkRequest, TerrainReloadRequestSink,
+        reporting::PlayerReportingPlatformRequest, social::SocialInteractionsPlatformRequest,
+        CommandSuggestionTextMeasurer, DebugClipboard, DebugFeatureCountRequest,
+        DebugFrustumRequest, DebugOptionsSearchTextMeasurer, DebugProfilingToggleRequest,
+        PauseScreenLinkRequest, TerrainReloadRequestSink,
     },
     resource_pack_runtime::ServerResourcePackRuntime,
     runtime::{
@@ -227,6 +229,7 @@ impl SimulationInputRuntime {
                 book_target,
                 death_screen_target,
                 game_event_target,
+                player_reporting_target,
                 social_interactions_target,
             } => {
                 self.apply_mouse_button(
@@ -236,6 +239,7 @@ impl SimulationInputRuntime {
                     book_target,
                     death_screen_target,
                     game_event_target,
+                    player_reporting_target,
                     social_interactions_target,
                     context,
                 );
@@ -246,12 +250,14 @@ impl SimulationInputRuntime {
                 position,
                 death_screen_target,
                 game_event_target,
+                player_reporting_target,
                 social_interactions_target,
             } => {
                 self.apply_cursor_moved(
                     position,
                     death_screen_target,
                     game_event_target,
+                    player_reporting_target,
                     social_interactions_target,
                     context,
                 );
@@ -362,6 +368,18 @@ impl SimulationInputRuntime {
                     tracing::debug!("ignored stale Services block-list completion");
                 }
             }
+            SimulationCommand::PlayerReportSubmissionCompletion(completion) => {
+                if !context
+                    .services_block_lists
+                    .apply_player_report_submission_completion(
+                        completion,
+                        context.input,
+                        context.world,
+                    )
+                {
+                    tracing::debug!("ignored stale player-report submission completion");
+                }
+            }
             SimulationCommand::Control(request) => self.apply_control(request, context),
             SimulationCommand::Shutdown => self.request_shutdown(context),
         }
@@ -385,6 +403,7 @@ impl SimulationInputRuntime {
         position: PhysicalPosition<f64>,
         death_screen_target: Option<HudDeathScreenHitTarget>,
         game_event_target: Option<HudGameEventHitTarget>,
+        player_reporting_target: Option<HudPlayerReportingHitTarget>,
         social_interactions_target: Option<HudSocialInteractionsHitTarget>,
         context: &mut SimulationInputContext<'_, '_, '_>,
     ) {
@@ -434,6 +453,20 @@ impl SimulationInputRuntime {
             context
                 .platform
                 .submit(PlatformEffect::GameEventScreenInput(
+                    ScreenNarrationScheduleInput::MouseMove,
+                ));
+            context
+                .input
+                .update_screen_cursor_position(self.cursor_position);
+            return;
+        }
+        if context.world.player_reporting_screen().is_some() {
+            context
+                .input
+                .handle_player_reporting_hover(context.world, player_reporting_target);
+            context
+                .platform
+                .submit(PlatformEffect::PlayerReportingInput(
                     ScreenNarrationScheduleInput::MouseMove,
                 ));
             context
@@ -618,6 +651,34 @@ impl SimulationInputRuntime {
                     ScreenNarrationScheduleInput::KeyboardAction,
                 ));
             if context.world.game_event_screen().is_none() {
+                self.request_cursor_capture(true, context.platform);
+            }
+            return;
+        }
+
+        if context.world.player_reporting_screen().is_some() {
+            self.request_cursor_capture(false, context.platform);
+            handle_key_input_with_item_runtime(
+                context.input,
+                context.net_counters,
+                context.world,
+                context.net_commands,
+                context.item_runtime.as_ref(),
+                physical_key,
+                state,
+                self.surface_size,
+                &self.text_measurements,
+                None,
+            );
+            collect_player_reporting_platform_effects(context.input, context.platform);
+            if matches!(state, ElementState::Pressed) {
+                context
+                    .platform
+                    .submit(PlatformEffect::PlayerReportingInput(
+                        ScreenNarrationScheduleInput::KeyboardAction,
+                    ));
+            }
+            if !simulation_wants_cursor(context.input, context.world) {
                 self.request_cursor_capture(true, context.platform);
             }
             return;
@@ -1050,6 +1111,7 @@ impl SimulationInputRuntime {
         let book_open = context.world.current_book().is_some();
         let advancements_open = context.world.advancements_screen_is_open();
         let stats_open = context.world.stats_screen_is_open();
+        let player_reporting_open = context.world.player_reporting_screen().is_some();
         let social_interactions_open = context.world.social_interactions_screen().is_some();
         let game_rules_open = context.world.game_rules_screen().is_some();
         let command_entry_open = context.input.command_entry_is_active();
@@ -1076,6 +1138,18 @@ impl SimulationInputRuntime {
         if context.world.dialog_screen_is_open() {
             self.request_cursor_capture(false, context.platform);
             handle_dialog_text_input_with_measurer(context.world, text, &self.text_measurements);
+            return;
+        }
+        if player_reporting_open {
+            self.request_cursor_capture(false, context.platform);
+            context
+                .input
+                .handle_player_reporting_text(context.world, text);
+            context
+                .platform
+                .submit(PlatformEffect::PlayerReportingInput(
+                    ScreenNarrationScheduleInput::KeyboardAction,
+                ));
             return;
         }
         if social_interactions_open {
@@ -1143,6 +1217,7 @@ impl SimulationInputRuntime {
         book_target: Option<HudBookHitTarget>,
         death_screen_target: Option<HudDeathScreenHitTarget>,
         game_event_target: Option<HudGameEventHitTarget>,
+        player_reporting_target: Option<HudPlayerReportingHitTarget>,
         social_interactions_target: Option<HudSocialInteractionsHitTarget>,
         context: &mut SimulationInputContext<'_, '_, '_>,
     ) {
@@ -1260,6 +1335,25 @@ impl SimulationInputRuntime {
                     ScreenNarrationScheduleInput::MouseAction,
                 ));
             if context.world.game_event_screen().is_none() {
+                self.request_cursor_capture(true, context.platform);
+            }
+            return;
+        }
+        if context.world.player_reporting_screen().is_some() {
+            self.request_cursor_capture(false, context.platform);
+            context.input.handle_player_reporting_mouse_input(
+                context.world,
+                button,
+                state,
+                player_reporting_target,
+            );
+            collect_player_reporting_platform_effects(context.input, context.platform);
+            context
+                .platform
+                .submit(PlatformEffect::PlayerReportingInput(
+                    ScreenNarrationScheduleInput::MouseAction,
+                ));
+            if !simulation_wants_cursor(context.input, context.world) {
                 self.request_cursor_capture(true, context.platform);
             }
             return;
@@ -1678,6 +1772,18 @@ impl SimulationInputRuntime {
             self.request_cursor_capture(false, context.platform);
             return;
         }
+        if context.world.player_reporting_screen().is_some() {
+            self.request_cursor_capture(false, context.platform);
+            context
+                .input
+                .handle_player_reporting_mouse_wheel(context.world, delta);
+            context
+                .platform
+                .submit(PlatformEffect::PlayerReportingInput(
+                    ScreenNarrationScheduleInput::MouseAction,
+                ));
+            return;
+        }
         if context.world.social_interactions_screen().is_some() {
             self.request_cursor_capture(false, context.platform);
             context
@@ -2011,6 +2117,7 @@ fn world_wants_cursor(world: &WorldStore) -> bool {
         || world.current_book().is_some()
         || world.advancements_screen_is_open()
         || world.stats_screen_is_open()
+        || world.player_reporting_screen().is_some()
         || world.social_interactions_screen().is_some()
         || world.game_rules_screen().is_some()
         || world.command_block_editor().is_some()
@@ -2128,6 +2235,17 @@ fn collect_social_interactions_platform_effects(
             SocialInteractionsPlatformRequest::ClipboardWrite(text) => {
                 PlatformEffect::ClipboardWrite(text)
             }
+        });
+    }
+}
+
+fn collect_player_reporting_platform_effects(
+    input: &mut crate::input::ClientInputState,
+    platform: &mut PlatformEffectCollector<'_>,
+) {
+    for request in input.take_player_reporting_platform_requests() {
+        platform.submit(match request {
+            PlayerReportingPlatformRequest::OpenUri(url) => PlatformEffect::OpenUri(url),
         });
     }
 }

@@ -10,7 +10,7 @@ use std::{
 use bbb_control::{AudioCounters, ControlRequestSink, ControlWriteRequest, RendererCounters};
 use bbb_renderer::{
     HudBookHitTarget, HudChatHitTarget, HudDeathScreenHitTarget, HudFontGlyphMap,
-    HudGameEventHitTarget, HudSocialInteractionsHitTarget,
+    HudGameEventHitTarget, HudPlayerReportingHitTarget, HudSocialInteractionsHitTarget,
 };
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
@@ -52,6 +52,7 @@ pub(crate) enum SimulationCommand {
         book_target: Option<HudBookHitTarget>,
         death_screen_target: Option<HudDeathScreenHitTarget>,
         game_event_target: Option<HudGameEventHitTarget>,
+        player_reporting_target: Option<HudPlayerReportingHitTarget>,
         social_interactions_target: Option<HudSocialInteractionsHitTarget>,
     },
     MouseMotion {
@@ -64,6 +65,7 @@ pub(crate) enum SimulationCommand {
         position: PhysicalPosition<f64>,
         death_screen_target: Option<HudDeathScreenHitTarget>,
         game_event_target: Option<HudGameEventHitTarget>,
+        player_reporting_target: Option<HudPlayerReportingHitTarget>,
         social_interactions_target: Option<HudSocialInteractionsHitTarget>,
     },
     GameEventScreenRenderDelta {
@@ -96,6 +98,9 @@ pub(crate) enum SimulationCommand {
     },
     DebugProfilingLifecycle(DebugProfilingLifecycle),
     ServicesBlockListCompletion(crate::services_block_list_runtime::ServicesBlockListCompletion),
+    PlayerReportSubmissionCompletion(
+        crate::services_block_list_runtime::PlayerReportSubmissionCompletion,
+    ),
     Control(ControlWriteRequest),
     Shutdown,
 }
@@ -368,18 +373,21 @@ fn try_coalesce_tail(
                 position,
                 death_screen_target,
                 game_event_target,
+                player_reporting_target,
                 social_interactions_target,
             },
             SimulationCommand::CursorMoved {
                 position: incoming_position,
                 death_screen_target: incoming_death_screen_target,
                 game_event_target: incoming_game_event_target,
+                player_reporting_target: incoming_player_reporting_target,
                 social_interactions_target: incoming_social_interactions_target,
             },
         ) => {
             *position = *incoming_position;
             *death_screen_target = *incoming_death_screen_target;
             *game_event_target = *incoming_game_event_target;
+            *player_reporting_target = *incoming_player_reporting_target;
             *social_interactions_target = *incoming_social_interactions_target;
             true
         }
@@ -491,6 +499,7 @@ mod tests {
             book_target: None,
             death_screen_target: None,
             game_event_target: None,
+            player_reporting_target: None,
             social_interactions_target: None,
         });
         ControlRequestSink::submit(
@@ -560,6 +569,7 @@ mod tests {
                 kind: HudDeathScreenHitTargetKind::Button(HudDeathScreenButton::Respawn),
             }),
             game_event_target: None,
+            player_reporting_target: None,
             social_interactions_target: None,
         });
         let latest = HudDeathScreenHitTarget {
@@ -570,6 +580,7 @@ mod tests {
             position: PhysicalPosition::new(30.0, 40.0),
             death_screen_target: Some(latest),
             game_event_target: None,
+            player_reporting_target: None,
             social_interactions_target: None,
         });
         mailbox.enqueue(SimulationCommand::MouseButton {
@@ -579,6 +590,7 @@ mod tests {
             book_target: None,
             death_screen_target: Some(latest),
             game_event_target: None,
+            player_reporting_target: None,
             social_interactions_target: None,
         });
 
@@ -613,6 +625,7 @@ mod tests {
             position: PhysicalPosition::new(10.0, 20.0),
             death_screen_target: None,
             game_event_target: None,
+            player_reporting_target: None,
             social_interactions_target: None,
         });
         let latest = HudSocialInteractionsHitTarget {
@@ -623,6 +636,7 @@ mod tests {
             position: PhysicalPosition::new(30.0, 40.0),
             death_screen_target: None,
             game_event_target: None,
+            player_reporting_target: None,
             social_interactions_target: Some(latest),
         });
         mailbox.enqueue(SimulationCommand::MouseButton {
@@ -632,6 +646,7 @@ mod tests {
             book_target: None,
             death_screen_target: None,
             game_event_target: None,
+            player_reporting_target: None,
             social_interactions_target: Some(latest),
         });
 

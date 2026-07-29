@@ -25,6 +25,7 @@ mod game_rules;
 mod gpu;
 mod layout;
 mod player_list;
+mod reporting;
 mod scoreboard;
 mod social;
 mod spectator;
@@ -96,6 +97,12 @@ pub use self::player_list::{
     HudPlayerList, HudPlayerListEntry, HudPlayerListPingSprite, HudPlayerListScore,
 };
 pub(crate) use self::player_list::{HudPlayerListHeartSprites, HudPlayerListRuntime};
+pub use self::reporting::{
+    hud_player_reporting_layout, HudPlayerReportingControl, HudPlayerReportingControlKind,
+    HudPlayerReportingControlPlacement, HudPlayerReportingFocus, HudPlayerReportingHitTarget,
+    HudPlayerReportingLayout, HudPlayerReportingRect, HudPlayerReportingRow,
+    HudPlayerReportingScreen, HudPlayerReportingScreenKind,
+};
 pub use self::scoreboard::{HudScoreboardSidebar, HudScoreboardSidebarEntry};
 pub use self::social::{
     hud_social_interactions_layout, hud_social_interactions_max_scroll_amount,
@@ -7282,6 +7289,26 @@ impl Renderer {
                     mute_highlighted: self.hud_social_interactions_mute_highlighted.as_ref(),
                     unmute: self.hud_social_interactions_unmute.as_ref(),
                     unmute_highlighted: self.hud_social_interactions_unmute_highlighted.as_ref(),
+                },
+                self.hud_font_atlas.as_ref(),
+                &self.hud_font_glyphs,
+                &self.hud_obfuscated_glyph_pool,
+                self.counters.frame_index,
+                surface_size,
+                screen,
+            );
+        }
+
+        if let Some(screen) = &self.hud_player_reporting_screen {
+            reporting::push_hud_player_reporting_screen(
+                &mut vertices,
+                &mut commands,
+                &self.hud_white_pixel,
+                self.hud_inworld_menu_background.as_ref(),
+                HudDebugOptionsButtonSprites {
+                    normal: self.hud_widget_button.as_ref(),
+                    disabled: self.hud_widget_button_disabled.as_ref(),
+                    highlighted: self.hud_widget_button_highlighted.as_ref(),
                 },
                 self.hud_font_atlas.as_ref(),
                 &self.hud_font_glyphs,

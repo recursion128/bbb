@@ -89,9 +89,10 @@ pub use crate::client::player_info::{
 pub use crate::client::reporting::{
     player_report_reasons, BuiltPlayerReport, BuiltPlayerReportMessage, PlayerReportBuildError,
     PlayerReportDraft, PlayerReportDraftCommon, PlayerReportEnvironment, PlayerReportMutationError,
-    PlayerReportReason, PlayerReportType, PlayerReportingState, LEADING_REPORT_CONTEXT_MESSAGES,
-    MAX_REPORT_COMMENT_UTF16_UNITS, MAX_REPORT_EVIDENCE_MESSAGES, MAX_SELECTED_REPORT_MESSAGES,
-    TRAILING_REPORT_CONTEXT_MESSAGES,
+    PlayerReportReason, PlayerReportSubmissionState, PlayerReportSubmissionStatus,
+    PlayerReportType, PlayerReportingScreenState, PlayerReportingState,
+    LEADING_REPORT_CONTEXT_MESSAGES, MAX_REPORT_COMMENT_UTF16_UNITS, MAX_REPORT_EVIDENCE_MESSAGES,
+    MAX_SELECTED_REPORT_MESSAGES, TRAILING_REPORT_CONTEXT_MESSAGES,
 };
 pub use crate::client::scoreboard::{
     ScoreboardObjective, ScoreboardPlayerListScoreState, ScoreboardScore,

@@ -2,19 +2,34 @@
 
 use std::{fmt, future::Future, pin::Pin, sync::Arc};
 
-use bbb_net::{MinecraftUserApiClient, MinecraftUserApiErrorKind, NetEvent, UserApiBlockList};
+use bbb_net::{
+    AbuseReportRequest, MinecraftUserApiClient, MinecraftUserApiErrorKind, NetEvent,
+    UserApiBlockList,
+};
 use bbb_protocol::packets::PlayClientbound;
-use bbb_world::WorldStore;
-use tokio::{runtime::Handle, sync::Mutex};
+use bbb_world::{BuiltPlayerReport, WorldStore};
+use tokio::{runtime::Handle, sync::Mutex, task::AbortHandle};
 use uuid::Uuid;
 
 use crate::simulation::commands::{SimulationCommand, SimulationMailbox};
 
 type BlockListRefreshFuture<'a> =
     Pin<Box<dyn Future<Output = ServicesBlockListRefresh> + Send + 'a>>;
+type PlayerReportSubmissionFuture<'a> =
+    Pin<Box<dyn Future<Output = Result<(), PlayerReportSubmissionFailure>> + Send + 'a>>;
 
 trait ServicesBlockListSource: Send + Sync {
     fn refresh(&self, now_epoch_seconds: i64) -> BlockListRefreshFuture<'_>;
+
+    fn submit_player_report(&self, report: BuiltPlayerReport) -> PlayerReportSubmissionFuture<'_> {
+        let _ = report;
+        Box::pin(async {
+            Err(PlayerReportSubmissionFailure {
+                kind: MinecraftUserApiErrorKind::ServiceUnavailable,
+                status: None,
+            })
+        })
+    }
 }
 
 struct MinecraftServicesBlockListSource {
@@ -44,6 +59,24 @@ impl ServicesBlockListSource for MinecraftServicesBlockListSource {
             }
         })
     }
+
+    fn submit_player_report(&self, report: BuiltPlayerReport) -> PlayerReportSubmissionFuture<'_> {
+        Box::pin(async move {
+            let request = AbuseReportRequest::try_from(report).map_err(|error| {
+                PlayerReportSubmissionFailure {
+                    kind: error.kind(),
+                    status: error.status(),
+                }
+            })?;
+            let client = self.client.lock().await;
+            client.submit_abuse_report(&request).await.map_err(|error| {
+                PlayerReportSubmissionFailure {
+                    kind: error.kind(),
+                    status: error.status(),
+                }
+            })
+        })
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -65,6 +98,27 @@ struct ServicesBlockListRefresh {
     next_refresh_epoch_seconds: Option<i64>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct PlayerReportSubmissionFailure {
+    pub(crate) kind: MinecraftUserApiErrorKind,
+    pub(crate) status: Option<u16>,
+}
+
+#[derive(Debug)]
+pub(crate) struct PlayerReportSubmissionCompletion {
+    pub(crate) service_generation: u64,
+    pub(crate) report_id: Uuid,
+    pub(crate) attempt: u64,
+    pub(crate) result: Result<(), PlayerReportSubmissionFailure>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct PendingPlayerReportSubmission {
+    service_generation: u64,
+    report_id: Uuid,
+    attempt: u64,
+}
+
 pub(crate) struct ServicesBlockListRuntime {
     handle: Handle,
     mailbox: SimulationMailbox,
@@ -73,6 +127,8 @@ pub(crate) struct ServicesBlockListRuntime {
     online: bool,
     pending_generation: Option<u64>,
     next_refresh_epoch_seconds: Option<i64>,
+    pending_player_report: Option<PendingPlayerReportSubmission>,
+    pending_player_report_abort: Option<AbortHandle>,
 }
 
 impl fmt::Debug for ServicesBlockListRuntime {
@@ -87,6 +143,7 @@ impl fmt::Debug for ServicesBlockListRuntime {
                 "next_refresh_epoch_seconds",
                 &self.next_refresh_epoch_seconds,
             )
+            .field("pending_player_report", &self.pending_player_report)
             .finish_non_exhaustive()
     }
 }
@@ -110,6 +167,8 @@ impl ServicesBlockListRuntime {
             online: false,
             pending_generation: None,
             next_refresh_epoch_seconds: None,
+            pending_player_report: None,
+            pending_player_report_abort: None,
         }
     }
 
@@ -140,6 +199,129 @@ impl ServicesBlockListRuntime {
         {
             self.start_refresh(now_epoch_seconds, false);
         }
+    }
+
+    pub(crate) fn synchronize_player_report_submissions(
+        &mut self,
+        input: &mut crate::input::ClientInputState,
+        world: &mut WorldStore,
+    ) {
+        for (report_id, attempt) in input.take_cancelled_player_reporting_submissions() {
+            if self
+                .pending_player_report
+                .is_some_and(|pending| pending.report_id == report_id && pending.attempt == attempt)
+            {
+                self.pending_player_report = None;
+                if let Some(abort) = self.pending_player_report_abort.take() {
+                    abort.abort();
+                }
+            }
+        }
+        if self
+            .pending_player_report
+            .is_some_and(|pending| !self.online || pending.service_generation != self.generation)
+        {
+            let pending = self
+                .pending_player_report
+                .take()
+                .expect("checked pending submission");
+            if let Some(abort) = self.pending_player_report_abort.take() {
+                abort.abort();
+            }
+            input.apply_player_reporting_submission_result(
+                world,
+                pending.service_generation,
+                pending.report_id,
+                pending.attempt,
+                false,
+            );
+        }
+
+        for request in input.take_player_reporting_submissions() {
+            let report_id = request.report.id;
+            let pending = PendingPlayerReportSubmission {
+                service_generation: self.generation,
+                report_id,
+                attempt: request.attempt,
+            };
+            if self.pending_player_report.is_some()
+                || !world.begin_player_report_submission(
+                    pending.service_generation,
+                    report_id,
+                    request.attempt,
+                )
+            {
+                continue;
+            }
+            let Some(source) = self.source.as_ref().map(Arc::clone).filter(|_| self.online) else {
+                input.apply_player_reporting_submission_result(
+                    world,
+                    pending.service_generation,
+                    report_id,
+                    request.attempt,
+                    false,
+                );
+                continue;
+            };
+            self.pending_player_report = Some(pending);
+            let mailbox = self.mailbox.clone();
+            let task = self.handle.spawn(async move {
+                let result = source.submit_player_report(request.report).await;
+                mailbox.enqueue(SimulationCommand::PlayerReportSubmissionCompletion(
+                    PlayerReportSubmissionCompletion {
+                        service_generation: pending.service_generation,
+                        report_id,
+                        attempt: request.attempt,
+                        result,
+                    },
+                ));
+            });
+            self.pending_player_report_abort = Some(task.abort_handle());
+        }
+    }
+
+    pub(crate) fn apply_player_report_submission_completion(
+        &mut self,
+        completion: PlayerReportSubmissionCompletion,
+        input: &mut crate::input::ClientInputState,
+        world: &mut WorldStore,
+    ) -> bool {
+        let expected = PendingPlayerReportSubmission {
+            service_generation: completion.service_generation,
+            report_id: completion.report_id,
+            attempt: completion.attempt,
+        };
+        if self.pending_player_report != Some(expected)
+            || !self.online
+            || completion.service_generation != self.generation
+        {
+            return false;
+        }
+        self.pending_player_report = None;
+        self.pending_player_report_abort = None;
+        if let Err(error) = completion.result {
+            tracing::warn!(
+                kind = ?error.kind,
+                status = ?error.status,
+                report_id = %completion.report_id,
+                attempt = completion.attempt,
+                "Minecraft Services player-report submission failed"
+            );
+            return input.apply_player_reporting_submission_result(
+                world,
+                completion.service_generation,
+                completion.report_id,
+                completion.attempt,
+                false,
+            );
+        }
+        input.apply_player_reporting_submission_result(
+            world,
+            completion.service_generation,
+            completion.report_id,
+            completion.attempt,
+            true,
+        )
     }
 
     pub(crate) fn apply_completion(
@@ -241,6 +423,12 @@ mod tests {
     };
 
     use bbb_net::ConnectionState;
+    use bbb_protocol::packets::{
+        GameProfile, GameType, PlayerInfoAction, PlayerInfoEntry, PlayerInfoUpdate,
+    };
+    use bbb_renderer::{HudPlayerReportingFocus, HudPlayerReportingHitTarget};
+    use bbb_world::{PlayerReportEnvironment, PlayerReportSubmissionStatus};
+    use winit::event::{ElementState, MouseButton};
 
     use super::*;
 
@@ -271,6 +459,36 @@ mod tests {
         }
     }
 
+    struct FakeSubmissionSource {
+        submissions: Mutex<VecDeque<Result<(), PlayerReportSubmissionFailure>>>,
+        calls: AtomicUsize,
+    }
+
+    impl ServicesBlockListSource for FakeSubmissionSource {
+        fn refresh(&self, _now_epoch_seconds: i64) -> BlockListRefreshFuture<'_> {
+            Box::pin(async {
+                ServicesBlockListRefresh {
+                    result: Ok(Vec::new()),
+                    next_refresh_epoch_seconds: None,
+                }
+            })
+        }
+
+        fn submit_player_report(
+            &self,
+            _report: BuiltPlayerReport,
+        ) -> PlayerReportSubmissionFuture<'_> {
+            Box::pin(async move {
+                self.calls.fetch_add(1, Ordering::SeqCst);
+                self.submissions
+                    .lock()
+                    .await
+                    .pop_front()
+                    .expect("fake submission result")
+            })
+        }
+    }
+
     fn runtime_with_source(
         mailbox: SimulationMailbox,
         source: Arc<dyn ServicesBlockListSource>,
@@ -283,6 +501,8 @@ mod tests {
             online: false,
             pending_generation: None,
             next_refresh_epoch_seconds: None,
+            pending_player_report: None,
+            pending_player_report_abort: None,
         }
     }
 
@@ -298,6 +518,22 @@ mod tests {
             tokio::task::yield_now().await;
         }
         panic!("Services block-list completion was not queued");
+    }
+
+    async fn take_report_completion(
+        mailbox: &SimulationMailbox,
+    ) -> PlayerReportSubmissionCompletion {
+        for _ in 0..100 {
+            for command in mailbox.drain_through_barrier() {
+                if let SimulationCommand::PlayerReportSubmissionCompletion(completion) =
+                    command.command
+                {
+                    return completion;
+                }
+            }
+            tokio::task::yield_now().await;
+        }
+        panic!("player-report submission completion was not queued");
     }
 
     fn success(
@@ -479,5 +715,179 @@ mod tests {
         runtime.observe_net_event(&NetEvent::Disconnected { reason: None }, &mut world, 101);
         assert!(!world.services_block_list().active);
         assert_eq!(mailbox.pending_len(), 0);
+    }
+
+    #[tokio::test]
+    async fn player_reporting_submission_runs_async_and_applies_only_matching_attempt() {
+        let failure = PlayerReportSubmissionFailure {
+            kind: MinecraftUserApiErrorKind::Http,
+            status: Some(503),
+        };
+        let source = Arc::new(FakeSubmissionSource {
+            submissions: Mutex::new([Err(failure), Ok(())].into_iter().collect()),
+            calls: AtomicUsize::new(0),
+        });
+        let mailbox = SimulationMailbox::default();
+        let mut runtime = runtime_with_source(mailbox.clone(), source.clone());
+        runtime.online = true;
+        runtime.generation = 7;
+        let (mut world, remote) = reporting_world();
+        let mut input = crate::input::ClientInputState::new(true);
+        assert!(input.open_social_interactions_screen(&mut world, false));
+        assert!(input.open_player_reporting_screen(&mut world, remote));
+        click_reporting(
+            &mut input,
+            &mut world,
+            HudPlayerReportingFocus::ReportType(2),
+        );
+        click_reporting(&mut input, &mut world, HudPlayerReportingFocus::Attestation);
+        click_reporting(&mut input, &mut world, HudPlayerReportingFocus::Send);
+
+        runtime.synchronize_player_report_submissions(&mut input, &mut world);
+        let pending = runtime.pending_player_report.expect("pending report");
+        assert_eq!(
+            world.player_reporting().submission,
+            Some(bbb_world::PlayerReportSubmissionState {
+                service_generation: 7,
+                report_id: pending.report_id,
+                attempt: pending.attempt,
+                status: PlayerReportSubmissionStatus::Sending,
+            })
+        );
+        let completion = take_report_completion(&mailbox).await;
+        let stale = PlayerReportSubmissionCompletion {
+            service_generation: completion.service_generation,
+            report_id: completion.report_id,
+            attempt: completion.attempt + 1,
+            result: completion.result,
+        };
+        assert!(!runtime.apply_player_report_submission_completion(stale, &mut input, &mut world,));
+        assert!(runtime.pending_player_report.is_some());
+
+        let matching = PlayerReportSubmissionCompletion {
+            service_generation: pending.service_generation,
+            report_id: pending.report_id,
+            attempt: pending.attempt,
+            result: Err(failure),
+        };
+        assert!(
+            runtime.apply_player_report_submission_completion(matching, &mut input, &mut world,)
+        );
+        assert_eq!(
+            world.player_reporting().submission.unwrap().status,
+            PlayerReportSubmissionStatus::Failed
+        );
+        assert!(world.player_reporting().draft.is_some());
+
+        click_reporting(&mut input, &mut world, HudPlayerReportingFocus::Retry);
+        runtime.synchronize_player_report_submissions(&mut input, &mut world);
+        let completion = take_report_completion(&mailbox).await;
+        assert!(
+            runtime.apply_player_report_submission_completion(completion, &mut input, &mut world,)
+        );
+        assert_eq!(source.calls.load(Ordering::SeqCst), 2);
+        assert_eq!(
+            world.player_reporting().submission.unwrap().status,
+            PlayerReportSubmissionStatus::Succeeded
+        );
+        assert!(world.player_reporting().draft.is_none());
+    }
+
+    #[tokio::test]
+    async fn player_reporting_submission_cancel_aborts_task_and_rejects_late_completion() {
+        let source = Arc::new(FakeSubmissionSource {
+            submissions: Mutex::new([Ok(())].into_iter().collect()),
+            calls: AtomicUsize::new(0),
+        });
+        let mailbox = SimulationMailbox::default();
+        let mut runtime = runtime_with_source(mailbox, source);
+        runtime.online = true;
+        runtime.generation = 8;
+        let (mut world, remote) = reporting_world();
+        let mut input = crate::input::ClientInputState::new(true);
+        assert!(input.open_social_interactions_screen(&mut world, false));
+        assert!(input.open_player_reporting_screen(&mut world, remote));
+        click_reporting(
+            &mut input,
+            &mut world,
+            HudPlayerReportingFocus::ReportType(2),
+        );
+        click_reporting(&mut input, &mut world, HudPlayerReportingFocus::Attestation);
+        click_reporting(&mut input, &mut world, HudPlayerReportingFocus::Send);
+        runtime.synchronize_player_report_submissions(&mut input, &mut world);
+        let pending = runtime.pending_player_report.expect("pending report");
+        assert!(runtime.pending_player_report_abort.is_some());
+
+        click_reporting(&mut input, &mut world, HudPlayerReportingFocus::Cancel);
+        runtime.synchronize_player_report_submissions(&mut input, &mut world);
+        assert!(runtime.pending_player_report.is_none());
+        assert!(runtime.pending_player_report_abort.is_none());
+        assert!(world.player_reporting().submission.is_none());
+        assert!(!runtime.apply_player_report_submission_completion(
+            PlayerReportSubmissionCompletion {
+                service_generation: pending.service_generation,
+                report_id: pending.report_id,
+                attempt: pending.attempt,
+                result: Ok(()),
+            },
+            &mut input,
+            &mut world,
+        ));
+        assert!(world.player_reporting().draft.is_some());
+    }
+
+    fn reporting_world() -> (WorldStore, Uuid) {
+        let local = Uuid::from_u128(101);
+        let remote = Uuid::from_u128(102);
+        let mut world = WorldStore::new();
+        world.set_local_player_profile_id(local);
+        world.set_player_report_environment(Some(PlayerReportEnvironment::third_party(
+            "26.1",
+            "en-US",
+            "example.org:25565",
+        )));
+        world.apply_player_info_update(PlayerInfoUpdate {
+            actions: vec![PlayerInfoAction::AddPlayer],
+            entries: vec![
+                player_info_entry(local, "Local"),
+                player_info_entry(remote, "Remote"),
+            ],
+        });
+        (world, remote)
+    }
+
+    fn player_info_entry(profile_id: Uuid, name: &str) -> PlayerInfoEntry {
+        PlayerInfoEntry {
+            profile_id,
+            profile: Some(GameProfile {
+                uuid: profile_id,
+                name: name.to_string(),
+                properties: Vec::new(),
+            }),
+            listed: true,
+            latency: 0,
+            game_mode: GameType::default(),
+            display_name: None,
+            show_hat: true,
+            list_order: 0,
+            chat_session: None,
+        }
+    }
+
+    fn click_reporting(
+        input: &mut crate::input::ClientInputState,
+        world: &mut WorldStore,
+        focus: HudPlayerReportingFocus,
+    ) {
+        let generation = input
+            .player_reporting_runtime()
+            .expect("reporting runtime")
+            .generation();
+        assert!(input.handle_player_reporting_mouse_input(
+            world,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(HudPlayerReportingHitTarget { generation, focus }),
+        ));
     }
 }

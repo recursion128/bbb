@@ -206,6 +206,28 @@ pub struct PlayerReportingState {
     pub generation: u64,
     pub environment: Option<PlayerReportEnvironment>,
     pub draft: Option<PlayerReportDraft>,
+    pub submission: Option<PlayerReportSubmissionState>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PlayerReportSubmissionStatus {
+    Sending,
+    Succeeded,
+    Failed,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PlayerReportSubmissionState {
+    pub service_generation: u64,
+    pub report_id: Uuid,
+    pub attempt: u64,
+    pub status: PlayerReportSubmissionStatus,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PlayerReportingScreenState {
+    pub generation: u64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
@@ -273,6 +295,77 @@ impl WorldStore {
         &self.player_reporting
     }
 
+    pub fn player_reporting_screen(&self) -> Option<PlayerReportingScreenState> {
+        self.client_ui.current_player_reporting_screen
+    }
+
+    pub fn open_player_reporting_screen(&mut self) -> PlayerReportingScreenState {
+        if let Some(screen) = self.player_reporting_screen() {
+            return screen;
+        }
+        let previous_social = self.client_ui.current_social_interactions_screen.take();
+        self.client_ui.replace_screen();
+        self.client_ui.player_reporting_previous_social_screen = previous_social;
+        self.client_ui.player_reporting_screen_generation = self
+            .client_ui
+            .player_reporting_screen_generation
+            .saturating_add(1);
+        let screen = PlayerReportingScreenState {
+            generation: self.client_ui.player_reporting_screen_generation,
+        };
+        self.client_ui.current_player_reporting_screen = Some(screen);
+        screen
+    }
+
+    pub fn transition_player_reporting_screen(
+        &mut self,
+        generation: u64,
+    ) -> Option<PlayerReportingScreenState> {
+        if self
+            .player_reporting_screen()
+            .is_none_or(|screen| screen.generation != generation)
+        {
+            return None;
+        }
+        self.client_ui.player_reporting_screen_generation = self
+            .client_ui
+            .player_reporting_screen_generation
+            .saturating_add(1);
+        let screen = PlayerReportingScreenState {
+            generation: self.client_ui.player_reporting_screen_generation,
+        };
+        self.client_ui.current_player_reporting_screen = Some(screen);
+        Some(screen)
+    }
+
+    pub fn close_player_reporting_screen(&mut self, generation: u64) -> bool {
+        if self
+            .player_reporting_screen()
+            .is_none_or(|screen| screen.generation != generation)
+        {
+            return false;
+        }
+        self.client_ui.current_player_reporting_screen = None;
+        self.client_ui.current_social_interactions_screen = self
+            .client_ui
+            .player_reporting_previous_social_screen
+            .take();
+        true
+    }
+
+    pub fn finish_player_reporting_screen(&mut self, generation: u64) -> bool {
+        if self
+            .player_reporting_screen()
+            .is_none_or(|screen| screen.generation != generation)
+        {
+            return false;
+        }
+        self.client_ui.current_player_reporting_screen = None;
+        self.client_ui.current_social_interactions_screen = None;
+        self.client_ui.player_reporting_previous_social_screen = None;
+        true
+    }
+
     pub fn set_player_report_environment(
         &mut self,
         environment: Option<PlayerReportEnvironment>,
@@ -281,7 +374,11 @@ impl WorldStore {
             return false;
         }
         let discarded_draft = self.player_reporting.draft.take().is_some();
+        self.player_reporting.submission = None;
         self.player_reporting.environment = environment;
+        self.client_ui.current_player_reporting_screen = None;
+        self.client_ui.current_social_interactions_screen = None;
+        self.client_ui.player_reporting_previous_social_screen = None;
         self.advance_player_reporting_generation();
         discarded_draft
     }
@@ -430,6 +527,42 @@ impl WorldStore {
         selected_message_ids.insert(message_id)
     }
 
+    pub fn set_chat_report_messages(
+        &mut self,
+        report_id: Uuid,
+        message_ids: BTreeSet<u64>,
+    ) -> bool {
+        if message_ids.len() > MAX_SELECTED_REPORT_MESSAGES {
+            return false;
+        }
+        let Some(PlayerReportDraft::Chat { common, .. }) = self
+            .player_reporting
+            .draft
+            .as_ref()
+            .filter(|draft| draft.common().report_id == report_id)
+        else {
+            return false;
+        };
+        if message_ids.iter().any(|message_id| {
+            !chat_event_is_reportable(
+                &self.client_chat.report_log,
+                *message_id,
+                common.reported_profile_id,
+            )
+        }) {
+            return false;
+        }
+        let Some(PlayerReportDraft::Chat {
+            selected_message_ids,
+            ..
+        }) = self.player_reporting.draft.as_mut()
+        else {
+            unreachable!("the checked chat draft still exists");
+        };
+        *selected_message_ids = message_ids;
+        true
+    }
+
     pub fn discard_player_report_draft(&mut self, report_id: Uuid) -> bool {
         if self
             .player_reporting
@@ -440,6 +573,7 @@ impl WorldStore {
             return false;
         }
         self.player_reporting.draft = None;
+        self.player_reporting.submission = None;
         self.advance_player_reporting_generation();
         true
     }
@@ -509,6 +643,95 @@ impl WorldStore {
         })
     }
 
+    pub fn begin_player_report_submission(
+        &mut self,
+        service_generation: u64,
+        report_id: Uuid,
+        attempt: u64,
+    ) -> bool {
+        if attempt == 0
+            || self
+                .player_reporting
+                .submission
+                .as_ref()
+                .is_some_and(|submission| {
+                    submission.status == PlayerReportSubmissionStatus::Sending
+                })
+            || self
+                .player_reporting
+                .draft
+                .as_ref()
+                .is_none_or(|draft| draft.common().report_id != report_id)
+        {
+            return false;
+        }
+        self.player_reporting.submission = Some(PlayerReportSubmissionState {
+            service_generation,
+            report_id,
+            attempt,
+            status: PlayerReportSubmissionStatus::Sending,
+        });
+        true
+    }
+
+    pub fn complete_player_report_submission(
+        &mut self,
+        service_generation: u64,
+        report_id: Uuid,
+        attempt: u64,
+        succeeded: bool,
+    ) -> bool {
+        let Some(submission) = self.player_reporting.submission.as_mut() else {
+            return false;
+        };
+        if submission.service_generation != service_generation
+            || submission.report_id != report_id
+            || submission.attempt != attempt
+            || submission.status != PlayerReportSubmissionStatus::Sending
+        {
+            return false;
+        }
+        submission.status = if succeeded {
+            PlayerReportSubmissionStatus::Succeeded
+        } else {
+            PlayerReportSubmissionStatus::Failed
+        };
+        true
+    }
+
+    pub fn clear_player_report_submission(&mut self) -> bool {
+        self.player_reporting.submission.take().is_some()
+    }
+
+    pub fn remove_submitted_player_report_draft(
+        &mut self,
+        service_generation: u64,
+        report_id: Uuid,
+        attempt: u64,
+    ) -> bool {
+        if self
+            .player_reporting
+            .submission
+            .as_ref()
+            .is_none_or(|submission| {
+                submission.service_generation != service_generation
+                    || submission.report_id != report_id
+                    || submission.attempt != attempt
+                    || submission.status != PlayerReportSubmissionStatus::Succeeded
+            })
+            || self
+                .player_reporting
+                .draft
+                .as_ref()
+                .is_none_or(|draft| draft.common().report_id != report_id)
+        {
+            return false;
+        }
+        self.player_reporting.draft = None;
+        self.advance_player_reporting_generation();
+        true
+    }
+
     fn start_player_report_draft(
         &mut self,
         draft: PlayerReportDraft,
@@ -521,6 +744,7 @@ impl WorldStore {
             return Err(PlayerReportMutationError::InvalidTarget);
         }
         self.player_reporting.draft = Some(draft);
+        self.player_reporting.submission = None;
         self.advance_player_reporting_generation();
         Ok(self.player_reporting.generation)
     }
@@ -914,5 +1138,69 @@ mod tests {
             .unwrap();
         assert!(!store.set_player_report_comments(Uuid::from_u128(3), "wrong".to_string()));
         assert!(!store.toggle_chat_report_message(Uuid::from_u128(2), 0));
+    }
+
+    #[test]
+    fn player_reporting_screen_generation_rejects_stale_transition_and_restores_social() {
+        let mut store = WorldStore::new();
+        let social = store.open_social_interactions_screen();
+        let reporting = store.open_player_reporting_screen();
+        assert!(store.social_interactions_screen().is_none());
+        assert!(!store.close_player_reporting_screen(reporting.generation + 1));
+        let transitioned = store
+            .transition_player_reporting_screen(reporting.generation)
+            .expect("matching transition");
+        assert!(transitioned.generation > reporting.generation);
+        assert!(store
+            .transition_player_reporting_screen(reporting.generation)
+            .is_none());
+        assert!(store.close_player_reporting_screen(transitioned.generation));
+        assert_eq!(store.social_interactions_screen(), Some(social));
+    }
+
+    #[test]
+    fn player_reporting_environment_change_invalidates_screen_and_suspended_social_state() {
+        let mut store = WorldStore::new();
+        store.set_player_report_environment(Some(environment("first.example:25565")));
+        store.open_social_interactions_screen();
+        let reporting = store.open_player_reporting_screen();
+
+        store.set_player_report_server_address("second.example:25565");
+        assert_eq!(
+            store
+                .player_reporting()
+                .environment
+                .as_ref()
+                .and_then(|environment| environment.third_party_server_address.as_deref()),
+            Some("second.example:25565")
+        );
+        assert!(store.player_reporting_screen().is_none());
+        assert!(store.social_interactions_screen().is_none());
+        assert!(!store.close_player_reporting_screen(reporting.generation));
+    }
+
+    #[test]
+    fn player_reporting_submission_lifecycle_matches_generation_id_and_attempt() {
+        let mut store = WorldStore::new();
+        let target = Uuid::from_u128(22);
+        let report_id = Uuid::from_u128(23);
+        store.set_player_report_environment(Some(environment("example.org:25565")));
+        store
+            .start_username_report_draft(report_id, 1_000, target, "Reported")
+            .unwrap();
+        assert!(!store.begin_player_report_submission(4, report_id, 0));
+        assert!(store.begin_player_report_submission(4, report_id, 1));
+        assert!(!store.begin_player_report_submission(4, report_id, 2));
+        assert!(!store.complete_player_report_submission(5, report_id, 1, true));
+        assert!(!store.complete_player_report_submission(4, report_id, 2, true));
+        assert!(store.complete_player_report_submission(4, report_id, 1, true));
+        assert!(store.remove_submitted_player_report_draft(4, report_id, 1));
+        assert!(store.player_reporting().draft.is_none());
+        assert_eq!(
+            store.player_reporting().submission.unwrap().status,
+            PlayerReportSubmissionStatus::Succeeded
+        );
+        assert!(!store.remove_submitted_player_report_draft(4, report_id, 1));
+        assert!(store.clear_player_report_submission());
     }
 }

@@ -182,9 +182,18 @@ impl SocialInteractionsRuntime {
             HudSocialInteractionsFocus::Tab(HudSocialInteractionsPage::Blocked),
         ];
         let local_player = world.local_player_profile_id();
-        focusables.extend(self.rows.iter().filter_map(|player| {
-            (Some(player.profile.uuid) != local_player).then(|| player_focus(player))
-        }));
+        for player in &self.rows {
+            if Some(player.profile.uuid) == local_player {
+                continue;
+            }
+            focusables.push(player_focus(player));
+            if world.player_reporting().environment.is_some() {
+                focusables.push(HudSocialInteractionsFocus::Player {
+                    profile_id: *player.profile.uuid.as_bytes(),
+                    action: HudSocialInteractionsPlayerAction::Report,
+                });
+            }
+        }
         if self.page == SocialInteractionsPage::Blocked {
             focusables.push(HudSocialInteractionsFocus::BlockingHelp);
         }
@@ -636,6 +645,12 @@ impl ClientInputState {
                 }) else {
                     return;
                 };
+                if action == HudSocialInteractionsPlayerAction::Report {
+                    if world.player_reporting().environment.is_some() {
+                        self.open_player_reporting_screen(world, profile_id);
+                    }
+                    return;
+                }
                 let expected = if player.hidden {
                     HudSocialInteractionsPlayerAction::Show
                 } else {
@@ -651,6 +666,7 @@ impl ClientInputState {
                     HudSocialInteractionsPlayerAction::Show => {
                         world.show_social_player(profile_id);
                     }
+                    HudSocialInteractionsPlayerAction::Report => unreachable!("handled above"),
                 }
                 let hidden = world.social_player_is_hidden(profile_id);
                 let state = self
@@ -745,13 +761,19 @@ fn refreshed_player_focus(
     focus: HudSocialInteractionsFocus,
     rows: &[SocialPlayerState],
 ) -> Option<HudSocialInteractionsFocus> {
-    let HudSocialInteractionsFocus::Player { profile_id, .. } = focus else {
+    let HudSocialInteractionsFocus::Player { profile_id, action } = focus else {
         return Some(focus);
     };
     let profile_id = Uuid::from_bytes(profile_id);
     rows.iter()
         .find(|player| player.profile.uuid == profile_id)
-        .map(player_focus)
+        .map(|player| {
+            if action == HudSocialInteractionsPlayerAction::Report {
+                focus
+            } else {
+                player_focus(player)
+            }
+        })
 }
 
 fn renderer_page(page: SocialInteractionsPage) -> HudSocialInteractionsPage {
