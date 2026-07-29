@@ -142,6 +142,7 @@ mod tests {
             ghost_items: Vec::new(),
             entity_previews: Vec::new(),
             map_previews,
+            banner_pattern_previews: Vec::new(),
             text_labels: Vec::new(),
             scroll_area: None,
             preedit_overlay: None,

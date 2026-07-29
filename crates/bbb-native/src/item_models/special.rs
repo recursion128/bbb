@@ -15,8 +15,8 @@ use bbb_pack::{
 use bbb_protocol::builtin_enum_component_values::vanilla_dye_color_name;
 use bbb_protocol::packets::{BannerPatternLayerSummary, ItemStackSummary};
 use bbb_renderer::{
-    entity_model_texture_refs, BannerPatternKind, BedModelPart, ChestModelHalf,
-    DecoratedPotPattern, EntityDefaultPlayerSkin, EntityDyeColor, EntityDynamicPlayerSkinStatus,
+    entity_model_texture_refs, BedModelPart, ChestModelHalf, DecoratedPotPattern,
+    EntityDefaultPlayerSkin, EntityDyeColor, EntityDynamicPlayerSkinStatus,
     EntityModelOwnedTextureRef, EntityModelTextureRef, EntityPlayerSkin, SignModelAttachment,
     SpecialItemBannerAttachment, SpecialItemCopperGolemPose, SpecialItemEndCubeEffect,
     SpecialItemHeadKind, SpecialItemModel as RendererSpecialItemModel, SpecialItemPatternLayer,
@@ -25,7 +25,10 @@ use bbb_renderer::{
 use bbb_world::WorldStore;
 use glam::Mat4;
 
-use crate::entity_variant_textures::NativeEntityVariantTextureRuntime;
+use crate::{
+    banner_scene::banner_component_pattern_asset_id,
+    entity_variant_textures::NativeEntityVariantTextureRuntime,
+};
 
 const BED_LOGICAL_SIZE: [u32; 2] = [64, 64];
 const CHEST_LOGICAL_SIZE: [u32; 2] = [64, 64];
@@ -353,21 +356,7 @@ fn project_banner_patterns(
         .iter()
         .take(16)
         .filter_map(|layer| {
-            let asset_id = layer.asset_id.clone().or_else(|| {
-                let holder_id = layer.registry_id?;
-                world
-                    .and_then(|world| {
-                        world
-                            .synchronized_banner_pattern_presentation(holder_id)
-                            .ok()
-                            .flatten()
-                            .map(|presentation| presentation.asset_id)
-                    })
-                    .or_else(|| {
-                        BannerPatternKind::for_vanilla_registry_id(holder_id)
-                            .map(|pattern| pattern.resource_id().to_string())
-                    })
-            })?;
+            let asset_id = banner_component_pattern_asset_id(world, layer)?;
             let mapper = if shield {
                 "entity/shield"
             } else {

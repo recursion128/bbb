@@ -10,6 +10,9 @@
 //! registry-id -> sprite mapping happens here, mirroring
 //! `Sheets.getBannerSprite` over `BannerPatterns.bootstrap`.
 
+use bbb_protocol::{
+    builtin_enum_component_values::vanilla_dye_color_name, packets::BannerPatternLayerSummary,
+};
 use bbb_renderer::{
     BannerPatternKind, BannerPatternLayer, BannerPatternTexture, EntityDyeColor,
     EntityDynamicTexture, EntityModelInstance,
@@ -70,7 +73,7 @@ fn banner_model_instance(
 
 /// The block-id base color (`AbstractBannerBlock.getColor`) as the
 /// renderer's dye.
-fn banner_dye_color(color: WorldBannerDyeColorKind) -> EntityDyeColor {
+pub(crate) fn banner_dye_color(color: WorldBannerDyeColorKind) -> EntityDyeColor {
     match color {
         WorldBannerDyeColorKind::White => EntityDyeColor::White,
         WorldBannerDyeColorKind::Orange => EntityDyeColor::Orange,
@@ -110,21 +113,87 @@ fn banner_pattern_layers(
         let Some(color) = banner_layer_dye_color(&layer.color) else {
             return [None; 16];
         };
-        let Some(sprite_id) = banner_pattern_sprite_id(&presentation.asset_id) else {
-            return [None; 16];
-        };
-        let texture = ready_texture(&sprite_id)
-            .map(BannerPatternTexture::Runtime)
-            .or_else(|| {
-                BannerPatternKind::for_resource_id(&presentation.asset_id)
-                    .map(BannerPatternTexture::Builtin)
-            });
+        let texture = banner_pattern_texture_with(&presentation.asset_id, |sprite_id| {
+            ready_texture(sprite_id)
+        });
         let Some(texture) = texture else {
             return [None; 16];
         };
         if index < out.len() {
             out[index] = Some(BannerPatternLayer { texture, color });
         }
+    }
+    out
+}
+
+/// Resolves one banner pattern through the shared `Sheets.BANNER_MAPPER`
+/// atlas owner. A ready resource-pack atlas wins over the checked-in
+/// bootstrap sheet; otherwise only an exact builtin asset may use the static
+/// atlas. Callers must first resolve synchronized holder identity through
+/// [`WorldStore::synchronized_banner_pattern_presentation`].
+pub(crate) fn banner_pattern_texture(
+    asset_id: &str,
+    textures: Option<&NativeEntityVariantTextureRuntime>,
+) -> Option<BannerPatternTexture> {
+    banner_pattern_texture_with(asset_id, |sprite_id| {
+        textures.and_then(|textures| textures.ready_banner_pattern_texture(sprite_id))
+    })
+}
+
+fn banner_pattern_texture_with(
+    asset_id: &str,
+    mut ready_texture: impl FnMut(&str) -> Option<EntityDynamicTexture>,
+) -> Option<BannerPatternTexture> {
+    let sprite_id = banner_pattern_sprite_id(asset_id)?;
+    ready_texture(&sprite_id)
+        .map(BannerPatternTexture::Runtime)
+        .or_else(|| BannerPatternKind::for_resource_id(asset_id).map(BannerPatternTexture::Builtin))
+}
+
+/// Resolves one item-component layer's asset identity without letting a
+/// bootstrap ordinal override a synchronized registry. Direct values retain
+/// their packet asset id; numeric values use Vanilla's fixed order only when
+/// no `WorldStore` registry context exists.
+pub(crate) fn banner_component_pattern_asset_id(
+    world: Option<&WorldStore>,
+    layer: &BannerPatternLayerSummary,
+) -> Option<String> {
+    if let Some(asset_id) = &layer.asset_id {
+        banner_pattern_sprite_id(asset_id)?;
+        return Some(asset_id.clone());
+    }
+    let holder_id = layer.registry_id?;
+    match world {
+        Some(world) => world
+            .synchronized_banner_pattern_presentation(holder_id)
+            .ok()
+            .flatten()
+            .map(|presentation| presentation.asset_id),
+        None => BannerPatternKind::for_vanilla_registry_id(holder_id)
+            .map(|pattern| pattern.resource_id().to_string()),
+    }
+}
+
+/// Projects one effective `BANNER_PATTERNS` component into the renderer's
+/// fixed 16-layer banner stack. Invalid holder identity folds the component
+/// to empty like the Vanilla codec. A temporarily unavailable custom texture
+/// leaves only that layer absent; later ready atlas publication restores it
+/// without changing canonical item state.
+pub(crate) fn banner_component_pattern_layers(
+    world: &WorldStore,
+    layers: &[BannerPatternLayerSummary],
+    textures: Option<&NativeEntityVariantTextureRuntime>,
+) -> [Option<BannerPatternLayer>; 16] {
+    let mut out = [None; 16];
+    for (index, layer) in layers.iter().take(out.len()).enumerate() {
+        let Some(asset_id) = banner_component_pattern_asset_id(Some(world), layer) else {
+            return [None; 16];
+        };
+        let Some(color) = banner_layer_dye_color(vanilla_dye_color_name(layer.color_id)) else {
+            return [None; 16];
+        };
+        out[index] = banner_pattern_texture(&asset_id, textures)
+            .map(|texture| BannerPatternLayer { texture, color });
     }
     out
 }

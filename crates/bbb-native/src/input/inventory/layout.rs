@@ -1382,22 +1382,28 @@ mod tests {
         }
 
         let runtime = include_str!("../../runtime.rs");
+        let loom_screen = include_str!("../../runtime/loom_screen.rs");
+        assert_consumes(
+            loom_screen,
+            "loom_table_presentation",
+            &[
+                "LOOM_PATTERN_BUTTON_X",
+                "LOOM_PATTERN_BUTTON_Y",
+                "LOOM_PATTERN_BUTTON_COLUMNS",
+                "LOOM_PATTERN_BUTTON_ROWS",
+                "LOOM_PATTERN_BUTTON_SIZE",
+                "LOOM_SCROLLER_X",
+                "LOOM_SCROLLER_Y",
+                "LOOM_SCROLLER_WIDTH",
+                "LOOM_SCROLLER_HEIGHT",
+            ],
+        );
+        assert_consumes(
+            loom_screen,
+            "loom_scroller_offset",
+            &["LOOM_SCROLLER_MAX_OFFSET"],
+        );
         for (name, constants) in [
-            (
-                "push_loom_state_layers",
-                &[
-                    "LOOM_PATTERN_BUTTON_X",
-                    "LOOM_PATTERN_BUTTON_Y",
-                    "LOOM_PATTERN_BUTTON_COLUMNS",
-                    "LOOM_PATTERN_BUTTON_ROWS",
-                    "LOOM_PATTERN_BUTTON_SIZE",
-                    "LOOM_SCROLLER_X",
-                    "LOOM_SCROLLER_Y",
-                    "LOOM_SCROLLER_WIDTH",
-                    "LOOM_SCROLLER_HEIGHT",
-                ][..],
-            ),
-            ("loom_scroller_offset", &["LOOM_SCROLLER_MAX_OFFSET"][..]),
             (
                 "stonecutter_visible_recipe_option_stacks",
                 &[

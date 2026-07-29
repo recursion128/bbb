@@ -7,7 +7,8 @@ use anyhow::{bail, Result};
 use winit::dpi::{PhysicalPosition, PhysicalSize};
 
 use crate::entity_models::{
-    EntityModelInstance, SignModelAttachment, SignModelWood, ENTITY_FULL_BRIGHT_LIGHT_COORDS,
+    BannerPatternTexture, EntityModelInstance, SignModelAttachment, SignModelWood,
+    ENTITY_FULL_BRIGHT_LIGHT_COORDS,
 };
 use crate::item_models::{
     GuiItemLightingEntry, HudBlockItemModel, HudResidentItemLayer, ItemModelAssetRequest,
@@ -3018,6 +3019,23 @@ pub struct HudInventoryMapPreview {
 
 const MAX_HUD_INVENTORY_MAP_PREVIEWS: usize = 2;
 
+/// One Loom pattern thumbnail interleaved immediately after its 14x14 button.
+/// The 5x10 gray banner base is always retained; `texture = None` represents a
+/// synchronized pattern whose bounded dynamic atlas entry is not resident yet.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HudInventoryBannerPatternPreview {
+    pub texture: Option<BannerPatternTexture>,
+    pub x: i32,
+    pub y: i32,
+    pub width: u32,
+    pub height: u32,
+    /// Normalized crop inside the pattern's 64x64 sprite.
+    pub uv: HudUvRect,
+    pub after_background_layer: usize,
+}
+
+const MAX_HUD_INVENTORY_BANNER_PATTERN_PREVIEWS: usize = 16;
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct HudInventoryScreen {
     pub width: u32,
@@ -3040,6 +3058,8 @@ pub struct HudInventoryScreen {
     /// Dynamic cartography previews interleaved with the static background
     /// layers according to each entry's insertion point.
     pub map_previews: Vec<HudInventoryMapPreview>,
+    /// Loom pattern thumbnails interleaved with their button sprites.
+    pub banner_pattern_previews: Vec<HudInventoryBannerPatternPreview>,
     pub text_labels: Vec<HudInventoryTextLabel>,
     pub scroll_area: Option<HudInventoryScrollArea>,
     pub preedit_overlay: Option<HudInventoryPreeditOverlay>,
@@ -19217,6 +19237,23 @@ fn sanitize_hud_inventory_screen(screen: HudInventoryScreen) -> HudInventoryScre
         })
         .take(MAX_HUD_INVENTORY_MAP_PREVIEWS)
         .collect();
+    let banner_pattern_previews = screen
+        .banner_pattern_previews
+        .into_iter()
+        .filter_map(|mut preview| {
+            if preview.width == 0
+                || preview.height == 0
+                || preview.width > 64
+                || preview.height > 64
+                || preview.after_background_layer >= background_layers.len()
+            {
+                return None;
+            }
+            preview.uv = sanitize_hud_uv_rect(preview.uv)?;
+            Some(preview)
+        })
+        .take(MAX_HUD_INVENTORY_BANNER_PATTERN_PREVIEWS)
+        .collect();
     let background_layer_count = background_layers.len();
     HudInventoryScreen {
         width: screen.width.clamp(1, 512),
@@ -19263,6 +19300,7 @@ fn sanitize_hud_inventory_screen(screen: HudInventoryScreen) -> HudInventoryScre
             })
             .collect(),
         map_previews,
+        banner_pattern_previews,
         text_labels: screen
             .text_labels
             .into_iter()
@@ -21899,6 +21937,7 @@ mod tests {
             ghost_items: Vec::new(),
             entity_previews: Vec::new(),
             map_previews: Vec::new(),
+            banner_pattern_previews: Vec::new(),
             text_labels: Vec::new(),
             scroll_area: None,
             preedit_overlay: None,
@@ -26119,6 +26158,7 @@ mod tests {
             ghost_items: Vec::new(),
             entity_previews: Vec::new(),
             map_previews: Vec::new(),
+            banner_pattern_previews: Vec::new(),
             text_labels: vec![
                 HudInventoryTextLabel {
                     x: 62,
@@ -26407,6 +26447,55 @@ mod tests {
         let screen = sanitize_hud_inventory_screen(screen);
 
         assert_eq!(screen.map_previews, vec![valid, second_valid]);
+    }
+
+    #[test]
+    fn sanitize_hud_inventory_screen_bounds_loom_pattern_previews() {
+        let mut screen = hud_inventory_screen_with_entity_previews(Vec::new());
+        screen.background_layers = vec![HudInventoryBackgroundLayer {
+            texture: HudInventoryBackgroundTexture::LoomPattern,
+            x: 60,
+            y: 13,
+            width: 14,
+            height: 14,
+            uv: HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+        }];
+        let valid = HudInventoryBannerPatternPreview {
+            texture: Some(BannerPatternTexture::Builtin(
+                crate::BannerPatternKind::StripeTop,
+            )),
+            x: 64,
+            y: 15,
+            width: 5,
+            height: 10,
+            uv: HudUvRect {
+                min: [0.0, 1.0 / 64.0],
+                max: [21.0 / 64.0, 41.0 / 64.0],
+            },
+            after_background_layer: 0,
+        };
+        screen.banner_pattern_previews = vec![
+            valid,
+            HudInventoryBannerPatternPreview { width: 0, ..valid },
+            HudInventoryBannerPatternPreview {
+                after_background_layer: 1,
+                ..valid
+            },
+            HudInventoryBannerPatternPreview {
+                uv: HudUvRect {
+                    min: [f32::NAN, 0.0],
+                    max: [1.0, 1.0],
+                },
+                ..valid
+            },
+        ];
+
+        let screen = sanitize_hud_inventory_screen(screen);
+
+        assert_eq!(screen.banner_pattern_previews, vec![valid]);
     }
 
     #[test]
@@ -26770,6 +26859,7 @@ mod tests {
             ghost_items: Vec::new(),
             entity_previews: Vec::new(),
             map_previews: Vec::new(),
+            banner_pattern_previews: Vec::new(),
             scroll_area: None,
             preedit_overlay: None,
             hovered_slot_id: None,
@@ -27507,6 +27597,7 @@ mod tests {
             ghost_items: Vec::new(),
             entity_previews,
             map_previews: Vec::new(),
+            banner_pattern_previews: Vec::new(),
             text_labels: Vec::new(),
             scroll_area: None,
             preedit_overlay: None,

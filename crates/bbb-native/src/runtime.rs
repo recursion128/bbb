@@ -130,6 +130,7 @@ use crate::{
         visible_entity_name_tag_render_sources, visible_entity_shadow_render_sources,
         EntityRenderVisibilityContext,
     },
+    entity_variant_textures::NativeEntityVariantTextureRuntime,
     game_test_highlights::game_test_highlight_gizmos,
     input::{
         advance_creative_inventory_commands, advance_destroying_block_at_partial_tick,
@@ -163,10 +164,7 @@ use crate::{
         CommandSuggestionNarrationState, CreativeInventoryHudState, DialogImePreeditHudState,
         InventoryScreenBackground, PauseScreenPage, RecipeBookOverlayHudState,
         RecipeBookPageHudState, RecipeBookPresentationHudState, RecipeBookSearchHudState,
-        RecipeBookTabSelectionHudState, StatsScreenFocus, LOOM_PATTERN_BUTTON_COLUMNS,
-        LOOM_PATTERN_BUTTON_ROWS, LOOM_PATTERN_BUTTON_SIZE, LOOM_PATTERN_BUTTON_X,
-        LOOM_PATTERN_BUTTON_Y, LOOM_SCROLLER_HEIGHT, LOOM_SCROLLER_MAX_OFFSET, LOOM_SCROLLER_WIDTH,
-        LOOM_SCROLLER_X, LOOM_SCROLLER_Y, LOOM_SELECTED_PATTERN_DATA_ID, RECIPE_BOOK_BUTTON_HEIGHT,
+        RecipeBookTabSelectionHudState, StatsScreenFocus, RECIPE_BOOK_BUTTON_HEIGHT,
         RECIPE_BOOK_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_HEIGHT,
         RECIPE_BOOK_FILTER_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y,
         RECIPE_BOOK_PAGE_BACKWARD_BUTTON_X, RECIPE_BOOK_PAGE_BUTTON_HEIGHT,
@@ -253,6 +251,7 @@ mod debug_light_sections;
 mod debug_options_screen;
 mod dialog_screen;
 mod game_rules_screen;
+mod loom_screen;
 mod render_extract;
 mod vignette;
 pub(crate) use render_extract::*;
@@ -573,7 +572,6 @@ const CARTOGRAPHY_TABLE_LOCKED_X: i32 = 118;
 const CARTOGRAPHY_TABLE_LOCKED_Y: i32 = 60;
 const CARTOGRAPHY_TABLE_LOCKED_WIDTH: u32 = 10;
 const CARTOGRAPHY_TABLE_LOCKED_HEIGHT: u32 = 14;
-const LOOM_SLOT_SPRITE_SIZE: u32 = 16;
 const SMITHING_RECIPE_ERROR_DATA_ID: i16 = 0;
 const BREWING_STAND_BREW_TIME_DATA_ID: i16 = 0;
 const BREWING_STAND_FUEL_DATA_ID: i16 = 1;
@@ -3659,6 +3657,7 @@ pub(crate) fn update_renderer_from_publication(
             surface_size,
             renderer,
             renderer.hud_font_book_ref(),
+            Some(entity_variant_textures),
             input.enchantment_book_hud_state(entity_partial_tick),
             entity_partial_tick,
         )
@@ -9898,6 +9897,7 @@ fn hud_inventory_screen_with_local_state_for_surface(
         &dialog_screen::ApproximateDialogTextMeasurer,
         &hud_fonts,
         None,
+        None,
         partial_tick,
     )
 }
@@ -9935,6 +9935,7 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
     surface_size: winit::dpi::PhysicalSize<u32>,
     dialog_text_measurer: &dyn dialog_screen::DialogTextMeasurer,
     hud_fonts: &HudFontGlyphBook,
+    entity_variant_textures: Option<&NativeEntityVariantTextureRuntime>,
     enchantment_book: Option<EnchantmentBookHudState>,
     partial_tick: f32,
 ) -> Option<HudInventoryScreen> {
@@ -10030,6 +10031,16 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
 
     let selected_hotbar_slot_id = inventory_screen_selected_hotbar_slot_id(world);
     let background = layout.background;
+    let loom_presentation = (background == InventoryScreenBackground::Loom).then(|| {
+        loom_screen::loom_table_presentation(
+            world,
+            item_runtime,
+            entity_variant_textures,
+            local_state.loom_pattern_scroll_row.unwrap_or_default(),
+            local_state.loom_selected_pattern_index,
+            local_state.cursor_position,
+        )
+    });
     let slots = layout
         .slots
         .iter()
@@ -10096,6 +10107,9 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
         &local_state,
         enchantment_options.as_ref(),
     );
+    if let Some(presentation) = &loom_presentation {
+        background_layers.extend(presentation.background_layers.iter().copied());
+    }
     if main_offset_x != 0 {
         for layer in &mut background_layers {
             layer.x += main_offset_x;
@@ -10253,6 +10267,13 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
         Vec::new()
     };
     offset_hud_inventory_map_previews(&mut map_previews, main_offset_x);
+    let mut banner_pattern_previews = loom_presentation
+        .as_ref()
+        .map(|presentation| presentation.pattern_previews.clone())
+        .unwrap_or_default();
+    for preview in &mut banner_pattern_previews {
+        preview.x += main_offset_x;
+    }
     let mut text_labels = hud_inventory_text_labels(
         world,
         item_runtime,
@@ -10350,6 +10371,10 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
             creative,
         )
         .or(inventory_tooltip),
+        InventoryScreenBackground::Loom => loom_presentation
+            .as_ref()
+            .and_then(|presentation| presentation.tooltip.clone())
+            .or(inventory_tooltip),
         _ => inventory_tooltip,
     };
 
@@ -10365,6 +10390,7 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
         ghost_items,
         entity_previews,
         map_previews,
+        banner_pattern_previews,
         text_labels,
         scroll_area: None,
         preedit_overlay: None,
@@ -12230,6 +12256,7 @@ fn hud_advancements_screen(
         ghost_items: Vec::new(),
         entity_previews: Vec::new(),
         map_previews: Vec::new(),
+        banner_pattern_previews: Vec::new(),
         text_labels,
         scroll_area: None,
         preedit_overlay: None,
@@ -15687,7 +15714,7 @@ fn hud_inventory_background_layers(
             ]
         }
         InventoryScreenBackground::Loom => {
-            let mut layers = vec![hud_inventory_background_layer(
+            vec![hud_inventory_background_layer(
                 HudInventoryBackgroundTexture::Loom,
                 0,
                 0,
@@ -15695,14 +15722,7 @@ fn hud_inventory_background_layers(
                 166,
                 [0.0, 0.0],
                 [176.0 / 256.0, 166.0 / 256.0],
-            )];
-            push_loom_state_layers(
-                world,
-                &mut layers,
-                local_state.loom_pattern_scroll_row.unwrap_or_default(),
-                local_state.loom_selected_pattern_index,
-            );
-            layers
+            )]
         }
         InventoryScreenBackground::Merchant => {
             let mut layers = vec![hud_inventory_background_layer(
@@ -16692,119 +16712,6 @@ fn push_crafter_state_layers(world: &WorldStore, layers: &mut Vec<HudInventoryBa
         [0.0, 0.0],
         [1.0, 1.0],
     ));
-}
-
-fn push_loom_state_layers(
-    world: &WorldStore,
-    layers: &mut Vec<HudInventoryBackgroundLayer>,
-    scroll_row: i32,
-    selected_pattern_index: Option<i32>,
-) {
-    for (slot, texture, x, y) in [
-        (0, HudInventoryBackgroundTexture::LoomBannerSlot, 13, 26),
-        (1, HudInventoryBackgroundTexture::LoomDyeSlot, 33, 26),
-        (2, HudInventoryBackgroundTexture::LoomPatternSlot, 23, 45),
-    ] {
-        if open_container_slot_has_item(world, slot) {
-            continue;
-        }
-        layers.push(hud_inventory_background_layer(
-            texture,
-            x,
-            y,
-            LOOM_SLOT_SPRITE_SIZE,
-            LOOM_SLOT_SPRITE_SIZE,
-            [0.0, 0.0],
-            [1.0, 1.0],
-        ));
-    }
-
-    let selectable_count = loom_selectable_pattern_count(world);
-    let can_scroll = selectable_count
-        .is_some_and(|count| count > LOOM_PATTERN_BUTTON_COLUMNS * LOOM_PATTERN_BUTTON_ROWS);
-    layers.push(hud_inventory_background_layer(
-        if can_scroll {
-            HudInventoryBackgroundTexture::LoomScroller
-        } else {
-            HudInventoryBackgroundTexture::LoomScrollerDisabled
-        },
-        LOOM_SCROLLER_X,
-        LOOM_SCROLLER_Y
-            + if let Some(count) = selectable_count {
-                loom_scroller_offset(count, scroll_row)
-            } else {
-                0
-            },
-        u32::try_from(LOOM_SCROLLER_WIDTH).unwrap_or_default(),
-        u32::try_from(LOOM_SCROLLER_HEIGHT).unwrap_or_default(),
-        [0.0, 0.0],
-        [1.0, 1.0],
-    ));
-
-    let Some(selectable_count) = selectable_count else {
-        return;
-    };
-    let selected_pattern_index =
-        selected_pattern_index.or_else(|| loom_selected_pattern_index(world));
-    let start_index = loom_pattern_start_index(selectable_count, scroll_row).unwrap_or_default();
-    for position in 0..(LOOM_PATTERN_BUTTON_COLUMNS * LOOM_PATTERN_BUTTON_ROWS) {
-        let pattern_index = start_index + position;
-        if pattern_index >= selectable_count {
-            break;
-        }
-        let column = position % LOOM_PATTERN_BUTTON_COLUMNS;
-        let row = position / LOOM_PATTERN_BUTTON_COLUMNS;
-        layers.push(hud_inventory_background_layer(
-            if selected_pattern_index == Some(pattern_index) {
-                HudInventoryBackgroundTexture::LoomPatternSelected
-            } else {
-                HudInventoryBackgroundTexture::LoomPattern
-            },
-            LOOM_PATTERN_BUTTON_X + column * LOOM_PATTERN_BUTTON_SIZE,
-            LOOM_PATTERN_BUTTON_Y + row * LOOM_PATTERN_BUTTON_SIZE,
-            u32::try_from(LOOM_PATTERN_BUTTON_SIZE).unwrap_or_default(),
-            u32::try_from(LOOM_PATTERN_BUTTON_SIZE).unwrap_or_default(),
-            [0.0, 0.0],
-            [1.0, 1.0],
-        ));
-    }
-}
-
-fn loom_selectable_pattern_count(world: &WorldStore) -> Option<i32> {
-    i32::try_from(world.loom_selectable_banner_pattern_ids()?.len()).ok()
-}
-
-fn loom_selected_pattern_index(world: &WorldStore) -> Option<i32> {
-    world
-        .open_container_data_value(LOOM_SELECTED_PATTERN_DATA_ID)
-        .and_then(|value| (value >= 0).then_some(i32::from(value)))
-}
-
-fn loom_pattern_start_index(selectable_count: i32, scroll_row: i32) -> Option<i32> {
-    if selectable_count <= 0 {
-        return None;
-    }
-    let max_scroll_row =
-        (loom_pattern_row_count(selectable_count) - LOOM_PATTERN_BUTTON_ROWS).max(0);
-    Some(scroll_row.clamp(0, max_scroll_row) * LOOM_PATTERN_BUTTON_COLUMNS)
-}
-
-fn loom_pattern_row_count(selectable_count: i32) -> i32 {
-    if selectable_count <= 0 {
-        0
-    } else {
-        (selectable_count + LOOM_PATTERN_BUTTON_COLUMNS - 1) / LOOM_PATTERN_BUTTON_COLUMNS
-    }
-}
-
-fn loom_scroller_offset(selectable_count: i32, scroll_row: i32) -> i32 {
-    let max_scroll_row =
-        (loom_pattern_row_count(selectable_count) - LOOM_PATTERN_BUTTON_ROWS).max(0);
-    if max_scroll_row <= 0 {
-        return 0;
-    }
-    let scroll_row = scroll_row.clamp(0, max_scroll_row);
-    ((scroll_row as f32 / max_scroll_row as f32) * LOOM_SCROLLER_MAX_OFFSET as f32) as i32
 }
 
 fn push_enchanting_table_state_layers(

@@ -3072,6 +3072,7 @@ pub(super) fn hud_dialog_screen_with_measurer(
         ghost_items: Vec::new(),
         entity_previews: Vec::new(),
         map_previews: Vec::new(),
+        banner_pattern_previews: Vec::new(),
         text_labels,
         scroll_area: Some(HudInventoryScrollArea {
             scissor: HudInventoryItemScissor {
@@ -3384,6 +3385,7 @@ pub(super) fn hud_dialog_confirm_link_screen(
         ghost_items: Vec::new(),
         entity_previews: Vec::new(),
         map_previews: Vec::new(),
+        banner_pattern_previews: Vec::new(),
         text_labels,
         scroll_area: None,
         preedit_overlay: None,
@@ -3469,6 +3471,7 @@ pub(super) fn hud_dialog_warning_screen(
         ghost_items: Vec::new(),
         entity_previews: Vec::new(),
         map_previews: Vec::new(),
+        banner_pattern_previews: Vec::new(),
         text_labels,
         scroll_area: None,
         preedit_overlay: None,
@@ -3551,6 +3554,7 @@ pub(super) fn hud_waiting_response_screen(
         ghost_items: Vec::new(),
         entity_previews: Vec::new(),
         map_previews: Vec::new(),
+        banner_pattern_previews: Vec::new(),
         text_labels,
         scroll_area: None,
         preedit_overlay: None,
