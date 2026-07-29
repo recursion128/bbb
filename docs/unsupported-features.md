@@ -191,8 +191,6 @@ Owner: `bbb-native` + `bbb-renderer`
   (`HudEntityPreviewItemLayer` / `GuiEntityRenderer`) are `deferred`: hand/head
   item models do not expose baked item quads at the native renderer boundary.
   Reopen when that baked item-quad handoff is available.
-- **Entity-in-UI item/entity lighting contexts.** Match the
-  `GuiEntityRenderer` flat-item and entity-lighting setup around each preview.
 
 ## Fonts and text
 
