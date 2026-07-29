@@ -574,10 +574,13 @@ pub(crate) fn merge_display_text_surfaces(
             )
         };
         background.push(&surface.background);
-        match surface.submission.text_layer.order {
-            0 => order_zero_text.push(&surface.text),
-            1 => order_one_text.push(&surface.text),
-            order => panic!("unsupported TextDisplay text order {order}"),
+        if surface.submission.text_layer.order == 0 {
+            order_zero_text.push(&surface.text);
+        } else {
+            // Current bakers emit only zero or one. Keep any future non-zero
+            // value in the later lane instead of making frame collection
+            // process-fatal.
+            order_one_text.push(&surface.text);
         }
     }
     // `textBackground`, `textPolygonOffset`, and
@@ -1102,6 +1105,30 @@ mod tests {
         assert!(!DISPLAY_TEXT_SEE_THROUGH_SHADER.contains("apply_fog"));
         assert!(DISPLAY_TEXT_SHADER.contains("if color.a < 0.1 { discard; }"));
         assert!(DISPLAY_TEXT_SEE_THROUGH_SHADER.contains("if color.a < 0.1 { discard; }"));
+    }
+
+    #[test]
+    fn display_text_unknown_nonzero_order_falls_forward_to_the_later_lane() {
+        let mut surface = bake_display_text_surface(
+            1,
+            0,
+            None,
+            Mat4::IDENTITY,
+            &[WorldTextRun::plain("a")],
+            200,
+            0,
+            -1,
+            0,
+            [0.0, 1.0],
+            &fonts(),
+            0,
+        )
+        .unwrap();
+        surface.submission.text_layer.order = u32::MAX;
+
+        let geometry = merge_display_text_surfaces(&[surface], None);
+        assert!(geometry.order_zero_normal_text.0.is_empty());
+        assert_eq!(geometry.order_one_normal_text.0.len(), 4);
     }
 
     #[test]
