@@ -169,29 +169,6 @@ Loader invariants (not todos): keep the local vanilla coverage tests
 add parser support only when an official asset or a focused resource-pack
 fixture fails them; keep precedence/filter tests next to the loaders.
 
-## Playable live coverage beyond the session-lifecycle closure
-
-Owner: `scripts/playable-gate.sh` + `scripts/playable_gate.py` + affected runtime
-owners
-
-- Add server-result assertions for entity interaction, hotbar, container,
-  inventory, and chat/command flows beyond the existing movement and
-  destroy/place closure.
-- Add presentation evidence for representative audio/particle effects and a
-  deterministic screenshot/readback. Renderer/audio counters must identify the
-  exact lifecycle generation rather than merely proving that the processes
-  stayed alive.
-- Keep failure evidence bounded and stage-specific while adding those surfaces;
-  do not turn the top-level opening `world_snapshot` into a misleading
-  failure-time sample.
-
-The current live gate already covers two official servers in one run: death and
-respawn, both dimension replacements, production resource-pack push/pop,
-Play-to-Configuration-to-Play, and same-process Transfer reconnect with a fresh
-registry session. This boundary is an invariant for the remaining breadth; it
-does not imply complete Play protocol, entity behavior, presentation, or
-long-session coverage.
-
 ## Resource and dynamic texture generalization
 
 Owner: `bbb-pack` + `bbb-native` + `bbb-renderer`
