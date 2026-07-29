@@ -179,13 +179,17 @@ prepare from that stack, renderer/audio owners commit atomically, and control
 publishes source/priority/failure plus bounded dynamic-texture observations.
 Skin/cape/elytra requests share one exact resource/session-generation cache.
 
-- Implement broader non-profile dynamic texture loading.
-- Connect synchronized custom block/entity registry identities to the existing
-  resource-pack model/texture loaders. The selected-generation fixtures already
-  cover custom item/cuboid model, PNG texture, font, sound and data-resource
-  precedence; do not infer unsupported registry mappings from those loader tests.
-- Give failed, pending, and ready states an explicit fallback. Never draw a
-  stale texture.
+- Broader non-profile dynamic texture loading is `deferred`: the applicable
+  Vanilla 26.1 producers are covered by map textures, profile skin/cape/elytra,
+  and synchronized pack-backed variant/painting/pattern/trim owners. The other
+  external-image producers belong to the absent server/world-list favicon and
+  pack-selection screens. Reopen when either screen enters scope or a new exact
+  Vanilla producer is identified.
+- Synchronized custom block/entity registry identities are `not-needed`:
+  Vanilla 26.1 `RegistryDataLoader.SYNCHRONIZED_REGISTRIES` contains neither
+  `BLOCK` nor `ENTITY_TYPE`; their protocol identities remain fixed, and a
+  resource pack cannot add either registry entry. Reopen if the target protocol
+  begins synchronizing one of those registries.
 
 ---
 
