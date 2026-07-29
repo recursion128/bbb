@@ -878,6 +878,85 @@ def block_animate_tick_constructor_types(
     return frozenset(members)
 
 
+def block_collision_shape_constructor_types(
+    sources: list[JavaSource], expected_count: int
+) -> frozenset[str]:
+    """Return block types whose collision path overrides the full-cube default."""
+
+    types = [item for source in sources for item in source.types]
+    resolve_class_hierarchy(types)
+    known = {item.fqcn: item for item in types}
+    block_fqcn = "net.minecraft.world.level.block.Block"
+    behaviour_fqcn = "net.minecraft.world.level.block.state.BlockBehaviour"
+    if block_fqcn not in known or behaviour_fqcn not in known:
+        raise BlockMembershipCatalogExtractionError(
+            "missing Block/BlockBehaviour collision-shape base classes"
+        )
+    methods_by_owner = {
+        item.fqcn: [
+            method
+            for source in sources
+            for method in source.methods_for(item)
+            if method.name in {"getCollisionShape", "getShape"}
+            and not method.is_constructor
+            and len(method.parameters) == 4
+        ]
+        for item in types
+    }
+
+    def nearest_method_owner(item, method_name: str) -> str | None:
+        current = item
+        visited: set[str] = set()
+        while current.fqcn not in visited:
+            visited.add(current.fqcn)
+            methods = [
+                method
+                for method in methods_by_owner[current.fqcn]
+                if method.name == method_name
+            ]
+            if methods:
+                if len(methods) != 1:
+                    raise BlockMembershipCatalogExtractionError(
+                        f"{current.source_path}: expected one {current.fqcn}."
+                        f"{method_name} method, extracted {len(methods)}"
+                    )
+                return current.fqcn
+            if current.superclass is None or current.superclass not in known:
+                return None
+            current = known[current.superclass]
+        return None
+
+    members: list[str] = []
+    for item in types:
+        ancestor = item
+        ancestry: set[str] = set()
+        while ancestor.fqcn not in ancestry:
+            ancestry.add(ancestor.fqcn)
+            if ancestor.fqcn == block_fqcn:
+                break
+            if ancestor.superclass is None or ancestor.superclass not in known:
+                break
+            ancestor = known[ancestor.superclass]
+        if block_fqcn not in ancestry:
+            continue
+
+        collision_owner = nearest_method_owner(item, "getCollisionShape")
+        shape_owner = nearest_method_owner(item, "getShape")
+        if collision_owner != behaviour_fqcn or shape_owner != behaviour_fqcn:
+            members.append(item.simple_name)
+
+    if len(members) != expected_count:
+        raise BlockMembershipCatalogExtractionError(
+            f"expected {expected_count} classes with a collision/getShape override, "
+            f"extracted {len(members)}"
+        )
+    if len(set(members)) != len(members):
+        raise BlockMembershipCatalogExtractionError(
+            "duplicate simple class name with a collision/getShape override"
+        )
+    return frozenset(members)
+
+
 def constructor_types_extending(
     sources: list[JavaSource], base_fqcn: str, expected_count: int
 ) -> frozenset[str]:

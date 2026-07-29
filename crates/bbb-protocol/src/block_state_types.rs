@@ -7,10 +7,15 @@ use std::{
 
 use serde::Deserialize;
 
+mod collision_shapes_26_1;
 mod fluid_replaceability_26_1;
 mod placement_defaults_26_1;
 mod support_facts_26_1;
 
+use collision_shapes_26_1::{
+    VANILLA_BLOCK_COLLISION_BOX_PALETTE, VANILLA_BLOCK_COLLISION_SHAPE_RANGES,
+    VANILLA_BLOCK_STATE_COLLISION_SHAPE_INDICES,
+};
 use fluid_replaceability_26_1::VANILLA_BLOCK_STATE_FLUID_REPLACEABLE_RANGES;
 use placement_defaults_26_1::{
     VANILLA_BLOCK_DEFAULT_STATE_IDS, VANILLA_BLOCK_NOTE_INSTRUMENT_INDICES,
@@ -42,6 +47,52 @@ pub fn vanilla_block_state_id(id: i32) -> Option<i32> {
 pub fn vanilla_block_default_state_id(block_type_id: i32) -> Option<i32> {
     let block_type_id = usize::try_from(block_type_id).ok()?;
     VANILLA_BLOCK_DEFAULT_STATE_IDS.get(block_type_id).copied()
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct VanillaBlockCollisionBox {
+    pub min_x: f64,
+    pub min_y: f64,
+    pub min_z: f64,
+    pub max_x: f64,
+    pub max_y: f64,
+    pub max_z: f64,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct VanillaBlockCollisionShape {
+    boxes: &'static [[u64; 6]],
+}
+
+impl VanillaBlockCollisionShape {
+    pub fn boxes(self) -> impl ExactSizeIterator<Item = VanillaBlockCollisionBox> {
+        self.boxes.iter().map(|bits| VanillaBlockCollisionBox {
+            min_x: f64::from_bits(bits[0]),
+            min_y: f64::from_bits(bits[1]),
+            min_z: f64::from_bits(bits[2]),
+            max_x: f64::from_bits(bits[3]),
+            max_y: f64::from_bits(bits[4]),
+            max_z: f64::from_bits(bits[5]),
+        })
+    }
+}
+
+/// Returns the exact cached empty-context collision shape for a non-dynamic
+/// built-in Vanilla 26.1 block state. Dynamic states return `None` because
+/// their result requires a live level, position, block entity, or collision
+/// context.
+pub fn vanilla_block_state_static_collision_shape(id: i32) -> Option<VanillaBlockCollisionShape> {
+    let id = usize::try_from(vanilla_block_state_id(id)?).ok()?;
+    let palette_index = *VANILLA_BLOCK_STATE_COLLISION_SHAPE_INDICES.get(id)?;
+    if palette_index == u16::MAX {
+        return None;
+    }
+    let (start, count) = *VANILLA_BLOCK_COLLISION_SHAPE_RANGES.get(usize::from(palette_index))?;
+    let start = usize::try_from(start).ok()?;
+    let end = start.checked_add(usize::from(count))?;
+    Some(VanillaBlockCollisionShape {
+        boxes: VANILLA_BLOCK_COLLISION_BOX_PALETTE.get(start..end)?,
+    })
 }
 
 /// Returns the built-in block's Vanilla 26.1 note-block instrument.
@@ -352,6 +403,124 @@ mod tests {
             vanilla_block_default_state_id(crate::block_types::VANILLA_BLOCK_TYPES.len() as i32),
             None
         );
+    }
+
+    #[test]
+    fn runtime_generated_static_collision_shapes_cover_every_non_dynamic_state() {
+        assert_eq!(
+            VANILLA_BLOCK_STATE_COLLISION_SHAPE_INDICES.len(),
+            VANILLA_BLOCK_STATE_COUNT as usize
+        );
+        assert_eq!(VANILLA_BLOCK_COLLISION_SHAPE_RANGES.len(), 318);
+        assert_eq!(VANILLA_BLOCK_COLLISION_BOX_PALETTE.len(), 702);
+        assert_eq!(
+            VANILLA_BLOCK_STATE_COLLISION_SHAPE_INDICES
+                .iter()
+                .filter(|index| **index == u16::MAX)
+                .count(),
+            179
+        );
+        assert_eq!(
+            VANILLA_BLOCK_COLLISION_SHAPE_RANGES
+                .iter()
+                .map(|(_, count)| *count)
+                .max(),
+            Some(15)
+        );
+        assert!(VANILLA_BLOCK_STATE_COLLISION_SHAPE_INDICES
+            .iter()
+            .all(|index| *index == u16::MAX
+                || usize::from(*index) < VANILLA_BLOCK_COLLISION_SHAPE_RANGES.len()));
+        assert!(VANILLA_BLOCK_COLLISION_SHAPE_RANGES
+            .iter()
+            .all(|(start, count)| {
+                usize::try_from(*start)
+                    .ok()
+                    .and_then(|start| start.checked_add(usize::from(*count)))
+                    .is_some_and(|end| end <= VANILLA_BLOCK_COLLISION_BOX_PALETTE.len())
+            }));
+
+        let report: BlockStateReport =
+            serde_json::from_str(VANILLA_BLOCK_STATES_26_1_JSON).unwrap();
+        let state_id = |name: &str| {
+            report
+                .states
+                .iter()
+                .find(|state| state.name == name)
+                .unwrap()
+                .id
+        };
+        assert!(
+            vanilla_block_state_static_collision_shape(state_id("minecraft:air"))
+                .unwrap()
+                .boxes()
+                .next()
+                .is_none()
+        );
+        assert_eq!(
+            vanilla_block_state_static_collision_shape(state_id("minecraft:stone"))
+                .unwrap()
+                .boxes()
+                .collect::<Vec<_>>(),
+            vec![VanillaBlockCollisionBox {
+                min_x: 0.0,
+                min_y: 0.0,
+                min_z: 0.0,
+                max_x: 1.0,
+                max_y: 1.0,
+                max_z: 1.0,
+            }]
+        );
+
+        let dynamic_names = report
+            .states
+            .iter()
+            .filter(|state| {
+                vanilla_block_state_support_facts(state.id)
+                    .unwrap()
+                    .dynamic_shape()
+            })
+            .map(|state| state.name.as_str())
+            .collect::<BTreeSet<_>>();
+        assert_eq!(
+            dynamic_names,
+            BTreeSet::from([
+                "minecraft:bamboo",
+                "minecraft:black_shulker_box",
+                "minecraft:blue_shulker_box",
+                "minecraft:brown_shulker_box",
+                "minecraft:cyan_shulker_box",
+                "minecraft:gray_shulker_box",
+                "minecraft:green_shulker_box",
+                "minecraft:light_blue_shulker_box",
+                "minecraft:light_gray_shulker_box",
+                "minecraft:lime_shulker_box",
+                "minecraft:magenta_shulker_box",
+                "minecraft:moving_piston",
+                "minecraft:orange_shulker_box",
+                "minecraft:pink_shulker_box",
+                "minecraft:pointed_dripstone",
+                "minecraft:powder_snow",
+                "minecraft:purple_shulker_box",
+                "minecraft:red_shulker_box",
+                "minecraft:scaffolding",
+                "minecraft:shulker_box",
+                "minecraft:white_shulker_box",
+                "minecraft:yellow_shulker_box",
+            ])
+        );
+        for state in &report.states {
+            let static_shape = vanilla_block_state_static_collision_shape(state.id);
+            assert_eq!(
+                static_shape.is_none(),
+                dynamic_names.contains(state.name.as_str()),
+                "{} ({})",
+                state.name,
+                state.id
+            );
+        }
+        assert!(vanilla_block_state_static_collision_shape(-1).is_none());
+        assert!(vanilla_block_state_static_collision_shape(VANILLA_BLOCK_STATE_COUNT).is_none());
     }
 
     #[test]

@@ -13,6 +13,7 @@ from block_membership_catalog_extractor import (  # noqa: E402
     BlockMembershipEntry,
     air_blocks,
     block_animate_tick_constructor_types,
+    block_collision_shape_constructor_types,
     block_friction_overrides,
     block_speed_factor_overrides,
     block_tag_membership,
@@ -441,6 +442,54 @@ class PlainBlock extends Block {}
             "expected 3 classes with a non-empty nearest animateTick",
         ):
             block_animate_tick_constructor_types([base, child], 3)
+
+    def test_collision_shape_constructor_types_follow_nearest_shape_owners(self) -> None:
+        behaviour = parse_source(
+            "net/minecraft/world/level/block/state/BlockBehaviour.java",
+            b"""package net.minecraft.world.level.block.state;
+public class BlockBehaviour {
+  Shape getShape(State state, Level level, Pos pos, Context context) {
+    return Shapes.block();
+  }
+  Shape getCollisionShape(State state, Level level, Pos pos, Context context) {
+    return state.getShape();
+  }
+}
+""",
+        )
+        blocks = parse_source(
+            "net/minecraft/world/level/block/Shapes.java",
+            b"""package net.minecraft.world.level.block;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+class Block extends BlockBehaviour {}
+class ShapeBlock extends Block {
+  Shape getShape(State state, Level level, Pos pos, Context context) {
+    return Shapes.column();
+  }
+}
+class ShapeChildBlock extends ShapeBlock {}
+class CollisionBlock extends Block {
+  Shape getCollisionShape(State state, Level level, Pos pos, Context context) {
+    return Shapes.empty();
+  }
+}
+class PlainBlock extends Block {}
+class Unrelated {
+  Shape getShape(State state, Level level, Pos pos, Context context) {
+    return Shapes.other();
+  }
+}
+""",
+        )
+        self.assertEqual(
+            block_collision_shape_constructor_types([behaviour, blocks], 3),
+            frozenset({"ShapeBlock", "ShapeChildBlock", "CollisionBlock"}),
+        )
+        with self.assertRaisesRegex(
+            BlockMembershipCatalogExtractionError,
+            "expected 4 classes with a collision/getShape override",
+        ):
+            block_collision_shape_constructor_types([behaviour, blocks], 4)
 
     def test_leaf_animate_profiles_preserve_constructor_particle_semantics(self) -> None:
         source = parse_source(

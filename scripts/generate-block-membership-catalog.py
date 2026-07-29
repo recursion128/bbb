@@ -12,6 +12,7 @@ from pathlib import Path
 from block_membership_catalog_extractor import (
     air_blocks,
     block_animate_tick_constructor_types,
+    block_collision_shape_constructor_types,
     block_friction_overrides,
     block_speed_factor_overrides,
     block_tag_membership,
@@ -281,6 +282,10 @@ def generate(source_root: Path) -> str:
         block_class_sources,
         57,
     )
+    collision_shape_types = block_collision_shape_constructor_types(
+        block_class_sources,
+        193,
+    )
     entries = no_terrain_particle_blocks(source)
     no_collision_entries = no_collision_blocks(source, block_id_constants)
     air_entries = air_blocks(source)
@@ -347,6 +352,11 @@ def generate(source_root: Path) -> str:
                 "VANILLA_BLOCK_ANIMATE_TICK_BLOCKS",
                 animate_tick_types,
                 126,
+            ),
+            (
+                "VANILLA_BLOCK_COLLISION_SHAPE_OVERRIDE_BLOCKS",
+                collision_shape_types,
+                716,
             ),
             (
                 "VANILLA_BRUSHABLE_BLOCKS",
@@ -465,6 +475,8 @@ def generate(source_root: Path) -> str:
         "",
     ]
     for name, values in constructor_catalogs:
+        if name == "VANILLA_BLOCK_COLLISION_SHAPE_OVERRIDE_BLOCKS":
+            lines.append("#[cfg(test)]")
         lines.extend(
             [
                 f"pub(super) const {name}: &[&str] = &[",
@@ -505,6 +517,7 @@ def generate(source_root: Path) -> str:
             "        assert_eq!(VANILLA_FLOOR_TORCH_BLOCKS.len(), 4);",
             "        assert_eq!(VANILLA_WALL_TORCH_BLOCKS.len(), 4);",
             "        assert_eq!(VANILLA_BLOCK_ANIMATE_TICK_BLOCKS.len(), 126);",
+            "        assert_eq!(VANILLA_BLOCK_COLLISION_SHAPE_OVERRIDE_BLOCKS.len(), 716);",
             "        assert_eq!(VANILLA_IRON_BARS_CLASS_BLOCKS.len(), 18);",
             "        assert_eq!(VANILLA_COPPER_GRATE_BLOCKS.len(), 8);",
             "        assert_eq!(VANILLA_FIXED_SOURCE_WATER_BLOCKS.len(), 5);",

@@ -6,6 +6,8 @@ use crate::{BlockPos, ChunkPos, PaletteKind};
 
 mod generated_26_1;
 
+#[cfg(test)]
+use generated_26_1::VANILLA_BLOCK_COLLISION_SHAPE_OVERRIDE_BLOCKS;
 use generated_26_1::{
     VANILLA_AIR_BLOCKS, VANILLA_AMETHYST_CLUSTER_BLOCKS, VANILLA_ANVIL_BLOCKS, VANILLA_BARS_BLOCKS,
     VANILLA_BED_BLOCKS, VANILLA_BLOCK_ANIMATE_TICK_BLOCKS, VANILLA_BLOCK_FRICTION_OVERRIDES,
@@ -734,6 +736,11 @@ pub(crate) fn block_name_has_empty_collision_shape(name: &str) -> bool {
     // Scaffolding overrides the default no-collision behavior with a
     // CollisionContext-dependent shape and is handled before this fallback.
     name != "minecraft:scaffolding" && VANILLA_NO_COLLISION_BLOCKS.contains(&name)
+}
+
+#[cfg(test)]
+pub(crate) fn vanilla_block_collision_shape_override_names() -> &'static [&'static str] {
+    VANILLA_BLOCK_COLLISION_SHAPE_OVERRIDE_BLOCKS
 }
 
 fn is_bars_tag_block_name(name: &str) -> bool {

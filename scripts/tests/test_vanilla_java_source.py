@@ -98,6 +98,7 @@ class VanillaJavaSourceFrontendTests(unittest.TestCase):
             runtime_probes,
             {
                 "generate-block-placement-defaults.py",
+                "generate-block-state-collision-shapes.py",
                 "generate-block-state-fluid-replaceability.py",
                 "generate-block-state-support-facts.py",
             },

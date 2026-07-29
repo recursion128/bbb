@@ -1,7 +1,8 @@
 use std::collections::BTreeMap;
 
 use bbb_protocol::block_state_types::{
-    vanilla_block_state_support_facts, VanillaBlockSupportDirection, VanillaBlockSupportType,
+    vanilla_block_state_static_collision_shape, vanilla_block_state_support_facts,
+    VanillaBlockSupportDirection, VanillaBlockSupportType,
 };
 use bbb_protocol::block_types::{
     vanilla_block_type_for_resource_id, VanillaPropagatesSkylightDownOverride,
@@ -2551,6 +2552,13 @@ fn block_collision_shape_with_context(
     if block.block_name.as_deref() == Some("minecraft:moving_piston") {
         return moving_piston_collision_shape(world, block, pos, context, false);
     }
+    if block
+        .block_name
+        .as_deref()
+        .is_some_and(is_shulker_box_block_name)
+    {
+        return shulker_box_collision_shape(world, block, pos);
+    }
     if context.can_stand_on_lava
         && block.fluid.is_some_and(|fluid| {
             fluid.kind == TerrainFluidKind::Lava && fluid.amount == 8 && !fluid.falling
@@ -2972,16 +2980,9 @@ fn block_collision_shape_empty_context(
     block: &BlockProbe,
     pos: BlockPos,
 ) -> Option<BlockCollisionShape> {
-    if block.block_name.as_deref() == Some("minecraft:powder_snow") {
-        // The empty `EntityCollisionContext` has no entity, so
-        // `PowderSnowBlock.getCollisionShape` returns `Shapes.empty()`.
-        return None;
-    }
-    if block.block_name.as_deref() == Some("minecraft:scaffolding") {
-        // `EntityCollisionContext.Empty.isAbove(..., default=true)` makes the
-        // empty context return ScaffoldingBlock.SHAPE_STABLE.
-        return Some(scaffolding_stable_collision_shape());
-    }
+    // Dynamic branches in `block_collision_shape` mirror the no-entity empty
+    // context: powder snow and moving pistons are empty, scaffolding is stable,
+    // shulker boxes lack a live block entity, and offset shapes use `pos`.
     block_collision_shape(block, pos)
 }
 
@@ -3067,6 +3068,25 @@ fn block_name_has_empty_camera_visual_shape(name: &str) -> bool {
 }
 
 fn block_collision_shape(block: &BlockProbe, pos: BlockPos) -> Option<BlockCollisionShape> {
+    if let Some(vanilla_shape) = vanilla_block_state_static_collision_shape(block.block_state_id) {
+        let mut builder = BlockCollisionShapeBuilder::new();
+        let boxes = vanilla_shape.boxes();
+        debug_assert!(boxes.len() <= MAX_COLLISION_BOXES);
+        for shape_box in boxes {
+            builder.push(BlockCollisionBox {
+                min_x: shape_box.min_x,
+                min_y: shape_box.min_y,
+                min_z: shape_box.min_z,
+                max_x: shape_box.max_x,
+                max_y: shape_box.max_y,
+                max_z: shape_box.max_z,
+            });
+        }
+        return (builder.next_index != 0).then(|| builder.build());
+    }
+    // Built-in non-dynamic states always return above. The name/property
+    // projection below is retained only for probes that carry a recognized
+    // Vanilla name but no valid built-in state id.
     if is_slab_block(block) {
         return match block.block_properties.get("type").map(String::as_str) {
             Some("bottom") => Some(BlockCollisionShape::single(BlockCollisionBox::BOTTOM_SLAB)),
@@ -3079,13 +3099,35 @@ fn block_collision_shape(block: &BlockProbe, pos: BlockPos) -> Option<BlockColli
         return stair_collision_shape(&block.block_properties);
     }
     if let Some(block_name) = block.block_name.as_deref() {
-        if is_leaves_block_name(block_name) {
-            return Some(BlockCollisionShape::single(BlockCollisionBox::FULL));
+        if block_name == "minecraft:bamboo" {
+            return Some(bamboo_collision_shape(pos));
         }
         if matches!(
             block_name,
-            "minecraft:mangrove_roots" | "minecraft:muddy_mangrove_roots"
+            "minecraft:moving_piston" | "minecraft:powder_snow"
         ) {
+            return None;
+        }
+        if block_name == "minecraft:pointed_dripstone" {
+            return pointed_dripstone_collision_shape(&block.block_properties, pos);
+        }
+        if block_name == "minecraft:scaffolding" {
+            return Some(scaffolding_stable_collision_shape());
+        }
+        if is_shulker_box_block_name(block_name) {
+            // `EmptyBlockGetter` has no block entity, so Vanilla returns a
+            // full cube. Live world collision uses the tracked lid above.
+            return Some(BlockCollisionShape::single(BlockCollisionBox::FULL));
+        }
+        if is_leaves_block_name(block_name)
+            || matches!(
+                block_name,
+                "minecraft:mangrove_roots"
+                    | "minecraft:muddy_mangrove_roots"
+                    | "minecraft:chorus_flower"
+            )
+            || block_name_is_copper_grate(block_name)
+        {
             return Some(BlockCollisionShape::single(BlockCollisionBox::FULL));
         }
         if block_name == "minecraft:snow" {
@@ -3097,17 +3139,8 @@ fn block_collision_shape(block: &BlockProbe, pos: BlockPos) -> Option<BlockColli
         if block_name == "minecraft:pale_moss_carpet" {
             return pale_moss_carpet_collision_shape(&block.block_properties);
         }
-        if block_name == "minecraft:bamboo" {
-            return Some(bamboo_collision_shape(pos));
-        }
-        if block_name == "minecraft:bamboo_sapling" {
-            return None;
-        }
         if block_name == "minecraft:chorus_plant" {
             return chorus_plant_collision_shape(&block.block_properties);
-        }
-        if block_name == "minecraft:chorus_flower" {
-            return Some(BlockCollisionShape::single(BlockCollisionBox::FULL));
         }
         if block_name == "minecraft:conduit" {
             return Some(BlockCollisionShape::single(
@@ -3120,25 +3153,22 @@ fn block_collision_shape(block: &BlockProbe, pos: BlockPos) -> Option<BlockColli
         ) {
             return Some(azalea_collision_shape());
         }
-        if block_name_is_copper_grate(block_name) {
-            return Some(BlockCollisionShape::single(BlockCollisionBox::FULL));
-        }
         if is_piston_base_block_name(block_name) {
             return piston_base_collision_shape(&block.block_properties);
         }
         if block_name == "minecraft:piston_head" {
             return piston_head_collision_shape(&block.block_properties);
         }
-        if block_name == "minecraft:moving_piston" {
-            return None;
-        }
-        if block_name == "minecraft:nether_portal" {
-            return None;
-        }
         if block_name == "minecraft:big_dripleaf" {
             return big_dripleaf_collision_shape(&block.block_properties);
         }
-        if block_name == "minecraft:big_dripleaf_stem" {
+        if matches!(
+            block_name,
+            "minecraft:bamboo_sapling"
+                | "minecraft:nether_portal"
+                | "minecraft:big_dripleaf_stem"
+                | "minecraft:light"
+        ) {
             return None;
         }
         if is_flower_pot_block_name(block_name) {
@@ -3193,15 +3223,17 @@ fn block_collision_shape(block: &BlockProbe, pos: BlockPos) -> Option<BlockColli
                 BlockCollisionBox::centered_column(14.0, 14.0, 0.0, 16.0),
             ));
         }
-        if block_name == "minecraft:pointed_dripstone" {
-            return pointed_dripstone_collision_shape(&block.block_properties, pos);
-        }
         if block_name == "minecraft:end_portal_frame" {
             return end_portal_frame_collision_shape(&block.block_properties);
         }
         if block_name == "minecraft:daylight_detector" {
             return Some(BlockCollisionShape::single(
                 BlockCollisionBox::centered_column(16.0, 16.0, 0.0, 6.0),
+            ));
+        }
+        if matches!(block_name, "minecraft:repeater" | "minecraft:comparator") {
+            return Some(BlockCollisionShape::single(
+                BlockCollisionBox::centered_column(16.0, 16.0, 0.0, 2.0),
             ));
         }
         if is_sculk_sensor_block_name(block_name) || block_name == "minecraft:sculk_shrieker" {
@@ -3221,9 +3253,6 @@ fn block_collision_shape(block: &BlockProbe, pos: BlockPos) -> Option<BlockColli
         }
         if is_chain_block_name(block_name) {
             return chain_collision_shape(&block.block_properties);
-        }
-        if block_name == "minecraft:scaffolding" {
-            return None;
         }
         if is_ladder_block_name(block_name) {
             return ladder_collision_shape(&block.block_properties);
@@ -3319,8 +3348,6 @@ fn block_collision_shape(block: &BlockProbe, pos: BlockPos) -> Option<BlockColli
         if is_wall_block_name(block_name) {
             return wall_collision_shape(&block.block_properties);
         }
-        // Collision shape is independent of the baked texture render layer.
-        // Keep this fallback after every concrete vanilla collision shape.
         if block_name_has_empty_collision_shape(block_name) {
             return None;
         }
@@ -3708,6 +3735,25 @@ fn scaffolding_collision_shape(
     }
 
     None
+}
+
+fn shulker_box_collision_shape(
+    world: &WorldStore,
+    block: &BlockProbe,
+    pos: BlockPos,
+) -> Option<BlockCollisionShape> {
+    let facing = BlockDirection::parse(block.block_properties.get("facing")?)?;
+    let extension = 0.5 * f64::from(world.shulker_box_progress_at(pos, 1.0)).clamp(0.0, 1.0);
+    let mut shape_box = BlockCollisionBox::FULL;
+    match facing {
+        BlockDirection::North => shape_box.min_z -= extension,
+        BlockDirection::East => shape_box.max_x += extension,
+        BlockDirection::South => shape_box.max_z += extension,
+        BlockDirection::West => shape_box.min_x -= extension,
+        BlockDirection::Up => shape_box.max_y += extension,
+        BlockDirection::Down => shape_box.min_y -= extension,
+    }
+    Some(BlockCollisionShape::single(shape_box))
 }
 
 fn scaffolding_stable_collision_shape() -> BlockCollisionShape {
@@ -6026,6 +6072,220 @@ mod tests {
         assert!(is_leaves_block_name("minecraft:flowering_azalea_leaves"));
         assert!(!is_leaves_block_name("minecraft:custom_leaves"));
         assert!(!is_leaves_block_name("example:oak_leaves"));
+    }
+
+    #[test]
+    fn vanilla_custom_collision_shape_blocks_do_not_reach_material_fallback() {
+        let mut world = empty_world();
+        let pos = BlockPos { x: 0, y: 0, z: 0 };
+        let context = LocalPlayerCollisionContext::new(2.0, false);
+        let mut unresolved = Vec::new();
+
+        for block_name in crate::terrain::vanilla_block_collision_shape_override_names() {
+            let block_type = vanilla_block_type_for_resource_id(block_name)
+                .unwrap_or_else(|| panic!("generated vanilla block type exists for {block_name}"));
+            let state_id =
+                bbb_protocol::block_state_types::vanilla_block_default_state_id(block_type.id)
+                    .unwrap_or_else(|| {
+                        panic!("generated vanilla default state exists for {block_name}")
+                    });
+            set_block(&mut world, pos, state_id);
+            let probe = world.probe_block(pos).expect("catalog block probe");
+
+            let mut opaque = probe.clone();
+            opaque.material = TerrainMaterialClass::Opaque;
+            let opaque_boxes = block_collision_shape_with_context(&world, &opaque, pos, context)
+                .map(|shape| shape.boxes().collect::<Vec<_>>());
+
+            let mut empty = probe;
+            empty.material = TerrainMaterialClass::Empty;
+            let empty_boxes = block_collision_shape_with_context(&world, &empty, pos, context)
+                .map(|shape| shape.boxes().collect::<Vec<_>>());
+
+            if opaque_boxes != empty_boxes {
+                unresolved.push(*block_name);
+            }
+        }
+
+        assert!(
+            unresolved.is_empty(),
+            "vanilla custom collision-shape blocks reached the material fallback: {unresolved:?}"
+        );
+    }
+
+    #[test]
+    fn every_static_vanilla_state_projects_the_generated_collision_aabbs_exactly() {
+        let world = empty_world();
+        let pos = BlockPos { x: 0, y: 0, z: 0 };
+        let template = world.probe_block(pos).expect("air template probe");
+
+        for state in crate::registries::BlockStateRegistry::vanilla_26_1().iter() {
+            let Some(expected) = vanilla_block_state_static_collision_shape(state.id) else {
+                continue;
+            };
+            let probe =
+                block_probe_for_state(&world, &template, state.id).expect("vanilla state probe");
+            let actual = block_collision_shape(&probe, pos)
+                .map(|shape| {
+                    shape
+                        .boxes()
+                        .map(|shape_box| {
+                            [
+                                shape_box.min_x,
+                                shape_box.min_y,
+                                shape_box.min_z,
+                                shape_box.max_x,
+                                shape_box.max_y,
+                                shape_box.max_z,
+                            ]
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default();
+            let expected = expected
+                .boxes()
+                .map(|shape_box| {
+                    [
+                        shape_box.min_x,
+                        shape_box.min_y,
+                        shape_box.min_z,
+                        shape_box.max_x,
+                        shape_box.max_y,
+                        shape_box.max_z,
+                    ]
+                })
+                .collect::<Vec<_>>();
+            assert_eq!(actual, expected, "{} ({})", state.name, state.id);
+        }
+    }
+
+    #[test]
+    fn every_dynamic_vanilla_state_uses_a_live_resolver_branch() {
+        let world = empty_world();
+        let pos = BlockPos { x: 0, y: 0, z: 0 };
+        let template = world.probe_block(pos).expect("air template probe");
+        let context = LocalPlayerCollisionContext::new(2.0, false);
+        let mut dynamic_state_count = 0;
+
+        for state in crate::registries::BlockStateRegistry::vanilla_26_1().iter() {
+            if !vanilla_block_state_support_facts(state.id)
+                .unwrap()
+                .dynamic_shape()
+            {
+                continue;
+            }
+            dynamic_state_count += 1;
+            let probe =
+                block_probe_for_state(&world, &template, state.id).expect("dynamic state probe");
+            let mut opaque = probe.clone();
+            opaque.material = TerrainMaterialClass::Opaque;
+            let opaque_boxes = block_collision_shape_with_context(&world, &opaque, pos, context)
+                .map(|shape| shape.boxes().collect::<Vec<_>>());
+            let mut empty = probe;
+            empty.material = TerrainMaterialClass::Empty;
+            let empty_boxes = block_collision_shape_with_context(&world, &empty, pos, context)
+                .map(|shape| shape.boxes().collect::<Vec<_>>());
+            assert_eq!(
+                opaque_boxes, empty_boxes,
+                "dynamic vanilla state reached material fallback: {} ({})",
+                state.name, state.id
+            );
+        }
+
+        assert_eq!(dynamic_state_count, 179);
+    }
+
+    #[test]
+    fn diode_and_light_collision_shapes_match_vanilla() {
+        let mut world = empty_world();
+        let pos = BlockPos { x: 0, y: 0, z: 0 };
+        for block_name in ["minecraft:repeater", "minecraft:comparator"] {
+            let state_id = bbb_protocol::block_state_types::vanilla_block_default_state_id(
+                vanilla_block_type_for_resource_id(block_name).unwrap().id,
+            )
+            .unwrap();
+            set_block(&mut world, pos, state_id);
+            let probe = world.probe_block(pos).expect("diode probe");
+            let shape_box = block_collision_shape(&probe, pos)
+                .expect("diode collision shape")
+                .boxes()
+                .next()
+                .expect("diode collision box");
+            assert_eq!(
+                shape_box,
+                BlockCollisionBox::centered_column(16.0, 16.0, 0.0, 2.0),
+                "{block_name}"
+            );
+        }
+
+        set_block(
+            &mut world,
+            pos,
+            vanilla_block_state_id(
+                "minecraft:light",
+                [("level", "15"), ("waterlogged", "false")],
+            ),
+        );
+        let mut light = world.probe_block(pos).expect("light probe");
+        light.material = TerrainMaterialClass::Opaque;
+        assert!(
+            block_collision_shape(&light, pos).is_none(),
+            "LightBlock's entity collision uses its empty-context outline shape"
+        );
+    }
+
+    #[test]
+    fn shulker_box_collision_shape_tracks_current_lid_progress_in_all_directions() {
+        let pos = BlockPos { x: 0, y: 0, z: 0 };
+        let cases = [
+            ("north", [0.0, 0.0, -0.25], [1.0, 1.0, 1.0]),
+            ("east", [0.0, 0.0, 0.0], [1.25, 1.0, 1.0]),
+            ("south", [0.0, 0.0, 0.0], [1.0, 1.0, 1.25]),
+            ("west", [-0.25, 0.0, 0.0], [1.0, 1.0, 1.0]),
+            ("up", [0.0, 0.0, 0.0], [1.0, 1.25, 1.0]),
+            ("down", [0.0, -0.25, 0.0], [1.0, 1.0, 1.0]),
+        ];
+
+        for (facing, expected_min, expected_max) in cases {
+            let mut world = empty_world();
+            set_block(
+                &mut world,
+                pos,
+                vanilla_block_state_id("minecraft:shulker_box", [("facing", facing)]),
+            );
+            let closed = world.probe_block(pos).expect("closed shulker probe");
+            assert_eq!(
+                shulker_box_collision_shape(&world, &closed, pos)
+                    .unwrap()
+                    .boxes()
+                    .next(),
+                Some(BlockCollisionBox::FULL)
+            );
+
+            world.apply_block_event(bbb_protocol::packets::BlockEvent {
+                pos: bbb_protocol::packets::BlockPos { x: 0, y: 0, z: 0 },
+                b0: 1,
+                b1: 1,
+                block_id: 0,
+            });
+            world.advance_shulker_box_lid_ticks(5);
+            let opening = world.probe_block(pos).expect("opening shulker probe");
+            let shape_box = shulker_box_collision_shape(&world, &opening, pos)
+                .unwrap()
+                .boxes()
+                .next()
+                .unwrap();
+            for (actual, expected) in [
+                (shape_box.min_x, expected_min[0]),
+                (shape_box.min_y, expected_min[1]),
+                (shape_box.min_z, expected_min[2]),
+                (shape_box.max_x, expected_max[0]),
+                (shape_box.max_y, expected_max[1]),
+                (shape_box.max_z, expected_max[2]),
+            ] {
+                assert_f64_near(actual, expected);
+            }
+        }
     }
 
     #[test]

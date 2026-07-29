@@ -73,7 +73,6 @@ Owner: `bbb-native` + `bbb-net` + `bbb-protocol` + `bbb-world`
 Movement:
 - Cover the remaining vanilla survival physics beyond the synchronized local
   movement cadence.
-- Cover the remaining vanilla voxel collision shapes.
 - Add sprint-swim camera, animation, and presentation nuance.
 
 Commands:
