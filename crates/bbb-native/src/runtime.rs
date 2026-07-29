@@ -233,6 +233,7 @@ use bbb_protocol::mob_effect_types::{VANILLA_MOB_EFFECT_SPEED_ID, VANILLA_MOB_EF
 use crate::terrain_runtime::TerrainUploadState;
 
 mod book_screen;
+mod component_hover;
 mod toast;
 pub(crate) use book_screen::hud_book_component_click_event;
 mod control_requests;

@@ -272,6 +272,7 @@ mod tests {
                     text: "Page four".to_string(),
                     style: ComponentStyle::default(),
                 }],
+                component: None,
             }),
             font: Some("example:book".to_string()),
             ..ComponentStyle::default()

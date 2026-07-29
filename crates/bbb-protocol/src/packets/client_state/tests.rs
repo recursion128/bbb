@@ -904,7 +904,7 @@ fn title_text_packets_preserve_exact_trusted_components() {
     ));
     assert!(matches!(
         style.hover_event,
-        Some(crate::ComponentHoverEvent::ShowText { ref value })
+        Some(crate::ComponentHoverEvent::ShowText { ref value, .. })
             if value.iter().map(|run| run.text.as_str()).collect::<String>() == "Details"
     ));
 }

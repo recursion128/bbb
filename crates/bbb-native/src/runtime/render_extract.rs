@@ -1901,7 +1901,7 @@ pub(crate) fn hud_chat_messages_from_world(
         .client_chat()
         .messages
         .iter()
-        .map(|message| hud_chat_message(message, item_runtime))
+        .map(|message| hud_chat_message(world, message, item_runtime))
         .collect()
 }
 
@@ -1914,6 +1914,7 @@ struct ProjectedChatRun {
 }
 
 fn hud_chat_message(
+    world: &WorldStore,
     message: &bbb_world::ChatMessageState,
     item_runtime: Option<&NativeItemRuntime>,
 ) -> HudChatMessage {
@@ -1930,7 +1931,11 @@ fn hud_chat_message(
                     start_char,
                     end_char: char_offset,
                     target_index,
-                    tooltip_runs: hud_chat_hover_runs(run.hover_event.as_ref()),
+                    tooltip_runs: hud_chat_hover_runs(
+                        world,
+                        item_runtime,
+                        run.hover_event.as_ref(),
+                    ),
                 });
             }
         }
@@ -2034,31 +2039,17 @@ fn projected_chat_run(text: &str, style: &bbb_protocol::ComponentStyle) -> Proje
     }
 }
 
-fn hud_chat_hover_runs(hover: Option<&bbb_protocol::ComponentHoverEvent>) -> Vec<HudStyledTextRun> {
-    use bbb_protocol::ComponentHoverEvent;
-    match hover {
-        Some(ComponentHoverEvent::ShowText { value }) => value
-            .iter()
-            .map(|run| hud_chat_run(&run.text, &run.style))
-            .collect(),
-        Some(ComponentHoverEvent::ShowItem { id, count, .. }) => {
-            vec![HudStyledTextRun::plain(if *count == 1 {
-                id.clone()
-            } else {
-                format!("{id} x{count}")
-            })]
-        }
-        Some(ComponentHoverEvent::ShowEntity { id, name, .. }) => name
-            .as_ref()
-            .filter(|name| !name.is_empty())
-            .map(|name| {
-                name.iter()
-                    .map(|run| hud_chat_run(&run.text, &run.style))
-                    .collect()
-            })
-            .unwrap_or_else(|| vec![HudStyledTextRun::plain(id)]),
-        None => Vec::new(),
-    }
+fn hud_chat_hover_runs(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    hover: Option<&bbb_protocol::ComponentHoverEvent>,
+) -> Vec<HudStyledTextRun> {
+    super::component_hover::hud_component_hover_tooltip(world, item_runtime, hover)
+        .into_iter()
+        .flat_map(|tooltip| tooltip.lines)
+        .flat_map(|line| line.runs)
+        .map(|run| run.visual)
+        .collect()
 }
 
 pub(crate) fn hud_chat_component_click_event(

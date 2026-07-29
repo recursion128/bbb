@@ -575,6 +575,53 @@ fn rich_chat_projection_retains_click_hover_and_revalidates_canonical_target() {
 }
 
 #[test]
+fn component_hover_show_item_reuses_the_native_item_tooltip_builder() {
+    use bbb_protocol::{ComponentHoverEvent, NbtSummaryEntry, NbtSummaryValue};
+
+    let root = unique_runtime_temp_dir("component-hover-item");
+    write_runtime_tooltip_item_assets(&root);
+    crate::item_registry_test_fixture::write_item_registry_fixture(&root, &["air", "stone"]);
+    write_runtime_json(
+        &runtime_assets_dir(&root).join("lang").join("en_us.json"),
+        r#"{
+            "item.minecraft.stone": "Stone",
+            "item.components": "%s component(s)"
+        }"#,
+    );
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let hover = ComponentHoverEvent::ShowItem {
+        id: "minecraft:stone".to_string(),
+        count: 3,
+        components: Some(NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+            name: "minecraft:custom_name".to_string(),
+            value: NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                name: "text".to_string(),
+                value: NbtSummaryValue::String("Hover Stone".to_string()),
+            }]),
+        }])),
+    };
+    let tooltip = super::component_hover::hud_component_hover_tooltip(
+        &WorldStore::new(),
+        Some(&item_runtime),
+        Some(&hover),
+    )
+    .unwrap();
+    assert_eq!(tooltip.lines[0].runs[0].visual.text, "Hover Stone");
+    assert!(tooltip.lines[0].runs[0].visual.style.italic);
+    assert!(tooltip
+        .advanced_lines
+        .as_ref()
+        .is_some_and(|lines| lines.iter().any(|line| {
+            line.runs
+                .iter()
+                .any(|run| run.visual.text == "minecraft:stone")
+        })));
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn chat_narration_text_uses_styled_content_without_duplicate_projection() {
     let narration = bbb_world::ChatNarrationRequest {
         sequence: 1,

@@ -99,6 +99,10 @@ pub enum ComponentClickEvent {
 pub enum ComponentHoverEvent {
     ShowText {
         value: Vec<StyledTextRun>,
+        /// Exact nested Component value retained beside the flattened runs so
+        /// resource-language presentation can resolve translatable contents.
+        #[serde(default)]
+        component: Option<NbtSummaryValue>,
     },
     ShowItem {
         id: String,
@@ -111,7 +115,36 @@ pub enum ComponentHoverEvent {
         uuid: NbtSummaryValue,
         #[serde(default)]
         name: Option<Vec<StyledTextRun>>,
+        /// Exact optional name Component retained for localized tooltip
+        /// presentation. Older serialized state may carry only `name`.
+        #[serde(default)]
+        name_component: Option<NbtSummaryValue>,
     },
+}
+
+/// Formats the lenient UUID representation accepted by the Component
+/// `show_entity` codec as Vanilla's canonical hyphenated UUID line.
+pub fn component_hover_uuid(value: &NbtSummaryValue) -> Option<uuid::Uuid> {
+    let values = match value {
+        NbtSummaryValue::IntArray(values) if values.len() == 4 => values.clone(),
+        NbtSummaryValue::ByteArray(values) if values.len() == 4 => {
+            values.iter().map(|value| i32::from(*value)).collect()
+        }
+        NbtSummaryValue::LongArray(values) if values.len() == 4 => {
+            values.iter().map(|value| *value as i32).collect()
+        }
+        NbtSummaryValue::List(values) if values.len() == 4 => values
+            .iter()
+            .map(codec::component_i32)
+            .collect::<Option<Vec<_>>>()?,
+        NbtSummaryValue::String(value) => canonical_json::java_uuid_int_array(value)?,
+        _ => return None,
+    };
+    let raw = (u128::from(values[0] as u32) << 96)
+        | (u128::from(values[1] as u32) << 64)
+        | (u128::from(values[2] as u32) << 32)
+        | u128::from(values[3] as u32);
+    Some(uuid::Uuid::from_u128(raw))
 }
 
 impl ComponentStyle {
@@ -369,12 +402,17 @@ fn hover_event_nbt(
 ) -> std::result::Result<NbtSummaryValue, String> {
     let mut entries = Vec::new();
     match hover_event {
-        ComponentHoverEvent::ShowText { value } => {
+        ComponentHoverEvent::ShowText { value, component } => {
             entries.push(nbt_entry(
                 "action",
                 NbtSummaryValue::String("show_text".to_string()),
             ));
-            entries.push(nbt_entry("value", styled_runs_component_nbt(value)?));
+            entries.push(nbt_entry(
+                "value",
+                component
+                    .clone()
+                    .map_or_else(|| styled_runs_component_nbt(value), Ok)?,
+            ));
         }
         ComponentHoverEvent::ShowItem {
             id,
@@ -391,14 +429,21 @@ fn hover_event_nbt(
                 entries.push(nbt_entry("components", components.clone()));
             }
         }
-        ComponentHoverEvent::ShowEntity { id, uuid, name } => {
+        ComponentHoverEvent::ShowEntity {
+            id,
+            uuid,
+            name,
+            name_component,
+        } => {
             entries.push(nbt_entry(
                 "action",
                 NbtSummaryValue::String("show_entity".to_string()),
             ));
             entries.push(nbt_entry("id", NbtSummaryValue::String(id.clone())));
             entries.push(nbt_entry("uuid", uuid.clone()));
-            if let Some(name) = name {
+            if let Some(name_component) = name_component {
+                entries.push(nbt_entry("name", name_component.clone()));
+            } else if let Some(name) = name {
                 entries.push(nbt_entry("name", styled_runs_component_nbt(name)?));
             }
         }
@@ -895,7 +940,10 @@ fn style_hover_event(entries: &[NbtSummaryEntry]) -> Option<ComponentHoverEvent>
             let value = find_entry(hover, "value")?;
             let mut runs = RunCollector::default();
             append_component_runs(value, &ComponentStyle::default(), &mut runs);
-            Some(ComponentHoverEvent::ShowText { value: runs.runs })
+            Some(ComponentHoverEvent::ShowText {
+                value: runs.runs,
+                component: Some(value.clone()),
+            })
         }
         "show_item" => Some(ComponentHoverEvent::ShowItem {
             id: match find_entry(hover, "id")? {
@@ -908,7 +956,8 @@ fn style_hover_event(entries: &[NbtSummaryEntry]) -> Option<ComponentHoverEvent>
             components: find_entry(hover, "components").cloned(),
         }),
         "show_entity" => {
-            let name = find_entry(hover, "name").map(|name| {
+            let name_component = find_entry(hover, "name").cloned();
+            let name = name_component.as_ref().map(|name| {
                 let mut runs = RunCollector::default();
                 append_component_runs(name, &ComponentStyle::default(), &mut runs);
                 runs.runs
@@ -920,6 +969,7 @@ fn style_hover_event(entries: &[NbtSummaryEntry]) -> Option<ComponentHoverEvent>
                 },
                 uuid: find_entry(hover, "uuid")?.clone(),
                 name,
+                name_component,
             })
         }
         _ => None,
@@ -1130,7 +1180,38 @@ mod tests {
                         ..ComponentStyle::default()
                     },
                 }],
+                component: Some(NbtSummaryValue::Compound(vec![
+                    NbtSummaryEntry {
+                        name: "text".to_string(),
+                        value: NbtSummaryValue::String("details".to_string()),
+                    },
+                    NbtSummaryEntry {
+                        name: "italic".to_string(),
+                        value: NbtSummaryValue::Byte(1),
+                    },
+                ])),
             })
+        );
+    }
+
+    #[test]
+    fn component_hover_uuid_formats_every_lenient_codec_shape() {
+        let expected = uuid::Uuid::parse_str("00000001-0002-0003-0004-000000000005").unwrap();
+        for value in [
+            NbtSummaryValue::IntArray(vec![1, 0x0002_0003, 0x0004_0000, 5]),
+            NbtSummaryValue::List(vec![
+                NbtSummaryValue::Byte(1),
+                NbtSummaryValue::Int(0x0002_0003),
+                NbtSummaryValue::Long(0x0004_0000),
+                NbtSummaryValue::Short(5),
+            ]),
+            NbtSummaryValue::String("1-2-3-4-5".to_string()),
+        ] {
+            assert_eq!(component_hover_uuid(&value), Some(expected));
+        }
+        assert_eq!(
+            component_hover_uuid(&NbtSummaryValue::IntArray(vec![1, 2, 3])),
+            None
         );
     }
 
@@ -1290,6 +1371,7 @@ mod tests {
                     text: "parent hover".to_string(),
                     style: ComponentStyle::default(),
                 }],
+                component: None,
             }),
             font: Some("example:parent".to_string()),
             ..ComponentStyle::default()

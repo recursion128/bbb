@@ -364,6 +364,35 @@ pub struct HudChatMessage {
     pub tag: Option<HudChatTag>,
 }
 
+/// Reusable Component/item hover tooltip content. Lines retain their own base
+/// tint and per-run font selection; the renderer owns wrapping, placement, and
+/// the advanced-tooltip visibility gate.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HudRichTooltip {
+    pub style: Option<String>,
+    pub lines: Vec<HudRichTooltipLine>,
+    /// Optional replacement lines selected while advanced item tooltips are
+    /// enabled. Item hovers use this for advanced details; entity hovers keep
+    /// `lines` empty and expose their entire tooltip here.
+    pub advanced_lines: Option<Vec<HudRichTooltipLine>>,
+    pub wrap_text: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct HudRichTooltipLine {
+    pub runs: Vec<HudComponentTextRun>,
+    pub tint: [f32; 4],
+}
+
+impl HudRichTooltipLine {
+    pub fn plain(text: impl Into<String>) -> Self {
+        Self {
+            runs: vec![HudComponentTextRun::plain(text)],
+            tint: HUD_TINT_WHITE,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HudChatInteraction {
     pub start_char: usize,

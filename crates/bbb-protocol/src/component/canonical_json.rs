@@ -799,7 +799,7 @@ fn canonical_nbt_map(
     Some(normalized)
 }
 
-fn java_uuid_int_array(value: &str) -> Option<Vec<i32>> {
+pub(super) fn java_uuid_int_array(value: &str) -> Option<Vec<i32>> {
     let parts = value
         .split('-')
         .map(|part| u64::from_str_radix(part.strip_prefix('+').unwrap_or(part), 16).ok())

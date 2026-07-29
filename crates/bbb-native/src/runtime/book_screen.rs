@@ -254,7 +254,7 @@ fn hud_run_from_component(run: &StyledTextRun) -> HudStyledTextRun {
 
 fn hover_runs(hover: Option<&ComponentHoverEvent>) -> Vec<HudStyledTextRun> {
     match hover {
-        Some(ComponentHoverEvent::ShowText { value }) => {
+        Some(ComponentHoverEvent::ShowText { value, .. }) => {
             value.iter().map(hud_run_from_component).collect()
         }
         Some(ComponentHoverEvent::ShowItem { id, count, .. }) => {
