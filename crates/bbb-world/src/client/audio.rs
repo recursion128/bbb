@@ -139,7 +139,7 @@ const fn default_true() -> bool {
     true
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct LevelEventSoundRandomState {
     seed: u64,
     next_gaussian: Option<f64>,

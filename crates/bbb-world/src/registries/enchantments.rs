@@ -7,7 +7,9 @@ use bbb_protocol::{
     NbtSummaryValue, StyledTextRun,
 };
 
-use crate::{FrozenRegistryAccess, RegistryHolderSetIdentity, WorldStore};
+use crate::{
+    FrozenRegistryAccess, LevelEventSoundRandomState, RegistryHolderSetIdentity, WorldStore,
+};
 
 use super::{decode_persistent_sound_event, normalize_codec_identifier, PersistentSoundEvent};
 
@@ -87,16 +89,13 @@ enum LevelBasedValue {
     },
 }
 
-/// Deterministic variants of vanilla `EnchantmentValueEffect`.
-///
-/// `remove_binomial` consumes the holder entity's `RandomSource`; bbb does not
-/// yet mirror that per-entity random stream, so that variant is deliberately
-/// rejected instead of inventing a result.
+/// Vanilla `EnchantmentValueEffect` variants.
 #[derive(Debug, Clone, PartialEq)]
 enum EnchantmentValueEffect {
     Add(LevelBasedValue),
     AllOf(Vec<Self>),
     Multiply(LevelBasedValue),
+    RemoveBinomial(LevelBasedValue),
     Exponential {
         base: LevelBasedValue,
         exponent: LevelBasedValue,
@@ -306,9 +305,29 @@ impl WorldStore {
     ///
     /// A stubbed vanilla quick-charge definition uses the generated identity
     /// fallback. Server-provided data always wins, including custom
-    /// enchantments and replacements of the vanilla resource id. Malformed or
-    /// random-dependent effects fail closed and leave the duration unchanged.
+    /// enchantments and replacements of the vanilla resource id. This
+    /// ownerless compatibility query leaves random-dependent effects unchanged;
+    /// living-owner presentation uses
+    /// [`Self::crossbow_charge_duration_ticks_with_random`].
     pub fn crossbow_charge_duration_ticks(&self, enchantments: &[ItemEnchantmentSummary]) -> i32 {
+        self.crossbow_charge_duration_ticks_with_optional_random(enchantments, None)
+    }
+
+    /// Vanilla `EnchantmentHelper.modifyCrossbowChargingTime`, using the
+    /// living holder's mutable `Entity.random` projection.
+    pub fn crossbow_charge_duration_ticks_with_random(
+        &self,
+        enchantments: &[ItemEnchantmentSummary],
+        random: &mut LevelEventSoundRandomState,
+    ) -> i32 {
+        self.crossbow_charge_duration_ticks_with_optional_random(enchantments, Some(random))
+    }
+
+    fn crossbow_charge_duration_ticks_with_optional_random(
+        &self,
+        enchantments: &[ItemEnchantmentSummary],
+        mut random: Option<&mut LevelEventSoundRandomState>,
+    ) -> i32 {
         let mut duration_seconds = 1.25_f32;
         for enchantment in enchantments {
             let Some(entry) =
@@ -325,7 +344,7 @@ impl WorldStore {
                 },
             };
             if let Some(effect) = effect {
-                duration_seconds = effect.process(enchantment.level, duration_seconds);
+                duration_seconds = effect.process(enchantment.level, duration_seconds, &mut random);
             }
         }
         (duration_seconds.max(0.0) * 20.0).floor() as i32
@@ -339,7 +358,29 @@ impl WorldStore {
         &self,
         enchantments: &[ItemEnchantmentSummary],
     ) -> f32 {
-        let mut strength = 0.0_f32;
+        process_trident_spin_attack_strength(self.trident_spin_attack_effects(enchantments), None)
+    }
+
+    pub(crate) fn local_player_trident_spin_attack_strength(
+        &mut self,
+        enchantments: &[ItemEnchantmentSummary],
+    ) -> f32 {
+        let effects = self.trident_spin_attack_effects(enchantments);
+        let Some(entity_id) = self.local_player_id() else {
+            return process_trident_spin_attack_strength(effects, None);
+        };
+        self.entities
+            .with_entity_random_mut(entity_id, |random| {
+                process_trident_spin_attack_strength(effects, Some(random))
+            })
+            .unwrap_or_default()
+    }
+
+    fn trident_spin_attack_effects(
+        &self,
+        enchantments: &[ItemEnchantmentSummary],
+    ) -> Vec<(i32, EnchantmentValueEffect)> {
+        let mut effects = Vec::new();
         for enchantment in enchantments {
             let Some(entry) =
                 self.registry_entry_by_holder_id(ENCHANTMENT_REGISTRY, enchantment.holder_id)
@@ -359,10 +400,10 @@ impl WorldStore {
                 },
             };
             if let Some(effect) = effect {
-                strength = effect.process(enchantment.level, strength);
+                effects.push((enchantment.level, effect));
             }
         }
-        strength
+        effects
     }
 
     /// Resolves Vanilla `EnchantmentHelper.pickHighestLevel` for
@@ -413,6 +454,15 @@ impl WorldStore {
             })
             .unwrap_or_else(|| named_sound_event_summary("minecraft:item.trident.throw"))
     }
+}
+
+fn process_trident_spin_attack_strength(
+    effects: Vec<(i32, EnchantmentValueEffect)>,
+    mut random: Option<&mut LevelEventSoundRandomState>,
+) -> f32 {
+    effects.into_iter().fold(0.0, |strength, (level, effect)| {
+        effect.process(level, strength, &mut random)
+    })
 }
 
 fn validate_enchantment_effect_holder_sets(
@@ -654,13 +704,21 @@ impl LevelBasedValue {
 }
 
 impl EnchantmentValueEffect {
-    fn process(&self, level: i32, input: f32) -> f32 {
+    fn process(
+        &self,
+        level: i32,
+        input: f32,
+        random: &mut Option<&mut LevelEventSoundRandomState>,
+    ) -> f32 {
         match self {
             Self::Add(value) => input + value.calculate(level),
             Self::AllOf(effects) => effects
                 .iter()
-                .fold(input, |value, effect| effect.process(level, value)),
+                .fold(input, |value, effect| effect.process(level, value, random)),
             Self::Multiply(factor) => input * factor.calculate(level),
+            Self::RemoveBinomial(chance) => random.as_deref_mut().map_or(input, |random| {
+                remove_binomial(chance.calculate(level), input, random)
+            }),
             Self::Exponential { base, exponent } => {
                 input
                     * f64::from(base.calculate(level)).powf(f64::from(exponent.calculate(level)))
@@ -669,6 +727,25 @@ impl EnchantmentValueEffect {
             Self::Set(value) => value.calculate(level),
         }
     }
+}
+
+fn remove_binomial(chance: f32, input: f32, random: &mut LevelEventSoundRandomState) -> f32 {
+    let mut removed = 0_i32;
+    if !(input <= 128.0) && !(input * chance < 20.0) && !(input * (1.0 - chance) < 20.0) {
+        let mean = f64::from((input * chance).floor());
+        let standard_deviation = f64::from((input * chance * (1.0 - chance)).sqrt());
+        removed = (mean + random.next_gaussian() * standard_deviation).round() as i32;
+        removed = removed.clamp(0, input as i32);
+    } else {
+        let mut trial = 0_i32;
+        while (trial as f32) < input {
+            if random.next_float() < chance {
+                removed += 1;
+            }
+            trial += 1;
+        }
+    }
+    input - removed as f32
 }
 
 fn decode_crossbow_charge_time_effect(
@@ -803,6 +880,9 @@ fn parse_enchantment_value_effect(value: &NbtSummaryValue) -> Option<Enchantment
         "multiply" => Some(EnchantmentValueEffect::Multiply(parse_level_based_value(
             nbt_field(fields, "factor")?,
         )?)),
+        "remove_binomial" => Some(EnchantmentValueEffect::RemoveBinomial(
+            parse_level_based_value(nbt_field(fields, "chance")?)?,
+        )),
         "exponential" => Some(EnchantmentValueEffect::Exponential {
             base: parse_level_based_value(nbt_field(fields, "base")?)?,
             exponent: parse_level_based_value(nbt_field(fields, "exponent")?)?,
@@ -810,8 +890,6 @@ fn parse_enchantment_value_effect(value: &NbtSummaryValue) -> Option<Enchantment
         "set" => Some(EnchantmentValueEffect::Set(parse_level_based_value(
             nbt_field(fields, "value")?,
         )?)),
-        // Vanilla `RemoveBinomial` needs the holder's mutable RandomSource.
-        "remove_binomial" => None,
         _ => None,
     }
 }
@@ -951,9 +1029,11 @@ fn nbt_i32(value: &NbtSummaryValue) -> Option<i32> {
 #[cfg(test)]
 mod tests {
     use bbb_protocol::{
-        packets::{RegistryData, RegistryDataEntry},
+        entity_types::VANILLA_ENTITY_TYPE_PLAYER_ID,
+        packets::{AddEntity, RegistryData, RegistryDataEntry, Vec3d},
         ComponentStyle,
     };
+    use uuid::Uuid;
 
     use super::*;
 
@@ -1392,7 +1472,7 @@ mod tests {
     }
 
     #[test]
-    fn deterministic_value_effects_cover_remaining_vanilla_variants() {
+    fn value_effects_cover_every_vanilla_26_1_variant() {
         let effect = EnchantmentValueEffect::AllOf(vec![
             EnchantmentValueEffect::Set(LevelBasedValue::Constant(0.5)),
             EnchantmentValueEffect::Exponential {
@@ -1406,8 +1486,8 @@ mod tests {
             }),
         ]);
 
-        assert_eq!(effect.process(2, 99.0), 1.5);
-        assert!(
+        assert_eq!(effect.process(2, 99.0, &mut None), 1.5);
+        assert_eq!(
             parse_enchantment_value_effect(&NbtSummaryValue::Compound(vec![
                 NbtSummaryEntry {
                     name: "type".to_string(),
@@ -1417,8 +1497,133 @@ mod tests {
                     name: "chance".to_string(),
                     value: NbtSummaryValue::Double(0.5_f64.to_bits()),
                 },
-            ]))
-            .is_none()
+            ])),
+            Some(EnchantmentValueEffect::RemoveBinomial(
+                LevelBasedValue::Constant(0.5)
+            ))
+        );
+    }
+
+    #[test]
+    fn remove_binomial_matches_vanilla_small_and_gaussian_random_advancement() {
+        let effect = EnchantmentValueEffect::RemoveBinomial(LevelBasedValue::Constant(0.5));
+        let mut small_random = LevelEventSoundRandomState::with_seed(0);
+        assert_eq!(effect.process(1, 5.0, &mut Some(&mut small_random)), 4.0);
+        assert_eq!(small_random.next_float(), 0.309_050_56);
+
+        let mut gaussian_random = LevelEventSoundRandomState::with_seed(0);
+        assert_eq!(
+            effect.process(1, 200.0, &mut Some(&mut gaussian_random)),
+            94.0
+        );
+        assert_eq!(
+            effect.process(1, 200.0, &mut Some(&mut gaussian_random)),
+            106.0
+        );
+        assert_eq!(gaussian_random.next_float(), 0.637_417_4);
+    }
+
+    #[test]
+    fn crossbow_random_effect_uses_one_mutable_holder_cursor() {
+        let effect = compound_payload(vec![
+            string_tag("type", "minecraft:all_of"),
+            compound_list_tag(
+                "effects",
+                vec![
+                    compound_payload(vec![
+                        string_tag("type", "minecraft:set"),
+                        float_tag("value", 5.0),
+                    ]),
+                    compound_payload(vec![
+                        string_tag("type", "minecraft:remove_binomial"),
+                        float_tag("chance", 0.5),
+                    ]),
+                ],
+            ),
+        ]);
+        let mut world = WorldStore::new();
+        world.record_registry_data(RegistryData {
+            registry: ENCHANTMENT_REGISTRY.to_string(),
+            entries: vec![RegistryDataEntry {
+                id: "example:random_loading".to_string(),
+                raw_data: Some(crossbow_effect_enchantment_nbt(effect)),
+            }],
+            raw_payload_len: 0,
+        });
+        let enchantments = [ItemEnchantmentSummary {
+            holder_id: 0,
+            level: 1,
+        }];
+
+        assert_eq!(world.crossbow_charge_duration_ticks(&enchantments), 100);
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        assert_eq!(
+            world.crossbow_charge_duration_ticks_with_random(&enchantments, &mut random),
+            80
+        );
+        assert_eq!(
+            world.crossbow_charge_duration_ticks_with_random(&enchantments, &mut random),
+            60
+        );
+    }
+
+    #[test]
+    fn local_trident_random_effect_advances_the_canonical_player_cursor() {
+        let effect = compound_payload(vec![
+            string_tag("type", "minecraft:all_of"),
+            compound_list_tag(
+                "effects",
+                vec![
+                    compound_payload(vec![
+                        string_tag("type", "minecraft:set"),
+                        float_tag("value", 5.0),
+                    ]),
+                    compound_payload(vec![
+                        string_tag("type", "minecraft:remove_binomial"),
+                        float_tag("chance", 0.5),
+                    ]),
+                ],
+            ),
+        ]);
+        let mut world = WorldStore::new();
+        world.record_registry_data(RegistryData {
+            registry: ENCHANTMENT_REGISTRY.to_string(),
+            entries: vec![RegistryDataEntry {
+                id: "example:random_riptide".to_string(),
+                raw_data: Some(trident_effect_enchantment_nbt(effect)),
+            }],
+            raw_payload_len: 0,
+        });
+        world.apply_add_entity(AddEntity {
+            id: 7,
+            uuid: Uuid::from_u128(7),
+            entity_type_id: VANILLA_ENTITY_TYPE_PLAYER_ID,
+            position: Vec3d::default(),
+            delta_movement: Vec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        });
+        world.local_player_id = Some(7);
+        world
+            .entities
+            .with_entity_random_mut(7, |random| {
+                *random = LevelEventSoundRandomState::with_seed(0);
+            })
+            .unwrap();
+        let enchantments = [ItemEnchantmentSummary {
+            holder_id: 0,
+            level: 1,
+        }];
+
+        assert_eq!(
+            world.local_player_trident_spin_attack_strength(&enchantments),
+            4.0
+        );
+        assert_eq!(
+            world.local_player_trident_spin_attack_strength(&enchantments),
+            3.0
         );
     }
 
@@ -1499,6 +1704,16 @@ mod tests {
             "effects",
             vec![named_compound_payload(
                 "minecraft:crossbow_charge_time",
+                effect_payload,
+            )],
+        )])
+    }
+
+    fn trident_effect_enchantment_nbt(effect_payload: Vec<u8>) -> Vec<u8> {
+        compound_payload(vec![compound_tag(
+            "effects",
+            vec![named_compound_payload(
+                "minecraft:trident_spin_attack_strength",
                 effect_payload,
             )],
         )])

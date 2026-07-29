@@ -2198,6 +2198,16 @@ impl EntityStore {
         })
     }
 
+    pub(crate) fn with_entity_random_mut<R>(
+        &mut self,
+        id: i32,
+        update: impl FnOnce(&mut crate::LevelEventSoundRandomState) -> R,
+    ) -> Option<R> {
+        self.with_client_animations_mut(id, |animations| {
+            update(animations.animations.entity_random_mut(id))
+        })
+    }
+
     pub(crate) fn local_interaction_particle_origin(
         &self,
         id: i32,

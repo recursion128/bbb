@@ -75,7 +75,8 @@ gameplay effects.
   `nextFloat`/`nextGaussian` in Vanilla order.
 - The canonical local-player entity keeps one client-local random cursor for
   simulation-side trident use and release. The cursor is seeded
-  deterministically from entity incarnation identity because Vanilla's
+  deterministically from the protocol entity identity and reset with each
+  incarnation because Vanilla's
   `RandomSource.create()` seed is process-random and not synchronized.
 - `bbb-item-model::NativeItemRuntime` keeps one render-side cursor per
   `(entity_id, uuid)` owner. Resource reload may replace the runtime; within a

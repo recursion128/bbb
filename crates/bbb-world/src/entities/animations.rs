@@ -11,7 +11,7 @@ use bbb_protocol::packets::{EntityDataEnumSerializer, EntityDataValue, EntityDat
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::WorldStore;
+use crate::{LevelEventSoundRandomState, WorldStore};
 
 use super::dimensions::{entity_data_pose, vanilla_living_entity_type};
 use super::dragon::{
@@ -254,6 +254,7 @@ const BLAZE_CLIENT_RANDOM_SALT: u64 = 0x626c_617a_655f_7469;
 const ENDER_AMBIENT_RANDOM_SALT: u64 = 0x656e_6465_725f_7469;
 const GUARDIAN_CLIENT_RANDOM_SALT: u64 = 0x6775_6172_6469_616e;
 const CAMEL_VOICE_RANDOM_SALT: u64 = 0x6361_6d65_6c5f_766f;
+const ENTITY_CLIENT_RANDOM_SALT: u64 = 0x4d4f_4249;
 /// Vanilla `Hoglin`/`Zoglin.handleEntityEvent`: event `4` sets `attackAnimationRemainingTicks = 10` (the
 /// headbutt), decremented each client tick. `HoglinModel.setupAnim` drives the head-down ram from it.
 const HOGLIN_ATTACK_TICKS: i32 = 10;
@@ -691,11 +692,12 @@ pub struct EntityClientAnimationState {
     pub(crate) mooshroom_stew_ingredient_item_id: Option<i32>,
     #[serde(skip)]
     pub(crate) tadpole_age_ticks: i32,
-    /// Shared deterministic stand-in for the entity `RandomSource` calls made
-    /// by local interaction methods. It is retained per incarnation and kept
-    /// out of stable probe serialization like the other client RNG cursors.
+    /// Shared deterministic stand-in for Vanilla `Entity.random`. Local
+    /// interactions and unfiltered synchronized enchantment effects consume
+    /// this cursor in call order. It is retained per incarnation and kept out
+    /// of stable probe serialization like the other client RNG cursors.
     #[serde(skip)]
-    pub(crate) local_interaction_random_seed: Option<u64>,
+    pub(crate) entity_random: Option<LevelEventSoundRandomState>,
     /// Client-local `PlayerRideableJumping` input retained between the local
     /// player's release edge and the controlled vehicle's ridden tick. It is
     /// cloned into immutable publications for old-generation isolation but is
@@ -4633,17 +4635,19 @@ impl EntityClientAnimationState {
     }
 
     pub(crate) fn next_local_interaction_random_float(&mut self, entity_id: i32) -> f32 {
-        let random_seed = self.local_interaction_random_seed.get_or_insert_with(|| {
-            java_random_seed(i64::from(entity_id).wrapping_add(0x4d4f_4249))
-        });
-        java_random_next_float(random_seed)
+        self.entity_random_mut(entity_id).next_float()
     }
 
     pub(crate) fn next_local_interaction_random_double(&mut self, entity_id: i32) -> f64 {
-        let random_seed = self.local_interaction_random_seed.get_or_insert_with(|| {
-            java_random_seed(i64::from(entity_id).wrapping_add(0x4d4f_4249))
-        });
-        java_random_next_double(random_seed)
+        self.entity_random_mut(entity_id).next_double()
+    }
+
+    pub(crate) fn entity_random_mut(&mut self, entity_id: i32) -> &mut LevelEventSoundRandomState {
+        self.entity_random.get_or_insert_with(|| {
+            LevelEventSoundRandomState::with_seed(
+                i64::from(entity_id).wrapping_add(ENTITY_CLIENT_RANDOM_SALT as i64),
+            )
+        })
     }
 
     pub(crate) fn needs_particle_trigger_bounds_snapshot(&self) -> bool {

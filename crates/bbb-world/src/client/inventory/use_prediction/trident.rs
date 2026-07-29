@@ -10,7 +10,7 @@ const VANILLA_TRIDENT_GROUND_LAUNCH_HEIGHT: f64 = 1.1999999_f32 as f64;
 
 impl WorldStore {
     pub(super) fn predict_local_trident_item_use(
-        &self,
+        &mut self,
         stack: &ProtocolItemStackSummary,
     ) -> LocalItemUsePrediction {
         if self.item_stack_next_damage_will_break(stack) {
@@ -25,7 +25,7 @@ impl WorldStore {
         } else {
             stack.component_patch.enchantments.as_slice()
         };
-        if self.trident_spin_attack_strength(enchantments) > 0.0
+        if self.local_player_trident_spin_attack_strength(enchantments) > 0.0
             && !self.local_player_is_in_water_or_rain()
         {
             return LocalItemUsePrediction::Result(LocalInteractionResult::Fail);
@@ -52,7 +52,7 @@ impl WorldStore {
             .item_stack_has_effective_component(&stack, VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID)
             .then(|| effective.component_patch.enchantments.clone())
             .unwrap_or_default();
-        let riptide_strength = self.trident_spin_attack_strength(&enchantments);
+        let riptide_strength = self.local_player_trident_spin_attack_strength(&enchantments);
         if riptide_strength > 0.0
             && (!self.local_player_is_in_water_or_rain()
                 || self.local_player_vehicle_id().is_some())
