@@ -13,7 +13,6 @@ impl ParticleCommandResolver {
             terrain_particle_tint_colors: HashMap::new(),
             falling_dust_block_tint_colors: HashMap::new(),
             terrain_particle_tint_catalog: TerrainParticleTintCatalog::default(),
-            block_can_occlude: HashMap::new(),
             default_item_particle_sprite_ids: HashMap::new(),
             random: LegacyRandom::new(default_particle_seed()),
             particle_level_random: LegacyRandom::new(default_particle_seed()),
@@ -50,18 +49,6 @@ impl ParticleCommandResolver {
         self.terrain_particle_tint_catalog = textures.particle_tint_catalog();
     }
 
-    pub(super) fn set_block_occlusion_profiles(&mut self, profiles: &BlockOcclusionProfileCatalog) {
-        self.block_can_occlude = profiles
-            .profiles()
-            .iter()
-            .map(|(block_name, profile)| (block_name.clone(), profile.can_occlude))
-            .collect();
-    }
-
-    pub(super) fn block_occlusion_profile_count(&self) -> usize {
-        self.block_can_occlude.len()
-    }
-
     pub(super) fn set_default_item_particle_sprite_ids(&mut self, items: &NativeItemRuntime) {
         self.default_item_particle_sprite_ids = items
             .default_item_particle_sprite_ids_by_protocol_id()
@@ -83,7 +70,6 @@ impl ParticleCommandResolver {
             terrain_particle_tint_colors: HashMap::new(),
             falling_dust_block_tint_colors: HashMap::new(),
             terrain_particle_tint_catalog: TerrainParticleTintCatalog::default(),
-            block_can_occlude: HashMap::new(),
             default_item_particle_sprite_ids: HashMap::new(),
             random: LegacyRandom::new(seed),
             particle_level_random: LegacyRandom::new(seed),

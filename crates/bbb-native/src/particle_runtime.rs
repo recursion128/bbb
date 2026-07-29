@@ -6,8 +6,8 @@ use std::{
 use anyhow::{Context, Result};
 use bbb_item_model::NativeItemRuntime;
 use bbb_pack::{
-    AtlasLayout, AtlasPacker, AtlasSprite, BlockOcclusionProfileCatalog, PackRoots,
-    ParticleDefinitionCatalog, ParticleSpriteCatalog, SpriteImage,
+    AtlasLayout, AtlasPacker, AtlasSprite, PackRoots, ParticleDefinitionCatalog,
+    ParticleSpriteCatalog, SpriteImage,
 };
 use bbb_protocol::item_types::{VANILLA_ITEM_ENDER_EYE_ID, VANILLA_ITEM_SPLASH_POTION_ID};
 use bbb_protocol::packets::{
@@ -334,17 +334,9 @@ impl NativeParticleResources {
         let sprites = roots
             .load_particle_sprite_catalog()
             .context("load particle sprite catalog")?;
-        let block_occlusion_profiles = roots
-            .load_block_occlusion_profile_catalog()
-            .context("load block occlusion profile catalog")?;
         let atlas = particle_atlas_from_images(sprites.sprites().values().cloned().collect())
             .context("stitch particle atlas")?;
-        let mut resolver = ParticleCommandResolver::new(definitions, sprites, particle_status);
-        resolver.set_block_occlusion_profiles(&block_occlusion_profiles);
-        tracing::debug!(
-            block_occlusion_profiles = resolver.block_occlusion_profile_count(),
-            "loaded particle block occlusion profiles"
-        );
+        let resolver = ParticleCommandResolver::new(definitions, sprites, particle_status);
         Ok(Self {
             simulation: NativeParticleRuntime {
                 resolver,
@@ -741,7 +733,6 @@ struct ParticleCommandResolver {
     terrain_particle_tint_colors: HashMap<i32, [f32; 4]>,
     falling_dust_block_tint_colors: HashMap<i32, [f32; 4]>,
     terrain_particle_tint_catalog: TerrainParticleTintCatalog,
-    block_can_occlude: HashMap<String, bool>,
     default_item_particle_sprite_ids: HashMap<i32, Vec<String>>,
     random: LegacyRandom,
     particle_level_random: LegacyRandom,
@@ -1581,9 +1572,13 @@ mod block_map_color;
 mod dripstone;
 pub(crate) use dripstone::{pointed_dripstone_drip_context, pointed_dripstone_particle_position};
 mod environment;
-pub(crate) use environment::{dust_client_particle_options, simple_client_particle_options};
+pub(crate) use environment::simple_client_particle_options;
 mod explosion;
 mod ids;
+mod redstone;
+pub(crate) use redstone::{
+    dust_client_particle_options, redstone_ore_particle_positions, redstone_ore_solid_render_faces,
+};
 mod resolver_block_events;
 mod resolver_core;
 mod resolver_entity_events;

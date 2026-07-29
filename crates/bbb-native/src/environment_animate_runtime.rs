@@ -16,9 +16,9 @@ use crate::{
     environment_audio_runtime::sound_holder_state,
     particle_runtime::{
         dust_client_particle_options, pointed_dripstone_drip_context,
-        pointed_dripstone_particle_position, simple_client_particle_options,
-        EnvironmentParticleSpawn, LevelParticleSpawnContext, ParticleBiomeSampler,
-        ParticleEventSink,
+        pointed_dripstone_particle_position, redstone_ore_particle_positions,
+        redstone_ore_solid_render_faces, simple_client_particle_options, EnvironmentParticleSpawn,
+        LevelParticleSpawnContext, ParticleBiomeSampler, ParticleEventSink,
     },
     simulation::effects::ParticleBatchSink,
 };
@@ -391,6 +391,15 @@ impl EnvironmentAnimateRuntime {
                     pos,
                     &block.block_properties,
                     animate_random,
+                    spawns,
+                );
+            }
+            "minecraft:redstone_ore" | "minecraft:deepslate_redstone_ore" => {
+                append_redstone_ore_animate_effects(
+                    world,
+                    pos,
+                    &block.block_properties,
+                    &mut self.level_random,
                     spawns,
                 );
             }
@@ -1619,6 +1628,31 @@ fn redstone_wire_color(power: u8) -> u32 {
     let blue = (power * power * 0.6 - 0.7).clamp(0.0, 1.0);
     let channel = |value: f32| (value * 255.0).floor() as u32;
     (channel(1.0) << 24) | (channel(red) << 16) | (channel(green) << 8) | channel(blue)
+}
+
+fn append_redstone_ore_animate_effects(
+    world: &WorldStore,
+    pos: BlockPos,
+    properties: &BTreeMap<String, String>,
+    level_random: &mut LevelEventSoundRandomState,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) {
+    if properties.get("lit").map(String::as_str) != Some("true") {
+        return;
+    }
+    let solid_render_faces = redstone_ore_solid_render_faces(world, pos);
+    for position in
+        redstone_ore_particle_positions(pos, solid_render_faces, || level_random.next_float())
+            .into_iter()
+            .flatten()
+    {
+        spawns.push(EnvironmentParticleSpawn {
+            particle: dust_client_particle_options(0x00ff_0000, 1.0),
+            position,
+            velocity: [0.0; 3],
+            always_show: false,
+        });
+    }
 }
 
 fn append_ambient_particle_spawns(
@@ -3778,6 +3812,128 @@ mod tests {
                 .count(),
             6
         );
+    }
+
+    #[test]
+    fn redstone_ore_animate_effects_share_face_sampling_and_level_random_order() {
+        let pos = BlockPos { x: 8, y: 32, z: 8 };
+        let mut world = world_with_ambient_particles();
+        set_block(
+            &mut world,
+            BlockPos { y: 31, ..pos },
+            block_state_id("minecraft:stone", &[]),
+        );
+        let lit = BTreeMap::from([("lit".to_string(), "true".to_string())]);
+        let mut actual = LevelEventSoundRandomState::with_seed(0);
+        let mut expected = LevelEventSoundRandomState::with_seed(0);
+        let mut spawns = Vec::new();
+
+        append_redstone_ore_animate_effects(&world, pos, &lit, &mut actual, &mut spawns);
+
+        assert_eq!(spawns.len(), 5, "the solid-render face below is skipped");
+        let expected_positions = [
+            [
+                8.0 + f64::from(expected.next_float()),
+                33.0625,
+                8.0 + f64::from(expected.next_float()),
+            ],
+            [
+                8.0 + f64::from(expected.next_float()),
+                32.0 + f64::from(expected.next_float()),
+                7.9375,
+            ],
+            [
+                8.0 + f64::from(expected.next_float()),
+                32.0 + f64::from(expected.next_float()),
+                9.0625,
+            ],
+            [
+                7.9375,
+                32.0 + f64::from(expected.next_float()),
+                8.0 + f64::from(expected.next_float()),
+            ],
+            [
+                9.0625,
+                32.0 + f64::from(expected.next_float()),
+                8.0 + f64::from(expected.next_float()),
+            ],
+        ];
+        assert_eq!(
+            spawns
+                .iter()
+                .map(|spawn| spawn.position)
+                .collect::<Vec<_>>(),
+            expected_positions
+        );
+        assert!(spawns.iter().all(|spawn| {
+            spawn.particle.option
+                == bbb_world::ClientParticleOptionValue::Dust {
+                    color: 0x00ff_0000,
+                    scale_bits: 1.0_f32.to_bits(),
+                }
+                && spawn.velocity == [0.0; 3]
+                && !spawn.always_show
+        }));
+        assert_eq!(actual.next_long(), expected.next_long());
+
+        let unlit = BTreeMap::from([("lit".to_string(), "false".to_string())]);
+        let mut unlit_actual = LevelEventSoundRandomState::with_seed(0);
+        let mut unlit_expected = LevelEventSoundRandomState::with_seed(0);
+        let mut unlit_spawns = Vec::new();
+        append_redstone_ore_animate_effects(
+            &world,
+            pos,
+            &unlit,
+            &mut unlit_actual,
+            &mut unlit_spawns,
+        );
+        assert!(unlit_spawns.is_empty());
+        assert_eq!(unlit_actual.next_long(), unlit_expected.next_long());
+    }
+
+    #[test]
+    fn environment_dispatches_lit_redstone_ore_without_consuming_animate_random() {
+        let center = BlockPos { x: 8, y: 32, z: 8 };
+        let mut sampled_level_random = LevelEventSoundRandomState::with_seed(0);
+        let pos = sample_animate_position(&mut sampled_level_random, center, NEAR_SAMPLE_RADIUS);
+        let mut world = world_with_ambient_particles();
+        set_block(
+            &mut world,
+            pos,
+            block_state_id("minecraft:deepslate_redstone_ore", &[("lit", "true")]),
+        );
+        set_block(
+            &mut world,
+            BlockPos {
+                y: pos.y - 1,
+                ..pos
+            },
+            block_state_id("minecraft:stone", &[]),
+        );
+        let mut runtime = EnvironmentAnimateRuntime::default();
+        let mut animate_actual = LevelEventSoundRandomState::with_seed(91);
+        let mut animate_expected = LevelEventSoundRandomState::with_seed(91);
+        let mut audio = None;
+        let mut spawns = Vec::new();
+
+        runtime.do_animate_tick(
+            &mut world,
+            center,
+            NEAR_SAMPLE_RADIUS,
+            0,
+            &mut animate_actual,
+            &mut audio,
+            &mut spawns,
+        );
+
+        assert_eq!(
+            spawns
+                .iter()
+                .filter(|spawn| spawn.particle.resource_id == "minecraft:dust")
+                .count(),
+            5
+        );
+        assert_eq!(animate_actual.next_long(), animate_expected.next_long());
     }
 
     #[test]

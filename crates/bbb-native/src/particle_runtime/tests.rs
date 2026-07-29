@@ -348,17 +348,10 @@ fn redstone_attack_particles_follow_direction_order_random_draws_and_occlusion_s
         shrieker,
     );
     let mut resolver = test_resolver(0);
-    resolver.block_can_occlude.extend([
-        ("minecraft:stone".to_string(), true),
-        ("minecraft:glass".to_string(), false),
-        ("minecraft:sculk_shrieker".to_string(), true),
-        ("minecraft:air".to_string(), false),
-    ]);
 
     let batch = resolver
         .local_block_attack_particle_batch(&world, LocalBlockAttackEffect::RedstoneOre { pos });
     let mut interaction_resolver = test_resolver(0);
-    interaction_resolver.block_can_occlude = resolver.block_can_occlude.clone();
     let interaction_batch = interaction_resolver.local_interaction_particle_batch(
         &world,
         LocalInteractionParticleAction::RedstoneOre { pos },

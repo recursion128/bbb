@@ -174,32 +174,6 @@ pub(crate) fn simple_client_particle_options(resource_id: &str) -> ClientParticl
     }
 }
 
-pub(crate) fn dust_client_particle_options(color: u32, scale: f32) -> ClientParticleOptions {
-    const RESOURCE_ID: &str = "minecraft:dust";
-
-    ClientParticleOptions {
-        resource_id: RESOURCE_ID.to_string(),
-        fields: vec![
-            bbb_protocol::NbtSummaryEntry {
-                name: "type".to_string(),
-                value: bbb_protocol::NbtSummaryValue::String(RESOURCE_ID.to_string()),
-            },
-            bbb_protocol::NbtSummaryEntry {
-                name: "color".to_string(),
-                value: bbb_protocol::NbtSummaryValue::Int(color as i32),
-            },
-            bbb_protocol::NbtSummaryEntry {
-                name: "scale".to_string(),
-                value: bbb_protocol::NbtSummaryValue::Float(scale.to_bits()),
-            },
-        ],
-        option: ClientParticleOptionValue::Dust {
-            color,
-            scale_bits: scale.to_bits(),
-        },
-    }
-}
-
 fn environment_particle_option_render_state(
     particle_type_id: i32,
     option: &ClientParticleOptionValue,

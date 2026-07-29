@@ -5,9 +5,7 @@ mod shapes;
 mod tests;
 
 use bbb_renderer::SelectionOutline;
-use bbb_world::{
-    block_name_is_fence, block_name_is_fence_gate, BlockPos, BlockProbe, TerrainMaterialClass,
-};
+use bbb_world::{BlockPos, BlockProbe, TerrainMaterialClass};
 
 use geometry::{BlockOutlineBox, BlockOutlineHit, BlockOutlineShape, HorizontalDirection};
 use shapes::outline_shape_for_block;
@@ -104,23 +102,6 @@ pub(crate) fn block_probe_has_full_block_shape(probe: &BlockProbe) -> bool {
     }
     outline_shape_for_block(probe.block_name.as_deref(), &probe.block_properties)
         .is_some_and(|outline| outline.is_full_block())
-}
-
-pub(crate) fn block_probe_has_full_block_occlusion_shape(
-    probe: &BlockProbe,
-    can_occlude: bool,
-) -> bool {
-    if !can_occlude {
-        return false;
-    }
-    let block_name = probe.block_name.as_deref().unwrap_or_default();
-    if matches!(block_name, "minecraft:lectern" | "minecraft:sculk_shrieker")
-        || block_name_is_fence(block_name)
-        || block_name_is_fence_gate(block_name)
-    {
-        return false;
-    }
-    block_probe_has_full_block_shape(probe)
 }
 
 pub(crate) fn block_probe_shape_max_y(probe: &BlockProbe) -> Option<f64> {

@@ -2,7 +2,6 @@ use super::*;
 
 const BREAKING_PARTICLE_FACE_OFFSET: f64 = 0.1_f32 as f64;
 const BREAKING_PARTICLE_DIAMETER: f64 = 0.2_f32 as f64;
-const REDSTONE_PARTICLE_AXIS_OFFSET: f64 = 0.5625;
 const DRAGON_EGG_TELEPORT_ATTEMPTS: usize = 1_000;
 const DRAGON_EGG_PORTAL_PARTICLES: usize = 128;
 
@@ -395,33 +394,20 @@ impl ParticleCommandResolver {
             missing_sprite_count: template.missing_sprite_count,
             ..ParticleSpawnBatch::default()
         };
-        for step in direction_steps() {
-            let relative = offset_block_pos(pos, step);
-            if self.block_is_solid_render(world, relative) {
-                continue;
-            }
-            let dx = if step.0 != 0 {
-                0.5 + REDSTONE_PARTICLE_AXIS_OFFSET * f64::from(step.0)
-            } else {
-                f64::from(self.particle_level_random.next_float())
-            };
-            let dy = if step.1 != 0 {
-                0.5 + REDSTONE_PARTICLE_AXIS_OFFSET * f64::from(step.1)
-            } else {
-                f64::from(self.particle_level_random.next_float())
-            };
-            let dz = if step.2 != 0 {
-                0.5 + REDSTONE_PARTICLE_AXIS_OFFSET * f64::from(step.2)
-            } else {
-                f64::from(self.particle_level_random.next_float())
-            };
+        let solid_render_faces = redstone_ore_solid_render_faces(world, pos);
+        for position in redstone_ore_particle_positions(pos, solid_render_faces, || {
+            self.particle_level_random.next_float()
+        })
+        .into_iter()
+        .flatten()
+        {
             batch.commands.push(self.command_for_type(
                 template.particle_type,
                 &template.sprite_ids,
                 Vec3d {
-                    x: f64::from(pos.x) + dx,
-                    y: f64::from(pos.y) + dy,
-                    z: f64::from(pos.z) + dz,
+                    x: position[0],
+                    y: position[1],
+                    z: position[2],
                 },
                 Vec3d::default(),
                 template.particle_type.override_limiter,
@@ -509,19 +495,6 @@ impl ParticleCommandResolver {
         }
         batch
     }
-
-    fn block_is_solid_render(&self, world: &WorldStore, pos: WorldBlockPos) -> bool {
-        let Some(probe) = world.probe_block(pos) else {
-            return false;
-        };
-        let can_occlude = probe
-            .block_name
-            .as_deref()
-            .and_then(|name| self.block_can_occlude.get(name))
-            .copied()
-            .unwrap_or(false);
-        crate::block_outline::block_probe_has_full_block_occlusion_shape(&probe, can_occlude)
-    }
 }
 
 fn opposite_direction(direction: ProtocolDirection) -> ProtocolDirection {
@@ -558,23 +531,4 @@ fn block_shape_bounds(boxes: &[([f64; 3], [f64; 3])]) -> Option<([f64; 3], [f64;
             (min, max)
         },
     ))
-}
-
-fn direction_steps() -> [(i32, i32, i32); 6] {
-    [
-        (0, -1, 0),
-        (0, 1, 0),
-        (0, 0, -1),
-        (0, 0, 1),
-        (-1, 0, 0),
-        (1, 0, 0),
-    ]
-}
-
-fn offset_block_pos(pos: WorldBlockPos, step: (i32, i32, i32)) -> WorldBlockPos {
-    WorldBlockPos {
-        x: pos.x + step.0,
-        y: pos.y + step.1,
-        z: pos.z + step.2,
-    }
 }

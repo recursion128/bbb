@@ -719,3 +719,6 @@
 - **2026-07-29（附魔台客户端粒子工程闭环）**：32 个书架偏移现按 Vanilla 固定
   顺序、provider/transmitter 标签短路和精确随机消费生成 enchant 粒子；两类标签
   直接由 26.1 数据生成并由 world/native 共用。
+- **2026-07-29（红石矿石客户端粒子工程闭环）**：攻击、使用与 lit
+  `animateTick` 现共用六面 solid-render/随机位置实现；环境路径保持独立
+  `ClientLevel.random` 游标并覆盖普通与深层红石矿石。
