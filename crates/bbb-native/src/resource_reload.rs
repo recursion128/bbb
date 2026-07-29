@@ -206,6 +206,8 @@ fn apply_native_resource_reload(
                 .and_then(|textures| {
                     try_load_hud_textures(renderer, &prepared.roots)
                         .context("upload HUD resources during resource reload")?;
+                    renderer
+                        .set_default_text_right_to_left(prepared.items.language_bidirectional());
                     let win_screen_resources = WinScreenResources::load(
                         &prepared.roots,
                         username,
@@ -1039,6 +1041,15 @@ mod tests {
         let atlas_commit = source
             .find("upload_reload_atlases(renderer, &prepared.particles.render, &prepared.items)")
             .expect("reload should install generation-matched atlases");
+        let hud_commit = source
+            .find("try_load_hud_textures(renderer, &prepared.roots)")
+            .expect("reload should install generation-matched HUD resources");
+        let language_direction_commit = source
+            .find("set_default_text_right_to_left(prepared.items.language_bidirectional())")
+            .expect("reload should install the prepared language direction");
+        let win_screen_commit = source
+            .find("let win_screen_resources = WinScreenResources::load(")
+            .expect("reload should measure win-screen text with the prepared direction");
         let residency_barrier = source
             .find("                renderer.invalidate_item_model_resources();\n")
             .expect("successful reload should advance the item residency generation");
@@ -1051,6 +1062,9 @@ mod tests {
 
         assert!(transaction < post_effect_commit);
         assert!(post_effect_commit < atlas_commit);
+        assert!(atlas_commit < hud_commit);
+        assert!(hud_commit < language_direction_commit);
+        assert!(language_direction_commit < win_screen_commit);
         assert!(atlas_commit < audio_commit);
         assert!(audio_commit < residency_barrier);
         assert!(residency_barrier < simulation_commit);

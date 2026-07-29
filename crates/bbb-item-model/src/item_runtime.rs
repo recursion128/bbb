@@ -581,6 +581,10 @@ impl NativeItemRuntime {
         self.language.get_or_key(key)
     }
 
+    pub fn language_bidirectional(&self) -> bool {
+        self.language.is_bidirectional()
+    }
+
     /// Creates an independent owner for simulation-side item queries.
     ///
     /// Immutable pack catalogs and atlas indices are copied, while renderer-only

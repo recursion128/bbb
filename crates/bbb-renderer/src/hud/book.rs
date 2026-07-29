@@ -4,7 +4,8 @@ use winit::dpi::PhysicalSize;
 
 use super::{
     absolute_hud_rect, hud_component_text_pass_geometry, hud_font_glyph, hud_font_runs_width,
-    hud_rich_tooltip_lines, hud_styled_text_pass_geometry, hud_wrap_chat_runs_with_interactions,
+    hud_logical_font_runs_width, hud_logical_styled_text_pass_geometry, hud_rich_tooltip_lines,
+    hud_styled_text_pass_geometry, hud_wrap_chat_runs_with_interactions,
     hud_wrap_component_runs_with_interactions, push_hud_component_tooltip,
     push_hud_debug_tinted_rect, push_hud_draw_with_uv_and_tint, push_hud_pause_button,
     push_hud_styled_text_pass, sanitize_hud_component_runs, sanitize_hud_rich_tooltip,
@@ -554,7 +555,7 @@ fn push_sign_page<'a>(
         .iter()
         .map(|run| run.visual.clone())
         .collect::<Vec<_>>();
-    let width = hud_font_runs_width(&visual_runs, glyphs).unwrap_or_default() as i32;
+    let width = hud_logical_font_runs_width(&visual_runs, glyphs).unwrap_or_default() as i32;
     let x = layout.origin_x + HUD_BOOK_WIDTH / 2 - width / 2;
     push_editor_selection(
         vertices,
@@ -572,7 +573,7 @@ fn push_sign_page<'a>(
         x,
         HUD_BOOK_SIGN_TITLE_Y,
     );
-    push_runs(
+    push_logical_runs(
         vertices,
         commands,
         white_pixel,
@@ -684,6 +685,41 @@ fn push_runs<'a>(
     origin: (i32, i32),
 ) {
     let geometry = hud_styled_text_pass_geometry(
+        runs,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        (origin.0 as f32, origin.1 as f32),
+        0.0,
+        false,
+        HUD_BOOK_TEXT_TINT,
+        None,
+        1.0,
+    );
+    push_hud_styled_text_pass(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        surface_size,
+        &geometry,
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_logical_runs<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    runs: &[HudStyledTextRun],
+    origin: (i32, i32),
+) {
+    let geometry = hud_logical_styled_text_pass_geometry(
         runs,
         glyphs,
         obfuscated_pool,
@@ -1004,7 +1040,7 @@ fn push_editor_cursor<'a>(
 }
 
 fn plain_width(text: &str, glyphs: &HudFontGlyphMap) -> u32 {
-    hud_font_runs_width(&[HudStyledTextRun::plain(text)], glyphs).unwrap_or_default()
+    hud_logical_font_runs_width(&[HudStyledTextRun::plain(text)], glyphs).unwrap_or_default()
 }
 
 fn char_slice(text: &str, start: usize, end: usize) -> &str {

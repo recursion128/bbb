@@ -708,6 +708,11 @@ fn main() -> Result<()> {
         }
     }
     load_hud_textures(&mut renderer, pack_roots.as_ref());
+    renderer.set_default_text_right_to_left(
+        item_runtime
+            .as_ref()
+            .is_some_and(NativeItemRuntime::language_bidirectional),
+    );
     let win_screen_resources = std::sync::Arc::new(
         pack_roots
             .as_ref()

@@ -723,6 +723,7 @@ mod tests {
         renderer
             .upload_hud_font_atlas(1, 1, &[255, 255, 255, 255], old_fonts)
             .expect("old font");
+        renderer.set_default_text_right_to_left(false);
         renderer.set_hud_chat_messages(vec![HudChatMessage {
             display_sequence: 1,
             added_tick: 0,
@@ -754,8 +755,10 @@ mod tests {
                     )]),
                 );
                 renderer.upload_hud_font_atlas(1, 1, &[255, 255, 255, 255], new_fonts)?;
+                renderer.set_default_text_right_to_left(true);
                 assert_ne!(renderer.hud_chat_lines, previous_lines);
                 assert_ne!(renderer.hud_font_book, previous_fonts);
+                assert!(renderer.default_text_right_to_left());
                 Err(anyhow!("injected font failure"))
             })
             .expect_err("font reload failure");
@@ -763,6 +766,7 @@ mod tests {
         assert_eq!(error.to_string(), "injected font failure");
         assert_eq!(renderer.hud_chat_lines, previous_lines);
         assert_eq!(renderer.hud_font_book, previous_fonts);
+        assert!(!renderer.default_text_right_to_left());
     }
 
     #[test]

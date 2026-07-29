@@ -119,7 +119,7 @@ pub use bbb_render_types::{
     HudObfuscatedGlyphPool, HudStyledTextRun, HudTextStyle, HudUvRect, HUD_FONT_BASELINE,
 };
 
-use bbb_render_types::{HudEffectRect, HudGlyphQuad, HudObfuscatedRandom};
+use bbb_render_types::{visual_order, HudEffectRect, HudGlyphQuad, HudObfuscatedRandom};
 
 pub const HUD_HOTBAR_SLOTS: usize = 9;
 
@@ -282,6 +282,46 @@ mod chat_layout_tests {
                     target_index: 3,
                 },
             })
+        );
+    }
+
+    #[test]
+    fn chat_interactions_follow_visual_rtl_glyph_spans_after_logical_wrap() {
+        let mut glyphs = glyphs_for("אב");
+        glyphs.set_default_right_to_left(true);
+        let lines = hud_wrap_chat_runs_with_interactions(
+            &[HudStyledTextRun::plain("אב")],
+            &[
+                HudChatInteraction {
+                    start_char: 0,
+                    end_char: 1,
+                    target_index: 1,
+                    tooltip: None,
+                },
+                HudChatInteraction {
+                    start_char: 1,
+                    end_char: 2,
+                    target_index: 2,
+                    tooltip: None,
+                },
+            ],
+            100,
+            &glyphs,
+        );
+
+        assert_eq!(lines.len(), 1);
+        assert_eq!(lines[0].runs, vec![HudStyledTextRun::plain("אב")]);
+        assert_eq!(
+            lines[0]
+                .interactions
+                .iter()
+                .map(|interaction| (
+                    interaction.start_x,
+                    interaction.end_x,
+                    interaction.target_index
+                ))
+                .collect::<Vec<_>>(),
+            vec![(0, 6, 2), (6, 12, 1)]
         );
     }
 
@@ -3210,6 +3250,21 @@ impl Renderer {
         self.hud_font_book = fonts;
         self.rebuild_chat_lines();
         Ok(())
+    }
+
+    /// Updates the selected language's paragraph fallback after a font/resource
+    /// generation is installed. Logical input measurements remain unchanged;
+    /// completed display lines and their cached interaction geometry are rebuilt.
+    pub fn set_default_text_right_to_left(&mut self, default_right_to_left: bool) {
+        self.hud_font_glyphs
+            .set_default_right_to_left(default_right_to_left);
+        self.hud_font_book
+            .set_default_right_to_left(default_right_to_left);
+        self.rebuild_chat_lines();
+    }
+
+    pub fn default_text_right_to_left(&self) -> bool {
+        self.hud_font_glyphs.default_right_to_left()
     }
 
     pub fn upload_hud_chat_modified_icon(
@@ -9999,7 +10054,7 @@ fn push_hud_inventory_text_input_label<'a>(
             .into_iter()
             .chain(std::iter::once((0.0, false)))
         {
-            let geometry = hud_styled_text_pass_geometry(
+            let geometry = hud_logical_styled_text_pass_geometry(
                 &runs,
                 glyphs,
                 obfuscated_pool,
@@ -14509,7 +14564,8 @@ fn push_hud_plain_text<'a>(
 }
 
 fn hud_plain_text_width(text: &str, glyphs: &HudFontGlyphMap) -> u32 {
-    hud_font_runs_width(&[HudStyledTextRun::plain(text.to_string())], glyphs).unwrap_or_default()
+    hud_logical_font_runs_width(&[HudStyledTextRun::plain(text.to_string())], glyphs)
+        .unwrap_or_default()
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -17983,7 +18039,7 @@ struct HudStyledTextPassGeometry {
     effect_rects: Vec<(HudEffectRect, [f32; 4])>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 struct HudResolvedTextRun<'a> {
     visual: &'a HudStyledTextRun,
     glyphs: &'a HudFontGlyphMap,
@@ -18031,6 +18087,42 @@ fn hud_styled_text_pass_geometry(
             glyphs,
             obfuscated_pool,
         }),
+        true,
+        glyphs.default_right_to_left(),
+        obfuscated_seed,
+        origin,
+        shadow_offset,
+        is_shadow,
+        base_tint,
+        width_limit,
+        scale,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn hud_logical_styled_text_pass_geometry(
+    runs: &[HudStyledTextRun],
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    obfuscated_seed: u64,
+    origin: (f32, f32),
+    shadow_offset: f32,
+    is_shadow: bool,
+    base_tint: [f32; 4],
+    width_limit: Option<u32>,
+    scale: f32,
+) -> HudStyledTextPassGeometry {
+    // Vanilla's one-line EditBox explicitly supplies
+    // `FormattedCharSequence.forward`, so its visible slice must stay aligned
+    // with logical cursor and selection offsets even in an RTL language.
+    hud_resolved_text_pass_geometry(
+        runs.iter().map(|visual| HudResolvedTextRun {
+            visual,
+            glyphs,
+            obfuscated_pool,
+        }),
+        false,
+        glyphs.default_right_to_left(),
         obfuscated_seed,
         origin,
         shadow_offset,
@@ -18059,6 +18151,8 @@ fn hud_component_text_pass_geometry(
             glyphs: fonts.glyphs(run.font.as_deref()),
             obfuscated_pool: fonts.obfuscated_pool(run.font.as_deref()),
         }),
+        true,
+        fonts.default_right_to_left(),
         obfuscated_seed,
         origin,
         shadow_offset,
@@ -18072,6 +18166,8 @@ fn hud_component_text_pass_geometry(
 #[allow(clippy::too_many_arguments)]
 fn hud_resolved_text_pass_geometry<'a>(
     runs: impl IntoIterator<Item = HudResolvedTextRun<'a>>,
+    apply_visual_order: bool,
+    default_right_to_left: bool,
     obfuscated_seed: u64,
     origin: (f32, f32),
     shadow_offset: f32,
@@ -18091,7 +18187,16 @@ fn hud_resolved_text_pass_geometry<'a>(
     // advances only when an obfuscated glyph is actually substituted, matching
     // vanilla `Font.random` (touched once per `getRandomGlyph`).
     let mut obfuscated_random = HudObfuscatedRandom::with_seed(obfuscated_seed);
-    'runs: for resolved in runs {
+    let logical = runs
+        .into_iter()
+        .flat_map(|resolved| resolved.visual.text.chars().map(move |ch| (ch, resolved)))
+        .collect::<Vec<_>>();
+    let ordered = if apply_visual_order {
+        visual_order(&logical, default_right_to_left)
+    } else {
+        logical
+    };
+    'runs: for (ch, resolved) in ordered {
         let run = resolved.visual;
         let run_tint = hud_run_color_tint(run, base_tint);
         let tint = if is_shadow {
@@ -18099,60 +18204,58 @@ fn hud_resolved_text_pass_geometry<'a>(
         } else {
             run_tint
         };
-        for ch in run.text.chars() {
-            if width_limit.is_some_and(|limit| pen_x >= limit) {
-                break 'runs;
-            }
-            let base_glyph = hud_font_glyph(ch, resolved.glyphs);
-            // Layout stays on the original glyph's advance (equal for the
-            // substitute, but this keeps the pen frame-stable regardless).
-            let advance = base_glyph.styled_advance(run.style);
-            // Vanilla `Font.getGlyph`: obfuscated non-space codepoints draw a
-            // random equal-advance glyph; everything else draws its own glyph.
-            let glyph = if run.style.obfuscated && ch != ' ' {
-                resolved
-                    .obfuscated_pool
-                    .random_glyph(base_glyph.advance, &mut obfuscated_random)
-                    .unwrap_or(base_glyph)
-            } else {
-                base_glyph
-            };
-            // Glyph geometry is produced in font pixels relative to `origin`
-            // and mapped through `origin + scale * offset`, exactly a vanilla
-            // pose scale (the shadow offset scales with the pose too).
-            let x = pen_x as f32 + shadow_offset;
-            let y = shadow_offset;
-            if glyph.width > 0
-                && glyph.height > 0
-                && width_limit.is_none_or(|limit| pen_x.saturating_add(glyph.width) <= limit)
-            {
-                for quad in glyph.styled_quads(x, y, run.style, false) {
-                    let quad = HudGlyphQuad {
-                        corners: quad
-                            .corners
-                            .map(|[cx, cy]| [origin.0 + cx * scale, origin.1 + cy * scale]),
-                        ..quad
-                    };
-                    geometry.glyph_quads.push((quad, tint));
-                }
-            }
-            // Underline/strikethrough bars follow the advance, unaffected by the
-            // obfuscated bitmap swap, so they read the original glyph.
-            if width_limit.is_none_or(|limit| pen_x.saturating_add(advance) <= limit) {
-                for rect in base_glyph.styled_effect_rects(x, y, run.style, first_in_line) {
-                    let rect = HudEffectRect {
-                        x0: origin.0 + rect.x0 * scale,
-                        y0: origin.1 + rect.y0 * scale,
-                        x1: origin.0 + rect.x1 * scale,
-                        y1: origin.1 + rect.y1 * scale,
-                        ..rect
-                    };
-                    geometry.effect_rects.push((rect, tint));
-                }
-            }
-            pen_x = pen_x.saturating_add(advance);
-            first_in_line = false;
+        if width_limit.is_some_and(|limit| pen_x >= limit) {
+            break 'runs;
         }
+        let base_glyph = hud_font_glyph(ch, resolved.glyphs);
+        // Layout stays on the original glyph's advance (equal for the
+        // substitute, but this keeps the pen frame-stable regardless).
+        let advance = base_glyph.styled_advance(run.style);
+        // Vanilla `Font.getGlyph`: obfuscated non-space codepoints draw a
+        // random equal-advance glyph; everything else draws its own glyph.
+        let glyph = if run.style.obfuscated && ch != ' ' {
+            resolved
+                .obfuscated_pool
+                .random_glyph(base_glyph.advance, &mut obfuscated_random)
+                .unwrap_or(base_glyph)
+        } else {
+            base_glyph
+        };
+        // Glyph geometry is produced in font pixels relative to `origin`
+        // and mapped through `origin + scale * offset`, exactly a vanilla
+        // pose scale (the shadow offset scales with the pose too).
+        let x = pen_x as f32 + shadow_offset;
+        let y = shadow_offset;
+        if glyph.width > 0
+            && glyph.height > 0
+            && width_limit.is_none_or(|limit| pen_x.saturating_add(glyph.width) <= limit)
+        {
+            for quad in glyph.styled_quads(x, y, run.style, false) {
+                let quad = HudGlyphQuad {
+                    corners: quad
+                        .corners
+                        .map(|[cx, cy]| [origin.0 + cx * scale, origin.1 + cy * scale]),
+                    ..quad
+                };
+                geometry.glyph_quads.push((quad, tint));
+            }
+        }
+        // Underline/strikethrough bars follow the advance, unaffected by the
+        // obfuscated bitmap swap, so they read the original glyph.
+        if width_limit.is_none_or(|limit| pen_x.saturating_add(advance) <= limit) {
+            for rect in base_glyph.styled_effect_rects(x, y, run.style, first_in_line) {
+                let rect = HudEffectRect {
+                    x0: origin.0 + rect.x0 * scale,
+                    y0: origin.1 + rect.y0 * scale,
+                    x1: origin.0 + rect.x1 * scale,
+                    y1: origin.1 + rect.y1 * scale,
+                    ..rect
+                };
+                geometry.effect_rects.push((rect, tint));
+            }
+        }
+        pen_x = pen_x.saturating_add(advance);
+        first_in_line = false;
     }
     geometry
 }
@@ -18483,11 +18586,24 @@ fn hud_plain_text_display_start_for_width(
     (glyphs.len() > 0).then(|| hud_text_input_display_start(text, scroll_to, width, glyphs))
 }
 
-/// Vanilla `Font.width` across a line's styled runs: sum of per-glyph
-/// `GlyphInfo.getAdvance(style.isBold())` — bold widens each glyph by one
-/// font pixel; the unstyled default reproduces the prior plain-advance width
-/// exactly.
+/// Measures a completed formatted line after vanilla language visual ordering.
+/// Each visual glyph contributes `GlyphInfo.getAdvance(style.isBold())`; this
+/// includes Arabic shaping compaction such as Lam-Alef.
 fn hud_font_runs_width(runs: &[HudStyledTextRun], glyphs: &HudFontGlyphMap) -> Option<u32> {
+    let logical = runs
+        .iter()
+        .flat_map(|run| run.text.chars().map(move |ch| (ch, run)))
+        .collect::<Vec<_>>();
+    let mut width = 0u32;
+    for (ch, run) in visual_order(&logical, glyphs.default_right_to_left()) {
+        width = width.checked_add(hud_font_glyph(ch, glyphs).styled_advance(run.style))?;
+    }
+    (width > 0).then_some(width)
+}
+
+/// Measures the unshaped logical buffer used by wrapping, editing cursors, and
+/// selections. Vanilla `Font.width(String)` does not apply language ordering.
+fn hud_logical_font_runs_width(runs: &[HudStyledTextRun], glyphs: &HudFontGlyphMap) -> Option<u32> {
     let mut width = 0u32;
     for run in runs {
         for ch in run.text.chars() {
@@ -18498,13 +18614,14 @@ fn hud_font_runs_width(runs: &[HudStyledTextRun], glyphs: &HudFontGlyphMap) -> O
 }
 
 fn hud_component_runs_width(runs: &[HudComponentTextRun], fonts: &HudFontGlyphBook) -> Option<u32> {
+    let logical = runs
+        .iter()
+        .flat_map(|run| run.visual.text.chars().map(move |ch| (ch, run)))
+        .collect::<Vec<_>>();
     let mut width = 0u32;
-    for run in runs {
+    for (ch, run) in visual_order(&logical, fonts.default_right_to_left()) {
         let glyphs = fonts.glyphs(run.font.as_deref());
-        for ch in run.visual.text.chars() {
-            width =
-                width.checked_add(hud_font_glyph(ch, glyphs).styled_advance(run.visual.style))?;
-        }
+        width = width.checked_add(hud_font_glyph(ch, glyphs).styled_advance(run.visual.style))?;
     }
     (width > 0).then_some(width)
 }
@@ -18636,6 +18753,13 @@ impl<'a> HudChatFontResolver<'a> {
             Self::Book(fonts) => fonts.glyphs(font),
         }
     }
+
+    fn default_right_to_left(self) -> bool {
+        match self {
+            Self::Default(glyphs) => glyphs.default_right_to_left(),
+            Self::Book(fonts) => fonts.default_right_to_left(),
+        }
+    }
 }
 
 fn hud_wrap_component_runs(
@@ -18749,8 +18873,6 @@ fn hud_chat_chars_to_component_line(
     fonts: HudChatFontResolver<'_>,
 ) -> HudWrappedComponentChatLine {
     let mut runs = Vec::<HudComponentTextRun>::new();
-    let mut interactions = Vec::<HudChatLineInteraction>::new();
-    let mut x = 0u32;
     for styled in chars {
         if let Some(run) = runs.last_mut().filter(|run| {
             run.visual.style == styled.style
@@ -18768,9 +18890,19 @@ fn hud_chat_chars_to_component_line(
                 font: styled.font.clone(),
             });
         }
+    }
+
+    let logical = chars
+        .iter()
+        .cloned()
+        .map(|styled| (styled.ch, styled))
+        .collect::<Vec<_>>();
+    let visual = visual_order(&logical, fonts.default_right_to_left());
+    let mut interactions = Vec::<HudChatLineInteraction>::new();
+    let mut x = 0u32;
+    for (ch, styled) in visual {
         let end_x = x.saturating_add(
-            hud_font_glyph(styled.ch, fonts.glyphs(styled.font.as_deref()))
-                .styled_advance(styled.style),
+            hud_font_glyph(ch, fonts.glyphs(styled.font.as_deref())).styled_advance(styled.style),
         );
         if let Some(target_index) = styled.target_index {
             if let Some(previous) = interactions
@@ -24074,6 +24206,155 @@ mod tests {
     }
 
     #[test]
+    fn styled_text_geometry_uses_selected_rtl_fallback_for_neutral_lines() {
+        let mut glyphs = HudFontGlyphMap::new();
+        for (ch, uv_x) in [('1', 0.1), ('2', 0.2), ('3', 0.3), ('-', 0.4)] {
+            glyphs.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    uv: HudUvRect {
+                        min: [uv_x, 0.0],
+                        max: [uv_x + 0.05, 1.0],
+                    },
+                    width: 5,
+                    height: 8,
+                    advance: 6,
+                    ..HudAsciiGlyph::default()
+                },
+            );
+        }
+        glyphs.set_default_right_to_left(true);
+
+        let geometry = hud_styled_text_pass_geometry(
+            &[HudStyledTextRun::plain("123-")],
+            &glyphs,
+            &HudObfuscatedGlyphPool::default(),
+            0,
+            (0.0, 0.0),
+            0.0,
+            false,
+            HUD_TINT_WHITE,
+            None,
+            1.0,
+        );
+        assert_eq!(
+            geometry
+                .glyph_quads
+                .iter()
+                .map(|(quad, _)| quad.uv.min[0])
+                .collect::<Vec<_>>(),
+            vec![0.4, 0.1, 0.2, 0.3]
+        );
+    }
+
+    #[test]
+    fn logical_text_geometry_keeps_editable_neutral_lines_in_buffer_order() {
+        let mut glyphs = HudFontGlyphMap::new();
+        for (ch, uv_x) in [('1', 0.1), ('2', 0.2), ('3', 0.3), ('-', 0.4)] {
+            glyphs.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    uv: HudUvRect {
+                        min: [uv_x, 0.0],
+                        max: [uv_x + 0.05, 1.0],
+                    },
+                    width: 5,
+                    height: 8,
+                    advance: 6,
+                    ..HudAsciiGlyph::default()
+                },
+            );
+        }
+        glyphs.set_default_right_to_left(true);
+
+        let geometry = hud_logical_styled_text_pass_geometry(
+            &[HudStyledTextRun::plain("123-")],
+            &glyphs,
+            &HudObfuscatedGlyphPool::default(),
+            0,
+            (0.0, 0.0),
+            0.0,
+            false,
+            HUD_TINT_WHITE,
+            None,
+            1.0,
+        );
+        assert_eq!(
+            geometry
+                .glyph_quads
+                .iter()
+                .map(|(quad, _)| quad.uv.min[0])
+                .collect::<Vec<_>>(),
+            vec![0.1, 0.2, 0.3, 0.4]
+        );
+    }
+
+    #[test]
+    fn styled_text_width_and_geometry_use_icu_lamalef_visual_glyph() {
+        let mut glyphs = HudFontGlyphMap::new();
+        for (ch, advance, uv_x) in [
+            ('ل', 9_u32, 0.1),
+            ('ا', 8_u32, 0.2),
+            ('\u{fefb}', 5_u32, 0.7),
+        ] {
+            glyphs.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    uv: HudUvRect {
+                        min: [uv_x, 0.0],
+                        max: [uv_x + 0.05, 1.0],
+                    },
+                    width: advance.saturating_sub(1),
+                    height: 8,
+                    advance,
+                    ..HudAsciiGlyph::default()
+                },
+            );
+        }
+        let runs = [HudStyledTextRun::plain("لا")];
+
+        assert_eq!(hud_font_runs_width(&runs, &glyphs), Some(5));
+        assert_eq!(hud_logical_font_runs_width(&runs, &glyphs), Some(17));
+        assert_eq!(hud_plain_text_width("لا", &glyphs), 17);
+        let geometry = hud_styled_text_pass_geometry(
+            &runs,
+            &glyphs,
+            &HudObfuscatedGlyphPool::default(),
+            0,
+            (0.0, 0.0),
+            0.0,
+            false,
+            HUD_TINT_WHITE,
+            None,
+            1.0,
+        );
+        assert_eq!(geometry.glyph_quads.len(), 1);
+        assert_eq!(geometry.glyph_quads[0].0.uv.min[0], 0.7);
+
+        let logical_geometry = hud_logical_styled_text_pass_geometry(
+            &runs,
+            &glyphs,
+            &HudObfuscatedGlyphPool::default(),
+            0,
+            (0.0, 0.0),
+            0.0,
+            false,
+            HUD_TINT_WHITE,
+            None,
+            1.0,
+        );
+        assert_eq!(logical_geometry.glyph_quads.len(), 2);
+        assert_eq!(
+            logical_geometry
+                .glyph_quads
+                .iter()
+                .map(|(quad, _)| quad.uv.min[0])
+                .collect::<Vec<_>>(),
+            vec![0.1, 0.2]
+        );
+    }
+
+    #[test]
     fn inventory_text_input_layout_scrolls_to_cursor_with_width_budget() {
         let glyphs = styled_test_glyphs();
         let label = HudInventoryTextLabel {
@@ -24778,6 +25059,70 @@ mod tests {
             .map(|quad| quad[0].uv[0])
             .collect::<Vec<_>>();
         assert_eq!(first_u, [0.1, 0.6, 0.1, 0.1, 0.6, 0.1]);
+    }
+
+    #[test]
+    fn action_bar_offscreen_pixels_follow_selected_rtl_visual_order() {
+        let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+            return;
+        };
+        let mut glyphs = HudFontGlyphMap::new();
+        for (index, ch) in ['1', '2', '3', '-'].into_iter().enumerate() {
+            glyphs.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    uv: HudUvRect {
+                        min: [index as f32 / 4.0, 0.0],
+                        max: [(index + 1) as f32 / 4.0, 1.0],
+                    },
+                    width: 1,
+                    height: 1,
+                    advance: 1,
+                    ..HudAsciiGlyph::default()
+                },
+            );
+        }
+        renderer
+            .upload_hud_font_atlas(
+                4,
+                1,
+                &[
+                    255, 0, 0, 255, // 1
+                    0, 255, 0, 255, // 2
+                    0, 0, 255, 255, // 3
+                    255, 255, 0, 255, // -
+                ],
+                glyphs,
+            )
+            .expect("font atlas");
+        renderer.set_default_text_right_to_left(true);
+        renderer.set_hud_action_bar_text(Some(HudActionBarText {
+            runs: vec![HudComponentTextRun::plain("123-")],
+            remaining_ticks: 60,
+            partial_tick: 0.0,
+            animate_color: false,
+        }));
+
+        let pixels = renderer
+            .render_offscreen_frame()
+            .expect("offscreen bidi action-bar frame");
+        let visual = (158..162).map(|x| pixels.pixel(x, 168)).collect::<Vec<_>>();
+        assert!(
+            visual[0][0] > 200 && visual[0][1] > 200,
+            "hyphen must draw first as yellow, got {visual:?}"
+        );
+        assert!(
+            visual[1][0] > 200 && visual[1][1] < 80,
+            "one must follow as red, got {visual:?}"
+        );
+        assert!(
+            visual[2][1] > 200 && visual[2][0] < 80,
+            "two must follow as green, got {visual:?}"
+        );
+        assert!(
+            visual[3][2] > 200 && visual[3][0] < 80,
+            "three must finish as blue, got {visual:?}"
+        );
     }
 
     #[test]

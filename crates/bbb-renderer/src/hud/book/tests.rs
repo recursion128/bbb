@@ -185,6 +185,22 @@ fn book_screen_editor_layout_wraps_at_word_boundary_and_keeps_trailing_line() {
 }
 
 #[test]
+fn book_editor_cursor_width_keeps_the_unshaped_logical_buffer_order() {
+    let mut glyphs = HudFontGlyphMap::new();
+    for (ch, advance) in [('ل', 9_u32), ('ا', 8_u32), ('\u{fefb}', 5_u32)] {
+        glyphs.insert_first_wins(
+            ch,
+            HudAsciiGlyph {
+                advance,
+                ..HudAsciiGlyph::default()
+            },
+        );
+    }
+
+    assert_eq!(plain_width("لا", &glyphs), 17);
+}
+
+#[test]
 fn book_screen_sanitize_rejects_out_of_range_interactions() {
     let mut screen = view_screen("abc");
     screen.interactions[0].end_char = 9;

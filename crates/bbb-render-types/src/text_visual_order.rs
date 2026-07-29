@@ -26,7 +26,7 @@ const TASHKEEL_FORM_OFFSETS: [u16; 8] = [0, 2, 4, 6, 8, 10, 12, 14];
 /// The metadata value models `SubStringSource`'s UTF-16-indexed style. It is repeated for
 /// supplementary codepoints, follows visual runs, and is retained across Arabic Lam-Alef
 /// compaction exactly as vanilla retains its original style vector.
-pub fn visual_order<T: Clone + Eq>(
+pub fn visual_order<T: Clone + PartialEq>(
     logical: &[(char, T)],
     default_right_to_left: bool,
 ) -> Vec<(char, T)> {
@@ -97,7 +97,7 @@ fn first_strong_class(classes: &[BidiClass]) -> Option<BidiClass> {
     None
 }
 
-fn emit_visual_run<T: Clone + Eq>(
+fn emit_visual_run<T: Clone + PartialEq>(
     units: &[u16],
     metadata: &[T],
     run: Range<usize>,

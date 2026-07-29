@@ -319,6 +319,10 @@ pub struct HudFontGlyphMap {
     /// Sorted by codepoint for binary-search lookup; each codepoint appears
     /// at most once (the first inserted provider glyph).
     entries: Vec<(char, HudAsciiGlyph)>,
+    /// Selected-language paragraph fallback. Logical measurement/edit helpers
+    /// intentionally ignore this; render-time completed lines query it before
+    /// applying visual order.
+    default_right_to_left: bool,
 }
 
 /// Immutable glyph maps for every resource-pack font baked into one shared
@@ -373,6 +377,18 @@ impl HudFontGlyphBook {
     pub fn font_count(&self) -> usize {
         self.fonts.len()
     }
+
+    pub fn default_right_to_left(&self) -> bool {
+        self.default.default_right_to_left()
+    }
+
+    pub fn set_default_right_to_left(&mut self, default_right_to_left: bool) {
+        self.default
+            .set_default_right_to_left(default_right_to_left);
+        for glyphs in self.fonts.values_mut() {
+            glyphs.set_default_right_to_left(default_right_to_left);
+        }
+    }
 }
 
 impl From<HudFontGlyphMap> for HudFontGlyphBook {
@@ -418,6 +434,14 @@ impl HudFontGlyphMap {
 
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
+    }
+
+    pub fn default_right_to_left(&self) -> bool {
+        self.default_right_to_left
+    }
+
+    pub fn set_default_right_to_left(&mut self, default_right_to_left: bool) {
+        self.default_right_to_left = default_right_to_left;
     }
 
     pub fn iter(&self) -> impl Iterator<Item = (char, HudAsciiGlyph)> + '_ {
@@ -644,6 +668,30 @@ mod tests {
         assert_eq!(map.get('é'), Some(first));
         assert_eq!(map.get('e'), None);
         assert_eq!(map.len(), 1);
+    }
+
+    #[test]
+    fn text_direction_flag_does_not_change_logical_measurement_or_edit_cursors() {
+        let mut map = HudFontGlyphMap::new();
+        for ch in ['1', '2', '3', '-'] {
+            map.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    advance: 6,
+                    ..HudAsciiGlyph::default()
+                },
+            );
+        }
+        let logical_width = map.plain_text_width("123-");
+        let logical_cursor = map.plain_text_cursor_for_width_from("123-", 0, 12);
+        map.set_default_right_to_left(true);
+
+        assert!(map.default_right_to_left());
+        assert_eq!(map.plain_text_width("123-"), logical_width);
+        assert_eq!(
+            map.plain_text_cursor_for_width_from("123-", 0, 12),
+            logical_cursor
+        );
     }
 
     #[test]
