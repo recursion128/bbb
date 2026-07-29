@@ -168,6 +168,7 @@ impl Renderer {
         self.debug_text_pass(&mut encoder, &mut stats);
         self.item_entity_target_pass(&mut encoder, &mut stats);
         self.block_destroy_overlay_pass(&mut encoder, &mut stats);
+        self.ordered_custom_and_text_feature_pass(&mut encoder, &mut stats);
         self.entity_outline_target_pass(&mut encoder, &mut stats);
         self.translucent_target_pass(&mut encoder, &mut stats);
         self.item_entity_line_target_pass(&mut encoder, &mut stats);
@@ -714,18 +715,6 @@ impl Renderer {
             Some(&[crate::item_models::ItemModelAtlasKind::Blocks]),
             stats,
         );
-        self.resident_dynamic_map_main_pass(
-            &mut *encoder,
-            main_view,
-            crate::item_models::MapSurfaceTarget::World,
-            stats,
-        );
-        self.resident_map_decoration_main_pass(
-            &mut *encoder,
-            main_view,
-            crate::item_models::MapSurfaceTarget::World,
-            stats,
-        );
         let (flat_item_vertices, flat_item_indices) = self.collect_flat_item_model_geometry();
         if !flat_item_indices.is_empty() {
             if let Some(atlas) = &self.item_entity_atlas {
@@ -1009,75 +998,11 @@ impl Renderer {
             }
         }
 
-        // Vanilla MapRenderer submits decoration name labels through
-        // submitNodeCollector.order(1).submitText(...), so TextFeatureRenderer draws them during
-        // renderTranslucentFeatures after order-0 model/custom geometry and before crumbling /
-        // translucent terrain. The current renderer only has item-frame map labels for this path.
-        if self.has_resident_map_text(crate::item_models::MapSurfaceTarget::World) {
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("bbb-native-resident-map-text-feature-pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: main_view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &self.depth.view,
-                    depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: wgpu::StoreOp::Store,
-                    }),
-                    stencil_ops: None,
-                }),
-                occlusion_query_set: None,
-                timestamp_writes: None,
-            });
-            self.draw_resident_map_text(
-                &mut pass,
-                crate::item_models::MapSurfaceTarget::World,
-                stats,
-            );
-        }
-
-        // TextDisplay background custom geometry is order 0. Draw both normal
-        // and see-through backgrounds before any submitted text; the latter
-        // uses the same no-depth pipeline as see-through glyphs.
         let display_text = self.collect_display_text_geometry();
-        if let Some(atlas) = &self.item_frame_map_text_font_atlas {
-            for (vertices, indices, pipeline) in [
-                (
-                    &display_text.normal_background.0,
-                    &display_text.normal_background.1,
-                    &self.display_text_background_pipeline,
-                ),
-                (
-                    &display_text.see_through_background.0,
-                    &display_text.see_through_background.1,
-                    &self.display_text_see_through_pipeline,
-                ),
-            ] {
-                if !indices.is_empty() {
-                    self.draw_item_model_geometry_with_pipeline(
-                        &mut *encoder,
-                        main_view,
-                        vertices,
-                        indices,
-                        &atlas.bind_group,
-                        pipeline,
-                    );
-                    stats.pipeline_switches += 1;
-                    stats.item_model_draw_calls += 1;
-                }
-            }
-        }
 
         // Vanilla AbstractSignRenderer.submitSignText also goes through
-        // submitText (drawn by TextFeatureRenderer in the same translucent
-        // feature phase), so sign face text draws here with the same
-        // font/default atlas as the map labels.
+        // order-zero submitText, so sign face text draws with the other
+        // order-zero text before item and block features.
         let (sign_text_vertices, sign_text_indices) = self.collect_sign_text_geometry();
         if !sign_text_indices.is_empty() {
             if let Some(atlas) = &self.item_frame_map_text_font_atlas {
@@ -1093,21 +1018,19 @@ impl Renderer {
             }
         }
 
-        // TextDisplay glyphs are submitted through collector order 1 when a
-        // background exists (and order 0 otherwise). Drawing the merged text
-        // buckets after every background preserves the required dependency;
-        // normal text uses polygon offset while see-through text disables
-        // depth and fog entirely.
+        // Background-free TextDisplay glyphs remain in the default order-zero
+        // collection. Background-backed order-one text is deferred until
+        // `ordered_custom_and_text_feature_pass`.
         if let Some(atlas) = &self.item_frame_map_text_font_atlas {
             for (vertices, indices, pipeline) in [
                 (
-                    &display_text.normal_text.0,
-                    &display_text.normal_text.1,
+                    &display_text.order_zero_normal_text.0,
+                    &display_text.order_zero_normal_text.1,
                     &self.display_text_pipeline,
                 ),
                 (
-                    &display_text.see_through_text.0,
-                    &display_text.see_through_text.1,
+                    &display_text.order_zero_see_through_text.0,
+                    &display_text.order_zero_see_through_text.1,
                     &self.display_text_see_through_pipeline,
                 ),
             ] {
@@ -1485,6 +1408,123 @@ impl Renderer {
             pass.set_index_buffer(indices.slice(..), wgpu::IndexFormat::Uint32);
             pass.draw_indexed(0..self.block_entity_crumbling_index_count, 0, 0..1);
             stats.block_destroy_overlay_draw_calls += 1;
+        }
+    }
+
+    fn ordered_custom_and_text_feature_pass(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        stats: &mut FrameDrawStats,
+    ) {
+        let main_view = &self.main_target.view;
+
+        // MapRenderer submits the map texture and decoration sprites as
+        // order-zero CustomFeature nodes. Their typed resident surfaces keep
+        // texture/render-type/tint/light/order metadata through atlas lookup.
+        self.resident_dynamic_map_main_pass(
+            encoder,
+            main_view,
+            crate::item_models::MapSurfaceTarget::World,
+            stats,
+        );
+        self.resident_map_decoration_main_pass(
+            encoder,
+            main_view,
+            crate::item_models::MapSurfaceTarget::World,
+            stats,
+        );
+
+        // TextDisplay background rectangles are order-zero custom geometry.
+        // Normal backgrounds write depth; see-through backgrounds preserve
+        // the vanilla no-depth render type.
+        let display_text = self.collect_display_text_geometry();
+        if let Some(atlas) = &self.item_frame_map_text_font_atlas {
+            for (vertices, indices, pipeline) in [
+                (
+                    &display_text.normal_background.0,
+                    &display_text.normal_background.1,
+                    &self.display_text_background_pipeline,
+                ),
+                (
+                    &display_text.see_through_background.0,
+                    &display_text.see_through_background.1,
+                    &self.display_text_see_through_pipeline,
+                ),
+            ] {
+                if !indices.is_empty() {
+                    self.draw_item_model_geometry_with_pipeline(
+                        encoder,
+                        main_view,
+                        vertices,
+                        indices,
+                        &atlas.bind_group,
+                        pipeline,
+                    );
+                    stats.pipeline_switches += 1;
+                    stats.item_model_draw_calls += 1;
+                }
+            }
+        }
+
+        // MapRenderer decoration labels use order(1).submitText, so they draw
+        // only after every order-zero block and custom feature.
+        if self.has_resident_map_text(crate::item_models::MapSurfaceTarget::World) {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("bbb-native-resident-map-text-feature-pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: main_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.depth.view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
+            self.draw_resident_map_text(
+                &mut pass,
+                crate::item_models::MapSurfaceTarget::World,
+                stats,
+            );
+        }
+
+        // A TextDisplay with a background also advances its text collector to
+        // order one. Polygon-offset and see-through modes remain separate.
+        if let Some(atlas) = &self.item_frame_map_text_font_atlas {
+            for (vertices, indices, pipeline) in [
+                (
+                    &display_text.order_one_normal_text.0,
+                    &display_text.order_one_normal_text.1,
+                    &self.display_text_pipeline,
+                ),
+                (
+                    &display_text.order_one_see_through_text.0,
+                    &display_text.order_one_see_through_text.1,
+                    &self.display_text_see_through_pipeline,
+                ),
+            ] {
+                if !indices.is_empty() {
+                    self.draw_item_model_geometry_with_pipeline(
+                        encoder,
+                        main_view,
+                        vertices,
+                        indices,
+                        &atlas.bind_group,
+                        pipeline,
+                    );
+                    stats.pipeline_switches += 1;
+                    stats.item_model_draw_calls += 1;
+                }
+            }
         }
     }
 
@@ -4966,6 +5006,7 @@ mod tests {
         "debug_text_pass",
         "item_entity_target_pass",
         "block_destroy_overlay_pass",
+        "ordered_custom_and_text_feature_pass",
         "entity_outline_target_pass",
         "translucent_target_pass",
         "item_entity_line_target_pass",
@@ -5826,9 +5867,6 @@ mod tests {
             .expect("solid world item-model collection is present");
         let copy_item_entity =
             depth_copy_to(source, "texture: &self.item_entity_target.depth._texture");
-        let map_text_collect = source
-            .find("label: Some(\"bbb-native-resident-map-text-feature-pass\")")
-            .expect("resident item-frame map text pass is present");
         let block_collect = source
             .find("let (block_item_translucent_vertices, block_item_translucent_indices)")
             .expect("translucent block item-model collection is present");
@@ -5858,9 +5896,16 @@ mod tests {
             .find("pass.set_pipeline(&self.item_entity_pipeline)")
             .map(|index| target + index)
             .expect("item-entity billboards are drawn in item_entity target");
+        let block_features = source[billboards..]
+            .find("ItemModelDrawTarget::BlockFeature")
+            .map(|index| billboards + index)
+            .expect("translucent block features follow item billboards");
         let block_destroy = source
             .find("label: Some(\"bbb-native-block-destroy-overlay-pass\")")
             .expect("block destroy overlay pass label is used");
+        let map_text_collect = source
+            .find("label: Some(\"bbb-native-resident-map-text-feature-pass\")")
+            .expect("resident item-frame map text pass is present");
         let translucent = source
             .find("label: Some(TRANSLUCENT_TARGET_PASS_LABEL)")
             .expect("translucent target pass label is used");
@@ -5870,17 +5915,18 @@ mod tests {
 
         assert!(
             solid_collect < copy_item_entity
-                && copy_item_entity < map_text_collect
-                && map_text_collect < block_collect
+                && copy_item_entity < block_collect
                 && block_collect < flat_collect
                 && flat_collect < target
                 && target < block_draw
                 && block_bind_group < flat_draw
                 && flat_bind_group < billboards
-                && billboards < block_destroy
-                && block_destroy < translucent
+                && billboards < block_features
+                && block_features < block_destroy
+                && block_destroy < map_text_collect
+                && map_text_collect < translucent
                 && billboards < particle,
-            "vanilla FeatureRenderDispatcher draws text before ItemFeatureRenderer, then block/crumbling features, translucent terrain, and particles"
+            "vanilla FeatureRenderDispatcher draws item features before block/crumbling features, then order-one text, translucent terrain, and particles"
         );
     }
 
@@ -6339,7 +6385,7 @@ mod tests {
     }
 
     #[test]
-    fn item_frame_map_text_draws_in_translucent_text_feature_phase() {
+    fn item_frame_map_custom_geometry_and_text_follow_block_features() {
         let source = include_str!("render.rs");
         let copy_particles = depth_copy_to(source, "texture: &self.particle_target.depth._texture");
         let entity_pass = source
@@ -6361,17 +6407,47 @@ mod tests {
             .find("&self.display_text_background_pipeline")
             .map(|index| name_tag_see_through + index)
             .expect("name-tag normal layer follows the see-through layer");
-        let map_text_collect = source[name_tag_normal..]
-            .find("label: Some(\"bbb-native-resident-map-text-feature-pass\")")
+        let order_zero_display_text = source[name_tag_normal..]
+            .find("&display_text.order_zero_normal_text.0")
             .map(|index| name_tag_normal + index)
-            .expect("resident item-frame map text pass follows model translucent features");
+            .expect("background-free display text stays in order zero");
+        let item_features = source
+            .find("label: Some(ITEM_ENTITY_TARGET_PASS_LABEL)")
+            .expect("item feature target pass");
+        let block_features = source[item_features..]
+            .find("ItemModelDrawTarget::BlockFeature")
+            .map(|index| item_features + index)
+            .expect("block features follow item features");
+        let block_destroy = source
+            .find("label: Some(\"bbb-native-block-destroy-overlay-pass\")")
+            .expect("breaking block feature pass");
+        let ordered = source
+            .find("fn ordered_custom_and_text_feature_pass(")
+            .expect("ordered custom/text feature step");
+        let map_custom = source[ordered..]
+            .find("self.resident_dynamic_map_main_pass(")
+            .map(|index| ordered + index)
+            .expect("resident item-frame map surface is order-zero custom geometry");
+        let map_decorations = source[map_custom..]
+            .find("self.resident_map_decoration_main_pass(")
+            .map(|index| map_custom + index)
+            .expect("resident map decorations follow the map surface");
+        let display_background = source[map_decorations..]
+            .find("&display_text.normal_background.0")
+            .map(|index| map_decorations + index)
+            .expect("display background is order-zero custom geometry");
+        let map_text_collect = source[display_background..]
+            .find("label: Some(\"bbb-native-resident-map-text-feature-pass\")")
+            .map(|index| display_background + index)
+            .expect("resident item-frame map text pass follows order-zero custom geometry");
         let map_text_draw = source[map_text_collect..]
             .find("self.draw_resident_map_text(")
             .map(|index| map_text_collect + index)
             .expect("resident item-frame map text instances are drawn");
-        let block_destroy = source
-            .find("label: Some(\"bbb-native-block-destroy-overlay-pass\")")
-            .expect("block destroy overlay pass label is used");
+        let order_one_display_text = source[map_text_draw..]
+            .find("&display_text.order_one_normal_text.0")
+            .map(|index| map_text_draw + index)
+            .expect("background-backed display text joins order one");
         let translucent_target = source
             .find("label: Some(TRANSLUCENT_TARGET_PASS_LABEL)")
             .expect("translucent target pass label is used");
@@ -6382,15 +6458,30 @@ mod tests {
                 && draw_features < name_tag_collect
                 && name_tag_collect < name_tag_see_through
                 && name_tag_see_through < name_tag_normal
-                && name_tag_normal < map_text_collect
+                && name_tag_normal < order_zero_display_text
+                && order_zero_display_text < item_features
+                && item_features < block_features
+                && block_features < block_destroy
+                && block_destroy < ordered
+                && ordered < map_custom
+                && map_custom < map_decorations
+                && map_decorations < display_background
+                && display_background < map_text_collect
                 && map_text_collect < map_text_draw
-                && map_text_draw < block_destroy
-                && block_destroy < translucent_target,
-            "vanilla name tags draw after model features and before order(1) MapRenderer text, crumbling, and translucent terrain"
+                && map_text_draw < order_one_display_text
+                && order_one_display_text < translucent_target,
+            "vanilla order-zero text, item, block, custom, and order-one text features retain dispatcher order"
         );
         assert!(
-            source[map_text_draw..block_destroy].contains("main_view"),
+            source[ordered..translucent_target].contains("main_view"),
             "item-frame map text writes the renderer-owned main color target"
+        );
+
+        let main_world = &source[source.find("fn main_world_pass(").unwrap()
+            ..source.find("fn opaque_particle_main_pass(").unwrap()];
+        assert!(
+            !main_world.contains("MapSurfaceTarget::World"),
+            "world map custom geometry must not bypass ordered block features"
         );
     }
 
@@ -6550,15 +6641,18 @@ mod tests {
         let entity_features = source
             .find("label: Some(ENTITY_TRANSLUCENT_FEATURE_PASS_LABEL)")
             .expect("entity translucent feature pass label is used");
-        let map_text = source
-            .find("label: Some(\"bbb-native-resident-map-text-feature-pass\")")
-            .expect("resident item-frame map text pass is present");
         let item_entity = source
             .find("label: Some(ITEM_ENTITY_TARGET_PASS_LABEL)")
             .expect("item-entity target pass label is used");
         let block_destroy = source
             .find("label: Some(\"bbb-native-block-destroy-overlay-pass\")")
             .expect("block destroy overlay pass label is used");
+        let ordered_custom_text = source
+            .find("fn ordered_custom_and_text_feature_pass(")
+            .expect("ordered custom/text feature step is present");
+        let map_text = source
+            .find("label: Some(\"bbb-native-resident-map-text-feature-pass\")")
+            .expect("resident item-frame map text pass is present");
         let translucent_terrain = source
             .find("label: Some(TRANSLUCENT_TARGET_PASS_LABEL)")
             .expect("translucent terrain target pass label is used");
@@ -6576,14 +6670,15 @@ mod tests {
             copy_translucent < copy_item_entity
                 && copy_item_entity < copy_particles
                 && copy_particles < entity_features
-                && entity_features < map_text
-                && map_text < item_entity
+                && entity_features < item_entity
                 && item_entity < block_destroy
-                && block_destroy < translucent_terrain
+                && block_destroy < ordered_custom_text
+                && ordered_custom_text < map_text
+                && map_text < translucent_terrain
                 && translucent_terrain < item_entity_lines
                 && item_entity_lines < particles
                 && particles < combine,
-            "vanilla LevelRenderer copies target depths, renders translucent features before translucent terrain, and defers translucent particles until after terrain and item_entity lines"
+            "vanilla LevelRenderer copies target depths, renders ordered translucent features before translucent terrain, and defers translucent particles until after terrain and item_entity lines"
         );
         assert!(
             source[entity_features..translucent_terrain].contains("view: main_view")

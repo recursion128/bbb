@@ -492,9 +492,11 @@ pub fn bake_display_text_surface(
 #[derive(Default)]
 pub(crate) struct DisplayTextGeometry {
     pub(crate) normal_background: (Vec<ItemModelVertex>, Vec<u32>),
-    pub(crate) normal_text: (Vec<ItemModelVertex>, Vec<u32>),
+    pub(crate) order_zero_normal_text: (Vec<ItemModelVertex>, Vec<u32>),
+    pub(crate) order_one_normal_text: (Vec<ItemModelVertex>, Vec<u32>),
     pub(crate) see_through_background: (Vec<ItemModelVertex>, Vec<u32>),
-    pub(crate) see_through_text: (Vec<ItemModelVertex>, Vec<u32>),
+    pub(crate) order_zero_see_through_text: (Vec<ItemModelVertex>, Vec<u32>),
+    pub(crate) order_one_see_through_text: (Vec<ItemModelVertex>, Vec<u32>),
 }
 
 pub(super) fn append_mesh(target: &mut (Vec<ItemModelVertex>, Vec<u32>), mesh: &ItemModelMesh) {
@@ -552,30 +554,56 @@ pub(crate) fn merge_display_text_surfaces(
 ) -> DisplayTextGeometry {
     let mut geometry = DisplayTextGeometry::default();
     let mut normal_background = Vec::new();
-    let mut normal_text = Vec::new();
+    let mut order_zero_normal_text = Vec::new();
+    let mut order_one_normal_text = Vec::new();
     let mut see_through_background = Vec::new();
-    let mut see_through_text = Vec::new();
+    let mut order_zero_see_through_text = Vec::new();
+    let mut order_one_see_through_text = Vec::new();
     for surface in surfaces {
-        let (background, text) = if surface.submission.see_through {
-            (&mut see_through_background, &mut see_through_text)
+        let (background, order_zero_text, order_one_text) = if surface.submission.see_through {
+            (
+                &mut see_through_background,
+                &mut order_zero_see_through_text,
+                &mut order_one_see_through_text,
+            )
         } else {
-            (&mut normal_background, &mut normal_text)
+            (
+                &mut normal_background,
+                &mut order_zero_normal_text,
+                &mut order_one_normal_text,
+            )
         };
         background.push(&surface.background);
-        text.push(&surface.text);
+        match surface.submission.text_layer.order {
+            0 => order_zero_text.push(&surface.text),
+            1 => order_one_text.push(&surface.text),
+            order => panic!("unsupported TextDisplay text order {order}"),
+        }
     }
     // `textBackground`, `textPolygonOffset`, and
     // `textBackgroundSeeThrough` all set `sortOnUpload`; `textSeeThrough`
     // deliberately preserves collector submission order.
     append_sorted_meshes(&mut geometry.normal_background, normal_background, camera);
-    append_sorted_meshes(&mut geometry.normal_text, normal_text, camera);
+    append_sorted_meshes(
+        &mut geometry.order_zero_normal_text,
+        order_zero_normal_text,
+        camera,
+    );
+    append_sorted_meshes(
+        &mut geometry.order_one_normal_text,
+        order_one_normal_text,
+        camera,
+    );
     append_sorted_meshes(
         &mut geometry.see_through_background,
         see_through_background,
         camera,
     );
-    for mesh in see_through_text {
-        append_mesh(&mut geometry.see_through_text, mesh);
+    for mesh in order_zero_see_through_text {
+        append_mesh(&mut geometry.order_zero_see_through_text, mesh);
+    }
+    for mesh in order_one_see_through_text {
+        append_mesh(&mut geometry.order_one_see_through_text, mesh);
     }
     geometry
 }
@@ -1078,7 +1106,7 @@ mod tests {
 
     #[test]
     fn display_text_upload_sorting_matches_each_vanilla_render_type() {
-        let make = |z: f32, flags: u8, sequence: u64| {
+        let make = |z: f32, flags: u8, sequence: u64, background_color: i32| {
             bake_display_text_surface(
                 sequence as i32,
                 sequence,
@@ -1086,7 +1114,7 @@ mod tests {
                 Mat4::from_translation(Vec3::new(0.0, 0.0, z)),
                 &[WorldTextRun::plain("a")],
                 200,
-                0x4000_0000,
+                background_color,
                 -1,
                 flags as i8,
                 [0.0, 1.0],
@@ -1095,18 +1123,50 @@ mod tests {
             )
             .unwrap()
         };
-        let normal_near = make(1.0, 0, 0);
-        let normal_far = make(10.0, 0, 1);
-        let geometry =
-            merge_display_text_surfaces(&[normal_near, normal_far], Some([0.0, 0.0, 0.0]));
+        let normal_order_one_near = make(1.0, 0, 0, 0x4000_0000);
+        let normal_order_one_far = make(10.0, 0, 1, 0x4000_0000);
+        let normal_order_zero_near = make(2.0, 0, 2, 0);
+        let normal_order_zero_far = make(20.0, 0, 3, 0);
+        assert_eq!(normal_order_one_near.submission.text_layer.order, 1);
+        assert_eq!(normal_order_zero_near.submission.text_layer.order, 0);
+        assert!(normal_order_zero_near.submission.background_layer.is_none());
+        let geometry = merge_display_text_surfaces(
+            &[
+                normal_order_one_near,
+                normal_order_one_far,
+                normal_order_zero_near,
+                normal_order_zero_far,
+            ],
+            Some([0.0, 0.0, 0.0]),
+        );
         assert!((geometry.normal_background.0[0].position[2] - 10.0).abs() < 1e-5);
-        assert!((geometry.normal_text.0[0].position[2] - 10.0).abs() < 1e-5);
+        assert_eq!(geometry.normal_background.0.len(), 8);
+        assert_eq!(geometry.order_one_normal_text.0.len(), 8);
+        assert_eq!(geometry.order_zero_normal_text.0.len(), 8);
+        assert!((geometry.order_one_normal_text.0[0].position[2] - 10.0).abs() < 1e-5);
+        assert!((geometry.order_zero_normal_text.0[0].position[2] - 20.0).abs() < 1e-5);
 
-        let see_near = make(1.0, DISPLAY_TEXT_FLAG_SEE_THROUGH, 0);
-        let see_far = make(10.0, DISPLAY_TEXT_FLAG_SEE_THROUGH, 1);
-        let geometry = merge_display_text_surfaces(&[see_near, see_far], Some([0.0, 0.0, 0.0]));
+        let see_order_one_near = make(1.0, DISPLAY_TEXT_FLAG_SEE_THROUGH, 0, 0x4000_0000);
+        let see_order_one_far = make(10.0, DISPLAY_TEXT_FLAG_SEE_THROUGH, 1, 0x4000_0000);
+        let see_order_zero_near = make(2.0, DISPLAY_TEXT_FLAG_SEE_THROUGH, 2, 0);
+        let see_order_zero_far = make(20.0, DISPLAY_TEXT_FLAG_SEE_THROUGH, 3, 0);
+        assert_eq!(see_order_one_near.submission.text_layer.order, 1);
+        assert_eq!(see_order_zero_near.submission.text_layer.order, 0);
+        let geometry = merge_display_text_surfaces(
+            &[
+                see_order_one_near,
+                see_order_one_far,
+                see_order_zero_near,
+                see_order_zero_far,
+            ],
+            Some([0.0, 0.0, 0.0]),
+        );
         // BackgroundSeeThrough sorts on upload, TextSeeThrough does not.
         assert!((geometry.see_through_background.0[0].position[2] - 10.0).abs() < 1e-5);
-        assert!((geometry.see_through_text.0[0].position[2] - 1.0).abs() < 1e-5);
+        assert_eq!(geometry.see_through_background.0.len(), 8);
+        assert_eq!(geometry.order_one_see_through_text.0.len(), 8);
+        assert_eq!(geometry.order_zero_see_through_text.0.len(), 8);
+        assert!((geometry.order_one_see_through_text.0[0].position[2] - 1.0).abs() < 1e-5);
+        assert!((geometry.order_zero_see_through_text.0[0].position[2] - 2.0).abs() < 1e-5);
     }
 }
