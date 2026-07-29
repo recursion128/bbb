@@ -106,7 +106,7 @@ fn decodes_tool_defaults_and_block_holder_rules() {
         Some(ToolSummary {
             rules: vec![
                 ToolRuleSummary {
-                    block_registry_ids: Vec::new(),
+                    block_registry_ids: vec![stone_id, dirt_id],
                     block_tag: Some("example:mineable".to_string()),
                     speed_bits: Some(4.0f32.to_bits()),
                     correct_for_drops: Some(true),

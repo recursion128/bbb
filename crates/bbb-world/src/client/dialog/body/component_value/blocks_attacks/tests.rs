@@ -144,7 +144,7 @@ fn decodes_blocks_attacks_nested_records_holders_and_sounds() {
     assert_eq!(
         summary.damage_reductions[0].damage_types,
         Some(DamageTypeHolderSetSummary {
-            registry_ids: Vec::new(),
+            registry_ids: vec![0],
             tag: Some("example:fire".to_string()),
         })
     );

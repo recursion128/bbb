@@ -411,7 +411,7 @@ fn projects_adventure_block_holders_state_nbt_and_exact_components() {
         assert_eq!(
             persistent.predicates[1].blocks,
             Some(BlockHolderSetSummary {
-                registry_ids: Vec::new(),
+                registry_ids: vec![1],
                 tag: Some("minecraft:mineable/pickaxe".to_string()),
             })
         );
