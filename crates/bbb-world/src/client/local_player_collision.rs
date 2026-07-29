@@ -32,7 +32,8 @@ use crate::terrain::{
     block_name_is_anvil, block_name_is_bars_or_pane, block_name_is_bed, block_name_is_campfire,
     block_name_is_candle, block_name_is_candle_cake, block_name_is_cauldron, block_name_is_chain,
     block_name_is_chest, block_name_is_copper_golem_statue, block_name_is_copper_grate,
-    block_name_is_door, block_name_is_fence, block_name_is_fence_gate,
+    block_name_is_door, block_name_is_enchantment_power_provider,
+    block_name_is_enchantment_power_transmitter, block_name_is_fence, block_name_is_fence_gate,
     block_name_is_fire_flammable, block_name_is_floor_skull, block_name_is_flower_pot,
     block_name_is_hanging_sign, block_name_is_impermeable, block_name_is_lantern,
     block_name_is_leaves, block_name_is_rod, block_name_is_shelf, block_name_is_shulker_box,
@@ -70,6 +71,8 @@ pub struct EnvironmentAnimateBlockSample {
     pub up_face_sturdy: bool,
     pub fire_flammable: bool,
     pub triggers_dried_ghast_ambient_sound: bool,
+    pub enchantment_power_provider: bool,
+    pub enchantment_power_transmitter: bool,
     pub impermeable: bool,
     pub collision_bounds: Option<EnvironmentAnimateCollisionBounds>,
 }
@@ -1432,6 +1435,8 @@ impl WorldStore {
             triggers_dried_ghast_ambient_sound: block_name_triggers_dried_ghast_ambient_sound(
                 block_name,
             ),
+            enchantment_power_provider: block_name_is_enchantment_power_provider(block_name),
+            enchantment_power_transmitter: block_name_is_enchantment_power_transmitter(block_name),
             impermeable: block_name_is_impermeable(block_name),
             collision_bounds: shape.and_then(BlockCollisionShape::environment_animate_bounds),
         })
@@ -6440,6 +6445,8 @@ mod tests {
                 up_face_sturdy: false,
                 fire_flammable: false,
                 triggers_dried_ghast_ambient_sound: false,
+                enchantment_power_provider: false,
+                enchantment_power_transmitter: true,
                 impermeable: false,
                 collision_bounds: None,
             })
@@ -6457,6 +6464,8 @@ mod tests {
                 up_face_sturdy: true,
                 fire_flammable: false,
                 triggers_dried_ghast_ambient_sound: false,
+                enchantment_power_provider: false,
+                enchantment_power_transmitter: false,
                 impermeable: false,
                 collision_bounds: Some(EnvironmentAnimateCollisionBounds {
                     min_x: 0.0,
@@ -6517,6 +6526,21 @@ mod tests {
                 .expect("loaded soul sand")
                 .triggers_dried_ghast_ambient_sound
         );
+
+        let bookshelf_id = vanilla_block_state_id("minecraft:bookshelf", []);
+        set_block(&mut world, pos, bookshelf_id);
+        let bookshelf = world
+            .environment_animate_block_sample(pos)
+            .expect("loaded bookshelf");
+        assert!(bookshelf.enchantment_power_provider);
+        assert!(!bookshelf.enchantment_power_transmitter);
+
+        set_block(&mut world, pos, 0);
+        let air = world
+            .environment_animate_block_sample(pos)
+            .expect("loaded air");
+        assert!(!air.enchantment_power_provider);
+        assert!(air.enchantment_power_transmitter);
 
         let water_id = vanilla_block_state_id("minecraft:water", [("level", "0")]);
         set_block(&mut world, pos, water_id);

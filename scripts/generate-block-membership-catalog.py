@@ -48,6 +48,16 @@ BLOCK_TAG_CATALOGS = (
         "minecraft:triggers_ambient_dried_ghast_block_sounds",
         2,
     ),
+    (
+        "VANILLA_ENCHANTMENT_POWER_PROVIDER_BLOCKS",
+        "minecraft:enchantment_power_provider",
+        1,
+    ),
+    (
+        "VANILLA_ENCHANTMENT_POWER_TRANSMITTER_BLOCKS",
+        "minecraft:enchantment_power_transmitter",
+        29,
+    ),
     ("VANILLA_BARS_BLOCKS", "minecraft:bars", 9),
     ("VANILLA_SLAB_BLOCKS", "minecraft:slabs", 62),
     ("VANILLA_STAIR_BLOCKS", "minecraft:stairs", 58),

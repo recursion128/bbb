@@ -67,6 +67,7 @@ const PARTICLE_HAPPY_VILLAGER: &str = "minecraft:happy_villager";
 const PARTICLE_DRIPPING_HONEY: &str = "minecraft:dripping_honey";
 const PARTICLE_FALLING_SPORE_BLOSSOM: &str = "minecraft:falling_spore_blossom";
 const PARTICLE_SPORE_BLOSSOM_AIR: &str = "minecraft:spore_blossom_air";
+const PARTICLE_ENCHANT: &str = "minecraft:enchant";
 
 type FluidAnimateSound = (&'static str, [f64; 3], f32, f32);
 type FluidAnimateSounds = [Option<FluidAnimateSound>; 2];
@@ -348,6 +349,9 @@ impl EnvironmentAnimateRuntime {
             }
             "minecraft:spore_blossom" => {
                 append_spore_blossom_animate_effects(world, pos, animate_random, spawns);
+            }
+            "minecraft:enchanting_table" => {
+                append_enchanting_table_animate_effects(world, pos, animate_random, spawns);
             }
             _ => {}
         }
@@ -1409,6 +1413,64 @@ fn append_spore_blossom_animate_effects(
             always_show: false,
         });
     }
+}
+
+fn append_enchanting_table_animate_effects(
+    world: &WorldStore,
+    pos: BlockPos,
+    random: &mut LevelEventSoundRandomState,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) {
+    for (offset_x, offset_y, offset_z) in enchanting_table_bookshelf_offsets() {
+        if random.next_int_bound(16) != 0 {
+            continue;
+        }
+        let provider_pos = BlockPos {
+            x: pos.x + offset_x,
+            y: pos.y + offset_y,
+            z: pos.z + offset_z,
+        };
+        if !world
+            .environment_animate_block_sample(provider_pos)
+            .is_some_and(|sample| sample.enchantment_power_provider)
+        {
+            continue;
+        }
+        let transmitter_pos = BlockPos {
+            x: pos.x + offset_x / 2,
+            y: pos.y + offset_y,
+            z: pos.z + offset_z / 2,
+        };
+        if !world
+            .environment_animate_block_sample(transmitter_pos)
+            .is_some_and(|sample| sample.enchantment_power_transmitter)
+        {
+            continue;
+        }
+
+        spawns.push(EnvironmentParticleSpawn {
+            particle: simple_client_particle_options(PARTICLE_ENCHANT),
+            position: [
+                f64::from(pos.x) + 0.5,
+                f64::from(pos.y) + 2.0,
+                f64::from(pos.z) + 0.5,
+            ],
+            velocity: [
+                f64::from(offset_x as f32 + random.next_float()) - 0.5,
+                f64::from(offset_y as f32 - random.next_float() - 1.0),
+                f64::from(offset_z as f32 + random.next_float()) - 0.5,
+            ],
+            always_show: false,
+        });
+    }
+}
+
+fn enchanting_table_bookshelf_offsets() -> impl Iterator<Item = (i32, i32, i32)> {
+    (-2_i32..=2).flat_map(|z| {
+        (0_i32..=1).flat_map(move |y| {
+            (-2_i32..=2).filter_map(move |x| (x.abs() == 2 || z.abs() == 2).then_some((x, y, z)))
+        })
+    })
 }
 
 fn append_ambient_particle_spawns(
@@ -3264,6 +3326,158 @@ mod tests {
             PARTICLE_FALLING_SPORE_BLOSSOM
         );
         assert_eq!(blocked_actual.next_long(), blocked_expected.next_long());
+    }
+
+    #[test]
+    fn enchanting_table_animate_effects_preserve_offset_tag_short_circuit_and_random_order() {
+        let pos = BlockPos { x: 8, y: 32, z: 8 };
+        let offsets = enchanting_table_bookshelf_offsets().collect::<Vec<_>>();
+        assert_eq!(offsets.len(), 32);
+        assert_eq!(
+            &offsets[..6],
+            &[
+                (-2, 0, -2),
+                (-1, 0, -2),
+                (0, 0, -2),
+                (1, 0, -2),
+                (2, 0, -2),
+                (-2, 1, -2),
+            ]
+        );
+        assert_eq!(offsets.last(), Some(&(2, 1, 2)));
+
+        let seed = (0..100_000)
+            .find(|seed| {
+                let mut random = LevelEventSoundRandomState::with_seed(*seed);
+                offsets.iter().any(|_| {
+                    let succeeds = random.next_int_bound(16) == 0;
+                    if succeeds {
+                        let _ = random.next_float();
+                        let _ = random.next_float();
+                        let _ = random.next_float();
+                    }
+                    succeeds
+                })
+            })
+            .expect("deterministic enchanting-table particle seed");
+        let mut world = world_with_ambient_particles();
+        set_block(
+            &mut world,
+            pos,
+            block_state_id("minecraft:enchanting_table", &[]),
+        );
+        let bookshelf_id = block_state_id("minecraft:bookshelf", &[]);
+        for &(offset_x, offset_y, offset_z) in &offsets {
+            set_block(
+                &mut world,
+                BlockPos {
+                    x: pos.x + offset_x,
+                    y: pos.y + offset_y,
+                    z: pos.z + offset_z,
+                },
+                bookshelf_id,
+            );
+        }
+
+        let mut actual = LevelEventSoundRandomState::with_seed(seed);
+        let mut spawns = Vec::new();
+        append_enchanting_table_animate_effects(&world, pos, &mut actual, &mut spawns);
+
+        let mut expected = LevelEventSoundRandomState::with_seed(seed);
+        let mut expected_velocities = Vec::new();
+        for &(offset_x, offset_y, offset_z) in &offsets {
+            if expected.next_int_bound(16) != 0 {
+                continue;
+            }
+            expected_velocities.push([
+                f64::from(offset_x as f32 + expected.next_float()) - 0.5,
+                f64::from(offset_y as f32 - expected.next_float() - 1.0),
+                f64::from(offset_z as f32 + expected.next_float()) - 0.5,
+            ]);
+        }
+        assert!(!expected_velocities.is_empty());
+        assert_eq!(spawns.len(), expected_velocities.len());
+        assert!(spawns.iter().all(|spawn| {
+            spawn.particle.resource_id == PARTICLE_ENCHANT
+                && spawn.position == [8.5, 34.0, 8.5]
+                && spawn.velocity != [0.0; 3]
+                && !spawn.always_show
+        }));
+        assert_eq!(
+            spawns
+                .iter()
+                .map(|spawn| spawn.velocity)
+                .collect::<Vec<_>>(),
+            expected_velocities
+        );
+        assert_eq!(actual.next_long(), expected.next_long());
+
+        let first_offset = offsets[0];
+        let first_seed = (0..100_000)
+            .find(|seed| LevelEventSoundRandomState::with_seed(*seed).next_int_bound(16) == 0)
+            .expect("deterministic first bookshelf chance seed");
+        let mut blocked_world = world_with_ambient_particles();
+        set_block(
+            &mut blocked_world,
+            pos,
+            block_state_id("minecraft:enchanting_table", &[]),
+        );
+        set_block(
+            &mut blocked_world,
+            BlockPos {
+                x: pos.x + first_offset.0,
+                y: pos.y + first_offset.1,
+                z: pos.z + first_offset.2,
+            },
+            bookshelf_id,
+        );
+        let transmitter_pos = BlockPos {
+            x: pos.x + first_offset.0 / 2,
+            y: pos.y + first_offset.1,
+            z: pos.z + first_offset.2 / 2,
+        };
+        set_block(
+            &mut blocked_world,
+            transmitter_pos,
+            block_state_id("minecraft:stone", &[]),
+        );
+        let mut blocked_actual = LevelEventSoundRandomState::with_seed(first_seed);
+        let mut blocked_expected = LevelEventSoundRandomState::with_seed(first_seed);
+        let mut blocked_spawns = Vec::new();
+        append_enchanting_table_animate_effects(
+            &blocked_world,
+            pos,
+            &mut blocked_actual,
+            &mut blocked_spawns,
+        );
+        for _ in 0..32 {
+            let _ = blocked_expected.next_int_bound(16);
+        }
+        assert!(blocked_spawns.is_empty());
+        assert_eq!(blocked_actual.next_long(), blocked_expected.next_long());
+
+        set_block(&mut blocked_world, transmitter_pos, 0);
+        let mut open_actual = LevelEventSoundRandomState::with_seed(first_seed);
+        let mut open_expected = LevelEventSoundRandomState::with_seed(first_seed);
+        let mut open_spawns = Vec::new();
+        append_enchanting_table_animate_effects(
+            &blocked_world,
+            pos,
+            &mut open_actual,
+            &mut open_spawns,
+        );
+        assert_eq!(open_expected.next_int_bound(16), 0);
+        let expected_first_velocity = [
+            f64::from(first_offset.0 as f32 + open_expected.next_float()) - 0.5,
+            f64::from(first_offset.1 as f32 - open_expected.next_float() - 1.0),
+            f64::from(first_offset.2 as f32 + open_expected.next_float()) - 0.5,
+        ];
+        for _ in 1..32 {
+            let _ = open_expected.next_int_bound(16);
+        }
+        assert_eq!(open_spawns.len(), 1);
+        assert_eq!(open_spawns[0].velocity, expected_first_velocity);
+        assert_eq!(open_actual.next_long(), open_expected.next_long());
     }
 
     #[test]

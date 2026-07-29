@@ -716,3 +716,6 @@
 - **2026-07-29（干燥恶魂方块客户端效果工程闭环）**：干态支撑标签与水浸状态现按
   Vanilla 26.1 的独立随机分支驱动对应环境音、white smoke 和 happy villager
   粒子；标签由原版数据生成并贯通 world 采样、native runtime 与音频解析。
+- **2026-07-29（附魔台客户端粒子工程闭环）**：32 个书架偏移现按 Vanilla 固定
+  顺序、provider/transmitter 标签短路和精确随机消费生成 enchant 粒子；两类标签
+  直接由 26.1 数据生成并由 world/native 共用。

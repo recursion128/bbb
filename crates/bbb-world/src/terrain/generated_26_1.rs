@@ -705,6 +705,40 @@ pub(super) const VANILLA_IMPERMEABLE_BLOCKS: &[&str] = &[
 pub(super) const VANILLA_TRIGGERS_AMBIENT_DRIED_GHAST_BLOCK_SOUNDS: &[&str] =
     &["minecraft:soul_sand", "minecraft:soul_soil"];
 
+pub(super) const VANILLA_ENCHANTMENT_POWER_PROVIDER_BLOCKS: &[&str] = &["minecraft:bookshelf"];
+
+pub(super) const VANILLA_ENCHANTMENT_POWER_TRANSMITTER_BLOCKS: &[&str] = &[
+    "minecraft:air",
+    "minecraft:water",
+    "minecraft:lava",
+    "minecraft:short_grass",
+    "minecraft:fern",
+    "minecraft:dead_bush",
+    "minecraft:bush",
+    "minecraft:short_dry_grass",
+    "minecraft:tall_dry_grass",
+    "minecraft:seagrass",
+    "minecraft:tall_seagrass",
+    "minecraft:fire",
+    "minecraft:soul_fire",
+    "minecraft:snow",
+    "minecraft:vine",
+    "minecraft:glow_lichen",
+    "minecraft:resin_clump",
+    "minecraft:light",
+    "minecraft:tall_grass",
+    "minecraft:large_fern",
+    "minecraft:structure_void",
+    "minecraft:void_air",
+    "minecraft:cave_air",
+    "minecraft:bubble_column",
+    "minecraft:warped_roots",
+    "minecraft:nether_sprouts",
+    "minecraft:crimson_roots",
+    "minecraft:leaf_litter",
+    "minecraft:hanging_roots",
+];
+
 pub(super) const VANILLA_BARS_BLOCKS: &[&str] = &[
     "minecraft:iron_bars",
     "minecraft:copper_bars",
@@ -1503,6 +1537,8 @@ mod tests {
                         "VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS",
                         "VANILLA_IMPERMEABLE_BLOCKS",
                         "VANILLA_TRIGGERS_AMBIENT_DRIED_GHAST_BLOCK_SOUNDS",
+                        "VANILLA_ENCHANTMENT_POWER_PROVIDER_BLOCKS",
+                        "VANILLA_ENCHANTMENT_POWER_TRANSMITTER_BLOCKS",
                         "VANILLA_BARS_BLOCKS",
                         "VANILLA_SLAB_BLOCKS",
                         "VANILLA_STAIR_BLOCKS",
@@ -1603,6 +1639,14 @@ mod tests {
                         (
                             "VANILLA_TRIGGERS_AMBIENT_DRIED_GHAST_BLOCK_SOUNDS",
                             VANILLA_TRIGGERS_AMBIENT_DRIED_GHAST_BLOCK_SOUNDS,
+                        ),
+                        (
+                            "VANILLA_ENCHANTMENT_POWER_PROVIDER_BLOCKS",
+                            VANILLA_ENCHANTMENT_POWER_PROVIDER_BLOCKS,
+                        ),
+                        (
+                            "VANILLA_ENCHANTMENT_POWER_TRANSMITTER_BLOCKS",
+                            VANILLA_ENCHANTMENT_POWER_TRANSMITTER_BLOCKS,
                         ),
                         ("VANILLA_BARS_BLOCKS", VANILLA_BARS_BLOCKS),
                         ("VANILLA_SLAB_BLOCKS", VANILLA_SLAB_BLOCKS),
