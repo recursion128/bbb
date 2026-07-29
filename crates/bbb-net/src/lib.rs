@@ -13,5 +13,6 @@ mod status;
 #[cfg(test)]
 mod test_support;
 mod types;
+mod user_api;
 
 pub use exports::*;

@@ -14,3 +14,9 @@ pub use crate::types::{
     OutboundChatCommandSigning, OutboundChatMessage, PlayerMoveCommand, ProbeReport,
     ServerResourcePackPolicy, StatusPing, UseItemCommand, UseItemOnCommand, VehicleMoveCommand,
 };
+pub use crate::user_api::{
+    AbuseReport, AbuseReportClientInfo, AbuseReportEvidence, AbuseReportMessage,
+    AbuseReportRealmInfo, AbuseReportRequest, AbuseReportType, MinecraftUserApiClient,
+    MinecraftUserApiError, MinecraftUserApiErrorKind, ReportByteBuffer, ReportedEntity,
+    ThirdPartyServerInfo, UserApiBlockList,
+};
