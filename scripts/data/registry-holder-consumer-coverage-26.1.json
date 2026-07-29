@@ -607,12 +607,15 @@
         "crates/bbb-world/src/registries/enchantments.rs#fn decodes_synced_enchantment_tooltip_definitions_in_holder_order",
         "crates/bbb-world/src/registries/enchantments.rs#fn resolves_synced_enchantment_attribute_effects_in_stack_and_effect_order",
         "crates/bbb-world/src/registries/enchantments.rs#fn crossbow_charge_time_applies_stub_fallback_and_custom_effects_in_stack_order",
+        "crates/bbb-world/src/registries/enchantments.rs#fn remove_binomial_matches_vanilla_small_and_gaussian_random_advancement",
         "crates/bbb-native/src/item_models.rs#fn world_enchantment_keys",
         "crates/bbb-item-model/src/item_runtime/icon_model.rs#fn item_stack_matches_enchantments_predicate",
+        "crates/bbb-item-model/src/item_runtime/tests.rs#fn living_owner_crossbow_random_keeps_one_cursor_per_entity_incarnation",
         "crates/bbb-native/src/runtime/tests.rs#fn hud_inventory_tooltip_follows_synced_enchantment_holder_order_and_effects",
-        "crates/bbb-native/src/runtime/tests.rs#fn hotbar_item_icons_apply_synced_custom_crossbow_charge_time_effect"
+        "crates/bbb-native/src/runtime/tests.rs#fn hotbar_item_icons_apply_synced_custom_crossbow_charge_time_effect",
+        "scripts/tests/test_enchantment_client_effect_partition.py#EnchantmentClientEffectPartitionTests"
       ],
-      "decision": "Vanilla 26.1 synchronizes enchantment definitions and holder order during configuration, then uses Enchantment.STREAM_CODEC only inside the enchantments/stored-enchantments component map. The protocol rejects impossible negative references while retaining nonnegative server ids; world and native consumers resolve custom reordered definitions, tooltip text, attribute effects, item-model predicates, and crossbow charge effects through the current session order. Remaining unsupported effect-component semantics stay tracked independently from holder identity."
+      "decision": "Vanilla 26.1 synchronizes enchantment definitions and holder order during configuration, then uses Enchantment.STREAM_CODEC only inside the enchantments/stored-enchantments component map. The protocol rejects impossible negative references while retaining nonnegative server ids; world and native consumers resolve custom reordered definitions, tooltip text, attribute effects, item-model predicates, all six value-effect variants, and living-owner crossbow/trident effects through the current session order. A source-derived exhaustive partition guard keeps conditional value/entity/location execution, equipment-drop prevention, and crossbow charging sounds server-owned."
     },
     {
       "id": "network-holder-set-or-tag-banner-pattern",
@@ -1102,9 +1105,11 @@
         "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
         "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_set_from_nbt",
         "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
-        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt"
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt",
+        "crates/bbb-item-model/src/item_runtime/icon_model.rs#fn decode_component_select_when",
+        "crates/bbb-native/src/item_models/tests.rs#fn component_select_prototype_and_dynamic_registry_reach_native_item_consumers"
       ],
-      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction uses the same session holder and tag boundaries and never substitutes bootstrap ordinals."
+      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction and component-select case remapping use the same session holder and tag boundaries and never substitute bootstrap ordinals; every level-backed item render family supplies the effective stack and current frozen owner."
     },
     {
       "id": "persistent-holder-set-or-tag-enchantment-synchronized",

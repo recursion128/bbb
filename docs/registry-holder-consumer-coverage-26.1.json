@@ -34,13 +34,15 @@
       "call_site": "net/minecraft/advancements/criterion/BlockPredicate.java:31:13:RegistryCodecs.homogeneousList",
       "column": 13,
       "consumer": "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
-      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction uses the same session holder and tag boundaries and never substitutes bootstrap ordinals.",
+      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction and component-select case remapping use the same session holder and tag boundaries and never substitute bootstrap ordinals; every level-backed item render family supplies the effective stack and current frozen owner.",
       "evidence": [
         "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
         "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
         "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_set_from_nbt",
         "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
-        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt"
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt",
+        "crates/bbb-item-model/src/item_runtime/icon_model.rs#fn decode_component_select_when",
+        "crates/bbb-native/src/item_models/tests.rs#fn component_select_prototype_and_dynamic_registry_reach_native_item_consumers"
       ],
       "factory": "RegistryCodecs.homogeneousList",
       "family": "persistent-holder-set-or-tag-client-components",
@@ -435,13 +437,15 @@
       "call_site": "net/minecraft/core/component/predicates/AttributeModifiersPredicate.java:52:16:RegistryCodecs.homogeneousList",
       "column": 16,
       "consumer": "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
-      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction uses the same session holder and tag boundaries and never substitutes bootstrap ordinals.",
+      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction and component-select case remapping use the same session holder and tag boundaries and never substitute bootstrap ordinals; every level-backed item render family supplies the effective stack and current frozen owner.",
       "evidence": [
         "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
         "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
         "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_set_from_nbt",
         "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
-        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt"
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt",
+        "crates/bbb-item-model/src/item_runtime/icon_model.rs#fn decode_component_select_when",
+        "crates/bbb-native/src/item_models/tests.rs#fn component_select_prototype_and_dynamic_registry_reach_native_item_consumers"
       ],
       "factory": "RegistryCodecs.homogeneousList",
       "family": "persistent-holder-set-or-tag-client-components",
@@ -457,13 +461,15 @@
       "call_site": "net/minecraft/core/component/predicates/JukeboxPlayablePredicate.java:19:20:RegistryCodecs.homogeneousList",
       "column": 20,
       "consumer": "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
-      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction uses the same session holder and tag boundaries and never substitutes bootstrap ordinals.",
+      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction and component-select case remapping use the same session holder and tag boundaries and never substitute bootstrap ordinals; every level-backed item render family supplies the effective stack and current frozen owner.",
       "evidence": [
         "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
         "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
         "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_set_from_nbt",
         "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
-        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt"
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt",
+        "crates/bbb-item-model/src/item_runtime/icon_model.rs#fn decode_component_select_when",
+        "crates/bbb-native/src/item_models/tests.rs#fn component_select_prototype_and_dynamic_registry_reach_native_item_consumers"
       ],
       "factory": "RegistryCodecs.homogeneousList",
       "family": "persistent-holder-set-or-tag-client-components",
@@ -479,13 +485,15 @@
       "call_site": "net/minecraft/core/component/predicates/PotionsPredicate.java:16:56:RegistryCodecs.homogeneousList",
       "column": 56,
       "consumer": "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
-      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction uses the same session holder and tag boundaries and never substitutes bootstrap ordinals.",
+      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction and component-select case remapping use the same session holder and tag boundaries and never substitute bootstrap ordinals; every level-backed item render family supplies the effective stack and current frozen owner.",
       "evidence": [
         "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
         "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
         "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_set_from_nbt",
         "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
-        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt"
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt",
+        "crates/bbb-item-model/src/item_runtime/icon_model.rs#fn decode_component_select_when",
+        "crates/bbb-native/src/item_models/tests.rs#fn component_select_prototype_and_dynamic_registry_reach_native_item_consumers"
       ],
       "factory": "RegistryCodecs.homogeneousList",
       "family": "persistent-holder-set-or-tag-client-components",
@@ -501,13 +509,15 @@
       "call_site": "net/minecraft/core/component/predicates/TrimPredicate.java:20:13:RegistryCodecs.homogeneousList",
       "column": 13,
       "consumer": "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
-      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction uses the same session holder and tag boundaries and never substitutes bootstrap ordinals.",
+      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction and component-select case remapping use the same session holder and tag boundaries and never substitute bootstrap ordinals; every level-backed item render family supplies the effective stack and current frozen owner.",
       "evidence": [
         "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
         "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
         "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_set_from_nbt",
         "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
-        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt"
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt",
+        "crates/bbb-item-model/src/item_runtime/icon_model.rs#fn decode_component_select_when",
+        "crates/bbb-native/src/item_models/tests.rs#fn component_select_prototype_and_dynamic_registry_reach_native_item_consumers"
       ],
       "factory": "RegistryCodecs.homogeneousList",
       "family": "persistent-holder-set-or-tag-client-components",
@@ -523,13 +533,15 @@
       "call_site": "net/minecraft/core/component/predicates/TrimPredicate.java:21:13:RegistryCodecs.homogeneousList",
       "column": 13,
       "consumer": "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
-      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction uses the same session holder and tag boundaries and never substitutes bootstrap ordinals.",
+      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction and component-select case remapping use the same session holder and tag boundaries and never substitute bootstrap ordinals; every level-backed item render family supplies the effective stack and current frozen owner.",
       "evidence": [
         "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
         "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
         "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_set_from_nbt",
         "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
-        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt"
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt",
+        "crates/bbb-item-model/src/item_runtime/icon_model.rs#fn decode_component_select_when",
+        "crates/bbb-native/src/item_models/tests.rs#fn component_select_prototype_and_dynamic_registry_reach_native_item_consumers"
       ],
       "factory": "RegistryCodecs.homogeneousList",
       "family": "persistent-holder-set-or-tag-client-components",
@@ -545,13 +557,15 @@
       "call_site": "net/minecraft/core/component/predicates/VillagerTypePredicate.java:14:61:RegistryCodecs.homogeneousList",
       "column": 61,
       "consumer": "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
-      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction uses the same session holder and tag boundaries and never substitutes bootstrap ordinals.",
+      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction and component-select case remapping use the same session holder and tag boundaries and never substitute bootstrap ordinals; every level-backed item render family supplies the effective stack and current frozen owner.",
       "evidence": [
         "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
         "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
         "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_set_from_nbt",
         "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
-        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt"
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt",
+        "crates/bbb-item-model/src/item_runtime/icon_model.rs#fn decode_component_select_when",
+        "crates/bbb-native/src/item_models/tests.rs#fn component_select_prototype_and_dynamic_registry_reach_native_item_consumers"
       ],
       "factory": "RegistryCodecs.homogeneousList",
       "family": "persistent-holder-set-or-tag-client-components",
@@ -2216,13 +2230,15 @@
       "call_site": "net/minecraft/world/item/component/BlocksAttacks.java:48:13:RegistryCodecs.homogeneousList",
       "column": 13,
       "consumer": "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
-      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction uses the same session holder and tag boundaries and never substitutes bootstrap ordinals.",
+      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction and component-select case remapping use the same session holder and tag boundaries and never substitute bootstrap ordinals; every level-backed item render family supplies the effective stack and current frozen owner.",
       "evidence": [
         "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
         "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
         "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_set_from_nbt",
         "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
-        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt"
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt",
+        "crates/bbb-item-model/src/item_runtime/icon_model.rs#fn decode_component_select_when",
+        "crates/bbb-native/src/item_models/tests.rs#fn component_select_prototype_and_dynamic_registry_reach_native_item_consumers"
       ],
       "factory": "RegistryCodecs.homogeneousList",
       "family": "persistent-holder-set-or-tag-client-components",
@@ -2270,13 +2286,15 @@
       "call_site": "net/minecraft/world/item/component/BlocksAttacks.java:141:16:RegistryCodecs.homogeneousList",
       "column": 16,
       "consumer": "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
-      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction uses the same session holder and tag boundaries and never substitutes bootstrap ordinals.",
+      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction and component-select case remapping use the same session holder and tag boundaries and never substitute bootstrap ordinals; every level-backed item render family supplies the effective stack and current frozen owner.",
       "evidence": [
         "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
         "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
         "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_set_from_nbt",
         "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
-        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt"
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt",
+        "crates/bbb-item-model/src/item_runtime/icon_model.rs#fn decode_component_select_when",
+        "crates/bbb-native/src/item_models/tests.rs#fn component_select_prototype_and_dynamic_registry_reach_native_item_consumers"
       ],
       "factory": "RegistryCodecs.homogeneousList",
       "family": "persistent-holder-set-or-tag-client-components",
@@ -2324,13 +2342,15 @@
       "call_site": "net/minecraft/world/item/component/DamageResistant.java:16:20:RegistryCodecs.homogeneousList",
       "column": 20,
       "consumer": "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
-      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction uses the same session holder and tag boundaries and never substitutes bootstrap ordinals.",
+      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction and component-select case remapping use the same session holder and tag boundaries and never substitute bootstrap ordinals; every level-backed item render family supplies the effective stack and current frozen owner.",
       "evidence": [
         "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
         "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
         "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_set_from_nbt",
         "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
-        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt"
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt",
+        "crates/bbb-item-model/src/item_runtime/icon_model.rs#fn decode_component_select_when",
+        "crates/bbb-native/src/item_models/tests.rs#fn component_select_prototype_and_dynamic_registry_reach_native_item_consumers"
       ],
       "factory": "RegistryCodecs.homogeneousList",
       "family": "persistent-holder-set-or-tag-client-components",
@@ -2403,13 +2423,15 @@
       "call_site": "net/minecraft/world/item/component/Tool.java:62:16:RegistryCodecs.homogeneousList",
       "column": 16,
       "consumer": "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
-      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction uses the same session holder and tag boundaries and never substitutes bootstrap ordinals.",
+      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction and component-select case remapping use the same session holder and tag boundaries and never substitute bootstrap ordinals; every level-backed item render family supplies the effective stack and current frozen owner.",
       "evidence": [
         "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
         "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
         "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_set_from_nbt",
         "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
-        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt"
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt",
+        "crates/bbb-item-model/src/item_runtime/icon_model.rs#fn decode_component_select_when",
+        "crates/bbb-native/src/item_models/tests.rs#fn component_select_prototype_and_dynamic_registry_reach_native_item_consumers"
       ],
       "factory": "RegistryCodecs.homogeneousList",
       "family": "persistent-holder-set-or-tag-client-components",
@@ -2457,13 +2479,15 @@
       "call_site": "net/minecraft/world/item/consume_effects/RemoveStatusEffectsConsumeEffect.java:19:20:RegistryCodecs.homogeneousList",
       "column": 20,
       "consumer": "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
-      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction uses the same session holder and tag boundaries and never substitutes bootstrap ordinals.",
+      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction and component-select case remapping use the same session holder and tag boundaries and never substitute bootstrap ordinals; every level-backed item render family supplies the effective stack and current frozen owner.",
       "evidence": [
         "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
         "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
         "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_set_from_nbt",
         "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
-        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt"
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt",
+        "crates/bbb-item-model/src/item_runtime/icon_model.rs#fn decode_component_select_when",
+        "crates/bbb-native/src/item_models/tests.rs#fn component_select_prototype_and_dynamic_registry_reach_native_item_consumers"
       ],
       "factory": "RegistryCodecs.homogeneousList",
       "family": "persistent-holder-set-or-tag-client-components",
@@ -2771,13 +2795,15 @@
       "call_site": "net/minecraft/world/item/enchantment/Repairable.java:16:20:RegistryCodecs.homogeneousList",
       "column": 20,
       "consumer": "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
-      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction uses the same session holder and tag boundaries and never substitutes bootstrap ordinals.",
+      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction and component-select case remapping use the same session holder and tag boundaries and never substitute bootstrap ordinals; every level-backed item render family supplies the effective stack and current frozen owner.",
       "evidence": [
         "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
         "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
         "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_set_from_nbt",
         "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
-        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt"
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt",
+        "crates/bbb-item-model/src/item_runtime/icon_model.rs#fn decode_component_select_when",
+        "crates/bbb-native/src/item_models/tests.rs#fn component_select_prototype_and_dynamic_registry_reach_native_item_consumers"
       ],
       "factory": "RegistryCodecs.homogeneousList",
       "family": "persistent-holder-set-or-tag-client-components",
@@ -2933,13 +2959,15 @@
       "call_site": "net/minecraft/world/item/equipment/Equippable.java:51:13:RegistryCodecs.homogeneousList",
       "column": 13,
       "consumer": "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
-      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction uses the same session holder and tag boundaries and never substitutes bootstrap ordinals.",
+      "decision": "The 14 client component and predicate rows decode the exact scalar/list/#tag persistent shape through one frozen RegistryAccess, preserving direct order and named identity while rejecting malformed or missing members. Registry-aware native item-component reconstruction and component-select case remapping use the same session holder and tag boundaries and never substitute bootstrap ordinals; every level-backed item render family supplies the effective stack and current frozen owner.",
       "evidence": [
         "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
         "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
         "crates/bbb-world/src/registries/state.rs#pub fn persistent_holder_set_from_nbt",
         "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#pub(super) fn decode_registry_holder_set",
-        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt"
+        "crates/bbb-native/src/input/component_patch.rs#pub(super) fn registry_holder_set_snbt",
+        "crates/bbb-item-model/src/item_runtime/icon_model.rs#fn decode_component_select_when",
+        "crates/bbb-native/src/item_models/tests.rs#fn component_select_prototype_and_dynamic_registry_reach_native_item_consumers"
       ],
       "factory": "RegistryCodecs.homogeneousList",
       "family": "persistent-holder-set-or-tag-client-components",

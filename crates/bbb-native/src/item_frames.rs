@@ -230,6 +230,8 @@ pub(crate) fn item_frame_models_with_map_cache(
         let Some(stack) = state.item.as_ref() else {
             continue;
         };
+        let effective_stack = world.effective_item_stack(stack);
+        let stack = effective_stack.as_ref();
         let Some(item_id) = stack.item_id else {
             continue;
         };
@@ -254,6 +256,7 @@ pub(crate) fn item_frame_models_with_map_cache(
             enchantment_keys,
             damage_type_keys,
             attribute_keys,
+            world.frozen_registry_access(),
         );
         if resolved.as_ref().is_some_and(|resolved| {
             resolved
@@ -390,6 +393,7 @@ pub(crate) fn item_frame_models_with_map_cache(
             enchantment_keys,
             damage_type_keys,
             attribute_keys,
+            world.frozen_registry_access(),
         );
         if layers.is_empty() {
             continue;

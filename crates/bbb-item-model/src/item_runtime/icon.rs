@@ -1060,6 +1060,7 @@ impl NativeItemRuntime {
             ItemModelKeybindContext::default(),
             false,
             0,
+            None,
         )
         .map(|selection| selection.model)
     }
@@ -1198,10 +1199,17 @@ impl NativeItemRuntime {
         display_context: BlockModelDisplayContext,
         trim_material_keys: Option<&[String]>,
     ) -> Vec<GeneratedItemLayer> {
-        self.generated_item_layers_for_stack_with_registry_context(
+        self.generated_item_layers_for_stack_with_context(
             stack,
             display_context,
+            None,
+            false,
+            ItemModelUseContext::inactive(),
+            None,
+            None,
+            None,
             trim_material_keys,
+            None,
             None,
             None,
             None,
@@ -1218,6 +1226,7 @@ impl NativeItemRuntime {
         enchantment_keys: Option<&[String]>,
         damage_type_keys: Option<&[String]>,
         attribute_keys: Option<&[String]>,
+        registry_access: FrozenRegistryAccess<'_>,
     ) -> Vec<GeneratedItemLayer> {
         self.generated_item_layers_for_stack_with_context(
             stack,
@@ -1233,6 +1242,7 @@ impl NativeItemRuntime {
             enchantment_keys,
             damage_type_keys,
             attribute_keys,
+            Some(registry_access),
         )
     }
 
@@ -1249,6 +1259,7 @@ impl NativeItemRuntime {
         enchantment_keys: Option<&[String]>,
         damage_type_keys: Option<&[String]>,
         attribute_keys: Option<&[String]>,
+        registry_access: FrozenRegistryAccess<'_>,
     ) -> Option<ResolvedItemModel> {
         self.resolved_item_model_for_stack_with_model_registry_context(
             stack,
@@ -1275,6 +1286,7 @@ impl NativeItemRuntime {
             ItemModelKeybindContext::default(),
             false,
             0,
+            Some(registry_access),
         )
     }
 
@@ -1300,10 +1312,12 @@ impl NativeItemRuntime {
         using_item: bool,
         use_context: ItemModelUseContext,
     ) -> Vec<GeneratedItemLayer> {
-        self.generated_item_layers_for_stack_with_owner_registry_context(
+        self.generated_item_layers_for_stack_with_context(
             stack,
             display_context,
             owner_main_hand_left,
+            using_item,
+            use_context,
             context_entity_type,
             None,
             context_dimension,
@@ -1312,8 +1326,7 @@ impl NativeItemRuntime {
             None,
             None,
             None,
-            using_item,
-            use_context,
+            None,
         )
     }
 
@@ -1332,6 +1345,7 @@ impl NativeItemRuntime {
         attribute_keys: Option<&[String]>,
         using_item: bool,
         use_context: ItemModelUseContext,
+        registry_access: FrozenRegistryAccess<'_>,
     ) -> Vec<GeneratedItemLayer> {
         self.generated_item_layers_for_stack_with_context(
             stack,
@@ -1347,6 +1361,7 @@ impl NativeItemRuntime {
             enchantment_keys,
             damage_type_keys,
             attribute_keys,
+            Some(registry_access),
         )
     }
 
@@ -1367,6 +1382,7 @@ impl NativeItemRuntime {
         attribute_keys: Option<&[String]>,
         using_item: bool,
         use_context: ItemModelUseContext,
+        registry_access: FrozenRegistryAccess<'_>,
     ) -> Option<ResolvedItemModel> {
         self.resolved_item_model_for_stack_with_model_registry_context(
             stack,
@@ -1393,6 +1409,7 @@ impl NativeItemRuntime {
             ItemModelKeybindContext::default(),
             false,
             0,
+            Some(registry_access),
         )
     }
 
@@ -1411,6 +1428,7 @@ impl NativeItemRuntime {
         enchantment_keys: Option<&[String]>,
         damage_type_keys: Option<&[String]>,
         attribute_keys: Option<&[String]>,
+        registry_access: Option<FrozenRegistryAccess<'_>>,
     ) -> Vec<GeneratedItemLayer> {
         let Some(icon) = self.icon_for_stack_with_model_registry_context_and_seed(
             stack,
@@ -1437,6 +1455,7 @@ impl NativeItemRuntime {
             ItemModelKeybindContext::default(),
             false,
             0,
+            registry_access,
         ) else {
             return Vec::new();
         };
@@ -1711,6 +1730,7 @@ impl NativeItemRuntime {
             keybind_context,
             fishing_rod_cast,
             0,
+            None,
         )
     }
 
@@ -1741,6 +1761,7 @@ impl NativeItemRuntime {
         keybind_context: ItemModelKeybindContext,
         fishing_rod_cast: bool,
         item_model_seed: i32,
+        registry_access: FrozenRegistryAccess<'_>,
     ) -> Option<ItemAtlasIcon> {
         self.icon_for_stack_with_model_registry_context_and_seed(
             stack,
@@ -1767,6 +1788,7 @@ impl NativeItemRuntime {
             keybind_context,
             fishing_rod_cast,
             item_model_seed,
+            Some(registry_access),
         )
     }
 
@@ -1904,6 +1926,7 @@ impl NativeItemRuntime {
             keybind_context,
             fishing_rod_cast,
             0,
+            None,
         )
     }
 
@@ -1934,6 +1957,7 @@ impl NativeItemRuntime {
         keybind_context: ItemModelKeybindContext,
         fishing_rod_cast: bool,
         item_model_seed: i32,
+        registry_access: Option<FrozenRegistryAccess<'_>>,
     ) -> Option<ItemAtlasIcon> {
         self.resolve_item_model_selection_for_stack_with_model_registry_context(
             stack,
@@ -1960,6 +1984,7 @@ impl NativeItemRuntime {
             keybind_context,
             fishing_rod_cast,
             item_model_seed,
+            registry_access,
         )
         .and_then(|selection| selection.compatibility_icon)
     }
@@ -1998,6 +2023,7 @@ impl NativeItemRuntime {
         keybind_context: ItemModelKeybindContext,
         fishing_rod_cast: bool,
         item_model_seed: i32,
+        registry_access: FrozenRegistryAccess<'_>,
     ) -> Option<ResolvedItemModel> {
         self.resolved_item_model_for_stack_with_model_registry_context(
             stack,
@@ -2024,6 +2050,7 @@ impl NativeItemRuntime {
             keybind_context,
             fishing_rod_cast,
             item_model_seed,
+            Some(registry_access),
         )
     }
 
@@ -2054,6 +2081,7 @@ impl NativeItemRuntime {
         keybind_context: ItemModelKeybindContext,
         fishing_rod_cast: bool,
         item_model_seed: i32,
+        registry_access: Option<FrozenRegistryAccess<'_>>,
     ) -> Option<ResolvedItemModel> {
         self.resolve_item_model_selection_for_stack_with_model_registry_context(
             stack,
@@ -2080,6 +2108,7 @@ impl NativeItemRuntime {
             keybind_context,
             fishing_rod_cast,
             item_model_seed,
+            registry_access,
         )
         .map(|selection| selection.model)
     }
@@ -2111,6 +2140,7 @@ impl NativeItemRuntime {
         keybind_context: ItemModelKeybindContext,
         fishing_rod_cast: bool,
         item_model_seed: i32,
+        registry_access: Option<FrozenRegistryAccess<'_>>,
     ) -> Option<ResolvedItemModelSelection> {
         let item_id = self.registry.as_ref()?.resource_id(stack.item_id?)?;
         let item_model_id = item_model_id_for_stack(item_id, Some(&stack.component_patch))?;
@@ -2142,6 +2172,7 @@ impl NativeItemRuntime {
             keybind_context,
             fishing_rod_cast,
             item_model_seed,
+            registry_access,
         )
     }
 
@@ -2176,6 +2207,7 @@ impl NativeItemRuntime {
             ItemModelKeybindContext::default(),
             false,
             0,
+            None,
         )
         .and_then(|selection| selection.compatibility_icon)
     }
@@ -2209,6 +2241,7 @@ impl NativeItemRuntime {
         keybind_context: ItemModelKeybindContext,
         fishing_rod_cast: bool,
         item_model_seed: i32,
+        registry_access: Option<FrozenRegistryAccess<'_>>,
     ) -> Option<ResolvedItemModelSelection> {
         let default_max_damage = self
             .registry
@@ -2256,7 +2289,7 @@ impl NativeItemRuntime {
         };
         let context = IconResolveContext {
             component_patch,
-            registry_access: None,
+            registry_access,
             default_component_type_ids: self.default_component_type_ids_for_resource_id(item_id),
             stack_count,
             default_max_stack_size,

@@ -3824,6 +3824,7 @@ pub(crate) fn update_renderer_from_publication(
     );
     let item_pickup_particle_states = renderer.item_pickup_particle_render_states();
     let item_pickup_particle_models = item_pickup_particle_item_models(
+        world,
         &item_pickup_particle_states,
         item_runtime,
         terrain_textures,
@@ -16974,6 +16975,8 @@ fn hud_resolved_item_model_for_stack(
     item_model_seed: i32,
     owner_team_color_rgb: Option<u32>,
 ) -> Option<ResolvedItemModel> {
+    let effective_item = world.effective_item_stack(item);
+    let item = effective_item.as_ref();
     let context = hud_item_world_model_context(world);
     let cooldown_progress =
         item_cooldown_percent_for_stack(world, Some(item_runtime), item, 0.0).unwrap_or(0.0);
@@ -17004,6 +17007,7 @@ fn hud_resolved_item_model_for_stack(
             keybind_context,
             fishing_rod_cast,
             item_model_seed,
+            world.frozen_registry_access(),
         )
 }
 
@@ -17087,6 +17091,8 @@ fn hud_item_icon_for_stack_with_owner_team_color(
     owner_team_color_rgb: Option<u32>,
 ) -> Option<HudItemIcon> {
     let item_runtime = item_runtime?;
+    let effective_item = world.effective_item_stack(item);
+    let item = effective_item.as_ref();
     let context = hud_item_world_model_context(world);
     // Vanilla `Cooldown.get` uses `getCooldownPercent(itemStack, 0.0F)` for
     // item-model range dispatch. The HUD overlay below still uses render
@@ -17120,6 +17126,7 @@ fn hud_item_icon_for_stack_with_owner_team_color(
             keybind_context,
             fishing_rod_cast,
             item_model_seed,
+            world.frozen_registry_access(),
         )?;
     Some(HudItemIcon {
         lighting: GuiItemLightingEntry::ItemsFlat,

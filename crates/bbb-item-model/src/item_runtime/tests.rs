@@ -11694,6 +11694,15 @@ fn native_item_runtime_resolves_component_select_values() {
         uv("component_damage_type_spear")
     );
     let session_damage_types = vec!["minecraft:spear".to_string(), "example:custom".to_string()];
+    let mut registry_owner = bbb_world::WorldStore::new();
+    registry_owner.record_registry_entries(
+        "minecraft:damage_type",
+        0,
+        vec![
+            bbb_world::RegistryPacketEntry::stub("minecraft:spear"),
+            bbb_world::RegistryPacketEntry::stub("example:custom"),
+        ],
+    );
     let explicit = ItemStackSummary {
         item_id: Some(12),
         count: 1,
@@ -11714,6 +11723,7 @@ fn native_item_runtime_resolves_component_select_values() {
                 None,
                 Some(&session_damage_types),
                 None,
+                registry_owner.frozen_registry_access(),
             )
             .into_iter()
             .next()
@@ -12001,6 +12011,7 @@ fn native_item_runtime_selects_bundle_icon_from_local_selected_item() {
         vec![open_back_uv, apple_uv, open_front_uv]
     );
 
+    let registries = bbb_world::RegistrySet::vanilla_26_1();
     let selected_team_icon = runtime
         .icon_for_stack_with_context_and_use_context_time_state_and_fishing_rod_cast_with_registry_context(
             &bundle_stack,
@@ -12027,6 +12038,7 @@ fn native_item_runtime_selects_bundle_icon_from_local_selected_item() {
             ItemModelKeybindContext::default(),
             false,
             0,
+            registries.frozen_access(),
         )
         .unwrap();
     assert_eq!(selected_team_icon.layers[1].tint, rgb_i32_tint(0xab_cd_ef));

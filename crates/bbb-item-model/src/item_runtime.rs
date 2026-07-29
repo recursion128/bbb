@@ -58,7 +58,7 @@ use bbb_render_types::{
 #[cfg(any(test, feature = "test-support"))]
 use bbb_render_types::HudUvRect;
 use bbb_world::{
-    ArmorMaterialKind as WorldArmorMaterialKind,
+    ArmorMaterialKind as WorldArmorMaterialKind, FrozenRegistryAccess,
     HappyGhastHarnessColor as WorldHappyGhastHarnessColor, ItemAttackRange as WorldItemAttackRange,
     ItemEquipmentSlot as WorldItemEquipmentSlot, ItemFoodProperties as WorldItemFoodProperties,
     ItemUseEffects as WorldItemUseEffects, LlamaBodyDecorColor as WorldLlamaBodyDecorColor,

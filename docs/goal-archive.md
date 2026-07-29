@@ -774,3 +774,7 @@
   breaking 三类方块节点现有独立 lane，地图与 TextDisplay 的 custom/text
   order 保留完整提交元数据；合同见
   `docs/archive/block-feature-ordered-submission-design.md`。
+- **2026-07-29（Component-select codec parity 工程闭环）**：全部 persistent
+  component descriptor、1,506 个物品原型默认值与动态 holder/holder-set
+  registry remap 已贯通有效 ItemStack 和全部 level-backed 物品渲染消费者；
+  合同见 `docs/archive/component-select-codec-parity-design.md`。

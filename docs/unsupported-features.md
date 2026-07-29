@@ -125,8 +125,6 @@ Owner: `bbb-protocol` + `bbb-native` + `bbb-pack`
 
 Each item below plugs into the existing value-aware `RangeDispatch` / `Select`
 resolver by adding a value provider. No new selection machinery is required.
-The active component-codec engineering contract is
-`docs/component-select-codec-parity-design.md`.
 
 - Thread newly discovered ambient-context numeric `range_dispatch` properties
   through the icon resolver as that state becomes available to the GUI icon path.
@@ -135,14 +133,6 @@ The active component-codec engineering contract is
 - Complete `minecraft:local_time`: full localized symbols and the long-tail ICU
   pattern fields — locale-specific week data beyond the selected English
   regional groups, IANA long `z`, generic `v`, and one-/four-letter `V` widths.
-- Extend `minecraft:component` select to complex object/list component values,
-  style-sensitive `Component` equality, registry-backed component value codecs,
-  custom/datapack component defaults, custom datapack component value decoding,
-  and components without a persistent codec.
-- Pass dynamic registry keys into the item resolver for the non-GUI item
-  consumers that render component-bearing generated stacks where vanilla
-  resolves registry-backed item-model properties. No-registry consumers still
-  fall back.
 - `not-needed`: synchronized conditional value/entity/location enchantment
   effects, damage immunity, equipment-drop prevention, and crossbow charging
   sounds remain server-owned in Vanilla 26.1. Conditional execution enters

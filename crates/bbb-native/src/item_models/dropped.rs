@@ -543,7 +543,9 @@ pub(crate) fn dropped_item_models(
     };
 
     for state in world.item_entity_stacks() {
-        let Some(item_id) = state.stack.item_id else {
+        let effective_stack = world.effective_item_stack(&state.stack);
+        let stack = effective_stack.as_ref();
+        let Some(item_id) = stack.item_id else {
             continue;
         };
         let position = [
@@ -551,7 +553,7 @@ pub(crate) fn dropped_item_models(
             state.position.y as f32,
             state.position.z as f32,
         ];
-        let count = rendered_amount(state.stack.count);
+        let count = rendered_amount(stack.count);
         // Vanilla `ItemClusterRenderState` seeds the jitter with `Item.getId + damageValue`; stackable
         // items (the ones that show more than one copy) are undamaged, so the protocol id matches.
         let seed = item_id as i64;
@@ -560,20 +562,20 @@ pub(crate) fn dropped_item_models(
         // items that define one); falls back to the vanilla `block/block` or `item/generated` default.
         let ground = |default_transform| {
             item_runtime
-                .item_display_transform_for_stack(&state.stack, BlockModelDisplayContext::Ground)
+                .item_display_transform_for_stack(stack, BlockModelDisplayContext::Ground)
                 .unwrap_or(default_transform)
         };
-        let foil =
-            item_stack_foil_mode(&state.stack, item_runtime, BlockModelDisplayContext::Ground);
+        let foil = item_stack_foil_mode(stack, item_runtime, BlockModelDisplayContext::Ground);
 
         let resolved = item_runtime.resolved_item_model_for_stack_with_registry_context(
-            &state.stack,
+            stack,
             BlockModelDisplayContext::Ground,
             trim_material_keys,
             trim_pattern_keys,
             enchantment_keys,
             damage_type_keys,
             attribute_keys,
+            world.frozen_registry_access(),
         );
         if resolved.as_ref().is_some_and(|resolved| {
             resolved
@@ -601,7 +603,7 @@ pub(crate) fn dropped_item_models(
                     } => {
                         if let Some(model) = special::project_special_item_model(
                             &model,
-                            &state.stack,
+                            stack,
                             item_runtime,
                             Some(world),
                             variant_textures,
@@ -781,13 +783,14 @@ pub(crate) fn dropped_item_models(
 
         // Flat path: extrude the item's sprite layers into a slab.
         let layers = item_runtime.generated_item_layers_for_stack_with_registry_context(
-            &state.stack,
+            stack,
             BlockModelDisplayContext::Ground,
             trim_material_keys,
             trim_pattern_keys,
             enchantment_keys,
             damage_type_keys,
             attribute_keys,
+            world.frozen_registry_access(),
         );
         if layers.is_empty() {
             continue;
@@ -981,7 +984,9 @@ pub(crate) fn ominous_item_spawner_models(
     };
 
     for state in world.ominous_item_spawner_item_states_at_partial_tick(entity_partial_tick) {
-        let Some(item_id) = state.stack.item_id else {
+        let effective_stack = world.effective_item_stack(&state.stack);
+        let stack = effective_stack.as_ref();
+        let Some(item_id) = stack.item_id else {
             continue;
         };
         let position = [
@@ -989,18 +994,17 @@ pub(crate) fn ominous_item_spawner_models(
             state.position.y as f32,
             state.position.z as f32,
         ];
-        let count = rendered_amount(state.stack.count);
+        let count = rendered_amount(stack.count);
         // Vanilla `ItemClusterRenderState.getSeedForItemStack`: item id plus damage. The currently
         // retained stack summary keeps item id; damaged stack jitter is deferred with broader item
         // component render-state parity.
         let seed = item_id as i64;
         let ground = |default_transform| {
             item_runtime
-                .item_display_transform_for_stack(&state.stack, BlockModelDisplayContext::Ground)
+                .item_display_transform_for_stack(stack, BlockModelDisplayContext::Ground)
                 .unwrap_or(default_transform)
         };
-        let foil =
-            item_stack_foil_mode(&state.stack, item_runtime, BlockModelDisplayContext::Ground);
+        let foil = item_stack_foil_mode(stack, item_runtime, BlockModelDisplayContext::Ground);
         let base = ominous_item_spawner_base_transform(position, state.age_ticks);
 
         if let Some(resource_id) = item_runtime.item_resource_id(item_id) {
@@ -1053,13 +1057,14 @@ pub(crate) fn ominous_item_spawner_models(
         }
 
         let layers = item_runtime.generated_item_layers_for_stack_with_registry_context(
-            &state.stack,
+            stack,
             BlockModelDisplayContext::Ground,
             trim_material_keys,
             trim_pattern_keys,
             enchantment_keys,
             damage_type_keys,
             attribute_keys,
+            world.frozen_registry_access(),
         );
         if layers.is_empty() {
             continue;
@@ -1102,6 +1107,7 @@ pub(crate) fn ominous_item_spawner_models(
 /// this helper reuses the same item-cluster bake as dropped item entities at the
 /// extracted particle position.
 pub(crate) fn item_pickup_particle_item_models(
+    world: &WorldStore,
     states: &[ItemPickupParticleRenderState],
     item_runtime: Option<&NativeItemRuntime>,
     terrain_textures: &TerrainTextureState,
@@ -1136,14 +1142,16 @@ pub(crate) fn item_pickup_particle_item_models(
             count: state.item.count,
             component_patch,
         };
+        let effective_stack = world.effective_item_stack(&stack);
+        let stack = effective_stack.as_ref();
         let count = rendered_amount(stack.count);
         let seed = state.item.item_id as i64;
         let ground = |default_transform| {
             item_runtime
-                .item_display_transform_for_stack(&stack, BlockModelDisplayContext::Ground)
+                .item_display_transform_for_stack(stack, BlockModelDisplayContext::Ground)
                 .unwrap_or(default_transform)
         };
-        let foil = item_stack_foil_mode(&stack, item_runtime, BlockModelDisplayContext::Ground);
+        let foil = item_stack_foil_mode(stack, item_runtime, BlockModelDisplayContext::Ground);
 
         if let Some(resource_id) = item_runtime.item_resource_id(state.item.item_id) {
             if let Some(quads) = terrain_textures.block_item_quads(resource_id, &BTreeMap::new()) {
@@ -1200,13 +1208,14 @@ pub(crate) fn item_pickup_particle_item_models(
         }
 
         let layers = item_runtime.generated_item_layers_for_stack_with_registry_context(
-            &stack,
+            stack,
             BlockModelDisplayContext::Ground,
             trim_material_keys,
             trim_pattern_keys,
             enchantment_keys,
             damage_type_keys,
             attribute_keys,
+            world.frozen_registry_access(),
         );
         if layers.is_empty() {
             continue;
@@ -2551,6 +2560,8 @@ pub(super) fn bake_item_stack_at_transform_with_light_and_overlay(
     light: [f32; 2],
     overlay: [f32; 2],
 ) {
+    let effective_stack = world.effective_item_stack(stack);
+    let stack = effective_stack.as_ref();
     let Some(item_id) = stack.item_id else {
         return;
     };
@@ -2612,6 +2623,7 @@ pub(super) fn bake_item_stack_at_transform_with_light_and_overlay(
         attribute_keys,
         using_item,
         use_context,
+        world.frozen_registry_access(),
     );
     if resolved.as_ref().is_some_and(|resolved| {
         resolved
@@ -2756,6 +2768,7 @@ pub(super) fn bake_item_stack_at_transform_with_light_and_overlay(
         attribute_keys,
         using_item,
         use_context,
+        world.frozen_registry_access(),
     );
     if layers.is_empty() {
         return;

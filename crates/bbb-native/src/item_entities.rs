@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 
+use bbb_pack::BlockModelDisplayContext;
 use bbb_renderer::{
     ItemEntityBillboard, ItemEntityBillboardLayer, ItemEntityBillboardOrientation, ItemEntityUvRect,
 };
@@ -8,7 +9,15 @@ use bbb_world::{
     TerrainLight, WorldStore,
 };
 
-use bbb_item_model::{ItemAtlasIcon, ItemAtlasIconLayer, ItemAtlasUvRect, NativeItemRuntime};
+use bbb_item_model::{
+    ItemAtlasIcon, ItemAtlasIconLayer, ItemAtlasUvRect, ItemModelKeybindContext,
+    ItemModelUseContext, NativeItemRuntime,
+};
+
+use crate::item_models::{
+    world_attribute_keys, world_damage_type_keys, world_enchantment_keys, world_trim_material_keys,
+    world_trim_pattern_keys,
+};
 
 /// Vanilla `ItemEntityRenderer` lifts the dropped item sprite to sit above the entity's ground
 /// position; the thrown-item projectiles (`ThrownItemRenderer`) render centered on the entity, so they
@@ -25,6 +34,7 @@ pub(crate) fn item_entity_billboards_from_world(
     let Some(item_runtime) = item_runtime else {
         return Vec::new();
     };
+    let icon_context = WorldItemIconContext::new(world);
 
     // Dropped items: the unit-scale sprite lifted above the ground position. Items already drawn as 3D
     // block-item models (see `item_models`) are skipped so they are not double-rendered.
@@ -33,7 +43,13 @@ pub(crate) fn item_entity_billboards_from_world(
         .into_iter()
         .filter(|state| !rendered_as_models.contains(&state.entity_id))
         .filter_map(|state| {
-            let icon = item_runtime.icon_for_stack(&state.stack)?;
+            let icon = item_icon_for_world_stack(
+                &icon_context,
+                item_runtime,
+                &state.stack,
+                Some("minecraft:item"),
+                state.entity_id,
+            )?;
             Some(item_entity_billboard_from_icon(
                 &state,
                 icon,
@@ -47,8 +63,16 @@ pub(crate) fn item_entity_billboards_from_world(
     // Thrown-item projectiles (snowball, egg, ender pearl, potions, fireballs, …) render the same item
     // sprite via vanilla `ThrownItemRenderer`, centered on the entity at that renderer's sprite scale.
     for (type_id, scale) in vanilla_entity_renderer_thrown_item_scales() {
+        let context_entity_type =
+            bbb_protocol::entity_types::vanilla_entity_resource_id_for_type_id(type_id);
         for state in world.item_stacks_for_entity_types(&[type_id]) {
-            if let Some(icon) = item_runtime.icon_for_stack(&state.stack) {
+            if let Some(icon) = item_icon_for_world_stack(
+                &icon_context,
+                item_runtime,
+                &state.stack,
+                context_entity_type.as_deref(),
+                state.entity_id,
+            ) {
                 billboards.push(item_entity_billboard_from_icon(
                     &state,
                     icon,
@@ -63,12 +87,82 @@ pub(crate) fn item_entity_billboards_from_world(
     // Firework rockets use vanilla `FireworkEntityRenderer`: a camera-facing `ItemStackRenderState`
     // with an extra post-camera rotation when `FireworkRocketRenderState.isShotAtAngle` is true.
     for state in world.firework_rocket_item_states() {
-        if let Some(icon) = item_runtime.icon_for_stack(&state.stack) {
+        if let Some(icon) = item_icon_for_world_stack(
+            &icon_context,
+            item_runtime,
+            &state.stack,
+            Some("minecraft:firework_rocket"),
+            state.entity_id,
+        ) {
             billboards.push(firework_rocket_billboard_from_icon(&state, icon));
         }
     }
 
     billboards
+}
+
+struct WorldItemIconContext<'a> {
+    world: &'a WorldStore,
+    trim_material_keys: Option<Vec<String>>,
+    trim_pattern_keys: Option<Vec<String>>,
+    enchantment_keys: Option<Vec<String>>,
+    damage_type_keys: Option<Vec<String>>,
+    attribute_keys: Option<Vec<String>>,
+}
+
+impl<'a> WorldItemIconContext<'a> {
+    fn new(world: &'a WorldStore) -> Self {
+        Self {
+            world,
+            trim_material_keys: world_trim_material_keys(world),
+            trim_pattern_keys: world_trim_pattern_keys(world),
+            enchantment_keys: world_enchantment_keys(world),
+            damage_type_keys: world_damage_type_keys(world),
+            attribute_keys: world_attribute_keys(world),
+        }
+    }
+}
+
+fn item_icon_for_world_stack(
+    context: &WorldItemIconContext<'_>,
+    item_runtime: &NativeItemRuntime,
+    stack: &bbb_protocol::packets::ItemStackSummary,
+    context_entity_type: Option<&str>,
+    item_model_seed: i32,
+) -> Option<ItemAtlasIcon> {
+    let effective_stack = context.world.effective_item_stack(stack);
+    let stack = effective_stack.as_ref();
+    item_runtime
+        .icon_for_stack_with_context_and_use_context_time_state_and_fishing_rod_cast_with_registry_context(
+            stack,
+            None,
+            false,
+            ItemModelUseContext::inactive(),
+            BlockModelDisplayContext::Ground,
+            0.0,
+            context.trim_material_keys.as_deref(),
+            context.trim_pattern_keys.as_deref(),
+            context.enchantment_keys.as_deref(),
+            context.damage_type_keys.as_deref(),
+            context.attribute_keys.as_deref(),
+            None,
+            context_entity_type,
+            None,
+            context
+                .world
+                .level_info()
+                .map(|level| level.dimension.as_str()),
+            None,
+            None,
+            false,
+            false,
+            false,
+            false,
+            ItemModelKeybindContext::default(),
+            false,
+            item_model_seed,
+            context.world.frozen_registry_access(),
+        )
 }
 
 fn item_entity_billboard_from_icon(

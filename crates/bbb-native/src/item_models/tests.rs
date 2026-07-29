@@ -28,6 +28,72 @@ use uuid::Uuid;
 
 const GRASS_BLOCK_STATE_ID: i32 = 9;
 
+fn rust_function_source<'a>(source: &'a str, signature: &str) -> &'a str {
+    let start = source.find(signature).expect("function signature");
+    let open = start
+        + source[start..]
+            .find('{')
+            .expect("function body opening brace");
+    let mut depth = 0_u32;
+    for (offset, byte) in source.as_bytes()[open..].iter().copied().enumerate() {
+        match byte {
+            b'{' => depth += 1,
+            b'}' => {
+                depth -= 1;
+                if depth == 0 {
+                    return &source[start..=open + offset];
+                }
+            }
+            _ => {}
+        }
+    }
+    panic!("function body closing brace");
+}
+
+#[test]
+fn component_select_level_backed_consumers_keep_world_projection_and_registry_owner() {
+    let dropped = include_str!("dropped.rs");
+    let item_entities = include_str!("../item_entities.rs");
+    let item_frames = include_str!("../item_frames.rs");
+    let runtime = include_str!("../runtime.rs");
+    for (source, signature) in [
+        (dropped, "pub(crate) fn dropped_item_models("),
+        (dropped, "pub(crate) fn ominous_item_spawner_models("),
+        (dropped, "pub(crate) fn item_pickup_particle_item_models("),
+        (
+            dropped,
+            "pub(super) fn bake_item_stack_at_transform_with_light_and_overlay(",
+        ),
+        (
+            item_frames,
+            "pub(crate) fn item_frame_models_with_map_cache(",
+        ),
+        (item_entities, "fn item_icon_for_world_stack("),
+        (runtime, "fn hud_resolved_item_model_for_stack("),
+        (runtime, "fn hud_item_icon_for_stack_with_owner_team_color("),
+    ] {
+        let body = rust_function_source(source, signature);
+        assert!(
+            body.contains("effective_item_stack("),
+            "{signature} must resolve the world-owned effective stack"
+        );
+        assert!(
+            body.contains("frozen_registry_access()"),
+            "{signature} must pass the current world registry owner"
+        );
+    }
+    assert_eq!(
+        rust_function_source(
+            item_entities,
+            "pub(crate) fn item_entity_billboards_from_world("
+        )
+        .matches("item_icon_for_world_stack(")
+        .count(),
+        3,
+        "dropped, thrown, and firework billboard families must delegate to the world-aware resolver"
+    );
+}
+
 #[test]
 fn entity_block_models_use_the_block_feature_lane() {
     let source = include_str!("dropped.rs");
@@ -4622,7 +4688,9 @@ fn item_pickup_particle_item_models_emit_ordinary_stack_meshes() {
         light: [6.0 / 15.0, 12.0 / 15.0],
     };
 
+    let world = WorldStore::new();
     let models = item_pickup_particle_item_models(
+        &world,
         &[state],
         Some(&item_runtime),
         &TerrainTextureState::default(),
@@ -4722,6 +4790,7 @@ fn item_pickup_particle_component_rich_bake_matches_dropped_item_bake() {
         light: [1.0, 1.0],
     };
     let pickup = item_pickup_particle_item_models(
+        &world,
         &[component_rich_state.clone()],
         Some(&item_runtime),
         &TerrainTextureState::default(),
@@ -4765,6 +4834,7 @@ fn item_pickup_particle_component_rich_bake_matches_dropped_item_bake() {
         ..component_rich_state
     };
     let plain = item_pickup_particle_item_models(
+        &world,
         &[plain_state],
         Some(&item_runtime),
         &TerrainTextureState::default(),
@@ -4776,6 +4846,232 @@ fn item_pickup_particle_component_rich_bake_matches_dropped_item_bake() {
     );
     assert_eq!(plain.residency.assets.len(), 1);
     assert_ne!(pickup.residency.assets, plain.residency.assets);
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn component_select_prototype_and_dynamic_registry_reach_native_item_consumers() {
+    const ITEM_ENTITY_ID: i32 = 880;
+    const SPAWNER_ENTITY_ID: i32 = 881;
+    const MATCH_ASSET: &str = "minecraft:item/component_select_match";
+    const FALLBACK_ASSET: &str = "minecraft:item/component_select_fallback";
+
+    let root = unique_item_model_temp_dir("component-select-native-consumers");
+    write_component_select_registry_item_runtime_fixture(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let item_id = item_runtime
+        .item_protocol_id("minecraft:component_selector")
+        .expect("fixture item registered");
+    let raw_stack = ItemStackSummary {
+        item_id: Some(item_id),
+        count: 1,
+        component_patch: DataComponentPatchSummary::default(),
+    };
+    let mut world = world_with_component_select_prototype(item_id);
+
+    let effective_stack = world.effective_item_stack(&raw_stack);
+    assert_eq!(
+        effective_stack
+            .component_patch
+            .damage_resistant_type_tag
+            .as_deref(),
+        Some("example:fire")
+    );
+    assert_eq!(
+        effective_stack
+            .component_patch
+            .damage_resistant_type_registry_ids,
+        [0]
+    );
+
+    // A context-free consumer cannot remap the named holder set and therefore
+    // deterministically uses the fallback. Supplying the current world owner
+    // round-trips the case key through the session registry and selects it.
+    let context_free_icon = item_runtime
+        .icon_for_stack(effective_stack.as_ref())
+        .expect("context-free fallback icon");
+    let context_free_layers = item_runtime.generated_item_layers_for_icon(context_free_icon);
+    assert_eq!(context_free_layers[0].asset_id.as_ref(), FALLBACK_ASSET);
+    let registry_layers = item_runtime.generated_item_layers_for_stack_with_registry_context(
+        effective_stack.as_ref(),
+        BlockModelDisplayContext::Ground,
+        None,
+        None,
+        None,
+        None,
+        None,
+        world.frozen_registry_access(),
+    );
+    assert_eq!(registry_layers[0].asset_id.as_ref(), MATCH_ASSET);
+
+    world.apply_add_entity(protocol_add_entity(
+        ITEM_ENTITY_ID,
+        VANILLA_ENTITY_TYPE_ITEM_ID,
+    ));
+    let item_data_id = vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_ITEM_ID,
+    )
+    .expect("generated ItemEntity item accessor");
+    assert!(world.apply_set_entity_data(SetEntityData {
+        id: ITEM_ENTITY_ID,
+        values: vec![EntityDataValue {
+            data_id: item_data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+            value: EntityDataValueKind::ItemStack(raw_stack.clone()),
+        }],
+    }));
+    let dropped = dropped_item_models(
+        &world,
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        None,
+        None,
+        0.0,
+        None,
+        None,
+        None,
+        None,
+        None,
+    );
+    assert_eq!(dropped.residency.assets[0].identity.model_id(), MATCH_ASSET);
+
+    world.apply_add_entity(protocol_add_entity(
+        SPAWNER_ENTITY_ID,
+        VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
+    ));
+    let spawner_item_data_id =
+        vanilla_entity_metadata_ominous_item_spawner_item_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
+        )
+        .expect("generated OminousItemSpawner item accessor");
+    assert!(world.apply_set_entity_data(SetEntityData {
+        id: SPAWNER_ENTITY_ID,
+        values: vec![EntityDataValue {
+            data_id: spawner_item_data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+            value: EntityDataValueKind::ItemStack(raw_stack.clone()),
+        }],
+    }));
+    let spawner = ominous_item_spawner_models(
+        &world,
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        0.0,
+        None,
+        None,
+        None,
+        None,
+        None,
+    );
+    assert_eq!(spawner.residency.assets[0].identity.model_id(), MATCH_ASSET);
+
+    let projectile_entity_id = 882;
+    world.apply_add_entity(protocol_add_entity(
+        projectile_entity_id,
+        VANILLA_ENTITY_TYPE_SNOWBALL_ID,
+    ));
+    let projectile_item_data_id =
+        bbb_world::vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer(
+            VANILLA_ENTITY_TYPE_SNOWBALL_ID,
+            "ITEM_STACK",
+        )
+        .expect("generated Snowball item-stack accessor")
+        .data_id;
+    assert!(world.apply_set_entity_data(SetEntityData {
+        id: projectile_entity_id,
+        values: vec![EntityDataValue {
+            data_id: projectile_item_data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+            value: EntityDataValueKind::ItemStack(raw_stack.clone()),
+        }],
+    }));
+    let billboards = crate::item_entities::item_entity_billboards_from_world(
+        &world,
+        Some(&item_runtime),
+        &BTreeSet::from([ITEM_ENTITY_ID]),
+    );
+    let projectile_billboard = billboards
+        .iter()
+        .find(|billboard| billboard.position == [0.0, 64.0, 0.0])
+        .expect("thrown-item billboard");
+    assert_eq!(
+        projectile_billboard.layers[0].uv.min,
+        registry_layers[0].rect.min
+    );
+    assert_eq!(
+        projectile_billboard.layers[0].uv.max,
+        registry_layers[0].rect.max
+    );
+
+    let pickup = item_pickup_particle_item_models(
+        &world,
+        &[ItemPickupParticleRenderState {
+            source_entity_id: ITEM_ENTITY_ID,
+            item: ParticleItemOptionState {
+                item_id,
+                count: 1,
+                component_patch_len: 0,
+            },
+            component_patch: None,
+            position: [0.0, 64.0, 0.0],
+            age_ticks: 0.0,
+            bob_offset: 0.0,
+            light: [1.0; 2],
+        }],
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        None,
+        None,
+        None,
+        None,
+        None,
+    );
+    assert_eq!(pickup.residency.assets[0].identity.model_id(), MATCH_ASSET);
+
+    let mut held_residency = ItemModelResidencyFrame::default();
+    let mut block = Vec::new();
+    let mut block_translucent = Vec::new();
+    let mut block_glint = Vec::new();
+    let mut block_glint_translucent = Vec::new();
+    let mut flat = Vec::new();
+    let mut flat_translucent = Vec::new();
+    let mut flat_glint = Vec::new();
+    let mut flat_glint_translucent = Vec::new();
+    bake_item_stack_at_transform(
+        &raw_stack,
+        &world,
+        Mat4::IDENTITY,
+        BlockModelDisplayContext::ThirdPersonRightHand,
+        false,
+        Some(false),
+        None,
+        Some("minecraft:player"),
+        None,
+        false,
+        0.0,
+        None,
+        None,
+        None,
+        None,
+        None,
+        BLOCK_THIRD_PERSON_FALLBACK,
+        GENERATED_THIRD_PERSON_FALLBACK,
+        &item_runtime,
+        &TerrainTextureState::default(),
+        None,
+        &mut block,
+        &mut block_translucent,
+        &mut block_glint,
+        &mut block_glint_translucent,
+        &mut flat,
+        &mut flat_translucent,
+        &mut flat_glint,
+        &mut flat_glint_translucent,
+        &mut held_residency,
+    );
+    assert_eq!(held_residency.assets[0].identity.model_id(), MATCH_ASSET);
 
     std::fs::remove_dir_all(root).unwrap();
 }
@@ -4973,6 +5269,70 @@ fn write_flat_item_runtime_fixture(root: &Path, item_ids: &[&str]) {
             &[(64 + index * 40) as u8, 80, 120, 255],
         );
     }
+}
+
+fn write_component_select_registry_item_runtime_fixture(root: &Path) {
+    let assets = item_model_assets_dir(root);
+    write_item_atlases(&assets);
+    write_item_registry_source(root, &["component_selector"]);
+    write_json(
+        &assets.join("items").join("component_selector.json"),
+        r##"{
+            "model": {
+                "type": "minecraft:select",
+                "property": "minecraft:component",
+                "component": "minecraft:damage_resistant",
+                "cases": [
+                    {
+                        "when": { "types": "#example:fire" },
+                        "model": {
+                            "type": "minecraft:model",
+                            "model": "minecraft:item/component_select_match"
+                        }
+                    }
+                ],
+                "fallback": {
+                    "type": "minecraft:model",
+                    "model": "minecraft:item/component_select_fallback"
+                }
+            }
+        }"##,
+    );
+    write_flat_item_model_and_texture(&assets, "component_select_match", &[180, 80, 40, 255]);
+    write_flat_item_model_and_texture(&assets, "component_select_fallback", &[40, 80, 180, 255]);
+}
+
+fn world_with_component_select_prototype(item_id: i32) -> WorldStore {
+    let mut world = WorldStore::new();
+    world.record_registry_entries(
+        "minecraft:damage_type",
+        0,
+        vec![bbb_world::RegistryPacketEntry::stub("example:in_fire")],
+    );
+    world.apply_update_tags(UpdateTags {
+        registries: vec![RegistryTags {
+            registry: "minecraft:damage_type".to_string(),
+            tags: vec![TagNetworkPayload {
+                tag: "example:fire".to_string(),
+                entries: vec![0],
+            }],
+        }],
+    });
+    world.set_default_item_component_type_ids(BTreeMap::from([(
+        item_id,
+        BTreeSet::from([
+            bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID,
+        ]),
+    )]));
+    world.set_default_item_component_codec_values(BTreeMap::from([(
+        item_id,
+        BTreeMap::from([(
+            bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID,
+            serde_json::json!({ "types": "#example:fire" }),
+        )]),
+    )]));
+    world.rebuild_item_component_defaults().unwrap();
+    world
 }
 
 fn write_team_tint_item_runtime_fixture(root: &Path) {
