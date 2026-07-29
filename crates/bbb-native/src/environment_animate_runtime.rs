@@ -6,21 +6,21 @@ use bbb_protocol::{
     packets::{SoundSource, Vec3d as ProtocolVec3d},
 };
 use bbb_world::{
-    block_name_is_pale_oak_log, BlockPos, ClientSoundEventHolder, EnvironmentBiomeSampling,
-    LevelEventSoundRandomState, LocalPlayerPoseState, SoundEventState, TerrainFluidKind,
-    TerrainFluidState, WorldStore,
+    block_name_is_candle, block_name_is_candle_cake, block_name_is_pale_oak_log, BlockPos,
+    ClientSoundEventHolder, EnvironmentBiomeSampling, LevelEventSoundRandomState,
+    LocalPlayerPoseState, SoundEventState, TerrainFluidKind, TerrainFluidState, WorldStore,
 };
 
 use crate::{
     audio_runtime::AudioEventSink,
     environment_audio_runtime::sound_holder_state,
     particle_runtime::{
-        dust_client_particle_options, dust_color_transition_client_particle_options,
-        pointed_dripstone_drip_context, pointed_dripstone_particle_position,
-        redstone_ore_particle_positions, redstone_ore_solid_render_faces,
-        simple_client_particle_options, EnvironmentParticleSpawn, LevelParticleSpawnContext,
-        ParticleBiomeSampler, ParticleEventSink, REDSTONE_EFFECT_DIRECTION_STEPS,
-        REDSTONE_PARTICLE_COLOR, SCULK_PARTICLE_COLOR,
+        candle_wick_offsets, dust_client_particle_options,
+        dust_color_transition_client_particle_options, pointed_dripstone_drip_context,
+        pointed_dripstone_particle_position, redstone_ore_particle_positions,
+        redstone_ore_solid_render_faces, simple_client_particle_options, EnvironmentParticleSpawn,
+        LevelParticleSpawnContext, ParticleBiomeSampler, ParticleEventSink,
+        REDSTONE_EFFECT_DIRECTION_STEPS, REDSTONE_PARTICLE_COLOR, SCULK_PARTICLE_COLOR,
     },
     simulation::effects::ParticleBatchSink,
 };
@@ -53,6 +53,7 @@ const SOUND_EVENT_RESPAWN_ANCHOR_AMBIENT: &str = "minecraft:block.respawn_anchor
 const SOUND_EVENT_PORTAL_AMBIENT: &str = "minecraft:block.portal.ambient";
 const SOUND_EVENT_DRIED_GHAST_AMBIENT: &str = "minecraft:block.dried_ghast.ambient";
 const SOUND_EVENT_DRIED_GHAST_AMBIENT_WATER: &str = "minecraft:block.dried_ghast.ambient_water";
+const SOUND_EVENT_CANDLE_AMBIENT: &str = "minecraft:block.candle.ambient";
 const PARTICLE_FIREFLY: &str = "minecraft:firefly";
 const PARTICLE_CURRENT_DOWN: &str = "minecraft:current_down";
 const PARTICLE_BUBBLE_COLUMN_UP: &str = "minecraft:bubble_column_up";
@@ -73,11 +74,13 @@ const PARTICLE_SPORE_BLOSSOM_AIR: &str = "minecraft:spore_blossom_air";
 const PARTICLE_ENCHANT: &str = "minecraft:enchant";
 const PARTICLE_END_ROD: &str = "minecraft:end_rod";
 const PARTICLE_DRIPPING_OBSIDIAN_TEAR: &str = "minecraft:dripping_obsidian_tear";
+const PARTICLE_SMALL_FLAME: &str = "minecraft:small_flame";
 
 const OPPOSITE_EFFECT_DIRECTION_INDICES: [usize; 6] = [1, 0, 3, 2, 5, 4];
 
 type FluidAnimateSound = (&'static str, [f64; 3], f32, f32);
 type FluidAnimateSounds = [Option<FluidAnimateSound>; 2];
+type CandleAnimateSound = ([f64; 3], f32, f32);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum FurnaceAnimateKind {
@@ -458,6 +461,28 @@ impl EnvironmentAnimateRuntime {
                     spawns,
                 );
             }
+            name if block_name_is_candle(name) => {
+                self.animate_candle(
+                    world,
+                    pos,
+                    &block.block_properties,
+                    false,
+                    animate_random,
+                    audio,
+                    spawns,
+                );
+            }
+            name if block_name_is_candle_cake(name) => {
+                self.animate_candle(
+                    world,
+                    pos,
+                    &block.block_properties,
+                    true,
+                    animate_random,
+                    audio,
+                    spawns,
+                );
+            }
             _ => {}
         }
 
@@ -526,6 +551,35 @@ impl EnvironmentAnimateRuntime {
             max_local_raw_brightness(world, pos, sky_darken),
             spawns,
         );
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn animate_candle(
+        &mut self,
+        world: &WorldStore,
+        pos: BlockPos,
+        properties: &BTreeMap<String, String>,
+        on_cake: bool,
+        animate_random: &mut LevelEventSoundRandomState,
+        audio: &mut Option<&mut dyn AudioEventSink>,
+        spawns: &mut Vec<EnvironmentParticleSpawn>,
+    ) {
+        for (position, volume, pitch) in
+            append_candle_animate_effects(pos, properties, on_cake, animate_random, spawns)
+        {
+            let seed = self.level_random.next_long();
+            if let Some(audio) = audio.as_deref_mut() {
+                audio.play_positioned_sound(&local_block_sound(
+                    world,
+                    SOUND_EVENT_CANDLE_AMBIENT,
+                    SoundSource::Blocks,
+                    position,
+                    volume,
+                    pitch,
+                    seed,
+                ));
+            }
+        }
     }
 
     fn animate_creaking_heart(
@@ -1614,6 +1668,62 @@ fn append_end_rod_animate_effect(
     });
 }
 
+fn append_candle_animate_effects(
+    pos: BlockPos,
+    properties: &BTreeMap<String, String>,
+    on_cake: bool,
+    random: &mut LevelEventSoundRandomState,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) -> Vec<CandleAnimateSound> {
+    if properties.get("lit").map(String::as_str) != Some("true") {
+        return Vec::new();
+    }
+    let candles = if on_cake {
+        1
+    } else {
+        let Some(candles) = properties
+            .get("candles")
+            .and_then(|candles| candles.parse::<u8>().ok())
+            .filter(|candles| (1..=4).contains(candles))
+        else {
+            return Vec::new();
+        };
+        candles
+    };
+
+    let mut sounds = Vec::new();
+    for offset in candle_wick_offsets(candles, on_cake) {
+        let position = [
+            f64::from(pos.x) + offset[0] / 16.0,
+            f64::from(pos.y) + offset[1] / 16.0,
+            f64::from(pos.z) + offset[2] / 16.0,
+        ];
+        let chance = random.next_float();
+        if chance < 0.3 {
+            spawns.push(EnvironmentParticleSpawn {
+                particle: simple_client_particle_options(PARTICLE_SMOKE),
+                position,
+                velocity: [0.0; 3],
+                always_show: false,
+            });
+            if chance < 0.17 {
+                sounds.push((
+                    position.map(|coordinate| coordinate + 0.5),
+                    1.0_f32 + random.next_float(),
+                    random.next_float() * 0.7_f32 + 0.3_f32,
+                ));
+            }
+        }
+        spawns.push(EnvironmentParticleSpawn {
+            particle: simple_client_particle_options(PARTICLE_SMALL_FLAME),
+            position,
+            velocity: [0.0; 3],
+            always_show: false,
+        });
+    }
+    sounds
+}
+
 fn block_state_direction(facing: &str) -> Option<[i32; 3]> {
     match facing {
         "down" => Some([0, -1, 0]),
@@ -2136,16 +2246,66 @@ impl ParticleBiomeSampler for EnvironmentWorldParticleBiomeSampler<'_> {
 mod tests {
     use std::collections::BTreeMap;
 
+    use bbb_audio::TickEntitySoundPositionsCommand;
+    use bbb_control::AudioCounters;
+    use bbb_pack::{JukeboxSongRegistry, SoundEventRegistry};
     use bbb_protocol::packets::{
         BlockUpdate, ChunkBiomeData, ChunkPos as ProtocolChunkPos, ChunksBiomes,
         CommonPlayerSpawnInfo, PlayLogin,
     };
     use bbb_world::{
-        ChunkColumn, ChunkPos, ChunkSection, ChunkState, ClientAmbientParticle, LightData,
-        PaletteDomain, PaletteKind, PalettedContainerData, RegistryPacketEntry, WorldDimension,
+        AmbientLoopSoundState, ChunkColumn, ChunkPos, ChunkSection, ChunkState,
+        ClientAmbientParticle, JukeboxLevelEventState, LightData, LocalSoundEventState,
+        PaletteDomain, PaletteKind, PalettedContainerData, RegistryPacketEntry,
+        SoundEntityEventState, StopSoundEventState, TickableEntitySoundState, WorldDimension,
     };
 
     use super::*;
+
+    #[derive(Default)]
+    struct RecordingEnvironmentAudio {
+        positioned: Vec<SoundEventState>,
+    }
+
+    impl AudioEventSink for RecordingEnvironmentAudio {
+        fn counters(&self) -> AudioCounters {
+            AudioCounters::default()
+        }
+
+        fn set_sound_event_registry(&mut self, _registry: SoundEventRegistry) {}
+
+        fn set_jukebox_song_registry(&mut self, _registry: JukeboxSongRegistry) {}
+
+        fn play_local_sound(&mut self, _state: &LocalSoundEventState) {}
+
+        fn play_positioned_sound(&mut self, state: &SoundEventState) {
+            self.positioned.push(state.clone());
+        }
+
+        fn play_entity_sound(
+            &mut self,
+            _state: &SoundEntityEventState,
+            _position: Option<[f64; 3]>,
+        ) {
+        }
+
+        fn play_jukebox_song(&mut self, _state: &JukeboxLevelEventState) {}
+
+        fn stop_jukebox_song(&mut self, _state: &JukeboxLevelEventState) {}
+
+        fn stop_sound(&mut self, _state: &StopSoundEventState) {}
+
+        fn set_music_gain(&mut self, _gain: f32) {}
+
+        fn sync_ambient_loops(&mut self, _loops: &[AmbientLoopSoundState]) {}
+
+        fn tick_entity_sound_positions(
+            &mut self,
+            _command: TickEntitySoundPositionsCommand,
+            _tickable_sounds: &[TickableEntitySoundState],
+        ) {
+        }
+    }
 
     #[test]
     fn animate_position_consumes_near_then_far_coordinate_draws() {
@@ -4109,6 +4269,236 @@ mod tests {
                 .count(),
             1
         );
+    }
+
+    #[test]
+    fn candle_animate_effects_preserve_wick_order_chance_branches_and_random_order() {
+        assert_eq!(candle_wick_offsets(1, false), &[[8.0, 8.0, 8.0]]);
+        assert_eq!(
+            candle_wick_offsets(2, false),
+            &[[6.0, 7.0, 8.0], [10.0, 8.0, 7.0]]
+        );
+        assert_eq!(
+            candle_wick_offsets(3, false),
+            &[[8.0, 5.0, 10.0], [6.0, 7.0, 8.0], [9.0, 8.0, 7.0]]
+        );
+        assert_eq!(
+            candle_wick_offsets(4, false),
+            &[
+                [7.0, 5.0, 9.0],
+                [10.0, 7.0, 9.0],
+                [6.0, 7.0, 6.0],
+                [9.0, 8.0, 6.0],
+            ]
+        );
+        assert_eq!(candle_wick_offsets(1, true), &[[8.0, 16.0, 8.0]]);
+
+        let seed = (0..1_000_000)
+            .find(|seed| {
+                let mut random = LevelEventSoundRandomState::with_seed(*seed);
+                let mut saw_sound = false;
+                let mut saw_smoke_only = false;
+                let mut saw_flame_only = false;
+                for _ in 0..4 {
+                    let chance = random.next_float();
+                    if chance < 0.17 {
+                        saw_sound = true;
+                        let _ = random.next_float();
+                        let _ = random.next_float();
+                    } else if chance < 0.3 {
+                        saw_smoke_only = true;
+                    } else {
+                        saw_flame_only = true;
+                    }
+                }
+                saw_sound && saw_smoke_only && saw_flame_only
+            })
+            .expect("deterministic candle branch coverage seed");
+        let pos = BlockPos { x: 8, y: 32, z: 8 };
+        let properties = BTreeMap::from([
+            ("candles".to_string(), "4".to_string()),
+            ("lit".to_string(), "true".to_string()),
+        ]);
+        let mut actual = LevelEventSoundRandomState::with_seed(seed);
+        let mut spawns = Vec::new();
+        let sounds =
+            append_candle_animate_effects(pos, &properties, false, &mut actual, &mut spawns);
+
+        let mut expected = LevelEventSoundRandomState::with_seed(seed);
+        let mut expected_spawns = Vec::new();
+        let mut expected_sounds = Vec::new();
+        for offset in candle_wick_offsets(4, false) {
+            let position = [
+                8.0 + offset[0] / 16.0,
+                32.0 + offset[1] / 16.0,
+                8.0 + offset[2] / 16.0,
+            ];
+            let chance = expected.next_float();
+            if chance < 0.3 {
+                expected_spawns.push((PARTICLE_SMOKE, position));
+                if chance < 0.17 {
+                    expected_sounds.push((
+                        position.map(|coordinate| coordinate + 0.5),
+                        1.0_f32 + expected.next_float(),
+                        expected.next_float() * 0.7_f32 + 0.3_f32,
+                    ));
+                }
+            }
+            expected_spawns.push((PARTICLE_SMALL_FLAME, position));
+        }
+        assert_eq!(
+            spawns
+                .iter()
+                .map(|spawn| (spawn.particle.resource_id.as_str(), spawn.position))
+                .collect::<Vec<_>>(),
+            expected_spawns
+        );
+        assert!(spawns
+            .iter()
+            .all(|spawn| spawn.velocity == [0.0; 3] && !spawn.always_show));
+        assert_eq!(sounds, expected_sounds);
+        assert_eq!(actual.next_long(), expected.next_long());
+
+        let cake_properties = BTreeMap::from([("lit".to_string(), "true".to_string())]);
+        let mut cake_random = LevelEventSoundRandomState::with_seed(seed);
+        let mut cake_spawns = Vec::new();
+        let _ = append_candle_animate_effects(
+            pos,
+            &cake_properties,
+            true,
+            &mut cake_random,
+            &mut cake_spawns,
+        );
+        assert_eq!(
+            cake_spawns.last().map(|spawn| spawn.position),
+            Some([8.5, 33.0, 8.5])
+        );
+
+        let unlit = BTreeMap::from([
+            ("candles".to_string(), "4".to_string()),
+            ("lit".to_string(), "false".to_string()),
+        ]);
+        let mut unlit_actual = LevelEventSoundRandomState::with_seed(seed);
+        let mut unlit_expected = LevelEventSoundRandomState::with_seed(seed);
+        let mut unlit_spawns = Vec::new();
+        assert!(append_candle_animate_effects(
+            pos,
+            &unlit,
+            false,
+            &mut unlit_actual,
+            &mut unlit_spawns,
+        )
+        .is_empty());
+        assert!(unlit_spawns.is_empty());
+        assert_eq!(unlit_actual.next_long(), unlit_expected.next_long());
+    }
+
+    #[test]
+    fn candle_animate_sound_reaches_audio_sink_with_shared_level_seed() {
+        let animate_seed = (0..100_000)
+            .find(|seed| LevelEventSoundRandomState::with_seed(*seed).next_float() < 0.17)
+            .expect("deterministic candle sound seed");
+        let pos = BlockPos { x: 8, y: 32, z: 8 };
+        let properties = BTreeMap::from([
+            ("candles".to_string(), "1".to_string()),
+            ("lit".to_string(), "true".to_string()),
+        ]);
+        let world = WorldStore::default();
+        let expected_sound_registry_id = world
+            .resolved_registry_entry_by_resource_id(
+                "minecraft:sound_event",
+                SOUND_EVENT_CANDLE_AMBIENT,
+            )
+            .map(|entry| entry.holder_id);
+        let mut runtime = EnvironmentAnimateRuntime {
+            level_random: LevelEventSoundRandomState::with_seed(91),
+            ..EnvironmentAnimateRuntime::default()
+        };
+        let mut animate_actual = LevelEventSoundRandomState::with_seed(animate_seed);
+        let mut animate_expected = LevelEventSoundRandomState::with_seed(animate_seed);
+        let mut recording = RecordingEnvironmentAudio::default();
+        let mut audio: Option<&mut dyn AudioEventSink> = Some(&mut recording);
+        let mut spawns = Vec::new();
+
+        runtime.animate_candle(
+            &world,
+            pos,
+            &properties,
+            false,
+            &mut animate_actual,
+            &mut audio,
+            &mut spawns,
+        );
+
+        assert!(animate_expected.next_float() < 0.17);
+        let expected_volume = 1.0_f32 + animate_expected.next_float();
+        let expected_pitch = animate_expected.next_float() * 0.7_f32 + 0.3_f32;
+        assert_eq!(animate_actual.next_long(), animate_expected.next_long());
+        let mut level_expected = LevelEventSoundRandomState::with_seed(91);
+        let expected_seed = level_expected.next_long();
+        let [sound] = recording.positioned.as_slice() else {
+            panic!("candle sound should reach the positioned audio sink");
+        };
+        assert_eq!(sound.sound.kind, "reference");
+        assert_eq!(sound.sound.registry_id, expected_sound_registry_id);
+        assert_eq!(sound.source, SoundSource::Blocks.as_str());
+        assert_eq!(
+            [sound.position.x, sound.position.y, sound.position.z],
+            [9.0, 33.0, 9.0]
+        );
+        assert_eq!(sound.volume, expected_volume);
+        assert_eq!(sound.pitch, expected_pitch);
+        assert_eq!(sound.seed, expected_seed);
+        assert_eq!(runtime.level_random.next_long(), level_expected.next_long());
+        assert_eq!(
+            spawns
+                .iter()
+                .map(|spawn| spawn.particle.resource_id.as_str())
+                .collect::<Vec<_>>(),
+            vec![PARTICLE_SMOKE, PARTICLE_SMALL_FLAME]
+        );
+    }
+
+    #[test]
+    fn environment_dispatches_normal_and_cake_candle_wicks() {
+        let center = BlockPos { x: 8, y: 32, z: 8 };
+        for (name, properties, expected_flames) in [
+            (
+                "minecraft:blue_candle",
+                vec![("candles", "4"), ("lit", "true"), ("waterlogged", "false")],
+                4,
+            ),
+            ("minecraft:black_candle_cake", vec![("lit", "true")], 1),
+        ] {
+            let mut sampled_level_random = LevelEventSoundRandomState::with_seed(0);
+            let pos =
+                sample_animate_position(&mut sampled_level_random, center, NEAR_SAMPLE_RADIUS);
+            let mut world = world_with_ambient_particles();
+            set_block(&mut world, pos, block_state_id(name, &properties));
+            let mut runtime = EnvironmentAnimateRuntime::default();
+            let mut animate_random = LevelEventSoundRandomState::with_seed(42);
+            let mut audio = None;
+            let mut spawns = Vec::new();
+
+            runtime.do_animate_tick(
+                &mut world,
+                center,
+                NEAR_SAMPLE_RADIUS,
+                0,
+                &mut animate_random,
+                &mut audio,
+                &mut spawns,
+            );
+
+            assert_eq!(
+                spawns
+                    .iter()
+                    .filter(|spawn| spawn.particle.resource_id == PARTICLE_SMALL_FLAME)
+                    .count(),
+                expected_flames,
+                "{name}"
+            );
+        }
     }
 
     #[test]

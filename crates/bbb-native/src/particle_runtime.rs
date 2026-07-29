@@ -1592,7 +1592,7 @@ use atlas::*;
 use block_map_color::*;
 use explosion::*;
 use ids::*;
-pub(crate) use resolver_player_actions::local_destroy_hit_particle_state;
+pub(crate) use resolver_player_actions::{candle_wick_offsets, local_destroy_hit_particle_state};
 
 #[cfg(test)]
 mod tests;

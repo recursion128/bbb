@@ -5,6 +5,24 @@ const BREAKING_PARTICLE_DIAMETER: f64 = 0.2_f32 as f64;
 const DRAGON_EGG_TELEPORT_ATTEMPTS: usize = 1_000;
 const DRAGON_EGG_PORTAL_PARTICLES: usize = 128;
 
+pub(crate) fn candle_wick_offsets(candles: u8, on_cake: bool) -> &'static [[f64; 3]] {
+    if on_cake {
+        return &[[8.0, 16.0, 8.0]];
+    }
+    match candles {
+        1 => &[[8.0, 8.0, 8.0]],
+        2 => &[[6.0, 7.0, 8.0], [10.0, 8.0, 7.0]],
+        3 => &[[8.0, 5.0, 10.0], [6.0, 7.0, 8.0], [9.0, 8.0, 7.0]],
+        4 => &[
+            [7.0, 5.0, 9.0],
+            [10.0, 7.0, 9.0],
+            [6.0, 7.0, 6.0],
+            [9.0, 8.0, 6.0],
+        ],
+        _ => &[],
+    }
+}
+
 pub(crate) fn local_destroy_hit_particle_state(
     world: &WorldStore,
     pos: WorldBlockPos,
@@ -157,21 +175,9 @@ impl ParticleCommandResolver {
         pos: WorldBlockPos,
         candles: u8,
     ) -> ParticleSpawnBatch {
-        let offsets: &[[f64; 3]] = match candles {
-            1 => &[[8.0, 8.0, 8.0]],
-            2 => &[[6.0, 7.0, 8.0], [10.0, 8.0, 7.0]],
-            3 => &[[8.0, 5.0, 10.0], [6.0, 7.0, 8.0], [9.0, 8.0, 7.0]],
-            4 => &[
-                [7.0, 5.0, 9.0],
-                [10.0, 7.0, 9.0],
-                [6.0, 7.0, 6.0],
-                [9.0, 8.0, 6.0],
-            ],
-            _ => &[],
-        };
         self.simple_particle_batch(
             VANILLA_PARTICLE_TYPE_SMOKE_ID,
-            offsets
+            candle_wick_offsets(candles, false)
                 .iter()
                 .map(|offset| {
                     (
@@ -194,18 +200,23 @@ impl ParticleCommandResolver {
     fn candle_cake_extinguish_particle_batch(&mut self, pos: WorldBlockPos) -> ParticleSpawnBatch {
         self.simple_particle_batch(
             VANILLA_PARTICLE_TYPE_SMOKE_ID,
-            vec![(
-                Vec3d {
-                    x: f64::from(pos.x) + 0.5,
-                    y: f64::from(pos.y) + 1.0,
-                    z: f64::from(pos.z) + 0.5,
-                },
-                Vec3d {
-                    x: 0.0,
-                    y: f64::from(0.1_f32),
-                    z: 0.0,
-                },
-            )],
+            candle_wick_offsets(1, true)
+                .iter()
+                .map(|offset| {
+                    (
+                        Vec3d {
+                            x: f64::from(pos.x) + offset[0] / 16.0,
+                            y: f64::from(pos.y) + offset[1] / 16.0,
+                            z: f64::from(pos.z) + offset[2] / 16.0,
+                        },
+                        Vec3d {
+                            x: 0.0,
+                            y: f64::from(0.1_f32),
+                            z: 0.0,
+                        },
+                    )
+                })
+                .collect(),
         )
     }
 
