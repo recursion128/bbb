@@ -213,13 +213,6 @@ Skin/cape/elytra requests share one exact resource/session-generation cache.
 - Give failed, pending, and ready states an explicit fallback. Never draw a
   stale texture.
 
-## Bundle selected-item icon state
-
-Owner: `bbb-protocol` + `bbb-world` + `bbb-native` + `bbb-pack`
-
-- Extend renderer/UI coverage of the selected-item icon beyond hotbar icon
-  snapshots.
-
 ---
 
 # Deferred

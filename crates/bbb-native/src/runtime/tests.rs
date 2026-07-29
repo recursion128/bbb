@@ -13716,6 +13716,63 @@ fn gui_item_model_reuses_bundle_selected_context_for_special_leaf() {
 }
 
 #[test]
+fn hud_inventory_screen_projects_selected_bundle_child_resident_layers() {
+    let root = unique_runtime_temp_dir("inventory-bundle-selected-special-item");
+    write_runtime_special_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let bundle = ItemStackSummary {
+        item_id: item_runtime.item_protocol_id("minecraft:bundle"),
+        count: 1,
+        component_patch: DataComponentPatchSummary {
+            bundle_contents_items: vec![bbb_protocol::packets::ItemStackTemplateSummary {
+                item_id: item_runtime
+                    .item_protocol_id("minecraft:special_trident")
+                    .unwrap(),
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            }],
+            bundle_contents_item_count: Some(1),
+            ..DataComponentPatchSummary::default()
+        },
+    };
+    let mut world = WorldStore::new();
+    assert!(
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: bundle,
+        })
+    );
+    assert!(world.open_local_inventory());
+    assert!(world.apply_local_select_bundle_item(36, 0));
+
+    let screen = hud_inventory_screen(&world, Some(&item_runtime), Some(36), 0.0)
+        .expect("local inventory screen");
+    let slot = screen
+        .slots
+        .iter()
+        .find(|slot| slot.slot_id == 36)
+        .expect("selected bundle slot");
+    let model = slot
+        .block_model
+        .as_ref()
+        .expect("selected bundle child resident model");
+    assert!(matches!(
+        model.resident_layers.as_ref(),
+        [
+            HudResidentItemLayer::Generated { .. },
+            HudResidentItemLayer::Special {
+                model: bbb_renderer::SpecialItemModel::Trident { .. },
+                ..
+            },
+            HudResidentItemLayer::Generated { .. },
+        ]
+    ));
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn gui_item_model_reuses_live_carried_context_for_special_leaf() {
     let root = unique_runtime_temp_dir("hud-carried-special-item");
     write_runtime_special_item_assets(&root);
