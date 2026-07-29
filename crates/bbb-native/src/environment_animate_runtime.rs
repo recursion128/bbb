@@ -2725,30 +2725,24 @@ mod tests {
         assert_eq!(dry_actual.next_long(), dry_expected.next_long());
 
         set_block(&mut world, below, block_state_id("minecraft:stone", &[]));
-        let mut unsupported_actual = LevelEventSoundRandomState::with_seed(effect_seed);
-        let mut unsupported_expected = LevelEventSoundRandomState::with_seed(effect_seed);
-        let mut unsupported_spawns = Vec::new();
+        let mut stone_actual = LevelEventSoundRandomState::with_seed(effect_seed);
+        let mut stone_expected = LevelEventSoundRandomState::with_seed(effect_seed);
+        let mut stone_spawns = Vec::new();
         assert_eq!(
             append_dried_ghast_animate_effects(
                 &world,
                 pos,
                 false,
-                &mut unsupported_actual,
-                &mut unsupported_spawns,
+                &mut stone_actual,
+                &mut stone_spawns,
             ),
             None
         );
-        assert_eq!(unsupported_expected.next_int_bound(40), 0);
-        assert_eq!(unsupported_expected.next_int_bound(6), 0);
-        assert_eq!(unsupported_spawns.len(), 1);
-        assert_eq!(
-            unsupported_spawns[0].particle.resource_id,
-            PARTICLE_WHITE_SMOKE
-        );
-        assert_eq!(
-            unsupported_actual.next_long(),
-            unsupported_expected.next_long()
-        );
+        assert_eq!(stone_expected.next_int_bound(40), 0);
+        assert_eq!(stone_expected.next_int_bound(6), 0);
+        assert_eq!(stone_spawns.len(), 1);
+        assert_eq!(stone_spawns[0].particle.resource_id, PARTICLE_WHITE_SMOKE);
+        assert_eq!(stone_actual.next_long(), stone_expected.next_long());
 
         let mut water_actual = LevelEventSoundRandomState::with_seed(effect_seed);
         let mut water_expected = LevelEventSoundRandomState::with_seed(effect_seed);
