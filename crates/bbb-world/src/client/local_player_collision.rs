@@ -69,8 +69,9 @@ pub struct EnvironmentAnimateBlockSample {
     pub fluid: Option<crate::TerrainFluidState>,
     pub block_is_air: bool,
     pub solid_render: bool,
-    pub down_face_sturdy: bool,
-    pub up_face_sturdy: bool,
+    /// `BlockState.isFaceSturdy(..., SupportType.FULL)` in Vanilla
+    /// `Direction.values()` order: down, up, north, south, west, east.
+    pub full_face_sturdy: [bool; 6],
     pub fire_flammable: bool,
     pub triggers_dried_ghast_ambient_sound: bool,
     pub enchantment_power_provider: bool,
@@ -694,15 +695,24 @@ impl WorldStore {
         block: &BlockProbe,
         direction: ProtocolDirection,
     ) -> Option<bool> {
+        self.block_full_face_sturdy_faces(block)
+            .map(|faces| faces[protocol_direction_index(direction)])
+    }
+
+    /// All cached FULL support results in Vanilla `Direction.values()` order.
+    pub(crate) fn block_full_face_sturdy_faces(&self, block: &BlockProbe) -> Option<[bool; 6]> {
         let facts = vanilla_block_state_support_facts(block.block_state_id)?;
-        Some(if facts.dynamic_shape() {
-            self.block_has_full_sturdy_face(block, direction)
+        if facts.dynamic_shape() {
+            let [west, south, east, north, down, up] = self.debug_block_sturdy_faces(block);
+            Some([down, up, north, south, west, east])
         } else {
-            facts.face_sturdy(
-                vanilla_support_direction(direction),
-                VanillaBlockSupportType::Full,
-            )
-        })
+            Some(VANILLA_PROTOCOL_DIRECTIONS.map(|direction| {
+                facts.face_sturdy(
+                    vanilla_support_direction(direction),
+                    VanillaBlockSupportType::Full,
+                )
+            }))
+        }
     }
 
     /// Mirrors `SupportType.CENTER` for the vertical support queries used by
@@ -1444,13 +1454,15 @@ impl WorldStore {
         let block = self.probe_block(pos)?;
         let shape = block_collision_shape_empty_context(&block, pos);
         let block_name = block.block_name.as_deref()?;
+        let full_face_sturdy = self
+            .block_full_face_sturdy_faces(&block)
+            .unwrap_or([false; 6]);
         Some(EnvironmentAnimateBlockSample {
             fluid: block.fluid,
             block_is_air: block_name_is_air(block_name),
             solid_render: vanilla_block_state_support_facts(block.block_state_id)
                 .is_some_and(|facts| facts.solid_render()),
-            down_face_sturdy: shape.is_some_and(|shape| shape.has_full_face(BlockDirection::Down)),
-            up_face_sturdy: shape.is_some_and(|shape| shape.has_full_face(BlockDirection::Up)),
+            full_face_sturdy,
             fire_flammable: block_name_is_fire_flammable(block_name),
             triggers_dried_ghast_ambient_sound: block_name_triggers_dried_ghast_ambient_sound(
                 block_name,
@@ -4733,6 +4745,26 @@ fn vanilla_support_direction(direction: ProtocolDirection) -> VanillaBlockSuppor
     }
 }
 
+fn protocol_direction_index(direction: ProtocolDirection) -> usize {
+    match direction {
+        ProtocolDirection::Down => 0,
+        ProtocolDirection::Up => 1,
+        ProtocolDirection::North => 2,
+        ProtocolDirection::South => 3,
+        ProtocolDirection::West => 4,
+        ProtocolDirection::East => 5,
+    }
+}
+
+const VANILLA_PROTOCOL_DIRECTIONS: [ProtocolDirection; 6] = [
+    ProtocolDirection::Down,
+    ProtocolDirection::Up,
+    ProtocolDirection::North,
+    ProtocolDirection::South,
+    ProtocolDirection::West,
+    ProtocolDirection::East,
+];
+
 const DEBUG_SOLID_FACE_DIRECTIONS: [BlockDirection; 6] = [
     BlockDirection::West,
     BlockDirection::South,
@@ -6472,8 +6504,7 @@ mod tests {
                 fluid: None,
                 block_is_air: true,
                 solid_render: false,
-                down_face_sturdy: false,
-                up_face_sturdy: false,
+                full_face_sturdy: [false; 6],
                 fire_flammable: false,
                 triggers_dried_ghast_ambient_sound: false,
                 enchantment_power_provider: false,
@@ -6491,8 +6522,7 @@ mod tests {
                 fluid: None,
                 block_is_air: false,
                 solid_render: true,
-                down_face_sturdy: true,
-                up_face_sturdy: true,
+                full_face_sturdy: [true; 6],
                 fire_flammable: false,
                 triggers_dried_ghast_ambient_sound: false,
                 enchantment_power_provider: false,
@@ -6518,8 +6548,10 @@ mod tests {
             .environment_animate_block_sample(pos)
             .expect("loaded top slab");
         assert!(!top_slab.solid_render);
-        assert!(!top_slab.down_face_sturdy);
-        assert!(top_slab.up_face_sturdy);
+        assert_eq!(
+            top_slab.full_face_sturdy,
+            [false, true, false, false, false, false]
+        );
         assert_eq!(
             top_slab.collision_bounds,
             Some(EnvironmentAnimateCollisionBounds {

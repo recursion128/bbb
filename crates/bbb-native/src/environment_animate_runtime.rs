@@ -72,6 +72,9 @@ const PARTICLE_FALLING_SPORE_BLOSSOM: &str = "minecraft:falling_spore_blossom";
 const PARTICLE_SPORE_BLOSSOM_AIR: &str = "minecraft:spore_blossom_air";
 const PARTICLE_ENCHANT: &str = "minecraft:enchant";
 const PARTICLE_END_ROD: &str = "minecraft:end_rod";
+const PARTICLE_DRIPPING_OBSIDIAN_TEAR: &str = "minecraft:dripping_obsidian_tear";
+
+const OPPOSITE_EFFECT_DIRECTION_INDICES: [usize; 6] = [1, 0, 3, 2, 5, 4];
 
 type FluidAnimateSound = (&'static str, [f64; 3], f32, f32);
 type FluidAnimateSounds = [Option<FluidAnimateSound>; 2];
@@ -397,6 +400,12 @@ impl EnvironmentAnimateRuntime {
             }
             "minecraft:end_rod" => {
                 append_end_rod_animate_effect(pos, &block.block_properties, animate_random, spawns);
+            }
+            "minecraft:wet_sponge" => {
+                append_wet_sponge_animate_effect(world, pos, animate_random, spawns);
+            }
+            "minecraft:crying_obsidian" => {
+                append_crying_obsidian_animate_effect(world, pos, animate_random, spawns);
             }
             "minecraft:redstone_torch" => {
                 append_redstone_torch_animate_effect(
@@ -964,7 +973,7 @@ fn append_fluid_drip_particle(
         .collision_bounds
         .map_or(f64::NEG_INFINITY, |bounds| bounds.max_y);
     let range_and_y = if below_top < 1.0 {
-        fluid_block.down_face_sturdy.then_some((
+        fluid_block.full_face_sturdy[0].then_some((
             [f64::from(below_pos.x), f64::from(below_pos.x) + 1.0],
             [f64::from(below_pos.z), f64::from(below_pos.z) + 1.0],
             f64::from(below_pos.y) + 0.95,
@@ -1148,7 +1157,7 @@ fn append_fire_animate_effects(
     };
     let below_sample = world.environment_animate_block_sample(below);
     let below_burns = burns_all_blocks || below_sample.is_some_and(|sample| sample.fire_flammable);
-    let below_has_sturdy_top = below_sample.is_some_and(|sample| sample.up_face_sturdy);
+    let below_has_sturdy_top = below_sample.is_some_and(|sample| sample.full_face_sturdy[1]);
     if below_burns || below_has_sturdy_top {
         for _ in 0..3 {
             spawns.push(EnvironmentParticleSpawn {
@@ -1615,6 +1624,94 @@ fn block_state_direction(facing: &str) -> Option<[i32; 3]> {
         "east" => Some([1, 0, 0]),
         _ => None,
     }
+}
+
+fn append_wet_sponge_animate_effect(
+    world: &WorldStore,
+    pos: BlockPos,
+    random: &mut LevelEventSoundRandomState,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) {
+    let direction_index = random.next_int_bound(6) as usize;
+    if direction_index == 1 || neighbor_has_sturdy_opposite_face(world, pos, direction_index) {
+        return;
+    }
+    let direction = REDSTONE_EFFECT_DIRECTION_STEPS[direction_index];
+    let mut x = f64::from(pos.x);
+    let mut y = f64::from(pos.y);
+    let mut z = f64::from(pos.z);
+    if direction_index == 0 {
+        y -= 0.05;
+        x += random.next_double();
+        z += random.next_double();
+    } else {
+        y += random.next_double() * 0.8;
+        if direction[0] != 0 {
+            z += random.next_double();
+            x += if direction[0] > 0 { 1.1 } else { 0.05 };
+        } else {
+            x += random.next_double();
+            z += if direction[2] > 0 { 1.1 } else { 0.05 };
+        }
+    }
+
+    spawns.push(EnvironmentParticleSpawn {
+        particle: simple_client_particle_options(PARTICLE_DRIPPING_WATER),
+        position: [x, y, z],
+        velocity: [0.0; 3],
+        always_show: false,
+    });
+}
+
+fn append_crying_obsidian_animate_effect(
+    world: &WorldStore,
+    pos: BlockPos,
+    random: &mut LevelEventSoundRandomState,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) {
+    if random.next_int_bound(5) != 0 {
+        return;
+    }
+    let direction_index = random.next_int_bound(6) as usize;
+    if direction_index == 1 || neighbor_has_sturdy_opposite_face(world, pos, direction_index) {
+        return;
+    }
+    let direction = REDSTONE_EFFECT_DIRECTION_STEPS[direction_index];
+    spawns.push(EnvironmentParticleSpawn {
+        particle: simple_client_particle_options(PARTICLE_DRIPPING_OBSIDIAN_TEAR),
+        position: [
+            f64::from(pos.x) + crying_obsidian_offset(direction[0], random),
+            f64::from(pos.y) + crying_obsidian_offset(direction[1], random),
+            f64::from(pos.z) + crying_obsidian_offset(direction[2], random),
+        ],
+        velocity: [0.0; 3],
+        always_show: false,
+    });
+}
+
+fn crying_obsidian_offset(step: i32, random: &mut LevelEventSoundRandomState) -> f64 {
+    if step == 0 {
+        random.next_double()
+    } else {
+        0.5 + f64::from(step) * 0.6
+    }
+}
+
+fn neighbor_has_sturdy_opposite_face(
+    world: &WorldStore,
+    pos: BlockPos,
+    direction_index: usize,
+) -> bool {
+    let step = REDSTONE_EFFECT_DIRECTION_STEPS[direction_index];
+    world
+        .environment_animate_block_sample(BlockPos {
+            x: pos.x + step[0],
+            y: pos.y + step[1],
+            z: pos.z + step[2],
+        })
+        .is_some_and(|sample| {
+            sample.full_face_sturdy[OPPOSITE_EFFECT_DIRECTION_INDICES[direction_index]]
+        })
 }
 
 fn append_redstone_torch_animate_effect(
@@ -4012,6 +4109,207 @@ mod tests {
                 .count(),
             1
         );
+    }
+
+    #[test]
+    fn wet_sponge_animate_effect_preserves_directions_sturdy_gate_and_random_order() {
+        let pos = BlockPos { x: 8, y: 32, z: 8 };
+        let world = world_with_ambient_particles();
+        for direction_index in 0..6 {
+            let seed = animate_direction_seed(None, direction_index);
+            let mut actual = LevelEventSoundRandomState::with_seed(seed);
+            let mut expected = LevelEventSoundRandomState::with_seed(seed);
+            let mut spawns = Vec::new();
+            append_wet_sponge_animate_effect(&world, pos, &mut actual, &mut spawns);
+
+            assert_eq!(expected.next_int_bound(6) as usize, direction_index);
+            if direction_index == 1 {
+                assert!(spawns.is_empty(), "up direction short-circuits");
+            } else {
+                let direction = REDSTONE_EFFECT_DIRECTION_STEPS[direction_index];
+                let mut expected_position = [8.0, 32.0, 8.0];
+                if direction_index == 0 {
+                    expected_position[1] -= 0.05;
+                    expected_position[0] += expected.next_double();
+                    expected_position[2] += expected.next_double();
+                } else {
+                    expected_position[1] += expected.next_double() * 0.8;
+                    if direction[0] != 0 {
+                        expected_position[2] += expected.next_double();
+                        expected_position[0] += if direction[0] > 0 { 1.1 } else { 0.05 };
+                    } else {
+                        expected_position[0] += expected.next_double();
+                        expected_position[2] += if direction[2] > 0 { 1.1 } else { 0.05 };
+                    }
+                }
+                let [spawn] = spawns.as_slice() else {
+                    panic!("direction {direction_index} should emit one drip");
+                };
+                assert_eq!(spawn.particle.resource_id, PARTICLE_DRIPPING_WATER);
+                assert_eq!(spawn.position, expected_position);
+                assert_eq!(spawn.velocity, [0.0; 3]);
+                assert!(!spawn.always_show);
+            }
+            assert_eq!(actual.next_long(), expected.next_long());
+        }
+
+        let mut blocked_world = world_with_ambient_particles();
+        let below = BlockPos {
+            y: pos.y - 1,
+            ..pos
+        };
+        set_block(
+            &mut blocked_world,
+            below,
+            block_state_id(
+                "minecraft:oak_slab",
+                &[("type", "top"), ("waterlogged", "false")],
+            ),
+        );
+        let seed = animate_direction_seed(None, 0);
+        let mut blocked_actual = LevelEventSoundRandomState::with_seed(seed);
+        let mut blocked_expected = LevelEventSoundRandomState::with_seed(seed);
+        let mut blocked_spawns = Vec::new();
+        append_wet_sponge_animate_effect(
+            &blocked_world,
+            pos,
+            &mut blocked_actual,
+            &mut blocked_spawns,
+        );
+        assert_eq!(blocked_expected.next_int_bound(6), 0);
+        assert!(blocked_spawns.is_empty());
+        assert_eq!(blocked_actual.next_long(), blocked_expected.next_long());
+    }
+
+    #[test]
+    fn crying_obsidian_animate_effect_preserves_chance_offsets_and_sturdy_gate() {
+        let pos = BlockPos { x: 8, y: 32, z: 8 };
+        let world = world_with_ambient_particles();
+        for direction_index in 0..6 {
+            let seed = animate_direction_seed(Some(5), direction_index);
+            let mut actual = LevelEventSoundRandomState::with_seed(seed);
+            let mut expected = LevelEventSoundRandomState::with_seed(seed);
+            let mut spawns = Vec::new();
+            append_crying_obsidian_animate_effect(&world, pos, &mut actual, &mut spawns);
+
+            assert_eq!(expected.next_int_bound(5), 0);
+            assert_eq!(expected.next_int_bound(6) as usize, direction_index);
+            if direction_index == 1 {
+                assert!(spawns.is_empty(), "up direction short-circuits");
+            } else {
+                let direction = REDSTONE_EFFECT_DIRECTION_STEPS[direction_index];
+                let expected_position = std::array::from_fn(|axis| {
+                    [8.0, 32.0, 8.0][axis]
+                        + if direction[axis] == 0 {
+                            expected.next_double()
+                        } else {
+                            0.5 + f64::from(direction[axis]) * 0.6
+                        }
+                });
+                let [spawn] = spawns.as_slice() else {
+                    panic!("direction {direction_index} should emit one tear");
+                };
+                assert_eq!(spawn.particle.resource_id, PARTICLE_DRIPPING_OBSIDIAN_TEAR);
+                assert_eq!(spawn.position, expected_position);
+                assert_eq!(spawn.velocity, [0.0; 3]);
+                assert!(!spawn.always_show);
+            }
+            assert_eq!(actual.next_long(), expected.next_long());
+        }
+
+        let miss_seed = (0..100_000)
+            .find(|seed| LevelEventSoundRandomState::with_seed(*seed).next_int_bound(5) != 0)
+            .expect("deterministic crying-obsidian chance miss");
+        let mut miss_actual = LevelEventSoundRandomState::with_seed(miss_seed);
+        let mut miss_expected = LevelEventSoundRandomState::with_seed(miss_seed);
+        let mut miss_spawns = Vec::new();
+        append_crying_obsidian_animate_effect(&world, pos, &mut miss_actual, &mut miss_spawns);
+        assert_ne!(miss_expected.next_int_bound(5), 0);
+        assert!(miss_spawns.is_empty());
+        assert_eq!(miss_actual.next_long(), miss_expected.next_long());
+
+        let mut blocked_world = world_with_ambient_particles();
+        let direction_index = 2;
+        let step = REDSTONE_EFFECT_DIRECTION_STEPS[direction_index];
+        set_block(
+            &mut blocked_world,
+            BlockPos {
+                x: pos.x + step[0],
+                y: pos.y + step[1],
+                z: pos.z + step[2],
+            },
+            block_state_id("minecraft:stone", &[]),
+        );
+        let seed = animate_direction_seed(Some(5), direction_index);
+        let mut blocked_actual = LevelEventSoundRandomState::with_seed(seed);
+        let mut blocked_expected = LevelEventSoundRandomState::with_seed(seed);
+        let mut blocked_spawns = Vec::new();
+        append_crying_obsidian_animate_effect(
+            &blocked_world,
+            pos,
+            &mut blocked_actual,
+            &mut blocked_spawns,
+        );
+        assert_eq!(blocked_expected.next_int_bound(5), 0);
+        assert_eq!(blocked_expected.next_int_bound(6) as usize, direction_index);
+        assert!(blocked_spawns.is_empty());
+        assert_eq!(blocked_actual.next_long(), blocked_expected.next_long());
+    }
+
+    #[test]
+    fn environment_dispatches_sponge_and_obsidian_drips() {
+        let center = BlockPos { x: 8, y: 32, z: 8 };
+        for (name, seed, particle) in [
+            (
+                "minecraft:wet_sponge",
+                animate_direction_seed(None, 5),
+                PARTICLE_DRIPPING_WATER,
+            ),
+            (
+                "minecraft:crying_obsidian",
+                animate_direction_seed(Some(5), 5),
+                PARTICLE_DRIPPING_OBSIDIAN_TEAR,
+            ),
+        ] {
+            let mut sampled_level_random = LevelEventSoundRandomState::with_seed(0);
+            let pos =
+                sample_animate_position(&mut sampled_level_random, center, NEAR_SAMPLE_RADIUS);
+            let mut world = world_with_ambient_particles();
+            set_block(&mut world, pos, block_state_id(name, &[]));
+            let mut runtime = EnvironmentAnimateRuntime::default();
+            let mut animate_random = LevelEventSoundRandomState::with_seed(seed);
+            let mut audio = None;
+            let mut spawns = Vec::new();
+
+            runtime.do_animate_tick(
+                &mut world,
+                center,
+                NEAR_SAMPLE_RADIUS,
+                0,
+                &mut animate_random,
+                &mut audio,
+                &mut spawns,
+            );
+
+            assert_eq!(
+                spawns
+                    .iter()
+                    .filter(|spawn| spawn.particle.resource_id == particle)
+                    .count(),
+                1,
+                "{name}"
+            );
+        }
+    }
+
+    fn animate_direction_seed(chance_bound: Option<i32>, direction_index: usize) -> i64 {
+        (0..100_000)
+            .find(|seed| {
+                let mut random = LevelEventSoundRandomState::with_seed(*seed);
+                chance_bound.is_none_or(|bound| random.next_int_bound(bound) == 0)
+                    && random.next_int_bound(6) as usize == direction_index
+            })
+            .expect("deterministic animate direction seed")
     }
 
     #[test]
