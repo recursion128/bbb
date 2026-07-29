@@ -72,7 +72,7 @@ use bbb_protocol::recipe_wire_types::{
     VANILLA_SLOT_DISPLAY_TYPE_SMITHING_TRIM_ID, VANILLA_SLOT_DISPLAY_TYPE_TAG_ID,
     VANILLA_SLOT_DISPLAY_TYPE_WITH_ANY_POTION_ID, VANILLA_SLOT_DISPLAY_TYPE_WITH_REMAINDER_ID,
 };
-use bbb_renderer::{HudDebugOptionsEntryStatus, HudDebugOptionsRow};
+use bbb_renderer::{HudComponentTextRun, HudDebugOptionsEntryStatus, HudDebugOptionsRow};
 
 use bbb_protocol::stat_types::{
     VANILLA_STAT_TYPE_BLOCK_MINED_ID, VANILLA_STAT_TYPE_CUSTOM_ID,
@@ -19831,10 +19831,13 @@ fn dedicated_hud_book_screen_replaces_inventory_projection() {
     assert_eq!(screen.page_indicator, "Page 1 of 2");
     assert_eq!(
         screen.runs,
-        vec![HudStyledTextRun {
-            text: "First page".to_string(),
-            style: HudTextStyle::default(),
-            color: Some(0),
+        vec![HudComponentTextRun {
+            visual: HudStyledTextRun {
+                text: "First page".to_string(),
+                style: HudTextStyle::default(),
+                color: Some(0),
+            },
+            font: None,
         }]
     );
 }

@@ -1,8 +1,8 @@
 use bbb_item_model::NativeItemRuntime;
-use bbb_protocol::{ComponentClickEvent, ComponentHoverEvent, ComponentStyle, StyledTextRun};
+use bbb_protocol::{ComponentClickEvent, ComponentStyle, StyledTextRun};
 use bbb_renderer::{
-    HudBookHitTarget, HudBookInteraction, HudBookMode, HudBookScreen, HudStyledTextRun,
-    HudTextStyle,
+    HudBookHitTarget, HudBookInteraction, HudBookMode, HudBookScreen, HudComponentTextRun,
+    HudStyledTextRun, HudTextStyle,
 };
 use bbb_world::{BookScreenState, WorldStore};
 
@@ -36,6 +36,7 @@ pub(super) fn hud_book_screen(
         page_count,
         resource_generation,
         resources_loaded,
+        advanced_item_tooltips: input.debug_advanced_item_tooltips(),
         cursor_position,
         page_indicator,
         done: localized_or_fallback(item_runtime, "gui.done", "Done"),
@@ -59,7 +60,7 @@ pub(super) fn hud_book_screen(
                     item_runtime,
                 )
             });
-            let (runs, interactions) = project_component_runs(&source_runs);
+            let (runs, interactions) = project_component_runs(world, item_runtime, &source_runs);
             common.finish(
                 HudBookMode::View,
                 runs,
@@ -78,10 +79,13 @@ pub(super) fn hud_book_screen(
             let (cursor, selection) = book_editor_selection(input, book);
             common.finish(
                 HudBookMode::Edit,
-                vec![HudStyledTextRun {
-                    text: text.to_string(),
-                    style: HudTextStyle::default(),
-                    color: Some(BOOK_TEXT_COLOR),
+                vec![HudComponentTextRun {
+                    visual: HudStyledTextRun {
+                        text: text.to_string(),
+                        style: HudTextStyle::default(),
+                        color: Some(BOOK_TEXT_COLOR),
+                    },
+                    font: None,
                 }],
                 Vec::new(),
                 cursor,
@@ -97,10 +101,13 @@ pub(super) fn hud_book_screen(
             let (cursor, selection) = book_editor_selection(input, book);
             common.finish(
                 HudBookMode::Sign,
-                vec![HudStyledTextRun {
-                    text: screen.title.clone(),
-                    style: HudTextStyle::default(),
-                    color: Some(BOOK_TEXT_COLOR),
+                vec![HudComponentTextRun {
+                    visual: HudStyledTextRun {
+                        text: screen.title.clone(),
+                        style: HudTextStyle::default(),
+                        color: Some(BOOK_TEXT_COLOR),
+                    },
+                    font: None,
                 }],
                 Vec::new(),
                 cursor,
@@ -160,6 +167,7 @@ struct BookProjectionCommon {
     page_count: usize,
     resource_generation: u64,
     resources_loaded: bool,
+    advanced_item_tooltips: bool,
     cursor_position: Option<(i32, i32)>,
     page_indicator: String,
     done: String,
@@ -173,7 +181,7 @@ impl BookProjectionCommon {
     fn finish(
         self,
         mode: HudBookMode,
-        runs: Vec<HudStyledTextRun>,
+        runs: Vec<HudComponentTextRun>,
         interactions: Vec<HudBookInteraction>,
         cursor: usize,
         selection: usize,
@@ -189,6 +197,7 @@ impl BookProjectionCommon {
             page_count: self.page_count,
             resource_generation: self.resource_generation,
             resources_loaded: self.resources_loaded,
+            advanced_item_tooltips: self.advanced_item_tooltips,
             mode,
             runs,
             interactions,
@@ -210,16 +219,21 @@ impl BookProjectionCommon {
 }
 
 fn project_component_runs(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
     source_runs: &[StyledTextRun],
-) -> (Vec<HudStyledTextRun>, Vec<HudBookInteraction>) {
+) -> (Vec<HudComponentTextRun>, Vec<HudBookInteraction>) {
     let mut char_offset = 0usize;
     let mut runs = Vec::with_capacity(source_runs.len());
     let mut interactions = Vec::new();
     for (source_run_index, source) in source_runs.iter().enumerate() {
-        let mut visual = hud_run_from_component(source);
-        visual.text.retain(|ch| ch == '\n' || !ch.is_control());
+        let mut visual = super::component_hover::hud_component_run(source.clone());
+        visual
+            .visual
+            .text
+            .retain(|ch| ch == '\n' || !ch.is_control());
         let start_char = char_offset;
-        char_offset = char_offset.saturating_add(visual.text.chars().count());
+        char_offset = char_offset.saturating_add(visual.visual.text.chars().count());
         if (source.style.click_event.is_some() || source.style.hover_event.is_some())
             && start_char < char_offset
         {
@@ -229,48 +243,17 @@ fn project_component_runs(
                     end_char: char_offset,
                     source_run_index: target_index,
                     clickable: source.style.click_event.is_some(),
-                    tooltip_runs: hover_runs(source.style.hover_event.as_ref()),
+                    tooltip: super::component_hover::hud_component_hover_tooltip(
+                        world,
+                        item_runtime,
+                        source.style.hover_event.as_ref(),
+                    ),
                 });
             }
         }
         runs.push(visual);
     }
     (runs, interactions)
-}
-
-fn hud_run_from_component(run: &StyledTextRun) -> HudStyledTextRun {
-    HudStyledTextRun {
-        text: run.text.clone(),
-        style: HudTextStyle {
-            bold: run.style.bold == Some(true),
-            italic: run.style.italic == Some(true),
-            underlined: run.style.underlined == Some(true),
-            strikethrough: run.style.strikethrough == Some(true),
-            obfuscated: run.style.obfuscated == Some(true),
-        },
-        color: run.style.color,
-    }
-}
-
-fn hover_runs(hover: Option<&ComponentHoverEvent>) -> Vec<HudStyledTextRun> {
-    match hover {
-        Some(ComponentHoverEvent::ShowText { value, .. }) => {
-            value.iter().map(hud_run_from_component).collect()
-        }
-        Some(ComponentHoverEvent::ShowItem { id, count, .. }) => {
-            vec![HudStyledTextRun::plain(if *count == 1 {
-                id.clone()
-            } else {
-                format!("{id} x{count}")
-            })]
-        }
-        Some(ComponentHoverEvent::ShowEntity { id, name, .. }) => name
-            .as_ref()
-            .filter(|name| !name.is_empty())
-            .map(|name| name.iter().map(hud_run_from_component).collect())
-            .unwrap_or_else(|| vec![HudStyledTextRun::plain(id)]),
-        None => Vec::new(),
-    }
 }
 
 fn book_editor_selection(input: &ClientInputState, book: &BookScreenState) -> (usize, usize) {
@@ -349,7 +332,16 @@ mod tests {
                 "hover_event",
                 NbtSummaryValue::Compound(vec![
                     entry("action", NbtSummaryValue::String("show_text".to_string())),
-                    entry("value", NbtSummaryValue::String("tip".to_string())),
+                    entry(
+                        "value",
+                        NbtSummaryValue::Compound(vec![
+                            entry("text", NbtSummaryValue::String("tip".to_string())),
+                            entry(
+                                "font",
+                                NbtSummaryValue::String("example:tooltip".to_string()),
+                            ),
+                        ]),
+                    ),
                 ]),
             ),
         ]);
@@ -358,11 +350,17 @@ mod tests {
         let mut input = ClientInputState::default();
         input.set_client_text_filtering_enabled(false);
         let projected = hud_book_screen(&input, &world, None).unwrap();
-        assert_eq!(projected.runs[0].text, "raw");
-        assert!(projected.runs[0].style.bold);
+        assert_eq!(projected.runs[0].visual.text, "raw");
+        assert!(projected.runs[0].visual.style.bold);
+        assert_eq!(projected.runs[0].font.as_deref(), Some("example:book"));
         assert_eq!(projected.interactions[0].source_run_index, 0);
         assert!(projected.interactions[0].clickable);
-        assert_eq!(projected.interactions[0].tooltip_runs[0].text, "tip");
+        let tooltip = projected.interactions[0].tooltip.as_ref().unwrap();
+        assert_eq!(tooltip.lines[0].runs[0].visual.text, "tip");
+        assert_eq!(
+            tooltip.lines[0].runs[0].font.as_deref(),
+            Some("example:tooltip")
+        );
         let BookScreenState::View(screen) = world.current_book().unwrap() else {
             panic!("written book must remain a view");
         };
@@ -371,9 +369,15 @@ mod tests {
             Some("example:book")
         );
 
+        input.set_debug_advanced_item_tooltips(true);
+        assert!(
+            hud_book_screen(&input, &world, None)
+                .unwrap()
+                .advanced_item_tooltips
+        );
         input.set_client_text_filtering_enabled(true);
         let projected = hud_book_screen(&input, &world, None).unwrap();
-        assert_eq!(projected.runs[0].text, "filtered");
+        assert_eq!(projected.runs[0].visual.text, "filtered");
         assert!(projected.interactions.is_empty());
     }
 

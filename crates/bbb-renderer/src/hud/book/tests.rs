@@ -1,5 +1,5 @@
 use super::*;
-use crate::HudAsciiGlyph;
+use crate::{HudAsciiGlyph, HudRichTooltipLine};
 
 fn glyphs_for(text: &str) -> HudFontGlyphMap {
     let mut glyphs = HudFontGlyphMap::new();
@@ -22,14 +22,20 @@ fn view_screen(text: &str) -> HudBookScreen {
         page_count: 1,
         resource_generation: 9,
         resources_loaded: true,
+        advanced_item_tooltips: false,
         mode: HudBookMode::View,
-        runs: vec![HudStyledTextRun::plain(text)],
+        runs: vec![HudComponentTextRun::plain(text)],
         interactions: vec![HudBookInteraction {
             start_char: 0,
             end_char: text.chars().count(),
             source_run_index: 0,
             clickable: true,
-            tooltip_runs: vec![HudStyledTextRun::plain("tip")],
+            tooltip: Some(HudRichTooltip {
+                style: None,
+                lines: vec![HudRichTooltipLine::plain("tip")],
+                advanced_lines: None,
+                wrap_text: true,
+            }),
         }],
         cursor: 0,
         selection: 0,
@@ -61,11 +67,12 @@ fn book_screen_layout_is_top_centered() {
 #[test]
 fn book_screen_hit_uses_wrapped_source_interaction_and_revision_token() {
     let glyphs = glyphs_for("alpha beta");
+    let fonts = HudFontGlyphBook::from(glyphs);
     let screen = view_screen("alpha beta");
     let layout = hud_book_layout(PhysicalSize::new(320, 240));
     let hit = hud_book_hit_target_at(
         &screen,
-        &glyphs,
+        &fonts,
         PhysicalSize::new(320, 240),
         (
             f64::from(layout.origin_x + HUD_BOOK_TEXT_X + 2),
@@ -85,14 +92,77 @@ fn book_screen_hit_uses_wrapped_source_interaction_and_revision_token() {
 }
 
 #[test]
+fn hud_book_custom_font_controls_wrapping_and_interaction_hit_geometry() {
+    let default = glyphs_for("a");
+    let mut compact = HudFontGlyphMap::new();
+    compact.insert_first_wins(
+        'a',
+        HudAsciiGlyph {
+            width: 1,
+            height: 8,
+            advance: 2,
+            ..HudAsciiGlyph::default()
+        },
+    );
+    let fonts = HudFontGlyphBook::from_fonts(
+        "minecraft:default",
+        std::collections::BTreeMap::from([
+            ("example:compact".to_string(), compact),
+            ("minecraft:default".to_string(), default),
+        ]),
+    );
+    let mut screen = view_screen(&"a".repeat(30));
+    screen.runs[0].font = Some("example:compact".to_string());
+    let wrapped = hud_wrap_component_runs_with_interactions(
+        &screen.runs,
+        &book_chat_interactions(&screen),
+        HUD_BOOK_TEXT_WIDTH,
+        &fonts,
+    );
+    assert_eq!(wrapped.len(), 1);
+    assert_eq!(wrapped[0].interactions[0].end_x, 60);
+
+    let layout = hud_book_layout(PhysicalSize::new(320, 240));
+    assert!(book_interaction_at(
+        &screen,
+        &fonts,
+        PhysicalSize::new(320, 240),
+        (
+            f64::from(layout.origin_x + HUD_BOOK_TEXT_X + 1),
+            f64::from(layout.origin_y + HUD_BOOK_TEXT_Y + HUD_BOOK_LINE_HEIGHT + 1),
+        ),
+    )
+    .is_none());
+}
+
+#[test]
+fn hud_book_unavailable_font_falls_back_for_wrapping_and_hit_geometry() {
+    let fonts = HudFontGlyphBook::from(glyphs_for("a"));
+    let mut screen = view_screen(&"a".repeat(30));
+    screen.runs[0].font = Some("example:missing".to_string());
+    let layout = hud_book_layout(PhysicalSize::new(320, 240));
+
+    assert!(book_interaction_at(
+        &screen,
+        &fonts,
+        PhysicalSize::new(320, 240),
+        (
+            f64::from(layout.origin_x + HUD_BOOK_TEXT_X + 1),
+            f64::from(layout.origin_y + HUD_BOOK_TEXT_Y + HUD_BOOK_LINE_HEIGHT + 1),
+        ),
+    )
+    .is_some());
+}
+
+#[test]
 fn book_screen_hit_clips_after_fourteen_lines() {
     let text = (0..16).map(|_| "a").collect::<Vec<_>>().join("\n");
-    let glyphs = glyphs_for(&text);
+    let fonts = HudFontGlyphBook::from(glyphs_for(&text));
     let screen = view_screen(&text);
     let layout = hud_book_layout(PhysicalSize::new(320, 240));
     assert!(hud_book_hit_target_at(
         &screen,
-        &glyphs,
+        &fonts,
         PhysicalSize::new(320, 240),
         (
             f64::from(layout.origin_x + HUD_BOOK_TEXT_X + 1),
@@ -123,16 +193,27 @@ fn book_screen_sanitize_rejects_out_of_range_interactions() {
 }
 
 #[test]
+fn hud_book_edit_sanitization_forces_the_default_font() {
+    let mut screen = view_screen("abc");
+    screen.mode = HudBookMode::Edit;
+    screen.runs[0].font = Some("example:untrusted".to_string());
+
+    let sanitized = sanitize_hud_book_screen(screen).unwrap();
+    assert_eq!(sanitized.runs[0].font, None);
+}
+
+#[test]
 fn book_screen_sanitize_preserves_newlines_and_hover_only_spans_are_not_click_targets() {
     let glyphs = glyphs_for("a\nb");
+    let fonts = HudFontGlyphBook::from(glyphs);
     let mut screen = view_screen("a\nb");
     screen.interactions[0].clickable = false;
     let screen = sanitize_hud_book_screen(screen).unwrap();
-    assert_eq!(screen.runs[0].text, "a\nb");
+    assert_eq!(screen.runs[0].visual.text, "a\nb");
     let layout = hud_book_layout(PhysicalSize::new(320, 240));
     assert!(hud_book_hit_target_at(
         &screen,
-        &glyphs,
+        &fonts,
         PhysicalSize::new(320, 240),
         (
             f64::from(layout.origin_x + HUD_BOOK_TEXT_X + 1),

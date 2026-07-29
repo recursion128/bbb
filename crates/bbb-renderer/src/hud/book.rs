@@ -1,12 +1,16 @@
+use std::collections::HashMap;
+
 use winit::dpi::PhysicalSize;
 
 use super::{
-    absolute_hud_rect, hud_font_glyph, hud_font_runs_width, hud_styled_text_pass_geometry,
-    hud_wrap_chat_runs_with_interactions, push_hud_debug_tinted_rect,
-    push_hud_draw_with_uv_and_tint, push_hud_pause_button, push_hud_styled_text_pass,
+    absolute_hud_rect, hud_component_text_pass_geometry, hud_font_glyph, hud_font_runs_width,
+    hud_rich_tooltip_lines, hud_styled_text_pass_geometry, hud_wrap_chat_runs_with_interactions,
+    hud_wrap_component_runs_with_interactions, push_hud_component_tooltip,
+    push_hud_debug_tinted_rect, push_hud_draw_with_uv_and_tint, push_hud_pause_button,
+    push_hud_styled_text_pass, sanitize_hud_component_runs, sanitize_hud_rich_tooltip,
     sanitize_hud_text_preserving_empty, HudChatInteraction, HudComponentTextRun, HudDrawCommand,
-    HudFontGlyphMap, HudNineSliceSprite, HudObfuscatedGlyphPool, HudRichTooltip,
-    HudRichTooltipLine, HudSpriteGpu, HudStyledTextRun, HudUvRect, HudVertex, HUD_TINT_WHITE,
+    HudFontGlyphBook, HudFontGlyphMap, HudNineSliceSprite, HudObfuscatedGlyphPool, HudRichTooltip,
+    HudSpriteGpu, HudStyledTextRun, HudTooltipStyleSprites, HudUvRect, HudVertex, HUD_TINT_WHITE,
 };
 
 pub const HUD_BOOK_WIDTH: i32 = 192;
@@ -43,15 +47,16 @@ pub enum HudBookMode {
     Sign,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct HudBookScreen {
     pub generation: u64,
     pub page: usize,
     pub page_count: usize,
     pub resource_generation: u64,
     pub resources_loaded: bool,
+    pub advanced_item_tooltips: bool,
     pub mode: HudBookMode,
-    pub runs: Vec<HudStyledTextRun>,
+    pub runs: Vec<HudComponentTextRun>,
     pub interactions: Vec<HudBookInteraction>,
     pub cursor: usize,
     pub selection: usize,
@@ -68,13 +73,13 @@ pub struct HudBookScreen {
     pub finalize_enabled: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct HudBookInteraction {
     pub start_char: usize,
     pub end_char: usize,
     pub source_run_index: u16,
     pub clickable: bool,
-    pub tooltip_runs: Vec<HudStyledTextRun>,
+    pub tooltip: Option<HudRichTooltip>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -105,51 +110,34 @@ pub fn hud_book_layout(surface_size: PhysicalSize<u32>) -> HudBookLayout {
 pub(super) fn sanitize_hud_book_screen(mut screen: HudBookScreen) -> Option<HudBookScreen> {
     screen.page_count = screen.page_count.clamp(1, 100);
     screen.page = screen.page.min(screen.page_count.saturating_sub(1));
+    let source_runs = screen.runs.into_iter().take(1_024).collect::<Vec<_>>();
+    let fallback = source_runs
+        .iter()
+        .map(|run| run.visual.text.as_str())
+        .collect::<String>();
     let mut budget = 4_096usize;
-    screen.runs = screen
+    screen.runs = sanitize_hud_component_runs(source_runs, &fallback, &mut budget, true);
+    if screen.mode != HudBookMode::View {
+        for run in &mut screen.runs {
+            run.font = None;
+        }
+    }
+    let char_count = screen
         .runs
-        .into_iter()
-        .take(1_024)
-        .map(|mut run| {
-            run.text = run
-                .text
-                .chars()
-                .filter(|ch| *ch == '\n' || !ch.is_control())
-                .take(budget)
-                .collect();
-            budget = budget.saturating_sub(run.text.chars().count());
-            run.color = run.color.map(|color| color & 0xFF_FF_FF);
-            run
-        })
-        .collect();
-    let char_count = screen.runs.iter().map(|run| run.text.chars().count()).sum();
+        .iter()
+        .map(|run| run.visual.text.chars().count())
+        .sum();
     screen.interactions = screen
         .interactions
         .into_iter()
         .filter(|interaction| {
-            interaction.start_char < interaction.end_char
-                && interaction.end_char <= char_count
-                && usize::from(interaction.source_run_index) < screen.runs.len()
+            interaction.start_char < interaction.end_char && interaction.end_char <= char_count
         })
         .map(|mut interaction| {
-            let mut tooltip_budget = 4_096usize;
-            interaction.tooltip_runs = interaction
-                .tooltip_runs
-                .into_iter()
-                .take(256)
-                .map(|mut run| {
-                    run.text = run
-                        .text
-                        .chars()
-                        .filter(|ch| *ch == '\n' || !ch.is_control())
-                        .take(tooltip_budget)
-                        .collect();
-                    tooltip_budget = tooltip_budget.saturating_sub(run.text.chars().count());
-                    run.color = run.color.map(|color| color & 0xFF_FF_FF);
-                    run
-                })
-                .filter(|run| !run.text.is_empty())
-                .collect();
+            interaction.tooltip = interaction
+                .tooltip
+                .take()
+                .and_then(sanitize_hud_rich_tooltip);
             interaction
         })
         .collect();
@@ -168,11 +156,11 @@ pub(super) fn sanitize_hud_book_screen(mut screen: HudBookScreen) -> Option<HudB
 
 pub(super) fn hud_book_hit_target_at(
     screen: &HudBookScreen,
-    glyphs: &HudFontGlyphMap,
+    fonts: &HudFontGlyphBook,
     surface_size: PhysicalSize<u32>,
     position: (f64, f64),
 ) -> Option<HudBookHitTarget> {
-    let interaction = book_interaction_at(screen, glyphs, surface_size, position)?;
+    let interaction = book_interaction_at(screen, fonts, surface_size, position)?;
     if !interaction.clickable {
         return None;
     }
@@ -187,7 +175,7 @@ pub(super) fn hud_book_hit_target_at(
 
 fn book_interaction_at<'a>(
     screen: &'a HudBookScreen,
-    glyphs: &HudFontGlyphMap,
+    fonts: &HudFontGlyphBook,
     surface_size: PhysicalSize<u32>,
     position: (f64, f64),
 ) -> Option<&'a HudBookInteraction> {
@@ -206,11 +194,11 @@ fn book_interaction_at<'a>(
         return None;
     }
     let chat_interactions = book_chat_interactions(screen);
-    let lines = hud_wrap_chat_runs_with_interactions(
+    let lines = hud_wrap_component_runs_with_interactions(
         &screen.runs,
         &chat_interactions,
         HUD_BOOK_TEXT_WIDTH,
-        glyphs,
+        fonts,
     );
     let line = lines.get(line_index)?;
     let x = u32::try_from(x).ok()?;
@@ -233,20 +221,7 @@ fn book_chat_interactions(screen: &HudBookScreen) -> Vec<HudChatInteraction> {
             start_char: interaction.start_char,
             end_char: interaction.end_char,
             target_index: interaction.source_run_index,
-            tooltip: (!interaction.tooltip_runs.is_empty()).then(|| HudRichTooltip {
-                style: None,
-                lines: vec![HudRichTooltipLine {
-                    runs: interaction
-                        .tooltip_runs
-                        .iter()
-                        .cloned()
-                        .map(|visual| HudComponentTextRun { visual, font: None })
-                        .collect(),
-                    tint: HUD_TINT_WHITE,
-                }],
-                advanced_lines: None,
-                wrap_text: true,
-            }),
+            tooltip: interaction.tooltip.clone(),
         })
         .collect()
 }
@@ -263,9 +238,9 @@ pub(super) fn push_hud_book_screen<'a>(
     page_forward_highlighted: Option<&'a HudSpriteGpu>,
     tooltip_background: Option<&'a HudNineSliceSprite>,
     tooltip_frame: Option<&'a HudNineSliceSprite>,
+    tooltip_styles: &'a HashMap<String, HudTooltipStyleSprites>,
     font_atlas: Option<&'a HudSpriteGpu>,
-    glyphs: &HudFontGlyphMap,
-    obfuscated_pool: &HudObfuscatedGlyphPool,
+    fonts: &HudFontGlyphBook,
     frame_index: u64,
     surface_size: PhysicalSize<u32>,
     screen: &HudBookScreen,
@@ -273,6 +248,8 @@ pub(super) fn push_hud_book_screen<'a>(
     let (Some(font_atlas), Some(book_background)) = (font_atlas, book_background) else {
         return;
     };
+    let glyphs = fonts.glyphs(None);
+    let obfuscated_pool = fonts.obfuscated_pool(None);
     let layout = hud_book_layout(surface_size);
     push_hud_draw_with_uv_and_tint(
         vertices,
@@ -309,8 +286,7 @@ pub(super) fn push_hud_book_screen<'a>(
             commands,
             white_pixel,
             font_atlas,
-            glyphs,
-            obfuscated_pool,
+            fonts,
             frame_index,
             surface_size,
             screen,
@@ -356,26 +332,31 @@ pub(super) fn push_hud_book_screen<'a>(
 
     let tooltip = book_interaction_at(
         screen,
-        glyphs,
+        fonts,
         surface_size,
         screen
             .cursor_position
             .map_or((f64::NAN, f64::NAN), |(x, y)| (f64::from(x), f64::from(y))),
     )
-    .filter(|interaction| !interaction.tooltip_runs.is_empty());
+    .filter(|interaction| {
+        interaction.tooltip.as_ref().is_some_and(|tooltip| {
+            !hud_rich_tooltip_lines(tooltip, screen.advanced_item_tooltips).is_empty()
+        })
+    });
     if let (Some(interaction), Some((x, y))) = (tooltip, screen.cursor_position) {
-        super::push_hud_rich_tooltip(
+        push_hud_component_tooltip(
             vertices,
             commands,
             white_pixel,
             tooltip_background,
             tooltip_frame,
+            tooltip_styles,
             font_atlas,
-            glyphs,
-            obfuscated_pool,
+            fonts,
             frame_index,
             surface_size,
-            &interaction.tooltip_runs,
+            interaction.tooltip.as_ref().expect("filtered tooltip"),
+            screen.advanced_item_tooltips,
             x,
             y,
         );
@@ -388,8 +369,7 @@ fn push_view_page<'a>(
     commands: &mut Vec<HudDrawCommand<'a>>,
     white_pixel: &'a HudSpriteGpu,
     font_atlas: &'a HudSpriteGpu,
-    glyphs: &HudFontGlyphMap,
-    obfuscated_pool: &HudObfuscatedGlyphPool,
+    fonts: &HudFontGlyphBook,
     frame_index: u64,
     surface_size: PhysicalSize<u32>,
     screen: &HudBookScreen,
@@ -400,28 +380,27 @@ fn push_view_page<'a>(
         commands,
         white_pixel,
         font_atlas,
-        glyphs,
-        obfuscated_pool,
+        fonts.glyphs(None),
+        fonts.obfuscated_pool(None),
         frame_index,
         surface_size,
         screen,
         layout,
     );
     let interactions = book_chat_interactions(screen);
-    let lines = hud_wrap_chat_runs_with_interactions(
+    let lines = hud_wrap_component_runs_with_interactions(
         &screen.runs,
         &interactions,
         HUD_BOOK_TEXT_WIDTH,
-        glyphs,
+        fonts,
     );
     for (index, line) in lines.iter().take(HUD_BOOK_MAX_LINES).enumerate() {
-        push_runs(
+        push_component_runs(
             vertices,
             commands,
             white_pixel,
             font_atlas,
-            glyphs,
-            obfuscated_pool,
+            fonts,
             frame_index,
             surface_size,
             &line.runs,
@@ -463,7 +442,7 @@ fn push_edit_page<'a>(
     let text = screen
         .runs
         .iter()
-        .map(|run| run.text.as_str())
+        .map(|run| run.visual.text.as_str())
         .collect::<String>();
     let lines = editor_lines(&text, glyphs);
     for (index, line) in lines.iter().take(HUD_BOOK_MAX_LINES).enumerate() {
@@ -568,9 +547,14 @@ fn push_sign_page<'a>(
     let text = screen
         .runs
         .iter()
-        .map(|run| run.text.as_str())
+        .map(|run| run.visual.text.as_str())
         .collect::<String>();
-    let width = hud_font_runs_width(&screen.runs, glyphs).unwrap_or_default() as i32;
+    let visual_runs = screen
+        .runs
+        .iter()
+        .map(|run| run.visual.clone())
+        .collect::<Vec<_>>();
+    let width = hud_font_runs_width(&visual_runs, glyphs).unwrap_or_default() as i32;
     let x = layout.origin_x + HUD_BOOK_WIDTH / 2 - width / 2;
     push_editor_selection(
         vertices,
@@ -597,7 +581,7 @@ fn push_sign_page<'a>(
         obfuscated_pool,
         frame_index,
         surface_size,
-        &screen.runs,
+        &visual_runs,
         (x, HUD_BOOK_SIGN_TITLE_Y),
     );
     if screen.cursor_visible {
@@ -703,6 +687,39 @@ fn push_runs<'a>(
         runs,
         glyphs,
         obfuscated_pool,
+        frame_index,
+        (origin.0 as f32, origin.1 as f32),
+        0.0,
+        false,
+        HUD_BOOK_TEXT_TINT,
+        None,
+        1.0,
+    );
+    push_hud_styled_text_pass(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        surface_size,
+        &geometry,
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_component_runs<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: &'a HudSpriteGpu,
+    fonts: &HudFontGlyphBook,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    runs: &[HudComponentTextRun],
+    origin: (i32, i32),
+) {
+    let geometry = hud_component_text_pass_geometry(
+        runs,
+        fonts,
         frame_index,
         (origin.0 as f32, origin.1 as f32),
         0.0,

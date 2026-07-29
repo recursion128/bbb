@@ -116,7 +116,7 @@ fn component_tooltip_line(runs: Vec<StyledTextRun>) -> HudRichTooltipLine {
     }
 }
 
-fn hud_component_run(run: StyledTextRun) -> HudComponentTextRun {
+pub(super) fn hud_component_run(run: StyledTextRun) -> HudComponentTextRun {
     HudComponentTextRun {
         font: run.style.font.clone(),
         visual: HudStyledTextRun {

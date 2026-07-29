@@ -5767,7 +5767,7 @@ impl Renderer {
     pub fn hud_book_hit_target_at(&self, position: (f64, f64)) -> Option<HudBookHitTarget> {
         book::hud_book_hit_target_at(
             self.hud_book_screen.as_ref()?,
-            &self.hud_font_glyphs,
+            &self.hud_font_book,
             self.surface_size(),
             position,
         )
@@ -7517,9 +7517,9 @@ impl Renderer {
                 self.hud_page_forward_highlighted.as_ref(),
                 self.hud_tooltip_background.as_ref(),
                 self.hud_tooltip_frame.as_ref(),
+                &self.hud_tooltip_styles,
                 self.hud_font_atlas.as_ref(),
-                &self.hud_font_glyphs,
-                &self.hud_obfuscated_glyph_pool,
+                &self.hud_font_book,
                 self.counters.frame_index,
                 surface_size,
                 screen,
