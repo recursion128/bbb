@@ -4357,7 +4357,6 @@ impl Renderer {
                     }
                     if active_pipeline != Some(HudActivePipeline::Map) {
                         pass.set_pipeline(&self.map_surface_residency.gui_pipeline);
-                        pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                         pass.set_vertex_buffer(
                             0,
                             self.map_surface_residency.vertex_buffer.slice(..),
@@ -5538,10 +5537,15 @@ mod tests {
 
         let map_source = include_str!("item_models/map.rs");
         assert!(
-            map_source.contains("target == MapSurfaceTarget::FirstPerson")
+            map_source.contains("MapSurfaceTarget::FirstPerson => &page.hud3d_bind_group")
                 && map_source.contains("&page.hud3d_bind_group")
                 && map_source.contains("&self.hud3d_camera_buffer"),
             "first-person map pages, layers, and backgrounds must use the HUD-3D camera"
+        );
+        assert!(
+            map_source.contains("MapSurfaceTarget::Gui(_) => &page.gui_bind_group")
+                && map_source.contains("&self.gui_item_camera_buffer"),
+            "GUI map pages and layers must use the GUI orthographic camera"
         );
     }
 

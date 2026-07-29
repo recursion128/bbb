@@ -515,15 +515,8 @@ impl MapSurfaceResidency {
                 format,
                 atlas_bind_group_layout,
                 lightmap_bind_group_layout,
-                true,
             ),
-            gui_pipeline: create_map_surface_pipeline(
-                device,
-                format,
-                atlas_bind_group_layout,
-                lightmap_bind_group_layout,
-                false,
-            ),
+            gui_pipeline: create_gui_map_surface_pipeline(device, format, atlas_bind_group_layout),
             vertex_buffer,
             index_buffer,
             index_count: indices.len() as u32,
@@ -914,34 +907,50 @@ fn create_map_surface_pipeline(
     format: wgpu::TextureFormat,
     atlas_bind_group_layout: &wgpu::BindGroupLayout,
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
-    depth: bool,
 ) -> wgpu::RenderPipeline {
     let bind_group_layouts = [atlas_bind_group_layout, lightmap_bind_group_layout];
-    let builder = RenderPipelineBuilder::new(
-        device,
-        if depth {
-            "bbb-map-surface-resident-pipeline"
-        } else {
-            "bbb-map-surface-resident-gui-pipeline"
-        },
-    )
-    .shader(
-        if depth {
-            "bbb-map-surface-resident-shader"
-        } else {
-            "bbb-map-surface-resident-gui-shader"
-        },
-        if depth {
-            MAP_SURFACE_SHADER
-        } else {
-            MAP_SURFACE_GUI_SHADER
-        },
-    )
-    .layout(
-        "bbb-map-surface-resident-pipeline-layout",
-        &bind_group_layouts,
-    )
-    .vertex_buffers(&[
+    let vertex_buffers = map_surface_vertex_buffer_layouts();
+    RenderPipelineBuilder::new(device, "bbb-map-surface-resident-pipeline")
+        .shader("bbb-map-surface-resident-shader", MAP_SURFACE_SHADER)
+        .layout(
+            "bbb-map-surface-resident-pipeline-layout",
+            &bind_group_layouts,
+        )
+        .vertex_buffers(&vertex_buffers)
+        .color_target(format, Some(wgpu::BlendState::REPLACE))
+        .cull_mode(ITEM_MODEL_PIPELINE_CULL_MODE)
+        .depth_stencil(depth_stencil_state(
+            DEPTH_FORMAT,
+            true,
+            wgpu::CompareFunction::LessEqual,
+        ))
+        .build()
+}
+
+fn create_gui_map_surface_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    atlas_bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    let bind_group_layouts = [atlas_bind_group_layout];
+    let vertex_buffers = map_surface_vertex_buffer_layouts();
+    RenderPipelineBuilder::new(device, "bbb-map-surface-resident-gui-pipeline")
+        .shader(
+            "bbb-map-surface-resident-gui-shader",
+            MAP_SURFACE_GUI_SHADER,
+        )
+        .layout(
+            "bbb-map-surface-resident-gui-pipeline-layout",
+            &bind_group_layouts,
+        )
+        .vertex_buffers(&vertex_buffers)
+        .color_target(format, Some(wgpu::BlendState::ALPHA_BLENDING))
+        .cull_mode(None)
+        .build()
+}
+
+fn map_surface_vertex_buffer_layouts() -> [wgpu::VertexBufferLayout<'static>; 2] {
+    [
         wgpu::VertexBufferLayout {
             array_stride: std::mem::size_of::<MapSurfaceVertex>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Vertex,
@@ -952,31 +961,7 @@ fn create_map_surface_pipeline(
             step_mode: wgpu::VertexStepMode::Instance,
             attributes: &MAP_SURFACE_INSTANCE_ATTRIBUTES,
         },
-    ])
-    .color_target(
-        format,
-        Some(if depth {
-            wgpu::BlendState::REPLACE
-        } else {
-            wgpu::BlendState::ALPHA_BLENDING
-        }),
-    )
-    .cull_mode(if depth {
-        ITEM_MODEL_PIPELINE_CULL_MODE
-    } else {
-        None
-    });
-    if depth {
-        builder
-            .depth_stencil(depth_stencil_state(
-                DEPTH_FORMAT,
-                true,
-                wgpu::CompareFunction::LessEqual,
-            ))
-            .build()
-    } else {
-        builder.build()
-    }
+    ]
 }
 
 const MAP_SURFACE_SHADER: &str = r#"
