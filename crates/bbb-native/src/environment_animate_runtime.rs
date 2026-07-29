@@ -10,12 +10,13 @@ use bbb_protocol::{
 use bbb_world::{
     block_name_has_falling_dust_animate_tick, block_name_is_air, block_name_is_candle,
     block_name_is_candle_cake, block_name_is_dead_bush_ambient, block_name_is_dry_grass_ambient,
-    block_name_is_pale_oak_log, block_name_is_terracotta,
+    block_name_is_lightning_rod, block_name_is_pale_oak_log, block_name_is_terracotta,
     block_name_triggers_ambient_desert_dry_vegetation_block_sounds,
-    block_name_triggers_ambient_desert_sand_block_sounds, leaf_animate_particle_profile, BlockPos,
-    ClientSoundEventHolder, EnvironmentBiomeSampling, LeafAnimateParticleProfile, LeafParticleTint,
-    LevelEventSoundRandomState, LocalPlayerPoseState, SoundEntityEventState, SoundEventState,
-    TerrainFluidKind, TerrainFluidState, WorldStore,
+    block_name_triggers_ambient_desert_sand_block_sounds, leaf_animate_particle_profile,
+    torch_animate_particle_profile, BlockPos, ClientSoundEventHolder, EnvironmentBiomeSampling,
+    LeafAnimateParticleProfile, LeafParticleTint, LevelEventSoundRandomState, LocalPlayerPoseState,
+    SoundEntityEventState, SoundEventState, TerrainFluidKind, TerrainFluidState,
+    TorchAnimateParticleProfile, WorldStore,
 };
 
 use crate::{
@@ -71,6 +72,8 @@ const SOUND_EVENT_CANDLE_AMBIENT: &str = "minecraft:block.candle.ambient";
 const SOUND_EVENT_SAND_IDLE: &str = "minecraft:block.sand.idle";
 const SOUND_EVENT_DRY_GRASS_AMBIENT: &str = "minecraft:block.dry_grass.ambient";
 const SOUND_EVENT_DEAD_BUSH_IDLE: &str = "minecraft:block.deadbush.idle";
+const SOUND_EVENT_EYEBLOSSOM_IDLE: &str = "minecraft:block.eyeblossom.idle";
+const SOUND_EVENT_PALE_HANGING_MOSS_IDLE: &str = "minecraft:block.pale_hanging_moss.idle";
 const PARTICLE_FIREFLY: &str = "minecraft:firefly";
 const PARTICLE_CURRENT_DOWN: &str = "minecraft:current_down";
 const PARTICLE_BUBBLE_COLUMN_UP: &str = "minecraft:bubble_column_up";
@@ -94,6 +97,7 @@ const PARTICLE_DRIPPING_OBSIDIAN_TEAR: &str = "minecraft:dripping_obsidian_tear"
 const PARTICLE_SMALL_FLAME: &str = "minecraft:small_flame";
 const PARTICLE_ELECTRIC_SPARK: &str = "minecraft:electric_spark";
 const PARTICLE_FALLING_DUST: &str = "minecraft:falling_dust";
+const PARTICLE_MYCELIUM: &str = "minecraft:mycelium";
 const LIGHTNING_ROD_SPARK_CYCLE: i32 = 200;
 
 const OPPOSITE_EFFECT_DIRECTION_INDICES: [usize; 6] = [1, 0, 3, 2, 5, 4];
@@ -270,16 +274,36 @@ impl EnvironmentAnimateRuntime {
         animate_random: &mut LevelEventSoundRandomState,
         audio: &mut Option<&mut dyn AudioEventSink>,
         spawns: &mut Vec<EnvironmentParticleSpawn>,
-    ) {
+    ) -> bool {
         let pos = sample_animate_position(&mut self.level_random, center, radius);
         let Some(block) = world.probe_block(pos) else {
-            return;
+            return false;
         };
         let Some(block_name) = block.block_name.as_deref() else {
-            return;
+            return false;
         };
 
+        let mut handled = true;
         match block_name {
+            "minecraft:brewing_stand" => {
+                append_brewing_stand_animate_effect(pos, animate_random, spawns);
+            }
+            "minecraft:open_eyeblossom" => {
+                self.animate_eyeblossom(world, pos, animate_random, audio);
+            }
+            "minecraft:closed_eyeblossom" => {}
+            "minecraft:pale_hanging_moss" => {
+                self.animate_hanging_moss(world, pos, animate_random, audio);
+            }
+            "minecraft:lever" => {
+                append_lever_animate_effect(pos, &block.block_properties, animate_random, spawns);
+            }
+            "minecraft:mycelium" => {
+                append_mycelium_animate_effect(pos, animate_random, spawns);
+            }
+            "minecraft:wither_rose" => {
+                append_wither_rose_animate_effects(pos, animate_random, spawns);
+            }
             "minecraft:firefly_bush" => {
                 self.animate_firefly_bush(world, pos, sky_darken, animate_random, audio, spawns);
             }
@@ -503,7 +527,7 @@ impl EnvironmentAnimateRuntime {
                     spawns,
                 );
             }
-            "minecraft:lightning_rod" => append_lightning_rod_animate_effects(
+            name if block_name_is_lightning_rod(name) => append_lightning_rod_animate_effects(
                 world,
                 pos,
                 &block.block_properties,
@@ -547,8 +571,12 @@ impl EnvironmentAnimateRuntime {
                 );
             }
             _ => {
-                if let Some(profile) = leaf_animate_particle_profile(block_name) {
+                if let Some(profile) = torch_animate_particle_profile(block_name) {
+                    append_torch_animate_effects(pos, &block.block_properties, profile, spawns);
+                } else if let Some(profile) = leaf_animate_particle_profile(block_name) {
                     append_leaves_animate_effects(world, pos, profile, animate_random, spawns);
+                } else {
+                    handled = false;
                 }
             }
         }
@@ -561,7 +589,7 @@ impl EnvironmentAnimateRuntime {
         }
 
         if world.sample_block_collision_shape_is_full_block(pos) != Some(false) {
-            return;
+            return handled;
         }
         let particles = world
             .sampled_client_environment_attributes_at(
@@ -572,6 +600,7 @@ impl EnvironmentAnimateRuntime {
             .and_then(|attributes| attributes.ambient_particles)
             .unwrap_or_default();
         append_ambient_particle_spawns(&mut self.level_random, pos, particles, spawns);
+        handled
     }
 
     fn animate_desert_sand(
@@ -678,6 +707,76 @@ impl EnvironmentAnimateRuntime {
             audio.play_positioned_sound(&local_block_sound(
                 world,
                 SOUND_EVENT_DEAD_BUSH_IDLE,
+                SoundSource::Ambient,
+                block_position(pos),
+                1.0,
+                1.0,
+                seed,
+            ));
+        }
+    }
+
+    fn animate_eyeblossom(
+        &mut self,
+        world: &WorldStore,
+        pos: BlockPos,
+        random: &mut LevelEventSoundRandomState,
+        audio: &mut Option<&mut dyn AudioEventSink>,
+    ) {
+        if random.next_int_bound(700) != 0
+            || block_name_at(
+                world,
+                BlockPos {
+                    y: pos.y.saturating_sub(1),
+                    ..pos
+                },
+            )
+            .as_deref()
+                != Some("minecraft:pale_moss_block")
+        {
+            return;
+        }
+        let seed = self.level_random.next_long();
+        if let Some(audio) = audio.as_deref_mut() {
+            audio.play_positioned_sound(&local_block_sound(
+                world,
+                SOUND_EVENT_EYEBLOSSOM_IDLE,
+                SoundSource::Ambient,
+                block_position(pos),
+                1.0,
+                1.0,
+                seed,
+            ));
+        }
+    }
+
+    fn animate_hanging_moss(
+        &mut self,
+        world: &WorldStore,
+        pos: BlockPos,
+        random: &mut LevelEventSoundRandomState,
+        audio: &mut Option<&mut dyn AudioEventSink>,
+    ) {
+        if random.next_int_bound(500) != 0
+            || !block_name_at(
+                world,
+                BlockPos {
+                    y: pos.y.saturating_add(1),
+                    ..pos
+                },
+            )
+            .as_deref()
+            .is_some_and(|name| {
+                name == "minecraft:pale_oak_leaves" || block_name_is_pale_oak_log(name)
+            })
+        {
+            return;
+        }
+        let seed = self.level_random.next_long();
+        if let Some(audio) = audio.as_deref_mut() {
+            audio.play_positioned_sound(&local_block_sound(
+                world,
+                SOUND_EVENT_PALE_HANGING_MOSS_IDLE,
                 SoundSource::Ambient,
                 block_position(pos),
                 1.0,
@@ -1052,6 +1151,144 @@ impl EnvironmentAnimateRuntime {
                 1.0,
                 seed,
             ));
+        }
+    }
+}
+
+fn append_brewing_stand_animate_effect(
+    pos: BlockPos,
+    random: &mut LevelEventSoundRandomState,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) {
+    spawns.push(EnvironmentParticleSpawn {
+        particle: simple_client_particle_options(PARTICLE_SMOKE),
+        position: [
+            f64::from(pos.x) + 0.4 + f64::from(random.next_float() * 0.2),
+            f64::from(pos.y) + 0.7 + f64::from(random.next_float() * 0.3),
+            f64::from(pos.z) + 0.4 + f64::from(random.next_float() * 0.2),
+        ],
+        velocity: [0.0; 3],
+        always_show: false,
+        color_source: None,
+    });
+}
+
+fn append_torch_animate_effects(
+    pos: BlockPos,
+    properties: &BTreeMap<String, String>,
+    profile: TorchAnimateParticleProfile,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) {
+    let mut offset = [0.0, 0.0, 0.0];
+    if profile.wall {
+        let Some([x, 0, z]) = properties
+            .get("facing")
+            .and_then(|facing| block_state_direction(facing))
+        else {
+            return;
+        };
+        offset = [-0.27 * f64::from(x), 0.22, -0.27 * f64::from(z)];
+    }
+    let position = [
+        f64::from(pos.x) + 0.5 + offset[0],
+        f64::from(pos.y) + 0.7 + offset[1],
+        f64::from(pos.z) + 0.5 + offset[2],
+    ];
+    for particle in [PARTICLE_SMOKE, profile.particle_resource_id] {
+        spawns.push(EnvironmentParticleSpawn {
+            particle: simple_client_particle_options(particle),
+            position,
+            velocity: [0.0; 3],
+            always_show: false,
+            color_source: None,
+        });
+    }
+}
+
+fn append_lever_animate_effect(
+    pos: BlockPos,
+    properties: &BTreeMap<String, String>,
+    random: &mut LevelEventSoundRandomState,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) {
+    if properties.get("powered").map(String::as_str) != Some("true") || random.next_float() >= 0.25
+    {
+        return;
+    }
+    let Some(facing) = properties
+        .get("facing")
+        .and_then(|facing| block_state_direction(facing))
+    else {
+        return;
+    };
+    let connected_opposite = match properties.get("face").map(String::as_str) {
+        Some("floor") => [0, -1, 0],
+        Some("ceiling") => [0, 1, 0],
+        Some("wall") => [-facing[0], -facing[1], -facing[2]],
+        _ => return,
+    };
+    let facing_opposite = [-facing[0], -facing[1], -facing[2]];
+    spawns.push(EnvironmentParticleSpawn {
+        particle: dust_client_particle_options(REDSTONE_PARTICLE_COLOR, 0.5),
+        position: [
+            f64::from(pos.x)
+                + 0.5
+                + 0.1 * f64::from(facing_opposite[0])
+                + 0.2 * f64::from(connected_opposite[0]),
+            f64::from(pos.y)
+                + 0.5
+                + 0.1 * f64::from(facing_opposite[1])
+                + 0.2 * f64::from(connected_opposite[1]),
+            f64::from(pos.z)
+                + 0.5
+                + 0.1 * f64::from(facing_opposite[2])
+                + 0.2 * f64::from(connected_opposite[2]),
+        ],
+        velocity: [0.0; 3],
+        always_show: false,
+        color_source: None,
+    });
+}
+
+fn append_mycelium_animate_effect(
+    pos: BlockPos,
+    random: &mut LevelEventSoundRandomState,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) {
+    if random.next_int_bound(10) != 0 {
+        return;
+    }
+    spawns.push(EnvironmentParticleSpawn {
+        particle: simple_client_particle_options(PARTICLE_MYCELIUM),
+        position: [
+            f64::from(pos.x) + random.next_double(),
+            f64::from(pos.y) + 1.1,
+            f64::from(pos.z) + random.next_double(),
+        ],
+        velocity: [0.0; 3],
+        always_show: false,
+        color_source: None,
+    });
+}
+
+fn append_wither_rose_animate_effects(
+    pos: BlockPos,
+    random: &mut LevelEventSoundRandomState,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) {
+    for _ in 0..3 {
+        if random.next_boolean() {
+            spawns.push(EnvironmentParticleSpawn {
+                particle: simple_client_particle_options(PARTICLE_SMOKE),
+                position: [
+                    f64::from(pos.x) + 0.5 + random.next_double() / 5.0,
+                    f64::from(pos.y) + 0.5 - random.next_double(),
+                    f64::from(pos.z) + 0.5 + random.next_double() / 5.0,
+                ],
+                velocity: [0.0; 3],
+                always_show: false,
+                color_source: None,
+            });
         }
     }
 }
@@ -3014,6 +3251,367 @@ mod tests {
             expected_positions
         );
         assert_eq!(actual.next_long(), expected.next_long());
+    }
+
+    #[test]
+    fn brewing_stand_and_torches_preserve_exact_vanilla_particle_positions() {
+        let pos = BlockPos {
+            x: -4,
+            y: 12,
+            z: 30,
+        };
+        let mut actual = LevelEventSoundRandomState::with_seed(91);
+        let mut expected = LevelEventSoundRandomState::with_seed(91);
+        let mut spawns = Vec::new();
+        append_brewing_stand_animate_effect(pos, &mut actual, &mut spawns);
+        assert_eq!(spawns.len(), 1);
+        assert_eq!(spawns[0].particle.resource_id, PARTICLE_SMOKE);
+        assert_eq!(
+            spawns[0].position,
+            [
+                -4.0 + 0.4 + f64::from(expected.next_float() * 0.2),
+                12.0 + 0.7 + f64::from(expected.next_float() * 0.3),
+                30.0 + 0.4 + f64::from(expected.next_float() * 0.2),
+            ]
+        );
+        assert_eq!(actual.next_long(), expected.next_long());
+
+        spawns.clear();
+        append_torch_animate_effects(
+            pos,
+            &BTreeMap::new(),
+            torch_animate_particle_profile("minecraft:copper_torch").unwrap(),
+            &mut spawns,
+        );
+        assert_eq!(
+            spawns
+                .iter()
+                .map(|spawn| spawn.particle.resource_id.as_str())
+                .collect::<Vec<_>>(),
+            [PARTICLE_SMOKE, "minecraft:copper_fire_flame"]
+        );
+        assert!(spawns
+            .iter()
+            .all(|spawn| spawn.position == [-3.5, 12.7, 30.5]));
+
+        spawns.clear();
+        append_torch_animate_effects(
+            pos,
+            &BTreeMap::from([("facing".to_string(), "east".to_string())]),
+            torch_animate_particle_profile("minecraft:soul_wall_torch").unwrap(),
+            &mut spawns,
+        );
+        assert_eq!(
+            spawns
+                .iter()
+                .map(|spawn| spawn.particle.resource_id.as_str())
+                .collect::<Vec<_>>(),
+            [PARTICLE_SMOKE, "minecraft:soul_fire_flame"]
+        );
+        assert!(spawns
+            .iter()
+            .all(|spawn| spawn.position == [-3.77, 12.92, 30.5]));
+    }
+
+    #[test]
+    fn lever_mycelium_and_wither_rose_preserve_random_draw_order() {
+        let pos = BlockPos {
+            x: -4,
+            y: 12,
+            z: 30,
+        };
+        let lever_seed = (0..100_000)
+            .find(|seed| LevelEventSoundRandomState::with_seed(*seed).next_float() < 0.25)
+            .expect("deterministic lever particle seed");
+        let mut actual = LevelEventSoundRandomState::with_seed(lever_seed);
+        let mut expected = LevelEventSoundRandomState::with_seed(lever_seed);
+        let mut spawns = Vec::new();
+        append_lever_animate_effect(
+            pos,
+            &BTreeMap::from([
+                ("powered".to_string(), "true".to_string()),
+                ("facing".to_string(), "north".to_string()),
+                ("face".to_string(), "ceiling".to_string()),
+            ]),
+            &mut actual,
+            &mut spawns,
+        );
+        assert!(expected.next_float() < 0.25);
+        assert_eq!(spawns.len(), 1);
+        assert_eq!(spawns[0].position, [-3.5, 12.7, 30.6]);
+        assert_eq!(
+            spawns[0].particle.option,
+            bbb_world::ClientParticleOptionValue::Dust {
+                color: REDSTONE_PARTICLE_COLOR,
+                scale_bits: 0.5_f32.to_bits(),
+            }
+        );
+        assert_eq!(actual.next_long(), expected.next_long());
+
+        let mycelium_seed = (0..100_000)
+            .find(|seed| LevelEventSoundRandomState::with_seed(*seed).next_int_bound(10) == 0)
+            .expect("deterministic mycelium particle seed");
+        actual = LevelEventSoundRandomState::with_seed(mycelium_seed);
+        expected = LevelEventSoundRandomState::with_seed(mycelium_seed);
+        spawns.clear();
+        append_mycelium_animate_effect(pos, &mut actual, &mut spawns);
+        assert_eq!(expected.next_int_bound(10), 0);
+        assert_eq!(spawns.len(), 1);
+        assert_eq!(spawns[0].particle.resource_id, PARTICLE_MYCELIUM);
+        assert_eq!(
+            spawns[0].position,
+            [
+                -4.0 + expected.next_double(),
+                13.1,
+                30.0 + expected.next_double(),
+            ]
+        );
+        assert_eq!(actual.next_long(), expected.next_long());
+
+        let wither_seed = (0..100_000)
+            .find(|seed| {
+                let mut random = LevelEventSoundRandomState::with_seed(*seed);
+                let mut emitted = 0;
+                for _ in 0..3 {
+                    if random.next_boolean() {
+                        emitted += 1;
+                        for _ in 0..3 {
+                            let _ = random.next_double();
+                        }
+                    }
+                }
+                emitted == 2
+            })
+            .expect("deterministic mixed wither rose particle seed");
+        actual = LevelEventSoundRandomState::with_seed(wither_seed);
+        expected = LevelEventSoundRandomState::with_seed(wither_seed);
+        spawns.clear();
+        append_wither_rose_animate_effects(pos, &mut actual, &mut spawns);
+        let mut expected_positions = Vec::new();
+        for _ in 0..3 {
+            if expected.next_boolean() {
+                expected_positions.push([
+                    -3.5 + expected.next_double() / 5.0,
+                    12.5 - expected.next_double(),
+                    30.5 + expected.next_double() / 5.0,
+                ]);
+            }
+        }
+        assert_eq!(spawns.len(), 2);
+        assert!(spawns
+            .iter()
+            .all(|spawn| spawn.particle.resource_id == PARTICLE_SMOKE));
+        assert_eq!(
+            spawns
+                .iter()
+                .map(|spawn| spawn.position)
+                .collect::<Vec<_>>(),
+            expected_positions
+        );
+        assert_eq!(actual.next_long(), expected.next_long());
+    }
+
+    #[test]
+    fn eyeblossom_and_hanging_moss_idle_sounds_require_exact_supports() {
+        let pos = BlockPos { x: 8, y: 32, z: 8 };
+        let below = BlockPos { y: 31, ..pos };
+        let above = BlockPos { y: 33, ..pos };
+        let mut world = world_with_ambient_particles();
+        let mut runtime = EnvironmentAnimateRuntime::default();
+        let mut recording = RecordingEnvironmentAudio::default();
+        let mut audio: Option<&mut dyn AudioEventSink> = Some(&mut recording);
+
+        set_block(
+            &mut world,
+            below,
+            block_state_id("minecraft:pale_moss_block", &[]),
+        );
+        let eyeblossom_seed = (0..100_000)
+            .find(|seed| LevelEventSoundRandomState::with_seed(*seed).next_int_bound(700) == 0)
+            .expect("deterministic eyeblossom sound seed");
+        let mut eyeblossom_random = LevelEventSoundRandomState::with_seed(eyeblossom_seed);
+        runtime.animate_eyeblossom(&world, pos, &mut eyeblossom_random, &mut audio);
+
+        set_block(
+            &mut world,
+            above,
+            block_state_id("minecraft:stripped_pale_oak_log", &[("axis", "y")]),
+        );
+        let moss_seed = (0..100_000)
+            .find(|seed| LevelEventSoundRandomState::with_seed(*seed).next_int_bound(500) == 0)
+            .expect("deterministic hanging moss sound seed");
+        let mut moss_random = LevelEventSoundRandomState::with_seed(moss_seed);
+        runtime.animate_hanging_moss(&world, pos, &mut moss_random, &mut audio);
+
+        assert_eq!(recording.positioned.len(), 2);
+        let expected_eyeblossom_id = world
+            .resolved_registry_entry_by_resource_id(
+                "minecraft:sound_event",
+                SOUND_EVENT_EYEBLOSSOM_IDLE,
+            )
+            .map(|entry| entry.holder_id);
+        let expected_hanging_moss_id = world
+            .resolved_registry_entry_by_resource_id(
+                "minecraft:sound_event",
+                SOUND_EVENT_PALE_HANGING_MOSS_IDLE,
+            )
+            .map(|entry| entry.holder_id);
+        assert!(expected_eyeblossom_id.is_some());
+        assert!(expected_hanging_moss_id.is_some());
+        assert_eq!(
+            recording.positioned[0].sound.registry_id,
+            expected_eyeblossom_id
+        );
+        assert_eq!(
+            recording.positioned[1].sound.registry_id,
+            expected_hanging_moss_id
+        );
+        assert!(recording.positioned.iter().all(|sound| {
+            sound.source == "ambient"
+                && sound.position
+                    == ProtocolVec3d {
+                        x: 8.0,
+                        y: 32.0,
+                        z: 8.0,
+                    }
+                && sound.volume == 1.0
+                && sound.pitch == 1.0
+                && !sound.distance_delay
+        }));
+        let mut expected_level = LevelEventSoundRandomState::with_seed(0);
+        assert_eq!(recording.positioned[0].seed, expected_level.next_long());
+        assert_eq!(recording.positioned[1].seed, expected_level.next_long());
+        assert_eq!(runtime.level_random.next_long(), expected_level.next_long());
+    }
+
+    #[test]
+    fn environment_dispatches_remaining_block_animate_tick_particles() {
+        let center = BlockPos { x: 8, y: 32, z: 8 };
+        let mut sampled_level_random = LevelEventSoundRandomState::default();
+        let pos = sample_animate_position(&mut sampled_level_random, center, NEAR_SAMPLE_RADIUS);
+        let lever_seed = (0..100_000)
+            .find(|seed| LevelEventSoundRandomState::with_seed(*seed).next_float() < 0.25)
+            .unwrap();
+        let mycelium_seed = (0..100_000)
+            .find(|seed| LevelEventSoundRandomState::with_seed(*seed).next_int_bound(10) == 0)
+            .unwrap();
+        let wither_seed = (0..100_000)
+            .find(|seed| {
+                let mut random = LevelEventSoundRandomState::with_seed(*seed);
+                (0..3)
+                    .filter(|_| {
+                        let emitted = random.next_boolean();
+                        if emitted {
+                            for _ in 0..3 {
+                                let _ = random.next_double();
+                            }
+                        }
+                        emitted
+                    })
+                    .count()
+                    == 2
+            })
+            .unwrap();
+        for (block_name, properties, seed, particle, expected_count) in [
+            (
+                "minecraft:brewing_stand",
+                vec![
+                    ("has_bottle_0", "false"),
+                    ("has_bottle_1", "false"),
+                    ("has_bottle_2", "false"),
+                ],
+                1,
+                PARTICLE_SMOKE,
+                1,
+            ),
+            (
+                "minecraft:soul_wall_torch",
+                vec![("facing", "north")],
+                1,
+                "minecraft:soul_fire_flame",
+                1,
+            ),
+            (
+                "minecraft:lever",
+                vec![("face", "wall"), ("facing", "north"), ("powered", "true")],
+                lever_seed,
+                "minecraft:dust",
+                1,
+            ),
+            (
+                "minecraft:mycelium",
+                vec![("snowy", "false")],
+                mycelium_seed,
+                PARTICLE_MYCELIUM,
+                1,
+            ),
+            (
+                "minecraft:wither_rose",
+                Vec::new(),
+                wither_seed,
+                PARTICLE_SMOKE,
+                2,
+            ),
+        ] {
+            let mut world = world_with_ambient_particles();
+            set_block(&mut world, pos, block_state_id(block_name, &properties));
+            let mut runtime = EnvironmentAnimateRuntime::default();
+            let mut random = LevelEventSoundRandomState::with_seed(seed);
+            let mut audio = None;
+            let mut spawns = Vec::new();
+            runtime.do_animate_tick(
+                &mut world,
+                center,
+                NEAR_SAMPLE_RADIUS,
+                0,
+                &mut random,
+                &mut audio,
+                &mut spawns,
+            );
+            assert_eq!(
+                spawns
+                    .iter()
+                    .filter(|spawn| spawn.particle.resource_id == particle)
+                    .count(),
+                expected_count,
+                "{block_name}"
+            );
+        }
+    }
+
+    #[test]
+    fn generated_animate_tick_catalog_is_fully_covered_by_runtime_dispatch() {
+        let center = BlockPos { x: 8, y: 32, z: 8 };
+        let mut sampled_level_random = LevelEventSoundRandomState::default();
+        let pos = sample_animate_position(&mut sampled_level_random, center, NEAR_SAMPLE_RADIUS);
+        let mut world = world_with_ambient_particles();
+
+        for &block_name in bbb_world::vanilla_block_animate_tick_names() {
+            let block_type =
+                bbb_protocol::block_types::vanilla_block_type_for_resource_id(block_name)
+                    .unwrap_or_else(|| panic!("missing generated block type {block_name}"));
+            let block_state_id =
+                bbb_protocol::block_state_types::vanilla_block_default_state_id(block_type.id)
+                    .unwrap_or_else(|| panic!("missing default block state {block_name}"));
+            set_block(&mut world, pos, block_state_id);
+
+            let mut runtime = EnvironmentAnimateRuntime::default();
+            let mut random = LevelEventSoundRandomState::with_seed(42);
+            let mut audio = None;
+            let mut spawns = Vec::new();
+            assert!(
+                runtime.do_animate_tick(
+                    &mut world,
+                    center,
+                    NEAR_SAMPLE_RADIUS,
+                    0,
+                    &mut random,
+                    &mut audio,
+                    &mut spawns,
+                ),
+                "generated animateTick block lacks native dispatch: {block_name}"
+            );
+        }
     }
 
     #[test]
@@ -5846,7 +6444,7 @@ mod tests {
             &mut world,
             pos,
             block_state_id(
-                "minecraft:lightning_rod",
+                "minecraft:waxed_oxidized_lightning_rod",
                 &[
                     ("facing", "west"),
                     ("powered", "false"),

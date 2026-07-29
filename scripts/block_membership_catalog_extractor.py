@@ -41,6 +41,14 @@ class LeafAnimateParticleProfileEntry:
     color_argb: int | None
 
 
+@dataclass(frozen=True)
+class TorchAnimateParticleProfileEntry:
+    constant_name: str
+    resource_id: str
+    particle_resource_id: str
+    wall: bool
+
+
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     span = expression.span
     raise BlockMembershipCatalogExtractionError(
@@ -721,6 +729,153 @@ def leaf_animate_particle_profiles(
             f"{source.relative_path}: duplicate leaf animate profile resource id"
         )
     return profiles
+
+
+def torch_animate_particle_profiles(
+    source: JavaSource,
+    torch_entries: list[BlockMembershipEntry],
+    particle_resource_ids: dict[str, str],
+    expected_count: int = 6,
+) -> list[TorchAnimateParticleProfileEntry]:
+    """Extract ``TorchBlock``/``WallTorchBlock.animateTick`` configuration."""
+
+    constructor_types = frozenset({"TorchBlock", "WallTorchBlock"})
+    torch_by_constant = {entry.constant_name: entry for entry in torch_entries}
+    profiles: list[TorchAnimateParticleProfileEntry] = []
+    for field in source.fields_for("net.minecraft.world.level.block.Blocks"):
+        torch_entry = torch_by_constant.get(field.name)
+        if torch_entry is None:
+            continue
+        if field.initializer is None:
+            raise BlockMembershipCatalogExtractionError(
+                f"{source.relative_path}: torch field {field.name} lacks initializer"
+            )
+        creations = [
+            node
+            for node in descendants(field.initializer.node)
+            if _constructed_type_name(source, node) in constructor_types
+        ]
+        if len(creations) != 1:
+            _fail(
+                source,
+                field.initializer,
+                f"torch field {field.name} must contain one torch constructor",
+            )
+        creation = creations[0]
+        constructor_type = _constructed_type_name(source, creation)
+        assert constructor_type is not None
+        arguments = creation.child_by_field_name("arguments")
+        if arguments is None:
+            _fail(source, source.expression(creation), "torch constructor lacks arguments")
+        args = [source.expression(child) for child in arguments.named_children]
+        if len(args) != 2:
+            _fail(
+                source,
+                source.expression(creation),
+                f"{constructor_type} constructor expected two arguments",
+            )
+        particle_constant = field_constant(source, args[0], "ParticleTypes")
+        if particle_constant is None:
+            _fail(
+                source,
+                args[0],
+                "torch flame particle must be a ParticleTypes constant",
+            )
+        particle_resource_id = particle_resource_ids.get(particle_constant)
+        if particle_resource_id is None:
+            _fail(
+                source,
+                args[0],
+                f"unresolved ParticleTypes.{particle_constant}",
+            )
+        profiles.append(
+            TorchAnimateParticleProfileEntry(
+                constant_name=field.name,
+                resource_id=torch_entry.resource_id,
+                particle_resource_id=particle_resource_id,
+                wall=constructor_type == "WallTorchBlock",
+            )
+        )
+
+    if len(profiles) != expected_count:
+        raise BlockMembershipCatalogExtractionError(
+            f"{source.relative_path}: expected {expected_count} torch animate profiles, "
+            f"extracted {len(profiles)}"
+        )
+    if len({profile.resource_id for profile in profiles}) != len(profiles):
+        raise BlockMembershipCatalogExtractionError(
+            f"{source.relative_path}: duplicate torch animate profile resource id"
+        )
+    return profiles
+
+
+def block_animate_tick_constructor_types(
+    sources: list[JavaSource], expected_count: int
+) -> frozenset[str]:
+    """Return block types whose nearest ``animateTick`` override is non-empty."""
+
+    types = [item for source in sources for item in source.types]
+    resolve_class_hierarchy(types)
+    known = {item.fqcn: item for item in types}
+    block_fqcn = "net.minecraft.world.level.block.Block"
+    if block_fqcn not in known:
+        raise BlockMembershipCatalogExtractionError(
+            f"missing animateTick base class {block_fqcn}"
+        )
+    methods_by_owner = {
+        item.fqcn: [
+            method
+            for source in sources
+            for method in source.methods_for(item)
+            if method.name == "animateTick" and not method.is_constructor
+        ]
+        for item in types
+    }
+
+    members: list[str] = []
+    for item in types:
+        ancestor = item
+        ancestry: set[str] = set()
+        while ancestor.fqcn not in ancestry:
+            ancestry.add(ancestor.fqcn)
+            if ancestor.fqcn == block_fqcn:
+                break
+            if ancestor.superclass is None or ancestor.superclass not in known:
+                break
+            ancestor = known[ancestor.superclass]
+        if block_fqcn not in ancestry:
+            continue
+
+        current = item
+        visited: set[str] = set()
+        while current.fqcn not in visited:
+            visited.add(current.fqcn)
+            methods = methods_by_owner[current.fqcn]
+            if methods:
+                if len(methods) != 1:
+                    raise BlockMembershipCatalogExtractionError(
+                        f"{current.source_path}: expected one {current.fqcn}.animateTick "
+                        f"method, extracted {len(methods)}"
+                    )
+                method = methods[0]
+                body = method.node.child_by_field_name("body")
+                if method.body is not None and body is not None and body.named_children:
+                    members.append(item.simple_name)
+                break
+            if current.superclass is None or current.superclass not in known:
+                break
+            current = known[current.superclass]
+
+    if len(members) != expected_count:
+        raise BlockMembershipCatalogExtractionError(
+            f"expected {expected_count} classes with a non-empty nearest animateTick, "
+            f"extracted {len(members)}"
+        )
+    if len(set(members)) != len(members):
+        raise BlockMembershipCatalogExtractionError(
+            "duplicate simple class name with a non-empty nearest animateTick"
+        )
+    return frozenset(members)
 
 
 def constructor_types_extending(

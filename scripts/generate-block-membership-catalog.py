@@ -11,6 +11,7 @@ from pathlib import Path
 
 from block_membership_catalog_extractor import (
     air_blocks,
+    block_animate_tick_constructor_types,
     block_friction_overrides,
     block_speed_factor_overrides,
     block_tag_membership,
@@ -22,6 +23,7 @@ from block_membership_catalog_extractor import (
     no_collision_blocks,
     no_terrain_particle_blocks,
     tinted_leaves_particle_constant,
+    torch_animate_particle_profiles,
 )
 from block_registry_catalog_extractor import (
     extract_block_id_constants,
@@ -275,6 +277,10 @@ def generate(source_root: Path) -> str:
         "net.minecraft.world.level.block.FallingBlock",
         6,
     )
+    animate_tick_types = block_animate_tick_constructor_types(
+        block_class_sources,
+        57,
+    )
     entries = no_terrain_particle_blocks(source)
     no_collision_entries = no_collision_blocks(source, block_id_constants)
     air_entries = air_blocks(source)
@@ -299,6 +305,17 @@ def generate(source_root: Path) -> str:
         foliage_tinted_leaves_types,
         particle_resource_ids,
         tinted_leaves_particle_constant(block_class_sources),
+    )
+    torch_entries = constructor_family_blocks(
+        source,
+        frozenset({"TorchBlock", "WallTorchBlock"}),
+        6,
+        block_id_constants,
+    )
+    torch_particle_profiles = torch_animate_particle_profiles(
+        source,
+        torch_entries,
+        particle_resource_ids,
     )
     constructor_catalogs = [
         (
@@ -326,6 +343,11 @@ def generate(source_root: Path) -> str:
             ("VANILLA_FLOOR_SKULL_BLOCKS", floor_skull_types, 7),
             ("VANILLA_WALL_SKULL_BLOCKS", wall_skull_types, 7),
             ("VANILLA_FALLING_BLOCKS", falling_block_types, 23),
+            (
+                "VANILLA_BLOCK_ANIMATE_TICK_BLOCKS",
+                animate_tick_types,
+                126,
+            ),
             (
                 "VANILLA_BRUSHABLE_BLOCKS",
                 frozenset({"BrushableBlock"}),
@@ -432,6 +454,15 @@ def generate(source_root: Path) -> str:
         ),
         "];",
         "",
+        "pub(super) const VANILLA_TORCH_ANIMATE_PARTICLE_PROFILES: &[super::TorchAnimateParticleProfile] = &[",
+        *(
+            "    super::TorchAnimateParticleProfile::new("
+            f'"{entry.resource_id}", "{entry.particle_resource_id}", '
+            f"{str(entry.wall).lower()}),"
+            for entry in torch_particle_profiles
+        ),
+        "];",
+        "",
     ]
     for name, values in constructor_catalogs:
         lines.extend(
@@ -468,10 +499,12 @@ def generate(source_root: Path) -> str:
             "        assert_eq!(VANILLA_BLOCK_FRICTION_OVERRIDES.len(), 5);",
             "        assert_eq!(VANILLA_BLOCK_SPEED_FACTOR_OVERRIDES.len(), 2);",
             "        assert_eq!(VANILLA_LEAF_ANIMATE_PARTICLE_PROFILES.len(), 11);",
+            "        assert_eq!(VANILLA_TORCH_ANIMATE_PARTICLE_PROFILES.len(), 6);",
             '        assert_eq!(VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS, &["minecraft:powder_snow"]);',
             '        assert_eq!(VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS, &["minecraft:mangrove_roots"]);',
             "        assert_eq!(VANILLA_FLOOR_TORCH_BLOCKS.len(), 4);",
             "        assert_eq!(VANILLA_WALL_TORCH_BLOCKS.len(), 4);",
+            "        assert_eq!(VANILLA_BLOCK_ANIMATE_TICK_BLOCKS.len(), 126);",
             "        assert_eq!(VANILLA_IRON_BARS_CLASS_BLOCKS.len(), 18);",
             "        assert_eq!(VANILLA_COPPER_GRATE_BLOCKS.len(), 8);",
             "        assert_eq!(VANILLA_FIXED_SOURCE_WATER_BLOCKS.len(), 5);",
@@ -539,6 +572,7 @@ def generate(source_root: Path) -> str:
             "                    for name in [",
             '                        "VANILLA_BLOCK_FRICTION_OVERRIDES",',
             '                        "VANILLA_LEAF_ANIMATE_PARTICLE_PROFILES",',
+            '                        "VANILLA_TORCH_ANIMATE_PARTICLE_PROFILES",',
             *(f'                        "{name}",' for name in catalog_names),
             "                    ] {",
             "                        if line.contains(name) { violations.push(format!(\"{}: parallel block membership declaration `{}`\", display, line.trim())); }",

@@ -8,12 +8,12 @@ mod generated_26_1;
 
 use generated_26_1::{
     VANILLA_AIR_BLOCKS, VANILLA_AMETHYST_CLUSTER_BLOCKS, VANILLA_ANVIL_BLOCKS, VANILLA_BARS_BLOCKS,
-    VANILLA_BED_BLOCKS, VANILLA_BLOCK_FRICTION_OVERRIDES, VANILLA_BLOCK_SPEED_FACTOR_OVERRIDES,
-    VANILLA_BRUSHABLE_BLOCKS, VANILLA_BUTTON_BLOCKS, VANILLA_CAMPFIRE_BLOCKS,
-    VANILLA_CANDLE_BLOCKS, VANILLA_CANDLE_CAKE_BLOCKS, VANILLA_CAULDRON_BLOCKS,
-    VANILLA_CHAIN_BLOCKS, VANILLA_CHEST_BLOCKS, VANILLA_COPPER_GOLEM_STATUE_BLOCKS,
-    VANILLA_COPPER_GRATE_BLOCKS, VANILLA_CROP_BLOCKS, VANILLA_DEAD_BUSH_AMBIENT_BLOCKS,
-    VANILLA_DOOR_BLOCKS, VANILLA_DRY_GRASS_AMBIENT_BLOCKS,
+    VANILLA_BED_BLOCKS, VANILLA_BLOCK_ANIMATE_TICK_BLOCKS, VANILLA_BLOCK_FRICTION_OVERRIDES,
+    VANILLA_BLOCK_SPEED_FACTOR_OVERRIDES, VANILLA_BRUSHABLE_BLOCKS, VANILLA_BUTTON_BLOCKS,
+    VANILLA_CAMPFIRE_BLOCKS, VANILLA_CANDLE_BLOCKS, VANILLA_CANDLE_CAKE_BLOCKS,
+    VANILLA_CAULDRON_BLOCKS, VANILLA_CHAIN_BLOCKS, VANILLA_CHEST_BLOCKS,
+    VANILLA_COPPER_GOLEM_STATUE_BLOCKS, VANILLA_COPPER_GRATE_BLOCKS, VANILLA_CROP_BLOCKS,
+    VANILLA_DEAD_BUSH_AMBIENT_BLOCKS, VANILLA_DOOR_BLOCKS, VANILLA_DRY_GRASS_AMBIENT_BLOCKS,
     VANILLA_ENCHANTMENT_POWER_PROVIDER_BLOCKS, VANILLA_ENCHANTMENT_POWER_TRANSMITTER_BLOCKS,
     VANILLA_FALLING_BLOCKS, VANILLA_FENCE_BLOCKS, VANILLA_FENCE_GATE_BLOCKS, VANILLA_FIRE_BLOCKS,
     VANILLA_FIRE_FLAMMABLE_BLOCKS, VANILLA_FIXED_SOURCE_WATER_BLOCKS, VANILLA_FLOOR_SKULL_BLOCKS,
@@ -28,7 +28,7 @@ use generated_26_1::{
     VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS, VANILLA_SAPLING_BLOCKS,
     VANILLA_SHELF_BLOCKS, VANILLA_SHULKER_BOX_BLOCKS, VANILLA_SLAB_BLOCKS,
     VANILLA_SOUL_FIRE_BASE_BLOCKS, VANILLA_STAIR_BLOCKS, VANILLA_STANDING_SIGN_BLOCKS,
-    VANILLA_TERRACOTTA_BLOCKS, VANILLA_TRAPDOOR_BLOCKS,
+    VANILLA_TERRACOTTA_BLOCKS, VANILLA_TORCH_ANIMATE_PARTICLE_PROFILES, VANILLA_TRAPDOOR_BLOCKS,
     VANILLA_TRIGGERS_AMBIENT_DESERT_DRY_VEGETATION_BLOCK_SOUNDS,
     VANILLA_TRIGGERS_AMBIENT_DESERT_SAND_BLOCK_SOUNDS,
     VANILLA_TRIGGERS_AMBIENT_DRIED_GHAST_BLOCK_SOUNDS, VANILLA_WALL_BLOCKS,
@@ -106,6 +106,27 @@ impl LeafAnimateParticleProfile {
 
     pub const fn leaf_particle_chance(self) -> f32 {
         f32::from_bits(self.leaf_particle_chance_bits)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TorchAnimateParticleProfile {
+    pub block_resource_id: &'static str,
+    pub particle_resource_id: &'static str,
+    pub wall: bool,
+}
+
+impl TorchAnimateParticleProfile {
+    pub const fn new(
+        block_resource_id: &'static str,
+        particle_resource_id: &'static str,
+        wall: bool,
+    ) -> Self {
+        Self {
+            block_resource_id,
+            particle_resource_id,
+            wall,
+        }
     }
 }
 
@@ -530,6 +551,21 @@ pub fn leaf_animate_particle_profile(name: &str) -> Option<LeafAnimateParticlePr
         .find(|profile| profile.block_resource_id == name)
 }
 
+pub fn torch_animate_particle_profile(name: &str) -> Option<TorchAnimateParticleProfile> {
+    VANILLA_TORCH_ANIMATE_PARTICLE_PROFILES
+        .iter()
+        .copied()
+        .find(|profile| profile.block_resource_id == name)
+}
+
+pub fn block_name_has_animate_tick(name: &str) -> bool {
+    VANILLA_BLOCK_ANIMATE_TICK_BLOCKS.contains(&name)
+}
+
+pub fn vanilla_block_animate_tick_names() -> &'static [&'static str] {
+    VANILLA_BLOCK_ANIMATE_TICK_BLOCKS
+}
+
 pub fn block_name_is_door(name: &str) -> bool {
     VANILLA_DOOR_BLOCKS.contains(&name)
 }
@@ -624,6 +660,10 @@ pub fn block_name_is_lantern(name: &str) -> bool {
 
 pub fn block_name_is_rod(name: &str) -> bool {
     name == "minecraft:end_rod" || VANILLA_LIGHTNING_ROD_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_lightning_rod(name: &str) -> bool {
+    VANILLA_LIGHTNING_ROD_BLOCKS.contains(&name)
 }
 
 pub fn block_name_is_shelf(name: &str) -> bool {
@@ -1200,6 +1240,43 @@ mod tests {
             assert_eq!(profile.tint, LeafParticleTint::FixedArgb(0xff70_922d));
         }
         assert_eq!(leaf_animate_particle_profile("example:oak_leaves"), None);
+    }
+
+    #[test]
+    fn animate_tick_catalog_and_torch_profiles_preserve_vanilla_owners() {
+        assert_eq!(VANILLA_BLOCK_ANIMATE_TICK_BLOCKS.len(), 126);
+        for profile in VANILLA_TORCH_ANIMATE_PARTICLE_PROFILES {
+            assert!(block_name_has_animate_tick(profile.block_resource_id));
+        }
+        assert_eq!(
+            torch_animate_particle_profile("minecraft:torch"),
+            Some(TorchAnimateParticleProfile::new(
+                "minecraft:torch",
+                "minecraft:flame",
+                false,
+            ))
+        );
+        assert_eq!(
+            torch_animate_particle_profile("minecraft:soul_wall_torch"),
+            Some(TorchAnimateParticleProfile::new(
+                "minecraft:soul_wall_torch",
+                "minecraft:soul_fire_flame",
+                true,
+            ))
+        );
+        assert_eq!(
+            torch_animate_particle_profile("minecraft:copper_wall_torch"),
+            Some(TorchAnimateParticleProfile::new(
+                "minecraft:copper_wall_torch",
+                "minecraft:copper_fire_flame",
+                true,
+            ))
+        );
+        assert_eq!(
+            torch_animate_particle_profile("minecraft:redstone_torch"),
+            None
+        );
+        assert!(!block_name_has_animate_tick("minecraft:stone"));
     }
 
     #[test]

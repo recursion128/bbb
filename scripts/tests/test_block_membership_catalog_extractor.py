@@ -12,6 +12,7 @@ from block_membership_catalog_extractor import (  # noqa: E402
     BlockMembershipCatalogExtractionError,
     BlockMembershipEntry,
     air_blocks,
+    block_animate_tick_constructor_types,
     block_friction_overrides,
     block_speed_factor_overrides,
     block_tag_membership,
@@ -23,6 +24,7 @@ from block_membership_catalog_extractor import (  # noqa: E402
     no_collision_blocks,
     no_terrain_particle_blocks,
     tinted_leaves_particle_constant,
+    torch_animate_particle_profiles,
 )
 from vanilla_java_source import parse_source  # noqa: E402
 
@@ -406,6 +408,40 @@ class OtherBlock extends Block {}
                 [base, child], "net.minecraft.world.level.block.BaseBlock", 4
             )
 
+    def test_animate_tick_constructor_types_use_nearest_override(self) -> None:
+        base = parse_source(
+            "net/minecraft/world/level/block/Block.java",
+            b"""package net.minecraft.world.level.block;
+class Block {
+  public void animateTick(State state, Level level, Pos pos, Random random) {}
+}
+class AnimatedBlock extends Block {
+  public void animateTick(State state, Level level, Pos pos, Random random) {
+    level.addParticle(pos);
+  }
+}
+class AnimatedChildBlock extends AnimatedBlock {}
+""",
+        )
+        child = parse_source(
+            "net/minecraft/world/level/block/Overrides.java",
+            b"""package net.minecraft.world.level.block;
+class EmptyOverrideBlock extends AnimatedBlock {
+  public void animateTick(State state, Level level, Pos pos, Random random) {}
+}
+class PlainBlock extends Block {}
+""",
+        )
+        self.assertEqual(
+            block_animate_tick_constructor_types([base, child], 2),
+            frozenset({"AnimatedBlock", "AnimatedChildBlock"}),
+        )
+        with self.assertRaisesRegex(
+            BlockMembershipCatalogExtractionError,
+            "expected 3 classes with a non-empty nearest animateTick",
+        ):
+            block_animate_tick_constructor_types([base, child], 3)
+
     def test_leaf_animate_profiles_preserve_constructor_particle_semantics(self) -> None:
         source = parse_source(
             "net/minecraft/world/level/block/Blocks.java",
@@ -501,6 +537,44 @@ class Blocks {
                 "TINTED_LEAVES",
                 1,
             )
+
+    def test_torch_animate_profiles_preserve_particle_and_wall_semantics(self) -> None:
+        source = parse_source(
+            "net/minecraft/world/level/block/Blocks.java",
+            b"""package net.minecraft.world.level.block;
+class Blocks {
+  static final Block TORCH = register(
+      "torch", p -> new TorchBlock(ParticleTypes.FLAME, p), properties());
+  static final Block WALL = register(
+      "wall", p -> new WallTorchBlock(ParticleTypes.SOUL_FIRE_FLAME, p), properties());
+}""",
+        )
+        profiles = torch_animate_particle_profiles(
+            source,
+            [
+                BlockMembershipEntry("TORCH", "minecraft:torch"),
+                BlockMembershipEntry("WALL", "minecraft:wall"),
+            ],
+            {
+                "FLAME": "minecraft:flame",
+                "SOUL_FIRE_FLAME": "minecraft:soul_fire_flame",
+            },
+            2,
+        )
+        self.assertEqual(
+            [
+                (
+                    profile.resource_id,
+                    profile.particle_resource_id,
+                    profile.wall,
+                )
+                for profile in profiles
+            ],
+            [
+                ("minecraft:torch", "minecraft:flame", False),
+                ("minecraft:wall", "minecraft:soul_fire_flame", True),
+            ],
+        )
 
     def test_tinted_leaf_particle_comes_from_override_body(self) -> None:
         source = parse_source(
