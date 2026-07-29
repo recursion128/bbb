@@ -183,9 +183,6 @@ Skin/cape/elytra requests share one exact resource/session-generation cache.
 
 Owner: `bbb-native` + `bbb-renderer`
 
-- **Code of Conduct screen presentation parity.** Canonical UI state and control
-  requests still need the full `CodeOfConductScreen` background, layout, text,
-  button, hover, focus, and scroll presentation.
 - **Entity-in-UI preview `item_layers` GPU drawing**, per-preview override-camera
   orientation, and PIP-camera glint scroll animation time
   (`HudEntityPreviewItemLayer` / `GuiEntityRenderer`) are `deferred`: hand/head

@@ -1,6 +1,6 @@
 # Code of Conduct Screen Presentation Engineering Contract
 
-Status: active engineering contract.
+Status: completed on 2026-07-29.
 
 ## Goal and completion
 

@@ -804,3 +804,7 @@
   tooltip、六图案错误状态与 flag-only 结果 PIP 已按 Vanilla strata 贯通；静态/
   动态实体图集由 HUD 原位复用，合同见
   `docs/archive/loom-table-presentation-design.md`。
+- **2026-07-29（Code of Conduct 屏幕呈现工程闭环）**：动态 Vanilla 布局、原文
+  换行与滚动、复选框、焦点和精确接受/拒绝输入现由 screen-local 状态投影到原生
+  字体、控件、scissor 与确定性 GPU 像素；合同见
+  `docs/archive/code-of-conduct-screen-presentation-design.md`。
