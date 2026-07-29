@@ -154,6 +154,8 @@ resolver by adding a value provider. No new selection machinery is required.
   `minecraft:crossbow_charge_time`: conditional value/entity/location effects
   still need their loot-context requirements, and `remove_binomial` needs the
   holder entity's mutable `RandomSource` rather than a fabricated random result.
+  Active contract:
+  [`synchronized-enchantment-client-effects-design.md`](synchronized-enchantment-client-effects-design.md).
 
 ## Audio runtime parity
 
