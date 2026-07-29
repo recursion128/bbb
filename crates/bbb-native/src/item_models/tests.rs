@@ -29,6 +29,26 @@ use uuid::Uuid;
 const GRASS_BLOCK_STATE_ID: i32 = 9;
 
 #[test]
+fn entity_block_models_use_the_block_feature_lane() {
+    let source = include_str!("dropped.rs");
+    let start = source
+        .find("pub(crate) fn entity_block_models(")
+        .expect("entity block-model baker");
+    let end = source[start..]
+        .find("\n}\n\npub(super) fn block_model_solid_phase(")
+        .map(|offset| start + offset)
+        .expect("entity block-model baker end");
+    let body = &source[start..end];
+
+    assert_eq!(
+        body.matches("ItemModelDrawTarget::BlockFeature").count(),
+        2,
+        "solid and translucent entity block attachments use the block lane"
+    );
+    assert!(!body.contains("ItemModelDrawTarget::World"));
+}
+
+#[test]
 fn fast_leaves_moving_blocks_select_solid_without_alpha_cutout() {
     let cutout_leaves = TerrainTextureState::default();
     let fast_leaves = TerrainTextureState::default().with_cutout_leaves(false);

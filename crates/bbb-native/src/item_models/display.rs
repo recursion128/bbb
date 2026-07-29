@@ -176,7 +176,7 @@ fn bake_block_display(
             light,
             ITEM_MODEL_NO_OVERLAY,
             ItemModelFoil::None,
-            ItemModelDrawTarget::World,
+            ItemModelDrawTarget::BlockFeature,
         );
     }
     if quads.iter().any(|quad| quad.translucent) {
@@ -191,7 +191,7 @@ fn bake_block_display(
             light,
             ITEM_MODEL_NO_OVERLAY,
             ItemModelFoil::None,
-            ItemModelDrawTarget::World,
+            ItemModelDrawTarget::BlockFeature,
         );
     }
 }
@@ -460,6 +460,26 @@ mod tests {
         for (source, expected) in contexts {
             assert_eq!(item_display_context(source), expected);
         }
+    }
+
+    #[test]
+    fn block_display_models_use_the_block_feature_lane() {
+        let source = include_str!("display.rs");
+        let start = source
+            .find("fn bake_block_display(")
+            .expect("block-display baker");
+        let end = source[start..]
+            .find("\n}\n\n#[allow(clippy::too_many_arguments)]")
+            .map(|offset| start + offset)
+            .expect("block-display baker end");
+        let body = &source[start..end];
+
+        assert_eq!(
+            body.matches("ItemModelDrawTarget::BlockFeature").count(),
+            2,
+            "solid and translucent block-display submissions use the block lane"
+        );
+        assert!(!body.contains("ItemModelDrawTarget::World"));
     }
 
     #[test]

@@ -178,6 +178,9 @@ pub enum ItemModelDrawPhase {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ItemModelDrawTarget {
     World,
+    /// Vanilla `BlockFeatureRenderer` submission lane. These models share the
+    /// world attachments but draw after every `ItemFeatureRenderer` phase.
+    BlockFeature,
     Particle,
     FirstPerson,
     Gui,
@@ -2208,6 +2211,15 @@ mod tests {
         path: "textures/entity/test_special_portal.png",
         size: [16, 16],
     };
+
+    #[test]
+    fn block_feature_target_uses_the_world_depth_lane_without_gui_clipping() {
+        assert!(!ItemModelDrawTarget::BlockFeature.is_gui());
+        assert_ne!(
+            ItemModelDrawTarget::BlockFeature,
+            ItemModelDrawTarget::World
+        );
+    }
 
     #[test]
     fn resident_solid_no_cutout_shader_matches_vanilla_solid_block() {

@@ -161,7 +161,7 @@ pub(crate) fn item_frame_models_with_map_cache(
                 light: item_frame_border_light(state.glow, state.light),
                 overlay: ITEM_MODEL_NO_OVERLAY,
                 foil: ItemModelFoil::None,
-                target: ItemModelDrawTarget::World,
+                target: ItemModelDrawTarget::BlockFeature,
                 phase: ItemModelDrawPhase::SolidZOffsetForward,
                 submit_order: u32::try_from(
                     residency.instances.len() + residency.special_items.len(),
@@ -611,6 +611,10 @@ mod tests {
         assert_eq!(
             visible.residency.instances[0].phase,
             ItemModelDrawPhase::SolidZOffsetForward
+        );
+        assert_eq!(
+            visible.residency.instances[0].target,
+            ItemModelDrawTarget::BlockFeature
         );
         assert!(visible.flat_meshes.is_empty());
         assert!(visible.map_textures.is_empty());

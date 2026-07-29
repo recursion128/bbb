@@ -685,6 +685,7 @@ impl Renderer {
         }
         self.resident_item_model_main_pass(
             &mut *encoder,
+            crate::item_models::ItemModelDrawTarget::World,
             &[
                 crate::item_models::ItemModelDrawPhase::Solid,
                 crate::item_models::ItemModelDrawPhase::SolidNoCutout,
@@ -708,6 +709,7 @@ impl Renderer {
         }
         self.resident_item_model_main_pass(
             &mut *encoder,
+            crate::item_models::ItemModelDrawTarget::World,
             &[crate::item_models::ItemModelDrawPhase::SolidZOffsetForward],
             Some(&[crate::item_models::ItemModelAtlasKind::Blocks]),
             stats,
@@ -740,12 +742,14 @@ impl Renderer {
         }
         self.resident_item_model_main_pass(
             &mut *encoder,
+            crate::item_models::ItemModelDrawTarget::World,
             &[crate::item_models::ItemModelDrawPhase::Solid],
             Some(&[crate::item_models::ItemModelAtlasKind::Items]),
             stats,
         );
         self.resident_item_model_main_pass(
             &mut *encoder,
+            crate::item_models::ItemModelDrawTarget::World,
             &[
                 crate::item_models::ItemModelDrawPhase::Solid,
                 crate::item_models::ItemModelDrawPhase::CutoutNoCull,
@@ -774,7 +778,19 @@ impl Renderer {
         }
         self.resident_item_model_main_pass(
             &mut *encoder,
+            crate::item_models::ItemModelDrawTarget::World,
             &[crate::item_models::ItemModelDrawPhase::Glint],
+            None,
+            stats,
+        );
+        self.resident_item_model_main_pass(
+            &mut *encoder,
+            crate::item_models::ItemModelDrawTarget::BlockFeature,
+            &[
+                crate::item_models::ItemModelDrawPhase::Solid,
+                crate::item_models::ItemModelDrawPhase::SolidNoCutout,
+                crate::item_models::ItemModelDrawPhase::SolidZOffsetForward,
+            ],
             None,
             stats,
         );
@@ -1385,6 +1401,13 @@ impl Renderer {
                 pass.draw(0..item_entity_vertices.len() as u32, 0..1);
                 stats.item_entity_draw_calls += 1;
             }
+            self.draw_resident_item_models(
+                &mut pass,
+                crate::item_models::ItemModelDrawTarget::BlockFeature,
+                &[crate::item_models::ItemModelDrawPhase::Translucent],
+                None,
+                stats,
+            );
         }
     }
 
@@ -3836,12 +3859,13 @@ impl Renderer {
     fn resident_item_model_main_pass(
         &self,
         encoder: &mut wgpu::CommandEncoder,
+        target: crate::item_models::ItemModelDrawTarget,
         phases: &[crate::item_models::ItemModelDrawPhase],
         atlases: Option<&[crate::item_models::ItemModelAtlasKind]>,
         stats: &mut FrameDrawStats,
     ) {
         if !self.item_model_residency.draws().iter().any(|draw| {
-            draw.target == crate::item_models::ItemModelDrawTarget::World
+            draw.target == target
                 && phases.contains(&draw.phase)
                 && atlases.is_none_or(|atlases| atlases.contains(&draw.asset.atlas()))
         }) {
@@ -3868,13 +3892,7 @@ impl Renderer {
             occlusion_query_set: None,
             timestamp_writes: None,
         });
-        self.draw_resident_item_models(
-            &mut pass,
-            crate::item_models::ItemModelDrawTarget::World,
-            phases,
-            atlases,
-            stats,
-        );
+        self.draw_resident_item_models(&mut pass, target, phases, atlases, stats);
     }
 
     fn draw_resident_item_models<'a>(
@@ -5115,6 +5133,42 @@ mod tests {
         assert!(text_body.contains("self.item_frame_map_text_font_atlas.as_ref()"));
         assert!(text_body.contains("view: &self.main_target.view"));
         assert!(text_body.contains("view: &self.depth.view"));
+    }
+
+    #[test]
+    fn block_feature_residency_draws_after_item_features_in_both_phases() {
+        let source = include_str!("render.rs");
+        let solid_start = source
+            .find("fn main_world_pass(")
+            .expect("solid feature pass");
+        let solid_end = source[solid_start..]
+            .find("\n    }\n\n    /// Vanilla `ParticleFeatureRenderer.render`")
+            .map(|offset| solid_start + offset)
+            .expect("solid feature pass end");
+        let solid = &source[solid_start..solid_end];
+        let last_world = solid
+            .rfind("ItemModelDrawTarget::World")
+            .expect("solid item feature lane");
+        let block = solid
+            .rfind("ItemModelDrawTarget::BlockFeature")
+            .expect("solid block feature lane");
+        assert!(last_world < block);
+
+        let translucent_start = source
+            .find("fn item_entity_target_pass(")
+            .expect("translucent ordered feature pass");
+        let translucent_end = source[translucent_start..]
+            .find("\n    }\n\n    fn block_destroy_overlay_pass(")
+            .map(|offset| translucent_start + offset)
+            .expect("translucent ordered feature pass end");
+        let translucent = &source[translucent_start..translucent_end];
+        let last_world = translucent
+            .rfind("ItemModelDrawTarget::World")
+            .expect("translucent item feature lane");
+        let block = translucent
+            .rfind("ItemModelDrawTarget::BlockFeature")
+            .expect("translucent block feature lane");
+        assert!(last_world < block);
     }
 
     #[test]

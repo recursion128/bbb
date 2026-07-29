@@ -189,7 +189,7 @@ pub(crate) fn entity_block_models(
                     attachment.light,
                     attachment.overlay,
                     ItemModelFoil::None,
-                    ItemModelDrawTarget::World,
+                    ItemModelDrawTarget::BlockFeature,
                 );
                 let phase = block_model_solid_phase(
                     moving_block,
@@ -216,7 +216,7 @@ pub(crate) fn entity_block_models(
                     attachment.light,
                     attachment.overlay,
                     ItemModelFoil::None,
-                    ItemModelDrawTarget::World,
+                    ItemModelDrawTarget::BlockFeature,
                 );
             }
         }
