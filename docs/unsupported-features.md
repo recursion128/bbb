@@ -78,9 +78,6 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-pack` + `bbb-world`
 
 Living-entity render state:
 
-- Project the remaining conversion-time shaking input;
-  `LivingEntityRenderer.isShaking` reads it, but `conversionTime` is currently
-  server-side only.
 - Armor-stand pose interpolation is `not-needed`: vanilla 26.1
   `ArmorStandRenderer.extractRenderState` copies all six synced `Rotations`
   getters directly without partial-tick interpolation. Only `yRot` uses
