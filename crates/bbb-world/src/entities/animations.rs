@@ -76,8 +76,8 @@ use super::{
     is_vanilla_abstract_nautilus_type, is_vanilla_boat_type, is_vanilla_vehicle_entity_type,
     vanilla_entity_metadata_entity_accessors,
     vanilla_entity_metadata_living_entity_accessors_for_entity_type, vanilla_entity_type_is_squid,
-    EntityTransform, EntityVec3, VanillaEntityEventKind, VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID,
-    VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
+    EntityCameraViewBobState, EntityTransform, EntityVec3, VanillaEntityEventKind,
+    VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID, VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
 };
 use bbb_protocol::entity_types::*;
 
@@ -1257,7 +1257,7 @@ impl PlayerCloakAnimationState {
     /// consumes. bbb drives the walk pulse from the synced feet movement for all
     /// players because the local-only `LocalPlayer.addWalkedDistance` path is not
     /// split out at this render-state boundary.
-    fn advance_client_tick(
+    pub(super) fn advance_client_tick(
         &mut self,
         position: EntityVec3,
         delta_movement: EntityVec3,
@@ -1340,6 +1340,15 @@ impl PlayerCloakAnimationState {
         flap += (walk_dist * 6.0).sin() * 32.0 * bob;
 
         (flap, lean, lean2)
+    }
+
+    fn camera_view_bob(self, partial_tick: f32) -> EntityCameraViewBobState {
+        let partial_tick = partial_tick.clamp(0.0, 1.0);
+        EntityCameraViewBobState {
+            backwards_interpolated_walk_distance: -(self.walk_dist
+                + (self.walk_dist - self.walk_dist_old) * partial_tick),
+            bob: lerp_f32(partial_tick, self.bob_old, self.bob),
+        }
     }
 }
 
@@ -5705,6 +5714,14 @@ impl EntityClientAnimationState {
     pub fn player_cape_state(&self, partial_tick: f32, y_body_rot: f32) -> (f32, f32, f32) {
         self.player_cloak.map_or((0.0, 0.0, 0.0), |state| {
             state.cape_state(partial_tick, y_body_rot)
+        })
+    }
+
+    /// Vanilla `ClientAvatarState` values copied into the active player
+    /// camera's render state for `GameRenderer.bobView`.
+    pub fn player_camera_view_bob(&self, partial_tick: f32) -> EntityCameraViewBobState {
+        self.player_cloak.map_or_else(Default::default, |state| {
+            state.camera_view_bob(partial_tick)
         })
     }
 

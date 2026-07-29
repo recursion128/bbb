@@ -1,4 +1,4 @@
-use bbb_renderer::{CameraHurtEffect, CameraPose};
+use bbb_renderer::{CameraHurtEffect, CameraPose, CameraViewBobEffect};
 use bbb_world::{LocalPlayerPoseState, WorldStore};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
@@ -191,6 +191,27 @@ pub(crate) fn camera_hurt_effect_from_world(
         death_time: state.death_time,
         is_dead_or_dying: state.is_dead_or_dying,
         damage_tilt_strength,
+    })
+}
+
+pub(crate) fn camera_view_bob_effect_from_world(
+    world: &WorldStore,
+    partial_ticks: f32,
+    enabled: bool,
+) -> Option<CameraViewBobEffect> {
+    if !enabled {
+        return None;
+    }
+    let camera = world.local_player().camera;
+    let camera_entity_id = if camera.follows_player {
+        world.local_player_id()?
+    } else {
+        camera.entity_id?
+    };
+    let state = world.probe_entity_camera_view_bob_state(camera_entity_id, partial_ticks)?;
+    Some(CameraViewBobEffect {
+        backwards_interpolated_walk_distance: state.backwards_interpolated_walk_distance,
+        bob: state.bob,
     })
 }
 

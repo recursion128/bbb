@@ -207,6 +207,12 @@ pub(crate) struct Args {
     )]
     pub(crate) client_fov_effect_scale: f32,
     #[arg(
+        long = "client-view-bobbing",
+        default_value_t = true,
+        action = ArgAction::Set
+    )]
+    pub(crate) client_view_bobbing: bool,
+    #[arg(
         long = "menu-background-blurriness",
         default_value_t = VANILLA_DEFAULT_MENU_BACKGROUND_BLURRINESS,
         value_parser = parse_menu_background_blurriness
@@ -1283,6 +1289,15 @@ mod tests {
         .unwrap();
         assert_eq!(args.client_fov, 95);
         assert_eq!(args.client_fov_effect_scale, 0.25);
+    }
+
+    #[test]
+    fn args_accept_client_view_bobbing_startup_option() {
+        let default_args = Args::try_parse_from(["bbb-native"]).unwrap();
+        assert!(default_args.client_view_bobbing);
+
+        let args = Args::try_parse_from(["bbb-native", "--client-view-bobbing=false"]).unwrap();
+        assert!(!args.client_view_bobbing);
     }
 
     #[test]

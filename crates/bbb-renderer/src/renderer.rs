@@ -17,8 +17,8 @@ use crate::{
     },
     camera::{
         sanitize_lightmap_block_factor, sanitize_lightmap_brightness_factor, CameraHurtEffect,
-        CameraPose, CameraSpinningEffect, CameraUniform, ClearColor, FogEnvironment,
-        LightmapEnvironment, TerrainBounds, VANILLA_DEFAULT_GLINT_SPEED,
+        CameraPose, CameraSpinningEffect, CameraUniform, CameraViewBobEffect, ClearColor,
+        FogEnvironment, LightmapEnvironment, TerrainBounds, VANILLA_DEFAULT_GLINT_SPEED,
     },
     camera_post_effect::CameraPostEffectGpu,
     clouds::{
@@ -436,6 +436,7 @@ pub struct Renderer {
     pub(super) entity_model_bounds: Option<TerrainBounds>,
     pub(super) camera_pose: Option<CameraPose>,
     pub(super) camera_hurt_effect: Option<CameraHurtEffect>,
+    pub(super) camera_view_bob_effect: Option<CameraViewBobEffect>,
     pub(super) camera_spinning_effect: Option<CameraSpinningEffect>,
     pub(super) camera_fov_degrees: f32,
     pub(super) camera_hud_fov_degrees: f32,
@@ -1907,6 +1908,7 @@ impl Renderer {
             entity_model_bounds: None,
             camera_pose: None,
             camera_hurt_effect: None,
+            camera_view_bob_effect: None,
             camera_spinning_effect: None,
             camera_fov_degrees: 70.0,
             camera_hud_fov_degrees: 70.0,
@@ -2518,6 +2520,14 @@ impl Renderer {
             return;
         }
         self.camera_hurt_effect = effect;
+        self.update_camera();
+    }
+
+    pub fn set_camera_view_bob_effect(&mut self, effect: Option<CameraViewBobEffect>) {
+        if self.camera_view_bob_effect == effect {
+            return;
+        }
+        self.camera_view_bob_effect = effect;
         self.update_camera();
     }
 
@@ -3193,11 +3203,12 @@ impl Renderer {
         let aspect = self.config.width as f32 / self.config.height.max(1) as f32;
         let glint_elapsed_millis = self.started_at.elapsed().as_secs_f64() * 1000.0;
         let uniform = if let Some(pose) = self.camera_pose {
-            CameraUniform::from_pose_with_effects(
+            CameraUniform::from_pose_with_camera_effects(
                 pose,
                 aspect,
                 self.camera_fov_degrees,
                 self.camera_hurt_effect,
+                self.camera_view_bob_effect,
                 self.camera_spinning_effect,
             )
         } else {
@@ -3214,11 +3225,12 @@ impl Renderer {
         self.queue
             .write_buffer(&self.camera_buffer, 0, bytemuck::bytes_of(&uniform));
         let hud3d = if let Some(pose) = self.camera_pose {
-            CameraUniform::from_hud_pose(
+            CameraUniform::from_hud_pose_with_view_bob(
                 pose,
                 aspect,
                 self.camera_hud_fov_degrees,
                 self.camera_hurt_effect,
+                self.camera_view_bob_effect,
             )
         } else {
             self.scene_bounds()

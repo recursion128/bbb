@@ -762,3 +762,7 @@
   与 item tooltip 现按 canonical Component run 选择资源字体，完整复用
   show_text/show_item/show_entity tooltip、advanced gate 与样式几何；合同见
   `docs/archive/rich-component-presentation-design.md`。
+- **2026-07-29（冲刺与游泳 camera presentation 工程闭环）**：有效 sprint
+  现进入 FOV，Camera 眼高按 tick 半步缓动并随 publication 插值；既有 avatar
+  walk/bob 以精确矩阵顺序贯通 world/HUD，合同见
+  `docs/archive/sprint-swim-camera-presentation-design.md`。

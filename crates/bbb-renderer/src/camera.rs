@@ -282,6 +282,14 @@ pub struct CameraHurtEffect {
     pub damage_tilt_strength: f32,
 }
 
+/// Vanilla `GameRenderer.bobView` inputs copied from the active player
+/// camera's `ClientAvatarState`.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CameraViewBobEffect {
+    pub backwards_interpolated_walk_distance: f32,
+    pub bob: f32,
+}
+
 /// Vanilla `GameRenderer`'s portal/nausea projection distortion after the
 /// camera hurt/view-bob transform. Native currently supplies the nausea
 /// contribution; keeping the renderer input generic preserves the shared
@@ -599,6 +607,7 @@ impl CameraUniform {
         Self::from_pose_with_effects(pose, aspect, fov_degrees, hurt, None)
     }
 
+    #[cfg(test)]
     pub(crate) fn from_pose_with_effects(
         pose: CameraPose,
         aspect: f32,
@@ -606,16 +615,46 @@ impl CameraUniform {
         hurt: Option<CameraHurtEffect>,
         spinning: Option<CameraSpinningEffect>,
     ) -> Self {
-        Self::from_pose_with_effects_and_far(pose, aspect, fov_degrees, hurt, spinning, 2048.0)
+        Self::from_pose_with_camera_effects(pose, aspect, fov_degrees, hurt, None, spinning)
     }
 
+    pub(crate) fn from_pose_with_camera_effects(
+        pose: CameraPose,
+        aspect: f32,
+        fov_degrees: f32,
+        hurt: Option<CameraHurtEffect>,
+        view_bob: Option<CameraViewBobEffect>,
+        spinning: Option<CameraSpinningEffect>,
+    ) -> Self {
+        Self::from_pose_with_effects_and_far(
+            pose,
+            aspect,
+            fov_degrees,
+            hurt,
+            view_bob,
+            spinning,
+            2048.0,
+        )
+    }
+
+    #[cfg(test)]
     pub(crate) fn from_hud_pose(
         pose: CameraPose,
         aspect: f32,
         fov_degrees: f32,
         hurt: Option<CameraHurtEffect>,
     ) -> Self {
-        Self::from_pose_with_effects_and_far(pose, aspect, fov_degrees, hurt, None, 100.0)
+        Self::from_hud_pose_with_view_bob(pose, aspect, fov_degrees, hurt, None)
+    }
+
+    pub(crate) fn from_hud_pose_with_view_bob(
+        pose: CameraPose,
+        aspect: f32,
+        fov_degrees: f32,
+        hurt: Option<CameraHurtEffect>,
+        view_bob: Option<CameraViewBobEffect>,
+    ) -> Self {
+        Self::from_pose_with_effects_and_far(pose, aspect, fov_degrees, hurt, view_bob, None, 100.0)
     }
 
     fn from_pose_with_effects_and_far(
@@ -623,6 +662,7 @@ impl CameraUniform {
         aspect: f32,
         fov_degrees: f32,
         hurt: Option<CameraHurtEffect>,
+        view_bob: Option<CameraViewBobEffect>,
         spinning: Option<CameraSpinningEffect>,
         z_far: f32,
     ) -> Self {
@@ -644,8 +684,10 @@ impl CameraUniform {
         // Vanilla `GameRenderer.renderLevel`: `projectionMatrix.mul(bobStack.last().pose())`.
         // `bobHurt` is therefore camera-space presentation state on the projection side of
         // the view matrix, not part of `CameraRenderState.viewRotationMatrix`.
-        let projection =
-            projection * camera_hurt_transform(hurt) * camera_spinning_transform(spinning);
+        let projection = projection
+            * camera_hurt_transform(hurt)
+            * camera_view_bob_transform(view_bob)
+            * camera_spinning_transform(spinning);
         let view = Mat4::look_at_rh(eye, target, Vec3::Y);
 
         Self {
@@ -921,6 +963,25 @@ fn camera_hurt_transform(effect: Option<CameraHurtEffect>) -> Mat4 {
     transform *= Mat4::from_rotation_z((-hurt * 14.0 * strength).to_radians());
     transform *= Mat4::from_rotation_y(hurt_dir.to_radians());
     transform
+}
+
+fn camera_view_bob_transform(effect: Option<CameraViewBobEffect>) -> Mat4 {
+    let Some(effect) = effect else {
+        return Mat4::IDENTITY;
+    };
+    if !effect.backwards_interpolated_walk_distance.is_finite() || !effect.bob.is_finite() {
+        return Mat4::IDENTITY;
+    }
+    let phase = effect.backwards_interpolated_walk_distance * std::f32::consts::PI;
+    let sin = phase.sin();
+    let cos = phase.cos();
+    let x_rotation_degrees = ((phase - 0.2).cos() * effect.bob).abs() * 5.0;
+    Mat4::from_translation(Vec3::new(
+        sin * effect.bob * 0.5,
+        -(cos * effect.bob).abs(),
+        0.0,
+    )) * Mat4::from_rotation_z((sin * effect.bob * 3.0).to_radians())
+        * Mat4::from_rotation_x(x_rotation_degrees.to_radians())
 }
 
 fn camera_spinning_transform(effect: Option<CameraSpinningEffect>) -> Mat4 {
@@ -1421,6 +1482,92 @@ mod tests {
             * Mat4::from_scale(Vec3::new(1.0 / skew, 1.0, 1.0))
             * Mat4::from_axis_angle(axis, -angle);
         assert_mat4_close(camera_spinning_transform(Some(effect)), expected);
+    }
+
+    #[test]
+    fn camera_view_bob_transform_matches_vanilla_translate_and_rotation_order() {
+        let effect = CameraViewBobEffect {
+            backwards_interpolated_walk_distance: 0.25,
+            bob: 0.08,
+        };
+        let phase = 0.25 * std::f32::consts::PI;
+        let sin = phase.sin();
+        let cos = phase.cos();
+        let expected =
+            Mat4::from_translation(Vec3::new(sin * 0.08 * 0.5, -(cos * 0.08).abs(), 0.0))
+                * Mat4::from_rotation_z((sin * 0.08 * 3.0).to_radians())
+                * Mat4::from_rotation_x((((phase - 0.2).cos() * 0.08).abs() * 5.0).to_radians());
+
+        assert_mat4_close(camera_view_bob_transform(Some(effect)), expected);
+        assert_mat4_close(camera_view_bob_transform(None), Mat4::IDENTITY);
+        assert_mat4_close(
+            camera_view_bob_transform(Some(CameraViewBobEffect {
+                backwards_interpolated_walk_distance: f32::NAN,
+                bob: 0.08,
+            })),
+            Mat4::IDENTITY,
+        );
+    }
+
+    #[test]
+    fn camera_view_bob_uniform_applies_between_hurt_and_spinning_to_world_and_hud() {
+        let pose = CameraPose {
+            position: [1.0, 64.0, -2.0],
+            y_rot: 25.0,
+            x_rot: -10.0,
+            eye_height: CameraPose::STANDING_EYE_HEIGHT,
+        };
+        let base = CameraUniform::from_pose_with_fov(pose, 16.0 / 9.0, 70.0);
+        let base_hud = CameraUniform::from_hud_pose(pose, 16.0 / 9.0, 60.0, None);
+        let hurt = CameraHurtEffect {
+            hurt_time: 5.0,
+            hurt_duration: 10.0,
+            hurt_dir: 20.0,
+            death_time: 0.0,
+            is_dead_or_dying: false,
+            damage_tilt_strength: 1.0,
+        };
+        let view_bob = CameraViewBobEffect {
+            backwards_interpolated_walk_distance: -1.25,
+            bob: 0.06,
+        };
+        let spinning = CameraSpinningEffect {
+            intensity: 0.75,
+            angle_degrees: 42.0,
+        };
+        let world = CameraUniform::from_pose_with_camera_effects(
+            pose,
+            16.0 / 9.0,
+            70.0,
+            Some(hurt),
+            Some(view_bob),
+            Some(spinning),
+        );
+        let hud = CameraUniform::from_hud_pose_with_view_bob(
+            pose,
+            16.0 / 9.0,
+            60.0,
+            Some(hurt),
+            Some(view_bob),
+        );
+
+        assert_mat4_close(
+            world.projection(),
+            base.projection()
+                * camera_hurt_transform(Some(hurt))
+                * camera_view_bob_transform(Some(view_bob))
+                * camera_spinning_transform(Some(spinning)),
+        );
+        assert_mat4_close(
+            hud.projection(),
+            base_hud.projection()
+                * camera_hurt_transform(Some(hurt))
+                * camera_view_bob_transform(Some(view_bob)),
+        );
+        assert_mat4_close(
+            world.sky_model_view_transform(),
+            base.sky_model_view_transform(),
+        );
     }
 
     #[test]

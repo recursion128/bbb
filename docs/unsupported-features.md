@@ -53,7 +53,6 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
 Owner: `bbb-native` + `bbb-net` + `bbb-protocol` + `bbb-world`
 
 Movement:
-- Add sprint-swim camera, animation, and presentation nuance.
 
 Commands:
 

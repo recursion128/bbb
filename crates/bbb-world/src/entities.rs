@@ -1454,6 +1454,13 @@ pub struct EntityCameraHurtState {
     pub is_dead_or_dying: bool,
 }
 
+/// The player-camera inputs consumed by vanilla `GameRenderer.bobView`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+pub struct EntityCameraViewBobState {
+    pub backwards_interpolated_walk_distance: f32,
+    pub bob: f32,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct EntityPickTargetState {
     pub entity_id: i32,
@@ -4083,6 +4090,14 @@ impl WorldStore {
         partial_ticks: f32,
     ) -> Option<EntityCameraHurtState> {
         self.entities.camera_hurt_state(id, partial_ticks)
+    }
+
+    pub fn probe_entity_camera_view_bob_state(
+        &self,
+        id: i32,
+        partial_ticks: f32,
+    ) -> Option<EntityCameraViewBobState> {
+        self.entities.camera_view_bob_state(id, partial_ticks)
     }
 
     pub fn probe_entity_pick_bounds(&self, id: i32) -> Option<EntityPickBoundsState> {

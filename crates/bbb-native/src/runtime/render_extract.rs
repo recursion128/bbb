@@ -2780,6 +2780,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) entity_model_instances: Vec<EntityModelInstance>,
     pub(crate) camera_pose: Option<CameraPose>,
     pub(crate) camera_hurt_effect: Option<bbb_renderer::CameraHurtEffect>,
+    pub(crate) camera_view_bob_effect: Option<bbb_renderer::CameraViewBobEffect>,
     pub(crate) camera_spinning_effect: Option<bbb_renderer::CameraSpinningEffect>,
     pub(crate) camera_fov_degrees: f32,
     pub(crate) camera_hud_fov_degrees: f32,
@@ -3249,6 +3250,7 @@ pub(crate) fn apply_renderer_frame(
     let recycled_instances = renderer.replace_entity_model_instances(frame.entity_model_instances);
     entity_render_extraction.recycle_instances(recycled_instances);
     renderer.set_camera_hurt_effect(frame.camera_hurt_effect);
+    renderer.set_camera_view_bob_effect(frame.camera_view_bob_effect);
     renderer.set_camera_spinning_effect(frame.camera_spinning_effect);
     renderer.set_camera_fov_degrees(frame.camera_fov_degrees, frame.camera_hud_fov_degrees);
     renderer.set_camera_pose(frame.camera_pose);

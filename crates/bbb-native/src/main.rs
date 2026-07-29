@@ -1094,6 +1094,7 @@ fn main() -> Result<()> {
                             client_framerate_limit: args.client_framerate_limit,
                             client_vsync: args.client_vsync,
                             damage_tilt_strength: args.damage_tilt_strength,
+                            view_bobbing: args.client_view_bobbing,
                             entity_shadows: args.entity_shadows,
                             hud_debug_profiler_chart: debug_profiler.chart(),
                         },

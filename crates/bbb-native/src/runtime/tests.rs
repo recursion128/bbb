@@ -1333,6 +1333,31 @@ fn camera_hurt_effect_follows_the_active_living_camera_entity() {
 }
 
 #[test]
+fn camera_view_bob_effect_follows_active_player_and_startup_gate() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.apply_add_entity(test_add_entity(42, VANILLA_ENTITY_TYPE_PLAYER_ID));
+    world.advance_entity_client_animations(1);
+
+    let local = camera_view_bob_effect_from_world(&world, 0.5, true).unwrap();
+    let expected = world.probe_entity_camera_view_bob_state(42, 0.5).unwrap();
+    assert_eq!(
+        local.backwards_interpolated_walk_distance,
+        expected.backwards_interpolated_walk_distance
+    );
+    assert_eq!(local.bob, expected.bob);
+    assert_eq!(camera_view_bob_effect_from_world(&world, 0.5, false), None);
+
+    world.apply_add_entity(test_add_entity(100, VANILLA_ENTITY_TYPE_CHICKEN_ID));
+    assert!(world.apply_set_camera(bbb_protocol::packets::SetCamera { camera_id: 100 }));
+    assert_eq!(camera_view_bob_effect_from_world(&world, 0.5, true), None);
+
+    world.apply_add_entity(test_add_entity(101, VANILLA_ENTITY_TYPE_PLAYER_ID));
+    world.advance_entity_client_animations(1);
+    assert!(world.apply_set_camera(bbb_protocol::packets::SetCamera { camera_id: 101 }));
+    assert!(camera_view_bob_effect_from_world(&world, 0.5, true).is_some());
+}
+
+#[test]
 fn particle_light_block_pos_uses_block_pos_containing_floor() {
     assert_eq!(
         particle_light_block_pos([1.99, 64.0, -0.01]),

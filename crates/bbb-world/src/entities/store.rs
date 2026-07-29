@@ -109,7 +109,7 @@ use super::{
     DisplayEntityRenderSourceState, EnderAmbientParticleState, EntityAbstractArrowRuntime,
     EntityAttachmentFace, EntityAttributes, EntityBlockEffectBaseTickReset,
     EntityBlockEffectMovement, EntityBlockEffectMovementIter, EntityBlockEffectQuery,
-    EntityBlockModelState, EntityCameraHurtState, EntityCameraPoseState,
+    EntityBlockModelState, EntityCameraHurtState, EntityCameraPoseState, EntityCameraViewBobState,
     EntityClientAnimationState, EntityClientAnimations, EntityClientMovementEffectState,
     EntityClientMovementParticleState, EntityClientMovementSimpleParticleKind,
     EntityClientMovementSimpleParticleState, EntityDamage, EntityDamageEventState, EntityEquipment,
@@ -5747,6 +5747,24 @@ impl EntityStore {
             death_time,
             is_dead_or_dying: death_time > 0.0,
         })
+    }
+
+    pub(crate) fn camera_view_bob_state(
+        &self,
+        id: i32,
+        partial_ticks: f32,
+    ) -> Option<EntityCameraViewBobState> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        if identity.entity_type_id != VANILLA_ENTITY_TYPE_PLAYER_ID {
+            return None;
+        }
+        let client_animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
+        Some(
+            client_animations
+                .animations
+                .player_camera_view_bob(partial_ticks),
+        )
     }
 
     fn living_entity_walk_animation_position(&self, id: i32, partial_ticks: f32) -> Option<f32> {

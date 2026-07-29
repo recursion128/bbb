@@ -100,8 +100,8 @@ use crate::{
     camera_pose::{
         camera_eye_position, camera_forward_vector, camera_hurt_effect_from_world,
         camera_pose_from_world, camera_pose_from_world_at_partial_tick,
-        current_post_effect_id_from_world, render_camera_pose_from_world_at_partial_tick,
-        CameraEyeHeightTickState,
+        camera_view_bob_effect_from_world, current_post_effect_id_from_world,
+        render_camera_pose_from_world_at_partial_tick, CameraEyeHeightTickState,
     },
     chest_scene::chest_model_instances_from_world_at_partial_tick,
     code_of_conduct::CodeOfConductAcceptance,
@@ -3071,6 +3071,7 @@ pub(crate) fn update_renderer_from_publication(
         client_framerate_limit,
         client_vsync,
         damage_tilt_strength,
+        view_bobbing,
         entity_shadows,
         hud_debug_profiler_chart,
     } = context;
@@ -3736,6 +3737,8 @@ pub(crate) fn update_renderer_from_publication(
     );
     let camera_hurt_effect =
         camera_hurt_effect_from_world(world, entity_partial_tick, damage_tilt_strength);
+    let camera_view_bob_effect =
+        camera_view_bob_effect_from_world(world, entity_partial_tick, view_bobbing);
     let camera_spinning_effect = camera_spinning_ticks.effect_for_world(world, entity_partial_tick);
     let camera_fov = camera_fov_ticks.frame_for_world(
         world,
@@ -4374,6 +4377,7 @@ pub(crate) fn update_renderer_from_publication(
             entity_model_instances: entity_instances,
             camera_pose,
             camera_hurt_effect,
+            camera_view_bob_effect,
             camera_spinning_effect,
             camera_fov_degrees: camera_fov.world_degrees,
             camera_hud_fov_degrees: camera_fov.hud_degrees,

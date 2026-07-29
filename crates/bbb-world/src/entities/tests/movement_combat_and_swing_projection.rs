@@ -540,6 +540,70 @@ fn living_camera_hurt_state_projects_packet_yaw_only_for_players() {
 }
 
 #[test]
+fn camera_view_bob_projects_avatar_walk_and_swimming_decay_only_for_players() {
+    let mut cloak = super::super::animations::PlayerCloakAnimationState::default();
+    let movement = EntityVec3 {
+        x: 0.1,
+        y: 0.0,
+        z: 0.0,
+    };
+    cloak.advance_client_tick(EntityVec3::default(), movement, true, true, false, false);
+    cloak.advance_client_tick(
+        EntityVec3 {
+            x: 0.2,
+            y: 0.0,
+            z: 0.0,
+        },
+        movement,
+        true,
+        true,
+        false,
+        false,
+    );
+    let mut animations = EntityClientAnimationState {
+        player_cloak: Some(cloak),
+        ..EntityClientAnimationState::default()
+    };
+    let ground = animations.player_camera_view_bob(0.5);
+    assert!((ground.backwards_interpolated_walk_distance - -0.18).abs() < 1.0e-6);
+    assert!((ground.bob - 0.052).abs() < 1.0e-6);
+
+    cloak.advance_client_tick(
+        EntityVec3 {
+            x: 0.4,
+            y: 0.0,
+            z: 0.0,
+        },
+        movement,
+        true,
+        true,
+        true,
+        false,
+    );
+    animations.player_cloak = Some(cloak);
+    let swimming = animations.player_camera_view_bob(0.5);
+    assert!((swimming.backwards_interpolated_walk_distance - -0.3).abs() < 1.0e-6);
+    assert!((swimming.bob - 0.0512).abs() < 1.0e-6);
+    assert!(swimming.bob < ground.bob);
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        45,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        46,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    assert_eq!(
+        store.probe_entity_camera_view_bob_state(45, 0.5),
+        Some(EntityCameraViewBobState::default())
+    );
+    assert_eq!(store.probe_entity_camera_view_bob_state(46, 0.5), None);
+    assert_eq!(store.probe_entity_camera_view_bob_state(404, 0.5), None);
+}
+
+#[test]
 fn entity_model_sources_project_kinetic_hit_feedback_from_living_entity_event() {
     const KINETIC_HIT_EVENT_ID: i8 = 2;
 
