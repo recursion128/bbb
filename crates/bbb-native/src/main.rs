@@ -78,7 +78,6 @@ use bbb_item_model::NativeItemRuntime;
 use camera_fov::CameraFovTickState;
 use camera_pose::CameraEyeHeightTickState;
 use code_of_conduct::{default_code_of_conduct_store_path, CodeOfConductAcceptance};
-use code_of_conduct_overlay::CodeOfConductOverlayRenderer;
 use debug_entries::{DebugScreenEntryId, DebugScreenEntryList};
 use debug_profiler::{
     DebugProfiler, DebugProfilerEvent, DebugProfilerFrameMetrics, DebugProfilerSectionSample,
@@ -814,7 +813,6 @@ fn main() -> Result<()> {
     let mut platform_exit_requested = false;
     let mut render_effect_consumer = RenderEffectConsumer::default();
     let mut hud_render_runtime = HudRenderRuntime::default();
-    let mut code_of_conduct_overlay_renderer = CodeOfConductOverlayRenderer::default();
     let simulation_input_runtime =
         simulation::input_commands::SimulationInputRuntime::new(window.inner_size(), false);
     let mut renderer_counters = control_renderer_counters(renderer.counters());
@@ -1212,12 +1210,15 @@ fn main() -> Result<()> {
                         .elapsed()
                         .saturating_sub(native_render_profile.extract)
                         .saturating_sub(native_render_profile.toasts);
-                    code_of_conduct_overlay_renderer.update_renderer(
-                        &mut renderer,
-                        &render_publication.world,
-                        render_publication.input_runtime.code_of_conduct_overlay,
-                        render_publication.code_of_conduct_accepted,
-                    );
+                    let code_of_conduct_screen =
+                        code_of_conduct_overlay::code_of_conduct_renderer_screen(
+                            &render_publication.world,
+                            render_publication.input_runtime.code_of_conduct_overlay,
+                            render_publication.code_of_conduct_accepted,
+                            render_publication.input_runtime.surface_size,
+                            renderer.hud_text_measurements_ref(),
+                        );
+                    renderer.set_hud_code_of_conduct_screen(code_of_conduct_screen);
 
                     let terrain_ready_for_screenshot =
                         !screenshot_after_terrain || terrain_upload.has_uploaded_chunks();

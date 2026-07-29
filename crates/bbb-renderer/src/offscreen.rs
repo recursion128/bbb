@@ -114,17 +114,20 @@ mod tests {
 
     use winit::dpi::PhysicalSize;
 
+    use crate::hud::HudDrawCommand;
     use crate::{
         ClearColor, EntityDefaultPlayerSkin, EntityModelTextureImage, EntityModelTextureRef,
-        EntityPlayerSkin, HudAsciiGlyph, HudComponentTextRun, HudDeathLinkConfirmationScreen,
-        HudDeathMainScreen, HudDeathQuitConfirmationScreen, HudDeathScreen, HudDeathScreenButton,
-        HudDemoPopupScreen, HudFontGlyphMap, HudGameEventButton, HudGameEventScreen,
-        HudNineSliceScaling, HudPlayerReportingControl, HudPlayerReportingControlKind,
+        EntityPlayerSkin, HudAsciiGlyph, HudCodeOfConductRect, HudCodeOfConductScreen,
+        HudComponentTextRun, HudDeathLinkConfirmationScreen, HudDeathMainScreen,
+        HudDeathQuitConfirmationScreen, HudDeathScreen, HudDeathScreenButton, HudDemoPopupScreen,
+        HudFontGlyphMap, HudGameEventButton, HudGameEventScreen, HudNineSliceScaling,
+        HudPlayerReportingControl, HudPlayerReportingControlKind,
         HudPlayerReportingControlPlacement, HudPlayerReportingFocus, HudPlayerReportingRow,
         HudPlayerReportingScreen, HudPlayerReportingScreenKind, HudSocialInteractionsFocus,
         HudSocialInteractionsLinkConfirmationScreen, HudSocialInteractionsMainScreen,
         HudSocialInteractionsPage, HudSocialInteractionsPlayer, HudSocialInteractionsPlayerAction,
-        HudSocialInteractionsScreen, HudStyledTextRun, HudVignette, HudWinScreen, Renderer,
+        HudSocialInteractionsScreen, HudStatsScrollbarSprite, HudStyledTextRun, HudVignette,
+        HudWinScreen, Renderer,
     };
 
     const WIDTH: u32 = 320;
@@ -181,6 +184,235 @@ mod tests {
             renderer.counters.draw_calls
         );
         assert_eq!(renderer.counters.screenshots_written, 0);
+    }
+
+    #[test]
+    fn offscreen_code_of_conduct_draws_native_widget_states_scroll_and_scissor() {
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            return;
+        };
+        renderer.set_hud_screen_blur(false);
+        renderer
+            .upload_hud_inworld_menu_background(1, 1, &[16, 32, 64, 255])
+            .expect("menu background");
+        renderer
+            .upload_hud_widget_text_field(1, 1, &[180, 0, 0, 255])
+            .expect("text field");
+        renderer
+            .upload_hud_widget_text_field_highlighted(1, 1, &[180, 0, 180, 255])
+            .expect("focused text field");
+        renderer
+            .upload_hud_widget_button(1, 1, &[0, 180, 0, 255])
+            .expect("button");
+        renderer
+            .upload_hud_widget_button_highlighted(1, 1, &[180, 180, 0, 255])
+            .expect("highlighted button");
+        renderer
+            .upload_hud_widget_checkbox(1, 1, &[0, 0, 180, 255])
+            .expect("checkbox");
+        renderer
+            .upload_hud_widget_checkbox_highlighted(1, 1, &[0, 180, 180, 255])
+            .expect("focused checkbox");
+        renderer
+            .upload_hud_widget_checkbox_selected(1, 1, &[180, 90, 0, 255])
+            .expect("selected checkbox");
+        renderer
+            .upload_hud_widget_checkbox_selected_highlighted(1, 1, &[220, 220, 220, 255])
+            .expect("selected focused checkbox");
+        let scaling = HudNineSliceScaling {
+            sprite_width: 1,
+            sprite_height: 1,
+            border_left: 0,
+            border_top: 0,
+            border_right: 0,
+            border_bottom: 0,
+            stretch_inner: true,
+        };
+        renderer
+            .upload_hud_stats_scrollbar_sprite(
+                HudStatsScrollbarSprite::Background,
+                1,
+                1,
+                &[24, 24, 24, 255],
+                scaling,
+            )
+            .expect("scrollbar background");
+        renderer
+            .upload_hud_stats_scrollbar_sprite(
+                HudStatsScrollbarSprite::Scroller,
+                1,
+                1,
+                &[120, 120, 120, 255],
+                scaling,
+            )
+            .expect("scrollbar thumb");
+        let mut glyphs = HudFontGlyphMap::new();
+        for ch in "TA".chars() {
+            glyphs.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    width: 1,
+                    height: 1,
+                    advance: 2,
+                    ..HudAsciiGlyph::default()
+                },
+            );
+        }
+        renderer
+            .upload_hud_font_atlas(1, 1, &[255, 255, 255, 255], glyphs)
+            .expect("font");
+
+        let mut screen = HudCodeOfConductScreen {
+            text_hash: 7,
+            title: "T".to_string(),
+            message_lines: vec![
+                vec![HudStyledTextRun::plain("A")],
+                vec![HudStyledTextRun::plain(String::new())],
+            ],
+            message_content_height: 89,
+            title_rect: HudCodeOfConductRect {
+                x: 159,
+                y: 18,
+                width: 2,
+                height: 9,
+            },
+            message_rect: HudCodeOfConductRect {
+                x: 40,
+                y: 40,
+                width: 220,
+                height: 80,
+            },
+            message_scissor: HudCodeOfConductRect {
+                x: 41,
+                y: 41,
+                width: 218,
+                height: 78,
+            },
+            scroll_amount: 0,
+            max_scroll_amount: 9,
+            scrollbar_track: Some(HudCodeOfConductRect {
+                x: 260,
+                y: 40,
+                width: 6,
+                height: 80,
+            }),
+            scrollbar_thumb: Some(HudCodeOfConductRect {
+                x: 260,
+                y: 40,
+                width: 6,
+                height: 32,
+            }),
+            message_focused: false,
+            scrollbar_hovered: false,
+            scrollbar_dragging: false,
+            checkbox_rect: HudCodeOfConductRect {
+                x: 50,
+                y: 140,
+                width: 17,
+                height: 17,
+            },
+            checkbox_label: String::new(),
+            checkbox_label_lines: vec![String::new()],
+            checkbox_selected: false,
+            checkbox_focused: false,
+            checkbox_hovered: false,
+            acknowledge_rect: HudCodeOfConductRect {
+                x: 20,
+                y: 180,
+                width: 130,
+                height: 20,
+            },
+            acknowledge_label: String::new(),
+            acknowledge_highlighted: false,
+            disconnect_rect: HudCodeOfConductRect {
+                x: 170,
+                y: 180,
+                width: 130,
+                height: 20,
+            },
+            disconnect_label: String::new(),
+            disconnect_highlighted: false,
+        };
+        renderer.set_hud_code_of_conduct_screen(Some(screen.clone()));
+
+        let draws = renderer.collect_hud_draws();
+        assert!(draws.commands.iter().any(|command| matches!(
+            command,
+            HudDrawCommand::Scissor {
+                x: 41,
+                y: 41,
+                width: 218,
+                height: 78,
+            }
+        )));
+        assert!(draws.commands.iter().any(|command| matches!(
+            command,
+            HudDrawCommand::Scissor {
+                x: 0,
+                y: 0,
+                width: WIDTH,
+                height: HEIGHT,
+            }
+        )));
+        drop(draws);
+
+        let normal = renderer
+            .render_offscreen_frame()
+            .expect("normal code-of-conduct screen");
+        assert!(
+            normal.pixel(4, 4)[2] > normal.pixel(4, 4)[0],
+            "menu background must cover the ordinary frame"
+        );
+        assert!(
+            normal.pixel(250, 100)[0] > 120 && normal.pixel(250, 100)[2] < 40,
+            "unfocused message must use the normal text-field sprite"
+        );
+        assert!(
+            normal.pixel(22, 182)[1] > 120,
+            "normal acknowledge button must use the normal button sprite"
+        );
+        assert!(
+            normal.pixel(52, 142)[2] > 120,
+            "unchecked checkbox must use the unchecked sprite"
+        );
+        assert!(
+            normal.pixel(262, 50)[0].abs_diff(normal.pixel(262, 50)[1]) < 8,
+            "scrollbar thumb must cover the track in its projected position"
+        );
+        let unscrolled_text = normal.pixel(44, 44);
+
+        screen.message_focused = true;
+        screen.scroll_amount = 9;
+        screen.scrollbar_thumb.as_mut().unwrap().y = 88;
+        screen.checkbox_selected = true;
+        screen.checkbox_focused = true;
+        screen.acknowledge_highlighted = true;
+        renderer.set_hud_code_of_conduct_screen(Some(screen));
+        let active = renderer
+            .render_offscreen_frame()
+            .expect("active code-of-conduct screen");
+        assert!(
+            active.pixel(250, 100)[0] > 120 && active.pixel(250, 100)[2] > 120,
+            "focused message must use the highlighted text-field sprite"
+        );
+        assert!(
+            active.pixel(22, 182)[0] > 120 && active.pixel(22, 182)[1] > 120,
+            "hovered/focused acknowledge must use the highlighted button sprite"
+        );
+        let checked = active.pixel(52, 142);
+        assert!(
+            checked[0] > 160 && checked[1] > 160 && checked[2] > 160,
+            "checked focused checkbox must use the combined sprite"
+        );
+        assert!(
+            unscrolled_text[0] > active.pixel(44, 44)[0]
+                || unscrolled_text[1] > active.pixel(44, 44)[1],
+            "nine-pixel scrolling must move the first message line out of the scissor"
+        );
+        assert!(
+            active.pixel(262, 50)[0] < 60,
+            "scrolled thumb must leave the upper track visible"
+        );
     }
 
     #[test]

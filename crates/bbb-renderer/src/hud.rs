@@ -19,6 +19,7 @@ use crate::item_models::{
 use crate::Renderer;
 
 mod book;
+mod code_of_conduct;
 mod creative_inventory;
 mod death_screen;
 mod game_event;
@@ -38,6 +39,7 @@ pub use self::book::{
     HUD_BOOK_PAGE_FORWARD_X, HUD_BOOK_PAGE_INDICATOR_RIGHT, HUD_BOOK_PAGE_INDICATOR_Y,
     HUD_BOOK_TEXT_WIDTH, HUD_BOOK_TEXT_X, HUD_BOOK_TEXT_Y, HUD_BOOK_TOP, HUD_BOOK_WIDTH,
 };
+pub use self::code_of_conduct::{HudCodeOfConductRect, HudCodeOfConductScreen};
 pub use self::creative_inventory::{
     hud_creative_inventory_background_layers, hud_creative_inventory_scroller_y,
     hud_creative_inventory_slot_layouts, hud_creative_inventory_tab_hit_y,
@@ -5543,18 +5545,9 @@ impl Renderer {
         Ok(())
     }
 
-    pub fn set_hud_code_of_conduct_overlay(
-        &mut self,
-        width: u32,
-        height: u32,
-        rgba: &[u8],
-    ) -> Result<()> {
-        self.hud_code_of_conduct_overlay = Some(self.upload_hud_sprite(width, height, rgba)?);
-        Ok(())
-    }
-
-    pub fn clear_hud_code_of_conduct_overlay(&mut self) {
-        self.hud_code_of_conduct_overlay = None;
+    pub fn set_hud_code_of_conduct_screen(&mut self, screen: Option<HudCodeOfConductScreen>) {
+        self.hud_code_of_conduct_screen =
+            screen.and_then(code_of_conduct::sanitize_hud_code_of_conduct_screen);
     }
 
     /// Projects `Gui.extractPlayerHealth`'s inputs (health, max health,
@@ -7766,13 +7759,37 @@ impl Renderer {
             &self.hud_tutorial_toasts,
         );
 
-        if let Some(overlay) = &self.hud_code_of_conduct_overlay {
-            push_hud_draw(
+        if let Some(screen) = &self.hud_code_of_conduct_screen {
+            if self.hud_screen_blur && self.menu_background_blurriness >= 1.0 {
+                screen_blur = Some(HudScreenBlurDraws {
+                    radius: self.menu_background_blurriness,
+                    first_base_command: commands.len(),
+                    first_overlay_command: post_gui_item_commands.len(),
+                });
+            }
+            code_of_conduct::push_hud_code_of_conduct_screen(
                 &mut vertices,
                 &mut post_gui_item_commands,
-                overlay,
+                &self.hud_white_pixel,
+                self.hud_inworld_menu_background.as_ref(),
+                self.hud_widget_text_field.as_ref(),
+                self.hud_widget_text_field_highlighted.as_ref(),
+                HudDebugOptionsButtonSprites {
+                    normal: self.hud_widget_button.as_ref(),
+                    disabled: self.hud_widget_button_disabled.as_ref(),
+                    highlighted: self.hud_widget_button_highlighted.as_ref(),
+                },
+                self.hud_widget_checkbox.as_ref(),
+                self.hud_widget_checkbox_highlighted.as_ref(),
+                self.hud_widget_checkbox_selected.as_ref(),
+                self.hud_widget_checkbox_selected_highlighted.as_ref(),
+                &self.hud_stats_scrollbar_sprites,
+                self.hud_font_atlas.as_ref(),
+                &self.hud_font_glyphs,
+                &self.hud_obfuscated_glyph_pool,
+                self.counters.frame_index,
                 surface_size,
-                centered_hud_rect(surface_size, overlay.width, overlay.height),
+                screen,
             );
         }
 

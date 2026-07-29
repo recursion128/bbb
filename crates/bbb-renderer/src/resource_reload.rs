@@ -854,7 +854,7 @@ mod tests {
             .find("    pub fn upload_hud_crosshair")
             .expect("HUD upload boundary")
             ..hud_source
-                .find("    pub fn set_hud_code_of_conduct_overlay")
+                .find("    pub fn set_hud_code_of_conduct_screen")
                 .expect("HUD presentation-state boundary")];
         let checkpoint_source = include_str!("resource_reload.rs");
         let mut owners = std::collections::BTreeSet::new();
