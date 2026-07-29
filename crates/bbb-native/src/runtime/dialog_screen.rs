@@ -2788,6 +2788,7 @@ pub(super) fn hud_dialog_screen_with_measurer(
                     }),
                     scrolling: None,
                     shadow: true,
+                    font: None,
                     runs: Vec::new(),
                 });
             }
@@ -5983,6 +5984,7 @@ fn push_dialog_text_block(
             input: None,
             scrolling: None,
             shadow: false,
+            font: None,
             runs: line.runs,
         });
         line_y = line_y.saturating_add(TEXT_LINE_HEIGHT);
@@ -6093,6 +6095,7 @@ fn push_centered_plain_text_label(
         input: None,
         scrolling: None,
         shadow: false,
+        font: None,
         runs: Vec::new(),
     });
 }
@@ -6116,6 +6119,7 @@ fn push_centered_text_label(
         input: None,
         scrolling: None,
         shadow: false,
+        font: None,
         runs,
     });
 }
@@ -6159,6 +6163,7 @@ fn push_centered_runs_text_label(
         input: None,
         scrolling: None,
         shadow: false,
+        font: None,
         runs,
     });
 }
@@ -6195,6 +6200,7 @@ fn push_scrolling_widget_text_label(
         input: None,
         scrolling: Some(bounds),
         shadow: false,
+        font: None,
         runs,
     });
 }
@@ -6217,6 +6223,7 @@ fn push_text_label(
         input: None,
         scrolling: None,
         shadow: false,
+        font: None,
         runs,
     });
 }

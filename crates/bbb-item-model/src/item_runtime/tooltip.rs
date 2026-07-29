@@ -3409,6 +3409,32 @@ pub(super) fn description_key(prefix: &str, resource_id: &str) -> String {
 }
 
 impl NativeItemRuntime {
+    /// Formats `Enchantment.getFullname` for a synchronized registry holder.
+    ///
+    /// The caller supplies the holder resource id and decoded definition so
+    /// registry ownership remains outside the item runtime; localization,
+    /// curse tint, Component fonts, and level suffixes reuse the canonical
+    /// item-tooltip path.
+    pub fn enchantment_name_tooltip_line(
+        &self,
+        resource_id: &str,
+        level: i32,
+        definition: Option<&EnchantmentTooltipDefinition>,
+    ) -> NativeItemTooltipLine {
+        let mut lines = Vec::with_capacity(1);
+        push_enchantment_tooltip_line(
+            &self.language,
+            resource_id,
+            level,
+            definition,
+            self.enchantment_tags.as_ref(),
+            &mut lines,
+        );
+        lines
+            .pop()
+            .expect("enchantment formatter always emits one line")
+    }
+
     fn push_stack_detail_tooltip_lines(
         &self,
         item_id: &str,

@@ -476,6 +476,7 @@ fn creative_inventory_text_labels(
             input: None,
             scrolling: None,
             shadow: false,
+            font: None,
             runs: Vec::new(),
         });
     }
@@ -502,6 +503,7 @@ fn creative_inventory_text_labels(
             }),
             scrolling: None,
             shadow: false,
+            font: None,
             runs: Vec::new(),
         });
     }

@@ -178,6 +178,7 @@ mod bundle;
 mod commands;
 mod component_patch;
 pub(crate) mod death_screen;
+pub(crate) mod enchantment_screen;
 pub(crate) mod game_event_screen;
 mod game_rules;
 mod inventory;
@@ -622,6 +623,7 @@ pub(crate) struct ClientInputState {
     stonecutter_recipe_scroll_row: i32,
     stonecutter_recipe_scroll_input_item_id: Option<i32>,
     stonecutter_recipe_scrolling: bool,
+    enchantment_screen: Option<enchantment_screen::EnchantmentScreenState>,
     loom_pattern_scroll_row: i32,
     loom_pattern_scrolling: bool,
     loom_pattern_selection_container_id: Option<i32>,
@@ -1252,6 +1254,7 @@ impl ClientInputState {
             inventory_quick_craft_button_num: self.inventory_quick_craft_button_num,
             inventory_quick_craft_slots: self.inventory_quick_craft_slots.clone(),
             stonecutter_recipe_scroll_row: self.stonecutter_recipe_scroll_row,
+            enchantment_screen: self.enchantment_screen.clone(),
             loom_pattern_scroll_row: self.loom_pattern_scroll_row,
             loom_selected_pattern_index: self.loom_selected_pattern_index,
             beacon_primary_effect: self.beacon_primary_effect,

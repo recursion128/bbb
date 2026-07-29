@@ -18560,12 +18560,23 @@ fn hud_inventory_screen_projects_enchanting_table_enabled_option_layers() {
         total: 0,
     });
 
-    let screen = hud_inventory_screen(&world, None, None, 0.0).unwrap();
+    let screen = hud_inventory_screen_with_local_state(
+        &world,
+        None,
+        &TerrainTextureState::default(),
+        None,
+        InventoryHudLocalState {
+            cursor_position: Some((61, 34)),
+            ..InventoryHudLocalState::default()
+        },
+        0.0,
+    )
+    .unwrap();
 
     assert!(screen
         .background_layers
         .contains(&hud_inventory_background_layer(
-            HudInventoryBackgroundTexture::EnchantingTableEnchantmentSlot,
+            HudInventoryBackgroundTexture::EnchantingTableEnchantmentSlotHighlighted,
             60,
             33,
             108,
@@ -18584,7 +18595,15 @@ fn hud_inventory_screen_projects_enchanting_table_enabled_option_layers() {
             [0.0, 0.0],
             [1.0, 1.0],
         )));
-    assert_eq!(screen.text_labels.len(), 3);
+    assert_eq!(screen.text_labels.len(), 4);
+    let name = screen
+        .text_labels
+        .iter()
+        .find(|label| label.font.as_deref() == Some(ENCHANTMENT_ALT_FONT_ID))
+        .expect("seeded enchanting-language label");
+    assert_eq!(name.x, 80);
+    assert_eq!(name.y, 35);
+    assert_eq!(name.tint, ENCHANTING_TABLE_NAME_TEXT_HIGHLIGHTED_COLOR);
     assert_eq!(
         screen.text_labels.last(),
         Some(&HudInventoryTextLabel {
@@ -18597,6 +18616,7 @@ fn hud_inventory_screen_projects_enchanting_table_enabled_option_layers() {
             input: None,
             scrolling: None,
             shadow: false,
+            font: None,
             runs: Vec::new(),
         })
     );
@@ -18653,7 +18673,15 @@ fn hud_inventory_screen_projects_enchanting_table_disabled_cost_label() {
             [0.0, 0.0],
             [1.0, 1.0],
         )));
-    assert_eq!(screen.text_labels.len(), 3);
+    assert_eq!(screen.text_labels.len(), 4);
+    let name = screen
+        .text_labels
+        .iter()
+        .find(|label| label.font.as_deref() == Some(ENCHANTMENT_ALT_FONT_ID))
+        .expect("seeded enchanting-language label");
+    assert_eq!(name.x, 80);
+    assert_eq!(name.y, 54);
+    assert_eq!(name.tint, ENCHANTING_TABLE_NAME_TEXT_DISABLED_COLOR);
     assert_eq!(
         screen.text_labels.last(),
         Some(&HudInventoryTextLabel {
@@ -18666,9 +18694,219 @@ fn hud_inventory_screen_projects_enchanting_table_disabled_cost_label() {
             input: None,
             scrolling: None,
             shadow: false,
+            font: None,
             runs: Vec::new(),
         })
     );
+}
+
+#[test]
+fn enchanting_gui_book_preview_matches_vanilla_pose_and_animation_projection() {
+    let state = EnchantmentBookHudState {
+        open: 0.4,
+        flip: -0.2,
+    };
+    let preview = hud_enchantment_book_preview(state);
+
+    assert_eq!(preview.entity.kind, EntityModelKind::EnchantingBook);
+    assert_eq!(
+        preview.rect,
+        HudEntityPreviewRect {
+            x: 14,
+            y: 14,
+            width: 38,
+            height: 31,
+        }
+    );
+    assert_eq!(preview.after_background_layer, Some(0));
+    assert_eq!(preview.lighting, GuiItemLightingEntry::EntityInUi);
+    assert!(preview.depth_isolated);
+    assert_eq!(
+        preview.entity.render_state.light_coords,
+        ENTITY_FULL_BRIGHT_LIGHT_COORDS
+    );
+    assert!((preview.entity.render_state.book_open - 0.4).abs() < 1.0e-6);
+    assert!((preview.entity.render_state.book_page_flip_1 - 0.0).abs() < 1.0e-6);
+    assert!((preview.entity.render_state.book_page_flip_2 - 0.58).abs() < 1.0e-6);
+
+    let actual = glam::Mat4::from_translation(Vec3::from_array(preview.translation))
+        * glam::Mat4::from_quat(Quat::from_array(preview.rotation))
+        * glam::Mat4::from_translation(Vec3::from_array(preview.entity.position))
+        * glam::Mat4::from_translation(Vec3::new(0.5, 0.75, 0.5))
+        * glam::Mat4::from_rotation_z(80.0_f32.to_radians());
+    let closed = 0.6;
+    let expected = glam::Mat4::from_translation(Vec3::new(0.0, 0.0375, 0.0))
+        * glam::Mat4::from_rotation_y(std::f32::consts::PI)
+        * glam::Mat4::from_rotation_x(25.0_f32.to_radians())
+        * glam::Mat4::from_translation(Vec3::new(closed * 0.2, closed * 0.1, closed * 0.25))
+        * glam::Mat4::from_rotation_y((-(closed * 90.0) - 90.0).to_radians())
+        * glam::Mat4::from_rotation_x(std::f32::consts::PI);
+    for (actual, expected) in actual
+        .to_cols_array()
+        .into_iter()
+        .zip(expected.to_cols_array())
+    {
+        assert!((actual - expected).abs() < 1.0e-5);
+    }
+}
+
+#[test]
+fn enchanting_option_tooltip_uses_synced_clue_and_exact_resource_branches() {
+    let root = unique_runtime_temp_dir("enchanting-option-tooltip");
+    write_runtime_tooltip_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let mut world = WorldStore::new();
+    world.record_registry_data(bbb_protocol::packets::RegistryData {
+        registry: "minecraft:enchantment".to_string(),
+        entries: vec![bbb_protocol::packets::RegistryDataEntry {
+            id: "example:efficiency".to_string(),
+            raw_data: Some(efficiency_enchantment_attribute_nbt()),
+        }],
+        raw_payload_len: 0,
+    });
+    world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_ENCHANTMENT_ID,
+        title: bbb_protocol::RichTextComponent::plain("Enchanting Table"),
+    });
+    world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+        container_id: 7,
+        state_id: 12,
+        items: vec![bbb_protocol::packets::ItemStackSummary::empty(); 38],
+        carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+    });
+    for (id, value) in [(0, 12), (3, 1234), (4, 0), (7, 3)] {
+        world.apply_container_set_data(bbb_protocol::packets::ContainerSetData {
+            container_id: 7,
+            id,
+            value,
+        });
+    }
+    world.apply_player_experience(bbb_protocol::packets::PlayerExperience {
+        progress: 0.0,
+        level: 20,
+        total: 0,
+    });
+    let local_state = InventoryHudLocalState {
+        cursor_position: Some((61, 15)),
+        ..InventoryHudLocalState::default()
+    };
+
+    let fallback_screen = hud_inventory_screen_with_local_state(
+        &world,
+        None,
+        &TerrainTextureState::default(),
+        None,
+        local_state.clone(),
+        0.0,
+    )
+    .unwrap();
+    let fallback_tooltip = fallback_screen
+        .tooltip
+        .expect("registry definition supplies the clue without an item runtime");
+    assert_eq!(
+        fallback_tooltip.lines[0].text,
+        "enchantment.example.synced_efficiency III . . . ?"
+    );
+    assert!(fallback_tooltip.lines[0]
+        .runs
+        .iter()
+        .any(|run| run.visual.color == Some(0x12_34_56)));
+
+    let screen = hud_inventory_screen_with_local_state(
+        &world,
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        None,
+        local_state.clone(),
+        0.0,
+    )
+    .unwrap();
+    let tooltip = screen.tooltip.expect("valid synchronized clue tooltip");
+    assert_eq!(tooltip.slot_id, u16::MAX);
+    assert_eq!((tooltip.x, tooltip.y), (61, 15));
+    assert_eq!(tooltip.lines.len(), 4);
+    assert_eq!(tooltip.lines[0].text, "Synced Efficiency III . . . ?");
+    assert_eq!(tooltip.lines[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert!(tooltip.lines[0]
+        .runs
+        .iter()
+        .any(|run| run.visual.color == Some(0x12_34_56)));
+    assert_eq!(tooltip.lines[1].text, "");
+    assert_eq!(tooltip.lines[2].text, "1 Lapis Lazuli");
+    assert_eq!(tooltip.lines[2].tint, TOOLTIP_TEST_RED);
+    assert_eq!(tooltip.lines[3].text, "1 Enchantment Level");
+    assert_eq!(tooltip.lines[3].tint, TOOLTIP_TEST_GRAY);
+
+    world.apply_player_experience(bbb_protocol::packets::PlayerExperience {
+        progress: 0.0,
+        level: 5,
+        total: 0,
+    });
+    let screen = hud_inventory_screen_with_local_state(
+        &world,
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        None,
+        local_state.clone(),
+        0.0,
+    )
+    .unwrap();
+    let tooltip = screen.tooltip.expect("level requirement tooltip");
+    assert_eq!(tooltip.lines.len(), 3);
+    assert_eq!(tooltip.lines[2].text, "Level Requirement: 12");
+    assert_eq!(tooltip.lines[2].tint, TOOLTIP_TEST_RED);
+
+    world.apply_player_abilities(bbb_protocol::packets::PlayerAbilities {
+        invulnerable: true,
+        flying: true,
+        can_fly: true,
+        instabuild: true,
+        flying_speed: 0.05,
+        walking_speed: 0.1,
+    });
+    let screen = hud_inventory_screen_with_local_state(
+        &world,
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        None,
+        local_state,
+        0.0,
+    )
+    .unwrap();
+    assert_eq!(
+        screen.tooltip.expect("infinite-material clue").lines.len(),
+        1
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn enchanting_option_tooltip_does_not_fabricate_unknown_custom_clue() {
+    let mut world = WorldStore::new();
+    world.record_registry_data(bbb_protocol::packets::RegistryData {
+        registry: "minecraft:enchantment".to_string(),
+        entries: vec![bbb_protocol::packets::RegistryDataEntry {
+            id: "example:unknown".to_string(),
+            raw_data: None,
+        }],
+        raw_payload_len: 0,
+    });
+    let options = std::array::from_fn(|index| EnchantmentOptionHudState {
+        index,
+        cost: if index == 0 { 1 } else { 0 },
+        enabled: false,
+        highlighted: false,
+        tooltip_hovered: index == 0,
+        name: String::new(),
+        name_max_width: 86,
+        clue_holder_id: (index == 0).then_some(0),
+        clue_level: (index == 0).then_some(1),
+    });
+
+    assert!(hud_enchantment_table_tooltip(&world, None, Some((61, 15)), Some(&options)).is_none());
 }
 
 #[test]
@@ -19084,6 +19322,7 @@ fn hud_inventory_screen_projects_anvil_rename_text_label() {
             input: None,
             scrolling: None,
             shadow: false,
+            font: None,
             runs: Vec::new(),
         })
     );
@@ -19138,6 +19377,7 @@ fn hud_inventory_screen_projects_anvil_cost_label() {
             input: None,
             scrolling: None,
             shadow: false,
+            font: None,
             runs: Vec::new(),
         })
     );
@@ -19191,6 +19431,7 @@ fn hud_inventory_screen_projects_anvil_too_expensive_label() {
             input: None,
             scrolling: None,
             shadow: false,
+            font: None,
             runs: Vec::new(),
         })
     );
@@ -19952,6 +20193,7 @@ fn hud_inventory_screen_projects_lectern_current_page_text() {
                 input: None,
                 scrolling: None,
                 shadow: false,
+                font: None,
                 runs: Vec::new(),
             },
             HudInventoryTextLabel {
@@ -19964,6 +20206,7 @@ fn hud_inventory_screen_projects_lectern_current_page_text() {
                 input: None,
                 scrolling: None,
                 shadow: false,
+                font: None,
                 runs: Vec::new(),
             },
             HudInventoryTextLabel {
@@ -19976,6 +20219,7 @@ fn hud_inventory_screen_projects_lectern_current_page_text() {
                 input: None,
                 scrolling: None,
                 shadow: false,
+                font: None,
                 runs: Vec::new(),
             },
         ]
@@ -20781,6 +21025,7 @@ fn hud_inventory_screen_projects_empty_advancements_screen() {
                 input: None,
                 scrolling: None,
                 shadow: false,
+                font: None,
                 runs: Vec::new(),
             },
             advancements_centered_text_label(
@@ -20970,6 +21215,7 @@ fn hud_inventory_screen_projects_advancement_root_tabs() {
                 input: None,
                 scrolling: None,
                 shadow: false,
+                font: None,
                 runs: vec![HudStyledTextRun::plain("minecraft:y/root")],
             },
             advancements_centered_text_label(
@@ -21365,6 +21611,7 @@ fn advancements_centered_text_label(
         input: None,
         scrolling: None,
         shadow: false,
+        font: None,
         runs: Vec::new(),
     }
 }

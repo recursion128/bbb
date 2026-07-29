@@ -42,13 +42,13 @@ use bbb_renderer::{
     HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite, HudAirSupply, HudBlockItemModel,
     HudChatContext, HudChatMessage, HudChatTag, HudChatTagKind, HudCommandBlockEditorKind,
     HudCommandBlockEditorScreen, HudCommandSuggestionEntry, HudCommandSuggestionTooltip,
-    HudCommandSuggestions, HudCommandSuggestionsLayout, HudContextualBar,
+    HudCommandSuggestions, HudCommandSuggestionsLayout, HudComponentTextRun, HudContextualBar,
     HudCrosshairAttackIndicator, HudDebugCrosshair, HudDebugFrameTimeChart,
     HudDebugGameModeSwitcher, HudDebugGameModeSwitcherSlot, HudDebugNetworkCharts,
     HudDebugOptionsTooltip, HudDebugOverlay, HudDebugProfilerChart, HudDebugTpsChart,
     HudDebugTpsSample, HudDemoLinkConfirmationScreen, HudDemoPopupScreen, HudEntityPreview,
     HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer, HudEntityPreviewItemSlot,
-    HudEntityPreviewRect, HudFoodEffect, HudGameEventButton, HudGameEventScreen,
+    HudEntityPreviewRect, HudFontGlyphBook, HudFoodEffect, HudGameEventButton, HudGameEventScreen,
     HudGameModeSwitcherMode, HudHeartKind, HudHotbarMode, HudIconLayer,
     HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryFillLayer,
     HudInventoryFillStage, HudInventoryGhostItem, HudInventoryItem, HudInventoryItemScissor,
@@ -79,14 +79,16 @@ use bbb_renderer::{
 use bbb_world::{
     java_string_hash_code, sign_wood_and_form_for_block_name, BlockPos,
     CartographyAdditionalItemKind, ChunkPos, ClientEnvironmentAttributes, ContainerState,
-    EntityClientMovementEffectState, EntityClientTickWork, EnvironmentBiomeSampling,
-    EvokerFangsCritParticleState, ItemEquipmentSlot, LocalPlayerCrosshairAttackIndicatorState,
-    LocalSoundEventState, MerchantOfferState, MerchantOffersState, MobEffectState,
-    MountArmorSlotKind, MountInventoryKind, OminousItemSpawnerParticleState,
-    PrimedTntSmokeParticleState, RavagerStunParticleState, SignBlockForm, SoundEventState,
-    SoundHolderState, TerrainFluidKind, TerrainFluidState, TerrainLight, TerrainMaterialClass,
-    WorldLevelInfo, WorldSkybox, WorldStore, WorldWeatherState,
+    EnchantmentTooltipDefinition, EntityClientMovementEffectState, EntityClientTickWork,
+    EnvironmentBiomeSampling, EvokerFangsCritParticleState, ItemEquipmentSlot,
+    LocalPlayerCrosshairAttackIndicatorState, LocalSoundEventState, MerchantOfferState,
+    MerchantOffersState, MobEffectState, MountArmorSlotKind, MountInventoryKind,
+    OminousItemSpawnerParticleState, PrimedTntSmokeParticleState, RavagerStunParticleState,
+    SignBlockForm, SoundEventState, SoundHolderState, TerrainFluidKind, TerrainFluidState,
+    TerrainLight, TerrainMaterialClass, VanillaEnchantmentIdentity, WorldLevelInfo, WorldSkybox,
+    WorldStore, WorldWeatherState,
 };
+use glam::{Quat, Vec3};
 use tokio::sync::mpsc;
 
 use crate::{
@@ -134,6 +136,13 @@ use crate::{
         advance_local_using_item_ticks_with_effects, advance_player_input_for_client_ticks,
         advance_using_item_at_partial_tick_with_effects_and_presentation,
         death_screen::DeathScreenRuntime,
+        enchantment_screen::{
+            enchantment_option_hud_states, EnchantmentBookHudState, EnchantmentOptionHudState,
+            ENCHANTING_TABLE_OPTION_HEIGHT, ENCHANTING_TABLE_OPTION_SPACING,
+            ENCHANTING_TABLE_OPTION_TEXT_WIDTH, ENCHANTING_TABLE_OPTION_WIDTH,
+            ENCHANTING_TABLE_OPTION_X, ENCHANTING_TABLE_OPTION_Y, ENCHANTMENT_ALT_FONT_ID,
+            ENCHANTMENT_OPTION_COUNT,
+        },
         game_event_screen::{DemoHelpFocus, DemoLinkConfirmationFocus, GameEventScreenRuntime},
         inventory_screen_layout_for_surface, inventory_screen_selected_hotbar_slot_id,
         local_player_hands_are_busy, native_pause_freezes_client_ticks,
@@ -436,12 +445,6 @@ const BEACON_ACTION_BUTTON_SIZE: u32 = 22;
 const BEACON_ACTION_ICON_OFFSET: i32 = 2;
 const BEACON_ACTION_ICON_SIZE: u32 = 18;
 const ENCHANTING_TABLE_LAPIS_SLOT_SPRITE_SIZE: u32 = 16;
-const ENCHANTING_TABLE_OPTION_COUNT: i16 = 3;
-const ENCHANTING_TABLE_OPTION_X: i32 = 60;
-const ENCHANTING_TABLE_OPTION_Y: i32 = 14;
-const ENCHANTING_TABLE_OPTION_WIDTH: u32 = 108;
-const ENCHANTING_TABLE_OPTION_HEIGHT: u32 = 19;
-const ENCHANTING_TABLE_OPTION_SPACING: i32 = 19;
 const ENCHANTING_TABLE_LEVEL_ICON_X_OFFSET: i32 = 1;
 const ENCHANTING_TABLE_LEVEL_ICON_Y_OFFSET: i32 = 1;
 const ENCHANTING_TABLE_LEVEL_ICON_SIZE: u32 = 16;
@@ -450,6 +453,10 @@ const ENCHANTING_TABLE_COST_TEXT_Y_OFFSET: i32 = 23;
 const ENCHANTING_TABLE_COST_TEXT_ENABLED_COLOR: [f32; 4] = [128.0 / 255.0, 1.0, 32.0 / 255.0, 1.0];
 const ENCHANTING_TABLE_COST_TEXT_DISABLED_COLOR: [f32; 4] =
     [64.0 / 255.0, 127.0 / 255.0, 16.0 / 255.0, 1.0];
+const ENCHANTING_TABLE_NAME_TEXT_COLOR: [f32; 4] = [104.0 / 255.0, 94.0 / 255.0, 74.0 / 255.0, 1.0];
+const ENCHANTING_TABLE_NAME_TEXT_DISABLED_COLOR: [f32; 4] =
+    [52.0 / 255.0, 47.0 / 255.0, 37.0 / 255.0, 1.0];
+const ENCHANTING_TABLE_NAME_TEXT_HIGHLIGHTED_COLOR: [f32; 4] = [1.0, 1.0, 128.0 / 255.0, 1.0];
 const BOOK_PAGE_INDICATOR_X_RIGHT: i32 = 148;
 const BOOK_PAGE_INDICATOR_Y: i32 = 16;
 const BOOK_PAGE_TEXT_X: i32 = 36;
@@ -2796,6 +2803,9 @@ pub(crate) fn advance_simulation(
     let screen_profile_started_at = profiling_enabled.then(Instant::now);
     world.advance_item_cooldowns(advanced_ticks);
     input.advance_death_screen_ticks(advanced_ticks);
+    // Vanilla `EnchantmentScreen.containerTick` advances its screen-local
+    // book once per raw client tick, alongside the other active screen ticks.
+    input.advance_enchantment_screen(world, advanced_ticks);
     advance_creative_inventory_commands(input, world, net_counters, net_commands, advanced_ticks);
     push_simulation_profile_section(
         &mut profiling_sections,
@@ -3648,6 +3658,8 @@ pub(crate) fn update_renderer_from_publication(
             },
             surface_size,
             renderer,
+            renderer.hud_font_book_ref(),
+            input.enchantment_book_hud_state(entity_partial_tick),
             entity_partial_tick,
         )
     };
@@ -7892,6 +7904,7 @@ fn hud_sign_editor_preview(kind: HudSignEditorKind) -> Option<HudEntityPreview> 
         override_camera_rotation: None,
         scale: SIGN_SCALE,
         depth_isolated: true,
+        after_background_layer: None,
         item_layers: Vec::new(),
     })
 }
@@ -9874,6 +9887,7 @@ fn hud_inventory_screen_with_local_state_for_surface(
     surface_size: winit::dpi::PhysicalSize<u32>,
     partial_tick: f32,
 ) -> Option<HudInventoryScreen> {
+    let hud_fonts = approximate_inventory_hud_fonts();
     hud_inventory_screen_with_local_state_for_surface_and_measurer(
         world,
         item_runtime,
@@ -9882,7 +9896,33 @@ fn hud_inventory_screen_with_local_state_for_surface(
         local_state,
         surface_size,
         &dialog_screen::ApproximateDialogTextMeasurer,
+        &hud_fonts,
+        None,
         partial_tick,
+    )
+}
+
+#[cfg(test)]
+fn approximate_inventory_hud_fonts() -> HudFontGlyphBook {
+    let mut glyphs = bbb_renderer::HudFontGlyphMap::new();
+    for ch in ' '..='~' {
+        let advance = hud_ascii_approx_char_width(ch);
+        glyphs.insert_first_wins(
+            ch,
+            bbb_renderer::HudAsciiGlyph {
+                width: advance.saturating_sub(1),
+                height: 8,
+                advance,
+                ..bbb_renderer::HudAsciiGlyph::default()
+            },
+        );
+    }
+    HudFontGlyphBook::from_fonts(
+        "minecraft:default",
+        BTreeMap::from([
+            ("minecraft:default".to_string(), glyphs.clone()),
+            (ENCHANTMENT_ALT_FONT_ID.to_string(), glyphs),
+        ]),
     )
 }
 
@@ -9894,6 +9934,8 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
     local_state: InventoryHudLocalState,
     surface_size: winit::dpi::PhysicalSize<u32>,
     dialog_text_measurer: &dyn dialog_screen::DialogTextMeasurer,
+    hud_fonts: &HudFontGlyphBook,
+    enchantment_book: Option<EnchantmentBookHudState>,
     partial_tick: f32,
 ) -> Option<HudInventoryScreen> {
     if let Some(confirmation) = world.dialog_link_confirmation() {
@@ -9972,6 +10014,8 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
     } else {
         world.inventory().open_container.as_ref()?
     };
+    let enchantment_options =
+        enchantment_option_hud_states(world, local_state.cursor_position, hud_fonts);
     let main_offset_x = layout
         .recipe_book
         .map(|recipe_book| recipe_book.main_gui_x_offset)
@@ -10045,8 +10089,13 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
         })
         .collect();
 
-    let mut background_layers =
-        hud_inventory_background_layers(world, item_runtime, layout.background, &local_state);
+    let mut background_layers = hud_inventory_background_layers(
+        world,
+        item_runtime,
+        layout.background,
+        &local_state,
+        enchantment_options.as_ref(),
+    );
     if main_offset_x != 0 {
         for layer in &mut background_layers {
             layer.x += main_offset_x;
@@ -10194,6 +10243,7 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
         item_runtime,
         layout.background,
         &local_state,
+        enchantment_book,
         partial_tick,
     );
     offset_hud_entity_previews(&mut entity_previews, main_offset_x);
@@ -10209,6 +10259,7 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
         layout.background,
         layout.height,
         &local_state,
+        enchantment_options.as_ref(),
     );
     offset_hud_inventory_text_labels(&mut text_labels, main_offset_x);
     let mut recipe_book_text_labels = Vec::new();
@@ -10273,6 +10324,13 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
         )
     });
     let tooltip = match layout.background {
+        InventoryScreenBackground::EnchantmentTable => hud_enchantment_table_tooltip(
+            world,
+            item_runtime,
+            local_state.cursor_position,
+            enchantment_options.as_ref(),
+        )
+        .or(inventory_tooltip),
         InventoryScreenBackground::Merchant => hud_merchant_trade_tooltip(
             world,
             item_runtime,
@@ -11528,6 +11586,7 @@ fn hud_recipe_book_search_text_label(
         }),
         scrolling: None,
         shadow: false,
+        font: None,
         runs: Vec::new(),
     })
 }
@@ -11561,6 +11620,7 @@ fn hud_recipe_book_page_text_label(
         input: None,
         scrolling: None,
         shadow: false,
+        font: None,
         runs: Vec::new(),
     })
 }
@@ -11627,6 +11687,7 @@ fn hud_inventory_entity_previews(
     item_runtime: Option<&NativeItemRuntime>,
     background: InventoryScreenBackground,
     local_state: &InventoryHudLocalState,
+    enchantment_book: Option<EnchantmentBookHudState>,
     partial_tick: f32,
 ) -> Vec<HudEntityPreview> {
     match background {
@@ -11643,6 +11704,10 @@ fn hud_inventory_entity_previews(
         InventoryScreenBackground::Smithing => {
             vec![hud_smithing_entity_preview(world, item_runtime)]
         }
+        InventoryScreenBackground::EnchantmentTable => enchantment_book
+            .map(hud_enchantment_book_preview)
+            .into_iter()
+            .collect(),
         _ => Vec::new(),
     }
 }
@@ -11697,6 +11762,63 @@ fn hud_mount_inventory_entity_preview(
         SCALE,
         OFFSET_Y,
     )
+}
+
+fn hud_enchantment_book_preview(state: EnchantmentBookHudState) -> HudEntityPreview {
+    const ENTITY_ID: i32 = -1;
+    const GUI_BOOK_SCALE: f32 = 40.0;
+    const GUI_BOOK_Y: f32 = 17.0;
+    const WORLD_BOOK_ROOT_Z_ROTATION_DEGREES: f32 = 80.0;
+
+    let open = state.open.clamp(0.0, 1.0);
+    let page_flip_1 = ((fraction(state.flip + 0.25) * 1.6) - 0.3).clamp(0.0, 1.0);
+    let page_flip_2 = ((fraction(state.flip + 0.75) * 1.6) - 0.3).clamp(0.0, 1.0);
+    let mut entity = EntityModelInstance::enchanting_book(ENTITY_ID, [-0.5, -0.75, -0.5], 0.0)
+        .with_book_progress(0.0)
+        .with_book_open(open)
+        .with_book_page_flip_1(page_flip_1)
+        .with_book_page_flip_2(page_flip_2)
+        .with_book_float_y(0.0);
+    entity.render_state.light_coords = ENTITY_FULL_BRIGHT_LIGHT_COORDS;
+    entity.render_state.outline_color = 0;
+    entity.render_state.appears_glowing = false;
+
+    // `EntityModelKind::EnchantingBook` carries the in-world `Rz(80)` root.
+    // Cancel that final rotation and fold `GuiBookModelRenderer`'s exact rigid
+    // pose into the existing entity-PIP camera.
+    let gui_base =
+        Quat::from_rotation_y(std::f32::consts::PI) * Quat::from_rotation_x(25.0_f32.to_radians());
+    let closed = 1.0 - open;
+    let gui_translation = gui_base * Vec3::new(closed * 0.2, closed * 0.1, closed * 0.25);
+    let rotation = gui_base
+        * Quat::from_rotation_y((-(closed * 90.0) - 90.0).to_radians())
+        * Quat::from_rotation_x(std::f32::consts::PI)
+        * Quat::from_rotation_z(-WORLD_BOOK_ROOT_Z_ROTATION_DEGREES.to_radians());
+
+    HudEntityPreview {
+        entity,
+        lighting: GuiItemLightingEntry::EntityInUi,
+        rect: HudEntityPreviewRect {
+            x: 14,
+            y: 14,
+            width: 38,
+            height: 31,
+        },
+        scissor: None,
+        translation: (gui_translation
+            + Vec3::new(0.0, (GUI_BOOK_Y - 31.0 / 2.0) / GUI_BOOK_SCALE, 0.0))
+        .to_array(),
+        rotation: rotation.to_array(),
+        override_camera_rotation: None,
+        scale: GUI_BOOK_SCALE,
+        depth_isolated: true,
+        after_background_layer: Some(0),
+        item_layers: Vec::new(),
+    }
+}
+
+fn fraction(value: f32) -> f32 {
+    value - value.floor()
 }
 
 fn hud_entity_in_inventory_follows_mouse_preview(
@@ -11754,6 +11876,7 @@ fn hud_entity_in_inventory_follows_mouse_preview(
         override_camera_rotation: Some(camera_x_rotation),
         scale,
         depth_isolated: true,
+        after_background_layer: None,
         item_layers: Vec::new(),
     })
 }
@@ -11805,6 +11928,7 @@ fn hud_smithing_entity_preview(
         override_camera_rotation: None,
         scale: SCALE,
         depth_isolated: true,
+        after_background_layer: None,
         item_layers,
     }
 }
@@ -13354,6 +13478,7 @@ fn push_advancement_hover_text_label(
         input: None,
         scrolling: None,
         shadow: false,
+        font: None,
         runs,
     });
 }
@@ -13529,6 +13654,7 @@ fn advancements_screen_text_labels(
         input: None,
         scrolling: None,
         shadow: false,
+        font: None,
         runs: selected_title
             .map(hud_styled_runs_from_rich_text)
             .unwrap_or_default(),
@@ -13582,6 +13708,7 @@ fn push_centered_advancements_label(
         input: None,
         scrolling: None,
         shadow: false,
+        font: None,
         runs: Vec::new(),
     });
 }
@@ -13592,6 +13719,7 @@ fn hud_inventory_text_labels(
     background: InventoryScreenBackground,
     screen_height: i32,
     local_state: &InventoryHudLocalState,
+    enchantment_options: Option<&[EnchantmentOptionHudState; ENCHANTMENT_OPTION_COUNT]>,
 ) -> Vec<HudInventoryTextLabel> {
     let mut labels =
         hud_server_opened_container_labels(world, item_runtime, background, screen_height);
@@ -13612,6 +13740,7 @@ fn hud_inventory_text_labels(
                     input: None,
                     scrolling: None,
                     shadow: false,
+                    font: None,
                     runs: Vec::new(),
                 });
             }
@@ -13620,7 +13749,9 @@ fn hud_inventory_text_labels(
             }
         }
         InventoryScreenBackground::EnchantmentTable => {
-            labels.extend(enchanting_table_cost_text_labels(world));
+            labels.extend(enchanting_table_text_labels(
+                enchantment_options.map_or(&[], |options| options.as_slice()),
+            ));
         }
         InventoryScreenBackground::Lectern => labels.extend(lectern_book_text_labels(world)),
         _ => {}
@@ -13804,6 +13935,7 @@ fn push_component_container_label(
         input: None,
         scrolling: None,
         shadow: false,
+        font: None,
         runs: hud_styled_runs_from_component_runs(&runs),
     });
 }
@@ -13834,6 +13966,7 @@ fn push_centered_container_label(
             height: CONTAINER_TEXT_LINE_HEIGHT,
         }),
         shadow: false,
+        font: None,
         runs: hud_styled_runs_from_component_runs(&runs),
     });
 }
@@ -13876,6 +14009,7 @@ fn book_page_text_labels(pages: &[String], current_page: usize) -> Vec<HudInvent
                 input: None,
                 scrolling: None,
                 shadow: false,
+                font: None,
                 runs: Vec::new(),
             });
         }
@@ -13896,6 +14030,7 @@ fn book_page_text_labels(pages: &[String], current_page: usize) -> Vec<HudInvent
                 input: None,
                 scrolling: None,
                 shadow: false,
+                font: None,
                 runs: Vec::new(),
             });
         }
@@ -13961,27 +14096,44 @@ fn lectern_book_page_lines(page: &str) -> Vec<Option<String>> {
     lines
 }
 
-fn enchanting_table_cost_text_labels(world: &WorldStore) -> Vec<HudInventoryTextLabel> {
-    let mut labels = Vec::new();
-    for index in 0..ENCHANTING_TABLE_OPTION_COUNT {
-        let cost = world.open_container_data_value(index).unwrap_or_default();
-        if cost <= 0 {
+fn enchanting_table_text_labels(
+    options: &[EnchantmentOptionHudState],
+) -> Vec<HudInventoryTextLabel> {
+    let mut labels = Vec::with_capacity(options.len() * 2);
+    for option in options {
+        if option.cost <= 0 {
             continue;
         }
-        let text = cost.to_string();
-        let Some(text_width) = hud_ascii_approx_text_width(&text) else {
-            continue;
-        };
-        let Some(text_width_i32) = i32::try_from(text_width).ok() else {
-            continue;
-        };
+        let row = i32::try_from(option.index).expect("three enchanting rows fit i32");
+        labels.push(HudInventoryTextLabel {
+            x: ENCHANTING_TABLE_OPTION_X + 20,
+            y: ENCHANTING_TABLE_OPTION_Y + 2 + row * ENCHANTING_TABLE_OPTION_SPACING,
+            width: option.name_max_width,
+            text: option.name.clone(),
+            tint: if !option.enabled {
+                ENCHANTING_TABLE_NAME_TEXT_DISABLED_COLOR
+            } else if option.highlighted {
+                ENCHANTING_TABLE_NAME_TEXT_HIGHLIGHTED_COLOR
+            } else {
+                ENCHANTING_TABLE_NAME_TEXT_COLOR
+            },
+            background: None,
+            input: None,
+            scrolling: None,
+            shadow: false,
+            font: Some(ENCHANTMENT_ALT_FONT_ID.to_string()),
+            runs: Vec::new(),
+        });
+
+        let text = option.cost.to_string();
+        let text_width = ENCHANTING_TABLE_OPTION_TEXT_WIDTH.saturating_sub(option.name_max_width);
+        let text_width_i32 = i32::try_from(text_width).expect("enchanting cost width fits i32");
         labels.push(HudInventoryTextLabel {
             x: ENCHANTING_TABLE_COST_TEXT_X_RIGHT - text_width_i32,
-            y: ENCHANTING_TABLE_COST_TEXT_Y_OFFSET
-                + i32::from(index) * ENCHANTING_TABLE_OPTION_SPACING,
+            y: ENCHANTING_TABLE_COST_TEXT_Y_OFFSET + row * ENCHANTING_TABLE_OPTION_SPACING,
             width: text_width,
             text,
-            tint: if enchanting_table_option_is_enabled(world, index, cost) {
+            tint: if option.enabled {
                 ENCHANTING_TABLE_COST_TEXT_ENABLED_COLOR
             } else {
                 ENCHANTING_TABLE_COST_TEXT_DISABLED_COLOR
@@ -13990,6 +14142,7 @@ fn enchanting_table_cost_text_labels(world: &WorldStore) -> Vec<HudInventoryText
             input: None,
             scrolling: None,
             shadow: false,
+            font: None,
             runs: Vec::new(),
         });
     }
@@ -14042,6 +14195,7 @@ fn anvil_cost_text_label(world: &WorldStore) -> Option<HudInventoryTextLabel> {
         input: None,
         scrolling: None,
         shadow: false,
+        font: None,
         runs: Vec::new(),
     })
 }
@@ -14584,6 +14738,239 @@ fn hud_stonecutter_recipe_tooltip(
     })
 }
 
+fn hud_enchantment_table_tooltip(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    cursor_position: Option<(i32, i32)>,
+    options: Option<&[EnchantmentOptionHudState; ENCHANTMENT_OPTION_COUNT]>,
+) -> Option<HudInventoryTooltip> {
+    const ENCHANTMENT_REGISTRY: &str = "minecraft:enchantment";
+    const TOOLTIP_WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
+    const TOOLTIP_GRAY: [f32; 4] = [170.0 / 255.0, 170.0 / 255.0, 170.0 / 255.0, 1.0];
+    const TOOLTIP_RED: [f32; 4] = [1.0, 85.0 / 255.0, 85.0 / 255.0, 1.0];
+
+    let (cursor_x, cursor_y) = cursor_position?;
+    let option = options?
+        .iter()
+        .find(|option| option.tooltip_hovered && option.cost > 0)?;
+    let holder_id = option.clue_holder_id?;
+    let enchantment_level = option.clue_level?;
+    let resource_id = world.registry_resource_id_by_holder_id(ENCHANTMENT_REGISTRY, holder_id)?;
+    let definitions = world.enchantment_tooltip_definitions_in_holder_order();
+    let definition = usize::try_from(holder_id)
+        .ok()
+        .and_then(|holder_id| definitions.as_ref()?.get(holder_id))
+        .and_then(Option::as_ref);
+    if definition.is_none() && VanillaEnchantmentIdentity::for_resource_id(resource_id).is_none() {
+        return None;
+    }
+
+    let enchantment_line = item_runtime
+        .map(|runtime| {
+            let line =
+                runtime.enchantment_name_tooltip_line(resource_id, enchantment_level, definition);
+            HudInventoryTooltipLine {
+                text: line.text,
+                tint: line.tint,
+                runs: line.runs,
+            }
+        })
+        .unwrap_or_else(|| {
+            fallback_enchantment_name_tooltip_line(resource_id, enchantment_level, definition)
+        });
+    let mut lines = vec![enchantment_clue_tooltip_line(
+        item_runtime,
+        enchantment_line,
+    )];
+
+    let infinite_materials = world
+        .local_player()
+        .abilities
+        .is_some_and(|abilities| abilities.instabuild);
+    if !infinite_materials {
+        lines.push(HudInventoryTooltipLine {
+            text: String::new(),
+            tint: TOOLTIP_WHITE,
+            runs: Vec::new(),
+        });
+        let required_lapis =
+            i32::try_from(option.index + 1).expect("three enchanting rows fit i32");
+        let experience_level = world
+            .local_player()
+            .experience
+            .map(|experience| experience.level)
+            .unwrap_or_default();
+        if experience_level < i32::from(option.cost) {
+            let cost = option.cost.to_string();
+            lines.push(HudInventoryTooltipLine {
+                text: localized_gui_text_with_args(
+                    item_runtime,
+                    "container.enchant.level.requirement",
+                    "Level Requirement: %s",
+                    &[&cost],
+                ),
+                tint: TOOLTIP_RED,
+                runs: Vec::new(),
+            });
+        } else {
+            let lapis_count = open_container_slot_item(world, 1)
+                .filter(|stack| !item_stack_is_empty(stack))
+                .map(|stack| stack.count)
+                .unwrap_or_default();
+            let resource_cost = required_lapis.to_string();
+            let (lapis_key, lapis_fallback) = if required_lapis == 1 {
+                ("container.enchant.lapis.one", "1 Lapis Lazuli")
+            } else {
+                ("container.enchant.lapis.many", "%s Lapis Lazuli")
+            };
+            lines.push(HudInventoryTooltipLine {
+                text: localized_gui_text_with_args(
+                    item_runtime,
+                    lapis_key,
+                    lapis_fallback,
+                    &[&resource_cost],
+                ),
+                tint: if lapis_count >= required_lapis {
+                    TOOLTIP_GRAY
+                } else {
+                    TOOLTIP_RED
+                },
+                runs: Vec::new(),
+            });
+            let (level_key, level_fallback) = if required_lapis == 1 {
+                ("container.enchant.level.one", "1 Enchantment Level")
+            } else {
+                ("container.enchant.level.many", "%s Enchantment Levels")
+            };
+            lines.push(HudInventoryTooltipLine {
+                text: localized_gui_text_with_args(
+                    item_runtime,
+                    level_key,
+                    level_fallback,
+                    &[&resource_cost],
+                ),
+                tint: TOOLTIP_GRAY,
+                runs: Vec::new(),
+            });
+        }
+    }
+
+    Some(HudInventoryTooltip {
+        slot_id: u16::MAX,
+        x: cursor_x,
+        y: cursor_y,
+        style: None,
+        lines,
+    })
+}
+
+fn enchantment_clue_tooltip_line(
+    item_runtime: Option<&NativeItemRuntime>,
+    enchantment: HudInventoryTooltipLine,
+) -> HudInventoryTooltipLine {
+    let template = localized_gui_text(item_runtime, "container.enchant.clue", "%s . . . ?");
+    let mut text = String::new();
+    let mut runs = Vec::new();
+    visit_localized_template(&template, |part| match part {
+        LocalizedTemplatePart::Literal(literal) => {
+            text.push_str(literal);
+            runs.push(HudComponentTextRun::plain(literal));
+        }
+        LocalizedTemplatePart::Argument { index: 0, .. } => {
+            text.push_str(&enchantment.text);
+            runs.extend(enchantment.runs.clone());
+        }
+        LocalizedTemplatePart::Argument { raw, .. } => {
+            text.push_str(raw);
+            runs.push(HudComponentTextRun::plain(raw));
+        }
+    });
+    HudInventoryTooltipLine {
+        text,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        runs,
+    }
+}
+
+fn fallback_enchantment_name_tooltip_line(
+    resource_id: &str,
+    level: i32,
+    definition: Option<&EnchantmentTooltipDefinition>,
+) -> HudInventoryTooltipLine {
+    let (mut text, mut runs) = if let Some(definition) = definition {
+        let mut text = definition.description.clone();
+        let mut styled = definition.description_styled.clone();
+        if let Some(translation_key) = definition.description_translation_key.as_deref() {
+            let fallback = definition
+                .description_translation_fallback
+                .as_deref()
+                .unwrap_or(translation_key);
+            let encoded_text = definition
+                .description_translation_fallback
+                .as_deref()
+                .filter(|fallback| text.contains(fallback))
+                .unwrap_or(translation_key);
+            if let Some(run) = styled.iter_mut().find(|run| run.text == encoded_text) {
+                run.text = fallback.to_string();
+                text = styled.iter().map(|run| run.text.as_str()).collect();
+            } else if text.contains(encoded_text) {
+                text = text.replacen(encoded_text, fallback, 1);
+            }
+        }
+        (
+            text,
+            styled
+                .into_iter()
+                .map(component_hover::hud_component_run)
+                .collect::<Vec<_>>(),
+        )
+    } else {
+        let path = resource_id
+            .split_once(':')
+            .map(|(_, path)| path)
+            .unwrap_or(resource_id);
+        (humanize_resource_path(path), Vec::new())
+    };
+    if runs.is_empty() && !text.is_empty() {
+        runs.push(HudComponentTextRun::plain(text.clone()));
+    }
+    let max_level = definition
+        .map(|definition| definition.max_level)
+        .or_else(|| {
+            VanillaEnchantmentIdentity::for_resource_id(resource_id)
+                .map(VanillaEnchantmentIdentity::max_level)
+        })
+        .unwrap_or(1);
+    if level != 1 || max_level != 1 {
+        let level_text = match level {
+            1 => "I".to_string(),
+            2..=10 => mob_effect_level_fallback(level).to_string(),
+            _ => level.to_string(),
+        };
+        text.push(' ');
+        text.push_str(&level_text);
+        let mut suffix = runs
+            .first()
+            .cloned()
+            .unwrap_or_else(|| HudComponentTextRun::plain(""));
+        suffix.visual.text = format!(" {level_text}");
+        runs.push(suffix);
+    }
+    let curse = matches!(
+        resource_id,
+        "minecraft:binding_curse" | "minecraft:vanishing_curse"
+    );
+    HudInventoryTooltipLine {
+        text,
+        tint: if curse {
+            [1.0, 85.0 / 255.0, 85.0 / 255.0, 1.0]
+        } else {
+            [170.0 / 255.0, 170.0 / 255.0, 170.0 / 255.0, 1.0]
+        },
+        runs,
+    }
+}
+
 struct HudItemTooltipContent {
     style: Option<String>,
     lines: Vec<HudInventoryTooltipLine>,
@@ -14938,6 +15325,7 @@ fn hud_inventory_background_layers(
     item_runtime: Option<&NativeItemRuntime>,
     background: InventoryScreenBackground,
     local_state: &InventoryHudLocalState,
+    enchantment_options: Option<&[EnchantmentOptionHudState; ENCHANTMENT_OPTION_COUNT]>,
 ) -> Vec<HudInventoryBackgroundLayer> {
     match background {
         InventoryScreenBackground::LocalInventory => {
@@ -15006,7 +15394,11 @@ fn hud_inventory_background_layers(
                 [0.0, 0.0],
                 [176.0 / 256.0, 166.0 / 256.0],
             )];
-            push_enchanting_table_state_layers(world, &mut layers);
+            push_enchanting_table_state_layers(
+                world,
+                enchantment_options.map_or(&[], |options| options.as_slice()),
+                &mut layers,
+            );
             layers
         }
         InventoryScreenBackground::Crafter => {
@@ -16417,10 +16809,11 @@ fn loom_scroller_offset(selectable_count: i32, scroll_row: i32) -> i32 {
 
 fn push_enchanting_table_state_layers(
     world: &WorldStore,
+    options: &[EnchantmentOptionHudState],
     layers: &mut Vec<HudInventoryBackgroundLayer>,
 ) {
     if open_container_slot_has_item(world, 1) {
-        for slot in enchanting_table_option_layers(world) {
+        for slot in enchanting_table_option_layers(options) {
             layers.push(slot);
         }
         return;
@@ -16434,17 +16827,19 @@ fn push_enchanting_table_state_layers(
         [0.0, 0.0],
         [1.0, 1.0],
     ));
-    for slot in enchanting_table_option_layers(world) {
+    for slot in enchanting_table_option_layers(options) {
         layers.push(slot);
     }
 }
 
-fn enchanting_table_option_layers(world: &WorldStore) -> Vec<HudInventoryBackgroundLayer> {
-    let mut layers = Vec::with_capacity((ENCHANTING_TABLE_OPTION_COUNT as usize) * 2);
-    for index in 0..ENCHANTING_TABLE_OPTION_COUNT {
+fn enchanting_table_option_layers(
+    options: &[EnchantmentOptionHudState],
+) -> Vec<HudInventoryBackgroundLayer> {
+    let mut layers = Vec::with_capacity(options.len() * 2);
+    for option in options {
+        let index = i16::try_from(option.index).expect("three enchanting rows fit i16");
         let y = ENCHANTING_TABLE_OPTION_Y + i32::from(index) * ENCHANTING_TABLE_OPTION_SPACING;
-        let cost = world.open_container_data_value(index).unwrap_or_default();
-        if cost <= 0 {
+        if option.cost <= 0 {
             layers.push(hud_inventory_background_layer(
                 HudInventoryBackgroundTexture::EnchantingTableEnchantmentSlotDisabled,
                 ENCHANTING_TABLE_OPTION_X,
@@ -16456,13 +16851,14 @@ fn enchanting_table_option_layers(world: &WorldStore) -> Vec<HudInventoryBackgro
             ));
             continue;
         }
-        let enabled = enchanting_table_option_is_enabled(world, index, cost);
 
         layers.push(hud_inventory_background_layer(
-            if enabled {
-                HudInventoryBackgroundTexture::EnchantingTableEnchantmentSlot
-            } else {
+            if !option.enabled {
                 HudInventoryBackgroundTexture::EnchantingTableEnchantmentSlotDisabled
+            } else if option.highlighted {
+                HudInventoryBackgroundTexture::EnchantingTableEnchantmentSlotHighlighted
+            } else {
+                HudInventoryBackgroundTexture::EnchantingTableEnchantmentSlot
             },
             ENCHANTING_TABLE_OPTION_X,
             y,
@@ -16472,7 +16868,7 @@ fn enchanting_table_option_layers(world: &WorldStore) -> Vec<HudInventoryBackgro
             [1.0, 1.0],
         ));
         layers.push(hud_inventory_background_layer(
-            enchanting_table_level_texture(index, enabled),
+            enchanting_table_level_texture(index, option.enabled),
             ENCHANTING_TABLE_OPTION_X + ENCHANTING_TABLE_LEVEL_ICON_X_OFFSET,
             y + ENCHANTING_TABLE_LEVEL_ICON_Y_OFFSET,
             ENCHANTING_TABLE_LEVEL_ICON_SIZE,
@@ -16482,23 +16878,6 @@ fn enchanting_table_option_layers(world: &WorldStore) -> Vec<HudInventoryBackgro
         ));
     }
     layers
-}
-
-fn enchanting_table_option_is_enabled(world: &WorldStore, index: i16, cost: i16) -> bool {
-    if world.gameplay().game_type == GameType::Creative.id() {
-        return true;
-    }
-    let required_lapis = i32::from(index) + 1;
-    let lapis_count = open_container_slot_item(world, 1)
-        .filter(|item| !item_stack_is_empty(item))
-        .map(|item| item.count)
-        .unwrap_or_default();
-    if lapis_count < required_lapis {
-        return false;
-    }
-    world.local_player().experience.is_some_and(|experience| {
-        experience.level >= i32::from(cost) && experience.level >= required_lapis
-    })
 }
 
 fn enchanting_table_level_texture(index: i16, enabled: bool) -> HudInventoryBackgroundTexture {

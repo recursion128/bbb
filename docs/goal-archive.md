@@ -797,3 +797,6 @@
 - **2026-07-29（地图工作台呈现工程闭环）**：四种 Vanilla 结果框、错误回退与
   精确 strata 已贯通；GUI 预览复用动态地图像素、装饰、名称的共享驻留图集，
   合同见 `docs/archive/cartography-table-presentation-design.md`。
+- **2026-07-29（附魔台屏幕呈现工程闭环）**：screen-local GUI 书动画、隔离 PIP、
+  seeded alt-font 名称、选项 strata 与 registry-backed tooltip 已按 Vanilla 贯通；
+  合同见 `docs/archive/enchantment-table-presentation-design.md`。

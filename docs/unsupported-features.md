@@ -221,8 +221,6 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
   decoded duration is diagnostic and its 26.1 client handler is empty.
 - `BeaconMenu`: render confirm/cancel hover state, selected-effect highlight and
   hover state, labels, and tooltips.
-- `EnchantmentMenu`: animated book model, enchanting glyph text and its
-  disabled/highlight coloring, hover tooltips.
 - `LoomMenu`: render each ordered selectable-pattern banner thumbnail, the
   composited banner preview, and the max-pattern error overlay.
 - `LecternMenu`: rich text styles and click events, exact vanilla font wrapping,

@@ -784,6 +784,7 @@ fn push_text_field<'a>(
         input: Some(input),
         scrolling: None,
         shadow: true,
+        font: None,
         runs: Vec::new(),
     };
     push_hud_inventory_text_input_label(

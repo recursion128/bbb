@@ -2336,6 +2336,9 @@ pub struct HudEntityPreview {
     pub scale: f32,
     /// Vanilla PIP renderers use a private color texture and a private depth texture, cleared per preview.
     pub depth_isolated: bool,
+    /// Optional background-layer index after which the PIP blit is submitted.
+    /// `None` preserves the standard after-all-background behavior.
+    pub after_background_layer: Option<usize>,
     /// Item layers submitted by the preview renderer around the entity model, with vanilla order metadata.
     pub item_layers: Vec<HudEntityPreviewItemLayer>,
 }
@@ -2910,6 +2913,9 @@ pub struct HudInventoryTextLabel {
     pub input: Option<HudInventoryTextInputDecoration>,
     pub scrolling: Option<HudInventoryScrollingText>,
     pub shadow: bool,
+    /// Whole-label font id. Missing resource-pack ids fall back to the default
+    /// font through `HudFontGlyphBook`.
+    pub font: Option<String>,
     /// Styled draw runs; concatenated run text matches `text`. Leave empty
     /// for plain labels — sanitization synthesizes a single default-style run
     /// from `text`.
@@ -3337,6 +3343,10 @@ impl Renderer {
 
     pub fn hud_text_measurements_ref(&self) -> &HudFontGlyphMap {
         &self.hud_font_glyphs
+    }
+
+    pub fn hud_font_book_ref(&self) -> &HudFontGlyphBook {
+        &self.hud_font_book
     }
 
     pub fn upload_hud_inventory_background(
@@ -6986,6 +6996,7 @@ impl Renderer {
                 screen,
                 &screen.background_layers,
                 &screen.map_previews,
+                &screen.entity_previews,
             );
             if let Some(area) = &screen.scroll_area {
                 if push_hud_inventory_scissor(&mut commands, surface_size, screen, area.scissor) {
@@ -7001,7 +7012,7 @@ impl Renderer {
                 }
             }
 
-            // Vanilla screens submit the entity preview right after the background blit
+            // Vanilla screens submit standard entity previews right after all background blits
             // (`InventoryScreen.renderBg` / `SmithingScreen.renderBg`), and
             // `PictureInPictureRenderer.blitTexture` adds the PIP color texture to the current GUI
             // layer — above the background, below slot highlights / items / overlays. A scissored
@@ -7011,37 +7022,17 @@ impl Renderer {
             // identity fractions of the rect — vanilla's `v0=1, v1=0` flip is a GL
             // framebuffer-origin artifact.
             for (target_index, preview) in screen.entity_previews.iter().enumerate() {
-                if self
-                    .hud_entity_preview_pip_targets
-                    .get(target_index)
-                    .is_none()
-                {
-                    continue;
-                }
-                let Some(visible) = preview.visible_bounds() else {
-                    continue;
-                };
-                let uv = hud_entity_preview_blit_uv(preview.rect, visible);
-                let start = vertices.len() as u32;
-                vertices.extend_from_slice(&hud_quad_vertices(
-                    surface_size,
-                    inventory_background_hud_rect(
+                if preview.after_background_layer.is_none() {
+                    push_hud_entity_preview_blit(
+                        &mut vertices,
+                        &mut commands,
+                        self,
                         surface_size,
-                        screen.width,
-                        screen.height,
-                        visible.x,
-                        visible.y,
-                        visible.width,
-                        visible.height,
-                    ),
-                    uv,
-                    [1.0, 1.0, 1.0, 1.0],
-                ));
-                commands.push(HudDrawCommand::EntityPreviewBlit {
-                    target_index,
-                    start,
-                    end: vertices.len() as u32,
-                });
+                        screen,
+                        target_index,
+                        preview,
+                    );
+                }
             }
 
             let hovered_slot = screen
@@ -7298,8 +7289,7 @@ impl Renderer {
                 &mut post_gui_item_commands,
                 &self.hud_white_pixel,
                 self.hud_font_atlas.as_ref(),
-                &self.hud_font_glyphs,
-                &self.hud_obfuscated_glyph_pool,
+                &self.hud_font_book,
                 self.counters.frame_index,
                 surface_size,
                 screen,
@@ -7319,8 +7309,7 @@ impl Renderer {
                         &mut post_gui_item_commands,
                         &self.hud_white_pixel,
                         self.hud_font_atlas.as_ref(),
-                        &self.hud_font_glyphs,
-                        &self.hud_obfuscated_glyph_pool,
+                        &self.hud_font_book,
                         self.counters.frame_index,
                         surface_size,
                         screen,
@@ -9565,6 +9554,7 @@ fn push_hud_inventory_background_layers_with_map_previews<'a>(
     screen: &HudInventoryScreen,
     layers: &[HudInventoryBackgroundLayer],
     map_previews: &[HudInventoryMapPreview],
+    entity_previews: &[HudEntityPreview],
 ) {
     for (layer_index, layer) in layers.iter().enumerate() {
         push_hud_inventory_background_layers(
@@ -9585,7 +9575,63 @@ fn push_hud_inventory_background_layers_with_map_previews<'a>(
                         .expect("sanitized HUD map preview count fits u8"),
                 }),
         );
+        for (target_index, preview) in entity_previews.iter().enumerate() {
+            if preview.after_background_layer == Some(layer_index) {
+                push_hud_entity_preview_blit(
+                    vertices,
+                    commands,
+                    renderer,
+                    surface_size,
+                    screen,
+                    target_index,
+                    preview,
+                );
+            }
+        }
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_entity_preview_blit<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    renderer: &'a Renderer,
+    surface_size: PhysicalSize<u32>,
+    screen: &HudInventoryScreen,
+    target_index: usize,
+    preview: &HudEntityPreview,
+) {
+    if renderer
+        .hud_entity_preview_pip_targets
+        .get(target_index)
+        .is_none()
+    {
+        return;
+    }
+    let Some(visible) = preview.visible_bounds() else {
+        return;
+    };
+    let uv = hud_entity_preview_blit_uv(preview.rect, visible);
+    let start = vertices.len() as u32;
+    vertices.extend_from_slice(&hud_quad_vertices(
+        surface_size,
+        inventory_background_hud_rect(
+            surface_size,
+            screen.width,
+            screen.height,
+            visible.x,
+            visible.y,
+            visible.width,
+            visible.height,
+        ),
+        uv,
+        [1.0, 1.0, 1.0, 1.0],
+    ));
+    commands.push(HudDrawCommand::EntityPreviewBlit {
+        target_index,
+        start,
+        end: vertices.len() as u32,
+    });
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -9594,8 +9640,7 @@ fn push_hud_inventory_text_labels<'a>(
     commands: &mut Vec<HudDrawCommand<'a>>,
     white_pixel: &'a HudSpriteGpu,
     font_atlas: Option<&'a HudSpriteGpu>,
-    glyphs: &HudFontGlyphMap,
-    obfuscated_pool: &HudObfuscatedGlyphPool,
+    fonts: &HudFontGlyphBook,
     obfuscated_seed: u64,
     surface_size: PhysicalSize<u32>,
     screen: &HudInventoryScreen,
@@ -9609,6 +9654,8 @@ fn push_hud_inventory_text_labels<'a>(
     let parent_scissor =
         parent_scissor.map(|scissor| hud_inventory_scissor_rect(surface_size, screen, scissor));
     for label in labels {
+        let glyphs = fonts.glyphs(label.font.as_deref());
+        let obfuscated_pool = fonts.obfuscated_pool(label.font.as_deref());
         if let Some(background) = label.background {
             push_hud_draw_with_uv_and_tint(
                 vertices,
@@ -11814,6 +11861,7 @@ fn push_hud_command_block_editor_screen<'a>(
             }),
             scrolling: None,
             shadow: true,
+            font: None,
             runs: Vec::new(),
         };
         push_hud_inventory_text_input_label(
@@ -12073,6 +12121,7 @@ fn push_hud_structure_block_editor_screen<'a>(
             }),
             scrolling: None,
             shadow: true,
+            font: None,
             runs: Vec::new(),
         };
         push_hud_inventory_text_input_label(
@@ -12319,6 +12368,7 @@ fn push_hud_jigsaw_block_editor_screen<'a>(
             }),
             scrolling: None,
             shadow: true,
+            font: None,
             runs: Vec::new(),
         };
         push_hud_inventory_text_input_label(
@@ -12643,6 +12693,7 @@ fn push_hud_test_block_editor_screen<'a>(
             }),
             scrolling: None,
             shadow: true,
+            font: None,
             runs: Vec::new(),
         };
         push_hud_inventory_text_input_label(
@@ -12814,6 +12865,7 @@ fn push_hud_test_instance_block_editor_screen<'a>(
             }),
             scrolling: None,
             shadow: true,
+            font: None,
             runs: Vec::new(),
         };
         push_hud_inventory_text_input_label(
@@ -13585,6 +13637,7 @@ fn push_hud_debug_options_search_box<'a>(
         input: Some(input),
         scrolling: None,
         shadow: true,
+        font: None,
         runs: Vec::new(),
     };
     push_hud_inventory_text_input_label(
@@ -14747,6 +14800,7 @@ fn push_hud_command_suggestions<'a>(
         }),
         scrolling: None,
         shadow: true,
+        font: None,
         runs: Vec::new(),
     };
     let input = label.input.expect("command input decoration");
@@ -19163,6 +19217,7 @@ fn sanitize_hud_inventory_screen(screen: HudInventoryScreen) -> HudInventoryScre
         })
         .take(MAX_HUD_INVENTORY_MAP_PREVIEWS)
         .collect();
+    let background_layer_count = background_layers.len();
     HudInventoryScreen {
         width: screen.width.clamp(1, 512),
         height: screen.height.clamp(1, 512),
@@ -19201,6 +19256,11 @@ fn sanitize_hud_inventory_screen(screen: HudInventoryScreen) -> HudInventoryScre
             .entity_previews
             .into_iter()
             .filter_map(sanitize_hud_entity_preview)
+            .filter(|preview| {
+                preview
+                    .after_background_layer
+                    .is_none_or(|layer| layer < background_layer_count)
+            })
             .collect(),
         map_previews,
         text_labels: screen
@@ -19815,6 +19875,10 @@ fn sanitize_hud_inventory_text_label(
     } else {
         None
     };
+    let font = label
+        .font
+        .map(|font| sanitize_hud_text_preserving_empty(font, 256))
+        .filter(|font| !font.is_empty());
     if text.is_empty() && input.is_none() {
         return None;
     }
@@ -19829,6 +19893,7 @@ fn sanitize_hud_inventory_text_label(
         input,
         scrolling,
         shadow: label.shadow,
+        font,
         runs,
     })
 }
@@ -19894,7 +19959,10 @@ fn sanitize_hud_inventory_tooltip(tooltip: HudInventoryTooltip) -> Option<HudInv
         .filter_map(sanitize_hud_inventory_tooltip_line)
         .take(16)
         .collect::<Vec<_>>();
-    (!lines.is_empty()).then_some(HudInventoryTooltip { lines, ..tooltip })
+    lines
+        .iter()
+        .any(|line| !line.text.is_empty())
+        .then_some(HudInventoryTooltip { lines, ..tooltip })
 }
 
 fn sanitize_hud_inventory_tooltip_line(
@@ -19903,7 +19971,9 @@ fn sanitize_hud_inventory_tooltip_line(
     if !line.tint.iter().all(|component| component.is_finite()) {
         return None;
     }
-    let text = sanitize_hud_text_line(line.text)?;
+    // Empty Components are meaningful vertical separators in vanilla item and
+    // enchanting tooltips, so retain them while still stripping controls.
+    let text = sanitize_hud_text_preserving_empty(line.text, 256);
     let mut budget = 256usize;
     let runs = sanitize_hud_component_runs(line.runs, &text, &mut budget, false);
     Some(HudInventoryTooltipLine {
@@ -24438,6 +24508,7 @@ mod tests {
             input: None,
             scrolling: None,
             shadow: false,
+            font: None,
             runs: Vec::new(),
         };
 
@@ -24475,6 +24546,7 @@ mod tests {
             input: None,
             scrolling: None,
             shadow: false,
+            font: None,
             runs: Vec::new(),
         };
 
@@ -24495,6 +24567,65 @@ mod tests {
         assert_eq!(layout.displayed_text, "aa");
         assert!(!layout.cursor_on_screen);
         assert_eq!(layout.selection_rect, Some((0.0, 12)));
+    }
+
+    #[test]
+    fn inventory_text_label_font_selects_matching_book_glyphs_for_draw() {
+        let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+            return;
+        };
+        let glyph = |uv_x: f32, advance: u32| HudAsciiGlyph {
+            uv: HudUvRect {
+                min: [uv_x, 0.0],
+                max: [uv_x + 0.05, 1.0],
+            },
+            width: 1,
+            height: 1,
+            advance,
+            ascent: HUD_FONT_BASELINE,
+        };
+        let mut default = HudFontGlyphMap::new();
+        default.insert_first_wins('a', glyph(0.1, 2));
+        let mut alt = HudFontGlyphMap::new();
+        alt.insert_first_wins('a', glyph(0.7, 7));
+        let fonts = HudFontGlyphBook::from_fonts(
+            "minecraft:default",
+            BTreeMap::from([
+                ("minecraft:default".to_string(), default),
+                ("minecraft:alt".to_string(), alt),
+            ]),
+        );
+        renderer
+            .upload_hud_font_atlas(1, 1, &[255, 255, 255, 255], fonts)
+            .unwrap();
+        let mut screen = hud_inventory_screen_with_entity_previews(Vec::new());
+        screen.text_labels.push(HudInventoryTextLabel {
+            x: 80,
+            y: 16,
+            width: 86,
+            text: "a".to_string(),
+            tint: HUD_TINT_WHITE,
+            background: None,
+            input: None,
+            scrolling: None,
+            shadow: false,
+            font: Some("minecraft:alt".to_string()),
+            runs: Vec::new(),
+        });
+        renderer.set_hud_inventory_screen(Some(screen));
+
+        assert_eq!(
+            renderer
+                .hud_font_book_ref()
+                .glyphs(Some("minecraft:alt"))
+                .plain_text_width("a"),
+            7
+        );
+        let draws = renderer.collect_hud_draws();
+        assert!(draws
+            .vertices
+            .iter()
+            .any(|vertex| (vertex.uv[0] - 0.7).abs() < 1.0e-6));
     }
 
     #[test]
@@ -26005,6 +26136,7 @@ mod tests {
                     input: None,
                     scrolling: None,
                     shadow: false,
+                    font: None,
                     runs: Vec::new(),
                 },
                 HudInventoryTextLabel {
@@ -26017,6 +26149,7 @@ mod tests {
                     input: None,
                     scrolling: None,
                     shadow: true,
+                    font: None,
                     runs: Vec::new(),
                 },
             ],
@@ -26112,6 +26245,7 @@ mod tests {
                 input: None,
                 scrolling: None,
                 shadow: false,
+                font: None,
                 // Plain labels (empty runs in) synthesize one default-style
                 // run from the sanitized text.
                 runs: vec![HudStyledTextRun::plain("Name")],
@@ -26129,6 +26263,11 @@ mod tests {
                         text: "Diamond Sword".to_string(),
                         tint: [1.0, 1.0, 0.5, 1.0],
                         runs: vec![HudComponentTextRun::plain("Diamond Sword")],
+                    },
+                    HudInventoryTooltipLine {
+                        text: String::new(),
+                        tint: HUD_TINT_WHITE,
+                        runs: Vec::new(),
                     },
                     HudInventoryTooltipLine {
                         text: "AttackDamage".to_string(),
@@ -26160,6 +26299,7 @@ mod tests {
             }),
             scrolling: None,
             shadow: false,
+            font: None,
             runs: Vec::new(),
         })
         .unwrap();
@@ -26664,27 +26804,175 @@ mod tests {
     }
 
     #[test]
-    fn hud_entity_preview_blit_submits_after_background_and_before_slot_content() {
-        // Vanilla submission order: `renderBg` blits the background, then the entity preview PIP
-        // (`addBlitToCurrentLayer`), then slot highlights / items draw above. `collect_hud_draws`
-        // must push the preview blit between the background layers and the hovered-slot lookup.
-        let source = include_str!("hud.rs");
-        let collect_start = source
-            .find("fn collect_hud_draws(")
-            .expect("collect_hud_draws is defined");
-        let collect_source = &source[collect_start..];
-        let background = collect_source
-            .find("&screen.background_layers")
-            .expect("background layers draw first");
-        let blit = collect_source
-            .find("HudDrawCommand::EntityPreviewBlit")
-            .expect("preview blit command is pushed");
-        let hovered = collect_source
-            .find("let hovered_slot = screen")
-            .expect("hovered slot content follows");
+    fn enchanting_book_pip_blit_interleaves_between_base_and_option_layers() {
+        let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+            return;
+        };
+        renderer
+            .upload_hud_enchanting_table_background(1, 1, &[0, 0, 255, 255])
+            .unwrap();
+        renderer
+            .upload_hud_enchanting_table_enchantment_slot_highlighted(1, 1, &[255, 0, 0, 255])
+            .unwrap();
+
+        let mut preview = hud_entity_preview_for_test();
+        preview.after_background_layer = Some(0);
+        preview.rect = HudEntityPreviewRect {
+            x: 14,
+            y: 14,
+            width: 38,
+            height: 31,
+        };
+        let mut screen = hud_inventory_screen_with_entity_previews(vec![preview]);
+        screen.background_layers = vec![
+            HudInventoryBackgroundLayer {
+                texture: HudInventoryBackgroundTexture::EnchantingTable,
+                x: 0,
+                y: 0,
+                width: 176,
+                height: 166,
+                uv: HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [176.0 / 256.0, 166.0 / 256.0],
+                },
+            },
+            HudInventoryBackgroundLayer {
+                texture: HudInventoryBackgroundTexture::EnchantingTableEnchantmentSlotHighlighted,
+                x: 60,
+                y: 14,
+                width: 108,
+                height: 19,
+                uv: HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+            },
+        ];
+        renderer.set_hud_inventory_screen(Some(screen));
+        renderer.hud_entity_preview_pip_targets =
+            vec![renderer.ensure_hud_entity_preview_pip_target(None, 38, 31)];
+
+        let draws = renderer.collect_hud_draws();
+        assert!(matches!(draws.commands[0], HudDrawCommand::Sprite { .. }));
+        assert!(matches!(
+            draws.commands[1],
+            HudDrawCommand::EntityPreviewBlit {
+                target_index: 0,
+                ..
+            }
+        ));
+        assert!(matches!(draws.commands[2], HudDrawCommand::Sprite { .. }));
+    }
+
+    #[test]
+    fn enchanting_book_pip_offscreen_pixels_precede_highlighted_option_stratum() {
+        use crate::entity_models::{book_entity_texture_refs, EntityModelTextureImage};
+
+        let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 0.0,
+            a: 1.0,
+        });
+        renderer
+            .upload_hud_enchanting_table_background(1, 1, &[0, 0, 255, 255])
+            .unwrap();
+        renderer
+            .upload_hud_enchanting_table_enchantment_slot_highlighted(1, 1, &[255, 0, 0, 255])
+            .unwrap();
+        let book_images = book_entity_texture_refs()
+            .iter()
+            .map(|texture| {
+                EntityModelTextureImage::new(
+                    *texture,
+                    [0, 255, 0, 255]
+                        .repeat(usize::try_from(texture.size[0] * texture.size[1]).unwrap()),
+                )
+            })
+            .collect::<Vec<_>>();
+        renderer.upload_entity_model_textures(&book_images).unwrap();
+
+        let mut entity = EntityModelInstance::enchanting_book(-1, [-0.5, -0.75, -0.5], 0.0)
+            .with_book_progress(0.0)
+            .with_book_open(1.0)
+            .with_book_page_flip_1(0.1)
+            .with_book_page_flip_2(0.9)
+            .with_book_float_y(0.0);
+        entity.render_state.light_coords = ENTITY_FULL_BRIGHT_LIGHT_COORDS;
+        let gui_base = glam::Quat::from_rotation_y(std::f32::consts::PI)
+            * glam::Quat::from_rotation_x(25.0_f32.to_radians());
+        let rotation = gui_base
+            * glam::Quat::from_rotation_y(-90.0_f32.to_radians())
+            * glam::Quat::from_rotation_x(std::f32::consts::PI)
+            * glam::Quat::from_rotation_z(-80.0_f32.to_radians());
+        let preview = HudEntityPreview {
+            entity,
+            lighting: GuiItemLightingEntry::EntityInUi,
+            rect: HudEntityPreviewRect {
+                x: 14,
+                y: 14,
+                width: 38,
+                height: 31,
+            },
+            scissor: None,
+            translation: [0.0, 0.0375, 0.0],
+            rotation: rotation.to_array(),
+            override_camera_rotation: None,
+            scale: 40.0,
+            depth_isolated: true,
+            after_background_layer: Some(0),
+            item_layers: Vec::new(),
+        };
+        let mut screen = hud_inventory_screen_with_entity_previews(vec![preview]);
+        screen.background_layers = vec![
+            HudInventoryBackgroundLayer {
+                texture: HudInventoryBackgroundTexture::EnchantingTable,
+                x: 0,
+                y: 0,
+                width: 176,
+                height: 166,
+                uv: HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [176.0 / 256.0, 166.0 / 256.0],
+                },
+            },
+            HudInventoryBackgroundLayer {
+                texture: HudInventoryBackgroundTexture::EnchantingTableEnchantmentSlotHighlighted,
+                x: 60,
+                y: 14,
+                width: 108,
+                height: 19,
+                uv: HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+            },
+        ];
+        renderer.set_hud_inventory_screen(Some(screen));
+
+        let pixels = renderer.render_offscreen_frame().unwrap();
+        let origin_x = (320 - 176) / 2;
+        let origin_y = (240 - 166) / 2;
+        let mut green_book_pixels = 0usize;
+        for y in (origin_y + 14)..(origin_y + 45) {
+            for x in (origin_x + 14)..(origin_x + 52) {
+                let pixel = pixels.pixel(x, y);
+                if pixel[1] > 48 && pixel[1] > pixel[0] && pixel[1] > pixel[2] {
+                    green_book_pixels += 1;
+                }
+            }
+        }
         assert!(
-            background < blit && blit < hovered,
-            "preview blit submits after backgrounds and before slot content"
+            green_book_pixels > 0,
+            "GUI book PIP should contribute green model pixels"
+        );
+        let option_pixel = pixels.pixel(origin_x + 61, origin_y + 15);
+        assert!(
+            option_pixel[0] > 192 && option_pixel[1] < 64 && option_pixel[2] < 64,
+            "highlighted option stratum should remain above the PIP insertion, got {option_pixel:?}"
         );
     }
 
@@ -27189,6 +27477,7 @@ mod tests {
             override_camera_rotation: Some([0.125, 0.0, 0.0, 0.992_156_74]),
             scale: 30.0,
             depth_isolated: true,
+            after_background_layer: None,
             item_layers: vec![HudEntityPreviewItemLayer {
                 slot: HudEntityPreviewItemSlot::LeftHand,
                 display_context: HudEntityPreviewItemDisplayContext::ThirdPersonLeftHand,
@@ -27884,6 +28173,7 @@ mod tests {
                     height: 20,
                 }),
                 shadow: false,
+                font: None,
                 runs: vec![HudStyledTextRun::plain("aaaa")],
             }],
             text_areas: Vec::new(),
@@ -28030,6 +28320,7 @@ mod tests {
                 input: None,
                 scrolling: None,
                 shadow: false,
+                font: None,
                 runs: Vec::new(),
             }],
             text_areas: Vec::new(),
@@ -28203,6 +28494,7 @@ mod tests {
             override_camera_rotation: None,
             scale: 62.500_004,
             depth_isolated: true,
+            after_background_layer: None,
             item_layers: Vec::new(),
         };
         let sanitized = sanitize_hud_entity_preview(gui_sign).expect("gui sign preview");
@@ -28211,6 +28503,32 @@ mod tests {
             sanitized.entity.render_state.light_coords,
             ENTITY_FULL_BRIGHT_LIGHT_COORDS
         );
+    }
+
+    #[test]
+    fn sanitize_inventory_screen_bounds_entity_preview_insertion_layer() {
+        let mut screen = hud_inventory_screen_with_entity_previews(vec![HudEntityPreview {
+            after_background_layer: Some(1),
+            ..hud_entity_preview_for_test()
+        }]);
+        screen.background_layers.push(HudInventoryBackgroundLayer {
+            texture: HudInventoryBackgroundTexture::EnchantingTable,
+            x: 0,
+            y: 0,
+            width: 176,
+            height: 166,
+            uv: HudUvRect {
+                min: [0.0, 0.0],
+                max: [176.0 / 256.0, 166.0 / 256.0],
+            },
+        });
+        let invalid = sanitize_hud_inventory_screen(screen.clone());
+        assert!(invalid.entity_previews.is_empty());
+
+        screen.entity_previews[0].after_background_layer = Some(0);
+        let valid = sanitize_hud_inventory_screen(screen);
+        assert_eq!(valid.entity_previews.len(), 1);
+        assert_eq!(valid.entity_previews[0].after_background_layer, Some(0));
     }
 
     #[test]
@@ -28236,6 +28554,7 @@ mod tests {
             override_camera_rotation: None,
             scale: 62.500_004,
             depth_isolated: true,
+            after_background_layer: None,
             item_layers: Vec::new(),
         };
         let standing = sanitize_hud_sign_editor_screen(HudSignEditorScreen {
