@@ -102,7 +102,14 @@ def write_server_pack(path: Path) -> str:
             "description": "bbb playable lifecycle gate",
             "min_format": [84, 0],
             "max_format": [84, 0],
-        }
+        },
+        "language": {
+            "ar_sa": {
+                "bidirectional": True,
+                "name": "Arabic",
+                "region": "SA",
+            }
+        },
     }
     path.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
@@ -110,6 +117,10 @@ def write_server_pack(path: Path) -> str:
         archive.writestr(
             "assets/bbb_gate/lang/en_us.json",
             json.dumps({"bbb_gate.lifecycle": "active"}, sort_keys=True),
+        )
+        archive.writestr(
+            "assets/bbb_gate/lang/ar_sa.json",
+            json.dumps({"bbb_gate.lifecycle": "نشط"}, sort_keys=True),
         )
     return hashlib.sha1(path.read_bytes()).hexdigest()
 
@@ -137,12 +148,18 @@ def _object(value: Any, path: str) -> dict[str, Any]:
 def validate_evidence(evidence: dict[str, Any], expected_protocol_version: int) -> None:
     """Apply the phase/order and canonical-state assertions to one capture."""
 
-    if evidence.get("schema") != 11:
-        raise GateFailure(f"playable evidence schema must be 11, got {evidence.get('schema')!r}")
+    if evidence.get("schema") != 12:
+        raise GateFailure(f"playable evidence schema must be 12, got {evidence.get('schema')!r}")
 
     version = evidence.get("vanilla_version")
     if version != "26.1":
         raise GateFailure(f"vanilla_version must be '26.1', got {version!r}")
+    client_locale = evidence.get("client_locale")
+    if client_locale not in ("en_us", "ar_sa"):
+        raise GateFailure(
+            "client_locale must be the deterministic 'en_us' or 'ar_sa' gate locale, "
+            f"got {client_locale!r}"
+        )
 
     timeline = evidence.get("timeline")
     if not isinstance(timeline, list):
@@ -231,7 +248,7 @@ def validate_evidence(evidence: dict[str, Any], expected_protocol_version: int) 
     _validate_sound_particle_push(evidence.get("sound_particle_push"))
     _validate_inventory_interaction(evidence.get("inventory_interaction"))
     _validate_screenshot_readback(evidence.get("screenshot_readback"))
-    _validate_lifecycle(evidence.get("lifecycle"))
+    _validate_lifecycle(evidence.get("lifecycle"), client_locale)
 
 
 BLOCK_INTERACTION_COMMAND_DELTAS = (
@@ -243,7 +260,7 @@ BLOCK_INTERACTION_COMMAND_DELTAS = (
 )
 
 
-def _validate_lifecycle(lifecycle: Any) -> None:
+def _validate_lifecycle(lifecycle: Any, client_locale: str) -> None:
     lifecycle = _object(lifecycle, "lifecycle")
     if lifecycle.get("stage") != "complete":
         raise GateFailure(
@@ -319,6 +336,19 @@ def _validate_lifecycle(lifecycle: Any) -> None:
         raise GateFailure("active server pack was absent from client resource diagnostics")
     if resource_pack.get("server_pack_selected_after_pop") is not False:
         raise GateFailure("popped server pack remained in client resource diagnostics")
+    expected_active_direction = client_locale == "ar_sa"
+    if (
+        resource_pack.get("language_bidirectional_while_active")
+        is not expected_active_direction
+    ):
+        raise GateFailure(
+            "active resource-pack language direction did not match the selected "
+            f"{client_locale} locale"
+        )
+    if resource_pack.get("language_bidirectional_after_pop") is not False:
+        raise GateFailure(
+            "resource-pack pop did not restore the base LTR language direction"
+        )
     if resource_pack.get("reload_failure_stage") is not None:
         raise GateFailure("successful resource-pack lifecycle retained a reload failure stage")
 
@@ -2822,6 +2852,12 @@ def drive_session_lifecycle(
         "server_pack_selected_after_pop": _diagnostics_select_server_pack(
             resources_after_pack, server_pack_id
         ),
+        "language_bidirectional_while_active": resources_with_active_pack.get(
+            "language_bidirectional"
+        ),
+        "language_bidirectional_after_pop": resources_after_pack.get(
+            "language_bidirectional"
+        ),
         "reload_failure_stage": resources_after_pack.get("last_reload_failure_stage"),
     }
 
@@ -3150,9 +3186,10 @@ def _write_live_evidence(
     failure_diagnostics: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     evidence: dict[str, Any] = {
-        "schema": 11,
+        "schema": 12,
         "mode": "live",
         "vanilla_version": "26.1",
+        "client_locale": args.client_locale,
         "timeline": timeline,
         "status": status,
         "world_snapshot": last_snapshot,
@@ -3429,6 +3466,7 @@ def _build_parser() -> argparse.ArgumentParser:
     collect.add_argument("--server-command", type=Path, required=True)
     collect.add_argument("--profile-id", required=True)
     collect.add_argument("--server-pack-id", required=True)
+    collect.add_argument("--client-locale", choices=("en_us", "ar_sa"), required=True)
 
     operator = subparsers.add_parser(
         "write-operator", help="write the deterministic offline operator profile"

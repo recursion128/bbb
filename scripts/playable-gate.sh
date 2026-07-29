@@ -28,6 +28,7 @@ Live environment:
   BBB_PLAYABLE_ARTIFACT_DIR     Evidence directory; default is a fresh /tmp directory
   BBB_PLAYABLE_TIMEOUT_SECONDS  Client/canonical-state timeout; default 120
   BBB_PLAYABLE_SERVER_READY_TIMEOUT_SECONDS  Server-ready timeout; default 120
+  BBB_PLAYABLE_CLIENT_LOCALE  Deterministic client locale: en_us (default) or ar_sa
 
 The live path uses the bbb-native --server/--connect-server/--control CLI and
 the narrow `bbb-native --status-server <addr>` JSON CLI (which must delegate to
@@ -138,9 +139,17 @@ fi
 
 timeout_seconds=${BBB_PLAYABLE_TIMEOUT_SECONDS:-120}
 ready_timeout_seconds=${BBB_PLAYABLE_SERVER_READY_TIMEOUT_SECONDS:-120}
+client_locale=${BBB_PLAYABLE_CLIENT_LOCALE:-en_us}
 case "$timeout_seconds:$ready_timeout_seconds" in
   *[!0-9:]*|:*|*:|0:*|*:0)
     echo "playable gate: timeout values must be positive integer seconds" >&2
+    exit 2
+    ;;
+esac
+case "$client_locale" in
+  en_us|ar_sa) ;;
+  *)
+    echo "playable gate: BBB_PLAYABLE_CLIENT_LOCALE must be en_us or ar_sa" >&2
     exit 2
     ;;
 esac
@@ -382,6 +391,7 @@ RUST_LOG=${RUST_LOG:-bbb_net=debug,bbb_native=info,bbb_control=info} \
     --control "127.0.0.1:$control_port" \
     --server-resource-pack-policy accept \
     --server-resource-pack-cache-dir "$server_pack_cache" \
+    --client-locale "$client_locale" \
     --client-vsync false \
     --client-framerate-limit 30 \
     </dev/null >"$client_log" 2>&1 &
@@ -400,7 +410,8 @@ if ! run_python collect-live \
   --timeout "$timeout_seconds" \
   --server-command "$server_command" \
   --profile-id "$profile_id" \
-  --server-pack-id "$server_pack_id"
+  --server-pack-id "$server_pack_id" \
+  --client-locale "$client_locale"
 then
   echo "playable gate evidence: packet/session timeline: $client_log" >&2
   echo "playable gate evidence: world snapshot: $evidence_json" >&2

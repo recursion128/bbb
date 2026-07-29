@@ -132,6 +132,9 @@ pub(crate) fn apply_server_resource_pack_reload_effect(
     };
     let diagnostics = client_resource_reload_diagnostics(
         active_roots.as_ref(),
+        item_runtime
+            .as_ref()
+            .is_some_and(NativeItemRuntime::language_bidirectional),
         generation,
         failure
             .as_ref()
@@ -287,6 +290,7 @@ fn apply_native_resource_reload(
 
 pub(crate) fn client_resource_pack_diagnostics(
     roots: Option<&PackRoots>,
+    language_bidirectional: bool,
 ) -> ClientResourceDiagnostics {
     let Some(roots) = roots else {
         return ClientResourceDiagnostics::default();
@@ -327,6 +331,7 @@ pub(crate) fn client_resource_pack_diagnostics(
                 fixed_position: pack.selection.fixed_position,
             })
             .collect(),
+        language_bidirectional,
         image_rgba_limit_bytes: image_memory.max_rgba_bytes,
         image_rgba_charged_bytes: image_memory.charged_rgba_bytes,
         image_rgba_peak_charged_bytes: image_memory.peak_charged_rgba_bytes,
@@ -348,10 +353,11 @@ pub(crate) fn client_resource_pack_diagnostics(
 
 fn client_resource_reload_diagnostics(
     roots: Option<&PackRoots>,
+    language_bidirectional: bool,
     reload_generation: u64,
     failure: Option<(&str, &str)>,
 ) -> ClientResourceDiagnostics {
-    let mut diagnostics = client_resource_pack_diagnostics(roots);
+    let mut diagnostics = client_resource_pack_diagnostics(roots, language_bidirectional);
     diagnostics.last_reload_generation = Some(reload_generation);
     if let Some((stage, error)) = failure {
         diagnostics.last_reload_failure_stage = Some(stage.to_string());
@@ -1136,7 +1142,7 @@ mod tests {
             7
         );
         assert_eq!(
-            client_resource_pack_diagnostics(Some(&composed)),
+            client_resource_pack_diagnostics(Some(&composed), true),
             ClientResourceDiagnostics {
                 generation: 7,
                 selected_packs: vec![
@@ -1181,6 +1187,7 @@ mod tests {
                         fixed_position: true,
                     },
                 ],
+                language_bidirectional: true,
                 image_rgba_limit_bytes: MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES,
                 image_rgba_charged_bytes: 0,
                 image_rgba_peak_charged_bytes: 0,
@@ -1213,6 +1220,7 @@ mod tests {
         );
         let failed = client_resource_reload_diagnostics(
             Some(&composed),
+            true,
             8,
             Some(("prepare", "invalid custom model")),
         );
@@ -1224,9 +1232,11 @@ mod tests {
             Some("invalid custom model")
         );
         assert_eq!(failed.selected_packs.len(), 5);
+        assert!(failed.language_bidirectional);
 
-        let succeeded = client_resource_reload_diagnostics(Some(&composed), 9, None);
+        let succeeded = client_resource_reload_diagnostics(Some(&composed), false, 9, None);
         assert_eq!(succeeded.generation, 7);
+        assert!(!succeeded.language_bidirectional);
         assert_eq!(succeeded.last_reload_generation, Some(9));
         assert_eq!(succeeded.last_reload_failure_stage, None);
         assert_eq!(succeeded.last_reload_error, None);
@@ -1307,7 +1317,7 @@ mod tests {
                 .charged_rgba_bytes,
             4
         );
-        let staged_diagnostics = client_resource_pack_diagnostics(Some(&staged));
+        let staged_diagnostics = client_resource_pack_diagnostics(Some(&staged), false);
         assert_eq!(
             staged_diagnostics.image_rgba_limit_bytes,
             MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES
@@ -1376,7 +1386,7 @@ mod tests {
                 .charged_logical_bytes,
             accepted_charge
         );
-        let diagnostics = client_resource_pack_diagnostics(Some(&staged));
+        let diagnostics = client_resource_pack_diagnostics(Some(&staged), false);
         assert_eq!(
             diagnostics.data_logical_charged_bytes,
             staged_memory.charged_logical_bytes

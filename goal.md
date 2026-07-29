@@ -276,8 +276,7 @@ foundation milestone 均已闭环（见 goal-archive 索引；RegistryAccess 消
 - entity-in-UI preview 的 `item_layers` GPU 绘制（原 P1-4）：defer，需 native
   侧 baked hand/head item model 元数据。
 - font unihex（原 P1-3 font 五连剩余）：defer，需 consumed assets 提供
-  unifont 源；bidi 仍是屏幕/字体队列的 active gap，工程合同见
-  `docs/bidirectional-text-shaping-design.md`。
+  unifont 源。
 
 ### P1：可玩 Session 端到端门禁
 

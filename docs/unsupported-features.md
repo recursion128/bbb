@@ -203,9 +203,6 @@ Owner: `bbb-pack` + `bbb-renderer`
   its data and codepoints outside the bitmap pages degrade to the `?`
   replacement glyph. Reopen when a unifont source exists in the consumed
   assets.
-- **Bidirectional shaping.** Vanilla routes through ICU4J `ArabicShaping` /
-  `Bidi` in `Font` / `StringSplitter`; current consumers render logical order
-  only.
 
 ## Container menu presentation parity
 

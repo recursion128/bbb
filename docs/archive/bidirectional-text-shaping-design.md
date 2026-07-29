@@ -1,5 +1,7 @@
 # Bidirectional Text Shaping Engineering Contract
 
+Status: completed and archived on 2026-07-29.
+
 ## Goal and completion
 
 Close the active `Bidirectional shaping` font gap with the same ordering boundary

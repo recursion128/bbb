@@ -790,3 +790,7 @@
   face matrix、FIFO 可达性图、camera-ordered octree 与生产 terrain filter
   已贯通，三套 F3 gizmo 共用同一 owner；合同见
   `docs/archive/chunk-section-occlusion-closeout-design.md`。
+- **2026-07-29（双向文本与 Arabic shaping 工程闭环）**：pack 语言方向、
+  ICU4J option-8 Arabic shaping、Unicode bidi/mirroring 与逻辑序编辑边界已贯通
+  HUD、交互命中及全部世界文本入口；合同见
+  `docs/archive/bidirectional-text-shaping-design.md`。

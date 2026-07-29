@@ -464,7 +464,7 @@ fn main() -> Result<()> {
     });
     let mut net_counters = NetCounters::default();
     net_counters.client_resources =
-        std::sync::Arc::new(client_resource_pack_diagnostics(pack_roots.as_ref()));
+        std::sync::Arc::new(client_resource_pack_diagnostics(pack_roots.as_ref(), false));
     let code_of_conduct_store_path = args
         .code_of_conduct_store
         .clone()
@@ -760,8 +760,12 @@ fn main() -> Result<()> {
             .ensure_resource_data_admitted()
             .context("admit startup resource data generation")?;
     }
-    net_counters.client_resources =
-        std::sync::Arc::new(client_resource_pack_diagnostics(pack_roots.as_ref()));
+    net_counters.client_resources = std::sync::Arc::new(client_resource_pack_diagnostics(
+        pack_roots.as_ref(),
+        item_runtime
+            .as_ref()
+            .is_some_and(NativeItemRuntime::language_bidirectional),
+    ));
     let mut entity_variant_textures = NativeEntityVariantTextureRuntime::new(pack_roots.clone());
     let mut entity_render_extraction = EntityRenderExtractionScratch::default();
     let mut non_entity_render_extraction = runtime::NonEntityRenderExtractionScratch::default();

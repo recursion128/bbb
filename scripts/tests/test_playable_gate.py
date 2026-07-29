@@ -635,12 +635,13 @@ class PlayableGateFailureDiagnosticsTests(unittest.TestCase):
                 server_command=root / "server-command",
                 profile_id="0" * 32,
                 server_pack_id="0" * 32,
+                client_locale="en_us",
                 protocol_source=root / "protocol.rs",
             )
             with self.assertRaises(playable_gate.GateFailure):
                 playable_gate.collect_live(args)
             evidence = json.loads((root / "evidence.json").read_text())
-        self.assertEqual(evidence["schema"], 11)
+        self.assertEqual(evidence["schema"], 12)
         self.assertEqual(evidence["failure_stage"], "server_start")
         diagnostics = evidence["failure_diagnostics"]
         self.assertEqual(diagnostics["scenario"], "canonical_state_wait")
@@ -710,6 +711,23 @@ class PlayableGateLifecycleTests(unittest.TestCase):
         with self.assertRaisesRegex(playable_gate.GateFailure, "remained"):
             playable_gate.validate_evidence(evidence, self.protocol_version)
 
+    def test_selected_locale_requires_matching_resource_direction_lifecycle(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["client_locale"] = "ar_sa"
+        with self.assertRaisesRegex(playable_gate.GateFailure, "language direction"):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+        evidence["lifecycle"]["resource_pack"][
+            "language_bidirectional_while_active"
+        ] = True
+        playable_gate.validate_evidence(evidence, self.protocol_version)
+
+        evidence["lifecycle"]["resource_pack"][
+            "language_bidirectional_after_pop"
+        ] = True
+        with self.assertRaisesRegex(playable_gate.GateFailure, "restore"):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
     def test_reconfiguration_registry_drift_fails(self):
         evidence = copy.deepcopy(self.fixture)
         evidence["lifecycle"]["reconfiguration"]["registry_revision_after"][
@@ -772,7 +790,9 @@ class PlayableGateLifecycleTests(unittest.TestCase):
                 metadata = json.loads(pack.read("pack.mcmeta"))
                 self.assertEqual(metadata["pack"]["min_format"], [84, 0])
                 self.assertEqual(metadata["pack"]["max_format"], [84, 0])
+                self.assertTrue(metadata["language"]["ar_sa"]["bidirectional"])
                 self.assertIn("assets/bbb_gate/lang/en_us.json", pack.namelist())
+                self.assertIn("assets/bbb_gate/lang/ar_sa.json", pack.namelist())
 
 
 class PlayableGateTimelineTests(unittest.TestCase):
@@ -959,6 +979,7 @@ class PlayableGateScriptContractTests(unittest.TestCase):
         self.assertIn("accepts-transfers=true", source)
         self.assertIn("--transfer-server-port", source)
         self.assertIn("--transfer-server-log", source)
+        self.assertIn('--client-locale "$client_locale"', source)
         self.assertIn("bbb playable transfer target 26.1", source)
 
     def test_headless_control_focus_precedes_synthetic_input(self):

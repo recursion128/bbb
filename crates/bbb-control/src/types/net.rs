@@ -16,6 +16,10 @@ pub struct ClientResourcePackDiagnostic {
 pub struct ClientResourceDiagnostics {
     pub generation: u64,
     pub selected_packs: Vec<ClientResourcePackDiagnostic>,
+    /// Direction selected from the committed client pack language metadata.
+    /// This is the reload-generation value consumed by renderer text caches.
+    #[serde(default)]
+    pub language_bidirectional: bool,
     #[serde(default)]
     pub image_rgba_limit_bytes: u64,
     #[serde(default)]
@@ -305,6 +309,7 @@ mod tests {
         let mut counters = NetCounters::default();
         counters.client_resources = Arc::new(ClientResourceDiagnostics {
             generation: 17,
+            language_bidirectional: true,
             selected_packs: vec![ClientResourcePackDiagnostic {
                 priority: 0,
                 id: "vanilla".to_string(),
@@ -328,6 +333,7 @@ mod tests {
             json["client_resources"]["selected_packs"][0]["id"],
             "vanilla"
         );
+        assert_eq!(json["client_resources"]["language_bidirectional"], true);
     }
 
     #[test]

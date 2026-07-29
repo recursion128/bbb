@@ -31,6 +31,7 @@
   "server_logged_emote": true,
   "server_logged_message": true
  },
+ "client_locale": "en_us",
  "container_interaction": {
   "chest_position": {
    "x": 4,
@@ -124,6 +125,8 @@
    "active_phase": "active",
    "active_resource_generation": 1,
    "after_pop_resource_generation": 2,
+   "language_bidirectional_after_pop": false,
+   "language_bidirectional_while_active": false,
    "pack_id": "5d77e69d-1c8f-4fd8-9884-4ce89238f170",
    "pop_packets_delta": 1,
    "push_packets_delta": 1,
@@ -195,7 +198,7 @@
    "z": -1.5
   }
  },
- "schema": 11,
+ "schema": 12,
  "screenshot_readback": {
   "attempts": 1,
   "byte_size": 412345,
