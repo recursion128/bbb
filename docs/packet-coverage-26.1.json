@@ -10745,7 +10745,7 @@
           "evidence": [
             "crates/bbb-protocol/src/packets/client_state/tests.rs#decodes_player_abilities_and_spawn_distance",
             "crates/bbb-world/src/client/local_player.rs#local_player_packets_update_canonical_state",
-            "crates/bbb-world/src/client/local_player_movement/tests.rs#player_abilities_walking_speed_scales_fov_without_mutating_movement_attribute",
+            "crates/bbb-world/src/client/local_player_movement/tests.rs#camera_fov_includes_sprint_speed_without_mutating_movement_attribute",
             "crates/bbb-net/src/probe/play.rs#probe_applies_local_player_status_packets_to_world",
             "crates/bbb-native/src/input/movement.rs#advance_player_input_enables_spectator_flying_when_server_allows"
           ],
