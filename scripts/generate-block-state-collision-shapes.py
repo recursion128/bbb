@@ -261,7 +261,7 @@ def main() -> int:
     generated = render_rust(
         shapes,
         dynamic,
-        hashlib.sha256(PROBE_SOURCE.read_bytes()).hexdigest(),
+        hashlib.sha256(PROBE_SOURCE.read_text().encode()).hexdigest(),
     )
     if args.check:
         return 0 if check_output(args.output, generated) else 1
