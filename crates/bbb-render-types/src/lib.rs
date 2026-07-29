@@ -11,6 +11,7 @@ mod map_decorations;
 pub mod player_skin;
 mod sprites;
 pub mod temperature_animal_variants;
+mod text_visual_order;
 mod villager_model_professions;
 mod villager_model_types;
 pub mod wolf_variants;
@@ -40,5 +41,6 @@ pub use player_skin::{
     MAX_DYNAMIC_PLAYER_TEXTURE_PNG_BYTES,
 };
 pub use sprites::{ItemSpriteRect, SpriteAlphaMask};
+pub use text_visual_order::visual_order;
 pub use villager_model_professions::VillagerModelProfession;
 pub use villager_model_types::VillagerModelType;

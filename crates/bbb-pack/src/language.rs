@@ -11,6 +11,8 @@ pub const DEFAULT_LANGUAGE_CODE: &str = "en_us";
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LanguageCatalog {
     pub translations: BTreeMap<String, String>,
+    #[serde(default)]
+    bidirectional: bool,
 }
 
 impl LanguageCatalog {
@@ -117,6 +119,14 @@ impl LanguageCatalog {
 
     pub fn is_empty(&self) -> bool {
         self.translations.is_empty()
+    }
+
+    pub fn is_bidirectional(&self) -> bool {
+        self.bidirectional
+    }
+
+    pub(crate) fn set_bidirectional(&mut self, bidirectional: bool) {
+        self.bidirectional = bidirectional;
     }
 }
 
@@ -365,6 +375,7 @@ mod tests {
         let roots = PackRoots::from_root(&root).unwrap();
         let fallback_catalog = roots.load_client_language_catalog("pirate").unwrap();
         assert_eq!(fallback_catalog.get("menu.play"), Some("Play"));
+        assert!(!fallback_catalog.is_bidirectional());
 
         write_json(
             &sources_dir.join("pack.mcmeta"),
@@ -372,7 +383,8 @@ mod tests {
               "language": {
                 "pirate": {
                   "region": "Seven Seas",
-                  "name": "Pirate Speak"
+                  "name": "Pirate Speak",
+                  "bidirectional": true
                 }
               }
             }"#,
@@ -380,6 +392,7 @@ mod tests {
 
         let selected_catalog = roots.load_client_language_catalog("pirate").unwrap();
         assert_eq!(selected_catalog.get("menu.play"), Some("Sail"));
+        assert!(selected_catalog.is_bidirectional());
 
         std::fs::remove_dir_all(root).unwrap();
     }

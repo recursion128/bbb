@@ -527,7 +527,10 @@ impl PackRoots {
         selected_language_code: &str,
     ) -> Result<LanguageCatalog> {
         let metadata = self.load_pack_metadata_catalog();
-        self.load_language_stack(metadata.language_stack(selected_language_code))
+        let mut catalog =
+            self.load_language_stack(metadata.language_stack(selected_language_code))?;
+        catalog.set_bidirectional(metadata.selected_bidirectional(selected_language_code));
+        Ok(catalog)
     }
 
     pub fn load_pack_metadata_catalog(&self) -> PackMetadataCatalog {

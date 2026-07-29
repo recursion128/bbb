@@ -12,3 +12,5 @@ workspace = true
 [dependencies]
 anyhow = { workspace = true }
 image = { workspace = true }
+unicode-bidi = { workspace = true }
+unicode-character-database = { workspace = true }

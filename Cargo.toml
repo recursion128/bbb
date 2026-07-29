@@ -54,6 +54,8 @@ tokio = { version = "1", features = ["io-util", "macros", "net", "rt-multi-threa
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 unicode_names2 = "=3.1.0"
+unicode-bidi = "0.3.18"
+unicode-character-database = "0.1.0"
 url = "2"
 uuid = { version = "1", features = ["serde"] }
 wgpu = "0.19"
