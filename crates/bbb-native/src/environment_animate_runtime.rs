@@ -64,6 +64,7 @@ const PARTICLE_REVERSE_PORTAL: &str = "minecraft:reverse_portal";
 const PARTICLE_PORTAL: &str = "minecraft:portal";
 const PARTICLE_WHITE_SMOKE: &str = "minecraft:white_smoke";
 const PARTICLE_HAPPY_VILLAGER: &str = "minecraft:happy_villager";
+const PARTICLE_DRIPPING_HONEY: &str = "minecraft:dripping_honey";
 
 type FluidAnimateSound = (&'static str, [f64; 3], f32, f32);
 type FluidAnimateSounds = [Option<FluidAnimateSound>; 2];
@@ -330,6 +331,16 @@ impl EnvironmentAnimateRuntime {
                     pos,
                     &block.block_properties,
                     animate_random,
+                    spawns,
+                );
+            }
+            "minecraft:bee_nest" | "minecraft:beehive" => {
+                append_beehive_animate_effect(
+                    world,
+                    pos,
+                    &block.block_properties,
+                    animate_random,
+                    &mut self.level_random,
                     spawns,
                 );
             }
@@ -1283,6 +1294,77 @@ fn append_pointed_dripstone_animate_effect(
         velocity: [0.0; 3],
         always_show: false,
     });
+}
+
+fn append_beehive_animate_effect(
+    world: &WorldStore,
+    pos: BlockPos,
+    properties: &BTreeMap<String, String>,
+    animate_random: &mut LevelEventSoundRandomState,
+    level_random: &mut LevelEventSoundRandomState,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) {
+    if properties
+        .get("honey_level")
+        .and_then(|value| value.parse::<u8>().ok())
+        .is_none_or(|honey_level| honey_level < 5)
+    {
+        return;
+    }
+
+    let count = animate_random.next_int_bound(1) + 1;
+    for _ in 0..count {
+        let Some(sample) = world.environment_animate_block_sample(pos) else {
+            continue;
+        };
+        if sample.fluid.is_some() || level_random.next_float() < 0.3 {
+            continue;
+        }
+        let Some(bounds) = sample.collision_bounds else {
+            continue;
+        };
+        if bounds.max_y < 1.0 || sample.impermeable {
+            continue;
+        }
+
+        let height = if bounds.min_y > 0.0 {
+            f64::from(pos.y) + bounds.min_y - 0.05
+        } else {
+            let below = BlockPos {
+                y: pos.y.saturating_sub(1),
+                ..pos
+            };
+            let Some(below_sample) = world.environment_animate_block_sample(below) else {
+                continue;
+            };
+            let below_top = below_sample
+                .collision_bounds
+                .map_or(0.0, |bounds| bounds.max_y);
+            let Some(below_is_full_block) = world.sample_block_collision_shape_is_full_block(below)
+            else {
+                continue;
+            };
+            if (below_top >= 1.0 && below_is_full_block) || below_sample.fluid.is_some() {
+                continue;
+            }
+            f64::from(pos.y) - 0.05
+        };
+
+        let x1 = f64::from(pos.x) + bounds.min_x;
+        let x2 = f64::from(pos.x) + bounds.max_x;
+        let z1 = f64::from(pos.z) + bounds.min_z;
+        let z2 = f64::from(pos.z) + bounds.max_z;
+        spawns.push(EnvironmentParticleSpawn {
+            particle: simple_client_particle_options(PARTICLE_DRIPPING_HONEY),
+            position: [
+                x1 + level_random.next_double() * (x2 - x1),
+                height,
+                z1 + level_random.next_double() * (z2 - z1),
+            ],
+            velocity: [0.0; 3],
+            always_show: false,
+        });
+    }
 }
 
 fn append_ambient_particle_spawns(
@@ -2845,6 +2927,184 @@ mod tests {
             beyond_spawns.is_empty(),
             "a root beyond Vanilla's exclusive maxSteps bound is ignored"
         );
+    }
+
+    #[test]
+    fn beehive_animate_effects_preserve_honey_collision_and_two_random_streams() {
+        let mut world = world_with_ambient_particles();
+        let pos = BlockPos { x: 8, y: 32, z: 8 };
+        let below = BlockPos { y: 31, ..pos };
+        let full_properties = BTreeMap::from([
+            ("facing".to_string(), "north".to_string()),
+            ("honey_level".to_string(), "5".to_string()),
+        ]);
+        let partial_properties = BTreeMap::from([
+            ("facing".to_string(), "north".to_string()),
+            ("honey_level".to_string(), "4".to_string()),
+        ]);
+        let full_beehive_id = block_state_id(
+            "minecraft:beehive",
+            &[("facing", "north"), ("honey_level", "5")],
+        );
+        let partial_beehive_id = block_state_id(
+            "minecraft:beehive",
+            &[("facing", "north"), ("honey_level", "4")],
+        );
+        let spawn_seed = (0..100_000)
+            .find(|seed| LevelEventSoundRandomState::with_seed(*seed).next_float() >= 0.3)
+            .expect("deterministic honey drip spawn seed");
+        let skip_seed = (0..100_000)
+            .find(|seed| LevelEventSoundRandomState::with_seed(*seed).next_float() < 0.3)
+            .expect("deterministic honey drip skip seed");
+
+        set_block(&mut world, pos, full_beehive_id);
+        set_block(&mut world, below, 0);
+        let mut animate_actual = LevelEventSoundRandomState::with_seed(11);
+        let mut animate_expected = LevelEventSoundRandomState::with_seed(11);
+        let mut level_actual = LevelEventSoundRandomState::with_seed(spawn_seed);
+        let mut level_expected = LevelEventSoundRandomState::with_seed(spawn_seed);
+        let mut spawns = Vec::new();
+        append_beehive_animate_effect(
+            &world,
+            pos,
+            &full_properties,
+            &mut animate_actual,
+            &mut level_actual,
+            &mut spawns,
+        );
+        assert_eq!(animate_expected.next_int_bound(1), 0);
+        assert!(level_expected.next_float() >= 0.3);
+        let expected_position = [
+            8.0 + level_expected.next_double(),
+            31.95,
+            8.0 + level_expected.next_double(),
+        ];
+        assert_eq!(spawns.len(), 1);
+        assert_eq!(spawns[0].particle.resource_id, PARTICLE_DRIPPING_HONEY);
+        assert_eq!(spawns[0].position, expected_position);
+        assert_eq!(spawns[0].velocity, [0.0; 3]);
+        assert!(!spawns[0].always_show);
+        assert_eq!(animate_actual.next_long(), animate_expected.next_long());
+        assert_eq!(level_actual.next_long(), level_expected.next_long());
+
+        let mut skip_animate_actual = LevelEventSoundRandomState::with_seed(11);
+        let mut skip_animate_expected = LevelEventSoundRandomState::with_seed(11);
+        let mut skip_level_actual = LevelEventSoundRandomState::with_seed(skip_seed);
+        let mut skip_level_expected = LevelEventSoundRandomState::with_seed(skip_seed);
+        let mut skip_spawns = Vec::new();
+        append_beehive_animate_effect(
+            &world,
+            pos,
+            &full_properties,
+            &mut skip_animate_actual,
+            &mut skip_level_actual,
+            &mut skip_spawns,
+        );
+        assert_eq!(skip_animate_expected.next_int_bound(1), 0);
+        assert!(skip_level_expected.next_float() < 0.3);
+        assert!(skip_spawns.is_empty());
+        assert_eq!(
+            skip_animate_actual.next_long(),
+            skip_animate_expected.next_long()
+        );
+        assert_eq!(
+            skip_level_actual.next_long(),
+            skip_level_expected.next_long()
+        );
+
+        set_block(&mut world, pos, partial_beehive_id);
+        let mut partial_animate_actual = LevelEventSoundRandomState::with_seed(11);
+        let mut partial_animate_expected = LevelEventSoundRandomState::with_seed(11);
+        let mut partial_level_actual = LevelEventSoundRandomState::with_seed(spawn_seed);
+        let mut partial_level_expected = LevelEventSoundRandomState::with_seed(spawn_seed);
+        let mut partial_spawns = Vec::new();
+        append_beehive_animate_effect(
+            &world,
+            pos,
+            &partial_properties,
+            &mut partial_animate_actual,
+            &mut partial_level_actual,
+            &mut partial_spawns,
+        );
+        assert!(partial_spawns.is_empty());
+        assert_eq!(
+            partial_animate_actual.next_long(),
+            partial_animate_expected.next_long(),
+            "honey levels below five consume neither random stream"
+        );
+        assert_eq!(
+            partial_level_actual.next_long(),
+            partial_level_expected.next_long()
+        );
+
+        set_block(&mut world, pos, full_beehive_id);
+        set_block(&mut world, below, block_state_id("minecraft:stone", &[]));
+        let mut stone_animate = LevelEventSoundRandomState::with_seed(11);
+        let mut stone_level = LevelEventSoundRandomState::with_seed(spawn_seed);
+        let mut stone_expected_level = LevelEventSoundRandomState::with_seed(spawn_seed);
+        let mut stone_spawns = Vec::new();
+        append_beehive_animate_effect(
+            &world,
+            pos,
+            &full_properties,
+            &mut stone_animate,
+            &mut stone_level,
+            &mut stone_spawns,
+        );
+        let _ = stone_expected_level.next_float();
+        assert!(stone_spawns.is_empty());
+        assert_eq!(stone_level.next_long(), stone_expected_level.next_long());
+
+        set_block(
+            &mut world,
+            below,
+            block_state_id(
+                "minecraft:oak_slab",
+                &[("type", "bottom"), ("waterlogged", "false")],
+            ),
+        );
+        let mut slab_animate = LevelEventSoundRandomState::with_seed(11);
+        let mut slab_level = LevelEventSoundRandomState::with_seed(spawn_seed);
+        let mut slab_expected_level = LevelEventSoundRandomState::with_seed(spawn_seed);
+        let mut slab_spawns = Vec::new();
+        append_beehive_animate_effect(
+            &world,
+            pos,
+            &full_properties,
+            &mut slab_animate,
+            &mut slab_level,
+            &mut slab_spawns,
+        );
+        let _ = slab_expected_level.next_float();
+        let expected_slab_position = [
+            8.0 + slab_expected_level.next_double(),
+            31.95,
+            8.0 + slab_expected_level.next_double(),
+        ];
+        assert_eq!(slab_spawns.len(), 1);
+        assert_eq!(slab_spawns[0].position, expected_slab_position);
+        assert_eq!(slab_level.next_long(), slab_expected_level.next_long());
+
+        set_block(
+            &mut world,
+            below,
+            block_state_id("minecraft:water", &[("level", "0")]),
+        );
+        let mut water_animate = LevelEventSoundRandomState::with_seed(11);
+        let mut water_level = LevelEventSoundRandomState::with_seed(spawn_seed);
+        let mut water_expected_level = LevelEventSoundRandomState::with_seed(spawn_seed);
+        let mut water_spawns = Vec::new();
+        append_beehive_animate_effect(
+            &world,
+            pos,
+            &full_properties,
+            &mut water_animate,
+            &mut water_level,
+            &mut water_spawns,
+        );
+        let _ = water_expected_level.next_float();
+        assert!(water_spawns.is_empty());
+        assert_eq!(water_level.next_long(), water_expected_level.next_long());
     }
 
     #[test]
