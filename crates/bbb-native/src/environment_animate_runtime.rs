@@ -42,6 +42,7 @@ const SOUND_EVENT_FURNACE_FIRE_CRACKLE: &str = "minecraft:block.furnace.fire_cra
 const SOUND_EVENT_BLAST_FURNACE_FIRE_CRACKLE: &str = "minecraft:block.blastfurnace.fire_crackle";
 const SOUND_EVENT_SMOKER_SMOKE: &str = "minecraft:block.smoker.smoke";
 const SOUND_EVENT_CAMPFIRE_CRACKLE: &str = "minecraft:block.campfire.crackle";
+const SOUND_EVENT_FIRE_AMBIENT: &str = "minecraft:block.fire.ambient";
 const PARTICLE_FIREFLY: &str = "minecraft:firefly";
 const PARTICLE_CURRENT_DOWN: &str = "minecraft:current_down";
 const PARTICLE_BUBBLE_COLUMN_UP: &str = "minecraft:bubble_column_up";
@@ -51,6 +52,7 @@ const PARTICLE_DRIPPING_WATER: &str = "minecraft:dripping_water";
 const PARTICLE_DRIPPING_LAVA: &str = "minecraft:dripping_lava";
 const PARTICLE_SMOKE: &str = "minecraft:smoke";
 const PARTICLE_FLAME: &str = "minecraft:flame";
+const PARTICLE_LARGE_SMOKE: &str = "minecraft:large_smoke";
 
 type FluidAnimateSound = (&'static str, [f64; 3], f32, f32);
 type FluidAnimateSounds = [Option<FluidAnimateSound>; 2];
@@ -60,6 +62,15 @@ enum FurnaceAnimateKind {
     Furnace,
     BlastFurnace,
     Smoker,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FireSmokeFace {
+    West,
+    East,
+    North,
+    South,
+    Up,
 }
 
 /// Non-serializable owner of Vanilla `ClientLevel.animateTick` random cursors.
@@ -269,6 +280,12 @@ impl EnvironmentAnimateRuntime {
                     audio,
                     spawns,
                 );
+            }
+            "minecraft:fire" => {
+                self.animate_fire(world, pos, false, animate_random, audio, spawns);
+            }
+            "minecraft:soul_fire" => {
+                self.animate_fire(world, pos, true, animate_random, audio, spawns);
             }
             _ => {}
         }
@@ -496,6 +513,38 @@ impl EnvironmentAnimateRuntime {
             audio.play_positioned_sound(&local_block_sound(
                 world,
                 SOUND_EVENT_CAMPFIRE_CRACKLE,
+                SoundSource::Blocks,
+                [
+                    f64::from(pos.x) + 0.5,
+                    f64::from(pos.y) + 0.5,
+                    f64::from(pos.z) + 0.5,
+                ],
+                volume,
+                pitch,
+                seed,
+            ));
+        }
+    }
+
+    fn animate_fire(
+        &mut self,
+        world: &WorldStore,
+        pos: BlockPos,
+        burns_all_blocks: bool,
+        animate_random: &mut LevelEventSoundRandomState,
+        audio: &mut Option<&mut dyn AudioEventSink>,
+        spawns: &mut Vec<EnvironmentParticleSpawn>,
+    ) {
+        let sound =
+            append_fire_animate_effects(world, pos, burns_all_blocks, animate_random, spawns);
+        let Some((volume, pitch)) = sound else {
+            return;
+        };
+        let seed = self.level_random.next_long();
+        if let Some(audio) = audio.as_deref_mut() {
+            audio.play_positioned_sound(&local_block_sound(
+                world,
+                SOUND_EVENT_FIRE_AMBIENT,
                 SoundSource::Blocks,
                 [
                     f64::from(pos.x) + 0.5,
@@ -817,6 +866,123 @@ fn append_campfire_animate_effects(
                     5.0e-5,
                     f64::from(random.next_float() / 2.0),
                 ],
+                always_show: false,
+            });
+        }
+    }
+    sound
+}
+
+fn append_fire_animate_effects(
+    world: &WorldStore,
+    pos: BlockPos,
+    burns_all_blocks: bool,
+    random: &mut LevelEventSoundRandomState,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) -> Option<(f32, f32)> {
+    let sound = (random.next_int_bound(24) == 0)
+        .then(|| (1.0 + random.next_float(), random.next_float() * 0.7 + 0.3));
+    let can_burn = |target| {
+        burns_all_blocks
+            || world
+                .environment_animate_block_sample(target)
+                .is_some_and(|sample| sample.fire_flammable)
+    };
+    let below = BlockPos {
+        y: pos.y.saturating_sub(1),
+        ..pos
+    };
+    let below_sample = world.environment_animate_block_sample(below);
+    let below_burns = burns_all_blocks || below_sample.is_some_and(|sample| sample.fire_flammable);
+    let below_has_sturdy_top = below_sample.is_some_and(|sample| sample.up_face_sturdy);
+    if below_burns || below_has_sturdy_top {
+        for _ in 0..3 {
+            spawns.push(EnvironmentParticleSpawn {
+                particle: simple_client_particle_options(PARTICLE_LARGE_SMOKE),
+                position: [
+                    f64::from(pos.x) + random.next_double(),
+                    f64::from(pos.y) + random.next_double() * 0.5 + 0.5,
+                    f64::from(pos.z) + random.next_double(),
+                ],
+                velocity: [0.0; 3],
+                always_show: false,
+            });
+        }
+        return sound;
+    }
+
+    for (target, side) in [
+        (
+            BlockPos {
+                x: pos.x.saturating_sub(1),
+                ..pos
+            },
+            FireSmokeFace::West,
+        ),
+        (
+            BlockPos {
+                x: pos.x.saturating_add(1),
+                ..pos
+            },
+            FireSmokeFace::East,
+        ),
+        (
+            BlockPos {
+                z: pos.z.saturating_sub(1),
+                ..pos
+            },
+            FireSmokeFace::North,
+        ),
+        (
+            BlockPos {
+                z: pos.z.saturating_add(1),
+                ..pos
+            },
+            FireSmokeFace::South,
+        ),
+        (
+            BlockPos {
+                y: pos.y.saturating_add(1),
+                ..pos
+            },
+            FireSmokeFace::Up,
+        ),
+    ] {
+        if !can_burn(target) {
+            continue;
+        }
+        for _ in 0..2 {
+            let position = match side {
+                FireSmokeFace::West => [
+                    f64::from(pos.x) + random.next_double() * 0.1,
+                    f64::from(pos.y) + random.next_double(),
+                    f64::from(pos.z) + random.next_double(),
+                ],
+                FireSmokeFace::East => [
+                    f64::from(pos.x) + 1.0 - random.next_double() * 0.1,
+                    f64::from(pos.y) + random.next_double(),
+                    f64::from(pos.z) + random.next_double(),
+                ],
+                FireSmokeFace::North => [
+                    f64::from(pos.x) + random.next_double(),
+                    f64::from(pos.y) + random.next_double(),
+                    f64::from(pos.z) + random.next_double() * 0.1,
+                ],
+                FireSmokeFace::South => [
+                    f64::from(pos.x) + random.next_double(),
+                    f64::from(pos.y) + random.next_double(),
+                    f64::from(pos.z) + 1.0 - random.next_double() * 0.1,
+                ],
+                FireSmokeFace::Up => [
+                    f64::from(pos.x) + random.next_double(),
+                    f64::from(pos.y) + 1.0 - random.next_double() * 0.1,
+                    f64::from(pos.z) + random.next_double(),
+                ],
+            };
+            spawns.push(EnvironmentParticleSpawn {
+                particle: simple_client_particle_options(PARTICLE_LARGE_SMOKE),
+                position,
+                velocity: [0.0; 3],
                 always_show: false,
             });
         }
@@ -1717,6 +1883,160 @@ mod tests {
             runtime.level_random.next_long(),
             expected_level_random.next_long(),
             "campfire playLocalSound consumes the shared level seed without an audio sink"
+        );
+    }
+
+    #[test]
+    fn fire_animate_effects_preserve_support_neighbor_variant_and_random_order() {
+        let mut world = world_with_ambient_particles();
+        let pos = BlockPos { x: 8, y: 32, z: 8 };
+        let below = BlockPos { y: 31, ..pos };
+        let west = BlockPos { x: 7, ..pos };
+        let above = BlockPos { y: 33, ..pos };
+        let sound_seed = (0..100_000)
+            .find(|seed| LevelEventSoundRandomState::with_seed(*seed).next_int_bound(24) == 0)
+            .expect("deterministic fire ambient sound seed");
+
+        set_block(&mut world, below, block_state_id("minecraft:stone", &[]));
+        let mut supported_actual = LevelEventSoundRandomState::with_seed(sound_seed);
+        let mut supported_expected = LevelEventSoundRandomState::with_seed(sound_seed);
+        let mut supported_spawns = Vec::new();
+        let supported_sound = append_fire_animate_effects(
+            &world,
+            pos,
+            false,
+            &mut supported_actual,
+            &mut supported_spawns,
+        );
+        assert_eq!(supported_expected.next_int_bound(24), 0);
+        assert_eq!(
+            supported_sound,
+            Some((
+                1.0 + supported_expected.next_float(),
+                supported_expected.next_float() * 0.7 + 0.3,
+            ))
+        );
+        let expected_supported_positions = (0..3)
+            .map(|_| {
+                [
+                    8.0 + supported_expected.next_double(),
+                    32.0 + supported_expected.next_double() * 0.5 + 0.5,
+                    8.0 + supported_expected.next_double(),
+                ]
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            supported_spawns
+                .iter()
+                .map(|spawn| spawn.position)
+                .collect::<Vec<_>>(),
+            expected_supported_positions
+        );
+        assert!(supported_spawns.iter().all(|spawn| {
+            spawn.particle.resource_id == PARTICLE_LARGE_SMOKE
+                && spawn.velocity == [0.0; 3]
+                && !spawn.always_show
+        }));
+        assert_eq!(supported_actual.next_long(), supported_expected.next_long());
+
+        set_block(&mut world, below, 0);
+        let oak_planks = block_state_id("minecraft:oak_planks", &[]);
+        set_block(&mut world, west, oak_planks);
+        set_block(&mut world, above, oak_planks);
+        let mut neighbor_actual = LevelEventSoundRandomState::with_seed(sound_seed);
+        let mut neighbor_expected = LevelEventSoundRandomState::with_seed(sound_seed);
+        let mut neighbor_spawns = Vec::new();
+        let neighbor_sound = append_fire_animate_effects(
+            &world,
+            pos,
+            false,
+            &mut neighbor_actual,
+            &mut neighbor_spawns,
+        );
+        assert_eq!(neighbor_expected.next_int_bound(24), 0);
+        assert_eq!(
+            neighbor_sound,
+            Some((
+                1.0 + neighbor_expected.next_float(),
+                neighbor_expected.next_float() * 0.7 + 0.3,
+            ))
+        );
+        let mut expected_neighbor_positions = Vec::new();
+        for _ in 0..2 {
+            expected_neighbor_positions.push([
+                8.0 + neighbor_expected.next_double() * 0.1,
+                32.0 + neighbor_expected.next_double(),
+                8.0 + neighbor_expected.next_double(),
+            ]);
+        }
+        for _ in 0..2 {
+            expected_neighbor_positions.push([
+                8.0 + neighbor_expected.next_double(),
+                33.0 - neighbor_expected.next_double() * 0.1,
+                8.0 + neighbor_expected.next_double(),
+            ]);
+        }
+        assert_eq!(
+            neighbor_spawns
+                .iter()
+                .map(|spawn| spawn.position)
+                .collect::<Vec<_>>(),
+            expected_neighbor_positions
+        );
+        assert_eq!(neighbor_actual.next_long(), neighbor_expected.next_long());
+
+        let mut soul_actual = LevelEventSoundRandomState::with_seed(sound_seed);
+        let mut soul_expected = LevelEventSoundRandomState::with_seed(sound_seed);
+        let mut soul_spawns = Vec::new();
+        let soul_sound =
+            append_fire_animate_effects(&world, pos, true, &mut soul_actual, &mut soul_spawns);
+        assert_eq!(soul_expected.next_int_bound(24), 0);
+        assert_eq!(
+            soul_sound,
+            Some((
+                1.0 + soul_expected.next_float(),
+                soul_expected.next_float() * 0.7 + 0.3,
+            ))
+        );
+        let expected_soul_positions = (0..3)
+            .map(|_| {
+                [
+                    8.0 + soul_expected.next_double(),
+                    32.0 + soul_expected.next_double() * 0.5 + 0.5,
+                    8.0 + soul_expected.next_double(),
+                ]
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            soul_spawns
+                .iter()
+                .map(|spawn| spawn.position)
+                .collect::<Vec<_>>(),
+            expected_soul_positions
+        );
+        assert_eq!(soul_actual.next_long(), soul_expected.next_long());
+
+        let mut runtime = EnvironmentAnimateRuntime {
+            level_random: LevelEventSoundRandomState::with_seed(42),
+            ..EnvironmentAnimateRuntime::default()
+        };
+        let mut expected_level_random = LevelEventSoundRandomState::with_seed(42);
+        let _ = expected_level_random.next_long();
+        let mut animate_random = LevelEventSoundRandomState::with_seed(sound_seed);
+        let mut audio = None;
+        let mut runtime_spawns = Vec::new();
+        runtime.animate_fire(
+            &world,
+            pos,
+            false,
+            &mut animate_random,
+            &mut audio,
+            &mut runtime_spawns,
+        );
+        assert_eq!(
+            runtime.level_random.next_long(),
+            expected_level_random.next_long(),
+            "fire playLocalSound consumes the shared level seed without an audio sink"
         );
     }
 

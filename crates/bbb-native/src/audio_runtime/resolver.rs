@@ -687,7 +687,8 @@ mod tests {
               "block.furnace.fire_crackle": {"sounds": ["block/furnace/fire_crackle"]},
               "block.blastfurnace.fire_crackle": {"sounds": ["block/blastfurnace/fire_crackle"]},
               "block.smoker.smoke": {"sounds": ["block/smoker/smoke"]},
-              "block.campfire.crackle": {"sounds": ["block/campfire/crackle"]}
+              "block.campfire.crackle": {"sounds": ["block/campfire/crackle"]},
+              "block.fire.ambient": {"sounds": ["block/fire/ambient"]}
             }"#,
         );
         let registry = SoundEventRegistry::default();
@@ -802,6 +803,7 @@ mod tests {
             "minecraft:block.blastfurnace.fire_crackle",
             "minecraft:block.smoker.smoke",
             "minecraft:block.campfire.crackle",
+            "minecraft:block.fire.ambient",
         ] {
             let command = resolver
                 .play_positioned_sound(&SoundEventState {

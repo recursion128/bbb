@@ -32,11 +32,12 @@ use crate::terrain::{
     block_name_is_anvil, block_name_is_bars_or_pane, block_name_is_bed, block_name_is_campfire,
     block_name_is_candle, block_name_is_candle_cake, block_name_is_cauldron, block_name_is_chain,
     block_name_is_chest, block_name_is_copper_golem_statue, block_name_is_copper_grate,
-    block_name_is_door, block_name_is_fence, block_name_is_fence_gate, block_name_is_floor_skull,
-    block_name_is_flower_pot, block_name_is_hanging_sign, block_name_is_impermeable,
-    block_name_is_lantern, block_name_is_leaves, block_name_is_rod, block_name_is_shelf,
-    block_name_is_shulker_box, block_name_is_slab, block_name_is_stair, block_name_is_trapdoor,
-    block_name_is_wall, block_name_is_wall_skull, block_name_is_wool_carpet,
+    block_name_is_door, block_name_is_fence, block_name_is_fence_gate,
+    block_name_is_fire_flammable, block_name_is_floor_skull, block_name_is_flower_pot,
+    block_name_is_hanging_sign, block_name_is_impermeable, block_name_is_lantern,
+    block_name_is_leaves, block_name_is_rod, block_name_is_shelf, block_name_is_shulker_box,
+    block_name_is_slab, block_name_is_stair, block_name_is_trapdoor, block_name_is_wall,
+    block_name_is_wall_skull, block_name_is_wool_carpet,
 };
 use crate::{
     BlockPos, BlockProbe, PistonDirection, TerrainFluidKind, TerrainMaterialClass, WorldStore,
@@ -65,6 +66,8 @@ pub struct EnvironmentAnimateBlockSample {
     pub block_is_air: bool,
     pub solid_render: bool,
     pub down_face_sturdy: bool,
+    pub up_face_sturdy: bool,
+    pub fire_flammable: bool,
     pub impermeable: bool,
     pub collision_bounds: Option<EnvironmentAnimateCollisionBounds>,
 }
@@ -1422,6 +1425,8 @@ impl WorldStore {
             solid_render: vanilla_block_state_support_facts(block.block_state_id)
                 .is_some_and(|facts| facts.solid_render()),
             down_face_sturdy: shape.is_some_and(|shape| shape.has_full_face(BlockDirection::Down)),
+            up_face_sturdy: shape.is_some_and(|shape| shape.has_full_face(BlockDirection::Up)),
+            fire_flammable: block_name_is_fire_flammable(block_name),
             impermeable: block_name_is_impermeable(block_name),
             collision_bounds: shape.and_then(BlockCollisionShape::environment_animate_bounds),
         })
@@ -6427,6 +6432,8 @@ mod tests {
                 block_is_air: true,
                 solid_render: false,
                 down_face_sturdy: false,
+                up_face_sturdy: false,
+                fire_flammable: false,
                 impermeable: false,
                 collision_bounds: None,
             })
@@ -6441,6 +6448,8 @@ mod tests {
                 block_is_air: false,
                 solid_render: true,
                 down_face_sturdy: true,
+                up_face_sturdy: true,
+                fire_flammable: false,
                 impermeable: false,
                 collision_bounds: Some(EnvironmentAnimateCollisionBounds {
                     min_x: 0.0,
@@ -6463,6 +6472,7 @@ mod tests {
             .expect("loaded top slab");
         assert!(!top_slab.solid_render);
         assert!(!top_slab.down_face_sturdy);
+        assert!(top_slab.up_face_sturdy);
         assert_eq!(
             top_slab.collision_bounds,
             Some(EnvironmentAnimateCollisionBounds {
@@ -6482,6 +6492,15 @@ mod tests {
             .expect("loaded glass");
         assert!(glass.impermeable);
         assert!(!glass.solid_render);
+
+        let oak_planks_id = vanilla_block_state_id("minecraft:oak_planks", []);
+        set_block(&mut world, pos, oak_planks_id);
+        assert!(
+            world
+                .environment_animate_block_sample(pos)
+                .expect("loaded oak planks")
+                .fire_flammable
+        );
 
         let water_id = vanilla_block_state_id("minecraft:water", [("level", "0")]);
         set_block(&mut world, pos, water_id);
