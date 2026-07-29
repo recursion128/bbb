@@ -666,7 +666,7 @@ mod tests {
     }
 
     #[test]
-    fn resolves_underwater_fluid_and_furnace_environment_audio_commands() {
+    fn resolves_environment_animate_audio_commands() {
         let assets_dir = unique_assets_dir("underwater-ambient");
         let catalog = test_catalog(
             &assets_dir,
@@ -686,7 +686,8 @@ mod tests {
               "block.lava.ambient": {"sounds": ["block/lava/ambient"]},
               "block.furnace.fire_crackle": {"sounds": ["block/furnace/fire_crackle"]},
               "block.blastfurnace.fire_crackle": {"sounds": ["block/blastfurnace/fire_crackle"]},
-              "block.smoker.smoke": {"sounds": ["block/smoker/smoke"]}
+              "block.smoker.smoke": {"sounds": ["block/smoker/smoke"]},
+              "block.campfire.crackle": {"sounds": ["block/campfire/crackle"]}
             }"#,
         );
         let registry = SoundEventRegistry::default();
@@ -800,6 +801,7 @@ mod tests {
             "minecraft:block.furnace.fire_crackle",
             "minecraft:block.blastfurnace.fire_crackle",
             "minecraft:block.smoker.smoke",
+            "minecraft:block.campfire.crackle",
         ] {
             let command = resolver
                 .play_positioned_sound(&SoundEventState {

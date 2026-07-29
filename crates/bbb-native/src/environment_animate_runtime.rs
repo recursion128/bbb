@@ -41,6 +41,7 @@ const SOUND_EVENT_LAVA_AMBIENT: &str = "minecraft:block.lava.ambient";
 const SOUND_EVENT_FURNACE_FIRE_CRACKLE: &str = "minecraft:block.furnace.fire_crackle";
 const SOUND_EVENT_BLAST_FURNACE_FIRE_CRACKLE: &str = "minecraft:block.blastfurnace.fire_crackle";
 const SOUND_EVENT_SMOKER_SMOKE: &str = "minecraft:block.smoker.smoke";
+const SOUND_EVENT_CAMPFIRE_CRACKLE: &str = "minecraft:block.campfire.crackle";
 const PARTICLE_FIREFLY: &str = "minecraft:firefly";
 const PARTICLE_CURRENT_DOWN: &str = "minecraft:current_down";
 const PARTICLE_BUBBLE_COLUMN_UP: &str = "minecraft:bubble_column_up";
@@ -247,6 +248,28 @@ impl EnvironmentAnimateRuntime {
                     spawns,
                 );
             }
+            "minecraft:campfire" => {
+                self.animate_campfire(
+                    world,
+                    pos,
+                    true,
+                    &block.block_properties,
+                    animate_random,
+                    audio,
+                    spawns,
+                );
+            }
+            "minecraft:soul_campfire" => {
+                self.animate_campfire(
+                    world,
+                    pos,
+                    false,
+                    &block.block_properties,
+                    animate_random,
+                    audio,
+                    spawns,
+                );
+            }
             _ => {}
         }
 
@@ -443,6 +466,44 @@ impl EnvironmentAnimateRuntime {
                 ],
                 1.0,
                 1.0,
+                seed,
+            ));
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn animate_campfire(
+        &mut self,
+        world: &WorldStore,
+        pos: BlockPos,
+        spawn_particles: bool,
+        properties: &std::collections::BTreeMap<String, String>,
+        animate_random: &mut LevelEventSoundRandomState,
+        audio: &mut Option<&mut dyn AudioEventSink>,
+        spawns: &mut Vec<EnvironmentParticleSpawn>,
+    ) {
+        let Some((volume, pitch)) = append_campfire_animate_effects(
+            pos,
+            spawn_particles,
+            properties,
+            animate_random,
+            spawns,
+        ) else {
+            return;
+        };
+        let seed = self.level_random.next_long();
+        if let Some(audio) = audio.as_deref_mut() {
+            audio.play_positioned_sound(&local_block_sound(
+                world,
+                SOUND_EVENT_CAMPFIRE_CRACKLE,
+                SoundSource::Blocks,
+                [
+                    f64::from(pos.x) + 0.5,
+                    f64::from(pos.y) + 0.5,
+                    f64::from(pos.z) + 0.5,
+                ],
+                volume,
+                pitch,
                 seed,
             ));
         }
@@ -724,6 +785,41 @@ fn append_furnace_animate_effects(
             velocity: [0.0; 3],
             always_show: false,
         });
+    }
+    sound
+}
+
+fn append_campfire_animate_effects(
+    pos: BlockPos,
+    spawn_particles: bool,
+    properties: &std::collections::BTreeMap<String, String>,
+    random: &mut LevelEventSoundRandomState,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) -> Option<(f32, f32)> {
+    if properties.get("lit").map(String::as_str) != Some("true") {
+        return None;
+    }
+
+    let sound = (random.next_int_bound(10) == 0)
+        .then(|| (0.5 + random.next_float(), random.next_float() * 0.7 + 0.6));
+    if spawn_particles && random.next_int_bound(5) == 0 {
+        let particle_count = random.next_int_bound(1) + 1;
+        for _ in 0..particle_count {
+            spawns.push(EnvironmentParticleSpawn {
+                particle: simple_client_particle_options(PARTICLE_LAVA),
+                position: [
+                    f64::from(pos.x) + 0.5,
+                    f64::from(pos.y) + 0.5,
+                    f64::from(pos.z) + 0.5,
+                ],
+                velocity: [
+                    f64::from(random.next_float() / 2.0),
+                    5.0e-5,
+                    f64::from(random.next_float() / 2.0),
+                ],
+                always_show: false,
+            });
+        }
     }
     sound
 }
@@ -1512,6 +1608,115 @@ mod tests {
             runtime.level_random.next_long(),
             expected_level_random.next_long(),
             "playLocalSound consumes the shared level seed even without an audio sink"
+        );
+    }
+
+    #[test]
+    fn campfire_animate_effects_preserve_variant_particle_and_random_order() {
+        let pos = BlockPos {
+            x: -4,
+            y: 12,
+            z: 30,
+        };
+        let effect_seed = (0..100_000)
+            .find(|seed| {
+                let mut random = LevelEventSoundRandomState::with_seed(*seed);
+                if random.next_int_bound(10) != 0 {
+                    return false;
+                }
+                let _ = random.next_float();
+                let _ = random.next_float();
+                random.next_int_bound(5) == 0
+            })
+            .expect("deterministic campfire sound and particle seed");
+        let lit = BTreeMap::from([("lit".to_string(), "true".to_string())]);
+        let mut actual = LevelEventSoundRandomState::with_seed(effect_seed);
+        let mut expected = LevelEventSoundRandomState::with_seed(effect_seed);
+        let mut spawns = Vec::new();
+
+        let sound = append_campfire_animate_effects(pos, true, &lit, &mut actual, &mut spawns);
+
+        assert_eq!(expected.next_int_bound(10), 0);
+        let expected_sound = (
+            0.5 + expected.next_float(),
+            expected.next_float() * 0.7 + 0.6,
+        );
+        assert_eq!(sound, Some(expected_sound));
+        assert_eq!(expected.next_int_bound(5), 0);
+        assert_eq!(expected.next_int_bound(1), 0);
+        assert_eq!(spawns.len(), 1);
+        assert_eq!(spawns[0].particle.resource_id, PARTICLE_LAVA);
+        assert_eq!(spawns[0].position, [-3.5, 12.5, 30.5]);
+        assert_eq!(
+            spawns[0].velocity,
+            [
+                f64::from(expected.next_float() / 2.0),
+                5.0e-5,
+                f64::from(expected.next_float() / 2.0),
+            ]
+        );
+        assert!(!spawns[0].always_show);
+        assert_eq!(actual.next_long(), expected.next_long());
+
+        let mut soul_actual = LevelEventSoundRandomState::with_seed(effect_seed);
+        let mut soul_expected = LevelEventSoundRandomState::with_seed(effect_seed);
+        let mut soul_spawns = Vec::new();
+        let soul_sound =
+            append_campfire_animate_effects(pos, false, &lit, &mut soul_actual, &mut soul_spawns);
+        assert_eq!(soul_expected.next_int_bound(10), 0);
+        assert_eq!(
+            soul_sound,
+            Some((
+                0.5 + soul_expected.next_float(),
+                soul_expected.next_float() * 0.7 + 0.6,
+            ))
+        );
+        assert!(soul_spawns.is_empty());
+        assert_eq!(
+            soul_actual.next_long(),
+            soul_expected.next_long(),
+            "soul campfire skips the spawnParticles random branch"
+        );
+
+        let unlit = BTreeMap::from([("lit".to_string(), "false".to_string())]);
+        let mut unlit_actual = LevelEventSoundRandomState::with_seed(effect_seed);
+        let mut unlit_expected = LevelEventSoundRandomState::with_seed(effect_seed);
+        let mut unlit_spawns = Vec::new();
+        assert_eq!(
+            append_campfire_animate_effects(
+                pos,
+                true,
+                &unlit,
+                &mut unlit_actual,
+                &mut unlit_spawns,
+            ),
+            None
+        );
+        assert!(unlit_spawns.is_empty());
+        assert_eq!(unlit_actual.next_long(), unlit_expected.next_long());
+
+        let mut runtime = EnvironmentAnimateRuntime {
+            level_random: LevelEventSoundRandomState::with_seed(42),
+            ..EnvironmentAnimateRuntime::default()
+        };
+        let mut expected_level_random = LevelEventSoundRandomState::with_seed(42);
+        let _ = expected_level_random.next_long();
+        let mut animate_random = LevelEventSoundRandomState::with_seed(effect_seed);
+        let mut audio = None;
+        let mut runtime_spawns = Vec::new();
+        runtime.animate_campfire(
+            &WorldStore::default(),
+            pos,
+            true,
+            &lit,
+            &mut animate_random,
+            &mut audio,
+            &mut runtime_spawns,
+        );
+        assert_eq!(
+            runtime.level_random.next_long(),
+            expected_level_random.next_long(),
+            "campfire playLocalSound consumes the shared level seed without an audio sink"
         );
     }
 
