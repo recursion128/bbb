@@ -158,6 +158,9 @@
 # English GUI text. This does not replace canonical Component or screen state.
 ^crates/bbb-native/src/component_text[.]rs$	fallback
 ^crates/bbb-native/src/runtime/book_screen[.]rs$	fallback
+# Entity hover type labels use the same selected-language helper, with the
+# retained entity resource id as the exact missing-language-key display.
+^crates/bbb-native/src/runtime/component_hover[.]rs$	localized_or_fallback
 # Simulation input uses the existing bounded fixed-width text fallback only
 # before the immutable renderer glyph projection has loaded; it is layout
 # compatibility, not a renderer submission or canonical gameplay fallback.

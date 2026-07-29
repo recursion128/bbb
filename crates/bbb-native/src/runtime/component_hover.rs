@@ -38,7 +38,7 @@ pub(super) fn hud_component_hover_tooltip(
             count,
             components,
         } => {
-            let fallback = || HudRichTooltip {
+            let retained_summary = || HudRichTooltip {
                 style: None,
                 lines: vec![HudRichTooltipLine::plain(if *count == 1 {
                     id.clone()
@@ -50,12 +50,12 @@ pub(super) fn hud_component_hover_tooltip(
             };
             let Some(stack) = world.component_hover_item_stack(id, *count, components.as_ref())
             else {
-                return Some(fallback());
+                return Some(retained_summary());
             };
             let creative = world.gameplay().game_type == GameType::Creative.id();
             let Some(normal) = hud_item_tooltip(world, item_runtime, &stack, false, creative)
             else {
-                return Some(fallback());
+                return Some(retained_summary());
             };
             let lines = inventory_tooltip_lines(normal.lines);
             let advanced_lines = hud_item_tooltip(world, item_runtime, &stack, true, creative)
@@ -139,11 +139,7 @@ fn inventory_tooltip_lines(
     lines
         .into_iter()
         .map(|line| HudRichTooltipLine {
-            runs: line
-                .runs
-                .into_iter()
-                .map(|visual| HudComponentTextRun { visual, font: None })
-                .collect(),
+            runs: line.runs,
             tint: line.tint,
         })
         .collect()
@@ -169,7 +165,7 @@ mod tests {
     fn component_hover_show_text_uses_exact_nested_component_and_font() {
         let hover = ComponentHoverEvent::ShowText {
             value: vec![StyledTextRun {
-                text: "fallback.key".to_string(),
+                text: "source.key".to_string(),
                 style: ComponentStyle::default(),
             }],
             component: Some(NbtSummaryValue::Compound(vec![

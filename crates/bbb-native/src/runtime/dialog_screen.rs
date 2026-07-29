@@ -9,12 +9,12 @@ use bbb_protocol::{
     ComponentClickEvent, NbtSummaryValue, StyledTextRun,
 };
 use bbb_renderer::{
-    HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryFillLayer,
-    HudInventoryFillStage, HudInventoryItem, HudInventoryItemScissor, HudInventoryPreeditOverlay,
-    HudInventoryScreen, HudInventoryScrollArea, HudInventoryScrollbar, HudInventoryScrollingText,
-    HudInventoryTextArea, HudInventoryTextInputDecoration, HudInventoryTextLabel,
-    HudInventoryTooltip, HudInventoryTooltipLine, HudStyledTextRun, HudTextStyle, HudUvRect,
-    Renderer,
+    HudComponentTextRun, HudInventoryBackgroundLayer, HudInventoryBackgroundTexture,
+    HudInventoryFillLayer, HudInventoryFillStage, HudInventoryItem, HudInventoryItemScissor,
+    HudInventoryPreeditOverlay, HudInventoryScreen, HudInventoryScrollArea, HudInventoryScrollbar,
+    HudInventoryScrollingText, HudInventoryTextArea, HudInventoryTextInputDecoration,
+    HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudStyledTextRun,
+    HudTextStyle, HudUvRect, Renderer,
 };
 use bbb_world::{
     CommonDialogDataState, DialogActionState, DialogBodyFocusPartState, DialogBodyState,
@@ -3000,7 +3000,11 @@ pub(super) fn hud_dialog_screen_with_measurer(
                 .map(|line| HudInventoryTooltipLine {
                     text: line.text,
                     tint: TEXT_COLOR,
-                    runs: line.runs,
+                    runs: line
+                        .runs
+                        .into_iter()
+                        .map(HudComponentTextRun::from)
+                        .collect(),
                 })
                 .collect(),
         })
@@ -3041,7 +3045,11 @@ pub(super) fn hud_dialog_screen_with_measurer(
                 .map(|line| HudInventoryTooltipLine {
                     text: line.text,
                     tint: TEXT_COLOR,
-                    runs: line.runs,
+                    runs: line
+                        .runs
+                        .into_iter()
+                        .map(HudComponentTextRun::from)
+                        .collect(),
                 })
                 .collect(),
         }

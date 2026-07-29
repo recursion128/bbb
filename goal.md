@@ -356,9 +356,7 @@ packet 行为。
 ### P2：屏幕、HUD、字体与截图
 
 开放项见账本 "HUD overlay and screen render surfaces" 节；整体低优先；
-F3+I entity save payload 由 entity matrix 唯一拥有。当前 rich Component
-字体与 hover 呈现工程合同见
-`docs/rich-component-presentation-design.md`。
+F3+I entity save payload 由 entity matrix 唯一拥有。
 
 完成标准：不做临时配置 UI，启动配置从命令行进入；上述开放项及账本归属本
 队列的条目全部完成或有窄 deferred/not-needed 依据；视觉结果有 deterministic

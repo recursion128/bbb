@@ -138,13 +138,13 @@ struct PotionAttributeModifierLine {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct TooltipTextArg {
     text: String,
-    runs: Vec<HudStyledTextRun>,
+    runs: Vec<HudComponentTextRun>,
 }
 
 impl TooltipTextArg {
     fn plain(text: String) -> Self {
         Self {
-            runs: vec![HudStyledTextRun::plain(text.clone())],
+            runs: vec![HudComponentTextRun::plain(text.clone())],
             text,
         }
     }
@@ -154,10 +154,10 @@ impl TooltipTextArg {
 pub struct NativeItemTooltipLine {
     pub text: String,
     pub tint: [f32; 4],
-    /// Styled draw runs for the line; concatenating the run texts reproduces
-    /// `text`. Unstyled lines carry a single default-style run with no colour
-    /// override (the renderer then falls back to `tint`).
-    pub runs: Vec<HudStyledTextRun>,
+    /// Component draw runs for the line; concatenating the visual texts
+    /// reproduces `text`. Unstyled lines carry a single default-font run with
+    /// no colour override (the renderer then falls back to `tint`).
+    pub runs: Vec<HudComponentTextRun>,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
@@ -196,7 +196,7 @@ pub struct NativeItemMapTooltipData {
 
 impl NativeItemTooltipLine {
     fn plain(text: String, tint: [f32; 4]) -> Self {
-        let runs = vec![HudStyledTextRun::plain(text.clone())];
+        let runs = vec![HudComponentTextRun::plain(text.clone())];
         Self { text, tint, runs }
     }
 }
@@ -228,15 +228,18 @@ fn tooltip_text_color_for_tint(tint: [f32; 4]) -> Option<u32> {
 
 fn charged_projectile_detail_tooltip_line(line: NativeItemTooltipLine) -> NativeItemTooltipLine {
     let mut runs = Vec::with_capacity(line.runs.len() + 1);
-    runs.push(HudStyledTextRun {
-        text: "  ".to_string(),
-        style: HudTextStyle::default(),
-        color: Some(TOOLTIP_GRAY_TEXT_COLOR),
+    runs.push(HudComponentTextRun {
+        visual: HudStyledTextRun {
+            text: "  ".to_string(),
+            style: HudTextStyle::default(),
+            color: Some(TOOLTIP_GRAY_TEXT_COLOR),
+        },
+        font: None,
     });
     let fallback_color = tooltip_text_color_for_tint(line.tint).unwrap_or(TOOLTIP_GRAY_TEXT_COLOR);
     runs.extend(line.runs.into_iter().map(|mut run| {
-        if run.color.is_none() {
-            run.color = Some(fallback_color);
+        if run.visual.color.is_none() {
+            run.visual.color = Some(fallback_color);
         }
         run
     }));
@@ -252,18 +255,21 @@ fn charged_projectile_detail_tooltip_line(line: NativeItemTooltipLine) -> Native
 /// first merging `base` under the run's own style (vanilla
 /// `ComponentUtils.mergeStyles` / wrapper `withStyle` semantics: the run's own
 /// keys win, unset keys inherit `base`).
-fn hud_run_from_component(run: &StyledTextRun, base: &ComponentStyle) -> HudStyledTextRun {
+fn hud_run_from_component(run: &StyledTextRun, base: &ComponentStyle) -> HudComponentTextRun {
     let style = run.style.apply_to(base);
-    HudStyledTextRun {
-        text: run.text.clone(),
-        style: HudTextStyle {
-            bold: style.bold == Some(true),
-            italic: style.italic == Some(true),
-            underlined: style.underlined == Some(true),
-            strikethrough: style.strikethrough == Some(true),
-            obfuscated: style.obfuscated == Some(true),
+    HudComponentTextRun {
+        visual: HudStyledTextRun {
+            text: run.text.clone(),
+            style: HudTextStyle {
+                bold: style.bold == Some(true),
+                italic: style.italic == Some(true),
+                underlined: style.underlined == Some(true),
+                strikethrough: style.strikethrough == Some(true),
+                obfuscated: style.obfuscated == Some(true),
+            },
+            color: style.color,
         },
-        color: style.color,
+        font: style.font.clone(),
     }
 }
 
@@ -274,7 +280,7 @@ fn hud_runs_from_component(
     runs: &[StyledTextRun],
     plain_fallback: &str,
     base: &ComponentStyle,
-) -> Vec<HudStyledTextRun> {
+) -> Vec<HudComponentTextRun> {
     if runs.is_empty() {
         let fallback = StyledTextRun {
             text: plain_fallback.to_string(),
@@ -409,10 +415,13 @@ fn display_name_arg_for_component_patch(
     let (name_runs, name_is_custom) =
         hover_name_source_runs_for_component_patch(language, resource_id, component_patch);
     let rarity_color = item_rarity_color(item_rarity_for_stack(component_patch));
-    let bracket_run = |text: &str| HudStyledTextRun {
-        text: text.to_string(),
-        style: HudTextStyle::default(),
-        color: Some(rarity_color),
+    let bracket_run = |text: &str| HudComponentTextRun {
+        visual: HudStyledTextRun {
+            text: text.to_string(),
+            style: HudTextStyle::default(),
+            color: Some(rarity_color),
+        },
+        font: None,
     };
     let name_wrapper = ComponentStyle {
         italic: name_is_custom.then_some(true),
@@ -715,13 +724,16 @@ fn italic_gray_tooltip_line(text: String) -> NativeItemTooltipLine {
     NativeItemTooltipLine {
         text: text.clone(),
         tint: TOOLTIP_TEXT_GRAY,
-        runs: vec![HudStyledTextRun {
-            text,
-            style: HudTextStyle {
-                italic: true,
-                ..HudTextStyle::default()
+        runs: vec![HudComponentTextRun {
+            visual: HudStyledTextRun {
+                text,
+                style: HudTextStyle {
+                    italic: true,
+                    ..HudTextStyle::default()
+                },
+                color: Some(TOOLTIP_GRAY_TEXT_COLOR),
             },
-            color: Some(TOOLTIP_GRAY_TEXT_COLOR),
+            font: None,
         }],
     }
 }
@@ -936,10 +948,13 @@ fn colored_component_tooltip_line(text: String, color: u32) -> NativeItemTooltip
     NativeItemTooltipLine {
         text: text.clone(),
         tint: TOOLTIP_TEXT_WHITE,
-        runs: vec![HudStyledTextRun {
-            text,
-            style: HudTextStyle::default(),
-            color: Some(color),
+        runs: vec![HudComponentTextRun {
+            visual: HudStyledTextRun {
+                text,
+                style: HudTextStyle::default(),
+                color: Some(color),
+            },
+            font: None,
         }],
     }
 }
@@ -960,13 +975,16 @@ fn push_operator_nbt_warning_tooltip_lines(
         lines.push(NativeItemTooltipLine {
             text: text.clone(),
             tint: TOOLTIP_TEXT_RED,
-            runs: vec![HudStyledTextRun {
-                text,
-                style: HudTextStyle {
-                    bold: index == 0,
-                    ..HudTextStyle::default()
+            runs: vec![HudComponentTextRun {
+                visual: HudStyledTextRun {
+                    text,
+                    style: HudTextStyle {
+                        bold: index == 0,
+                        ..HudTextStyle::default()
+                    },
+                    color: Some(TOOLTIP_RED_TEXT_COLOR),
                 },
-                color: Some(TOOLTIP_RED_TEXT_COLOR),
+                font: None,
             }],
         });
     }
@@ -1153,6 +1171,46 @@ mod tests {
             aliases.is_empty(),
             "tooltip restored component type id aliases:\n{}",
             aliases.join("\n")
+        );
+    }
+
+    #[test]
+    fn rich_component_item_tooltip_retains_font_and_all_text_styles() {
+        let runs = hud_runs_from_component(
+            &[StyledTextRun {
+                text: "Styled".to_string(),
+                style: ComponentStyle {
+                    bold: Some(true),
+                    italic: Some(false),
+                    underlined: Some(true),
+                    strikethrough: Some(true),
+                    obfuscated: Some(true),
+                    color: Some(0x12_34_56),
+                    font: Some("example:tooltip".to_string()),
+                    ..ComponentStyle::default()
+                },
+            }],
+            "fallback",
+            &ComponentStyle {
+                italic: Some(true),
+                color: Some(0xAA_00_AA),
+                ..ComponentStyle::default()
+            },
+        );
+
+        assert_eq!(runs.len(), 1);
+        assert_eq!(runs[0].visual.text, "Styled");
+        assert_eq!(runs[0].font.as_deref(), Some("example:tooltip"));
+        assert_eq!(runs[0].visual.color, Some(0x12_34_56));
+        assert_eq!(
+            runs[0].visual.style,
+            HudTextStyle {
+                bold: true,
+                italic: false,
+                underlined: true,
+                strikethrough: true,
+                obfuscated: true,
+            }
         );
     }
 
@@ -1611,7 +1669,7 @@ mod tests {
         assert!(lines[0]
             .runs
             .iter()
-            .all(|run| run.color == Some(0x12_34_56)));
+            .all(|run| run.visual.color == Some(0x12_34_56)));
 
         definitions[0].as_mut().unwrap().max_level = 1;
         lines.clear();
@@ -1678,7 +1736,7 @@ mod tests {
         );
         assert_eq!(lines.len(), 1);
         assert_eq!(lines[0].text, "Custom song");
-        assert!(lines[0].runs[0].style.bold);
+        assert!(lines[0].runs[0].visual.style.bold);
 
         lines.clear();
         push_jukebox_playable_tooltip_lines(
@@ -1796,13 +1854,16 @@ fn item_container_more_tooltip_line(text: String) -> NativeItemTooltipLine {
     NativeItemTooltipLine {
         text: text.clone(),
         tint: TOOLTIP_TEXT_WHITE,
-        runs: vec![HudStyledTextRun {
-            text,
-            style: HudTextStyle {
-                italic: true,
-                ..HudTextStyle::default()
+        runs: vec![HudComponentTextRun {
+            visual: HudStyledTextRun {
+                text,
+                style: HudTextStyle {
+                    italic: true,
+                    ..HudTextStyle::default()
+                },
+                color: None,
             },
-            color: None,
+            font: None,
         }],
     }
 }
@@ -2346,13 +2407,16 @@ fn push_dyed_color_tooltip_lines(
         lines.push(NativeItemTooltipLine {
             text: text.clone(),
             tint: TOOLTIP_TEXT_GRAY,
-            runs: vec![HudStyledTextRun {
-                text,
-                style: HudTextStyle {
-                    italic: true,
-                    ..HudTextStyle::default()
+            runs: vec![HudComponentTextRun {
+                visual: HudStyledTextRun {
+                    text,
+                    style: HudTextStyle {
+                        italic: true,
+                        ..HudTextStyle::default()
+                    },
+                    color: Some(0xAA_AA_AA),
                 },
-                color: Some(0xAA_AA_AA),
+                font: None,
             }],
         });
     }
@@ -2818,7 +2882,7 @@ fn armor_trim_description_line(
     base: &ComponentStyle,
 ) -> NativeItemTooltipLine {
     let mut runs = Vec::with_capacity(description.runs.len() + 1);
-    runs.push(HudStyledTextRun::plain(" "));
+    runs.push(HudComponentTextRun::plain(" "));
     runs.extend(hud_runs_from_component(
         &description.runs,
         &description.text,
@@ -3227,14 +3291,14 @@ fn translated_tooltip_line_with_args(
 
 fn push_plain_tooltip_template_segment(
     text: &mut String,
-    runs: &mut Vec<HudStyledTextRun>,
+    runs: &mut Vec<HudComponentTextRun>,
     segment: &str,
 ) {
     if segment.is_empty() {
         return;
     }
     text.push_str(segment);
-    runs.push(HudStyledTextRun::plain(segment));
+    runs.push(HudComponentTextRun::plain(segment));
 }
 
 pub(super) fn item_rarity_for_stack(

@@ -758,3 +758,7 @@
   代际安全的账号屏蔽同步、三类规范报告构建器、原生举报/草稿 UI、renderer
   表面及可取消的异步提交已贯通；合同见
   `docs/archive/player-reporting-services-design.md`。
+- **2026-07-29（Rich Component 字体与 hover 呈现工程闭环）**：chat、只读书页
+  与 item tooltip 现按 canonical Component run 选择资源字体，完整复用
+  show_text/show_item/show_entity tooltip、advanced gate 与样式几何；合同见
+  `docs/archive/rich-component-presentation-design.md`。

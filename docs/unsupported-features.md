@@ -48,18 +48,6 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
   and chunk-update comparison captures; report any losing scene by measured
   owner instead of reducing visible work.
 
-## Signed chat and chat acknowledgement production
-
-Owner: `bbb-protocol` + `bbb-net` + `bbb-world` + `bbb-native`
-
-- Exact `show_item` / `show_entity` hover payloads and custom font ids are
-  retained in canonical Components, but chat currently renders bounded
-  name/id/count hover fallbacks and the active default font when a custom font
-  provider is unavailable. Server-supplied `open_file` remains deliberately
-  inert; completing reusable item/entity tooltip rendering or additional font
-  providers must consume those retained values rather than add a parallel
-  Component schema.
-
 ## Native input, movement, interaction, inventory, and command flows
 
 Owner: `bbb-native` + `bbb-net` + `bbb-protocol` + `bbb-world`
@@ -84,9 +72,6 @@ Inventory:
   `ItemStack` codec, so preset files do not interchange with a vanilla
   installation. Reopen the file-format half only if full item NBT codec
   support with registry context lands.
-- Implement the rich-tooltip `space` font provider, the remaining text styles,
-  italic/complex component styles, and component-specific detail lines from
-  `font/default.json`.
 
 ## Renderer scene parity
 

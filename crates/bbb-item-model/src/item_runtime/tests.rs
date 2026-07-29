@@ -372,7 +372,7 @@ fn tooltip_line(text: &str, tint: [f32; 4]) -> NativeItemTooltipLine {
     NativeItemTooltipLine {
         text: text.to_string(),
         tint,
-        runs: vec![HudStyledTextRun::plain(text)],
+        runs: vec![HudStyledTextRun::plain(text).into()],
     }
 }
 
@@ -384,7 +384,8 @@ fn colored_tooltip_line(text: &str, tint: [f32; 4], color: u32) -> NativeItemToo
             text: text.to_string(),
             style: HudTextStyle::default(),
             color: Some(color),
-        }],
+        }
+        .into()],
     }
 }
 
@@ -397,7 +398,7 @@ fn enchantment_tooltip_line(description: &str, level: &str) -> NativeItemTooltip
     NativeItemTooltipLine {
         text: format!("{description} {level}"),
         tint: TOOLTIP_TEXT_GRAY,
-        runs: vec![run(description), run(" "), run(level)],
+        runs: vec![run(description).into(), run(" ").into(), run(level).into()],
     }
 }
 
@@ -405,7 +406,7 @@ fn trim_tooltip_line(text: &str, description_run: HudStyledTextRun) -> NativeIte
     NativeItemTooltipLine {
         text: format!(" {text}"),
         tint: TOOLTIP_TEXT_WHITE,
-        runs: vec![HudStyledTextRun::plain(" "), description_run],
+        runs: vec![HudStyledTextRun::plain(" ").into(), description_run.into()],
     }
 }
 
@@ -429,12 +430,14 @@ fn charged_projectile_detail_line(text: &str, child_color: u32) -> NativeItemToo
                 text: "  ".to_string(),
                 style: HudTextStyle::default(),
                 color: Some(0xAA_AA_AA),
-            },
+            }
+            .into(),
             HudStyledTextRun {
                 text: text.to_string(),
                 style: HudTextStyle::default(),
                 color: Some(child_color),
-            },
+            }
+            .into(),
         ],
     }
 }
@@ -446,7 +449,7 @@ fn charged_projectile_header_line(
     NativeItemTooltipLine {
         text: text.to_string(),
         tint: TOOLTIP_TEXT_WHITE,
-        runs,
+        runs: runs.into_iter().map(HudComponentTextRun::from).collect(),
     }
 }
 
@@ -455,9 +458,12 @@ fn container_item_count_line(
     name_runs: Vec<HudStyledTextRun>,
     count: i32,
 ) -> NativeItemTooltipLine {
-    let mut runs = name_runs;
-    runs.push(HudStyledTextRun::plain(" x"));
-    runs.push(HudStyledTextRun::plain(count.to_string()));
+    let mut runs = name_runs
+        .into_iter()
+        .map(HudComponentTextRun::from)
+        .collect::<Vec<_>>();
+    runs.push(HudComponentTextRun::plain(" x"));
+    runs.push(HudComponentTextRun::plain(count.to_string()));
     NativeItemTooltipLine {
         text: text.to_string(),
         tint: TOOLTIP_TEXT_WHITE,
@@ -484,7 +490,8 @@ fn italic_tooltip_line(text: &str, tint: [f32; 4], color: u32) -> NativeItemTool
                 ..HudTextStyle::default()
             },
             color: Some(color),
-        }],
+        }
+        .into()],
     }
 }
 
@@ -499,7 +506,8 @@ fn italic_plain_tooltip_line(text: &str, tint: [f32; 4]) -> NativeItemTooltipLin
                 ..HudTextStyle::default()
             },
             color: None,
-        }],
+        }
+        .into()],
     }
 }
 
@@ -516,7 +524,8 @@ fn name_line(text: &str, tint: [f32; 4], color: u32, italic: bool) -> NativeItem
                 ..HudTextStyle::default()
             },
             color: Some(color),
-        }],
+        }
+        .into()],
     }
 }
 
@@ -532,7 +541,8 @@ fn lore_line(text: &str) -> NativeItemTooltipLine {
                 ..HudTextStyle::default()
             },
             color: Some(0xAA_00_AA),
-        }],
+        }
+        .into()],
     }
 }
 
@@ -547,7 +557,8 @@ fn operator_warning_line(text: &str, bold: bool) -> NativeItemTooltipLine {
                 ..HudTextStyle::default()
             },
             color: Some(0xFF_55_55),
-        }],
+        }
+        .into()],
     }
 }
 
@@ -1737,7 +1748,8 @@ fn native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback() 
                         ..HudTextStyle::default()
                     },
                     color: Some(0xFF_AA_00),
-                }],
+                }
+                .into()],
             },
             tooltip_line("+5 Knockback Resistance", TOOLTIP_TEXT_BLUE),
             tooltip_line("Intangible", TOOLTIP_TEXT_GRAY),
@@ -2966,7 +2978,8 @@ fn native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback() 
                         ..HudTextStyle::default()
                     },
                     color: Some(0xAA_AA_AA),
-                }],
+                }
+                .into()],
             },
             italic_tooltip_line("Dyed", TOOLTIP_TEXT_GRAY, 0xAA_AA_AA),
             lore_line("After jukebox"),
@@ -3364,7 +3377,8 @@ fn native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback() 
                         ..HudTextStyle::default()
                     },
                     color: Some(0xFF_55_55),
-                }],
+                }
+                .into()],
             },
             NativeItemTooltipLine {
                 text: "Upright gold".to_string(),
@@ -3373,7 +3387,8 @@ fn native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback() 
                     text: "Upright gold".to_string(),
                     style: HudTextStyle::default(),
                     color: Some(0xFF_AA_00),
-                }],
+                }
+                .into()],
             },
         ])
     );

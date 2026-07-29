@@ -127,6 +127,12 @@ impl HudComponentTextRun {
     }
 }
 
+impl From<HudStyledTextRun> for HudComponentTextRun {
+    fn from(visual: HudStyledTextRun) -> Self {
+        Self { visual, font: None }
+    }
+}
+
 /// One glyph-quad draw pass in font-pixel space, mirroring a single
 /// `BakedSheetGlyph.render` call. `corners` are `[top_left, bottom_left,
 /// bottom_right, top_right]` (vanilla vertex winding); `shadow` marks the passes

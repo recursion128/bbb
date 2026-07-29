@@ -2917,10 +2917,10 @@ pub struct HudInventoryPreeditOverlay {
 pub struct HudInventoryTooltipLine {
     pub text: String,
     pub tint: [f32; 4],
-    /// Styled draw runs; concatenated run text matches `text`. Leave empty
-    /// for plain lines — sanitization synthesizes a single default-style run
+    /// Component draw runs; concatenated visual text matches `text`. Leave
+    /// empty for plain lines — sanitization synthesizes one default-font run
     /// from `text`.
-    pub runs: Vec<HudStyledTextRun>,
+    pub runs: Vec<HudComponentTextRun>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -7354,8 +7354,7 @@ impl Renderer {
                 self.hud_tooltip_frame.as_ref(),
                 &self.hud_tooltip_styles,
                 self.hud_font_atlas.as_ref(),
-                &self.hud_font_glyphs,
-                &self.hud_obfuscated_glyph_pool,
+                &self.hud_font_book,
                 self.counters.frame_index,
                 surface_size,
                 screen,
@@ -18215,8 +18214,7 @@ fn push_hud_inventory_tooltip<'a>(
     tooltip_frame: Option<&'a HudNineSliceSprite>,
     tooltip_styles: &'a HashMap<String, HudTooltipStyleSprites>,
     font_atlas: Option<&'a HudSpriteGpu>,
-    glyphs: &HudFontGlyphMap,
-    obfuscated_pool: &HudObfuscatedGlyphPool,
+    fonts: &HudFontGlyphBook,
     obfuscated_seed: u64,
     surface_size: PhysicalSize<u32>,
     screen: &HudInventoryScreen,
@@ -18230,7 +18228,7 @@ fn push_hud_inventory_tooltip<'a>(
     let Some(text_width) = tooltip
         .lines
         .iter()
-        .filter_map(|line| hud_font_runs_width(&line.runs, glyphs))
+        .filter_map(|line| hud_component_runs_width(&line.runs, fonts))
         .max()
     else {
         return;
@@ -18317,10 +18315,9 @@ fn push_hud_inventory_tooltip<'a>(
                 text_height,
                 line_index,
             );
-            let geometry = hud_styled_text_pass_geometry(
+            let geometry = hud_component_text_pass_geometry(
                 &line.runs,
-                glyphs,
-                obfuscated_pool,
+                fonts,
                 obfuscated_seed,
                 origin,
                 shadow_offset,
@@ -19706,7 +19703,8 @@ fn sanitize_hud_inventory_tooltip_line(
         return None;
     }
     let text = sanitize_hud_text_line(line.text)?;
-    let runs = sanitize_hud_styled_runs(line.runs, &text);
+    let mut budget = 256usize;
+    let runs = sanitize_hud_component_runs(line.runs, &text, &mut budget, false);
     Some(HudInventoryTooltipLine {
         text,
         tint: line.tint.map(|component| component.clamp(0.0, 1.0)),
@@ -24528,6 +24526,227 @@ mod tests {
     }
 
     #[test]
+    fn rich_component_inventory_tooltip_uses_custom_font_fallback_and_style_geometry() {
+        let fonts = component_test_font_book();
+        let runs = vec![
+            HudComponentTextRun {
+                visual: HudStyledTextRun {
+                    text: "a".to_string(),
+                    style: HudTextStyle {
+                        italic: true,
+                        underlined: true,
+                        strikethrough: true,
+                        ..HudTextStyle::default()
+                    },
+                    color: Some(0x1_12_34_56),
+                },
+                font: Some("example:wide".to_string()),
+            },
+            HudComponentTextRun {
+                visual: HudStyledTextRun::plain("a"),
+                font: Some("example:missing".to_string()),
+            },
+        ];
+
+        let sanitized = sanitize_hud_inventory_tooltip_line(HudInventoryTooltipLine {
+            text: "aa".to_string(),
+            tint: [2.0, -1.0, 0.5, 1.0],
+            runs,
+        })
+        .expect("valid tooltip line");
+        assert_eq!(sanitized.tint, [1.0, 0.0, 0.5, 1.0]);
+        assert_eq!(sanitized.runs[0].font.as_deref(), Some("example:wide"));
+        assert_eq!(sanitized.runs[0].visual.color, Some(0x12_34_56));
+        assert_eq!(sanitized.runs[1].font.as_deref(), Some("example:missing"));
+        assert_eq!(hud_component_runs_width(&sanitized.runs, &fonts), Some(16));
+
+        let geometry = hud_component_text_pass_geometry(
+            &sanitized.runs,
+            &fonts,
+            0,
+            (0.0, 0.0),
+            0.0,
+            false,
+            HUD_TINT_WHITE,
+            None,
+            1.0,
+        );
+        assert_eq!(geometry.glyph_quads.len(), 2);
+        assert_eq!(geometry.glyph_quads[0].0.uv.min[0], 0.6);
+        assert!(
+            geometry.glyph_quads[0].0.corners[0][0] > geometry.glyph_quads[0].0.corners[1][0],
+            "italic custom glyph must preserve the vanilla shear"
+        );
+        assert_eq!(
+            geometry.glyph_quads[1].0.uv.min[0], 0.1,
+            "missing tooltip font must fall back to minecraft:default"
+        );
+        assert_eq!(geometry.glyph_quads[1].0.corners[0][0], 10.0);
+        assert_eq!(geometry.effect_rects.len(), 2);
+    }
+
+    #[test]
+    fn rich_component_space_provider_advances_without_bitmap_quad() {
+        let mut glyphs = HudFontGlyphMap::new();
+        glyphs.insert_first_wins(
+            '\u{200c}',
+            HudAsciiGlyph {
+                advance: 9,
+                width: 0,
+                height: 0,
+                ..HudAsciiGlyph::default()
+            },
+        );
+        let fonts = HudFontGlyphBook::from(glyphs);
+        let runs = [HudComponentTextRun {
+            visual: HudStyledTextRun {
+                text: "\u{200c}".to_string(),
+                style: HudTextStyle {
+                    underlined: true,
+                    ..HudTextStyle::default()
+                },
+                color: None,
+            },
+            font: None,
+        }];
+
+        assert_eq!(hud_component_runs_width(&runs, &fonts), Some(9));
+        let geometry = hud_component_text_pass_geometry(
+            &runs,
+            &fonts,
+            0,
+            (0.0, 0.0),
+            0.0,
+            false,
+            HUD_TINT_WHITE,
+            None,
+            1.0,
+        );
+        assert!(
+            geometry.glyph_quads.is_empty(),
+            "space provider glyphs must not emit bitmap quads"
+        );
+        assert_eq!(geometry.effect_rects.len(), 1);
+        assert_eq!(
+            geometry.effect_rects[0].0.kind,
+            bbb_render_types::HudEffectKind::Underline
+        );
+        assert_eq!(
+            (geometry.effect_rects[0].0.x0, geometry.effect_rects[0].0.x1),
+            (-1.0, 9.0)
+        );
+    }
+
+    #[test]
+    fn rich_component_tooltip_sanitization_bounds_lines_fonts_text_and_tints() {
+        let line = || HudRichTooltipLine {
+            runs: vec![HudComponentTextRun {
+                visual: HudStyledTextRun {
+                    text: format!("\u{0007}{}", "x".repeat(100)),
+                    style: HudTextStyle::default(),
+                    color: Some(0x1_12_34_56),
+                },
+                font: Some(format!("example:\u{0007}{}", "f".repeat(300))),
+            }],
+            tint: [f32::NAN, 0.0, 0.0, 1.0],
+        };
+        let tooltip = sanitize_hud_rich_tooltip(HudRichTooltip {
+            style: Some(format!("example:\u{0007}{}", "s".repeat(300))),
+            lines: (0..65).map(|_| line()).collect(),
+            advanced_lines: Some((0..65).map(|_| line()).collect()),
+            wrap_text: false,
+        })
+        .expect("bounded tooltip remains non-empty");
+
+        let style = tooltip.style.as_deref().expect("sanitized style");
+        assert!(style.chars().count() <= 256);
+        assert!(!style.chars().any(char::is_control));
+        assert_eq!(tooltip.lines.len(), 64);
+        assert!(tooltip
+            .advanced_lines
+            .as_ref()
+            .is_some_and(|lines| lines.len() <= 64));
+        let all_lines = tooltip
+            .lines
+            .iter()
+            .chain(tooltip.advanced_lines.as_deref().unwrap_or_default().iter());
+        let total_utf16 = all_lines
+            .clone()
+            .flat_map(|line| line.runs.iter())
+            .map(|run| run.visual.text.encode_utf16().count())
+            .sum::<usize>();
+        assert!(total_utf16 <= 8_192);
+        assert!(all_lines.clone().all(|line| line.tint == HUD_TINT_WHITE));
+        assert!(all_lines.flat_map(|line| line.runs.iter()).all(|run| {
+            run.visual.color == Some(0x12_34_56)
+                && run.font.as_ref().is_some_and(|font| {
+                    font.chars().count() <= 256 && !font.chars().any(char::is_control)
+                })
+        }));
+    }
+
+    #[test]
+    fn offscreen_chat_custom_font_selects_its_atlas_region() {
+        let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        let glyph = |min_x| HudAsciiGlyph {
+            uv: HudUvRect {
+                min: [min_x, 0.0],
+                max: [min_x + 0.5, 1.0],
+            },
+            advance: 6,
+            width: 4,
+            height: 8,
+            ascent: HUD_FONT_BASELINE,
+        };
+        let mut default = HudFontGlyphMap::new();
+        default.insert_first_wins('a', glyph(0.0));
+        let mut custom = HudFontGlyphMap::new();
+        custom.insert_first_wins('a', glyph(0.5));
+        renderer
+            .upload_hud_font_atlas(
+                2,
+                1,
+                &[255, 0, 0, 255, 0, 255, 0, 255],
+                HudFontGlyphBook::from_fonts(
+                    "minecraft:default",
+                    BTreeMap::from([
+                        ("example:green".to_string(), custom),
+                        ("minecraft:default".to_string(), default),
+                    ]),
+                ),
+            )
+            .expect("font atlas");
+        renderer.set_hud_chat_messages(vec![HudChatMessage {
+            display_sequence: 1,
+            added_tick: 0,
+            runs: vec![HudComponentTextRun {
+                visual: HudStyledTextRun::plain("a"),
+                font: Some("example:green".to_string()),
+            }],
+            interactions: Vec::new(),
+            tag: None,
+        }]);
+        renderer.set_hud_chat_context(HudChatContext::default());
+
+        let pixels = renderer
+            .render_offscreen_frame()
+            .expect("offscreen chat frame");
+        let glyph_pixel = pixels.pixel(5, 193);
+        assert!(
+            glyph_pixel[1] > glyph_pixel[0] && glyph_pixel[1] > glyph_pixel[2],
+            "custom-font chat glyph should sample the green atlas half, got {glyph_pixel:?}"
+        );
+    }
+
+    #[test]
     fn action_bar_collect_draws_uses_the_full_font_book_for_both_text_passes() {
         let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
             return;
@@ -25492,12 +25711,12 @@ mod tests {
                     HudInventoryTooltipLine {
                         text: "Diamond Sword".to_string(),
                         tint: [1.0, 1.0, 0.5, 1.0],
-                        runs: vec![HudStyledTextRun::plain("Diamond Sword")],
+                        runs: vec![HudComponentTextRun::plain("Diamond Sword")],
                     },
                     HudInventoryTooltipLine {
                         text: "AttackDamage".to_string(),
                         tint: [0.25, 0.5, 0.75, 1.0],
-                        runs: vec![HudStyledTextRun::plain("AttackDamage")],
+                        runs: vec![HudComponentTextRun::plain("AttackDamage")],
                     },
                 ],
             })

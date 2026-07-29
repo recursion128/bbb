@@ -601,10 +601,16 @@ fn component_hover_show_item_reuses_the_native_item_tooltip_builder() {
         count: 3,
         components: Some(NbtSummaryValue::Compound(vec![NbtSummaryEntry {
             name: "minecraft:custom_name".to_string(),
-            value: NbtSummaryValue::Compound(vec![NbtSummaryEntry {
-                name: "text".to_string(),
-                value: NbtSummaryValue::String("Hover Stone".to_string()),
-            }]),
+            value: NbtSummaryValue::Compound(vec![
+                NbtSummaryEntry {
+                    name: "text".to_string(),
+                    value: NbtSummaryValue::String("Hover Stone".to_string()),
+                },
+                NbtSummaryEntry {
+                    name: "font".to_string(),
+                    value: NbtSummaryValue::String("example:tooltip".to_string()),
+                },
+            ]),
         }])),
     };
     let tooltip = super::component_hover::hud_component_hover_tooltip(
@@ -614,6 +620,10 @@ fn component_hover_show_item_reuses_the_native_item_tooltip_builder() {
     )
     .unwrap();
     assert_eq!(tooltip.lines[0].runs[0].visual.text, "Hover Stone");
+    assert_eq!(
+        tooltip.lines[0].runs[0].font.as_deref(),
+        Some("example:tooltip")
+    );
     assert!(tooltip.lines[0].runs[0].visual.style.italic);
     assert!(tooltip
         .advanced_lines
@@ -1209,7 +1219,8 @@ fn tooltip_name_line(
                 ..Default::default()
             },
             color: Some(color),
-        }],
+        }
+        .into()],
     }
 }
 
@@ -1226,7 +1237,8 @@ fn tooltip_lore_line(text: &str) -> HudInventoryTooltipLine {
                 ..Default::default()
             },
             color: Some(0xAA_00_AA),
-        }],
+        }
+        .into()],
     }
 }
 
@@ -1234,7 +1246,7 @@ fn tooltip_plain_line(text: &str, tint: [f32; 4]) -> HudInventoryTooltipLine {
     HudInventoryTooltipLine {
         text: text.to_string(),
         tint,
-        runs: vec![bbb_renderer::HudStyledTextRun::plain(text)],
+        runs: vec![bbb_renderer::HudStyledTextRun::plain(text).into()],
     }
 }
 
@@ -1247,7 +1259,7 @@ fn tooltip_enchantment_line(description: &str, level: &str, color: u32) -> HudIn
     HudInventoryTooltipLine {
         text: format!("{description} {level}"),
         tint: TOOLTIP_TEST_GRAY,
-        runs: vec![run(description), run(" "), run(level)],
+        runs: vec![run(description).into(), run(" ").into(), run(level).into()],
     }
 }
 
@@ -1262,7 +1274,8 @@ fn tooltip_operator_warning_line(text: &str, bold: bool) -> HudInventoryTooltipL
                 ..Default::default()
             },
             color: Some(0xFF_55_55),
-        }],
+        }
+        .into()],
     }
 }
 
