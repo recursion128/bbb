@@ -20,6 +20,7 @@ mod local_player_destroy;
 mod local_player_fluid;
 mod local_player_movement;
 mod player_info;
+mod reporting;
 mod scoreboard;
 pub(crate) use scoreboard::scoreboard_team_formatting_style;
 mod server_presentation;

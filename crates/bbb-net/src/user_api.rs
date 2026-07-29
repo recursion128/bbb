@@ -10,6 +10,8 @@ use reqwest::{Client, Response, StatusCode};
 use serde::{ser::SerializeStruct, Deserialize, Serialize, Serializer};
 use uuid::Uuid;
 
+mod report;
+
 const MINECRAFT_SERVICES_BASE_URL: &str = "https://api.minecraftservices.com";
 const USER_API_TIMEOUT: Duration = Duration::from_secs(5);
 const BLOCK_LIST_REFRESH_COOLDOWN_SECONDS: i64 = 120;
@@ -428,6 +430,9 @@ impl Serialize for AbuseReportMessage {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bbb_world::{
+        BuiltPlayerReport, BuiltPlayerReportMessage, PlayerReportReason, PlayerReportType,
+    };
     use tokio::{
         io::{AsyncReadExt, AsyncWriteExt},
         net::{TcpListener, TcpStream},
@@ -517,6 +522,100 @@ mod tests {
             realm_info: None,
             report_type: AbuseReportType::Chat,
         }
+    }
+
+    fn built_chat_report() -> BuiltPlayerReport {
+        BuiltPlayerReport {
+            id: Uuid::from_u128(20),
+            report_type: PlayerReportType::Chat,
+            comments: "context".to_string(),
+            reason: Some(PlayerReportReason::HateSpeech),
+            evidence: Some(vec![BuiltPlayerReportMessage {
+                index: 4,
+                profile_id: Uuid::from_u128(21),
+                session_id: Uuid::from_u128(22),
+                timestamp_millis: 1,
+                salt: 23,
+                last_seen_signatures: vec![vec![0, 1, 2]],
+                message: "signed".to_string(),
+                signature: None,
+                message_reported: true,
+            }]),
+            skin_url: None,
+            reported_profile_id: Uuid::from_u128(21),
+            created_at_epoch_millis: 0,
+            environment: bbb_world::PlayerReportEnvironment::third_party(
+                "26.1 (modded)",
+                "en-US",
+                "example.org:25565",
+            ),
+        }
+    }
+
+    #[test]
+    fn abuse_report_conversion_projects_world_builder_with_iso_instants_and_null_signature() {
+        let request = AbuseReportRequest::try_from(built_chat_report()).unwrap();
+        let value = serde_json::to_value(request).unwrap();
+
+        assert_eq!(value["version"], 1);
+        assert_eq!(value["reportType"], "CHAT");
+        assert_eq!(value["report"]["reason"], "HATE_SPEECH");
+        assert_eq!(value["report"]["createdTime"], "1970-01-01T00:00:00Z");
+        assert_eq!(
+            value["report"]["evidence"]["messages"][0]["timestamp"],
+            "1970-01-01T00:00:00.001Z"
+        );
+        assert_eq!(
+            value["report"]["evidence"]["messages"][0]["lastSeen"][0],
+            "AAEC"
+        );
+        assert_eq!(
+            value["report"]["evidence"]["messages"][0]["signature"],
+            serde_json::Value::Null
+        );
+        assert_eq!(
+            value["thirdPartyServerInfo"]["address"],
+            "example.org:25565"
+        );
+        assert_eq!(value["realmInfo"], serde_json::Value::Null);
+    }
+
+    #[test]
+    fn abuse_report_conversion_rejects_mismatched_shapes_and_out_of_range_instants() {
+        let mut mismatched = built_chat_report();
+        mismatched.report_type = PlayerReportType::Username;
+        assert_eq!(
+            AbuseReportRequest::try_from(mismatched).unwrap_err().kind(),
+            MinecraftUserApiErrorKind::InvalidRequest
+        );
+
+        let mut invalid_time = built_chat_report();
+        invalid_time.created_at_epoch_millis = i64::MAX;
+        let error = AbuseReportRequest::try_from(invalid_time).unwrap_err();
+        assert_eq!(error.kind(), MinecraftUserApiErrorKind::InvalidRequest);
+        assert!(error.to_string().contains("timestamp"));
+    }
+
+    #[test]
+    fn abuse_report_conversion_preserves_nullable_skin_and_username_fields() {
+        let mut skin = built_chat_report();
+        skin.report_type = PlayerReportType::Skin;
+        skin.reason = Some(PlayerReportReason::HateSpeech);
+        skin.evidence = None;
+        let skin = serde_json::to_value(AbuseReportRequest::try_from(skin).unwrap()).unwrap();
+        assert_eq!(skin["reportType"], "SKIN");
+        assert_eq!(skin["report"]["evidence"], serde_json::Value::Null);
+        assert_eq!(skin["report"]["skinUrl"], serde_json::Value::Null);
+
+        let mut username = built_chat_report();
+        username.report_type = PlayerReportType::Username;
+        username.reason = None;
+        username.evidence = None;
+        let username =
+            serde_json::to_value(AbuseReportRequest::try_from(username).unwrap()).unwrap();
+        assert_eq!(username["reportType"], "USERNAME");
+        assert_eq!(username["report"]["reason"], serde_json::Value::Null);
+        assert_eq!(username["report"]["evidence"], serde_json::Value::Null);
     }
 
     #[test]

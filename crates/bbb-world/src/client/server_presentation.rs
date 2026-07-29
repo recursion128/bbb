@@ -177,6 +177,7 @@ impl WorldStore {
     pub fn apply_transfer(&mut self, packet: ProtocolTransfer) -> &TransferTargetState {
         self.counters.transfer_packets += 1;
         self.set_social_server_target(&packet.host, packet.port);
+        self.set_player_report_server_address(self.player_social.server_label.clone());
         self.presentation.last_transfer = Some(TransferTargetState {
             host: packet.host,
             port: packet.port,

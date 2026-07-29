@@ -138,9 +138,25 @@ pub struct ChatReportEventState {
     pub displayed_content: String,
     pub received_epoch_millis: i64,
     pub message_timestamp_millis: Option<i64>,
+    #[serde(default)]
+    pub signed_message: Option<ChatReportSignedMessageState>,
     pub trust_level: Option<ChatTrustLevelState>,
     pub signature: Option<ChatSignatureState>,
     pub filter_mask: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChatReportSignedMessageState {
+    pub index: i32,
+    pub sender: Uuid,
+    pub session_id: Uuid,
+    pub timestamp_millis: i64,
+    pub salt: i64,
+    pub content: String,
+    #[serde(skip)]
+    pub last_seen_signatures: Vec<Vec<u8>>,
+    #[serde(skip)]
+    pub signature: Option<Vec<u8>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -177,6 +193,8 @@ pub struct DelayedChatMessageState {
     pub validation_error: bool,
     pub acknowledge_signature: Option<ProcessedChatSignatureState>,
     pub message_timestamp_millis: i64,
+    #[serde(default)]
+    pub signed_message: Option<ChatReportSignedMessageState>,
 }
 
 impl DelayedChatMessageState {

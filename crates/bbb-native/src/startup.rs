@@ -17,7 +17,7 @@ use bbb_renderer::{
     VANILLA_DEFAULT_RENDER_DISTANCE_CHUNKS, VANILLA_MAX_MENU_BACKGROUND_BLURRINESS,
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
 };
-use bbb_world::TutorialStep;
+use bbb_world::{PlayerReportEnvironment, TutorialStep};
 use clap::{ArgAction, Parser, ValueEnum};
 use serde::{Deserialize, Serialize};
 use tokio::{runtime::Runtime, sync::mpsc};
@@ -539,6 +539,45 @@ pub(crate) fn services_block_list_client_from_args(
         .transpose()
 }
 
+pub(crate) fn report_locale_from_client_locale(locale: &str) -> String {
+    locale
+        .split(['-', '_'])
+        .enumerate()
+        .map(|(index, part)| {
+            if index == 0 {
+                part.to_ascii_lowercase()
+            } else if part.len() == 2 && part.bytes().all(|byte| byte.is_ascii_alphabetic()) {
+                part.to_ascii_uppercase()
+            } else if part.len() == 4 && part.bytes().all(|byte| byte.is_ascii_alphabetic()) {
+                let mut chars = part.chars();
+                chars
+                    .next()
+                    .map(|first| {
+                        format!(
+                            "{}{}",
+                            first.to_ascii_uppercase(),
+                            chars.as_str().to_ascii_lowercase()
+                        )
+                    })
+                    .unwrap_or_default()
+            } else {
+                part.to_ascii_lowercase()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("-")
+}
+
+pub(crate) fn player_report_environment_from_args(args: &Args) -> Option<PlayerReportEnvironment> {
+    args.profile_id.map(|_| {
+        PlayerReportEnvironment::third_party(
+            format!("{} (modded)", bbb_protocol::MC_VERSION),
+            report_locale_from_client_locale(&args.client_locale),
+            args.server.clone(),
+        )
+    })
+}
+
 pub(crate) fn client_information_from_args(args: &Args) -> Result<ClientInformation> {
     ensure!(
         args.client_locale.len() <= 16,
@@ -848,6 +887,40 @@ mod tests {
         ])
         .unwrap();
         assert!(services_block_list_client_from_args(&empty).is_err());
+    }
+
+    #[test]
+    fn player_reporting_locale_uses_bcp47_style_startup_language_tag() {
+        assert_eq!(report_locale_from_client_locale("en_us"), "en-US");
+        assert_eq!(report_locale_from_client_locale("zh_hans_cn"), "zh-Hans-CN");
+        assert_eq!(report_locale_from_client_locale("pt-BR"), "pt-BR");
+    }
+
+    #[test]
+    fn player_reporting_environment_requires_authenticated_startup_credentials() {
+        let offline = Args::try_parse_from(["bbb-native"]).unwrap();
+        assert_eq!(player_report_environment_from_args(&offline), None);
+
+        let authenticated = Args::try_parse_from([
+            "bbb-native",
+            "--server",
+            "example.org:25565",
+            "--client-locale",
+            "zh_hans_cn",
+            "--profile-id",
+            "12345678-1234-5678-90ab-cdef12345678",
+            "--access-token",
+            "sensitive-access-token",
+        ])
+        .unwrap();
+        assert_eq!(
+            player_report_environment_from_args(&authenticated),
+            Some(PlayerReportEnvironment::third_party(
+                format!("{} (modded)", bbb_protocol::MC_VERSION),
+                "zh-Hans-CN",
+                "example.org:25565",
+            ))
+        );
     }
 
     #[test]

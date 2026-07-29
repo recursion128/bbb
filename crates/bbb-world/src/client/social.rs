@@ -622,6 +622,7 @@ mod tests {
             displayed_content: "hello".to_string(),
             received_epoch_millis: 1,
             message_timestamp_millis: Some(1),
+            signed_message: None,
             trust_level: Some(ChatTrustLevelState::Secure),
             signature,
             filter_mask: None,

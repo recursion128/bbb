@@ -14,9 +14,10 @@ use crate::{
     ClientUiState, ClientWaypointsState, CommandSuggestionsState, CommandTreeState, InventoryState,
     ItemCooldownState, LastMapColorPatchState, LevelEventRecord, LocalBlockPredictionState,
     LocalInteractionParticleAction, LocalPlayerState, MapItemState, PlayerInfoState,
-    PlayerSocialState, ProjectilePowerUpdateState, PublicationShared, RegistrySet, ScoreboardState,
-    ServerPresentationState, WorldApplyDiagnosticsState, WorldBorderState, WorldCounters,
-    WorldDimension, WorldGameplayState, WorldLevelInfo, WorldLevelLoadState,
+    PlayerReportingState, PlayerSocialState, ProjectilePowerUpdateState, PublicationShared,
+    RegistrySet, ScoreboardState, ServerPresentationState, WorldApplyDiagnosticsState,
+    WorldBorderState, WorldCounters, WorldDimension, WorldGameplayState, WorldLevelInfo,
+    WorldLevelLoadState,
 };
 
 /// Exact runtime-only invalidation key for the block-entity projections whose
@@ -179,6 +180,8 @@ pub struct WorldStore {
     pub(crate) player_info: PlayerInfoState,
     #[serde(default)]
     pub(crate) player_social: PlayerSocialState,
+    #[serde(default)]
+    pub(crate) player_reporting: PlayerReportingState,
     #[serde(default)]
     pub(crate) presentation: ServerPresentationState,
     #[serde(default)]

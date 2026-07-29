@@ -19,7 +19,8 @@ mod presentation;
 pub use presentation::{
     ChatMessageSourceState, ChatMessageTagState, ChatNarrationKind, ChatNarrationRequest,
     ChatPresentationConfig, ChatReportEventKind, ChatReportEventState, ChatReportLogState,
-    ChatTrustLevelState, ChatVisibilityState, DelayedChatMessageState,
+    ChatReportSignedMessageState, ChatTrustLevelState, ChatVisibilityState,
+    DelayedChatMessageState,
 };
 
 use crate::{
@@ -581,7 +582,7 @@ impl WorldStore {
             full_signature: None,
         };
         if kind == ChatMessageKind::System {
-            self.push_chat_report_event(&message, ChatReportEventKind::System, None);
+            self.push_chat_report_event(&message, ChatReportEventKind::System, None, None);
         }
         self.push_visible_chat_message(message, narration_kind);
         refresh_chat_counters(self);
@@ -647,19 +648,26 @@ impl WorldStore {
         );
 
         let enforces_secure_chat = self.effectively_enforces_secure_chat();
-        let validation_state = match self.player_info.entries.get_mut(&packet.sender) {
-            None => ChatValidationState::UnknownSender,
-            Some(sender) => match sender.chat_session.as_mut() {
-                Some(session) => validate_remote_player_chat(
-                    session,
-                    &packet,
-                    &resolved_last_seen,
-                    now_epoch_millis,
-                ),
-                None if enforces_secure_chat => ChatValidationState::MissingProfileKey,
-                None => ChatValidationState::Unsigned,
-            },
-        };
+        let (validation_state, report_session_id) =
+            match self.player_info.entries.get_mut(&packet.sender) {
+                None => (ChatValidationState::UnknownSender, None),
+                Some(sender) => match sender.chat_session.as_mut() {
+                    Some(session) => {
+                        let session_id = session.session_id;
+                        (
+                            validate_remote_player_chat(
+                                session,
+                                &packet,
+                                &resolved_last_seen,
+                                now_epoch_millis,
+                            ),
+                            Some(session_id),
+                        )
+                    }
+                    None if enforces_secure_chat => (ChatValidationState::MissingProfileKey, None),
+                    None => (ChatValidationState::Unsigned, None),
+                },
+            };
         let validation_error = matches!(
             validation_state,
             ChatValidationState::UnknownSender
@@ -678,6 +686,24 @@ impl WorldStore {
             })
             .flatten();
         let message_timestamp_millis = packet.body.timestamp_millis;
+        let signed_message = (validation_state == ChatValidationState::Validated).then(|| {
+            ChatReportSignedMessageState {
+                index: packet.index,
+                sender: packet.sender,
+                session_id: report_session_id.expect("validated chat has a remote session"),
+                timestamp_millis: packet.body.timestamp_millis,
+                salt: packet.body.salt,
+                content: packet.body.content.clone(),
+                last_seen_signatures: resolved_last_seen
+                    .iter()
+                    .map(|signature| signature.bytes.clone())
+                    .collect(),
+                signature: packet
+                    .signature
+                    .as_ref()
+                    .map(|signature| signature.bytes.clone()),
+            }
+        });
 
         if packet.unsigned_content.is_some() {
             self.counters.player_chat_unsigned_content_packets += 1;
@@ -811,6 +837,7 @@ impl WorldStore {
             validation_error,
             acknowledge_signature,
             message_timestamp_millis,
+            signed_message,
         };
         let acknowledgement = self.handle_or_delay_chat_message(delayed, now_monotonic_millis);
         refresh_chat_counters(self);
@@ -885,6 +912,7 @@ impl WorldStore {
             validation_error: false,
             acknowledge_signature: None,
             message_timestamp_millis: now_epoch_millis,
+            signed_message: None,
         };
         let _ = self.handle_or_delay_chat_message(delayed, now_monotonic_millis);
         refresh_chat_counters(self);
@@ -959,7 +987,7 @@ impl WorldStore {
                 return ChatDeliveryOutcome::default();
             }
             delayed.message.tag = Some(ChatMessageTagState::System);
-            self.push_chat_report_event(&delayed.message, ChatReportEventKind::System, None);
+            self.push_chat_report_event(&delayed.message, ChatReportEventKind::System, None, None);
             self.push_visible_chat_message(delayed.message, ChatNarrationKind::Chat);
             self.client_chat.last_delivery_monotonic_millis = now_monotonic_millis;
             return ChatDeliveryOutcome {
@@ -1000,6 +1028,7 @@ impl WorldStore {
                 &delayed.message,
                 ChatReportEventKind::Player,
                 Some(delayed.message_timestamp_millis),
+                delayed.signed_message.as_ref(),
             );
             self.push_visible_chat_message(delayed.message, ChatNarrationKind::Chat);
             self.client_chat.last_delivery_monotonic_millis = now_monotonic_millis;
@@ -1144,6 +1173,7 @@ impl WorldStore {
         message: &ChatMessageState,
         kind: ChatReportEventKind,
         message_timestamp_millis: Option<i64>,
+        signed_message: Option<&ChatReportSignedMessageState>,
     ) {
         self.client_chat.report_log.push(ChatReportEventState {
             id: 0,
@@ -1156,6 +1186,7 @@ impl WorldStore {
             displayed_content: styled_chat_summary_text(&message.styled_content),
             received_epoch_millis: message.received_epoch_millis,
             message_timestamp_millis,
+            signed_message: signed_message.cloned(),
             trust_level: (message.kind == ChatMessageKind::Player).then_some(message.trust_level),
             signature: message.signature.clone(),
             filter_mask: (message.kind == ChatMessageKind::Player)
@@ -2879,6 +2910,7 @@ mod tests {
                 only_show_secure: false,
                 validation_error: false,
                 message_timestamp_millis: 1,
+                signed_message: None,
             });
 
         assert_eq!(
@@ -2931,6 +2963,18 @@ mod tests {
         assert_eq!(store.client_chat().messages[0].content, "first");
         assert_eq!(store.client_chat().delayed_messages.len(), 1);
         assert_eq!(store.client_chat().report_log.events.len(), 1);
+        let signed = store.client_chat().report_log.events[0]
+            .signed_message
+            .as_ref()
+            .unwrap();
+        assert_eq!(signed.index, 0);
+        assert_eq!(signed.sender, sender);
+        assert_eq!(signed.session_id, session_id);
+        assert_eq!(signed.timestamp_millis, 1_000);
+        assert_eq!(signed.salt, 17);
+        assert_eq!(signed.content, "first");
+        assert!(signed.last_seen_signatures.is_empty());
+        assert!(signed.signature.is_some());
         assert_eq!(store.client_chat().acknowledgement.pending_offset, 1);
 
         assert!(store.advance_chat_listener(1_099, false).is_empty());

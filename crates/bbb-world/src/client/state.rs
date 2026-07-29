@@ -17,9 +17,9 @@ pub use crate::client::chat::{
     ChatDecorationArgumentState, ChatDecorationState, ChatDisconnectReason, ChatMessageKind,
     ChatMessageSourceState, ChatMessageState, ChatMessageTagState, ChatNarrationKind,
     ChatNarrationRequest, ChatPresentationConfig, ChatReportEventKind, ChatReportEventState,
-    ChatReportLogState, ChatSignatureState, ChatTrustLevelState, ChatTypeState,
-    ChatValidationState, ChatVisibilityState, ClientChatState, DelayedChatMessageState,
-    DeletedChatState, OutboundLastSeenMessages,
+    ChatReportLogState, ChatReportSignedMessageState, ChatSignatureState, ChatTrustLevelState,
+    ChatTypeState, ChatValidationState, ChatVisibilityState, ClientChatState,
+    DelayedChatMessageState, DeletedChatState, OutboundLastSeenMessages,
 };
 pub use crate::client::combat::{
     ClientCombatState, ClientDeathScreenState, LocalPlayerCrosshairAttackIndicatorState,
@@ -85,6 +85,13 @@ pub use crate::client::local_player_destroy::{
 };
 pub use crate::client::player_info::{
     PlayerInfoEntryState, PlayerInfoProfileState, PlayerInfoState,
+};
+pub use crate::client::reporting::{
+    player_report_reasons, BuiltPlayerReport, BuiltPlayerReportMessage, PlayerReportBuildError,
+    PlayerReportDraft, PlayerReportDraftCommon, PlayerReportEnvironment, PlayerReportMutationError,
+    PlayerReportReason, PlayerReportType, PlayerReportingState, LEADING_REPORT_CONTEXT_MESSAGES,
+    MAX_REPORT_COMMENT_UTF16_UNITS, MAX_REPORT_EVIDENCE_MESSAGES, MAX_SELECTED_REPORT_MESSAGES,
+    TRAILING_REPORT_CONTEXT_MESSAGES,
 };
 pub use crate::client::scoreboard::{
     ScoreboardObjective, ScoreboardPlayerListScoreState, ScoreboardScore,
