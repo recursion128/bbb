@@ -134,6 +134,7 @@ pub(super) fn hud_creative_inventory_screen(
         foreground_items: Vec::new(),
         ghost_items: Vec::new(),
         entity_previews,
+        map_previews: Vec::new(),
         text_labels,
         scroll_area: None,
         preedit_overlay: None,

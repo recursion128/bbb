@@ -22655,6 +22655,7 @@ fn hud_inventory_screen_projects_cartography_table_map_frame() {
             ),
         ]
     );
+    assert!(screen.map_previews.is_empty());
 }
 
 #[test]
@@ -22743,18 +22744,218 @@ fn hud_inventory_screen_projects_cartography_table_result_modes() {
 }
 
 #[test]
+fn hud_inventory_screen_projects_cartography_map_previews_with_vanilla_strata() {
+    let cases = [
+        (
+            map_stack(100, 1, 42, None),
+            vec![HudInventoryMapPreview {
+                map_id: 42,
+                x: 71,
+                y: 17,
+                scale: 0.45,
+                after_background_layer: 1,
+            }],
+        ),
+        (
+            map_stack(
+                100,
+                1,
+                42,
+                Some(bbb_protocol::packets::MapPostProcessingSummary::Scale),
+            ),
+            vec![HudInventoryMapPreview {
+                map_id: 42,
+                x: 85,
+                y: 31,
+                scale: 0.226,
+                after_background_layer: 1,
+            }],
+        ),
+        (
+            map_stack(100, 2, 42, None),
+            vec![
+                HudInventoryMapPreview {
+                    map_id: 42,
+                    x: 86,
+                    y: 16,
+                    scale: 0.34,
+                    after_background_layer: 1,
+                },
+                HudInventoryMapPreview {
+                    map_id: 42,
+                    x: 70,
+                    y: 32,
+                    scale: 0.34,
+                    after_background_layer: 2,
+                },
+            ],
+        ),
+        (
+            map_stack(
+                100,
+                1,
+                42,
+                Some(bbb_protocol::packets::MapPostProcessingSummary::Lock),
+            ),
+            vec![HudInventoryMapPreview {
+                map_id: 42,
+                x: 71,
+                y: 17,
+                scale: 0.45,
+                after_background_layer: 1,
+            }],
+        ),
+    ];
+
+    for (result_stack, expected_previews) in cases {
+        let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 39];
+        items[0] = map_stack(100, 1, 42, None);
+        items[2] = result_stack;
+        let mut world = cartography_table_world_with_items(items);
+        apply_cartography_map_state(&mut world, 42, 2, false);
+
+        let screen = hud_inventory_screen(&world, None, None, 0.0).unwrap();
+
+        assert_eq!(screen.map_previews, expected_previews);
+    }
+}
+
+#[test]
+fn cartography_presentation_uses_world_item_profiles_without_item_runtime() {
+    let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 39];
+    items[0] = map_stack(100, 1, 42, None);
+    items[1] = item_stack(200, 1);
+    let mut world = cartography_table_world_with_items(items);
+    world.set_cartography_additional_items(BTreeMap::from([(
+        200,
+        CartographyAdditionalItemKind::Paper,
+    )]));
+    apply_cartography_map_state(&mut world, 42, 2, false);
+
+    let presentation = cartography_table_presentation(&world, None);
+
+    assert_eq!(presentation.mode, Some(CartographyResultMode::Scaled));
+    assert!(!presentation.invalid_transform);
+    assert_eq!(
+        presentation.map_previews,
+        vec![HudInventoryMapPreview {
+            map_id: 42,
+            x: 85,
+            y: 31,
+            scale: 0.226,
+            after_background_layer: 1,
+        }]
+    );
+}
+
+#[test]
+fn cartography_presentation_keeps_known_mode_without_missing_map_pixels() {
+    let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 39];
+    items[0] = map_stack(100, 1, 42, None);
+    items[1] = item_stack(200, 1);
+    let mut world = cartography_table_world_with_items(items);
+    world.set_cartography_additional_items(BTreeMap::from([(
+        200,
+        CartographyAdditionalItemKind::Paper,
+    )]));
+
+    let presentation = cartography_table_presentation(&world, None);
+
+    assert_eq!(presentation.mode, Some(CartographyResultMode::Scaled));
+    assert!(!presentation.invalid_transform);
+    assert_eq!(
+        presentation.background_layers[1].texture,
+        HudInventoryBackgroundTexture::CartographyTableScaledMap
+    );
+    assert!(presentation.map_previews.is_empty());
+}
+
+#[test]
+fn cartography_presentation_matches_vanilla_invalid_transform_modes() {
+    let cases = [
+        (
+            CartographyAdditionalItemKind::Paper,
+            4,
+            false,
+            CartographyResultMode::Map,
+            HudInventoryBackgroundTexture::CartographyTableMap,
+        ),
+        (
+            CartographyAdditionalItemKind::Paper,
+            2,
+            true,
+            CartographyResultMode::Map,
+            HudInventoryBackgroundTexture::CartographyTableMap,
+        ),
+        (
+            CartographyAdditionalItemKind::GlassPane,
+            2,
+            true,
+            CartographyResultMode::Locked,
+            HudInventoryBackgroundTexture::CartographyTableLocked,
+        ),
+    ];
+
+    for (kind, scale, locked, expected_mode, last_texture) in cases {
+        let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 39];
+        items[0] = map_stack(100, 1, 42, None);
+        items[1] = item_stack(200, 1);
+        let mut world = cartography_table_world_with_items(items);
+        world.set_cartography_additional_items(BTreeMap::from([(200, kind)]));
+        apply_cartography_map_state(&mut world, 42, scale, locked);
+
+        let presentation = cartography_table_presentation(&world, None);
+
+        assert_eq!(presentation.mode, Some(expected_mode));
+        assert!(presentation.invalid_transform);
+        assert_eq!(
+            presentation.background_layers[1].texture,
+            HudInventoryBackgroundTexture::CartographyTableError
+        );
+        assert_eq!(
+            presentation.background_layers.last().unwrap().texture,
+            last_texture
+        );
+        assert_eq!(presentation.map_previews.len(), 1);
+        assert_eq!(presentation.map_previews[0].after_background_layer, 2);
+    }
+}
+
+#[test]
+fn cartography_presentation_uses_result_when_item_identity_is_unavailable() {
+    let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 39];
+    items[0] = map_stack(100, 1, 42, None);
+    items[1] = item_stack(999, 1);
+    items[2] = map_stack(
+        100,
+        1,
+        42,
+        Some(bbb_protocol::packets::MapPostProcessingSummary::Lock),
+    );
+    let mut world = cartography_table_world_with_items(items);
+    apply_cartography_map_state(&mut world, 42, 2, false);
+
+    let presentation = cartography_table_presentation(&world, None);
+
+    assert_eq!(presentation.mode, Some(CartographyResultMode::Locked));
+    assert!(!presentation.invalid_transform);
+    assert_eq!(presentation.map_previews.len(), 1);
+    assert_eq!(presentation.map_previews[0].after_background_layer, 1);
+}
+
+#[test]
 fn cartography_additional_item_resource_ids_match_vanilla_items() {
     assert_eq!(
         cartography_additional_item_for_resource_id("minecraft:paper"),
-        Some(CartographyAdditionalItem::Paper)
+        Some(CartographyAdditionalItemKind::Paper)
     );
     assert_eq!(
         cartography_additional_item_for_resource_id("minecraft:map"),
-        Some(CartographyAdditionalItem::EmptyMap)
+        Some(CartographyAdditionalItemKind::EmptyMap)
     );
     assert_eq!(
         cartography_additional_item_for_resource_id("minecraft:glass_pane"),
-        Some(CartographyAdditionalItem::GlassPane)
+        Some(CartographyAdditionalItemKind::GlassPane)
     );
     assert_eq!(
         cartography_additional_item_for_resource_id("minecraft:filled_map"),
@@ -24497,6 +24698,18 @@ fn cartography_table_world_with_items(
         carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
     });
     world
+}
+
+fn apply_cartography_map_state(world: &mut WorldStore, map_id: i32, scale: i8, locked: bool) {
+    assert!(
+        world.apply_map_item_data(bbb_protocol::packets::MapItemData {
+            map_id,
+            scale,
+            locked,
+            decorations: None,
+            color_patch: None,
+        })
+    );
 }
 
 fn map_stack(

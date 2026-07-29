@@ -2997,6 +2997,21 @@ pub struct HudInventoryScrollbar {
     pub thumb_height: u32,
 }
 
+/// One dynamic map rendered inside an inventory screen. Coordinates are
+/// relative to the centered screen origin. `after_background_layer` preserves
+/// Vanilla GUI strata by inserting the complete pixels/decorations/name stack
+/// immediately after the indexed background layer.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HudInventoryMapPreview {
+    pub map_id: i32,
+    pub x: i32,
+    pub y: i32,
+    pub scale: f32,
+    pub after_background_layer: usize,
+}
+
+const MAX_HUD_INVENTORY_MAP_PREVIEWS: usize = 2;
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct HudInventoryScreen {
     pub width: u32,
@@ -3016,6 +3031,9 @@ pub struct HudInventoryScreen {
     pub ghost_items: Vec<HudInventoryGhostItem>,
     /// Entity previews drawn through vanilla GUI picture-in-picture renderers.
     pub entity_previews: Vec<HudEntityPreview>,
+    /// Dynamic cartography previews interleaved with the static background
+    /// layers according to each entry's insertion point.
+    pub map_previews: Vec<HudInventoryMapPreview>,
     pub text_labels: Vec<HudInventoryTextLabel>,
     pub scroll_area: Option<HudInventoryScrollArea>,
     pub preedit_overlay: Option<HudInventoryPreeditOverlay>,
@@ -19091,14 +19109,27 @@ fn sanitize_hud_hotbar_item_uv(uv: HudUvRect) -> Option<HudItemIcon> {
 }
 
 fn sanitize_hud_inventory_screen(screen: HudInventoryScreen) -> HudInventoryScreen {
+    let background_layers = screen
+        .background_layers
+        .into_iter()
+        .filter_map(sanitize_hud_inventory_background_layer)
+        .collect::<Vec<_>>();
+    let map_previews = screen
+        .map_previews
+        .into_iter()
+        .filter(|preview| {
+            preview.map_id >= 0
+                && preview.scale.is_finite()
+                && preview.scale > 0.0
+                && preview.scale <= 4.0
+                && preview.after_background_layer < background_layers.len()
+        })
+        .take(MAX_HUD_INVENTORY_MAP_PREVIEWS)
+        .collect();
     HudInventoryScreen {
         width: screen.width.clamp(1, 512),
         height: screen.height.clamp(1, 512),
-        background_layers: screen
-            .background_layers
-            .into_iter()
-            .filter_map(sanitize_hud_inventory_background_layer)
-            .collect(),
+        background_layers,
         foreground_layers: screen
             .foreground_layers
             .into_iter()
@@ -19134,6 +19165,7 @@ fn sanitize_hud_inventory_screen(screen: HudInventoryScreen) -> HudInventoryScre
             .into_iter()
             .filter_map(sanitize_hud_entity_preview)
             .collect(),
+        map_previews,
         text_labels: screen
             .text_labels
             .into_iter()
@@ -21758,6 +21790,7 @@ mod tests {
             foreground_items: Vec::new(),
             ghost_items: Vec::new(),
             entity_previews: Vec::new(),
+            map_previews: Vec::new(),
             text_labels: Vec::new(),
             scroll_area: None,
             preedit_overlay: None,
@@ -25916,6 +25949,7 @@ mod tests {
             foreground_items: Vec::new(),
             ghost_items: Vec::new(),
             entity_previews: Vec::new(),
+            map_previews: Vec::new(),
             text_labels: vec![
                 HudInventoryTextLabel {
                     x: 62,
@@ -26145,6 +26179,59 @@ mod tests {
     }
 
     #[test]
+    fn sanitize_hud_inventory_screen_keeps_only_valid_cartography_map_previews() {
+        let mut screen = hud_inventory_screen_with_entity_previews(Vec::new());
+        screen.background_layers = vec![HudInventoryBackgroundLayer {
+            texture: HudInventoryBackgroundTexture::CartographyTableMap,
+            x: 67,
+            y: 13,
+            width: 66,
+            height: 66,
+            uv: HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+        }];
+        let valid = HudInventoryMapPreview {
+            map_id: 42,
+            x: 71,
+            y: 17,
+            scale: 0.45,
+            after_background_layer: 0,
+        };
+        let second_valid = HudInventoryMapPreview {
+            x: 70,
+            y: 32,
+            ..valid
+        };
+        screen.map_previews = vec![
+            valid,
+            HudInventoryMapPreview {
+                map_id: -1,
+                ..valid
+            },
+            HudInventoryMapPreview {
+                scale: f32::NAN,
+                ..valid
+            },
+            HudInventoryMapPreview {
+                scale: 0.0,
+                ..valid
+            },
+            HudInventoryMapPreview {
+                after_background_layer: 1,
+                ..valid
+            },
+            second_valid,
+            HudInventoryMapPreview { x: 99, ..valid },
+        ];
+
+        let screen = sanitize_hud_inventory_screen(screen);
+
+        assert_eq!(screen.map_previews, vec![valid, second_valid]);
+    }
+
+    #[test]
     fn sanitize_hud_inventory_screen_keeps_sanitized_floating_items() {
         let screen = sanitize_hud_inventory_screen(HudInventoryScreen {
             width: 176,
@@ -26209,6 +26296,7 @@ mod tests {
             foreground_items: Vec::new(),
             ghost_items: Vec::new(),
             entity_previews: Vec::new(),
+            map_previews: Vec::new(),
             scroll_area: None,
             preedit_overlay: None,
             hovered_slot_id: None,
@@ -26796,6 +26884,7 @@ mod tests {
             foreground_items: Vec::new(),
             ghost_items: Vec::new(),
             entity_previews,
+            map_previews: Vec::new(),
             text_labels: Vec::new(),
             scroll_area: None,
             preedit_overlay: None,

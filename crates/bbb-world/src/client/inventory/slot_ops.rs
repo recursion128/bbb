@@ -336,10 +336,13 @@ pub(super) fn local_container_slot_access(
                 item_max_stack_size,
             ),
             CARTOGRAPHY_TABLE_ADDITIONAL_SLOT => LocalContainerSlotAccess::input(
-                item_stack_item_id_in_set(
-                    stack_to_place,
-                    &ctx.items.cartography_additional_item_ids,
-                ),
+                stack_to_place.item_id.is_some_and(|item_id| {
+                    stack_to_place.count > 0
+                        && ctx
+                            .items
+                            .cartography_additional_items
+                            .contains_key(&item_id)
+                }),
                 item_max_stack_size,
             ),
             CARTOGRAPHY_TABLE_RESULT_SLOT => {
@@ -2711,7 +2714,7 @@ pub(super) fn cartography_table_quick_move_requires_server_authority(
     ctx: InventoryCtx<'_>,
     slots: &[ContainerSlot],
     slot_num: i16,
-    cartography_additional_item_ids: &BTreeSet<i32>,
+    cartography_additional_items: &BTreeMap<i32, crate::CartographyAdditionalItemKind>,
 ) -> bool {
     if !(0..CARTOGRAPHY_TABLE_TOTAL_SLOT_COUNT).contains(&slot_num) {
         return false;
@@ -2734,7 +2737,7 @@ pub(super) fn cartography_table_quick_move_requires_server_authority(
     if item_stack_has_map_id(source_item) {
         return hashed_component_patch_from_summary(ctx, &source_item.component_patch).is_none();
     }
-    if cartography_additional_item_ids.is_empty() {
+    if cartography_additional_items.is_empty() {
         return true;
     }
     false
@@ -2744,7 +2747,7 @@ pub(super) fn apply_cartography_table_menu_quick_move_to_slots(
     container_id: i32,
     slots: &mut [ContainerSlot],
     slot_num: i16,
-    cartography_additional_item_ids: &BTreeSet<i32>,
+    cartography_additional_items: &BTreeMap<i32, crate::CartographyAdditionalItemKind>,
     default_item_max_stack_sizes: &BTreeMap<i32, i32>,
 ) {
     if !(0..CARTOGRAPHY_TABLE_TOTAL_SLOT_COUNT).contains(&slot_num) {
@@ -2781,7 +2784,9 @@ pub(super) fn apply_cartography_table_menu_quick_move_to_slots(
                     CARTOGRAPHY_TABLE_ADDITIONAL_SLOT,
                     false,
                 ))
-            } else if item_stack_item_id_in_set(&source_item, cartography_additional_item_ids) {
+            } else if source_item.item_id.is_some_and(|item_id| {
+                source_item.count > 0 && cartography_additional_items.contains_key(&item_id)
+            }) {
                 Some((
                     CARTOGRAPHY_TABLE_ADDITIONAL_SLOT,
                     CARTOGRAPHY_TABLE_RESULT_SLOT,

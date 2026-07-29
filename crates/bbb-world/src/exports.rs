@@ -500,7 +500,7 @@ pub use crate::entities::{
     VANILLA_ZOMBIE_DEFAULT_DROWNED_CONVERSION, VANILLA_ZOMBIE_DEFAULT_SPECIAL_TYPE,
     VANILLA_ZOMBIE_DROWNED_CONVERSION_DATA_ID, VANILLA_ZOMBIE_SPECIAL_TYPE_DATA_ID,
 };
-pub use crate::item_profiles::FurnaceFuelRule;
+pub use crate::item_profiles::{CartographyAdditionalItemKind, FurnaceFuelRule};
 pub use crate::jigsaw_blocks::*;
 pub use crate::maps::*;
 pub use crate::minecart_command_blocks::*;

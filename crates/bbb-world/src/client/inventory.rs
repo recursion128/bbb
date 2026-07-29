@@ -2446,7 +2446,7 @@ impl InventoryState {
                             ctx,
                             &slots_after,
                             request.slot_num,
-                            &ctx.items.cartography_additional_item_ids,
+                            &ctx.items.cartography_additional_items,
                         ) {
                             return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
                                 ProtocolContainerInput::QuickMove,
@@ -2456,7 +2456,7 @@ impl InventoryState {
                             container_id,
                             &mut slots_after,
                             request.slot_num,
-                            &ctx.items.cartography_additional_item_ids,
+                            &ctx.items.cartography_additional_items,
                             &ctx.items.default_item_max_stack_sizes,
                         )
                     } else if menu_type_id == Some(VANILLA_MENU_TYPE_LOOM_ID) {
@@ -3822,8 +3822,21 @@ impl WorldStore {
         self.items.set_enchantment_lapis_lazuli_item_ids(item_ids)
     }
 
-    pub fn set_cartography_additional_item_ids(&mut self, item_ids: BTreeSet<i32>) {
-        self.items.set_cartography_additional_item_ids(item_ids)
+    pub fn set_cartography_additional_items(
+        &mut self,
+        items: BTreeMap<i32, crate::CartographyAdditionalItemKind>,
+    ) {
+        self.items.set_cartography_additional_items(items)
+    }
+
+    pub fn cartography_additional_item_kind(
+        &self,
+        item_id: i32,
+    ) -> Option<crate::CartographyAdditionalItemKind> {
+        self.items
+            .cartography_additional_items
+            .get(&item_id)
+            .copied()
     }
 
     pub fn set_default_damageable_item_ids(&mut self, item_ids: BTreeSet<i32>) {

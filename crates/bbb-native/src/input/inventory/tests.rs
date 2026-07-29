@@ -6876,7 +6876,11 @@ fn cartography_table_shift_click_player_additional_item_queues_predicted_quick_m
     input.shift_left_down = true;
     let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
-    world.set_cartography_additional_item_ids(BTreeSet::from([43, 44, 45]));
+    world.set_cartography_additional_items(BTreeMap::from([
+        (43, bbb_world::CartographyAdditionalItemKind::Paper),
+        (44, bbb_world::CartographyAdditionalItemKind::EmptyMap),
+        (45, bbb_world::CartographyAdditionalItemKind::GlassPane),
+    ]));
     world.apply_open_screen(OpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,

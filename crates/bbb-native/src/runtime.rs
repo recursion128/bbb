@@ -52,15 +52,15 @@ use bbb_renderer::{
     HudGameModeSwitcherMode, HudHeartKind, HudHotbarMode, HudIconLayer,
     HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryFillLayer,
     HudInventoryFillStage, HudInventoryGhostItem, HudInventoryItem, HudInventoryItemScissor,
-    HudInventoryScreen, HudInventoryScrollingText, HudInventorySlot, HudInventoryTextBackground,
-    HudInventoryTextInputDecoration, HudInventoryTextLabel, HudInventoryTooltip,
-    HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
-    HudJigsawBlockEditorScreen, HudJigsawBlockEditorTextField, HudJumpBar, HudMobEffect,
-    HudPauseScreen, HudPauseScreenTooltip, HudPlayerHealth, HudPlayerList, HudPlayerReportingFocus,
-    HudResidentItemLayer, HudScoreboardSidebar, HudSignEditorKind, HudSignEditorPreedit,
-    HudSignEditorScreen, HudSocialInteractionsFocus, HudSocialInteractionsPage,
-    HudSocialInteractionsPlayerAction, HudSocialInteractionsScreen, HudSpyglassScope,
-    HudStatsItemRow, HudStatsRow, HudStatsScreen, HudStructureBlockEditorScreen,
+    HudInventoryMapPreview, HudInventoryScreen, HudInventoryScrollingText, HudInventorySlot,
+    HudInventoryTextBackground, HudInventoryTextInputDecoration, HudInventoryTextLabel,
+    HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar,
+    HudItemFoil, HudItemIcon, HudJigsawBlockEditorScreen, HudJigsawBlockEditorTextField,
+    HudJumpBar, HudMobEffect, HudPauseScreen, HudPauseScreenTooltip, HudPlayerHealth,
+    HudPlayerList, HudPlayerReportingFocus, HudResidentItemLayer, HudScoreboardSidebar,
+    HudSignEditorKind, HudSignEditorPreedit, HudSignEditorScreen, HudSocialInteractionsFocus,
+    HudSocialInteractionsPage, HudSocialInteractionsPlayerAction, HudSocialInteractionsScreen,
+    HudSpyglassScope, HudStatsItemRow, HudStatsRow, HudStatsScreen, HudStructureBlockEditorScreen,
     HudStructureBlockEditorTextField, HudStructureBlockMode, HudStyledTextRun, HudSystemToast,
     HudTestBlockEditorScreen, HudTestBlockEditorTextField, HudTestInstanceBlockEditorScreen,
     HudTestInstanceBlockEditorTextField, HudTextStyle, HudUvRect, HudVehicleHealth, HudWinScreen,
@@ -77,15 +77,15 @@ use bbb_renderer::{
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
 };
 use bbb_world::{
-    java_string_hash_code, sign_wood_and_form_for_block_name, BlockPos, ChunkPos,
-    ClientEnvironmentAttributes, ContainerState, EntityClientMovementEffectState,
-    EntityClientTickWork, EnvironmentBiomeSampling, EvokerFangsCritParticleState,
-    ItemEquipmentSlot, LocalPlayerCrosshairAttackIndicatorState, LocalSoundEventState,
-    MerchantOfferState, MerchantOffersState, MobEffectState, MountArmorSlotKind,
-    MountInventoryKind, OminousItemSpawnerParticleState, PrimedTntSmokeParticleState,
-    RavagerStunParticleState, SignBlockForm, SoundEventState, SoundHolderState, TerrainFluidKind,
-    TerrainFluidState, TerrainLight, TerrainMaterialClass, WorldLevelInfo, WorldSkybox, WorldStore,
-    WorldWeatherState,
+    java_string_hash_code, sign_wood_and_form_for_block_name, BlockPos,
+    CartographyAdditionalItemKind, ChunkPos, ClientEnvironmentAttributes, ContainerState,
+    EntityClientMovementEffectState, EntityClientTickWork, EnvironmentBiomeSampling,
+    EvokerFangsCritParticleState, ItemEquipmentSlot, LocalPlayerCrosshairAttackIndicatorState,
+    LocalSoundEventState, MerchantOfferState, MerchantOffersState, MobEffectState,
+    MountArmorSlotKind, MountInventoryKind, OminousItemSpawnerParticleState,
+    PrimedTntSmokeParticleState, RavagerStunParticleState, SignBlockForm, SoundEventState,
+    SoundHolderState, TerrainFluidKind, TerrainFluidState, TerrainLight, TerrainMaterialClass,
+    WorldLevelInfo, WorldSkybox, WorldStore, WorldWeatherState,
 };
 use tokio::sync::mpsc;
 
@@ -550,6 +550,7 @@ const ANVIL_COST_BACKGROUND_Y: i32 = 67;
 const ANVIL_COST_BACKGROUND_HEIGHT: u32 = 12;
 const CARTOGRAPHY_TABLE_MAP_SLOT: i16 = 0;
 const CARTOGRAPHY_TABLE_ADDITIONAL_SLOT: i16 = 1;
+const CARTOGRAPHY_TABLE_RESULT_SLOT: i16 = 2;
 const CARTOGRAPHY_TABLE_ERROR_X: i32 = 35;
 const CARTOGRAPHY_TABLE_ERROR_Y: i32 = 31;
 const CARTOGRAPHY_TABLE_ERROR_WIDTH: u32 = 28;
@@ -624,18 +625,19 @@ const MERCHANT_XP_BAR_HEIGHT: u32 = 5;
 const VILLAGER_NEXT_LEVEL_XP_THRESHOLDS: [i32; 5] = [0, 10, 70, 150, 250];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum CartographyAdditionalItem {
-    Paper,
-    EmptyMap,
-    GlassPane,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum CartographyResultMode {
     Map,
     Scaled,
     Duplicated,
     Locked,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct CartographyTablePresentation {
+    background_layers: Vec<HudInventoryBackgroundLayer>,
+    map_previews: Vec<HudInventoryMapPreview>,
+    mode: Option<CartographyResultMode>,
+    invalid_transform: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -10181,6 +10183,12 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
         partial_tick,
     );
     offset_hud_entity_previews(&mut entity_previews, main_offset_x);
+    let mut map_previews = if layout.background == InventoryScreenBackground::CartographyTable {
+        cartography_table_presentation(world, item_runtime).map_previews
+    } else {
+        Vec::new()
+    };
+    offset_hud_inventory_map_previews(&mut map_previews, main_offset_x);
     let mut text_labels = hud_inventory_text_labels(
         world,
         item_runtime,
@@ -10284,6 +10292,7 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
         foreground_items: Vec::new(),
         ghost_items,
         entity_previews,
+        map_previews,
         text_labels,
         scroll_area: None,
         preedit_overlay: None,
@@ -11554,6 +11563,15 @@ fn offset_hud_entity_previews(previews: &mut [HudEntityPreview], x_offset: i32) 
     }
 }
 
+fn offset_hud_inventory_map_previews(previews: &mut [HudInventoryMapPreview], x_offset: i32) {
+    if x_offset == 0 {
+        return;
+    }
+    for preview in previews {
+        preview.x += x_offset;
+    }
+}
+
 fn offset_hud_inventory_background_layers(
     layers: &mut [HudInventoryBackgroundLayer],
     x_offset: i32,
@@ -12073,6 +12091,7 @@ fn hud_advancements_screen(
         foreground_items: hover.foreground_items,
         ghost_items: Vec::new(),
         entity_previews: Vec::new(),
+        map_previews: Vec::new(),
         text_labels,
         scroll_area: None,
         preedit_overlay: None,
@@ -15058,17 +15077,7 @@ fn hud_inventory_background_layers(
             layers
         }
         InventoryScreenBackground::CartographyTable => {
-            let mut layers = vec![hud_inventory_background_layer(
-                HudInventoryBackgroundTexture::CartographyTable,
-                0,
-                0,
-                176,
-                166,
-                [0.0, 0.0],
-                [176.0 / 256.0, 166.0 / 256.0],
-            )];
-            push_cartography_table_result_layers(world, item_runtime, &mut layers);
-            layers
+            cartography_table_presentation(world, item_runtime).background_layers
         }
         InventoryScreenBackground::BlastFurnace => {
             let mut layers = vec![hud_inventory_background_layer(
@@ -16489,112 +16498,167 @@ fn enchanting_table_level_texture(index: i16, enabled: bool) -> HudInventoryBack
     }
 }
 
-fn push_cartography_table_result_layers(
+fn cartography_table_presentation(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
-    layers: &mut Vec<HudInventoryBackgroundLayer>,
-) {
+) -> CartographyTablePresentation {
+    let mut presentation = CartographyTablePresentation {
+        background_layers: vec![hud_inventory_background_layer(
+            HudInventoryBackgroundTexture::CartographyTable,
+            0,
+            0,
+            176,
+            166,
+            [0.0, 0.0],
+            [176.0 / 256.0, 166.0 / 256.0],
+        )],
+        map_previews: Vec::new(),
+        mode: None,
+        invalid_transform: false,
+    };
     let Some(input_map) = open_container_slot_item(world, CARTOGRAPHY_TABLE_MAP_SLOT) else {
-        return;
+        return presentation;
     };
     let Some(map_id) = item_stack_map_id(input_map) else {
-        return;
+        return presentation;
     };
 
     let additional_item = open_container_slot_item(world, CARTOGRAPHY_TABLE_ADDITIONAL_SLOT);
     let additional =
-        additional_item.and_then(|item| cartography_additional_item(item_runtime, item));
+        additional_item.and_then(|item| cartography_additional_item(world, item_runtime, item));
     let map_state = world.map_item(map_id);
+    let result_slot_mode = open_container_slot_item(world, CARTOGRAPHY_TABLE_RESULT_SLOT)
+        .and_then(cartography_result_mode);
     let invalid_transform = match additional {
-        Some(CartographyAdditionalItem::Paper) => {
+        Some(CartographyAdditionalItemKind::Paper) => {
             map_state.is_some_and(|map| map.locked || map.scale >= 4)
         }
-        Some(CartographyAdditionalItem::GlassPane) => map_state.is_some_and(|map| map.locked),
+        Some(CartographyAdditionalItemKind::GlassPane) => map_state.is_some_and(|map| map.locked),
         _ => false,
     };
 
     if invalid_transform {
-        layers.push(hud_inventory_background_layer(
-            HudInventoryBackgroundTexture::CartographyTableError,
-            CARTOGRAPHY_TABLE_ERROR_X,
-            CARTOGRAPHY_TABLE_ERROR_Y,
-            CARTOGRAPHY_TABLE_ERROR_WIDTH,
-            CARTOGRAPHY_TABLE_ERROR_HEIGHT,
-            [0.0, 0.0],
-            [1.0, 1.0],
-        ));
+        presentation
+            .background_layers
+            .push(hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::CartographyTableError,
+                CARTOGRAPHY_TABLE_ERROR_X,
+                CARTOGRAPHY_TABLE_ERROR_Y,
+                CARTOGRAPHY_TABLE_ERROR_WIDTH,
+                CARTOGRAPHY_TABLE_ERROR_HEIGHT,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            ));
     }
 
-    let result_slot_mode = open_container_slot_item(world, 2).and_then(cartography_result_mode);
-    let mode = if invalid_transform {
-        CartographyResultMode::Map
-    } else {
-        match additional {
-            Some(CartographyAdditionalItem::Paper) => CartographyResultMode::Scaled,
-            Some(CartographyAdditionalItem::EmptyMap) => CartographyResultMode::Duplicated,
-            Some(CartographyAdditionalItem::GlassPane) => CartographyResultMode::Locked,
-            None => result_slot_mode.unwrap_or(CartographyResultMode::Map),
+    let mode = match additional {
+        Some(CartographyAdditionalItemKind::Paper) if invalid_transform => {
+            CartographyResultMode::Map
         }
+        Some(CartographyAdditionalItemKind::Paper) => CartographyResultMode::Scaled,
+        Some(CartographyAdditionalItemKind::EmptyMap) => CartographyResultMode::Duplicated,
+        Some(CartographyAdditionalItemKind::GlassPane) => CartographyResultMode::Locked,
+        None => result_slot_mode.unwrap_or(CartographyResultMode::Map),
     };
-    push_cartography_table_mode_layers(layers, mode);
+    presentation.mode = Some(mode);
+    presentation.invalid_transform = invalid_transform;
+    push_cartography_table_mode_layers(&mut presentation, map_state.map(|_| map_id), mode);
+    presentation
 }
 
 fn push_cartography_table_mode_layers(
-    layers: &mut Vec<HudInventoryBackgroundLayer>,
+    presentation: &mut CartographyTablePresentation,
+    map_id: Option<i32>,
     mode: CartographyResultMode,
 ) {
     match mode {
-        CartographyResultMode::Map => push_cartography_table_map_layer(
-            layers,
-            CARTOGRAPHY_TABLE_MAP_X,
-            CARTOGRAPHY_TABLE_MAP_Y,
-        ),
-        CartographyResultMode::Scaled => layers.push(hud_inventory_background_layer(
-            HudInventoryBackgroundTexture::CartographyTableScaledMap,
-            CARTOGRAPHY_TABLE_MAP_X,
-            CARTOGRAPHY_TABLE_MAP_Y,
-            CARTOGRAPHY_TABLE_MAP_SIZE,
-            CARTOGRAPHY_TABLE_MAP_SIZE,
-            [0.0, 0.0],
-            [1.0, 1.0],
-        )),
-        CartographyResultMode::Duplicated => {
-            layers.push(hud_inventory_background_layer(
-                HudInventoryBackgroundTexture::CartographyTableDuplicatedMap,
-                CARTOGRAPHY_TABLE_MAP_X + CARTOGRAPHY_TABLE_DUPLICATED_MAP_OFFSET,
-                CARTOGRAPHY_TABLE_MAP_Y,
-                CARTOGRAPHY_TABLE_DUPLICATED_MAP_WIDTH,
-                CARTOGRAPHY_TABLE_DUPLICATED_MAP_HEIGHT,
-                [0.0, 0.0],
-                [1.0, 1.0],
-            ));
-            layers.push(hud_inventory_background_layer(
-                HudInventoryBackgroundTexture::CartographyTableDuplicatedMap,
-                CARTOGRAPHY_TABLE_MAP_X,
-                CARTOGRAPHY_TABLE_MAP_Y + CARTOGRAPHY_TABLE_DUPLICATED_MAP_OFFSET,
-                CARTOGRAPHY_TABLE_DUPLICATED_MAP_WIDTH,
-                CARTOGRAPHY_TABLE_DUPLICATED_MAP_HEIGHT,
-                [0.0, 0.0],
-                [1.0, 1.0],
-            ));
-        }
-        CartographyResultMode::Locked => {
+        CartographyResultMode::Map => {
             push_cartography_table_map_layer(
-                layers,
+                &mut presentation.background_layers,
                 CARTOGRAPHY_TABLE_MAP_X,
                 CARTOGRAPHY_TABLE_MAP_Y,
             );
-            layers.push(hud_inventory_background_layer(
-                HudInventoryBackgroundTexture::CartographyTableLocked,
-                CARTOGRAPHY_TABLE_LOCKED_X,
-                CARTOGRAPHY_TABLE_LOCKED_Y,
-                CARTOGRAPHY_TABLE_LOCKED_WIDTH,
-                CARTOGRAPHY_TABLE_LOCKED_HEIGHT,
-                [0.0, 0.0],
-                [1.0, 1.0],
-            ));
+            push_cartography_table_map_preview(presentation, map_id, 71, 17, 0.45);
+        }
+        CartographyResultMode::Scaled => {
+            presentation
+                .background_layers
+                .push(hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::CartographyTableScaledMap,
+                    CARTOGRAPHY_TABLE_MAP_X,
+                    CARTOGRAPHY_TABLE_MAP_Y,
+                    CARTOGRAPHY_TABLE_MAP_SIZE,
+                    CARTOGRAPHY_TABLE_MAP_SIZE,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ));
+            push_cartography_table_map_preview(presentation, map_id, 85, 31, 0.226);
+        }
+        CartographyResultMode::Duplicated => {
+            presentation
+                .background_layers
+                .push(hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::CartographyTableDuplicatedMap,
+                    CARTOGRAPHY_TABLE_MAP_X + CARTOGRAPHY_TABLE_DUPLICATED_MAP_OFFSET,
+                    CARTOGRAPHY_TABLE_MAP_Y,
+                    CARTOGRAPHY_TABLE_DUPLICATED_MAP_WIDTH,
+                    CARTOGRAPHY_TABLE_DUPLICATED_MAP_HEIGHT,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ));
+            push_cartography_table_map_preview(presentation, map_id, 86, 16, 0.34);
+            presentation
+                .background_layers
+                .push(hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::CartographyTableDuplicatedMap,
+                    CARTOGRAPHY_TABLE_MAP_X,
+                    CARTOGRAPHY_TABLE_MAP_Y + CARTOGRAPHY_TABLE_DUPLICATED_MAP_OFFSET,
+                    CARTOGRAPHY_TABLE_DUPLICATED_MAP_WIDTH,
+                    CARTOGRAPHY_TABLE_DUPLICATED_MAP_HEIGHT,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ));
+            push_cartography_table_map_preview(presentation, map_id, 70, 32, 0.34);
+        }
+        CartographyResultMode::Locked => {
+            push_cartography_table_map_layer(
+                &mut presentation.background_layers,
+                CARTOGRAPHY_TABLE_MAP_X,
+                CARTOGRAPHY_TABLE_MAP_Y,
+            );
+            push_cartography_table_map_preview(presentation, map_id, 71, 17, 0.45);
+            presentation
+                .background_layers
+                .push(hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::CartographyTableLocked,
+                    CARTOGRAPHY_TABLE_LOCKED_X,
+                    CARTOGRAPHY_TABLE_LOCKED_Y,
+                    CARTOGRAPHY_TABLE_LOCKED_WIDTH,
+                    CARTOGRAPHY_TABLE_LOCKED_HEIGHT,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ));
         }
     }
+}
+
+fn push_cartography_table_map_preview(
+    presentation: &mut CartographyTablePresentation,
+    map_id: Option<i32>,
+    x: i32,
+    y: i32,
+    scale: f32,
+) {
+    let Some(map_id) = map_id else {
+        return;
+    };
+    presentation.map_previews.push(HudInventoryMapPreview {
+        map_id,
+        x,
+        y,
+        scale,
+        after_background_layer: presentation.background_layers.len().saturating_sub(1),
+    });
 }
 
 fn push_cartography_table_map_layer(layers: &mut Vec<HudInventoryBackgroundLayer>, x: i32, y: i32) {
@@ -16622,24 +16686,28 @@ fn cartography_result_mode(item: &ItemStackSummary) -> Option<CartographyResultM
 }
 
 fn cartography_additional_item(
+    world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     item: &ItemStackSummary,
-) -> Option<CartographyAdditionalItem> {
+) -> Option<CartographyAdditionalItemKind> {
     if item_stack_is_empty(item) {
         return None;
     }
-    cartography_additional_item_for_resource_id(
-        item_runtime?.item_resource_id_for_protocol_id(item.item_id?)?,
-    )
+    let item_id = item.item_id?;
+    world.cartography_additional_item_kind(item_id).or_else(|| {
+        cartography_additional_item_for_resource_id(
+            item_runtime?.item_resource_id_for_protocol_id(item_id)?,
+        )
+    })
 }
 
 fn cartography_additional_item_for_resource_id(
     resource_id: &str,
-) -> Option<CartographyAdditionalItem> {
+) -> Option<CartographyAdditionalItemKind> {
     match resource_id {
-        "minecraft:paper" => Some(CartographyAdditionalItem::Paper),
-        "minecraft:map" => Some(CartographyAdditionalItem::EmptyMap),
-        "minecraft:glass_pane" => Some(CartographyAdditionalItem::GlassPane),
+        "minecraft:paper" => Some(CartographyAdditionalItemKind::Paper),
+        "minecraft:map" => Some(CartographyAdditionalItemKind::EmptyMap),
+        "minecraft:glass_pane" => Some(CartographyAdditionalItemKind::GlassPane),
         _ => None,
     }
 }

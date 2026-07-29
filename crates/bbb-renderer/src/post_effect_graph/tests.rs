@@ -450,6 +450,7 @@ fn selected_generation_drives_live_menu_blur_graph_and_pass_count() {
         foreground_items: Vec::new(),
         ghost_items: Vec::new(),
         entity_previews: Vec::new(),
+        map_previews: Vec::new(),
         text_labels: Vec::new(),
         scroll_area: None,
         preedit_overlay: None,

@@ -16,10 +16,10 @@ use bbb_pack::{
 };
 use bbb_renderer::{ParticleSpriteUv, ParticleUvRect};
 use bbb_world::{
-    ArmorMaterialKind, EquipmentAssetId as WorldEquipmentAssetId, FurnaceFuelRule,
-    HappyGhastHarnessColor, ItemAttackRange, ItemEquipmentSlot, ItemFoodProperties, ItemUseEffects,
-    LlamaBodyDecorColor, MountArmorSlotKind, WorldBlockDestroyProfile, WorldBlockSoundProfile,
-    WorldItemMiningProfile, WorldStore,
+    ArmorMaterialKind, CartographyAdditionalItemKind, EquipmentAssetId as WorldEquipmentAssetId,
+    FurnaceFuelRule, HappyGhastHarnessColor, ItemAttackRange, ItemEquipmentSlot,
+    ItemFoodProperties, ItemUseEffects, LlamaBodyDecorColor, MountArmorSlotKind,
+    WorldBlockDestroyProfile, WorldBlockSoundProfile, WorldItemMiningProfile, WorldStore,
 };
 
 use crate::{
@@ -542,7 +542,7 @@ pub(crate) struct ItemRuntimeWorldDefaults {
     brewing_potion_item_ids: BTreeSet<i32>,
     brewing_ingredient_item_ids: BTreeSet<i32>,
     enchantment_lapis_lazuli_item_ids: BTreeSet<i32>,
-    cartography_additional_item_ids: BTreeSet<i32>,
+    cartography_additional_items: BTreeMap<i32, CartographyAdditionalItemKind>,
     freeze_immune_wearable_item_ids: BTreeSet<i32>,
     powder_snow_walkable_foot_item_ids: BTreeSet<i32>,
     mining_profiles: BTreeMap<i32, WorldItemMiningProfile>,
@@ -633,7 +633,7 @@ impl ItemRuntimeWorldDefaults {
             brewing_ingredient_item_ids: items.brewing_ingredient_item_ids_by_protocol_id(),
             enchantment_lapis_lazuli_item_ids: items
                 .enchantment_lapis_lazuli_item_ids_by_protocol_id(),
-            cartography_additional_item_ids: items.cartography_additional_item_ids_by_protocol_id(),
+            cartography_additional_items: cartography_additional_items(items),
             freeze_immune_wearable_item_ids: items.freeze_immune_wearable_item_ids_by_protocol_id(),
             powder_snow_walkable_foot_item_ids: items
                 .powder_snow_walkable_foot_item_ids_by_protocol_id(),
@@ -694,11 +694,37 @@ impl ItemRuntimeWorldDefaults {
         world.set_brewing_potion_item_ids(self.brewing_potion_item_ids);
         world.set_brewing_ingredient_item_ids(self.brewing_ingredient_item_ids);
         world.set_enchantment_lapis_lazuli_item_ids(self.enchantment_lapis_lazuli_item_ids);
-        world.set_cartography_additional_item_ids(self.cartography_additional_item_ids);
+        world.set_cartography_additional_items(self.cartography_additional_items);
         world.set_freeze_immune_wearable_item_ids(self.freeze_immune_wearable_item_ids);
         world.set_powder_snow_walkable_foot_item_ids(self.powder_snow_walkable_foot_item_ids);
         world.set_default_item_mining_profiles(self.mining_profiles);
     }
+}
+
+fn cartography_additional_items(
+    items: &NativeItemRuntime,
+) -> BTreeMap<i32, CartographyAdditionalItemKind> {
+    let classified = [
+        ("minecraft:paper", CartographyAdditionalItemKind::Paper),
+        ("minecraft:map", CartographyAdditionalItemKind::EmptyMap),
+        (
+            "minecraft:glass_pane",
+            CartographyAdditionalItemKind::GlassPane,
+        ),
+    ]
+    .into_iter()
+    .filter_map(|(resource_id, kind)| {
+        items
+            .item_protocol_id(resource_id)
+            .map(|item_id| (item_id, kind))
+    })
+    .collect::<BTreeMap<_, _>>();
+    debug_assert_eq!(
+        classified.keys().copied().collect::<BTreeSet<_>>(),
+        items.cartography_additional_item_ids_by_protocol_id(),
+        "typed cartography classifications must cover the complete item-runtime membership catalog"
+    );
+    classified
 }
 
 pub(crate) fn apply_item_runtime_world_defaults(items: &NativeItemRuntime, world: &mut WorldStore) {
@@ -796,6 +822,29 @@ mod tests {
         assert_eq!(defaults.default_dye_color_ids.len(), 16);
         assert_eq!(defaults.default_potion_duration_scale_bits.len(), 2);
         assert_eq!(defaults.default_use_cooldown_seconds_bits.len(), 3);
+        assert_eq!(
+            defaults
+                .cartography_additional_items
+                .keys()
+                .copied()
+                .collect::<BTreeSet<_>>(),
+            items.cartography_additional_item_ids_by_protocol_id()
+        );
+        assert_eq!(
+            defaults.cartography_additional_items
+                [&items.item_protocol_id("minecraft:paper").unwrap()],
+            CartographyAdditionalItemKind::Paper
+        );
+        assert_eq!(
+            defaults.cartography_additional_items
+                [&items.item_protocol_id("minecraft:map").unwrap()],
+            CartographyAdditionalItemKind::EmptyMap
+        );
+        assert_eq!(
+            defaults.cartography_additional_items
+                [&items.item_protocol_id("minecraft:glass_pane").unwrap()],
+            CartographyAdditionalItemKind::GlassPane
+        );
         assert_eq!(
             defaults.default_use_cooldown_seconds_bits[&ender_pearl_id],
             1.0_f32.to_bits()

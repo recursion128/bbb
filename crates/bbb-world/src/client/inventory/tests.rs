@@ -2556,7 +2556,10 @@ fn local_container_slot_access_matches_specialized_input_predicates() {
     store.set_brewing_potion_item_ids(BTreeSet::from([44]));
     store.set_brewing_ingredient_item_ids(BTreeSet::from([45]));
     store.set_enchantment_lapis_lazuli_item_ids(BTreeSet::from([47]));
-    store.set_cartography_additional_item_ids(BTreeSet::from([55]));
+    store.set_cartography_additional_items(BTreeMap::from([(
+        55,
+        crate::CartographyAdditionalItemKind::Paper,
+    )]));
     store.set_default_damageable_item_ids(BTreeSet::from([48]));
     store.apply_update_recipes(update_recipes(vec![
         (SMITHING_TEMPLATE_PROPERTY_SET, vec![52]),
@@ -8789,7 +8792,11 @@ fn apply_local_cartography_table_quick_move_moves_input_slots_to_player_forward(
 #[test]
 fn apply_local_cartography_table_quick_move_routes_additional_and_player_ranges() {
     let mut store = WorldStore::new();
-    store.set_cartography_additional_item_ids(BTreeSet::from([43, 44, 45]));
+    store.set_cartography_additional_items(BTreeMap::from([
+        (43, crate::CartographyAdditionalItemKind::Paper),
+        (44, crate::CartographyAdditionalItemKind::EmptyMap),
+        (45, crate::CartographyAdditionalItemKind::GlassPane),
+    ]));
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
         menu_type_id: VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,

@@ -147,8 +147,12 @@ pub struct ItemProfiles {
     pub(crate) brewing_ingredient_item_ids: PublicationShared<BTreeSet<i32>>,
     #[serde(default)]
     pub(crate) enchantment_lapis_lazuli_item_ids: PublicationShared<BTreeSet<i32>>,
-    #[serde(default)]
-    pub(crate) cartography_additional_item_ids: PublicationShared<BTreeSet<i32>>,
+    /// Exact Vanilla cartography additional-slot identities. The kind is
+    /// retained because screen prediction must distinguish paper, empty maps,
+    /// and glass panes without consulting a renderer-side item runtime.
+    #[serde(default, with = "publication_i32_map")]
+    pub(crate) cartography_additional_items:
+        PublicationShared<BTreeMap<i32, CartographyAdditionalItemKind>>,
     #[serde(default)]
     pub(crate) freeze_immune_wearable_item_ids: PublicationShared<BTreeSet<i32>>,
     #[serde(default)]
@@ -169,6 +173,13 @@ pub enum FurnaceFuelRule {
     AddItem(i32),
     AddTag(String),
     RemoveTag(String),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CartographyAdditionalItemKind {
+    Paper,
+    EmptyMap,
+    GlassPane,
 }
 
 mod publication_i32_map {
@@ -532,8 +543,15 @@ impl ItemProfiles {
         self.enchantment_lapis_lazuli_item_ids = filter_item_ids(item_ids).into();
     }
 
-    pub(crate) fn set_cartography_additional_item_ids(&mut self, item_ids: BTreeSet<i32>) {
-        self.cartography_additional_item_ids = filter_item_ids(item_ids).into();
+    pub(crate) fn set_cartography_additional_items(
+        &mut self,
+        items: BTreeMap<i32, CartographyAdditionalItemKind>,
+    ) {
+        self.cartography_additional_items = items
+            .into_iter()
+            .filter(|(item_id, _)| *item_id >= 0)
+            .collect::<BTreeMap<_, _>>()
+            .into();
     }
 
     pub(crate) fn set_default_damageable_item_ids(&mut self, item_ids: BTreeSet<i32>) {

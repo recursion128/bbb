@@ -343,7 +343,8 @@ input/movement/interaction、inventory/gameplay、particle/level event、audio
 3. **input、movement 与 interaction**：覆盖 local player movement/collision/
    fluid/portal、crosshair/pick、attack/use/destroy/place、vehicle、
    inventory/container prediction 与 server acknowledgement；服务端权威结果
-   不伪造，本地 prediction 与 rollback 有明确边界。
+   不伪造，本地 prediction 与 rollback 有明确边界。当前地图工作台呈现工程
+   合同见 `docs/cartography-table-presentation-design.md`。
 4. **particle、level event 与 audio**：从 packet/world event 经唯一 effects
    sink 到 resolver/runtime/render submission，覆盖 provider options、
    block/item context、entity following、category/attenuation、delayed/stop
