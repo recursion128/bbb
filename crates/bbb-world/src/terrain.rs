@@ -448,7 +448,7 @@ pub(crate) fn block_name_is_fire_flammable(name: &str) -> bool {
     VANILLA_FIRE_FLAMMABLE_BLOCKS.contains(&name)
 }
 
-pub(crate) fn block_name_resets_fall_damage(name: &str) -> bool {
+pub fn block_name_resets_fall_damage(name: &str) -> bool {
     VANILLA_FALL_DAMAGE_RESETTING_BLOCKS.contains(&name)
 }
 
