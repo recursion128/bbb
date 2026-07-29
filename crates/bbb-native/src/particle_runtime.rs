@@ -1577,7 +1577,9 @@ mod explosion;
 mod ids;
 mod redstone;
 pub(crate) use redstone::{
-    dust_client_particle_options, redstone_ore_particle_positions, redstone_ore_solid_render_faces,
+    dust_client_particle_options, dust_color_transition_client_particle_options,
+    redstone_ore_particle_positions, redstone_ore_solid_render_faces,
+    REDSTONE_EFFECT_DIRECTION_STEPS, REDSTONE_PARTICLE_COLOR, SCULK_PARTICLE_COLOR,
 };
 mod resolver_block_events;
 mod resolver_core;

@@ -15,10 +15,12 @@ use crate::{
     audio_runtime::AudioEventSink,
     environment_audio_runtime::sound_holder_state,
     particle_runtime::{
-        dust_client_particle_options, pointed_dripstone_drip_context,
-        pointed_dripstone_particle_position, redstone_ore_particle_positions,
-        redstone_ore_solid_render_faces, simple_client_particle_options, EnvironmentParticleSpawn,
-        LevelParticleSpawnContext, ParticleBiomeSampler, ParticleEventSink,
+        dust_client_particle_options, dust_color_transition_client_particle_options,
+        pointed_dripstone_drip_context, pointed_dripstone_particle_position,
+        redstone_ore_particle_positions, redstone_ore_solid_render_faces,
+        simple_client_particle_options, EnvironmentParticleSpawn, LevelParticleSpawnContext,
+        ParticleBiomeSampler, ParticleEventSink, REDSTONE_EFFECT_DIRECTION_STEPS,
+        REDSTONE_PARTICLE_COLOR, SCULK_PARTICLE_COLOR,
     },
     simulation::effects::ParticleBatchSink,
 };
@@ -400,6 +402,14 @@ impl EnvironmentAnimateRuntime {
                     pos,
                     &block.block_properties,
                     &mut self.level_random,
+                    spawns,
+                );
+            }
+            "minecraft:sculk_sensor" | "minecraft:calibrated_sculk_sensor" => {
+                append_sculk_sensor_animate_effect(
+                    pos,
+                    &block.block_properties,
+                    animate_random,
                     spawns,
                 );
             }
@@ -1647,12 +1657,51 @@ fn append_redstone_ore_animate_effects(
             .flatten()
     {
         spawns.push(EnvironmentParticleSpawn {
-            particle: dust_client_particle_options(0x00ff_0000, 1.0),
+            particle: dust_client_particle_options(REDSTONE_PARTICLE_COLOR, 1.0),
             position,
             velocity: [0.0; 3],
             always_show: false,
         });
     }
+}
+
+fn append_sculk_sensor_animate_effect(
+    pos: BlockPos,
+    properties: &BTreeMap<String, String>,
+    random: &mut LevelEventSoundRandomState,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) {
+    if properties.get("sculk_sensor_phase").map(String::as_str) != Some("active") {
+        return;
+    }
+    let direction = REDSTONE_EFFECT_DIRECTION_STEPS[random.next_int_bound(6) as usize];
+    if direction[1] != 0 {
+        return;
+    }
+    let x_offset = if direction[0] == 0 {
+        0.5 - random.next_double()
+    } else {
+        f64::from(direction[0]) * 0.6
+    };
+    let z_offset = if direction[2] == 0 {
+        0.5 - random.next_double()
+    } else {
+        f64::from(direction[2]) * 0.6
+    };
+    spawns.push(EnvironmentParticleSpawn {
+        particle: dust_color_transition_client_particle_options(
+            SCULK_PARTICLE_COLOR,
+            REDSTONE_PARTICLE_COLOR,
+            1.0,
+        ),
+        position: [
+            f64::from(pos.x) + 0.5 + x_offset,
+            f64::from(pos.y) + 0.25,
+            f64::from(pos.z) + 0.5 + z_offset,
+        ],
+        velocity: [0.0, f64::from(random.next_float()) * 0.04, 0.0],
+        always_show: false,
+    });
 }
 
 fn append_ambient_particle_spawns(
@@ -3933,6 +3982,133 @@ mod tests {
                 .count(),
             5
         );
+        assert_eq!(animate_actual.next_long(), animate_expected.next_long());
+    }
+
+    #[test]
+    fn sculk_sensor_animate_effect_preserves_phase_direction_and_random_order() {
+        let pos = BlockPos { x: 8, y: 32, z: 8 };
+        let active = BTreeMap::from([("sculk_sensor_phase".to_string(), "active".to_string())]);
+        let mut actual = LevelEventSoundRandomState::with_seed(3);
+        let mut expected = LevelEventSoundRandomState::with_seed(3);
+        let mut spawns = Vec::new();
+
+        append_sculk_sensor_animate_effect(pos, &active, &mut actual, &mut spawns);
+
+        assert_eq!(expected.next_int_bound(6), 2, "seed selects north");
+        let expected_position = [9.0 - expected.next_double(), 32.25, 7.9];
+        let expected_velocity = [0.0, f64::from(expected.next_float()) * 0.04, 0.0];
+        let [spawn] = spawns.as_slice() else {
+            panic!("active horizontal sculk sensor should emit one particle");
+        };
+        assert_eq!(spawn.position, expected_position);
+        assert_eq!(spawn.velocity, expected_velocity);
+        assert_eq!(
+            spawn.particle.option,
+            bbb_world::ClientParticleOptionValue::DustColorTransition {
+                from_color: 0x0039_d6e0,
+                to_color: 0x00ff_0000,
+                scale_bits: 1.0_f32.to_bits(),
+            }
+        );
+        assert_eq!(
+            spawn.particle.fields,
+            vec![
+                bbb_protocol::NbtSummaryEntry {
+                    name: "type".to_string(),
+                    value: bbb_protocol::NbtSummaryValue::String(
+                        "minecraft:dust_color_transition".to_string(),
+                    ),
+                },
+                bbb_protocol::NbtSummaryEntry {
+                    name: "from_color".to_string(),
+                    value: bbb_protocol::NbtSummaryValue::Int(0x0039_d6e0),
+                },
+                bbb_protocol::NbtSummaryEntry {
+                    name: "to_color".to_string(),
+                    value: bbb_protocol::NbtSummaryValue::Int(0x00ff_0000),
+                },
+                bbb_protocol::NbtSummaryEntry {
+                    name: "scale".to_string(),
+                    value: bbb_protocol::NbtSummaryValue::Float(1.0_f32.to_bits()),
+                },
+            ]
+        );
+        assert!(!spawn.always_show);
+        assert_eq!(actual.next_long(), expected.next_long());
+
+        let mut vertical_actual = LevelEventSoundRandomState::with_seed(0);
+        let mut vertical_expected = LevelEventSoundRandomState::with_seed(0);
+        let mut vertical_spawns = Vec::new();
+        append_sculk_sensor_animate_effect(
+            pos,
+            &active,
+            &mut vertical_actual,
+            &mut vertical_spawns,
+        );
+        assert_eq!(vertical_expected.next_int_bound(6), 0, "seed selects down");
+        assert!(vertical_spawns.is_empty());
+        assert_eq!(vertical_actual.next_long(), vertical_expected.next_long());
+
+        let cooldown = BTreeMap::from([("sculk_sensor_phase".to_string(), "cooldown".to_string())]);
+        let mut cooldown_actual = LevelEventSoundRandomState::with_seed(3);
+        let mut cooldown_expected = LevelEventSoundRandomState::with_seed(3);
+        let mut cooldown_spawns = Vec::new();
+        append_sculk_sensor_animate_effect(
+            pos,
+            &cooldown,
+            &mut cooldown_actual,
+            &mut cooldown_spawns,
+        );
+        assert!(cooldown_spawns.is_empty());
+        assert_eq!(cooldown_actual.next_long(), cooldown_expected.next_long());
+    }
+
+    #[test]
+    fn environment_dispatches_calibrated_sculk_sensor_animate_effect() {
+        let center = BlockPos { x: 8, y: 32, z: 8 };
+        let mut sampled_level_random = LevelEventSoundRandomState::with_seed(0);
+        let pos = sample_animate_position(&mut sampled_level_random, center, NEAR_SAMPLE_RADIUS);
+        let mut world = world_with_ambient_particles();
+        set_block(
+            &mut world,
+            pos,
+            block_state_id(
+                "minecraft:calibrated_sculk_sensor",
+                &[
+                    ("facing", "north"),
+                    ("power", "0"),
+                    ("sculk_sensor_phase", "active"),
+                    ("waterlogged", "false"),
+                ],
+            ),
+        );
+        let mut runtime = EnvironmentAnimateRuntime::default();
+        let mut animate_actual = LevelEventSoundRandomState::with_seed(3);
+        let mut animate_expected = LevelEventSoundRandomState::with_seed(3);
+        let mut audio = None;
+        let mut spawns = Vec::new();
+
+        runtime.do_animate_tick(
+            &mut world,
+            center,
+            NEAR_SAMPLE_RADIUS,
+            0,
+            &mut animate_actual,
+            &mut audio,
+            &mut spawns,
+        );
+
+        assert_eq!(
+            spawns
+                .iter()
+                .filter(|spawn| { spawn.particle.resource_id == "minecraft:dust_color_transition" })
+                .count(),
+            1
+        );
+        assert_eq!(animate_expected.next_int_bound(6), 2);
+        let _ = animate_expected.next_double();
+        let _ = animate_expected.next_float();
         assert_eq!(animate_actual.next_long(), animate_expected.next_long());
     }
 
