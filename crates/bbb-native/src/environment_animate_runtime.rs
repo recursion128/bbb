@@ -2,7 +2,9 @@ use std::collections::BTreeMap;
 
 use bbb_item_model::NativeItemRuntime;
 use bbb_protocol::{
-    heightmap_types::VANILLA_HEIGHTMAP_MOTION_BLOCKING_NO_LEAVES_ID,
+    heightmap_types::{
+        VANILLA_HEIGHTMAP_MOTION_BLOCKING_NO_LEAVES_ID, VANILLA_HEIGHTMAP_WORLD_SURFACE_ID,
+    },
     packets::{SoundSource, Vec3d as ProtocolVec3d},
 };
 use bbb_world::{
@@ -16,10 +18,11 @@ use crate::{
     environment_audio_runtime::sound_holder_state,
     particle_runtime::{
         candle_wick_offsets, dust_client_particle_options,
-        dust_color_transition_client_particle_options, pointed_dripstone_drip_context,
-        pointed_dripstone_particle_position, redstone_ore_particle_positions,
-        redstone_ore_solid_render_faces, simple_client_particle_options, EnvironmentParticleSpawn,
-        LevelParticleSpawnContext, ParticleBiomeSampler, ParticleEventSink,
+        dust_color_transition_client_particle_options, particle_utils_axis_sample,
+        pointed_dripstone_drip_context, pointed_dripstone_particle_position,
+        redstone_ore_particle_positions, redstone_ore_solid_render_faces,
+        simple_client_particle_options, EnvironmentParticleSpawn, LevelParticleSpawnContext,
+        ParticleBiomeSampler, ParticleEventSink, ELECTRIC_SPARK_AXIS_RADIUS,
         REDSTONE_EFFECT_DIRECTION_STEPS, REDSTONE_PARTICLE_COLOR, SCULK_PARTICLE_COLOR,
     },
     simulation::effects::ParticleBatchSink,
@@ -75,6 +78,8 @@ const PARTICLE_ENCHANT: &str = "minecraft:enchant";
 const PARTICLE_END_ROD: &str = "minecraft:end_rod";
 const PARTICLE_DRIPPING_OBSIDIAN_TEAR: &str = "minecraft:dripping_obsidian_tear";
 const PARTICLE_SMALL_FLAME: &str = "minecraft:small_flame";
+const PARTICLE_ELECTRIC_SPARK: &str = "minecraft:electric_spark";
+const LIGHTNING_ROD_SPARK_CYCLE: i32 = 200;
 
 const OPPOSITE_EFFECT_DIRECTION_INDICES: [usize; 6] = [1, 0, 3, 2, 5, 4];
 
@@ -483,6 +488,13 @@ impl EnvironmentAnimateRuntime {
                     spawns,
                 );
             }
+            "minecraft:lightning_rod" => append_lightning_rod_animate_effects(
+                world,
+                pos,
+                &block.block_properties,
+                &mut self.level_random,
+                spawns,
+            ),
             _ => {}
         }
 
@@ -1724,6 +1736,50 @@ fn append_candle_animate_effects(
     sounds
 }
 
+fn append_lightning_rod_animate_effects(
+    world: &WorldStore,
+    pos: BlockPos,
+    properties: &BTreeMap<String, String>,
+    random: &mut LevelEventSoundRandomState,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) {
+    if !world.is_thundering() {
+        return;
+    }
+    let game_time = world.world_time().map_or(0, |time| time.game_time);
+    if i64::from(random.next_int_bound(LIGHTNING_ROD_SPARK_CYCLE))
+        > game_time % i64::from(LIGHTNING_ROD_SPARK_CYCLE)
+        || world.sample_heightmap_first_available(VANILLA_HEIGHTMAP_WORLD_SURFACE_ID, pos.x, pos.z)
+            != pos.y.checked_add(1)
+    {
+        return;
+    }
+    let Some([step_x, step_y, _]) = properties
+        .get("facing")
+        .and_then(|facing| block_state_direction(facing))
+    else {
+        return;
+    };
+    let axis = if step_x != 0 {
+        0
+    } else if step_y != 0 {
+        1
+    } else {
+        2
+    };
+    let particle_count = random.next_int_bound(2) + 1;
+    for _ in 0..particle_count {
+        let (position, velocity) =
+            particle_utils_axis_sample(pos, axis, ELECTRIC_SPARK_AXIS_RADIUS, random);
+        spawns.push(EnvironmentParticleSpawn {
+            particle: simple_client_particle_options(PARTICLE_ELECTRIC_SPARK),
+            position: [position.x, position.y, position.z],
+            velocity: [velocity.x, velocity.y, velocity.z],
+            always_show: false,
+        });
+    }
+}
+
 fn block_state_direction(facing: &str) -> Option<[i32; 3]> {
     match facing {
         "down" => Some([0, -1, 0]),
@@ -2249,15 +2305,20 @@ mod tests {
     use bbb_audio::TickEntitySoundPositionsCommand;
     use bbb_control::AudioCounters;
     use bbb_pack::{JukeboxSongRegistry, SoundEventRegistry};
+    use bbb_protocol::game_event_types::{
+        VANILLA_CLIENT_GAME_EVENT_RAIN_LEVEL_CHANGE_ID,
+        VANILLA_CLIENT_GAME_EVENT_THUNDER_LEVEL_CHANGE_ID,
+    };
     use bbb_protocol::packets::{
         BlockUpdate, ChunkBiomeData, ChunkPos as ProtocolChunkPos, ChunksBiomes,
-        CommonPlayerSpawnInfo, PlayLogin,
+        CommonPlayerSpawnInfo, GameEvent, PlayLogin, PlayTime,
     };
     use bbb_world::{
         AmbientLoopSoundState, ChunkColumn, ChunkPos, ChunkSection, ChunkState,
-        ClientAmbientParticle, JukeboxLevelEventState, LightData, LocalSoundEventState,
-        PaletteDomain, PaletteKind, PalettedContainerData, RegistryPacketEntry,
-        SoundEntityEventState, StopSoundEventState, TickableEntitySoundState, WorldDimension,
+        ClientAmbientParticle, HeightmapData, JukeboxLevelEventState, LightData,
+        LocalSoundEventState, PaletteDomain, PaletteKind, PalettedContainerData,
+        RegistryPacketEntry, SoundEntityEventState, StopSoundEventState, TickableEntitySoundState,
+        WorldDimension,
     };
 
     use super::*;
@@ -4502,6 +4563,173 @@ mod tests {
     }
 
     #[test]
+    fn lightning_rod_animate_effects_preserve_weather_surface_axis_and_level_random_order() {
+        let pos = BlockPos { x: 8, y: 32, z: 8 };
+        let world = thundering_world_with_surface(pos, pos.y + 1, 199);
+
+        for (facing, axis) in [("east", 0), ("up", 1), ("north", 2)] {
+            let properties = BTreeMap::from([("facing".to_string(), facing.to_string())]);
+            let mut actual = LevelEventSoundRandomState::with_seed(73);
+            let mut spawns = Vec::new();
+            append_lightning_rod_animate_effects(
+                &world,
+                pos,
+                &properties,
+                &mut actual,
+                &mut spawns,
+            );
+
+            let mut expected = LevelEventSoundRandomState::with_seed(73);
+            assert!(expected.next_int_bound(LIGHTNING_ROD_SPARK_CYCLE) <= 199);
+            let particle_count = expected.next_int_bound(2) + 1;
+            let expected_spawns = (0..particle_count)
+                .map(|_| expected_axis_particle(pos, axis, &mut expected))
+                .collect::<Vec<_>>();
+            assert_eq!(spawns.len(), particle_count as usize, "{facing}");
+            assert_eq!(
+                spawns
+                    .iter()
+                    .map(|spawn| (spawn.position, spawn.velocity))
+                    .collect::<Vec<_>>(),
+                expected_spawns,
+                "{facing}"
+            );
+            assert!(spawns.iter().all(|spawn| {
+                spawn.particle.resource_id == PARTICLE_ELECTRIC_SPARK && !spawn.always_show
+            }));
+            assert_eq!(actual.next_long(), expected.next_long(), "{facing}");
+        }
+    }
+
+    #[test]
+    fn lightning_rod_animate_gates_short_circuit_before_later_level_random_draws() {
+        let pos = BlockPos { x: 8, y: 32, z: 8 };
+        let properties = BTreeMap::from([("facing".to_string(), "up".to_string())]);
+
+        let clear_world = world_with_surface(pos, pos.y + 1, 199);
+        let mut clear_actual = LevelEventSoundRandomState::with_seed(91);
+        let mut clear_expected = LevelEventSoundRandomState::with_seed(91);
+        let mut spawns = Vec::new();
+        append_lightning_rod_animate_effects(
+            &clear_world,
+            pos,
+            &properties,
+            &mut clear_actual,
+            &mut spawns,
+        );
+        assert!(spawns.is_empty());
+        assert_eq!(clear_actual.next_long(), clear_expected.next_long());
+
+        let threshold_seed = (0..1_000)
+            .find(|seed| {
+                LevelEventSoundRandomState::with_seed(*seed)
+                    .next_int_bound(LIGHTNING_ROD_SPARK_CYCLE)
+                    > 0
+            })
+            .expect("deterministic lightning rod threshold rejection seed");
+        let threshold_world = thundering_world_with_surface(pos, pos.y + 1, 0);
+        let mut threshold_actual = LevelEventSoundRandomState::with_seed(threshold_seed);
+        let mut threshold_expected = LevelEventSoundRandomState::with_seed(threshold_seed);
+        spawns.clear();
+        append_lightning_rod_animate_effects(
+            &threshold_world,
+            pos,
+            &properties,
+            &mut threshold_actual,
+            &mut spawns,
+        );
+        assert!(threshold_expected.next_int_bound(LIGHTNING_ROD_SPARK_CYCLE) > 0);
+        assert!(spawns.is_empty());
+        assert_eq!(threshold_actual.next_long(), threshold_expected.next_long());
+
+        let covered_world = thundering_world_with_surface(pos, pos.y + 2, 199);
+        let mut covered_actual = LevelEventSoundRandomState::with_seed(91);
+        let mut covered_expected = LevelEventSoundRandomState::with_seed(91);
+        spawns.clear();
+        append_lightning_rod_animate_effects(
+            &covered_world,
+            pos,
+            &properties,
+            &mut covered_actual,
+            &mut spawns,
+        );
+        let _ = covered_expected.next_int_bound(LIGHTNING_ROD_SPARK_CYCLE);
+        assert!(spawns.is_empty());
+        assert_eq!(covered_actual.next_long(), covered_expected.next_long());
+    }
+
+    #[test]
+    fn environment_dispatches_lightning_rod_sparks_from_the_level_random_stream() {
+        let center = BlockPos { x: 8, y: 32, z: 8 };
+        let mut expected_level_random = LevelEventSoundRandomState::default();
+        let pos = sample_animate_position(&mut expected_level_random, center, NEAR_SAMPLE_RADIUS);
+        assert_eq!(
+            (pos.x.div_euclid(16), pos.z.div_euclid(16)),
+            (0, 0),
+            "fixture must sample its loaded chunk"
+        );
+        let mut world = thundering_world_with_surface(pos, pos.y + 1, 199);
+        set_block(
+            &mut world,
+            pos,
+            block_state_id(
+                "minecraft:lightning_rod",
+                &[
+                    ("facing", "west"),
+                    ("powered", "false"),
+                    ("waterlogged", "false"),
+                ],
+            ),
+        );
+        let mut runtime = EnvironmentAnimateRuntime::default();
+        let mut animate_random = LevelEventSoundRandomState::with_seed(42);
+        let mut audio = None;
+        let mut spawns = Vec::new();
+
+        runtime.do_animate_tick(
+            &mut world,
+            center,
+            NEAR_SAMPLE_RADIUS,
+            0,
+            &mut animate_random,
+            &mut audio,
+            &mut spawns,
+        );
+
+        assert!(expected_level_random.next_int_bound(LIGHTNING_ROD_SPARK_CYCLE) <= 199);
+        let expected_count = expected_level_random.next_int_bound(2) + 1;
+        for _ in 0..expected_count {
+            let _ = expected_axis_particle(pos, 0, &mut expected_level_random);
+        }
+        let ambient_particles = world
+            .sampled_client_environment_attributes_at(
+                block_position(pos),
+                EnvironmentBiomeSampling::Direct,
+            )
+            .unwrap()
+            .ambient_particles
+            .unwrap_or_default();
+        let mut expected_ambient_spawns = Vec::new();
+        append_ambient_particle_spawns(
+            &mut expected_level_random,
+            pos,
+            ambient_particles,
+            &mut expected_ambient_spawns,
+        );
+        assert_eq!(
+            spawns
+                .iter()
+                .filter(|spawn| spawn.particle.resource_id == PARTICLE_ELECTRIC_SPARK)
+                .count(),
+            expected_count as usize
+        );
+        assert_eq!(
+            runtime.level_random.next_long(),
+            expected_level_random.next_long()
+        );
+    }
+
+    #[test]
     fn wet_sponge_animate_effect_preserves_directions_sturdy_gate_and_random_order() {
         let pos = BlockPos { x: 8, y: 32, z: 8 };
         let world = world_with_ambient_particles();
@@ -5635,6 +5863,87 @@ mod tests {
 
     fn world_with_ambient_particles() -> WorldStore {
         world_with_ambient_particles_and_block_state(0)
+    }
+
+    fn world_with_surface(pos: BlockPos, first_available: i32, game_time: i64) -> WorldStore {
+        let mut world = world_with_ambient_particles();
+        let mut chunk = chunk_with_biome(world.dimension(), 0, 0);
+        chunk.heightmaps.push(heightmap_with_first_available(
+            world.dimension(),
+            VANILLA_HEIGHTMAP_WORLD_SURFACE_ID,
+            pos.x.rem_euclid(16) as u8,
+            pos.z.rem_euclid(16) as u8,
+            first_available,
+        ));
+        world.insert_decoded_chunk(chunk);
+        world.apply_world_time(PlayTime {
+            game_time,
+            clock_updates: Vec::new(),
+        });
+        world
+    }
+
+    fn thundering_world_with_surface(
+        pos: BlockPos,
+        first_available: i32,
+        game_time: i64,
+    ) -> WorldStore {
+        let mut world = world_with_surface(pos, first_available, game_time);
+        world.apply_game_event(GameEvent {
+            event_id: VANILLA_CLIENT_GAME_EVENT_RAIN_LEVEL_CHANGE_ID,
+            param: 1.0,
+        });
+        world.apply_game_event(GameEvent {
+            event_id: VANILLA_CLIENT_GAME_EVENT_THUNDER_LEVEL_CHANGE_ID,
+            param: 1.0,
+        });
+        assert!(world.is_thundering());
+        world
+    }
+
+    fn heightmap_with_first_available(
+        dimension: WorldDimension,
+        kind_id: i32,
+        local_x: u8,
+        local_z: u8,
+        first_available: i32,
+    ) -> HeightmapData {
+        let value_range = u64::try_from(dimension.height).unwrap() + 1;
+        let bits = (u64::BITS - (value_range - 1).leading_zeros()).max(1) as usize;
+        let values_per_long = 64 / bits;
+        let mut data = vec![0_i64; (16_usize * 16).div_ceil(values_per_long)];
+        let index = usize::from(local_x) + usize::from(local_z) * 16;
+        let cell_index = index / values_per_long;
+        let bit_index = (index - cell_index * values_per_long) * bits;
+        let raw = u64::try_from(first_available - dimension.min_y).unwrap();
+        data[cell_index] = (raw << bit_index) as i64;
+        HeightmapData { kind_id, data }
+    }
+
+    fn expected_axis_particle(
+        pos: BlockPos,
+        axis: i32,
+        random: &mut LevelEventSoundRandomState,
+    ) -> ([f64; 3], [f64; 3]) {
+        let offsets = [
+            random.next_double() * 2.0 + -1.0,
+            random.next_double() * 2.0 + -1.0,
+            random.next_double() * 2.0 + -1.0,
+        ];
+        let axis_index = usize::try_from(axis).unwrap();
+        let position = std::array::from_fn(|index| {
+            f64::from([pos.x, pos.y, pos.z][index])
+                + 0.5
+                + offsets[index]
+                    * if index == axis_index {
+                        0.5
+                    } else {
+                        ELECTRIC_SPARK_AXIS_RADIUS
+                    }
+        });
+        let mut velocity = [0.0; 3];
+        velocity[axis_index] = random.next_double() * 2.0 + -1.0;
+        (position, velocity)
     }
 
     fn world_with_ambient_particles_and_block_state(block_state_id: i32) -> WorldStore {

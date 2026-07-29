@@ -15,13 +15,16 @@ use bbb_protocol::{
     },
 };
 use bbb_renderer::{ParticleBlockOptionState, ParticleSpawnBatch, ParticleSpawnCommand};
-use bbb_world::{ClientParticleOptionValue, ClientParticleOptions};
+use bbb_world::{
+    BlockPos, ClientParticleOptionValue, ClientParticleOptions, LevelEventSoundRandomState,
+};
 
 use super::{
     argb_particle_color, falling_dust_color_for_block_state_id,
-    particle_item_option_state_for_stack, particle_provider_accepts_spawn, rgb_particle_color_u32,
-    EnvironmentParticleSpawn, LevelParticleSpawnContext, ParticleBiomeSampler,
-    ParticleCommandResolver, ParticleOptionRenderState, SimpleParticleTemplate,
+    particle_item_option_state_for_stack, particle_provider_accepts_spawn, random_between,
+    rgb_particle_color_u32, EnvironmentParticleSpawn, LevelParticleSpawnContext,
+    ParticleBiomeSampler, ParticleCommandResolver, ParticleOptionRenderState,
+    SimpleParticleTemplate,
 };
 
 struct PreparedEnvironmentParticle {
@@ -172,6 +175,45 @@ pub(crate) fn simple_client_particle_options(resource_id: &str) -> ClientParticl
         }],
         option: ClientParticleOptionValue::Empty,
     }
+}
+
+pub(crate) fn particle_utils_axis_sample(
+    pos: BlockPos,
+    axis: i32,
+    radius: f64,
+    random: &mut LevelEventSoundRandomState,
+) -> (Vec3d, Vec3d) {
+    let center = Vec3d {
+        x: f64::from(pos.x) + 0.5,
+        y: f64::from(pos.y) + 0.5,
+        z: f64::from(pos.z) + 0.5,
+    };
+    let step_x = axis == 0;
+    let step_y = axis == 1;
+    let step_z = axis == 2;
+    let position = Vec3d {
+        x: center.x + random_between(random, -1.0, 1.0) * if step_x { 0.5 } else { radius },
+        y: center.y + random_between(random, -1.0, 1.0) * if step_y { 0.5 } else { radius },
+        z: center.z + random_between(random, -1.0, 1.0) * if step_z { 0.5 } else { radius },
+    };
+    let velocity = Vec3d {
+        x: if step_x {
+            random_between(random, -1.0, 1.0)
+        } else {
+            0.0
+        },
+        y: if step_y {
+            random_between(random, -1.0, 1.0)
+        } else {
+            0.0
+        },
+        z: if step_z {
+            random_between(random, -1.0, 1.0)
+        } else {
+            0.0
+        },
+    };
+    (position, velocity)
 }
 
 fn environment_particle_option_render_state(

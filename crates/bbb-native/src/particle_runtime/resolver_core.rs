@@ -701,7 +701,16 @@ impl ParticleCommandResolver {
             random.next_int_bound(max_particles - min_particles + 1) + min_particles;
 
         for _ in 0..particle_count {
-            let (position, velocity) = axis_particle(event, axis, radius, random);
+            let (position, velocity) = particle_utils_axis_sample(
+                WorldBlockPos {
+                    x: event.pos.x,
+                    y: event.pos.y,
+                    z: event.pos.z,
+                },
+                axis,
+                radius,
+                random,
+            );
             batch
                 .commands
                 .push(self.command_from_template(&template, position, velocity, false));

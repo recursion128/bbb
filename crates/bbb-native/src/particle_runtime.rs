@@ -1324,45 +1324,6 @@ fn block_face_particle(
     (position, velocity)
 }
 
-fn axis_particle(
-    event: &LevelEvent,
-    axis: i32,
-    radius: f64,
-    random: &mut LevelEventSoundRandomState,
-) -> (Vec3d, Vec3d) {
-    let center = Vec3d {
-        x: f64::from(event.pos.x) + 0.5,
-        y: f64::from(event.pos.y) + 0.5,
-        z: f64::from(event.pos.z) + 0.5,
-    };
-    let step_x = axis == 0;
-    let step_y = axis == 1;
-    let step_z = axis == 2;
-    let position = Vec3d {
-        x: center.x + random_between(random, -1.0, 1.0) * if step_x { 0.5 } else { radius },
-        y: center.y + random_between(random, -1.0, 1.0) * if step_y { 0.5 } else { radius },
-        z: center.z + random_between(random, -1.0, 1.0) * if step_z { 0.5 } else { radius },
-    };
-    let velocity = Vec3d {
-        x: if step_x {
-            random_between(random, -1.0, 1.0)
-        } else {
-            0.0
-        },
-        y: if step_y {
-            random_between(random, -1.0, 1.0)
-        } else {
-            0.0
-        },
-        z: if step_z {
-            random_between(random, -1.0, 1.0)
-        } else {
-            0.0
-        },
-    };
-    (position, velocity)
-}
-
 fn random_between(random: &mut LevelEventSoundRandomState, min: f64, max: f64) -> f64 {
     random.next_double() * (max - min) + min
 }
@@ -1425,7 +1386,7 @@ const SCULK_CHARGE_SPEED_VAR: f64 = 0.005;
 const SCULK_CHARGE_POP_PARTIAL_BLOCK_SPREAD: f64 = 0.25;
 const SCULK_CHARGE_POP_FULL_BLOCK_SPREAD: f64 = 0.45;
 const SCULK_CHARGE_POP_SPEED: f64 = 0.07;
-const ELECTRIC_SPARK_AXIS_RADIUS: f64 = 0.125;
+pub(crate) const ELECTRIC_SPARK_AXIS_RADIUS: f64 = 0.125;
 const ELECTRIC_SPARK_AXIS_MIN: i32 = 10;
 const ELECTRIC_SPARK_AXIS_MAX: i32 = 19;
 const EGG_CRACK_PARTICLE_MAX: i32 = 6;
@@ -1572,7 +1533,7 @@ mod block_map_color;
 mod dripstone;
 pub(crate) use dripstone::{pointed_dripstone_drip_context, pointed_dripstone_particle_position};
 mod environment;
-pub(crate) use environment::simple_client_particle_options;
+pub(crate) use environment::{particle_utils_axis_sample, simple_client_particle_options};
 mod explosion;
 mod ids;
 mod redstone;

@@ -728,3 +728,6 @@
 - **2026-07-29（点燃蜡烛客户端效果工程闭环）**：生成的 17+17 普通/蛋糕蜡烛
   membership 现复用四档 wick offsets，按每支独立随机短路提交 smoke、
   small flame 与 ambient sound，并保持 animate/level 两条随机流。
+- **2026-07-29（雷电导杆环境粒子工程闭环）**：雷暴、200-tick 周期与
+  WORLD_SURFACE 顶面门禁现按 `LightningRodBlock.animateTick` 运行；环境动画与
+  雷击 level event 共用三轴 electric-spark 采样公式和确定性 level 随机流。
