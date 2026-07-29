@@ -38,6 +38,9 @@ const SOUND_EVENT_BUBBLE_COLUMN_WHIRLPOOL_AMBIENT: &str =
 const SOUND_EVENT_WATER_AMBIENT: &str = "minecraft:block.water.ambient";
 const SOUND_EVENT_LAVA_POP: &str = "minecraft:block.lava.pop";
 const SOUND_EVENT_LAVA_AMBIENT: &str = "minecraft:block.lava.ambient";
+const SOUND_EVENT_FURNACE_FIRE_CRACKLE: &str = "minecraft:block.furnace.fire_crackle";
+const SOUND_EVENT_BLAST_FURNACE_FIRE_CRACKLE: &str = "minecraft:block.blastfurnace.fire_crackle";
+const SOUND_EVENT_SMOKER_SMOKE: &str = "minecraft:block.smoker.smoke";
 const PARTICLE_FIREFLY: &str = "minecraft:firefly";
 const PARTICLE_CURRENT_DOWN: &str = "minecraft:current_down";
 const PARTICLE_BUBBLE_COLUMN_UP: &str = "minecraft:bubble_column_up";
@@ -45,9 +48,18 @@ const PARTICLE_UNDERWATER: &str = "minecraft:underwater";
 const PARTICLE_LAVA: &str = "minecraft:lava";
 const PARTICLE_DRIPPING_WATER: &str = "minecraft:dripping_water";
 const PARTICLE_DRIPPING_LAVA: &str = "minecraft:dripping_lava";
+const PARTICLE_SMOKE: &str = "minecraft:smoke";
+const PARTICLE_FLAME: &str = "minecraft:flame";
 
 type FluidAnimateSound = (&'static str, [f64; 3], f32, f32);
 type FluidAnimateSounds = [Option<FluidAnimateSound>; 2];
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FurnaceAnimateKind {
+    Furnace,
+    BlastFurnace,
+    Smoker,
+}
 
 /// Non-serializable owner of Vanilla `ClientLevel.animateTick` random cursors.
 #[derive(Debug)]
@@ -197,6 +209,39 @@ impl EnvironmentAnimateRuntime {
                         .get("drag")
                         .map(String::as_str)
                         .is_none_or(|value| value == "true"),
+                    animate_random,
+                    audio,
+                    spawns,
+                );
+            }
+            "minecraft:furnace" => {
+                self.animate_furnace_block(
+                    world,
+                    pos,
+                    FurnaceAnimateKind::Furnace,
+                    &block.block_properties,
+                    animate_random,
+                    audio,
+                    spawns,
+                );
+            }
+            "minecraft:blast_furnace" => {
+                self.animate_furnace_block(
+                    world,
+                    pos,
+                    FurnaceAnimateKind::BlastFurnace,
+                    &block.block_properties,
+                    animate_random,
+                    audio,
+                    spawns,
+                );
+            }
+            "minecraft:smoker" => {
+                self.animate_furnace_block(
+                    world,
+                    pos,
+                    FurnaceAnimateKind::Smoker,
+                    &block.block_properties,
                     animate_random,
                     audio,
                     spawns,
@@ -366,6 +411,40 @@ impl EnvironmentAnimateRuntime {
                     seed,
                 ));
             }
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn animate_furnace_block(
+        &mut self,
+        world: &WorldStore,
+        pos: BlockPos,
+        kind: FurnaceAnimateKind,
+        properties: &std::collections::BTreeMap<String, String>,
+        animate_random: &mut LevelEventSoundRandomState,
+        audio: &mut Option<&mut dyn AudioEventSink>,
+        spawns: &mut Vec<EnvironmentParticleSpawn>,
+    ) {
+        let Some(sound_id) =
+            append_furnace_animate_effects(pos, kind, properties, animate_random, spawns)
+        else {
+            return;
+        };
+        let seed = self.level_random.next_long();
+        if let Some(audio) = audio.as_deref_mut() {
+            audio.play_positioned_sound(&local_block_sound(
+                world,
+                sound_id,
+                SoundSource::Blocks,
+                [
+                    f64::from(pos.x) + 0.5,
+                    f64::from(pos.y),
+                    f64::from(pos.z) + 0.5,
+                ],
+                1.0,
+                1.0,
+                seed,
+            ));
         }
     }
 }
@@ -584,6 +663,69 @@ fn append_fluid_drip_particle(
         velocity: [0.0; 3],
         always_show: false,
     });
+}
+
+fn append_furnace_animate_effects(
+    pos: BlockPos,
+    kind: FurnaceAnimateKind,
+    properties: &std::collections::BTreeMap<String, String>,
+    random: &mut LevelEventSoundRandomState,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) -> Option<&'static str> {
+    if properties.get("lit").map(String::as_str) != Some("true") {
+        return None;
+    }
+
+    let sound = (random.next_double() < 0.1).then_some(match kind {
+        FurnaceAnimateKind::Furnace => SOUND_EVENT_FURNACE_FIRE_CRACKLE,
+        FurnaceAnimateKind::BlastFurnace => SOUND_EVENT_BLAST_FURNACE_FIRE_CRACKLE,
+        FurnaceAnimateKind::Smoker => SOUND_EVENT_SMOKER_SMOKE,
+    });
+    let center = [
+        f64::from(pos.x) + 0.5,
+        f64::from(pos.y),
+        f64::from(pos.z) + 0.5,
+    ];
+    if kind == FurnaceAnimateKind::Smoker {
+        spawns.push(EnvironmentParticleSpawn {
+            particle: simple_client_particle_options(PARTICLE_SMOKE),
+            position: [center[0], center[1] + 1.1, center[2]],
+            velocity: [0.0; 3],
+            always_show: false,
+        });
+        return sound;
+    }
+
+    let facing = properties.get("facing").map(String::as_str);
+    let side_offset = random.next_double() * 0.6 - 0.3;
+    let vertical_range = if kind == FurnaceAnimateKind::Furnace {
+        6.0 / 16.0
+    } else {
+        9.0 / 16.0
+    };
+    let vertical_offset = random.next_double() * vertical_range;
+    let (dx, dz) = match facing {
+        Some("east") => (0.52, side_offset),
+        Some("west") => (-0.52, side_offset),
+        Some("south") => (side_offset, 0.52),
+        _ => (side_offset, -0.52),
+    };
+    let position = [center[0] + dx, center[1] + vertical_offset, center[2] + dz];
+    spawns.push(EnvironmentParticleSpawn {
+        particle: simple_client_particle_options(PARTICLE_SMOKE),
+        position,
+        velocity: [0.0; 3],
+        always_show: false,
+    });
+    if kind == FurnaceAnimateKind::Furnace {
+        spawns.push(EnvironmentParticleSpawn {
+            particle: simple_client_particle_options(PARTICLE_FLAME),
+            position,
+            velocity: [0.0; 3],
+            always_show: false,
+        });
+    }
+    sound
 }
 
 fn append_ambient_particle_spawns(
@@ -1214,6 +1356,155 @@ mod tests {
             pos,
             TerrainFluidState::new(TerrainFluidKind::Water, 7, false),
             &mut sound_random,
+            &mut audio,
+            &mut spawns,
+        );
+        assert_eq!(
+            runtime.level_random.next_long(),
+            expected_level_random.next_long(),
+            "playLocalSound consumes the shared level seed even without an audio sink"
+        );
+    }
+
+    #[test]
+    fn furnace_family_animate_effects_preserve_lit_direction_and_random_order() {
+        let pos = BlockPos {
+            x: -4,
+            y: 12,
+            z: 30,
+        };
+        let sound_seed = (0..100_000)
+            .find(|seed| LevelEventSoundRandomState::with_seed(*seed).next_double() < 0.1)
+            .expect("deterministic furnace sound seed");
+
+        for (kind, facing, sound_id, vertical_range, particle_ids) in [
+            (
+                FurnaceAnimateKind::Furnace,
+                "east",
+                SOUND_EVENT_FURNACE_FIRE_CRACKLE,
+                6.0 / 16.0,
+                &[PARTICLE_SMOKE, PARTICLE_FLAME][..],
+            ),
+            (
+                FurnaceAnimateKind::BlastFurnace,
+                "south",
+                SOUND_EVENT_BLAST_FURNACE_FIRE_CRACKLE,
+                9.0 / 16.0,
+                &[PARTICLE_SMOKE][..],
+            ),
+            (
+                FurnaceAnimateKind::Smoker,
+                "north",
+                SOUND_EVENT_SMOKER_SMOKE,
+                0.0,
+                &[PARTICLE_SMOKE][..],
+            ),
+        ] {
+            let properties = BTreeMap::from([
+                ("facing".to_string(), facing.to_string()),
+                ("lit".to_string(), "true".to_string()),
+            ]);
+            let mut actual = LevelEventSoundRandomState::with_seed(sound_seed);
+            let mut expected = LevelEventSoundRandomState::with_seed(sound_seed);
+            let mut spawns = Vec::new();
+
+            let sound =
+                append_furnace_animate_effects(pos, kind, &properties, &mut actual, &mut spawns);
+
+            assert!(expected.next_double() < 0.1);
+            assert_eq!(sound, Some(sound_id));
+            let expected_position = if kind == FurnaceAnimateKind::Smoker {
+                [-3.5, 13.1, 30.5]
+            } else {
+                let side_offset = expected.next_double() * 0.6 - 0.3;
+                let vertical_offset = expected.next_double() * vertical_range;
+                match facing {
+                    "east" => [-3.5 + 0.52, 12.0 + vertical_offset, 30.5 + side_offset],
+                    "south" => [-3.5 + side_offset, 12.0 + vertical_offset, 30.5 + 0.52],
+                    _ => unreachable!("test uses horizontal furnace facings"),
+                }
+            };
+            assert_eq!(
+                spawns
+                    .iter()
+                    .map(|spawn| spawn.particle.resource_id.as_str())
+                    .collect::<Vec<_>>(),
+                particle_ids
+            );
+            assert!(spawns.iter().all(|spawn| {
+                spawn.position == expected_position
+                    && spawn.velocity == [0.0; 3]
+                    && !spawn.always_show
+            }));
+            assert_eq!(actual.next_long(), expected.next_long());
+        }
+
+        for (facing, expected_fixed_axis) in [
+            ("north", ("z", 30.5 - 0.52)),
+            ("south", ("z", 30.5 + 0.52)),
+            ("west", ("x", -3.5 - 0.52)),
+            ("east", ("x", -3.5 + 0.52)),
+        ] {
+            let properties = BTreeMap::from([
+                ("facing".to_string(), facing.to_string()),
+                ("lit".to_string(), "true".to_string()),
+            ]);
+            let mut random = LevelEventSoundRandomState::with_seed(82);
+            let mut spawns = Vec::new();
+            let _ = append_furnace_animate_effects(
+                pos,
+                FurnaceAnimateKind::Furnace,
+                &properties,
+                &mut random,
+                &mut spawns,
+            );
+            let position = spawns[0].position;
+            match expected_fixed_axis.0 {
+                "x" => assert_eq!(position[0], expected_fixed_axis.1),
+                "z" => assert_eq!(position[2], expected_fixed_axis.1),
+                _ => unreachable!("test uses x/z axes"),
+            }
+        }
+
+        let unlit = BTreeMap::from([
+            ("facing".to_string(), "north".to_string()),
+            ("lit".to_string(), "false".to_string()),
+        ]);
+        let mut actual_unlit = LevelEventSoundRandomState::with_seed(sound_seed);
+        let mut expected_unlit = LevelEventSoundRandomState::with_seed(sound_seed);
+        let mut unlit_spawns = Vec::new();
+        assert_eq!(
+            append_furnace_animate_effects(
+                pos,
+                FurnaceAnimateKind::Furnace,
+                &unlit,
+                &mut actual_unlit,
+                &mut unlit_spawns,
+            ),
+            None
+        );
+        assert!(unlit_spawns.is_empty());
+        assert_eq!(actual_unlit.next_long(), expected_unlit.next_long());
+
+        let lit = BTreeMap::from([
+            ("facing".to_string(), "north".to_string()),
+            ("lit".to_string(), "true".to_string()),
+        ]);
+        let mut runtime = EnvironmentAnimateRuntime {
+            level_random: LevelEventSoundRandomState::with_seed(42),
+            ..EnvironmentAnimateRuntime::default()
+        };
+        let mut expected_level_random = LevelEventSoundRandomState::with_seed(42);
+        let _ = expected_level_random.next_long();
+        let mut animate_random = LevelEventSoundRandomState::with_seed(sound_seed);
+        let mut audio = None;
+        let mut spawns = Vec::new();
+        runtime.animate_furnace_block(
+            &WorldStore::default(),
+            pos,
+            FurnaceAnimateKind::Furnace,
+            &lit,
+            &mut animate_random,
             &mut audio,
             &mut spawns,
         );
